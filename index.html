@@ -62,12 +62,13 @@ body {
 #app::before {
   content: '';
   position: fixed;
-  right: -60px; bottom: -60px;
-  width: 420px; height: 420px;
+  right: -40px; bottom: -40px;
+  width: 460px; height: 460px;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='ag' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23ff2a3a'/><stop offset='100%25' stop-color='%238a0410'/></linearGradient></defs><path d='M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z' fill='url(%23ag)' stroke='rgba(255,255,255,0.9)' stroke-width='1.5'/><text x='40' y='51' text-anchor='middle' font-family='Arial,sans-serif' font-size='26' font-weight='900' fill='white' letter-spacing='-1.5'>SP</text><circle cx='40' cy='13' r='2.8' fill='%23f5c518'/></svg>");
   background-repeat: no-repeat;
   background-size: contain;
-  opacity: .04;
+  opacity: .16;
+  filter: drop-shadow(0 0 30px rgba(227,6,19,.35));
   pointer-events: none;
   z-index: 0;
 }
@@ -98,16 +99,48 @@ a { color: var(--accent); text-decoration: none; }
   z-index: 1000;
   overflow: hidden;
 }
-#login-overlay::before {
-  content: '';
-  position: absolute; inset: 0;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23ff2a3a'/><stop offset='100%25' stop-color='%238a0410'/></linearGradient></defs><path d='M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z' fill='url(%23g)' stroke='rgba(255,255,255,0.9)' stroke-width='1.5'/><text x='40' y='51' text-anchor='middle' font-family='Arial,sans-serif' font-size='26' font-weight='900' fill='white' letter-spacing='-1.5'>SP</text><circle cx='40' cy='13' r='2.8' fill='%23f5c518'/></svg>");
-  background-repeat: no-repeat;
-  background-position: 50% 50%;
-  background-size: 720px 720px;
-  opacity: .085;
-  filter: drop-shadow(0 0 60px rgba(227,6,19,.35));
-  pointer-events: none;
+#login-overlay {
+  gap: 64px;
+}
+.login-hero {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  max-width: 360px;
+}
+.login-hero-mark {
+  width: 280px; height: 280px;
+  filter: drop-shadow(0 12px 40px rgba(227,6,19,.55));
+  animation: heroFloat 6s ease-in-out infinite;
+}
+.login-hero-mark svg { width: 100%; height: 100%; display: block; }
+.login-hero-title {
+  font-size: 32px; font-weight: 800; letter-spacing: .5px;
+  text-align: center;
+  background: linear-gradient(135deg, #ff2a3a 0%, #f5c518 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin: 0;
+}
+.login-hero-tag {
+  color: var(--text-2);
+  font-size: 13px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  text-align: center;
+  font-weight: 500;
+}
+@keyframes heroFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+@media (max-width: 860px) {
+  #login-overlay { gap: 0; }
+  .login-hero { display: none; }
 }
 #login-overlay::after {
   content: '';
@@ -1130,6 +1163,25 @@ tbody tr:last-child td { border-bottom: none; }
 
 <!-- =================== LOGIN OVERLAY =================== -->
 <div id="login-overlay" style="display:none;">
+  <div class="login-hero">
+    <div class="login-hero-mark">
+      <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ff2a3a"/>
+            <stop offset="100%" stop-color="#8a0410"/>
+          </linearGradient>
+        </defs>
+        <path d="M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z"
+              fill="url(#heroGrad)" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>
+        <text x="40" y="51" text-anchor="middle" font-family="Arial,sans-serif"
+              font-size="26" font-weight="900" fill="white" letter-spacing="-1.5">SP</text>
+        <circle cx="40" cy="13" r="2.8" fill="#f5c518"/>
+      </svg>
+    </div>
+    <h1 class="login-hero-title">Scouting Platform</h1>
+    <div class="login-hero-tag">Professional Edition</div>
+  </div>
   <div class="login-card">
     <div class="login-logo">
       <div class="login-logo-mark">
@@ -1249,6 +1301,24 @@ tbody tr:last-child td { border-bottom: none; }
 
         <div class="kpi-grid" id="kpi-grid"></div>
 
+        <div class="panel" style="margin-bottom:16px;">
+          <div class="panel-title">
+            Regio kaart
+            <span class="geo-region-badge"><span class="dot"></span> Utrecht · Apeldoorn · Ermelo · Harderwijk</span>
+            <span class="panel-title-icon">●</span>
+          </div>
+          <div id="geo-breadcrumb" class="geo-breadcrumb"></div>
+          <div class="geo-panel-wrap">
+            <div class="geo-map-wrap" id="geo-map-wrap">
+              <div id="geo-leaflet-map"></div>
+            </div>
+            <div class="geo-list-panel">
+              <div class="geo-list-title" id="geo-list-title">Steden</div>
+              <div class="geo-list-items" id="geo-list-items"></div>
+            </div>
+          </div>
+        </div>
+
         <div id="dash-empty" style="display:none;"></div>
         <div id="dash-content">
 
@@ -1303,24 +1373,6 @@ tbody tr:last-child td { border-bottom: none; }
                 <span class="panel-title-icon">●</span>
               </div>
               <div id="dash-positions"></div>
-            </div>
-          </div>
-
-          <div class="panel" style="margin-top:16px;">
-            <div class="panel-title">
-              Regio kaart
-              <span class="geo-region-badge"><span class="dot"></span> Utrecht · Apeldoorn · Ermelo · Harderwijk</span>
-              <span class="panel-title-icon">●</span>
-            </div>
-            <div id="geo-breadcrumb" class="geo-breadcrumb"></div>
-            <div class="geo-panel-wrap">
-              <div class="geo-map-wrap" id="geo-map-wrap">
-                <div id="geo-leaflet-map"></div>
-              </div>
-              <div class="geo-list-panel">
-                <div class="geo-list-title" id="geo-list-title">Steden</div>
-                <div class="geo-list-items" id="geo-list-items"></div>
-              </div>
             </div>
           </div>
 
@@ -2523,6 +2575,7 @@ function renderDashboard(){
         <button class="btn btn-primary" data-go="report">+ Eerste rapport maken</button>
       </div>`;
     empty.querySelector('[data-go]').addEventListener('click', ()=> go('report'));
+    renderGeo();
     return;
   }
   empty.style.display = 'none';

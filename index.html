@@ -435,6 +435,40 @@ tbody tr:last-child td { border-bottom: none; }
 .legend-item { display: flex; align-items: center; gap: 6px; color: var(--text-2); }
 .legend-dot { width: 12px; height: 12px; border-radius: 3px; }
 
+/* Sliders */
+.score-slider {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 6px; border-radius: 3px;
+  background: linear-gradient(to right, var(--grade-d), var(--grade-c), var(--grade-b), var(--grade-a));
+  outline: none; padding: 0; margin: 8px 0 4px 0;
+}
+.score-slider::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: white; border: 3px solid var(--primary);
+  cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.4);
+  transition: transform .12s;
+}
+.score-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
+.score-slider::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: white; border: 3px solid var(--primary);
+  cursor: pointer; box-shadow: 0 2px 6px rgba(0,0,0,.4);
+}
+.slider-val {
+  display: inline-block;
+  background: var(--primary); color: white;
+  padding: 2px 9px; border-radius: 10px;
+  font-size: 11px; font-weight: 700;
+  margin-left: 6px; min-width: 28px; text-align: center;
+}
+.slider-val.empty { background: var(--bg-3); color: var(--text-3); }
+.slider-scale {
+  display: flex; justify-content: space-between;
+  font-size: 10px; color: var(--text-3);
+  padding: 0 2px; margin-top: 2px;
+}
+
 /* Form actions */
 .form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
 
@@ -850,6 +884,42 @@ tbody tr:last-child td { border-bottom: none; }
                 </select>
               </div>
             </div>
+            <div class="field" style="margin-top:4px;">
+              <label>Tweebenigheid — toelichting (optioneel)</label>
+              <input id="f-tweebenig" type="text" placeholder="Bijv. tweebenig in passing, dribbelt met beide benen" />
+            </div>
+          </div>
+
+          <!-- Wedstrijd -->
+          <div class="form-section">
+            <div class="form-section-title">Wedstrijd</div>
+            <div class="field-row three">
+              <div class="field">
+                <label>Datum wedstrijd</label>
+                <input id="f-w-datum" type="date" />
+              </div>
+              <div class="field">
+                <label>Tegenstander</label>
+                <input id="f-w-tegenstander" type="text" placeholder="Bijv. Sparta Rotterdam O17" />
+              </div>
+              <div class="field">
+                <label>Opstelling</label>
+                <select id="f-w-opstelling">
+                  <option value="">Kies of laat leeg</option>
+                  <option>1-4-3-3</option>
+                  <option>1-4-3-3 offensive</option>
+                  <option>1-4-2-3-1</option>
+                  <option>1-3-4-3</option>
+                  <option>1-4-4-2</option>
+                  <option>1-4-1-4-1</option>
+                  <option>Anders</option>
+                </select>
+              </div>
+            </div>
+            <div class="field" style="margin-top:4px;">
+              <label>Wedstrijdcontext (optioneel)</label>
+              <textarea id="f-w-context" rows="2" placeholder="Beschrijving wedstrijd, niveau, tempo, doel..."></textarea>
+            </div>
           </div>
 
           <!-- Positie -->
@@ -897,48 +967,95 @@ tbody tr:last-child td { border-bottom: none; }
           <!-- Beoordelingen -->
           <div class="form-section">
             <div class="form-section-title">Beoordeling per categorie</div>
-
-            <div class="legend" style="margin-top:0;">
-              <div class="legend-item"><span class="dual-label-pill pill-current">HUIDIG</span> wat speler nú is</div>
+            <div style="font-size:12px; color:var(--text-3); margin-bottom:14px; line-height:1.5;">
+              Beoordeel het <strong style="color:var(--text-2)">huidige niveau</strong> per categorie. Potentieel wordt alleen bij de eindbeoordeling ingevuld.
             </div>
 
             <!-- Techniek -->
             <div class="criteria-block">
-              <div class="criteria-block-title">Spelvaardigheden / Techniek</div>
-              <div class="criteria-block-help">Functionele techniek: aan de bal comfortabel, aanname goed, soepel in actie loslaten.</div>
-              <div class="field">
-                <label><span class="dual-label-pill pill-current">Huidig</span></label>
-                <div class="grade-picker" data-key="techniek_huidig"></div>
+              <div class="criteria-block-title">Functionele techniek / Spelvaardigheden</div>
+              <div class="criteria-block-help">Aan de bal comfortabel, aanname goed, soepel in actie loslaten, balcontrole.</div>
+              <div class="grade-picker" data-key="techniek_huidig"></div>
+              <div class="field" style="margin-top:10px;">
+                <label>Toelichting (optioneel)</label>
+                <textarea id="f-tekst-techniek" rows="2" placeholder="Korte observatie..."></textarea>
               </div>
             </div>
 
             <!-- Inzicht -->
             <div class="criteria-block">
-              <div class="criteria-block-title">Functioneel tactisch / Spelinzicht</div>
-              <div class="criteria-block-help">Ziet gaten om in te lopen, weet wanneer wel of niet, creëert ruimte voor anderen.</div>
-              <div class="field">
-                <label><span class="dual-label-pill pill-current">Huidig</span></label>
-                <div class="grade-picker" data-key="inzicht_huidig"></div>
+              <div class="criteria-block-title">Spelintelligentie / Functioneel tactisch</div>
+              <div class="criteria-block-help">Ziet gaten om in te lopen, scant, positioneert zich, creëert ruimte voor anderen.</div>
+              <div class="grade-picker" data-key="inzicht_huidig"></div>
+              <div class="field" style="margin-top:10px;">
+                <label>Toelichting (optioneel)</label>
+                <textarea id="f-tekst-inzicht" rows="2" placeholder="Korte observatie..."></textarea>
               </div>
             </div>
 
-            <!-- DRIT -->
+            <!-- GRIT -->
             <div class="criteria-block">
-              <div class="criteria-block-title">DRIT / Passie & Attitude</div>
+              <div class="criteria-block-title">GRIT / Passie & Attitude</div>
               <div class="criteria-block-help">Mentaliteit, focus, doorzettingsvermogen, leiderschap, coachbaarheid.</div>
-              <div class="field">
-                <label><span class="dual-label-pill pill-current">Huidig</span></label>
-                <div class="grade-picker" data-key="drit_huidig"></div>
+              <div class="grade-picker" data-key="grit_huidig"></div>
+              <div class="field" style="margin-top:10px;">
+                <label>Toelichting (optioneel)</label>
+                <textarea id="f-tekst-grit" rows="2" placeholder="Korte observatie..."></textarea>
               </div>
             </div>
 
-            <!-- Fysiek / Atletisch -->
+            <!-- Atletisch / Fysiek -->
             <div class="criteria-block">
-              <div class="criteria-block-title">Atletisch vermogen / Fysiek</div>
-              <div class="criteria-block-help">Explosiviteit, sprintvermogen, duelkracht, wendbaarheid — gecombineerd in één oordeel.</div>
-              <div class="field">
-                <label><span class="dual-label-pill pill-current">Huidig</span></label>
-                <div class="grade-picker" data-key="fysiek_huidig"></div>
+              <div class="criteria-block-title">Atletisch vermogen</div>
+              <div class="criteria-block-help">Per subcriterium een snelle A/B/C/D + één regel context over lichaamsbouw &amp; motoriek.</div>
+
+              <div class="field-row">
+                <div class="field">
+                  <label>Lichaamsbouw / Lengte</label>
+                  <select id="f-bouw">
+                    <option value="">— Kies of laat leeg —</option>
+                    <option>Klein voor leeftijd</option>
+                    <option>Gemiddelde lengte</option>
+                    <option>Lang voor leeftijd</option>
+                    <option>Atletische bouw</option>
+                    <option>Tenger</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Motoriek / Rijping</label>
+                  <select id="f-motoriek">
+                    <option value="">— Kies of laat leeg —</option>
+                    <option>Lichtvoetig / soepel</option>
+                    <option>Geen bijzonderheden</option>
+                    <option>Stug / onbeholpen</option>
+                    <option>Late rijper</option>
+                    <option>Vroege rijper</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field-row" style="grid-template-columns:repeat(4,1fr); margin-top:14px;">
+                <div class="field">
+                  <label>Explosiviteit</label>
+                  <div class="grade-picker" data-key="explosiviteit_huidig"></div>
+                </div>
+                <div class="field">
+                  <label>Sprinten</label>
+                  <div class="grade-picker" data-key="sprinten_huidig"></div>
+                </div>
+                <div class="field">
+                  <label>Duelleren</label>
+                  <div class="grade-picker" data-key="duelleren_huidig"></div>
+                </div>
+                <div class="field">
+                  <label>Wendbaarheid</label>
+                  <div class="grade-picker" data-key="wendbaarheid_huidig"></div>
+                </div>
+              </div>
+
+              <div class="field" style="margin-top:10px;">
+                <label>Toelichting atletisch (optioneel)</label>
+                <textarea id="f-tekst-atletisch" rows="2" placeholder="Korte observatie..."></textarea>
               </div>
             </div>
           </div>
@@ -956,6 +1073,20 @@ tbody tr:last-child td { border-bottom: none; }
                 <div class="grade-picker pot" data-key="potentieel_niveau" data-required="1"></div>
               </div>
             </div>
+
+            <div class="field-row" style="margin-top:14px;">
+              <div class="field">
+                <label>Algemene indruk <span class="slider-val empty" id="f-indruk-val">—</span></label>
+                <input id="f-indruk" type="range" min="0" max="10" step="0.5" value="0" class="score-slider" />
+                <div class="slider-scale"><span>0</span><span>5</span><span>10</span></div>
+              </div>
+              <div class="field">
+                <label>Toekomstperspectief <span class="slider-val empty" id="f-toekomst-val">—</span></label>
+                <input id="f-toekomst" type="range" min="0" max="10" step="0.5" value="0" class="score-slider" />
+                <div class="slider-scale"><span>0</span><span>5</span><span>10</span></div>
+              </div>
+            </div>
+
             <div class="field-row" style="margin-top:14px;">
               <div class="field">
                 <label>Advies *</label>
@@ -973,7 +1104,7 @@ tbody tr:last-child td { border-bottom: none; }
               </div>
             </div>
             <div class="field" style="margin-top:14px;">
-              <label>Notities / Toelichting</label>
+              <label>Notities / Algemene opmerking</label>
               <textarea id="f-notities" placeholder="Observaties, ontwikkelpunten, context, advies-onderbouwing..."></textarea>
             </div>
           </div>
@@ -1528,6 +1659,70 @@ function openDetail(id){
   const p = players.find(x=>x.id===id);
   if(!p) return;
   const b = p.beoordelingen || {};
+  const w = p.wedstrijd || {};
+  // backwards compat: oude records hebben drit_huidig / fysiek_huidig
+  const gritVal = b.grit_huidig || b.drit_huidig;
+  const fysiekFallback = b.fysiek_huidig;
+
+  const atletischBlock = (b.explosiviteit_huidig || b.sprinten_huidig || b.duelleren_huidig || b.wendbaarheid_huidig)
+    ? `
+      <div class="detail-criteria">
+        <div class="detail-criteria-name">Atletisch — uitgesplitst</div>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-top:6px;">
+          <div style="font-size:11px;color:var(--text-2)">Explosiviteit <span class="grade ${b.explosiviteit_huidig||'D'}" style="margin-left:4px">${b.explosiviteit_huidig||'-'}</span></div>
+          <div style="font-size:11px;color:var(--text-2)">Sprinten <span class="grade ${b.sprinten_huidig||'D'}" style="margin-left:4px">${b.sprinten_huidig||'-'}</span></div>
+          <div style="font-size:11px;color:var(--text-2)">Duelleren <span class="grade ${b.duelleren_huidig||'D'}" style="margin-left:4px">${b.duelleren_huidig||'-'}</span></div>
+          <div style="font-size:11px;color:var(--text-2)">Wendbaarheid <span class="grade ${b.wendbaarheid_huidig||'D'}" style="margin-left:4px">${b.wendbaarheid_huidig||'-'}</span></div>
+        </div>
+      </div>`
+    : renderCriteriaCard('Atletisch / Fysiek', fysiekFallback);
+
+  const scoresBlock = (p.indruk != null || p.toekomst != null)
+    ? `
+      <div class="detail-section">
+        <h4>Scores</h4>
+        <div class="detail-criteria-grid">
+          <div class="detail-criteria"><div class="detail-criteria-name">Algemene indruk</div><div style="font-size:18px;font-weight:700;color:var(--primary)">${p.indruk != null ? Number(p.indruk).toFixed(1) : '—'}<span style="font-size:11px;color:var(--text-3);font-weight:400"> / 10</span></div></div>
+          <div class="detail-criteria"><div class="detail-criteria-name">Toekomstperspectief</div><div style="font-size:18px;font-weight:700;color:var(--secondary)">${p.toekomst != null ? Number(p.toekomst).toFixed(1) : '—'}<span style="font-size:11px;color:var(--text-3);font-weight:400"> / 10</span></div></div>
+        </div>
+      </div>`
+    : '';
+
+  const wedstrijdBlock = (w.datum || w.tegenstander || w.opstelling || w.context)
+    ? `
+      <div class="detail-section">
+        <h4>Wedstrijd</h4>
+        <div class="detail-criteria-grid">
+          ${w.datum ? `<div class="detail-criteria"><div class="detail-criteria-name">Wedstrijddatum</div><div>${formatDate(w.datum)}</div></div>` : ''}
+          ${w.tegenstander ? `<div class="detail-criteria"><div class="detail-criteria-name">Tegenstander</div><div>${escapeHtml(w.tegenstander)}</div></div>` : ''}
+          ${w.opstelling ? `<div class="detail-criteria"><div class="detail-criteria-name">Opstelling</div><div>${escapeHtml(w.opstelling)}</div></div>` : ''}
+        </div>
+        ${w.context ? `<div class="detail-notes" style="margin-top:10px;">${escapeHtml(w.context)}</div>` : ''}
+      </div>`
+    : '';
+
+  const fysiekContextBlock = (p.bouw || p.motoriek)
+    ? `
+      <div class="detail-section">
+        <h4>Lichaamsbouw &amp; motoriek</h4>
+        <div class="detail-criteria-grid">
+          ${p.bouw ? `<div class="detail-criteria"><div class="detail-criteria-name">Lichaamsbouw / Lengte</div><div>${escapeHtml(p.bouw)}</div></div>` : ''}
+          ${p.motoriek ? `<div class="detail-criteria"><div class="detail-criteria-name">Motoriek / Rijping</div><div>${escapeHtml(p.motoriek)}</div></div>` : ''}
+        </div>
+      </div>`
+    : '';
+
+  const toelichtingBlock = (b.techniek_tekst || b.inzicht_tekst || b.grit_tekst || b.atletisch_tekst)
+    ? `
+      <div class="detail-section">
+        <h4>Toelichtingen per categorie</h4>
+        ${b.techniek_tekst ? `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Techniek</div><div class="detail-notes">${escapeHtml(b.techniek_tekst)}</div></div>` : ''}
+        ${b.inzicht_tekst ? `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Spelinzicht</div><div class="detail-notes">${escapeHtml(b.inzicht_tekst)}</div></div>` : ''}
+        ${b.grit_tekst ? `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">GRIT</div><div class="detail-notes">${escapeHtml(b.grit_tekst)}</div></div>` : ''}
+        ${b.atletisch_tekst ? `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Atletisch</div><div class="detail-notes">${escapeHtml(b.atletisch_tekst)}</div></div>` : ''}
+      </div>`
+    : '';
+
   $('#modal-body').innerHTML = `
     <div class="detail-header">
       <div class="detail-avatar">${initials(p.naam)}</div>
@@ -1538,6 +1733,7 @@ function openDetail(id){
           ${p.been?(' · '+escapeHtml(p.been)):''}
           ${p.geboorte?(' · '+formatDate(p.geboorte)):''}
         </div>
+        ${p.tweebenig ? `<div class="detail-meta" style="margin-top:2px;font-style:italic;">${escapeHtml(p.tweebenig)}</div>` : ''}
         <div class="detail-grade-row">
           <div><span class="grade-label">Huidig</span> <span class="grade ${p.huidig_niveau||'D'}">${p.huidig_niveau||'-'}</span></div>
           <div><span class="grade-label">Potentieel</span> <span class="grade outline ${p.potentieel_niveau||'D'}">${p.potentieel_niveau||'-'}</span></div>
@@ -1546,15 +1742,23 @@ function openDetail(id){
       </div>
     </div>
 
+    ${scoresBlock}
+
     <div class="detail-section">
       <h4>Beoordeling per categorie</h4>
       <div class="detail-criteria-grid">
-        ${renderCriteriaCard('Spelvaardigheden / Techniek', b.techniek_huidig)}
-        ${renderCriteriaCard('Functioneel tactisch / Inzicht', b.inzicht_huidig)}
-        ${renderCriteriaCard('DRIT / Passie & Attitude', b.drit_huidig)}
-        ${renderCriteriaCard('Atletisch / Fysiek', b.fysiek_huidig)}
+        ${renderCriteriaCard('Functionele techniek / Spelvaardigheden', b.techniek_huidig)}
+        ${renderCriteriaCard('Spelintelligentie / Functioneel tactisch', b.inzicht_huidig)}
+        ${renderCriteriaCard('GRIT / Passie & Attitude', gritVal)}
+        ${atletischBlock}
       </div>
     </div>
+
+    ${toelichtingBlock}
+
+    ${wedstrijdBlock}
+
+    ${fysiekContextBlock}
 
     ${p.wapen ? `
     <div class="detail-section">
@@ -1663,6 +1867,10 @@ function resetReportForm(){
   refreshPositionDropdowns();
   $$('.grade-pick').forEach(b=>b.classList.remove('selected'));
   $$('.grade-picker').forEach(p=>p.dataset.value='');
+  $('#f-indruk').value = 0;
+  $('#f-toekomst').value = 0;
+  updateSliderDisplay('f-indruk', 'f-indruk-val', null);
+  updateSliderDisplay('f-toekomst', 'f-toekomst-val', null);
   setDirty(false);
 }
 function loadIntoForm(p){
@@ -1673,6 +1881,7 @@ function loadIntoForm(p){
   $('#f-club').value = p.club || '';
   $('#f-rugnummer').value = p.rugnummer || '';
   $('#f-been').value = p.been || '';
+  $('#f-tweebenig').value = p.tweebenig || '';
   $('#f-linie').value = p.linie || '';
   refreshPositionDropdowns();
   $('#f-positie').value = p.positie || '';
@@ -1682,10 +1891,49 @@ function loadIntoForm(p){
   $('#f-advies').value = p.advies || '';
   $('#f-wapen').value = p.wapen || '';
   $('#f-notities').value = p.notities || '';
+
+  const w = p.wedstrijd || {};
+  $('#f-w-datum').value = w.datum || '';
+  $('#f-w-tegenstander').value = w.tegenstander || '';
+  $('#f-w-opstelling').value = w.opstelling || '';
+  $('#f-w-context').value = w.context || '';
+
+  $('#f-bouw').value = p.bouw || '';
+  $('#f-motoriek').value = p.motoriek || '';
+
+  $('#f-indruk').value = p.indruk != null ? p.indruk : 0;
+  $('#f-toekomst').value = p.toekomst != null ? p.toekomst : 0;
+  updateSliderDisplay('f-indruk', 'f-indruk-val', p.indruk);
+  updateSliderDisplay('f-toekomst', 'f-toekomst-val', p.toekomst);
+
   const b = p.beoordelingen || {};
-  Object.keys(b).forEach(k => setPickerValue(k, b[k]));
+  setPickerValue('techniek_huidig', b.techniek_huidig);
+  setPickerValue('inzicht_huidig', b.inzicht_huidig);
+  // backwards compat: oude records hebben drit_huidig
+  setPickerValue('grit_huidig', b.grit_huidig || b.drit_huidig);
+  setPickerValue('explosiviteit_huidig', b.explosiviteit_huidig);
+  setPickerValue('sprinten_huidig', b.sprinten_huidig);
+  setPickerValue('duelleren_huidig', b.duelleren_huidig);
+  setPickerValue('wendbaarheid_huidig', b.wendbaarheid_huidig);
+
+  $('#f-tekst-techniek').value = b.techniek_tekst || '';
+  $('#f-tekst-inzicht').value = b.inzicht_tekst || '';
+  $('#f-tekst-grit').value = b.grit_tekst || '';
+  $('#f-tekst-atletisch').value = b.atletisch_tekst || '';
+
   setPickerValue('huidig_niveau', p.huidig_niveau);
   setPickerValue('potentieel_niveau', p.potentieel_niveau);
+}
+function updateSliderDisplay(inputId, valId, val){
+  const el = document.getElementById(valId);
+  if(!el) return;
+  if(val == null || val === '' || val === 0){
+    el.textContent = '—';
+    el.classList.add('empty');
+  } else {
+    el.textContent = Number(val).toFixed(1).replace(/\.0$/, '');
+    el.classList.remove('empty');
+  }
 }
 async function submitReport(e){
   e.preventDefault();
@@ -1699,6 +1947,8 @@ async function submitReport(e){
     return;
   }
   const isEdit = !!$('#f-id').value;
+  const indrukVal = parseFloat($('#f-indruk').value);
+  const toekomstVal = parseFloat($('#f-toekomst').value);
   const player = {
     id,
     naam,
@@ -1706,6 +1956,7 @@ async function submitReport(e){
     club: $('#f-club').value.trim(),
     rugnummer: $('#f-rugnummer').value.trim(),
     been: $('#f-been').value,
+    tweebenig: $('#f-tweebenig').value.trim(),
     linie: $('#f-linie').value,
     positie: $('#f-positie').value,
     beoogd: $('#f-beoogd').value,
@@ -1714,11 +1965,28 @@ async function submitReport(e){
     advies: $('#f-advies').value,
     wapen: $('#f-wapen').value.trim(),
     notities: $('#f-notities').value.trim(),
+    wedstrijd: {
+      datum: $('#f-w-datum').value,
+      tegenstander: $('#f-w-tegenstander').value.trim(),
+      opstelling: $('#f-w-opstelling').value,
+      context: $('#f-w-context').value.trim()
+    },
+    bouw: $('#f-bouw').value,
+    motoriek: $('#f-motoriek').value,
+    indruk: isNaN(indrukVal) ? null : indrukVal,
+    toekomst: isNaN(toekomstVal) ? null : toekomstVal,
     beoordelingen: {
       techniek_huidig: getPickerValue('techniek_huidig'),
+      techniek_tekst: $('#f-tekst-techniek').value.trim(),
       inzicht_huidig: getPickerValue('inzicht_huidig'),
-      drit_huidig: getPickerValue('drit_huidig'),
-      fysiek_huidig: getPickerValue('fysiek_huidig')
+      inzicht_tekst: $('#f-tekst-inzicht').value.trim(),
+      grit_huidig: getPickerValue('grit_huidig'),
+      grit_tekst: $('#f-tekst-grit').value.trim(),
+      explosiviteit_huidig: getPickerValue('explosiviteit_huidig'),
+      sprinten_huidig: getPickerValue('sprinten_huidig'),
+      duelleren_huidig: getPickerValue('duelleren_huidig'),
+      wendbaarheid_huidig: getPickerValue('wendbaarheid_huidig'),
+      atletisch_tekst: $('#f-tekst-atletisch').value.trim()
     },
     huidig_niveau: huidig,
     potentieel_niveau: pot,
@@ -1899,6 +2167,8 @@ function initApp(){
   refreshPositionDropdowns();
   $('#f-linie').addEventListener('change', refreshPositionDropdowns);
   $('#report-form').addEventListener('submit', submitReport);
+  $('#f-indruk').addEventListener('input', e=> updateSliderDisplay('f-indruk', 'f-indruk-val', parseFloat(e.target.value)));
+  $('#f-toekomst').addEventListener('input', e=> updateSliderDisplay('f-toekomst', 'f-toekomst-val', parseFloat(e.target.value)));
   $('#report-form').addEventListener('input', ()=> setDirty(true));
   $('#report-form').addEventListener('change', ()=> setDirty(true));
   $('#report-form').addEventListener('click', (e)=>{

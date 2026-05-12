@@ -56,33 +56,71 @@ a { color: var(--accent); text-decoration: none; }
 #login-overlay {
   position: fixed; inset: 0;
   background:
-    radial-gradient(1200px 600px at 70% -10%, rgba(227,6,19,.18), transparent 50%),
-    radial-gradient(900px 500px at 0% 100%, rgba(245,197,24,.08), transparent 50%),
-    linear-gradient(180deg, #0a0e15 0%, #050810 100%);
+    radial-gradient(900px 500px at 50% -10%, rgba(227,6,19,.10), transparent 60%),
+    radial-gradient(700px 400px at 50% 110%, rgba(245,197,24,.04), transparent 60%),
+    linear-gradient(180deg, #0d1320 0%, #060911 100%);
   display: flex; align-items: center; justify-content: center;
   z-index: 1000;
+  overflow: hidden;
+}
+#login-overlay::before {
+  content: '';
+  position: absolute; inset: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23ff2a3a'/><stop offset='100%25' stop-color='%238a0410'/></linearGradient></defs><path d='M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z' fill='url(%23g)' stroke='rgba(255,255,255,0.9)' stroke-width='1.5'/><text x='40' y='51' text-anchor='middle' font-family='Arial,sans-serif' font-size='26' font-weight='900' fill='white' letter-spacing='-1.5'>SP</text><circle cx='40' cy='13' r='2.8' fill='%23f5c518'/></svg>");
+  background-repeat: no-repeat;
+  background-position: 50% 50%;
+  background-size: 560px 560px;
+  opacity: .035;
+  pointer-events: none;
+}
+#login-overlay::after {
+  content: '';
+  position: absolute; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.018) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: .6;
+  pointer-events: none;
 }
 .login-card {
   width: 100%; max-width: 420px;
-  background: rgba(21,28,40,.85);
-  backdrop-filter: blur(12px);
+  background: rgba(18,24,36,.78);
+  backdrop-filter: blur(16px);
   border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 38px 32px;
-  box-shadow: var(--shadow);
+  border-radius: 16px;
+  padding: 42px 36px 32px 36px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.02) inset;
+  position: relative;
+  z-index: 1;
 }
 .login-logo {
-  display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  margin-bottom: 28px;
 }
 .login-logo-mark {
-  width: 38px; height: 38px; border-radius: 8px;
-  background: linear-gradient(135deg, var(--primary), #8a0410);
+  width: 72px; height: 72px;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 800; color: white; font-size: 17px;
-  box-shadow: 0 4px 14px rgba(227,6,19,.4);
+  filter: drop-shadow(0 6px 20px rgba(227,6,19,.45));
 }
-.login-title { font-size: 20px; font-weight: 700; letter-spacing: .2px; }
-.login-sub { color: var(--text-3); font-size: 12px; margin-top: 4px; margin-bottom: 24px; }
+.login-logo-mark svg { width: 100%; height: 100%; display: block; }
+.login-title {
+  font-size: 22px; font-weight: 700; letter-spacing: .5px;
+  text-align: center;
+  text-transform: uppercase;
+}
+.login-sub {
+  color: var(--text-3); font-size: 11px;
+  letter-spacing: 2px; text-transform: uppercase;
+  margin-top: 4px; margin-bottom: 0;
+  text-align: center;
+  font-weight: 500;
+}
+.login-divider {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-2), transparent);
+  margin: 22px 0 22px 0;
+}
 .login-field { margin-bottom: 14px; }
 .login-field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--text-3); margin-bottom: 6px; }
 .login-input {
@@ -131,11 +169,11 @@ a { color: var(--accent); text-decoration: none; }
   margin-bottom: 16px;
 }
 .brand-mark {
-  width: 34px; height: 34px; border-radius: 8px;
-  background: linear-gradient(135deg, var(--primary), #8a0410);
+  width: 38px; height: 38px;
   display: flex; align-items: center; justify-content: center;
-  font-weight: 800; color: white; font-size: 14px;
+  filter: drop-shadow(0 2px 6px rgba(227,6,19,.35));
 }
+.brand-mark svg { width: 100%; height: 100%; display: block; }
 .brand-text { font-weight: 700; font-size: 14px; letter-spacing: .2px; }
 .brand-sub { font-size: 10px; color: var(--text-3); letter-spacing: .8px; text-transform: uppercase; }
 
@@ -923,10 +961,24 @@ tbody tr:last-child td { border-bottom: none; }
 <div id="login-overlay" style="display:none;">
   <div class="login-card">
     <div class="login-logo">
-      <div class="login-logo-mark">SP</div>
+      <div class="login-logo-mark">
+        <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ff2a3a"/>
+              <stop offset="100%" stop-color="#8a0410"/>
+            </linearGradient>
+          </defs>
+          <path d="M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z"
+                fill="url(#logoGrad)" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>
+          <text x="40" y="51" text-anchor="middle" font-family="Arial,sans-serif"
+                font-size="26" font-weight="900" fill="white" letter-spacing="-1.5">SP</text>
+          <circle cx="40" cy="13" r="2.8" fill="#f5c518"/>
+        </svg>
+      </div>
       <div>
         <div class="login-title">Scouting Platform</div>
-        <div class="login-sub">Marcel Steeman</div>
+        <div class="login-sub">Professional Edition</div>
       </div>
     </div>
 
@@ -956,7 +1008,21 @@ tbody tr:last-child td { border-bottom: none; }
     <!-- ============ SIDEBAR ============ -->
     <aside class="sidebar">
       <div class="brand">
-        <div class="brand-mark">SP</div>
+        <div class="brand-mark">
+          <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#ff2a3a"/>
+                <stop offset="100%" stop-color="#8a0410"/>
+              </linearGradient>
+            </defs>
+            <path d="M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z"
+                  fill="url(#brandGrad)" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>
+            <text x="40" y="51" text-anchor="middle" font-family="Arial,sans-serif"
+                  font-size="26" font-weight="900" fill="white" letter-spacing="-1.5">SP</text>
+            <circle cx="40" cy="13" r="2.8" fill="#f5c518"/>
+          </svg>
+        </div>
         <div>
           <div class="brand-text">Scouting</div>
           <div class="brand-sub">Platform</div>
@@ -1183,9 +1249,15 @@ tbody tr:last-child td { border-bottom: none; }
                 <input id="f-w-datum" type="date" />
               </div>
               <div class="field">
-                <label>Tegenstander</label>
-                <input id="f-w-tegenstander" type="text" placeholder="Bijv. Sparta Rotterdam O17" />
+                <label>Thuisspelende ploeg</label>
+                <input id="f-w-thuis" type="text" placeholder="Bijv. FC Twente O15" />
               </div>
+              <div class="field">
+                <label>Uitspelende ploeg</label>
+                <input id="f-w-uit" type="text" placeholder="Bijv. Sparta Rotterdam O15" />
+              </div>
+            </div>
+            <div class="field-row">
               <div class="field">
                 <label>Opstelling</label>
                 <select id="f-w-opstelling">
@@ -1295,24 +1367,48 @@ tbody tr:last-child td { border-bottom: none; }
 
               <div class="field-row">
                 <div class="field">
-                  <label>Lichaamsbouw / Lengte</label>
+                  <label>Lichaamsbouw</label>
                   <select id="f-bouw">
                     <option value="">— Kies of laat leeg —</option>
-                    <option>Klein voor leeftijd</option>
-                    <option>Gemiddelde lengte</option>
-                    <option>Lang voor leeftijd</option>
-                    <option>Atletische bouw</option>
                     <option>Tenger</option>
+                    <option>Slank</option>
+                    <option>Gemiddeld</option>
+                    <option>Atletisch</option>
+                    <option>Stevig</option>
+                    <option>Breed / krachtig</option>
                   </select>
                 </div>
                 <div class="field">
-                  <label>Motoriek / Rijping</label>
+                  <label>Lengte</label>
+                  <select id="f-lengte">
+                    <option value="">— Kies of laat leeg —</option>
+                    <option>Klein voor leeftijd</option>
+                    <option>Iets onder gemiddeld</option>
+                    <option>Gemiddelde lengte</option>
+                    <option>Iets boven gemiddeld</option>
+                    <option>Lang voor leeftijd</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="field-row" style="margin-top:14px;">
+                <div class="field">
+                  <label>Motoriek</label>
                   <select id="f-motoriek">
                     <option value="">— Kies of laat leeg —</option>
                     <option>Lichtvoetig / soepel</option>
+                    <option>Goed gecoördineerd</option>
                     <option>Geen bijzonderheden</option>
+                    <option>Wat houterig</option>
                     <option>Stug / onbeholpen</option>
+                  </select>
+                </div>
+                <div class="field">
+                  <label>Rijping</label>
+                  <select id="f-rijping">
+                    <option value="">— Kies of laat leeg —</option>
                     <option>Late rijper</option>
+                    <option>Normaal ontwikkeld</option>
                     <option>Vroege rijper</option>
                   </select>
                 </div>
@@ -1337,9 +1433,25 @@ tbody tr:last-child td { border-bottom: none; }
                 </div>
               </div>
 
-              <div class="field" style="margin-top:10px;">
-                <label>Toelichting atletisch (optioneel)</label>
-                <textarea id="f-tekst-atletisch" rows="2" placeholder="Korte observatie..."></textarea>
+              <div class="field-row" style="margin-top:10px;">
+                <div class="field">
+                  <label>Opmerking explosiviteit</label>
+                  <textarea id="f-tekst-explosiviteit" rows="2" placeholder="Korte observatie..."></textarea>
+                </div>
+                <div class="field">
+                  <label>Opmerking sprinten</label>
+                  <textarea id="f-tekst-sprinten" rows="2" placeholder="Korte observatie..."></textarea>
+                </div>
+              </div>
+              <div class="field-row" style="margin-top:10px;">
+                <div class="field">
+                  <label>Opmerking duelleren</label>
+                  <textarea id="f-tekst-duelleren" rows="2" placeholder="Korte observatie..."></textarea>
+                </div>
+                <div class="field">
+                  <label>Opmerking wendbaarheid</label>
+                  <textarea id="f-tekst-wendbaarheid" rows="2" placeholder="Korte observatie..."></textarea>
+                </div>
               </div>
             </div>
           </div>
@@ -1355,19 +1467,6 @@ tbody tr:last-child td { border-bottom: none; }
               <div class="field">
                 <label><span class="dual-label-pill pill-potential">Potentieel eindniveau *</span></label>
                 <div class="grade-picker pot" data-key="potentieel_niveau" data-required="1"></div>
-              </div>
-            </div>
-
-            <div class="field-row" style="margin-top:14px;">
-              <div class="field">
-                <label>Algemene indruk <span class="slider-val empty" id="f-indruk-val">—</span></label>
-                <input id="f-indruk" type="range" min="0" max="10" step="0.5" value="0" class="score-slider" />
-                <div class="slider-scale"><span>0</span><span>5</span><span>10</span></div>
-              </div>
-              <div class="field">
-                <label>Toekomstperspectief <span class="slider-val empty" id="f-toekomst-val">—</span></label>
-                <input id="f-toekomst" type="range" min="0" max="10" step="0.5" value="0" class="score-slider" />
-                <div class="slider-scale"><span>0</span><span>5</span><span>10</span></div>
               </div>
             </div>
 
@@ -1441,17 +1540,8 @@ tbody tr:last-child td { border-bottom: none; }
                 <input id="a-club" type="text" placeholder="Bijv. FC Twente" />
               </div>
               <div class="analysis-header-field">
-                <label>Elftal</label>
-                <input id="a-elftal" type="text" placeholder="Bijv. O15-1" />
-              </div>
-              <div class="analysis-header-field">
                 <label>Leeftijdscategorie</label>
-                <select id="a-leeftijd">
-                  <option value="">—</option>
-                  <option>O12</option><option>O13</option><option>O14</option>
-                  <option>O15</option><option>O16</option><option>O17</option>
-                  <option>O18</option><option>O19</option><option>O21</option><option>O23</option>
-                </select>
+                <select id="a-leeftijd"></select>
               </div>
               <div class="analysis-header-field">
                 <label>Seizoen</label>
@@ -1599,6 +1689,14 @@ const POSITIONS_BY_LINE = {
   ]
 };
 const ALL_POSITIONS = Object.values(POSITIONS_BY_LINE).flat();
+
+const LEEFTIJD_OPTIONS = (()=>{
+  const out = [];
+  [8,9,10,11,12,13,14,15,16,17,18,19,21,23].forEach(age=>{
+    [1,2,3].forEach(t=> out.push(`O${age}-${t}`));
+  });
+  return out;
+})();
 
 /* Slot meta: code → {label, short, matches[], reden}
    `matches` = welke form-positie-codes (uit POSITIONS_BY_LINE) bij dit slot horen */
@@ -1818,8 +1916,9 @@ function blankAnalysisSlots(formation){
   const out = {};
   (FORMATIONS[formation] || FORMATIONS[DEFAULT_FORMATION]).forEach(s=>{
     out[s.key] = { huidig:'', gewenst:'', gap:false,
-                   nu_situatie:'', huidige_speler:'', gezochte_speler:'', missende:'',
-                   linked: [] };
+                   huidige_speler_1:'', huidige_speler_2:'',
+                   gezochte_speler:'', missende:'',
+                   linked_huidig: [], linked_kandidaat: [] };
   });
   return out;
 }
@@ -1828,13 +1927,27 @@ function blankAnalysis(){
   return {
     id: 'a_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8),
     club: '',
-    elftal: '',
     leeftijd: '',
     seizoen: '',
     datum: todayISO(),
     formation: formation,
     slots: blankAnalysisSlots(formation),
     createdAt: new Date().toISOString()
+  };
+}
+function normalizeSlot(s){
+  // Backwards compat: migrate old shape (nu_situatie, huidige_speler, linked) → new shape
+  if(!s) return {huidig:'', gewenst:'', gap:false, huidige_speler_1:'', huidige_speler_2:'', gezochte_speler:'', missende:'', linked_huidig:[], linked_kandidaat:[]};
+  return {
+    huidig: s.huidig || '',
+    gewenst: s.gewenst || '',
+    gap: !!s.gap,
+    huidige_speler_1: s.huidige_speler_1 != null ? s.huidige_speler_1 : (s.huidige_speler || s.nu_situatie || ''),
+    huidige_speler_2: s.huidige_speler_2 || '',
+    gezochte_speler: s.gezochte_speler || '',
+    missende: s.missende || '',
+    linked_huidig: Array.isArray(s.linked_huidig) ? s.linked_huidig : (Array.isArray(s.linked) ? s.linked : []),
+    linked_kandidaat: Array.isArray(s.linked_kandidaat) ? s.linked_kandidaat : []
   };
 }
 async function saveAnalysis(analysis){
@@ -1873,7 +1986,7 @@ async function patchSlot(slotKey, slotPatch){
   const a = currentAnalysis();
   if(!a) return;
   const slots = {...(a.slots || {})};
-  slots[slotKey] = {...(slots[slotKey] || {huidig:'',gewenst:'',gap:false,nu_situatie:'',huidige_speler:'',gezochte_speler:'',missende:'',linked:[]}), ...slotPatch};
+  slots[slotKey] = {...normalizeSlot(slots[slotKey]), ...slotPatch};
   await patchAnalysis({slots});
 }
 
@@ -2088,13 +2201,19 @@ function renderDashGaps(){
       ${top.map(a=>{
         const slots = a.slots || {};
         const gapCount = Object.values(slots).filter(s => s && s.gap).length;
-        const linkedCount = Object.values(slots).reduce((n,s)=> n + ((s && s.linked) ? s.linked.length : 0), 0);
-        const title = [a.club, a.elftal].filter(Boolean).join(' ') || 'Nieuwe analyse';
+        const linkedCount = Object.values(slots).reduce((n,s)=>{
+          if(!s) return n;
+          const lh = (s.linked_huidig || []).length;
+          const lk = (s.linked_kandidaat || []).length;
+          const lold = (Array.isArray(s.linked) && !s.linked_huidig) ? s.linked.length : 0;
+          return n + lh + lk + lold;
+        }, 0);
+        const title = [a.club, a.leeftijd].filter(Boolean).join(' · ') || 'Nieuwe analyse';
         return `
           <div class="gap-card" data-id="${a.id}">
             <div class="gap-card-title">${escapeHtml(title)}</div>
             <div class="gap-card-sub">
-              ${escapeHtml(a.leeftijd||'—')} · ${escapeHtml(a.formation||DEFAULT_FORMATION)} · ${gapCount} gap${gapCount===1?'':'s'} · ${linkedCount} rapport${linkedCount===1?'':'en'}
+              ${escapeHtml(a.formation||DEFAULT_FORMATION)} · ${gapCount} gap${gapCount===1?'':'s'} · ${linkedCount} rapport${linkedCount===1?'':'en'}
             </div>
           </div>`;
       }).join('')}
@@ -2366,49 +2485,48 @@ function openDetail(id){
       </div>`
     : renderCriteriaCard('Atletisch / Fysiek', fysiekFallback);
 
-  const scoresBlock = (p.indruk != null || p.toekomst != null)
-    ? `
-      <div class="detail-section">
-        <h4>Scores</h4>
-        <div class="detail-criteria-grid">
-          <div class="detail-criteria"><div class="detail-criteria-name">Algemene indruk</div><div style="font-size:18px;font-weight:700;color:var(--primary)">${p.indruk != null ? Number(p.indruk).toFixed(1) : '—'}<span style="font-size:11px;color:var(--text-3);font-weight:400"> / 10</span></div></div>
-          <div class="detail-criteria"><div class="detail-criteria-name">Toekomstperspectief</div><div style="font-size:18px;font-weight:700;color:var(--secondary)">${p.toekomst != null ? Number(p.toekomst).toFixed(1) : '—'}<span style="font-size:11px;color:var(--text-3);font-weight:400"> / 10</span></div></div>
-        </div>
-      </div>`
-    : '';
+  const scoresBlock = '';
 
-  const wedstrijdBlock = (w.datum || w.tegenstander || w.opstelling || w.context)
+  const wedstrijdBlock = (w.datum || w.thuis || w.uit || w.tegenstander || w.opstelling || w.context)
     ? `
       <div class="detail-section">
         <h4>Wedstrijd</h4>
         <div class="detail-criteria-grid">
           ${w.datum ? `<div class="detail-criteria"><div class="detail-criteria-name">Wedstrijddatum</div><div>${formatDate(w.datum)}</div></div>` : ''}
-          ${w.tegenstander ? `<div class="detail-criteria"><div class="detail-criteria-name">Tegenstander</div><div>${escapeHtml(w.tegenstander)}</div></div>` : ''}
+          ${w.thuis ? `<div class="detail-criteria"><div class="detail-criteria-name">Thuisspelende ploeg</div><div>${escapeHtml(w.thuis)}</div></div>` : ''}
+          ${w.uit ? `<div class="detail-criteria"><div class="detail-criteria-name">Uitspelende ploeg</div><div>${escapeHtml(w.uit)}</div></div>` : ''}
+          ${(!w.thuis && !w.uit && w.tegenstander) ? `<div class="detail-criteria"><div class="detail-criteria-name">Tegenstander</div><div>${escapeHtml(w.tegenstander)}</div></div>` : ''}
           ${w.opstelling ? `<div class="detail-criteria"><div class="detail-criteria-name">Opstelling</div><div>${escapeHtml(w.opstelling)}</div></div>` : ''}
         </div>
         ${w.context ? `<div class="detail-notes" style="margin-top:10px;">${escapeHtml(w.context)}</div>` : ''}
       </div>`
     : '';
 
-  const fysiekContextBlock = (p.bouw || p.motoriek)
+  const fysiekContextBlock = (p.bouw || p.lengte || p.motoriek || p.rijping)
     ? `
       <div class="detail-section">
         <h4>Lichaamsbouw &amp; motoriek</h4>
         <div class="detail-criteria-grid">
-          ${p.bouw ? `<div class="detail-criteria"><div class="detail-criteria-name">Lichaamsbouw / Lengte</div><div>${escapeHtml(p.bouw)}</div></div>` : ''}
-          ${p.motoriek ? `<div class="detail-criteria"><div class="detail-criteria-name">Motoriek / Rijping</div><div>${escapeHtml(p.motoriek)}</div></div>` : ''}
+          ${p.bouw ? `<div class="detail-criteria"><div class="detail-criteria-name">Lichaamsbouw</div><div>${escapeHtml(p.bouw)}</div></div>` : ''}
+          ${p.lengte ? `<div class="detail-criteria"><div class="detail-criteria-name">Lengte</div><div>${escapeHtml(p.lengte)}</div></div>` : ''}
+          ${p.motoriek ? `<div class="detail-criteria"><div class="detail-criteria-name">Motoriek</div><div>${escapeHtml(p.motoriek)}</div></div>` : ''}
+          ${p.rijping ? `<div class="detail-criteria"><div class="detail-criteria-name">Rijping</div><div>${escapeHtml(p.rijping)}</div></div>` : ''}
         </div>
       </div>`
     : '';
 
-  const toelichtingBlock = (b.techniek_tekst || b.inzicht_tekst || b.grit_tekst || b.atletisch_tekst)
+  const toelichtingBlock = (b.techniek_tekst || b.inzicht_tekst || b.grit_tekst || b.explosiviteit_tekst || b.sprinten_tekst || b.duelleren_tekst || b.wendbaarheid_tekst || b.atletisch_tekst)
     ? `
       <div class="detail-section">
         <h4>Toelichtingen per categorie</h4>
         ${b.techniek_tekst ? `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Techniek</div><div class="detail-notes">${escapeHtml(b.techniek_tekst)}</div></div>` : ''}
         ${b.inzicht_tekst ? `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Spelinzicht</div><div class="detail-notes">${escapeHtml(b.inzicht_tekst)}</div></div>` : ''}
         ${b.grit_tekst ? `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">GRIT</div><div class="detail-notes">${escapeHtml(b.grit_tekst)}</div></div>` : ''}
-        ${b.atletisch_tekst ? `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Atletisch</div><div class="detail-notes">${escapeHtml(b.atletisch_tekst)}</div></div>` : ''}
+        ${b.explosiviteit_tekst ? `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Explosiviteit</div><div class="detail-notes">${escapeHtml(b.explosiviteit_tekst)}</div></div>` : ''}
+        ${b.sprinten_tekst ? `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Sprinten</div><div class="detail-notes">${escapeHtml(b.sprinten_tekst)}</div></div>` : ''}
+        ${b.duelleren_tekst ? `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Duelleren</div><div class="detail-notes">${escapeHtml(b.duelleren_tekst)}</div></div>` : ''}
+        ${b.wendbaarheid_tekst ? `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Wendbaarheid</div><div class="detail-notes">${escapeHtml(b.wendbaarheid_tekst)}</div></div>` : ''}
+        ${b.atletisch_tekst ? `<div style="margin-bottom:10px;"><div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px;">Atletisch (oud)</div><div class="detail-notes">${escapeHtml(b.atletisch_tekst)}</div></div>` : ''}
       </div>`
     : '';
 
@@ -2556,10 +2674,6 @@ function resetReportForm(){
   refreshPositionDropdowns();
   $$('.grade-pick').forEach(b=>b.classList.remove('selected'));
   $$('.grade-picker').forEach(p=>p.dataset.value='');
-  $('#f-indruk').value = 0;
-  $('#f-toekomst').value = 0;
-  updateSliderDisplay('f-indruk', 'f-indruk-val', null);
-  updateSliderDisplay('f-toekomst', 'f-toekomst-val', null);
   setDirty(false);
 }
 function loadIntoForm(p){
@@ -2583,17 +2697,15 @@ function loadIntoForm(p){
 
   const w = p.wedstrijd || {};
   $('#f-w-datum').value = w.datum || '';
-  $('#f-w-tegenstander').value = w.tegenstander || '';
+  $('#f-w-thuis').value = w.thuis || w.tegenstander || '';
+  $('#f-w-uit').value = w.uit || '';
   $('#f-w-opstelling').value = w.opstelling || '';
   $('#f-w-context').value = w.context || '';
 
   $('#f-bouw').value = p.bouw || '';
+  $('#f-lengte').value = p.lengte || '';
   $('#f-motoriek').value = p.motoriek || '';
-
-  $('#f-indruk').value = p.indruk != null ? p.indruk : 0;
-  $('#f-toekomst').value = p.toekomst != null ? p.toekomst : 0;
-  updateSliderDisplay('f-indruk', 'f-indruk-val', p.indruk);
-  updateSliderDisplay('f-toekomst', 'f-toekomst-val', p.toekomst);
+  $('#f-rijping').value = p.rijping || '';
 
   const b = p.beoordelingen || {};
   setPickerValue('techniek_huidig', b.techniek_huidig);
@@ -2608,7 +2720,10 @@ function loadIntoForm(p){
   $('#f-tekst-techniek').value = b.techniek_tekst || '';
   $('#f-tekst-inzicht').value = b.inzicht_tekst || '';
   $('#f-tekst-grit').value = b.grit_tekst || '';
-  $('#f-tekst-atletisch').value = b.atletisch_tekst || '';
+  $('#f-tekst-explosiviteit').value = b.explosiviteit_tekst || '';
+  $('#f-tekst-sprinten').value = b.sprinten_tekst || '';
+  $('#f-tekst-duelleren').value = b.duelleren_tekst || '';
+  $('#f-tekst-wendbaarheid').value = b.wendbaarheid_tekst || '';
 
   setPickerValue('huidig_niveau', p.huidig_niveau);
   setPickerValue('potentieel_niveau', p.potentieel_niveau);
@@ -2636,8 +2751,6 @@ async function submitReport(e){
     return;
   }
   const isEdit = !!$('#f-id').value;
-  const indrukVal = parseFloat($('#f-indruk').value);
-  const toekomstVal = parseFloat($('#f-toekomst').value);
   const player = {
     id,
     naam,
@@ -2656,14 +2769,15 @@ async function submitReport(e){
     notities: $('#f-notities').value.trim(),
     wedstrijd: {
       datum: $('#f-w-datum').value,
-      tegenstander: $('#f-w-tegenstander').value.trim(),
+      thuis: $('#f-w-thuis').value.trim(),
+      uit: $('#f-w-uit').value.trim(),
       opstelling: $('#f-w-opstelling').value,
       context: $('#f-w-context').value.trim()
     },
     bouw: $('#f-bouw').value,
+    lengte: $('#f-lengte').value,
     motoriek: $('#f-motoriek').value,
-    indruk: isNaN(indrukVal) ? null : indrukVal,
-    toekomst: isNaN(toekomstVal) ? null : toekomstVal,
+    rijping: $('#f-rijping').value,
     beoordelingen: {
       techniek_huidig: getPickerValue('techniek_huidig'),
       techniek_tekst: $('#f-tekst-techniek').value.trim(),
@@ -2672,10 +2786,13 @@ async function submitReport(e){
       grit_huidig: getPickerValue('grit_huidig'),
       grit_tekst: $('#f-tekst-grit').value.trim(),
       explosiviteit_huidig: getPickerValue('explosiviteit_huidig'),
+      explosiviteit_tekst: $('#f-tekst-explosiviteit').value.trim(),
       sprinten_huidig: getPickerValue('sprinten_huidig'),
+      sprinten_tekst: $('#f-tekst-sprinten').value.trim(),
       duelleren_huidig: getPickerValue('duelleren_huidig'),
+      duelleren_tekst: $('#f-tekst-duelleren').value.trim(),
       wendbaarheid_huidig: getPickerValue('wendbaarheid_huidig'),
-      atletisch_tekst: $('#f-tekst-atletisch').value.trim()
+      wendbaarheid_tekst: $('#f-tekst-wendbaarheid').value.trim()
     },
     huidig_niveau: huidig,
     potentieel_niveau: pot,
@@ -2736,12 +2853,18 @@ function renderAnalysesList(){
       ${analyses.map(a=>{
         const slots = a.slots || {};
         const gapCount = Object.values(slots).filter(s => s && s.gap).length;
-        const linkedCount = Object.values(slots).reduce((n,s)=> n + ((s && s.linked) ? s.linked.length : 0), 0);
-        const title = [a.club, a.elftal].filter(Boolean).join(' ') || 'Nieuwe analyse';
+        const linkedCount = Object.values(slots).reduce((n,s)=>{
+          if(!s) return n;
+          const lh = (s.linked_huidig || []).length;
+          const lk = (s.linked_kandidaat || []).length;
+          const lold = (Array.isArray(s.linked) && !s.linked_huidig) ? s.linked.length : 0;
+          return n + lh + lk + lold;
+        }, 0);
+        const title = [a.club, a.leeftijd].filter(Boolean).join(' · ') || 'Nieuwe analyse';
         return `
           <div class="analysis-card" data-id="${a.id}">
             <div class="analysis-card-title">${escapeHtml(title)}</div>
-            <div class="analysis-card-sub">${escapeHtml(a.leeftijd||'')} ${a.seizoen?'· '+escapeHtml(a.seizoen):''}</div>
+            <div class="analysis-card-sub">${a.seizoen?escapeHtml(a.seizoen):'—'}</div>
             <div class="analysis-card-meta">
               <span class="analysis-meta-pill">${escapeHtml(a.formation || DEFAULT_FORMATION)}</span>
               <span class="analysis-meta-pill">${formatDate(a.datum)}</span>
@@ -2780,14 +2903,18 @@ function renderAnalysisDetail(){
   $('#analyses-list-view').style.display = 'none';
   $('#analysis-detail-view').style.display = 'block';
 
-  const title = [a.club, a.elftal].filter(Boolean).join(' ') || 'Nieuwe analyse';
+  const title = [a.club, a.leeftijd].filter(Boolean).join(' · ') || 'Nieuwe analyse';
   $('#analysis-detail-title').textContent = title;
   $('#analysis-detail-sub').textContent =
-    [a.leeftijd, a.seizoen, a.formation].filter(Boolean).join(' · ') || '—';
+    [a.seizoen, a.formation].filter(Boolean).join(' · ') || '—';
+
+  // Populate leeftijd dropdown
+  const leeftijdSel = $('#a-leeftijd');
+  leeftijdSel.innerHTML = '<option value="">— Kies leeftijdscategorie —</option>' +
+    LEEFTIJD_OPTIONS.map(o => `<option value="${o}">${o}</option>`).join('');
 
   // Header fields
   $('#a-club').value = a.club || '';
-  $('#a-elftal').value = a.elftal || '';
   $('#a-leeftijd').value = a.leeftijd || '';
   $('#a-seizoen').value = a.seizoen || '';
   $('#a-datum').value = a.datum || '';
@@ -2860,9 +2987,23 @@ function renderPitchInfo(){
     return;
   }
   const meta = slotMeta(slot);
-  const s = (a.slots && a.slots[selectedPitchPos]) || {huidig:'',gewenst:'',gap:false,nu_situatie:'',huidige_speler:'',gezochte_speler:'',missende:'',linked:[]};
-  const linkedIds = s.linked || [];
-  const linkedPlayers = linkedIds.map(id => loadPlayers().find(p=>p.id===id)).filter(Boolean);
+  const s = normalizeSlot((a.slots || {})[selectedPitchPos]);
+  const linkedHuidigPlayers = (s.linked_huidig || []).map(id => loadPlayers().find(p=>p.id===id)).filter(Boolean);
+  const linkedKandidaatPlayers = (s.linked_kandidaat || []).map(id => loadPlayers().find(p=>p.id===id)).filter(Boolean);
+
+  const renderLinkedItem = (p, category) => `
+    <div class="linked-report-item">
+      <div class="linked-report-info" data-id="${p.id}">
+        <div class="linked-report-name">${escapeHtml(p.naam)}</div>
+        <div class="linked-report-meta">${escapeHtml(positionLabel(p.positie))}${p.club?(' · '+escapeHtml(p.club)):''} · ${formatDate(p.datum)}</div>
+      </div>
+      <div class="linked-report-grades">
+        <span class="grade ${p.huidig_niveau||'D'}" style="padding:0 6px;height:18px;font-size:10px;">${p.huidig_niveau||'-'}</span>
+        <span class="grade outline ${p.potentieel_niveau||'D'}" style="padding:0 6px;height:18px;font-size:10px;">${p.potentieel_niveau||'-'}</span>
+      </div>
+      <button class="linked-report-unlink" data-unlink="${p.id}" data-cat="${category}" title="Ontkoppelen">×</button>
+    </div>
+  `;
 
   panel.innerHTML = `
     <div class="position-detail-title">${meta.label}</div>
@@ -2884,12 +3025,12 @@ function renderPitchInfo(){
 
     <div class="criteria-fields">
       <div class="criteria-field">
-        <label>Wat is er nu?</label>
-        <textarea id="slot-nu" placeholder="Wat is de huidige situatie op deze positie?">${escapeHtml(s.nu_situatie||'')}</textarea>
+        <label>Wat voor speler is er nu? (1)</label>
+        <textarea id="slot-huidige-1" placeholder="Profiel van de eerste huidige speler op deze positie...">${escapeHtml(s.huidige_speler_1||'')}</textarea>
       </div>
       <div class="criteria-field">
-        <label>Wat voor speler hebben we nu?</label>
-        <textarea id="slot-huidige" placeholder="Profiel van de huidige speler(s)...">${escapeHtml(s.huidige_speler||'')}</textarea>
+        <label>Wat voor speler is er nu? (2)</label>
+        <textarea id="slot-huidige-2" placeholder="Profiel van de tweede huidige speler op deze positie...">${escapeHtml(s.huidige_speler_2||'')}</textarea>
       </div>
       <div class="criteria-field">
         <label>Wat voor speler zoeken we?</label>
@@ -2903,22 +3044,22 @@ function renderPitchInfo(){
 
     <div class="linked-reports">
       <div class="linked-reports-header">
-        <div class="linked-reports-title">Gekoppelde rapporten (${linkedPlayers.length})</div>
-        <button class="btn btn-sm" id="add-linked-btn">+ Rapport koppelen</button>
+        <div class="linked-reports-title">Huidige spelers (${linkedHuidigPlayers.length})</div>
+        <button class="btn btn-sm" data-add-linked="huidig">+ Koppel rapport huidige speler</button>
       </div>
-      ${linkedPlayers.length ? linkedPlayers.map(p=>`
-        <div class="linked-report-item">
-          <div class="linked-report-info" data-id="${p.id}">
-            <div class="linked-report-name">${escapeHtml(p.naam)}</div>
-            <div class="linked-report-meta">${escapeHtml(positionLabel(p.positie))}${p.club?(' · '+escapeHtml(p.club)):''} · ${formatDate(p.datum)}</div>
-          </div>
-          <div class="linked-report-grades">
-            <span class="grade ${p.huidig_niveau||'D'}" style="padding:0 6px;height:18px;font-size:10px;">${p.huidig_niveau||'-'}</span>
-            <span class="grade outline ${p.potentieel_niveau||'D'}" style="padding:0 6px;height:18px;font-size:10px;">${p.potentieel_niveau||'-'}</span>
-          </div>
-          <button class="linked-report-unlink" data-unlink="${p.id}" title="Ontkoppelen">×</button>
-        </div>
-      `).join('') : '<div class="linked-reports-empty">Nog geen rapporten gekoppeld. Klik op "+ Rapport koppelen" om spelers toe te voegen die bij deze witte vlek passen.</div>'}
+      ${linkedHuidigPlayers.length
+        ? linkedHuidigPlayers.map(p => renderLinkedItem(p, 'huidig')).join('')
+        : '<div class="linked-reports-empty">Nog geen huidige spelers gekoppeld. Koppel rapporten van spelers die nu op deze positie spelen.</div>'}
+    </div>
+
+    <div class="linked-reports" style="margin-top:10px;">
+      <div class="linked-reports-header">
+        <div class="linked-reports-title">Potentiële kandidaten (${linkedKandidaatPlayers.length})</div>
+        <button class="btn btn-sm" data-add-linked="kandidaat">+ Koppel rapport potentiële kandidaat</button>
+      </div>
+      ${linkedKandidaatPlayers.length
+        ? linkedKandidaatPlayers.map(p => renderLinkedItem(p, 'kandidaat')).join('')
+        : '<div class="linked-reports-empty">Nog geen kandidaten gekoppeld. Koppel rapporten van spelers die deze witte vlek zouden kunnen invullen.</div>'}
     </div>
   `;
 
@@ -2948,12 +3089,13 @@ function renderPitchInfo(){
 
   // Criteria textareas — save on blur (avoids flooding writes on every keystroke)
   [
-    ['slot-nu','nu_situatie'],
-    ['slot-huidige','huidige_speler'],
+    ['slot-huidige-1','huidige_speler_1'],
+    ['slot-huidige-2','huidige_speler_2'],
     ['slot-gezocht','gezochte_speler'],
     ['slot-missende','missende']
   ].forEach(([id,key])=>{
     const el = $('#'+id);
+    if(!el) return;
     el.addEventListener('blur', async ()=>{
       const newVal = el.value.trim();
       const cur = currentAnalysis();
@@ -2964,16 +3106,21 @@ function renderPitchInfo(){
     });
   });
 
-  // Add linked button
-  $('#add-linked-btn').addEventListener('click', openPlayerPicker);
+  // Add linked buttons (huidig + kandidaat)
+  $$('[data-add-linked]', panel).forEach(btn=>{
+    btn.addEventListener('click', ()=> openPlayerPicker(btn.dataset.addLinked));
+  });
 
   // Unlink + open detail
   $$('.linked-report-unlink', panel).forEach(btn=>{
     btn.addEventListener('click', async ()=>{
       const id = btn.dataset.unlink;
+      const cat = btn.dataset.cat;
       const cur = currentAnalysis();
-      const linked = (cur.slots[selectedPitchPos].linked || []).filter(x=>x!==id);
-      await patchSlot(selectedPitchPos, {linked});
+      const slot = normalizeSlot(cur.slots[selectedPitchPos]);
+      const key = cat === 'kandidaat' ? 'linked_kandidaat' : 'linked_huidig';
+      const filtered = (slot[key] || []).filter(x=>x!==id);
+      await patchSlot(selectedPitchPos, {[key]: filtered});
       renderPitchInfo();
       renderPitchPositions();
     });
@@ -2984,7 +3131,15 @@ function renderPitchInfo(){
 }
 
 /* =============== PLAYER PICKER MODAL =============== */
-function openPlayerPicker(){
+let pickerCategory = 'huidig'; // 'huidig' or 'kandidaat'
+function openPlayerPicker(category){
+  pickerCategory = category === 'kandidaat' ? 'kandidaat' : 'huidig';
+  const titleEl = $('#picker-modal .modal-title');
+  if(titleEl){
+    titleEl.textContent = pickerCategory === 'kandidaat'
+      ? 'Koppel rapport — Potentiële kandidaat'
+      : 'Koppel rapport — Huidige speler';
+  }
   $('#picker-backdrop').classList.add('open');
   $('#picker-search').value = '';
   renderPickerList('');
@@ -2996,8 +3151,9 @@ function closePlayerPicker(){
 function renderPickerList(query){
   const a = currentAnalysis();
   if(!a || !selectedPitchPos) return;
-  const slot = a.slots[selectedPitchPos] || {};
-  const linkedIds = new Set(slot.linked || []);
+  const slot = normalizeSlot(a.slots[selectedPitchPos]);
+  const targetKey = pickerCategory === 'kandidaat' ? 'linked_kandidaat' : 'linked_huidig';
+  const linkedIds = new Set(slot[targetKey] || []);
   const q = (query||'').trim().toLowerCase();
 
   let players = [...loadPlayers()];
@@ -3041,13 +3197,14 @@ function renderPickerList(query){
     el.addEventListener('click', async ()=>{
       const id = el.dataset.id;
       const cur = currentAnalysis();
-      const slot = cur.slots[selectedPitchPos] || {};
-      const linked = [...(slot.linked || []), id];
-      await patchSlot(selectedPitchPos, {linked});
+      const slot = normalizeSlot(cur.slots[selectedPitchPos]);
+      const targetKey = pickerCategory === 'kandidaat' ? 'linked_kandidaat' : 'linked_huidig';
+      const linked = [...(slot[targetKey] || []), id];
+      await patchSlot(selectedPitchPos, {[targetKey]: linked});
       closePlayerPicker();
       renderPitchInfo();
       renderPitchPositions();
-      toast('Speler gekoppeld');
+      toast(pickerCategory === 'kandidaat' ? 'Kandidaat gekoppeld' : 'Huidige speler gekoppeld');
     });
   });
 }
@@ -3112,8 +3269,6 @@ function initApp(){
   refreshPositionDropdowns();
   $('#f-linie').addEventListener('change', refreshPositionDropdowns);
   $('#report-form').addEventListener('submit', submitReport);
-  $('#f-indruk').addEventListener('input', e=> updateSliderDisplay('f-indruk', 'f-indruk-val', parseFloat(e.target.value)));
-  $('#f-toekomst').addEventListener('input', e=> updateSliderDisplay('f-toekomst', 'f-toekomst-val', parseFloat(e.target.value)));
   $('#report-form').addEventListener('input', ()=> setDirty(true));
   $('#report-form').addEventListener('change', ()=> setDirty(true));
   $('#report-form').addEventListener('click', (e)=>{
@@ -3165,16 +3320,16 @@ function initApp(){
   });
 
   // Header field inputs — save on change
-  ['a-club','a-elftal','a-leeftijd','a-seizoen','a-datum'].forEach(id=>{
+  ['a-club','a-leeftijd','a-seizoen','a-datum'].forEach(id=>{
     const key = id.slice(2); // strip "a-"
     $('#'+id).addEventListener('change', async e=>{
       const a = currentAnalysis(); if(!a) return;
       await patchAnalysis({[key]: e.target.value});
       // Update title without full re-render to avoid losing focus
-      const title = [($('#a-club').value), ($('#a-elftal').value)].filter(Boolean).join(' ') || 'Nieuwe analyse';
+      const title = [$('#a-club').value, $('#a-leeftijd').value].filter(Boolean).join(' · ') || 'Nieuwe analyse';
       $('#analysis-detail-title').textContent = title;
       $('#analysis-detail-sub').textContent =
-        [$('#a-leeftijd').value, $('#a-seizoen').value, $('#a-formation').value].filter(Boolean).join(' · ') || '—';
+        [$('#a-seizoen').value, $('#a-formation').value].filter(Boolean).join(' · ') || '—';
     });
   });
   $('#a-formation').addEventListener('change', e=> changeFormation(e.target.value));

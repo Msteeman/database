@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Scouting Platform — Marcel Steeman</title>
 <meta name="description" content="Professioneel scoutingsplatform voor jeugdvoetbal" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <style>
 /* =========================================================
    SCOUTING PLATFORM — Marcel Steeman
@@ -997,46 +999,81 @@ tbody tr:last-child td { border-bottom: none; }
 
 .geo-map-wrap {
   position: relative;
-  background:
-    radial-gradient(800px 400px at 50% 30%, rgba(78,161,255,.04), transparent 60%),
-    var(--bg-3);
+  background: var(--bg-3);
   border: 1px solid var(--border); border-radius: 10px;
-  padding: 12px;
+  padding: 0;
   aspect-ratio: 4 / 5;
-  min-height: 320px;
+  min-height: 360px;
+  overflow: hidden;
 }
-.geo-map-svg { width: 100%; height: 100%; display: block; }
-.geo-map-svg path.nl-outline {
-  fill: rgba(78,161,255,.08);
-  stroke: rgba(78,161,255,.45);
-  stroke-width: .6;
-  stroke-linejoin: round;
+#geo-leaflet-map {
+  width: 100%; height: 100%;
+  background: #0e1622;
+  border-radius: 10px;
+  z-index: 1;
 }
-.geo-pin {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  cursor: pointer;
+/* Leaflet dark-mode tile filter */
+#geo-leaflet-map .leaflet-tile-pane {
+  filter: invert(1) hue-rotate(180deg) brightness(.92) contrast(.95) saturate(.7);
+}
+#geo-leaflet-map .leaflet-control-attribution {
+  background: rgba(11,15,21,.85); color: var(--text-3);
+  border: 1px solid var(--border); border-radius: 4px;
+  font-size: 10px; padding: 2px 6px;
+}
+#geo-leaflet-map .leaflet-control-attribution a { color: var(--text-2); }
+#geo-leaflet-map .leaflet-control-zoom a {
+  background: var(--panel); color: var(--text);
+  border: 1px solid var(--border-2); font-weight: 700;
+}
+#geo-leaflet-map .leaflet-control-zoom a:hover { background: var(--panel-2); color: var(--primary); }
+
+.scout-marker {
+  background: transparent; border: none;
+}
+.scout-marker-inner {
   display: flex; flex-direction: column; align-items: center;
-  pointer-events: auto;
-  transition: transform .15s;
+  transform: translate(-50%, -100%);
+  cursor: pointer;
+  filter: drop-shadow(0 2px 6px rgba(0,0,0,.6));
 }
-.geo-pin:hover { transform: translate(-50%, -50%) scale(1.08); }
-.geo-pin-dot {
-  width: 22px; height: 22px; border-radius: 50%;
+.scout-marker-dot {
+  width: 28px; height: 28px; border-radius: 50%;
   background: var(--primary);
   border: 2px solid #fff;
-  box-shadow: 0 2px 8px rgba(0,0,0,.5), 0 0 0 4px rgba(227,6,19,.18);
+  box-shadow: 0 0 0 4px rgba(227,6,19,.22);
   display: flex; align-items: center; justify-content: center;
-  font-size: 10px; font-weight: 800; color: white;
+  font-size: 11px; font-weight: 800; color: white;
+  transition: transform .15s;
 }
-.geo-pin-dot.small { width: 14px; height: 14px; font-size: 0; }
-.geo-pin-label {
-  margin-top: 3px;
-  background: rgba(11,15,21,.85);
+.scout-marker-inner:hover .scout-marker-dot { transform: scale(1.12); }
+.scout-marker-label {
+  margin-top: 4px;
+  background: rgba(11,15,21,.9);
   border: 1px solid var(--border-2);
   padding: 2px 7px; border-radius: 4px;
   font-size: 10px; font-weight: 600; color: var(--text);
   white-space: nowrap;
+}
+.scout-marker.club .scout-marker-dot {
+  background: linear-gradient(135deg, var(--secondary), #b88e0a);
+  color: #1a1a1a;
+  box-shadow: 0 0 0 4px rgba(245,197,24,.22);
+}
+.scout-marker.team .scout-marker-dot {
+  background: linear-gradient(135deg, var(--accent), #2a6fb8);
+  box-shadow: 0 0 0 4px rgba(78,161,255,.22);
+}
+
+.geo-region-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--text-3);
+  background: var(--bg-3); border: 1px solid var(--border);
+  padding: 4px 10px; border-radius: 999px;
+  margin-left: 10px;
+}
+.geo-region-badge .dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--primary);
 }
 
 .geo-list-panel {
@@ -1271,16 +1308,14 @@ tbody tr:last-child td { border-bottom: none; }
 
           <div class="panel" style="margin-top:16px;">
             <div class="panel-title">
-              Geografisch overzicht
+              Regio kaart
+              <span class="geo-region-badge"><span class="dot"></span> Utrecht · Apeldoorn · Ermelo · Harderwijk</span>
               <span class="panel-title-icon">●</span>
             </div>
             <div id="geo-breadcrumb" class="geo-breadcrumb"></div>
             <div class="geo-panel-wrap">
               <div class="geo-map-wrap" id="geo-map-wrap">
-                <svg class="geo-map-svg" viewBox="0 0 100 120" preserveAspectRatio="xMidYMid meet">
-                  <path class="nl-outline" d="M 38 6 L 44 6 L 50 8 L 55 10 L 60 12 L 65 14 L 70 18 L 72 22 L 74 28 L 76 34 L 78 40 L 80 46 L 82 52 L 80 58 L 78 64 L 76 68 L 72 72 L 68 76 L 64 82 L 62 88 L 64 94 L 68 100 L 72 108 L 70 114 L 66 116 L 60 114 L 55 110 L 50 106 L 46 100 L 42 94 L 40 88 L 38 82 L 34 78 L 30 76 L 26 72 L 24 66 L 22 60 L 20 54 L 22 48 L 24 42 L 26 36 L 28 30 L 30 24 L 32 18 L 34 12 Z" />
-                </svg>
-                <div id="geo-pins"></div>
+                <div id="geo-leaflet-map"></div>
               </div>
               <div class="geo-list-panel">
                 <div class="geo-list-title" id="geo-list-title">Steden</div>
@@ -1850,61 +1885,189 @@ const POSITIONS_BY_LINE = {
 };
 const ALL_POSITIONS = Object.values(POSITIONS_BY_LINE).flat();
 
-/* =============== GEO: CLUB → STAD MAPPING =============== */
+/* =============== GEO: REGIO UTRECHT + VELUWE =============== */
+const REGION_BOUNDS = [[51.90, 4.75], [52.50, 6.15]];
+const REGION_CENTER = [52.18, 5.45];
+const REGION_ZOOM = 9;
+
 const CLUB_CITY = {
+  'fc utrecht': 'Utrecht', 'utrecht': 'Utrecht',
+  'jong fc utrecht': 'Utrecht', 'jong utrecht': 'Utrecht',
+  'usv elinkwijk': 'Utrecht', 'elinkwijk': 'Utrecht',
+  'kampong': 'Utrecht', 'hercules': 'Utrecht',
+  'velox': 'Utrecht', 'desto': 'Utrecht', 'pvc': 'Utrecht',
+  'sv saestum': 'Zeist', 'sv zeist': 'Zeist', 'jonathan': 'Zeist',
+  'sportlust 46': 'Woerden', "sportlust '46": 'Woerden',
+  'vrc': 'Veenendaal', 'vv veenendaal': 'Veenendaal', 'gvvv': 'Veenendaal',
+  'ijsselmeervogels': 'Spakenburg', 'sv spakenburg': 'Spakenburg', 'spakenburg': 'Spakenburg',
+  'aeolus': 'Amersfoort', 'vv amsvorde': 'Amersfoort', 'asc nieuwland': 'Amersfoort',
+  'apwc': 'Amersfoort', 'cjvv': 'Amersfoort', 'asv arsenal': 'Amersfoort',
+  'asc dvsa': 'Amersfoort', 'dvsa': 'Amersfoort',
+  'avv columbia': 'Apeldoorn', 'csv apeldoorn': 'Apeldoorn',
+  "csv '28": 'Apeldoorn', "aav '28": 'Apeldoorn',
+  'wsv': 'Apeldoorn', 'robur et velocitas': 'Apeldoorn',
+  'avc heerde': 'Heerde',
+  'vv ermelo': 'Ermelo', "dvs '33 ermelo": 'Ermelo', "dvs '33": 'Ermelo',
+  'vvog': 'Harderwijk', 'vvog harderwijk': 'Harderwijk',
+  'vv harderwijk': 'Harderwijk',
+  'go ahead eagles': 'Deventer',
+  'vitesse': 'Arnhem',
+  'pec zwolle': 'Zwolle',
+  'almere city fc': 'Almere', 'almere city': 'Almere',
   'fc twente': 'Enschede', 'twente': 'Enschede',
   'heracles almelo': 'Almelo', 'heracles': 'Almelo',
-  'psv': 'Eindhoven', 'psv eindhoven': 'Eindhoven',
-  'ajax': 'Amsterdam', 'afc ajax': 'Amsterdam',
-  'feyenoord': 'Rotterdam', 'feyenoord rotterdam': 'Rotterdam',
-  'az': 'Alkmaar', 'az alkmaar': 'Alkmaar',
-  'vitesse': 'Arnhem',
-  'fc utrecht': 'Utrecht', 'utrecht': 'Utrecht',
-  'fc groningen': 'Groningen', 'groningen': 'Groningen',
-  'willem ii': 'Tilburg',
-  'nec': 'Nijmegen', 'nec nijmegen': 'Nijmegen',
-  'go ahead eagles': 'Deventer',
-  'pec zwolle': 'Zwolle',
-  'sc cambuur': 'Leeuwarden', 'cambuur': 'Leeuwarden',
-  'roda jc': 'Kerkrade', 'roda': 'Kerkrade',
-  'fc volendam': 'Volendam', 'volendam': 'Volendam',
-  'sparta rotterdam': 'Rotterdam', 'sparta': 'Rotterdam',
-  'nac breda': 'Breda', 'nac': 'Breda',
-  'mvv maastricht': 'Maastricht', 'mvv': 'Maastricht',
-  'fc den bosch': 'Den Bosch',
-  'fc eindhoven': 'Eindhoven',
-  'helmond sport': 'Helmond',
-  'almere city fc': 'Almere', 'almere city': 'Almere',
-  'fc dordrecht': 'Dordrecht',
-  'telstar': 'Velsen',
-  'excelsior': 'Rotterdam', 'excelsior rotterdam': 'Rotterdam',
-  'fc emmen': 'Emmen',
-  'rkc waalwijk': 'Waalwijk', 'rkc': 'Waalwijk',
-  'ado den haag': 'Den Haag', 'ado': 'Den Haag',
-  'de graafschap': 'Doetinchem',
-  'top oss': 'Oss',
-  'sc heerenveen': 'Heerenveen', 'heerenveen': 'Heerenveen',
-  'jong ajax': 'Amsterdam', 'jong psv': 'Eindhoven',
-  'jong az': 'Alkmaar', 'jong utrecht': 'Utrecht',
-  'jong fc utrecht': 'Utrecht'
+  'psv': 'Eindhoven', 'ajax': 'Amsterdam', 'feyenoord': 'Rotterdam',
+  'az': 'Alkmaar', 'nec': 'Nijmegen',
+  'jong ajax': 'Amsterdam', 'jong psv': 'Eindhoven', 'jong az': 'Alkmaar'
 };
+
 const CITY_COORDS = {
-  'Amsterdam': {x:42, y:33}, 'Rotterdam': {x:35, y:50}, 'Den Haag': {x:28, y:43},
-  'Utrecht': {x:44, y:43}, 'Eindhoven': {x:52, y:68}, 'Groningen': {x:72, y:12},
-  'Maastricht': {x:70, y:94}, 'Enschede': {x:82, y:42}, 'Almelo': {x:76, y:36},
-  'Tilburg': {x:46, y:65}, 'Nijmegen': {x:62, y:55}, 'Arnhem': {x:62, y:47},
-  'Breda': {x:40, y:63}, 'Leeuwarden': {x:58, y:14}, 'Zwolle': {x:64, y:30},
-  'Deventer': {x:66, y:39}, 'Apeldoorn': {x:62, y:37}, 'Haarlem': {x:37, y:31},
-  'Alkmaar': {x:38, y:24}, 'Amersfoort': {x:50, y:37}, 'Hilversum': {x:46, y:36},
-  'Dordrecht': {x:38, y:53}, 'Den Bosch': {x:51, y:58}, 'Helmond': {x:56, y:68},
-  'Oss': {x:55, y:58}, 'Doetinchem': {x:70, y:50}, 'Waalwijk': {x:48, y:60},
-  'Almere': {x:49, y:33}, 'Volendam': {x:45, y:27}, 'Emmen': {x:78, y:22},
-  'Kerkrade': {x:72, y:92}, 'Velsen': {x:37, y:29}, 'Heerenveen': {x:62, y:20}
+  'Utrecht':     {lat: 52.0907, lng: 5.1214},
+  'Amersfoort':  {lat: 52.1561, lng: 5.3878},
+  'Zeist':       {lat: 52.0894, lng: 5.2317},
+  'Veenendaal':  {lat: 52.0286, lng: 5.5547},
+  'Woerden':     {lat: 52.0858, lng: 4.8836},
+  'Nieuwegein':  {lat: 52.0298, lng: 5.0808},
+  'Houten':      {lat: 52.0353, lng: 5.1681},
+  'IJsselstein': {lat: 52.0203, lng: 5.0414},
+  'Bunschoten':  {lat: 52.2436, lng: 5.3781},
+  'Spakenburg':  {lat: 52.2497, lng: 5.3692},
+  'Soest':       {lat: 52.1736, lng: 5.2911},
+  'Baarn':       {lat: 52.2117, lng: 5.2900},
+  'Wijk bij Duurstede': {lat: 51.9744, lng: 5.3406},
+  'Driebergen':  {lat: 52.0539, lng: 5.2772},
+  'Bilthoven':   {lat: 52.1364, lng: 5.1989},
+  'De Bilt':     {lat: 52.1097, lng: 5.1811},
+  'Maarssen':    {lat: 52.1392, lng: 5.0381},
+  'Apeldoorn':   {lat: 52.2112, lng: 5.9699},
+  'Ermelo':      {lat: 52.2989, lng: 5.6233},
+  'Harderwijk':  {lat: 52.3411, lng: 5.6208},
+  'Putten':      {lat: 52.2614, lng: 5.6086},
+  'Nunspeet':    {lat: 52.3833, lng: 5.7794},
+  'Heerde':      {lat: 52.3897, lng: 6.0364},
+  'Elburg':      {lat: 52.4467, lng: 5.8369},
+  'Nijkerk':     {lat: 52.2206, lng: 5.4811},
+  'Barneveld':   {lat: 52.1394, lng: 5.5839},
+  'Voorthuizen': {lat: 52.1844, lng: 5.6014},
+  'Hilversum':   {lat: 52.2292, lng: 5.1669},
+  'Almere':      {lat: 52.3508, lng: 5.2647},
+  'Zwolle':      {lat: 52.5168, lng: 6.0830},
+  'Deventer':    {lat: 52.2550, lng: 6.1639},
+  'Arnhem':      {lat: 51.9851, lng: 5.8987},
+  'Amsterdam':   {lat: 52.3676, lng: 4.9041},
+  'Rotterdam':   {lat: 51.9244, lng: 4.4777},
+  'Den Haag':    {lat: 52.0705, lng: 4.3007},
+  'Eindhoven':   {lat: 51.4416, lng: 5.4697},
+  'Enschede':    {lat: 52.2215, lng: 6.8937},
+  'Almelo':      {lat: 52.3508, lng: 6.6622},
+  'Nijmegen':    {lat: 51.8126, lng: 5.8372},
+  'Alkmaar':     {lat: 52.6324, lng: 4.7534}
 };
+
+const CLUB_CACHE_KEY = 'scout_club_city_cache_v1';
+let _clubCache = (()=>{
+  try { return JSON.parse(localStorage.getItem(CLUB_CACHE_KEY) || '{}') || {}; }
+  catch(_) { return {}; }
+})();
+function saveClubCache(){
+  try { localStorage.setItem(CLUB_CACHE_KEY, JSON.stringify(_clubCache)); } catch(_){}
+}
+const CITY_CACHE_KEY = 'scout_city_coords_cache_v1';
+let _cityCache = (()=>{
+  try { return JSON.parse(localStorage.getItem(CITY_CACHE_KEY) || '{}') || {}; }
+  catch(_) { return {}; }
+})();
+function saveCityCache(){
+  try { localStorage.setItem(CITY_CACHE_KEY, JSON.stringify(_cityCache)); } catch(_){}
+}
+const _inflightLookups = new Map();
+
+function coordsForCity(city){
+  if(!city) return null;
+  if(CITY_COORDS[city]) return CITY_COORDS[city];
+  if(_cityCache[city]) return _cityCache[city];
+  return null;
+}
+
+async function lookupClubCity(clubName){
+  if(!clubName) return '';
+  const key = clubName.trim().toLowerCase();
+  if(!key) return '';
+  if(CLUB_CITY[key]) return CLUB_CITY[key];
+  if(_clubCache[key] !== undefined) return _clubCache[key];
+  if(_inflightLookups.has(key)) return _inflightLookups.get(key);
+  const promise = (async ()=>{
+    try {
+      const q = encodeURIComponent(`${clubName} voetbal Nederland`);
+      const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&addressdetails=1&countrycodes=nl&accept-language=nl`;
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      if(!res.ok) return '';
+      const data = await res.json();
+      if(!Array.isArray(data) || !data.length) return '';
+      const r = data[0];
+      const a = r.address || {};
+      const city = a.city || a.town || a.village || a.municipality || a.suburb || a.hamlet || '';
+      if(!city) return '';
+      _clubCache[key] = city;
+      saveClubCache();
+      if(!CITY_COORDS[city] && !_cityCache[city] && r.lat && r.lon){
+        _cityCache[city] = { lat: parseFloat(r.lat), lng: parseFloat(r.lon) };
+        saveCityCache();
+      }
+      return city;
+    } catch(_){ return ''; }
+    finally { _inflightLookups.delete(key); }
+  })();
+  _inflightLookups.set(key, promise);
+  return promise;
+}
+
+async function lookupCityCoords(city){
+  if(!city) return null;
+  if(CITY_COORDS[city]) return CITY_COORDS[city];
+  if(_cityCache[city]) return _cityCache[city];
+  const key = 'city:'+city.toLowerCase();
+  if(_inflightLookups.has(key)) return _inflightLookups.get(key);
+  const promise = (async ()=>{
+    try {
+      const q = encodeURIComponent(`${city}, Nederland`);
+      const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=nl&accept-language=nl`;
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      if(!res.ok) return null;
+      const data = await res.json();
+      if(!Array.isArray(data) || !data.length) return null;
+      const r = data[0];
+      const coords = { lat: parseFloat(r.lat), lng: parseFloat(r.lon) };
+      _cityCache[city] = coords;
+      saveCityCache();
+      return coords;
+    } catch(_){ return null; }
+    finally { _inflightLookups.delete(key); }
+  })();
+  _inflightLookups.set(key, promise);
+  return promise;
+}
+
+let _geoRerenderPending = false;
+function scheduleGeoRerender(){
+  if(_geoRerenderPending) return;
+  _geoRerenderPending = true;
+  setTimeout(()=>{
+    _geoRerenderPending = false;
+    if(typeof renderGeo === 'function' && document.getElementById('geo-leaflet-map')){
+      renderGeo();
+    }
+  }, 400);
+}
+
 function cityForPlayer(p){
   if(p.plaats && p.plaats.trim()) return p.plaats.trim();
   const key = (p.club||'').trim().toLowerCase();
-  return CLUB_CITY[key] || '';
+  if(!key) return '';
+  if(CLUB_CITY[key]) return CLUB_CITY[key];
+  if(_clubCache[key] !== undefined) return _clubCache[key] || '';
+  lookupClubCity(p.club||'').then(city=>{ if(city) scheduleGeoRerender(); });
+  return '';
 }
 function teamForPlayer(p){
   if(!p.club) return 'Onbekend';
@@ -2580,20 +2743,87 @@ function renderDashCategories(players){
     </div>
   `;
 }
-/* ---- Geo widget (Netherlands drill-down) ---- */
+/* ---- Geo widget (Leaflet, regio Utrecht + Veluwe) ---- */
+let _leafletMap = null;
+let _leafletLayer = null;
+let _leafletReadyPromise = null;
+
+function ensureLeafletReady(){
+  if(_leafletReadyPromise) return _leafletReadyPromise;
+  _leafletReadyPromise = new Promise((resolve)=>{
+    const check = ()=>{
+      if(window.L && document.getElementById('geo-leaflet-map')){
+        resolve(window.L);
+      } else {
+        setTimeout(check, 80);
+      }
+    };
+    check();
+  });
+  return _leafletReadyPromise;
+}
+
+async function ensureMap(){
+  const L = await ensureLeafletReady();
+  if(_leafletMap){
+    setTimeout(()=> { try { _leafletMap.invalidateSize(); } catch(_){} }, 30);
+    return _leafletMap;
+  }
+  const mapEl = document.getElementById('geo-leaflet-map');
+  if(!mapEl) return null;
+  _leafletMap = L.map(mapEl, {
+    center: REGION_CENTER,
+    zoom: REGION_ZOOM,
+    minZoom: 7,
+    maxZoom: 16,
+    zoomControl: true,
+    attributionControl: true,
+    maxBounds: L.latLngBounds([50.5, 3.0], [54.0, 8.0]),
+    maxBoundsViscosity: 0.6
+  });
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '© OpenStreetMap'
+  }).addTo(_leafletMap);
+  _leafletLayer = L.layerGroup().addTo(_leafletMap);
+  setTimeout(()=> { try { _leafletMap.invalidateSize(); } catch(_){} }, 60);
+  return _leafletMap;
+}
+
+function clearMarkers(){
+  if(_leafletLayer) _leafletLayer.clearLayers();
+}
+
+function buildMarkerIcon(L, label, count, kind){
+  const html = `
+    <div class="scout-marker-inner">
+      <div class="scout-marker-dot">${count}</div>
+      <div class="scout-marker-label">${escapeHtml(label)}</div>
+    </div>`;
+  return L.divIcon({
+    className: 'scout-marker ' + (kind || ''),
+    html,
+    iconSize: [0, 0],
+    iconAnchor: [0, 0]
+  });
+}
+
 function renderGeo(){
   renderGeoBreadcrumb();
   const lvl = geoState.level;
-  if(lvl === 'team' && geoState.city && geoState.club && geoState.team) renderGeoTeam(geoState.city, geoState.club, geoState.team);
-  else if(lvl === 'club' && geoState.city && geoState.club) renderGeoClub(geoState.city, geoState.club);
-  else if(lvl === 'city' && geoState.city) renderGeoCity(geoState.city);
-  else { geoState = {level:'map', city:null, club:null, team:null}; renderGeoMap(); }
+  ensureMap().then(()=>{
+    if(lvl === 'team' && geoState.city && geoState.club && geoState.team) renderGeoTeam(geoState.city, geoState.club, geoState.team);
+    else if(lvl === 'club' && geoState.city && geoState.club) renderGeoClub(geoState.city, geoState.club);
+    else if(lvl === 'city' && geoState.city) renderGeoCity(geoState.city);
+    else { geoState = {level:'map', city:null, club:null, team:null}; renderGeoMap(); }
+  });
 }
+
 function renderGeoBreadcrumb(){
   const bc = $('#geo-breadcrumb');
   if(!bc) return;
   const parts = [];
-  parts.push({label:'Nederland', level:'map'});
+  parts.push({label:'Regio', level:'map'});
   if(geoState.city) parts.push({label:geoState.city, level:'city'});
   if(geoState.club) parts.push({label:geoState.club, level:'club'});
   if(geoState.team) parts.push({label:geoState.team, level:'team'});
@@ -2613,7 +2843,12 @@ function renderGeoBreadcrumb(){
     });
   });
 }
-function renderGeoMap(){
+
+async function renderGeoMap(){
+  const L = window.L;
+  const map = _leafletMap;
+  if(!L || !map) return;
+  clearMarkers();
   const players = loadPlayers();
   const byCity = {};
   players.forEach(p=>{
@@ -2623,35 +2858,37 @@ function renderGeoMap(){
     byCity[c].push(p);
   });
   const cities = Object.keys(byCity).sort((a,b)=> byCity[b].length - byCity[a].length);
-  const pins = $('#geo-pins');
+
   if(!cities.length){
-    pins.innerHTML = '';
     $('#geo-list-title').textContent = 'Steden';
     $('#geo-list-items').innerHTML = '<div class="geo-empty-text">Nog geen rapporten met plaatsgegevens. Vul club of plaats in bij rapporten.</div>';
+    map.fitBounds(REGION_BOUNDS);
     return;
   }
-  pins.innerHTML = cities.map(city=>{
-    const coords = CITY_COORDS[city];
-    if(!coords) return '';
+
+  /* Plaats markers, geocode onbekende steden in achtergrond */
+  cities.forEach(city=>{
+    const coords = coordsForCity(city);
+    if(!coords){
+      lookupCityCoords(city).then(c=>{ if(c) scheduleGeoRerender(); });
+      return;
+    }
     const n = byCity[city].length;
-    return `
-      <div class="geo-pin" data-city="${escapeHtml(city)}" style="left:${coords.x}%; top:${coords.y}%;">
-        <div class="geo-pin-dot">${n}</div>
-        <div class="geo-pin-label">${escapeHtml(city)}</div>
-      </div>`;
-  }).join('');
-  $$('.geo-pin', pins).forEach(el=>{
-    el.addEventListener('click', ()=>{
-      geoState = {level:'city', city:el.dataset.city, club:null, team:null};
+    const icon = buildMarkerIcon(L, city, n, '');
+    const marker = L.marker([coords.lat, coords.lng], { icon }).addTo(_leafletLayer);
+    marker.on('click', ()=>{
+      geoState = {level:'city', city, club:null, team:null};
       renderGeo();
     });
   });
+  map.fitBounds(REGION_BOUNDS, { padding: [20, 20] });
+
   $('#geo-list-title').textContent = `Steden (${cities.length})`;
   $('#geo-list-items').innerHTML = cities.map(city=>{
     const n = byCity[city].length;
     return `
       <div class="geo-list-item" data-city="${escapeHtml(city)}">
-        <div class="geo-list-item-icon">${city[0]}</div>
+        <div class="geo-list-item-icon">${escapeHtml(city[0]||'?')}</div>
         <div class="geo-list-item-info">
           <div class="geo-list-item-name">${escapeHtml(city)}</div>
           <div class="geo-list-item-meta">${n} rapport${n===1?'':'en'}</div>
@@ -2666,7 +2903,12 @@ function renderGeoMap(){
     });
   });
 }
-function renderGeoCity(city){
+
+async function renderGeoCity(city){
+  const L = window.L;
+  const map = _leafletMap;
+  if(!L || !map) return;
+  clearMarkers();
   const players = loadPlayers().filter(p => cityForPlayer(p) === city);
   const byClub = {};
   players.forEach(p=>{
@@ -2675,14 +2917,12 @@ function renderGeoCity(city){
     byClub[club].push(p);
   });
   const clubs = Object.keys(byClub).sort((a,b)=> byClub[b].length - byClub[a].length);
-  const pins = $('#geo-pins');
-  const coords = CITY_COORDS[city];
-  pins.innerHTML = coords
-    ? `<div class="geo-pin" style="left:${coords.x}%; top:${coords.y}%;">
-         <div class="geo-pin-dot">${players.length}</div>
-         <div class="geo-pin-label">${escapeHtml(city)}</div>
-       </div>`
-    : '';
+  const coords = coordsForCity(city) || (await lookupCityCoords(city));
+  if(coords){
+    const icon = buildMarkerIcon(L, city, players.length, '');
+    L.marker([coords.lat, coords.lng], { icon }).addTo(_leafletLayer);
+    map.flyTo([coords.lat, coords.lng], 12, { duration: 0.6 });
+  }
   $('#geo-list-title').textContent = `Clubs in ${city} (${clubs.length})`;
   if(!clubs.length){
     $('#geo-list-items').innerHTML = '<div class="geo-empty-text">Geen clubs gevonden.</div>';
@@ -2692,7 +2932,7 @@ function renderGeoCity(city){
     const n = byClub[club].length;
     return `
       <div class="geo-list-item" data-club="${escapeHtml(club)}">
-        <div class="geo-list-item-icon">${initials(club)}</div>
+        <div class="geo-list-item-icon">${escapeHtml(initials(club))}</div>
         <div class="geo-list-item-info">
           <div class="geo-list-item-name">${escapeHtml(club)}</div>
           <div class="geo-list-item-meta">${n} rapport${n===1?'':'en'}</div>
@@ -2702,12 +2942,17 @@ function renderGeoCity(city){
   }).join('');
   $$('.geo-list-item', $('#geo-list-items')).forEach(el=>{
     el.addEventListener('click', ()=>{
-      geoState = {level:'club', city:city, club:el.dataset.club, team:null};
+      geoState = {level:'club', city, club:el.dataset.club, team:null};
       renderGeo();
     });
   });
 }
-function renderGeoClub(city, club){
+
+async function renderGeoClub(city, club){
+  const L = window.L;
+  const map = _leafletMap;
+  if(!L || !map) return;
+  clearMarkers();
   const players = loadPlayers().filter(p => cityForPlayer(p) === city && (p.club || 'Onbekend').trim() === club);
   const byTeam = {};
   players.forEach(p=>{
@@ -2716,14 +2961,12 @@ function renderGeoClub(city, club){
     byTeam[team].push(p);
   });
   const teams = Object.keys(byTeam).sort();
-  const pins = $('#geo-pins');
-  const coords = CITY_COORDS[city];
-  pins.innerHTML = coords
-    ? `<div class="geo-pin" style="left:${coords.x}%; top:${coords.y}%;">
-         <div class="geo-pin-dot">${players.length}</div>
-         <div class="geo-pin-label">${escapeHtml(club)}</div>
-       </div>`
-    : '';
+  const coords = coordsForCity(city) || (await lookupCityCoords(city));
+  if(coords){
+    const icon = buildMarkerIcon(L, club, players.length, 'club');
+    L.marker([coords.lat, coords.lng], { icon }).addTo(_leafletLayer);
+    map.flyTo([coords.lat, coords.lng], 13, { duration: 0.6 });
+  }
   $('#geo-list-title').textContent = `Elftallen ${club} (${teams.length})`;
   if(!teams.length){
     $('#geo-list-items').innerHTML = '<div class="geo-empty-text">Geen elftallen gevonden.</div>';
@@ -2743,23 +2986,26 @@ function renderGeoClub(city, club){
   }).join('');
   $$('.geo-list-item', $('#geo-list-items')).forEach(el=>{
     el.addEventListener('click', ()=>{
-      geoState = {level:'team', city:city, club:club, team:el.dataset.team};
+      geoState = {level:'team', city, club, team:el.dataset.team};
       renderGeo();
     });
   });
 }
-function renderGeoTeam(city, club, team){
+
+async function renderGeoTeam(city, club, team){
+  const L = window.L;
+  const map = _leafletMap;
+  if(!L || !map) return;
+  clearMarkers();
   const players = loadPlayers()
     .filter(p => cityForPlayer(p) === city && (p.club || 'Onbekend').trim() === club && teamForPlayer(p) === team)
     .sort((a,b)=> new Date(b.datum||0) - new Date(a.datum||0));
-  const pins = $('#geo-pins');
-  const coords = CITY_COORDS[city];
-  pins.innerHTML = coords
-    ? `<div class="geo-pin" style="left:${coords.x}%; top:${coords.y}%;">
-         <div class="geo-pin-dot">${players.length}</div>
-         <div class="geo-pin-label">${escapeHtml(team)}</div>
-       </div>`
-    : '';
+  const coords = coordsForCity(city) || (await lookupCityCoords(city));
+  if(coords){
+    const icon = buildMarkerIcon(L, team, players.length, 'team');
+    L.marker([coords.lat, coords.lng], { icon }).addTo(_leafletLayer);
+    map.flyTo([coords.lat, coords.lng], 14, { duration: 0.6 });
+  }
   $('#geo-list-title').textContent = `Rapporten ${team} (${players.length})`;
   if(!players.length){
     $('#geo-list-items').innerHTML = '<div class="geo-empty-text">Geen rapporten gevonden.</div>';
@@ -2767,7 +3013,7 @@ function renderGeoTeam(city, club, team){
   }
   $('#geo-list-items').innerHTML = players.map(p=>`
     <div class="geo-list-item" data-id="${p.id}">
-      <div class="geo-list-item-icon">${initials(p.naam)}</div>
+      <div class="geo-list-item-icon">${escapeHtml(initials(p.naam))}</div>
       <div class="geo-list-item-info">
         <div class="geo-list-item-name">${escapeHtml(p.naam)}</div>
         <div class="geo-list-item-meta">${escapeHtml(positionLabel(p.positie))} · ${formatDate(p.datum)}</div>

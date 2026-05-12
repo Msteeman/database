@@ -1150,6 +1150,100 @@ tbody tr:last-child td { border-bottom: none; }
   text-align: center; padding: 30px 12px; color: var(--text-3); font-size: 12px;
 }
 
+/* ---------- WEDSTRIJDEN LIST ---------- */
+.matches-list { display: flex; flex-direction: column; gap: 10px; }
+.match-group-header {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-3); font-weight: 700;
+  padding: 18px 4px 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+.match-group-header:first-child { padding-top: 0; }
+.match-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--primary);
+  border-radius: 10px;
+  padding: 14px 18px;
+  display: grid;
+  grid-template-columns: 110px 1fr auto;
+  gap: 16px;
+  align-items: center;
+  transition: border-color .15s, transform .15s;
+}
+.match-card:hover { border-color: var(--border-2); transform: translateX(2px); }
+.match-date {
+  display: flex; flex-direction: column; gap: 2px;
+}
+.match-date-day {
+  font-size: 22px; font-weight: 800; color: var(--text); line-height: 1;
+}
+.match-date-month {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-3); font-weight: 600;
+}
+.match-date-year {
+  font-size: 10px; color: var(--text-3); margin-top: 2px;
+}
+.match-teams {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.match-teams-row {
+  display: flex; align-items: center; gap: 10px;
+  font-size: 14px; font-weight: 600; color: var(--text);
+  flex-wrap: wrap;
+}
+.match-team-home, .match-team-away {
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.match-vs {
+  font-size: 11px; color: var(--text-3); font-weight: 500;
+  padding: 0 2px;
+}
+.match-score {
+  background: var(--bg-3); border: 1px solid var(--border-2);
+  padding: 3px 10px; border-radius: 6px;
+  font-weight: 800; font-size: 13px; color: var(--secondary);
+  margin: 0 4px;
+}
+.match-meta {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  font-size: 11px; color: var(--text-3);
+}
+.match-age-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(78,161,255,.12); border: 1px solid rgba(78,161,255,.3);
+  color: var(--accent);
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 700;
+}
+.match-players-count {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: var(--bg-3); border: 1px solid var(--border);
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; color: var(--text-2);
+}
+.match-players {
+  display: flex; flex-wrap: wrap; gap: 5px;
+  justify-content: flex-end; max-width: 280px;
+}
+.match-player-chip {
+  background: var(--bg-3); border: 1px solid var(--border);
+  padding: 4px 10px; border-radius: 6px;
+  font-size: 11px; color: var(--text-2);
+  cursor: pointer; transition: all .15s;
+  font-weight: 600;
+}
+.match-player-chip:hover {
+  border-color: var(--primary); color: var(--text);
+  background: var(--panel-2);
+}
+@media (max-width: 900px) {
+  .match-card { grid-template-columns: 1fr; gap: 10px; }
+  .match-players { justify-content: flex-start; max-width: 100%; }
+}
+
 /* Print */
 @media print {
   .sidebar, .topbar .btn, .modal-close { display: none !important; }
@@ -1264,6 +1358,10 @@ tbody tr:last-child td { border-bottom: none; }
         <button class="nav-item" data-view="database">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 11v6c0 1.7 4 3 9 3s9-1.3 9-3v-6"/></svg>
           Database
+        </button>
+        <button class="nav-item" data-view="matches">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="1"/><line x1="12" y1="6" x2="12" y2="19"/><circle cx="12" cy="12.5" r="2"/><path d="M3 10.5 H6 V14.5 H3"/><path d="M21 10.5 H18 V14.5 H21"/></svg>
+          Wedstrijden
         </button>
         <button class="nav-item" data-view="report">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
@@ -1440,6 +1538,31 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="table-wrap" id="db-table-wrap"></div>
       </section>
 
+      <!-- ====== WEDSTRIJDEN ====== -->
+      <section class="view" id="view-matches">
+        <div class="topbar">
+          <div>
+            <div class="page-title">Wedstrijden</div>
+            <div class="page-sub" id="matches-count">0 wedstrijden</div>
+          </div>
+        </div>
+
+        <div class="filters">
+          <input id="match-search" class="filter-input" type="text" placeholder="Zoek op team of leeftijd..." />
+          <select id="match-age" class="filter-select"><option value="">Alle leeftijden</option></select>
+          <select id="match-sort" class="filter-select">
+            <option value="newest">Nieuwste eerst</option>
+            <option value="oldest">Oudste eerst</option>
+          </select>
+        </div>
+
+        <div id="matches-list" class="matches-list"></div>
+        <div id="matches-empty" style="display:none; text-align:center; padding:60px 20px; color:var(--text-3);">
+          <div style="font-size:14px; margin-bottom:10px;">Nog geen wedstrijden bekend.</div>
+          <div style="font-size:12px;">Wedstrijden verschijnen automatisch zodra je rapporten opslaat met een thuis- en uitspelende ploeg.</div>
+        </div>
+      </section>
+
       <!-- ====== REPORT ====== -->
       <section class="view" id="view-report">
         <div class="topbar">
@@ -1525,6 +1648,10 @@ tbody tr:last-child td { border-bottom: none; }
                   <option>1-4-1-4-1</option>
                   <option>Anders</option>
                 </select>
+              </div>
+              <div class="field">
+                <label>Uitslag (optioneel)</label>
+                <input id="f-w-uitslag" type="text" placeholder="Bijv. 3-1" />
               </div>
             </div>
             <div class="field" style="margin-top:4px;">
@@ -2565,6 +2692,7 @@ function go(view){
   $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
   if(view === 'dashboard') renderDashboard();
   if(view === 'database')  renderDatabase();
+  if(view === 'matches')   renderMatches();
   if(view === 'pitch')     renderPitch();
   if(view === 'report')    resetReportForm();
   window.scrollTo({top:0});
@@ -3274,6 +3402,7 @@ function openDetail(id){
           ${w.thuis ? `<div class="detail-criteria"><div class="detail-criteria-name">Thuisspelende ploeg</div><div>${escapeHtml(w.thuis)}</div></div>` : ''}
           ${w.uit ? `<div class="detail-criteria"><div class="detail-criteria-name">Uitspelende ploeg</div><div>${escapeHtml(w.uit)}</div></div>` : ''}
           ${(!w.thuis && !w.uit && w.tegenstander) ? `<div class="detail-criteria"><div class="detail-criteria-name">Tegenstander</div><div>${escapeHtml(w.tegenstander)}</div></div>` : ''}
+          ${w.uitslag ? `<div class="detail-criteria"><div class="detail-criteria-name">Uitslag</div><div>${escapeHtml(w.uitslag)}</div></div>` : ''}
           ${w.opstelling ? `<div class="detail-criteria"><div class="detail-criteria-name">Opstelling</div><div>${escapeHtml(w.opstelling)}</div></div>` : ''}
         </div>
         ${w.context ? `<div class="detail-notes" style="margin-top:10px;">${escapeHtml(w.context)}</div>` : ''}
@@ -3487,6 +3616,7 @@ function loadIntoForm(p){
   $('#f-w-datum').value = w.datum || '';
   $('#f-w-thuis').value = w.thuis || w.tegenstander || '';
   $('#f-w-uit').value = w.uit || '';
+  $('#f-w-uitslag').value = w.uitslag || '';
   $('#f-w-opstelling').value = w.opstelling || '';
   $('#f-w-context').value = w.context || '';
 
@@ -3560,6 +3690,7 @@ async function submitReport(e){
       datum: $('#f-w-datum').value,
       thuis: $('#f-w-thuis').value.trim(),
       uit: $('#f-w-uit').value.trim(),
+      uitslag: $('#f-w-uitslag').value.trim(),
       opstelling: $('#f-w-opstelling').value,
       context: $('#f-w-context').value.trim()
     },
@@ -3606,6 +3737,167 @@ function playersMatchingSlot(slot){
   return loadPlayers().filter(p => matches.includes(p.positie) || matches.includes(p.beoogd));
 }
 function emptyChipBg(){ return 'rgba(255,255,255,.08)'; }
+
+/* =============== WEDSTRIJDEN =============== */
+function extractAge(teamName){
+  if(!teamName) return '';
+  const m = String(teamName).match(/\bO\s?\.?\s?(\d{1,2})\b/i);
+  return m ? ('O' + m[1]) : '';
+}
+function stripAgeFromTeam(teamName){
+  if(!teamName) return '';
+  return String(teamName)
+    .replace(/\s*\bO\s?\.?\s?\d{1,2}(?:[-\s]?\d+)?\b/ig, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
+}
+function aggregateMatches(players){
+  const map = new Map();
+  players.forEach(p => {
+    const w = p.wedstrijd || {};
+    const datum = w.datum || p.datum;
+    const thuis = (w.thuis || '').trim();
+    const uit = (w.uit || '').trim();
+    if(!datum || (!thuis && !uit)) return;
+    const ageHome = extractAge(thuis);
+    const ageAway = extractAge(uit);
+    const age = ageHome || ageAway || '';
+    const key = [datum, thuis.toLowerCase(), uit.toLowerCase()].join('|');
+    if(!map.has(key)){
+      map.set(key, {
+        datum,
+        thuis,
+        uit,
+        age,
+        uitslag: (w.uitslag || '').trim(),
+        opstelling: w.opstelling || '',
+        players: []
+      });
+    }
+    const entry = map.get(key);
+    if(!entry.uitslag && (w.uitslag||'').trim()) entry.uitslag = w.uitslag.trim();
+    entry.players.push({ id: p.id, naam: p.naam || '—', club: p.club || '' });
+  });
+  return Array.from(map.values());
+}
+function formatDayMonth(iso){
+  const d = new Date(iso);
+  if(isNaN(d)) return { day: '?', month: '', year: '' };
+  const months = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+  return { day: String(d.getDate()), month: months[d.getMonth()], year: String(d.getFullYear()) };
+}
+function groupKeyMonth(iso){
+  const d = new Date(iso);
+  if(isNaN(d)) return 'Onbekende datum';
+  const months = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
+  return months[d.getMonth()] + ' ' + d.getFullYear();
+}
+function renderMatches(){
+  const players = loadPlayers();
+  let matches = aggregateMatches(players);
+
+  // Filters
+  const search = ($('#match-search').value || '').toLowerCase().trim();
+  const ageFilter = $('#match-age').value || '';
+  const sortMode = $('#match-sort').value || 'newest';
+
+  // Populate age filter (unique ages present)
+  const ages = Array.from(new Set(matches.map(m => m.age).filter(Boolean))).sort((a,b)=>{
+    return parseInt(a.replace('O','')) - parseInt(b.replace('O',''));
+  });
+  const ageSel = $('#match-age');
+  const currentAge = ageSel.value;
+  ageSel.innerHTML = '<option value="">Alle leeftijden</option>' +
+    ages.map(a => `<option value="${a}"${a===currentAge?' selected':''}>${a}</option>`).join('');
+
+  // Apply filters
+  if(search){
+    matches = matches.filter(m =>
+      m.thuis.toLowerCase().includes(search) ||
+      m.uit.toLowerCase().includes(search) ||
+      (m.age || '').toLowerCase().includes(search)
+    );
+  }
+  if(ageFilter){
+    matches = matches.filter(m => m.age === ageFilter);
+  }
+
+  // Sort
+  matches.sort((a,b)=>{
+    const da = new Date(a.datum).getTime() || 0;
+    const db = new Date(b.datum).getTime() || 0;
+    return sortMode === 'oldest' ? da - db : db - da;
+  });
+
+  $('#matches-count').textContent =
+    matches.length + ' wedstrijd' + (matches.length === 1 ? '' : 'en');
+
+  const empty = $('#matches-empty');
+  const list = $('#matches-list');
+  if(matches.length === 0){
+    list.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  // Group by month
+  let lastGroup = null;
+  let html = '';
+  matches.forEach(m => {
+    const group = groupKeyMonth(m.datum);
+    if(group !== lastGroup){
+      html += `<div class="match-group-header">${escapeHtml(group)}</div>`;
+      lastGroup = group;
+    }
+    const d = formatDayMonth(m.datum);
+    const thuisClean = escapeHtml(stripAgeFromTeam(m.thuis) || m.thuis || '—');
+    const uitClean = escapeHtml(stripAgeFromTeam(m.uit) || m.uit || '—');
+    const scoreHtml = m.uitslag
+      ? `<span class="match-score">${escapeHtml(m.uitslag)}</span>`
+      : `<span class="match-vs">vs</span>`;
+    const playersChips = m.players.map(pl =>
+      `<span class="match-player-chip" data-player-id="${escapeHtml(pl.id)}" title="${escapeHtml(pl.club || '')}">${escapeHtml(pl.naam)}</span>`
+    ).join('');
+    const ageBadge = m.age
+      ? `<span class="match-age-badge">${escapeHtml(m.age)}</span>`
+      : '';
+    const opstellingMeta = m.opstelling
+      ? `<span class="match-players-count">${escapeHtml(m.opstelling)}</span>`
+      : '';
+    const countMeta = `<span class="match-players-count">${m.players.length} rapport${m.players.length===1?'':'en'}</span>`;
+    html += `
+      <div class="match-card">
+        <div class="match-date">
+          <div class="match-date-day">${d.day}</div>
+          <div class="match-date-month">${d.month}</div>
+          <div class="match-date-year">${d.year}</div>
+        </div>
+        <div class="match-teams">
+          <div class="match-teams-row">
+            <span class="match-team-home">${thuisClean}</span>
+            ${scoreHtml}
+            <span class="match-team-away">${uitClean}</span>
+          </div>
+          <div class="match-meta">
+            ${ageBadge}
+            ${opstellingMeta}
+            ${countMeta}
+          </div>
+        </div>
+        <div class="match-players">${playersChips}</div>
+      </div>
+    `;
+  });
+  list.innerHTML = html;
+
+  list.querySelectorAll('.match-player-chip').forEach(chip => {
+    chip.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      openDetail(chip.dataset.playerId);
+    });
+  });
+}
 
 function renderPitch(){
   if(currentAnalysisId && getAnalysis(currentAnalysisId)){
@@ -4125,6 +4417,7 @@ function generatePlayerPDF(p){
     w.datum ? ['Wedstrijddatum', formatDate(w.datum)] : null,
     w.thuis ? ['Thuisspelende ploeg', w.thuis] : null,
     w.uit ? ['Uitspelende ploeg', w.uit] : null,
+    w.uitslag ? ['Uitslag', w.uitslag] : null,
     w.opstelling ? ['Opstelling', w.opstelling] : null
   ].filter(Boolean);
 
@@ -4397,6 +4690,15 @@ function initApp(){
     $('#'+id).addEventListener('input', applyFilters);
     $('#'+id).addEventListener('change', applyFilters);
   });
+
+  ['match-search','match-age','match-sort'].forEach(id=>{
+    const el = $('#'+id);
+    if(el){
+      el.addEventListener('input', renderMatches);
+      el.addEventListener('change', renderMatches);
+    }
+  });
+
   $('#export-btn').addEventListener('click', exportJSON);
 
   $('#import-btn').addEventListener('click', openImportModal);

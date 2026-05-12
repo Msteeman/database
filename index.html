@@ -1395,9 +1395,13 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="page-sub" id="db-count">0 spelers</div>
           </div>
           <div style="display:flex; gap:8px;">
+            <button class="btn" id="import-btn" title="Plak een rapport-blok van Copilot om snel een speler toe te voegen">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Rapport importeren
+            </button>
             <button class="btn" id="export-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Export JSON
+              Export
             </button>
             <button class="btn btn-primary" data-go="report">+ Nieuw rapport</button>
           </div>
@@ -1869,6 +1873,31 @@ tbody tr:last-child td { border-bottom: none; }
     <div class="modal-body">
       <input id="picker-search" class="player-picker-search" type="text" placeholder="Zoek op naam, club, positie..." />
       <div id="picker-list" class="player-picker-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== IMPORT MODAL =================== -->
+<div class="modal-backdrop" id="import-backdrop">
+  <div class="modal" id="import-modal">
+    <div class="modal-header">
+      <div class="modal-title">Rapport importeren</div>
+      <button class="modal-close" id="import-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.5;">
+        Plak hieronder het rapport-blokje dat Copilot voor je heeft gemaakt en klik op <strong>Importeren</strong>.
+        Je kunt één speler of meerdere spelers tegelijk plakken.
+      </div>
+      <textarea id="import-text" style="width:100%; min-height:200px; background:var(--bg-3); border:1px solid var(--border-2); color:var(--text); padding:12px; border-radius:7px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; outline:none; resize:vertical;" placeholder='Plak hier het rapport-blokje...'></textarea>
+      <div id="import-status" style="margin-top:10px; font-size:12px; min-height:18px;"></div>
+      <div class="form-actions" style="margin-top:16px;">
+        <button type="button" class="btn" id="import-cancel">Annuleren</button>
+        <button type="button" class="btn btn-primary" id="import-go">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Importeren
+        </button>
+      </div>
     </div>
   </div>
 </div>
@@ -3985,6 +4014,73 @@ function exportJSON(){
   toast('Export gedownload');
 }
 
+/* =============== IMPORT =============== */
+function openImportModal(){
+  $('#import-text').value = '';
+  $('#import-status').textContent = '';
+  $('#import-status').style.color = '';
+  $('#import-backdrop').classList.add('open');
+  setTimeout(()=> $('#import-text').focus(), 50);
+}
+function closeImportModal(){
+  $('#import-backdrop').classList.remove('open');
+}
+async function runImport(){
+  const status = $('#import-status');
+  const raw = $('#import-text').value.trim();
+  if(!raw){
+    status.style.color = 'var(--red)';
+    status.textContent = 'Plak eerst een rapport-blokje in het veld.';
+    return;
+  }
+  let data;
+  try {
+    data = JSON.parse(raw);
+  } catch(e){
+    status.style.color = 'var(--red)';
+    status.textContent = 'Het geplakte tekstblok kan niet gelezen worden. Controleer of je het hele blokje hebt gekopieerd.';
+    return;
+  }
+  const list = Array.isArray(data) ? data : [data];
+  if(!list.length){
+    status.style.color = 'var(--red)';
+    status.textContent = 'Geen rapporten gevonden in het blokje.';
+    return;
+  }
+  const existingIds = new Set(loadPlayers().map(p => p.id));
+  let ok = 0, fail = 0;
+  status.style.color = 'var(--text-2)';
+  status.textContent = `Bezig met importeren van ${list.length} rapport${list.length===1?'':'en'}...`;
+  for(const entry of list){
+    if(!entry || typeof entry !== 'object' || !entry.naam){
+      fail++;
+      continue;
+    }
+    const player = {...entry};
+    if(!player.id || existingIds.has(player.id)) player.id = uid();
+    existingIds.add(player.id);
+    if(!player.datum) player.datum = todayISO();
+    try {
+      await savePlayer(player);
+      ok++;
+    } catch(e){
+      fail++;
+    }
+  }
+  if(ok > 0){
+    status.style.color = 'var(--green)';
+    status.textContent = `${ok} rapport${ok===1?'':'en'} geïmporteerd${fail?` · ${fail} mislukt`:''}.`;
+    toast(`${ok} rapport${ok===1?'':'en'} toegevoegd`);
+    setTimeout(()=>{
+      closeImportModal();
+      applyFilters();
+    }, 900);
+  } else {
+    status.style.color = 'var(--red)';
+    status.textContent = `Importeren mislukt. Controleer het blokje.`;
+  }
+}
+
 /* =============== INIT =============== */
 function initApp(){
   if(appInitialized) return;
@@ -4030,12 +4126,24 @@ function initApp(){
   });
   $('#export-btn').addEventListener('click', exportJSON);
 
+  $('#import-btn').addEventListener('click', openImportModal);
+  $('#import-close').addEventListener('click', closeImportModal);
+  $('#import-cancel').addEventListener('click', closeImportModal);
+  $('#import-go').addEventListener('click', runImport);
+  $('#import-backdrop').addEventListener('click', e=>{
+    if(e.target.id === 'import-backdrop') closeImportModal();
+  });
+
   $('#modal-close').addEventListener('click', closeDetail);
   $('#modal-backdrop').addEventListener('click', e=>{
     if(e.target.id === 'modal-backdrop') closeDetail();
   });
   document.addEventListener('keydown', e=>{
-    if(e.key==='Escape') closeDetail();
+    if(e.key==='Escape'){
+      closeDetail();
+      closeImportModal();
+      closePlayerPicker();
+    }
   });
 
   // Analyses list

@@ -354,6 +354,13 @@ a { color: var(--accent); text-decoration: none; }
 .kpi-card {
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 16px 18px; position: relative; overflow: hidden;
+  cursor: pointer;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
+}
+.kpi-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-2);
+  box-shadow: 0 8px 24px rgba(0,0,0,.25);
 }
 .kpi-card::before {
   content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
@@ -1529,6 +1536,19 @@ tbody tr:last-child td { border-bottom: none; }
             <option value="B">Potentieel: B</option>
             <option value="C">Potentieel: C</option>
             <option value="D">Potentieel: D</option>
+          </select>
+          <select id="filter-advies" class="filter-select">
+            <option value="">Advies: alle</option>
+            <option value="4">Direct aannemen</option>
+            <option value="3">Stage</option>
+            <option value="2">Blijven volgen</option>
+            <option value="1">Niet aannemen</option>
+          </select>
+          <select id="filter-period" class="filter-select">
+            <option value="">Periode: alle</option>
+            <option value="7">Deze week</option>
+            <option value="30">Laatste 30 dagen</option>
+            <option value="90">Laatste 90 dagen</option>
           </select>
         </div>
 
@@ -2714,27 +2734,43 @@ function renderDashboard(){
   const advice1 = players.filter(p => String(p.advies) === '4').length;
 
   $('#kpi-grid').innerHTML = `
-    <div class="kpi-card">
+    <div class="kpi-card" data-kpi="all" title="Toon alle spelers">
       <div class="kpi-label">Totaal spelers</div>
       <div class="kpi-value">${total}</div>
       <div class="kpi-sub">in database</div>
     </div>
-    <div class="kpi-card blue">
+    <div class="kpi-card blue" data-kpi="week" title="Toon rapporten van deze week">
       <div class="kpi-label">Deze week</div>
       <div class="kpi-value">${last7}</div>
       <div class="kpi-sub">nieuwe rapporten</div>
     </div>
-    <div class="kpi-card green">
+    <div class="kpi-card green" data-kpi="top" title="Toon toptalenten (potentieel A)">
       <div class="kpi-label">Toptalenten</div>
       <div class="kpi-value">${topPotential}</div>
       <div class="kpi-sub">kan doorgroeien naar top</div>
     </div>
-    <div class="kpi-card yellow">
+    <div class="kpi-card yellow" data-kpi="admit" title="Toon spelers met advies Direct aannemen">
       <div class="kpi-label">Direct aannemen</div>
       <div class="kpi-value">${advice1}</div>
       <div class="kpi-sub">hoogste advies</div>
     </div>
   `;
+
+  $$('#kpi-grid .kpi-card').forEach(card=>{
+    card.addEventListener('click', ()=>{
+      const kind = card.dataset.kpi;
+      $('#filter-search').value = '';
+      $('#filter-position').value = '';
+      $('#filter-current').value = '';
+      $('#filter-potential').value = '';
+      $('#filter-advies').value = '';
+      $('#filter-period').value = '';
+      if(kind === 'week')  $('#filter-period').value = '7';
+      if(kind === 'top')   $('#filter-potential').value = 'A';
+      if(kind === 'admit') $('#filter-advies').value = '4';
+      go('database');
+    });
+  });
 
   const empty = $('#dash-empty');
   const content = $('#dash-content');
@@ -3295,11 +3331,19 @@ function applyFilters(){
   const fp = $('#filter-position').value;
   const fc = $('#filter-current').value;
   const fpot = $('#filter-potential').value;
+  const fadv = $('#filter-advies').value;
+  const fper = $('#filter-period').value;
+  const perCutoff = fper ? (Date.now() - parseInt(fper,10)*24*3600*1000) : null;
 
   let filtered = players.filter(p=>{
     if(fp && p.positie !== fp) return false;
     if(fc && p.huidig_niveau !== fc) return false;
     if(fpot && p.potentieel_niveau !== fpot) return false;
+    if(fadv && String(p.advies) !== fadv) return false;
+    if(perCutoff != null){
+      if(!p.datum) return false;
+      if(new Date(p.datum).getTime() < perCutoff) return false;
+    }
     if(q){
       const hay = `${p.naam||''} ${p.club||''} ${positionLabel(p.positie)}`.toLowerCase();
       if(!hay.includes(q)) return false;
@@ -4365,11 +4409,11 @@ function pdfCriteriaCard(name, val){
   const v = val || '—';
   const color = val ? `#${({A:'22c55e',B:'84cc16',C:'f59e0b',D:'ef4444'})[val]||'888'}` : '#bbb';
   return `
-    <div style="background:#f7f8fa;border:1px solid #e3e6ec;border-radius:6px;padding:10px 12px;">
-      <div style="font-size:11px;color:#6b7280;margin-bottom:6px;">${name}</div>
+    <div style="background:#fafbfc;border:1px solid #e3e6ec;border-left:3px solid ${color};border-radius:6px;padding:10px 12px;">
+      <div style="font-size:11px;color:#374151;margin-bottom:6px;font-weight:600;">${name}</div>
       <div style="display:flex;align-items:center;gap:6px;">
-        <span style="font-size:10px;color:#9ca3af;text-transform:uppercase;letter-spacing:.8px;">Huidig</span>
-        <span style="display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 7px;border-radius:4px;background:${color};color:#fff;font-weight:700;font-size:12px;">${v}</span>
+        <span style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:1px;">Huidig</span>
+        <span style="display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 7px;border-radius:4px;background:${color};color:#fff;font-weight:800;font-size:12px;">${v}</span>
       </div>
     </div>`;
 }
@@ -4378,9 +4422,18 @@ function pdfGradeChip(val, outline){
   if(!val) return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:#f0f0f0;color:#999;font-weight:700;font-size:12px;">—</span>`;
   const hex = ({A:'#22c55e',B:'#84cc16',C:'#f59e0b',D:'#ef4444'})[val] || '#888';
   if(outline){
-    return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:#fff;border:2px solid ${hex};color:${hex};font-weight:700;font-size:12px;">${val}</span>`;
+    return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:#fff;border:2px solid ${hex};color:${hex};font-weight:800;font-size:12px;">${val}</span>`;
   }
-  return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:${hex};color:#fff;font-weight:700;font-size:12px;">${val}</span>`;
+  return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:${hex};color:#fff;font-weight:800;font-size:12px;">${val}</span>`;
+}
+
+function pdfGradeChipLg(val, outline){
+  if(!val) return `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:32px;padding:0 10px;border-radius:6px;background:rgba(255,255,255,.08);color:rgba(255,255,255,.4);font-weight:800;font-size:18px;">—</span>`;
+  const hex = ({A:'#22c55e',B:'#84cc16',C:'#f59e0b',D:'#ef4444'})[val] || '#888';
+  if(outline){
+    return `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:32px;padding:0 10px;border-radius:6px;background:transparent;border:2px solid ${hex};color:${hex};font-weight:800;font-size:18px;">${val}</span>`;
+  }
+  return `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:32px;padding:0 10px;border-radius:6px;background:${hex};color:#fff;font-weight:800;font-size:18px;">${val}</span>`;
 }
 
 function generatePlayerPDF(p){
@@ -4395,15 +4448,15 @@ function generatePlayerPDF(p){
   const gritVal = b.grit_huidig || b.drit_huidig;
   const reportDate = w.datum || p.datum || todayISO();
 
-  const watermarkBg = `url("data:image/svg+xml;utf8,${WATERMARK_SVG.replace(/\n/g,'').replace(/"/g,"'")}")`;
+  const watermarkBg = `url("data:image/svg+xml;utf8,${encodeURIComponent(WATERMARK_SVG.replace(/\n\s*/g,' ').trim())}")`;
 
   const atletischDetail = (b.explosiviteit_huidig || b.sprinten_huidig || b.duelleren_huidig || b.wendbaarheid_huidig)
     ? `
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:6px;">
-        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#374151;">Explosiviteit ${pdfGradeChip(b.explosiviteit_huidig)}</div>
-        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#374151;">Sprinten ${pdfGradeChip(b.sprinten_huidig)}</div>
-        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#374151;">Duelleren ${pdfGradeChip(b.duelleren_huidig)}</div>
-        <div style="display:flex;align-items:center;gap:6px;font-size:11px;color:#374151;">Wendbaarheid ${pdfGradeChip(b.wendbaarheid_huidig)}</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#374151;">Explosiviteit ${pdfGradeChip(b.explosiviteit_huidig)}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#374151;">Sprinten ${pdfGradeChip(b.sprinten_huidig)}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#374151;">Duelleren ${pdfGradeChip(b.duelleren_huidig)}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#374151;">Wendbaarheid ${pdfGradeChip(b.wendbaarheid_huidig)}</div>
       </div>`
     : '';
 
@@ -4432,129 +4485,150 @@ function generatePlayerPDF(p){
     p.rijping ? ['Rijping', p.rijping] : null
   ].filter(Boolean);
 
+  const sectionLabel = (txt) => `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#e30613;margin-bottom:8px;font-weight:800;display:flex;align-items:center;gap:8px;"><span style="display:inline-block;width:14px;height:2px;background:#e30613;"></span>${txt}</div>`;
+
   const html = `
-    <div style="position:relative;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#1f2937;background:#ffffff;padding:24px 28px;width:794px;box-sizing:border-box;">
+    <div style="position:relative;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#1f2937;background:#ffffff;width:794px;box-sizing:border-box;overflow:hidden;">
 
-      <div style="position:absolute;inset:0;background-image:${watermarkBg};background-repeat:repeat;background-size:180px 180px;opacity:0.06;pointer-events:none;z-index:0;"></div>
-
-      <div style="position:relative;z-index:1;">
-
-        <div style="display:flex;align-items:center;gap:14px;border-bottom:2px solid #e30613;padding-bottom:14px;margin-bottom:18px;">
-          <div style="width:54px;height:54px;flex-shrink:0;">${BRAND_SHIELD_SVG}</div>
-          <div style="flex:1;">
-            <div style="font-size:20px;font-weight:800;letter-spacing:-.3px;color:#111827;">Scouting Platform</div>
-            <div style="font-size:12px;color:#6b7280;margin-top:2px;">Scoutingsrapport · Marcel Steeman</div>
+      <div style="background:linear-gradient(135deg,#0d1320 0%,#1a2332 60%,#0d1320 100%);color:#fff;padding:18px 28px 16px 28px;position:relative;overflow:hidden;">
+        <div style="position:absolute;right:-50px;top:-50px;width:200px;height:200px;opacity:.08;pointer-events:none;">${BRAND_SHIELD_SVG}</div>
+        <div style="display:flex;align-items:center;gap:14px;position:relative;z-index:1;">
+          <div style="width:48px;height:48px;flex-shrink:0;">${BRAND_SHIELD_SVG}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:19px;font-weight:800;letter-spacing:-.3px;color:#fff;line-height:1.1;">Scouting Platform</div>
+            <div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:3px;letter-spacing:1px;text-transform:uppercase;">Scoutingsrapport · Marcel Steeman</div>
           </div>
-          <div style="text-align:right;font-size:11px;color:#6b7280;">
+          <div style="text-align:right;font-size:9px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:1.2px;">
             <div>Rapportdatum</div>
-            <div style="font-weight:700;color:#111827;font-size:13px;">${formatDate(reportDate)}</div>
+            <div style="font-weight:800;color:#f5c518;font-size:13px;margin-top:3px;letter-spacing:.3px;text-transform:none;">${formatDate(reportDate)}</div>
           </div>
         </div>
+        <div style="height:3px;background:linear-gradient(90deg,#e30613 0%,#ff2a3a 45%,#f5c518 100%);margin:14px -28px -16px -28px;"></div>
+      </div>
 
-        <div style="margin-bottom:16px;">
-          <div style="font-size:24px;font-weight:800;color:#111827;letter-spacing:-.3px;">${escapeHtml(p.naam)}</div>
-          <div style="font-size:12px;color:#4b5563;margin-top:4px;">
-            ${escapeHtml(positionLabel(p.positie))}${p.club?(' · '+escapeHtml(p.club)):''}${p.rugnummer?(' · #'+escapeHtml(p.rugnummer)):''}
-            ${p.been?(' · '+escapeHtml(p.been)):''}
-            ${p.geboorte?(' · geb. '+formatDate(p.geboorte)):''}
+      <div style="position:relative;padding:22px 28px 24px 28px;">
+
+        <div style="position:absolute;inset:0;background-image:${watermarkBg};background-repeat:repeat;background-size:180px 180px;opacity:0.05;pointer-events:none;z-index:0;"></div>
+
+        <div style="position:relative;z-index:1;">
+
+          <div style="margin-bottom:14px;">
+            <div style="font-size:26px;font-weight:800;color:#0d1320;letter-spacing:-.5px;line-height:1.1;">${escapeHtml(p.naam)}</div>
+            <div style="font-size:12px;color:#4b5563;margin-top:5px;">
+              ${escapeHtml(positionLabel(p.positie))}${p.club?(' · <strong style="color:#0d1320;">'+escapeHtml(p.club)+'</strong>'):''}${p.rugnummer?(' · #'+escapeHtml(p.rugnummer)):''}
+              ${p.been?(' · '+escapeHtml(p.been)):''}
+              ${p.geboorte?(' · geb. '+formatDate(p.geboorte)):''}
+            </div>
+            ${p.tweebenig ? `<div style="font-size:11px;color:#6b7280;margin-top:3px;font-style:italic;">${escapeHtml(p.tweebenig)}</div>` : ''}
           </div>
-          ${p.tweebenig ? `<div style="font-size:11px;color:#6b7280;margin-top:3px;font-style:italic;">${escapeHtml(p.tweebenig)}</div>` : ''}
-        </div>
 
-        <div style="display:flex;gap:18px;background:#f7f8fa;border:1px solid #e3e6ec;border-radius:8px;padding:12px 16px;margin-bottom:18px;">
-          <div><span style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;margin-right:6px;">Huidig</span>${pdfGradeChip(p.huidig_niveau)}</div>
-          <div><span style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;margin-right:6px;">Potentieel</span>${pdfGradeChip(p.potentieel_niveau, true)}</div>
-          <div><span style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;margin-right:6px;">Advies</span><span style="font-size:12px;font-weight:700;color:#111827;">${escapeHtml(adviesLabel(p.advies)||'—')}</span></div>
-        </div>
-
-        <div style="margin-bottom:16px;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-bottom:8px;font-weight:700;">Beoordeling per categorie</div>
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
-            ${pdfCriteriaCard('Functionele techniek / Spelvaardigheden', b.techniek_huidig)}
-            ${pdfCriteriaCard('Spelintelligentie / Tactisch', b.inzicht_huidig)}
-            ${pdfCriteriaCard('GRIT / Passie &amp; Attitude', gritVal)}
-            <div style="background:#f7f8fa;border:1px solid #e3e6ec;border-radius:6px;padding:10px 12px;">
-              <div style="font-size:11px;color:#6b7280;margin-bottom:6px;">Atletisch vermogen</div>
-              ${atletischDetail || '<div style="font-size:11px;color:#9ca3af;">Geen subscores ingevuld</div>'}
+          <div style="background:linear-gradient(135deg,#0d1320 0%,#1a2332 100%);border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;color:#fff;">
+            <div style="flex:1;padding-right:14px;">
+              <div style="font-size:9px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-weight:600;">Huidig niveau</div>
+              ${pdfGradeChipLg(p.huidig_niveau)}
+            </div>
+            <div style="flex:1;padding:0 14px;border-left:1px solid rgba(255,255,255,.1);">
+              <div style="font-size:9px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-weight:600;">Potentieel</div>
+              ${pdfGradeChipLg(p.potentieel_niveau, true)}
+            </div>
+            <div style="flex:1.4;padding-left:14px;border-left:1px solid rgba(255,255,255,.1);">
+              <div style="font-size:9px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-weight:600;">Advies</div>
+              <div style="font-size:16px;font-weight:800;color:#f5c518;line-height:1.2;">${escapeHtml(adviesLabel(p.advies)||'—')}</div>
             </div>
           </div>
-        </div>
 
-        ${toelichtingen.length ? `
-        <div style="margin-bottom:16px;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-bottom:8px;font-weight:700;">Toelichtingen per categorie</div>
-          ${toelichtingen.map(([n,t]) => `
-            <div style="margin-bottom:8px;">
-              <div style="font-size:10px;color:#6b7280;text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px;font-weight:600;">${n}</div>
-              <div style="background:#f7f8fa;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;font-size:12px;line-height:1.5;color:#1f2937;white-space:pre-wrap;">${escapeHtml(t)}</div>
-            </div>`).join('')}
-        </div>` : ''}
+          <div style="margin-bottom:18px;">
+            ${sectionLabel('Beoordeling per categorie')}
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              ${pdfCriteriaCard('Functionele techniek / Spelvaardigheden', b.techniek_huidig)}
+              ${pdfCriteriaCard('Spelintelligentie / Tactisch', b.inzicht_huidig)}
+              ${pdfCriteriaCard('GRIT / Passie &amp; Attitude', gritVal)}
+              <div style="background:#fafbfc;border:1px solid #e3e6ec;border-left:3px solid #0d1320;border-radius:6px;padding:10px 12px;">
+                <div style="font-size:11px;color:#374151;margin-bottom:4px;font-weight:600;">Atletisch vermogen</div>
+                ${atletischDetail || '<div style="font-size:11px;color:#9ca3af;">Geen subscores ingevuld</div>'}
+              </div>
+            </div>
+          </div>
 
-        ${wedstrijdInfo.length || w.context ? `
-        <div style="margin-bottom:16px;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-bottom:8px;font-weight:700;">Wedstrijd</div>
-          ${wedstrijdInfo.length ? `
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
-            ${wedstrijdInfo.map(([n,v]) => `
-              <div style="background:#f7f8fa;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
-                <div style="font-size:10px;color:#6b7280;margin-bottom:2px;">${n}</div>
-                <div style="font-size:12px;color:#1f2937;">${escapeHtml(v)}</div>
+          ${toelichtingen.length ? `
+          <div style="margin-bottom:18px;">
+            ${sectionLabel('Toelichtingen per categorie')}
+            ${toelichtingen.map(([n,t]) => `
+              <div style="margin-bottom:8px;">
+                <div style="font-size:10px;color:#0d1320;text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px;font-weight:700;">${n}</div>
+                <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;font-size:12px;line-height:1.5;color:#1f2937;white-space:pre-wrap;">${escapeHtml(t)}</div>
               </div>`).join('')}
           </div>` : ''}
-          ${w.context ? `<div style="background:#f7f8fa;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;font-size:12px;line-height:1.5;color:#1f2937;white-space:pre-wrap;">${escapeHtml(w.context)}</div>` : ''}
-        </div>` : ''}
 
-        ${fysiekInfo.length ? `
-        <div style="margin-bottom:16px;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-bottom:8px;font-weight:700;">Lichaamsbouw &amp; motoriek</div>
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
-            ${fysiekInfo.map(([n,v]) => `
-              <div style="background:#f7f8fa;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
-                <div style="font-size:10px;color:#6b7280;margin-bottom:2px;">${n}</div>
-                <div style="font-size:12px;color:#1f2937;">${escapeHtml(v)}</div>
-              </div>`).join('')}
+          ${wedstrijdInfo.length || w.context ? `
+          <div style="margin-bottom:18px;">
+            ${sectionLabel('Wedstrijd')}
+            ${wedstrijdInfo.length ? `
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
+              ${wedstrijdInfo.map(([n,v]) => `
+                <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
+                  <div style="font-size:10px;color:#6b7280;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">${n}</div>
+                  <div style="font-size:12px;color:#0d1320;font-weight:600;">${escapeHtml(v)}</div>
+                </div>`).join('')}
+            </div>` : ''}
+            ${w.context ? `<div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;font-size:12px;line-height:1.5;color:#1f2937;white-space:pre-wrap;">${escapeHtml(w.context)}</div>` : ''}
+          </div>` : ''}
+
+          ${fysiekInfo.length ? `
+          <div style="margin-bottom:18px;">
+            ${sectionLabel('Lichaamsbouw & motoriek')}
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+              ${fysiekInfo.map(([n,v]) => `
+                <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
+                  <div style="font-size:10px;color:#6b7280;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">${n}</div>
+                  <div style="font-size:12px;color:#0d1320;font-weight:600;">${escapeHtml(v)}</div>
+                </div>`).join('')}
+            </div>
+          </div>` : ''}
+
+          ${p.wapen ? `
+          <div style="margin-bottom:18px;">
+            ${sectionLabel('Persoonlijk wapen')}
+            <div style="background:linear-gradient(135deg,#fffbea 0%,#fff5d6 100%);border-left:4px solid #f5c518;border-radius:6px;padding:12px 14px;font-size:12px;line-height:1.5;color:#1f2937;font-weight:500;">${escapeHtml(p.wapen)}</div>
+          </div>` : ''}
+
+          ${p.notities ? `
+          <div style="margin-bottom:18px;">
+            ${sectionLabel('Notities')}
+            <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:10px 12px;font-size:12px;line-height:1.6;color:#1f2937;white-space:pre-wrap;">${escapeHtml(p.notities)}</div>
+          </div>` : ''}
+
+          <div style="margin-bottom:8px;">
+            ${sectionLabel('Context')}
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
+              <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
+                <div style="font-size:10px;color:#6b7280;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">Beoogde positie</div>
+                <div style="font-size:12px;color:#0d1320;font-weight:600;">${escapeHtml(positionLabel(p.beoogd)||'—')}</div>
+              </div>
+              <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
+                <div style="font-size:10px;color:#6b7280;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">Leeftijdsgroep</div>
+                <div style="font-size:12px;color:#0d1320;font-weight:600;">${escapeHtml(p.leeftijd||'—')}</div>
+              </div>
+              <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
+                <div style="font-size:10px;color:#6b7280;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">Scoutingmethode</div>
+                <div style="font-size:12px;color:#0d1320;font-weight:600;">${escapeHtml(p.methode||'—')}</div>
+              </div>
+              <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
+                <div style="font-size:10px;color:#6b7280;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">Rapportdatum</div>
+                <div style="font-size:12px;color:#0d1320;font-weight:600;">${formatDate(p.datum)}</div>
+              </div>
+            </div>
           </div>
-        </div>` : ''}
 
-        ${p.wapen ? `
-        <div style="margin-bottom:16px;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-bottom:8px;font-weight:700;">Persoonlijk wapen</div>
-          <div style="background:#fffbea;border-left:3px solid #f5c518;border-radius:6px;padding:10px 12px;font-size:12px;line-height:1.5;color:#1f2937;">${escapeHtml(p.wapen)}</div>
-        </div>` : ''}
-
-        ${p.notities ? `
-        <div style="margin-bottom:16px;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-bottom:8px;font-weight:700;">Notities</div>
-          <div style="background:#f7f8fa;border:1px solid #e3e6ec;border-radius:6px;padding:10px 12px;font-size:12px;line-height:1.6;color:#1f2937;white-space:pre-wrap;">${escapeHtml(p.notities)}</div>
-        </div>` : ''}
-
-        <div style="margin-bottom:8px;">
-          <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:#6b7280;margin-bottom:8px;font-weight:700;">Context</div>
-          <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
-            <div style="background:#f7f8fa;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
-              <div style="font-size:10px;color:#6b7280;margin-bottom:2px;">Beoogde positie</div>
-              <div style="font-size:12px;color:#1f2937;">${escapeHtml(positionLabel(p.beoogd)||'—')}</div>
-            </div>
-            <div style="background:#f7f8fa;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
-              <div style="font-size:10px;color:#6b7280;margin-bottom:2px;">Leeftijdsgroep</div>
-              <div style="font-size:12px;color:#1f2937;">${escapeHtml(p.leeftijd||'—')}</div>
-            </div>
-            <div style="background:#f7f8fa;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
-              <div style="font-size:10px;color:#6b7280;margin-bottom:2px;">Scoutingmethode</div>
-              <div style="font-size:12px;color:#1f2937;">${escapeHtml(p.methode||'—')}</div>
-            </div>
-            <div style="background:#f7f8fa;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
-              <div style="font-size:10px;color:#6b7280;margin-bottom:2px;">Rapportdatum</div>
-              <div style="font-size:12px;color:#1f2937;">${formatDate(p.datum)}</div>
-            </div>
-          </div>
         </div>
+      </div>
 
-        <div style="margin-top:22px;padding-top:10px;border-top:1px solid #e3e6ec;display:flex;justify-content:space-between;align-items:center;font-size:10px;color:#9ca3af;">
-          <div>Marcel Steeman · Scouting Platform</div>
-          <div>Gegenereerd op ${formatDate(todayISO())}</div>
+      <div style="background:#0d1320;color:rgba(255,255,255,.55);padding:10px 28px;display:flex;justify-content:space-between;align-items:center;font-size:10px;letter-spacing:.5px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:18px;height:18px;">${BRAND_SHIELD_SVG}</div>
+          <span style="color:rgba(255,255,255,.75);font-weight:600;">Marcel Steeman · Scouting Platform</span>
         </div>
-
+        <div>Gegenereerd op ${formatDate(todayISO())}</div>
       </div>
     </div>
   `;
@@ -4690,7 +4764,7 @@ function initApp(){
     go('dashboard');
   });
 
-  ['filter-search','filter-position','filter-current','filter-potential'].forEach(id=>{
+  ['filter-search','filter-position','filter-current','filter-potential','filter-advies','filter-period'].forEach(id=>{
     $('#'+id).addEventListener('input', applyFilters);
     $('#'+id).addEventListener('change', applyFilters);
   });

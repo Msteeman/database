@@ -898,23 +898,111 @@ tbody tr:last-child td { border-bottom: none; }
               </div>
             </div>
 
-            <!-- Fysiek / Atletisch -->
+            <!-- Atletisch — sub-categorieën -->
+            <div class="form-section-title" style="font-size:11px; color:var(--text-2); margin-top:14px;">Atletisch vermogen</div>
+
+            <!-- Lichaamsbouw / Lengte / Motoriek / Rijping (tekst) -->
             <div class="criteria-block">
-              <div class="criteria-block-title">Atletisch vermogen / Fysiek</div>
-              <div class="criteria-block-help">Explosiviteit, sprintvermogen, duelkracht, wendbaarheid — gecombineerd in één oordeel.</div>
+              <div class="criteria-block-title">Fysieke kenmerken (beschrijvend)</div>
+              <div class="field-row">
+                <div class="field">
+                  <label>Lichaamsbouw</label>
+                  <input id="f-lichaamsbouw" type="text" placeholder="bijv. atletisch gebouwd, fit" />
+                </div>
+                <div class="field">
+                  <label>Lengte</label>
+                  <input id="f-lengte" type="text" placeholder="bijv. gemiddeld t.o.v. leeftijdsgenoten" />
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field">
+                  <label>Motoriek</label>
+                  <input id="f-motoriek" type="text" placeholder="bijv. soepel, lichtvoetig, snel voetenwerk" />
+                </div>
+                <div class="field">
+                  <label>Rijping</label>
+                  <input id="f-rijping" type="text" placeholder="bijv. geen bijzonderheden, pre/post-PHV" />
+                </div>
+              </div>
+            </div>
+
+            <!-- Explosiviteit -->
+            <div class="criteria-block">
+              <div class="criteria-block-title">Explosiviteit</div>
+              <div class="criteria-block-help">Snel op de eerste meters, acceleratie 0-10m, wegkomen van directe tegenstander.</div>
               <div class="dual-grade">
                 <div class="field">
                   <label><span class="dual-label-pill pill-current">Huidig</span></label>
-                  <div class="grade-picker" data-key="fysiek_huidig"></div>
+                  <div class="grade-picker" data-key="explosiviteit_huidig"></div>
                 </div>
                 <div class="field">
                   <label><span class="dual-label-pill pill-potential">Potentieel</span></label>
-                  <div class="grade-picker pot" data-key="fysiek_potentieel"></div>
+                  <div class="grade-picker pot" data-key="explosiviteit_potentieel"></div>
                 </div>
               </div>
               <div class="field" style="margin-top:10px;">
                 <label>Opmerking / onderbouwing</label>
-                <textarea id="f-fysiek-opmerking" placeholder="Concrete observatie ter ondersteuning van de beoordeling..."></textarea>
+                <textarea id="f-explosiviteit-opmerking" placeholder="Concrete observatie ter ondersteuning van de beoordeling..."></textarea>
+              </div>
+            </div>
+
+            <!-- Sprinten -->
+            <div class="criteria-block">
+              <div class="criteria-block-title">Sprinten</div>
+              <div class="criteria-block-help">Snelheid over langere afstand, topsnelheid, doorlopen langs tegenstander.</div>
+              <div class="dual-grade">
+                <div class="field">
+                  <label><span class="dual-label-pill pill-current">Huidig</span></label>
+                  <div class="grade-picker" data-key="sprinten_huidig"></div>
+                </div>
+                <div class="field">
+                  <label><span class="dual-label-pill pill-potential">Potentieel</span></label>
+                  <div class="grade-picker pot" data-key="sprinten_potentieel"></div>
+                </div>
+              </div>
+              <div class="field" style="margin-top:10px;">
+                <label>Opmerking / onderbouwing</label>
+                <textarea id="f-sprinten-opmerking" placeholder="Concrete observatie ter ondersteuning van de beoordeling..."></textarea>
+              </div>
+            </div>
+
+            <!-- Duelleren -->
+            <div class="criteria-block">
+              <div class="criteria-block-title">Duelleren</div>
+              <div class="criteria-block-help">Duelkracht, lichaamsgebruik, fel staan, lucht- en grondduels.</div>
+              <div class="dual-grade">
+                <div class="field">
+                  <label><span class="dual-label-pill pill-current">Huidig</span></label>
+                  <div class="grade-picker" data-key="duelleren_huidig"></div>
+                </div>
+                <div class="field">
+                  <label><span class="dual-label-pill pill-potential">Potentieel</span></label>
+                  <div class="grade-picker pot" data-key="duelleren_potentieel"></div>
+                </div>
+              </div>
+              <div class="field" style="margin-top:10px;">
+                <label>Opmerking / onderbouwing</label>
+                <textarea id="f-duelleren-opmerking" placeholder="Concrete observatie ter ondersteuning van de beoordeling..."></textarea>
+              </div>
+            </div>
+
+            <!-- Wendbaarheid -->
+            <div class="criteria-block">
+              <div class="criteria-block-title">Wendbaarheid</div>
+              <div class="criteria-block-help">Korte draaicirkel, change-of-direction, soepelheid onder druk.</div>
+              <div class="dual-grade">
+                <div class="field">
+                  <label><span class="dual-label-pill pill-current">Huidig</span></label>
+                  <div class="grade-picker" data-key="wendbaarheid_huidig"></div>
+                </div>
+                <div class="field">
+                  <label><span class="dual-label-pill pill-potential">Potentieel</span></label>
+                  <div class="grade-picker pot" data-key="wendbaarheid_potentieel"></div>
+                </div>
+              </div>
+              <div class="field" style="margin-top:10px;">
+                <label>Opmerking / onderbouwing</label>
+                <textarea id="f-wendbaarheid-opmerking" placeholder="Concrete observatie ter ondersteuning van de beoordeling..."></textarea>
               </div>
             </div>
           </div>
@@ -937,11 +1025,10 @@ tbody tr:last-child td { border-bottom: none; }
                 <label>Advies *</label>
                 <select id="f-advies" required>
                   <option value="">Kies...</option>
-                  <option value="1">1 — Direct contracteren / topkandidaat</option>
-                  <option value="2">2 — Sterke kandidaat, doorstromen</option>
-                  <option value="3">3 — Volgen, meerdere observaties</option>
-                  <option value="4">4 — Heroverwegen</option>
-                  <option value="5">5 — Niet selecteren</option>
+                  <option value="4">4 — Direct aannemen</option>
+                  <option value="3">3 — Uitnodigen voor stage</option>
+                  <option value="2">2 — Blijven volgen</option>
+                  <option value="1">1 — Niet selecteren</option>
                 </select>
               </div>
               <div class="field">
@@ -1519,9 +1606,23 @@ function openDetail(id){
         ${renderCriteriaCard('Spelvaardigheden / Techniek', b.techniek_huidig, b.techniek_potentieel, b.techniek_opmerking)}
         ${renderCriteriaCard('Functioneel tactisch / Inzicht', b.inzicht_huidig, b.inzicht_potentieel, b.inzicht_opmerking)}
         ${renderCriteriaCard('DRIT / Passie & Attitude', b.drit_huidig, b.drit_potentieel, b.drit_opmerking)}
-        ${renderCriteriaCard('Atletisch / Fysiek', b.fysiek_huidig, b.fysiek_potentieel, b.fysiek_opmerking)}
+        ${renderCriteriaCard('Explosiviteit', b.explosiviteit_huidig, b.explosiviteit_potentieel, b.explosiviteit_opmerking)}
+        ${renderCriteriaCard('Sprinten', b.sprinten_huidig, b.sprinten_potentieel, b.sprinten_opmerking)}
+        ${renderCriteriaCard('Duelleren', b.duelleren_huidig, b.duelleren_potentieel, b.duelleren_opmerking)}
+        ${renderCriteriaCard('Wendbaarheid', b.wendbaarheid_huidig, b.wendbaarheid_potentieel, b.wendbaarheid_opmerking)}
       </div>
     </div>
+
+    ${(p.lichaamsbouw || p.lengte || p.motoriek || p.rijping) ? `
+    <div class="detail-section">
+      <h4>Fysieke kenmerken</h4>
+      <div class="detail-criteria-grid">
+        <div class="detail-criteria"><div class="detail-criteria-name">Lichaamsbouw</div><div>${escapeHtml(p.lichaamsbouw||'—')}</div></div>
+        <div class="detail-criteria"><div class="detail-criteria-name">Lengte</div><div>${escapeHtml(p.lengte||'—')}</div></div>
+        <div class="detail-criteria"><div class="detail-criteria-name">Motoriek</div><div>${escapeHtml(p.motoriek||'—')}</div></div>
+        <div class="detail-criteria"><div class="detail-criteria-name">Rijping</div><div>${escapeHtml(p.rijping||'—')}</div></div>
+      </div>
+    </div>` : ''}
 
     ${p.wapen ? `
     <div class="detail-section">
@@ -1579,7 +1680,7 @@ function renderCriteriaCard(name, cur, pot, opmerking){
 }
 function gradeForAdvies(a){
   const n = parseInt(a,10);
-  if(n===1) return 'A'; if(n===2) return 'B'; if(n===3) return 'C';
+  if(n===4) return 'A'; if(n===3) return 'B'; if(n===2) return 'C';
   return 'D';
 }
 function closeDetail(){ $('#modal-backdrop').classList.remove('open'); }
@@ -1652,6 +1753,11 @@ function loadIntoForm(p){
   $('#f-advies').value = p.advies || '';
   $('#f-wapen').value = p.wapen || '';
   $('#f-notities').value = p.notities || '';
+  // Fysieke kenmerken (tekst)
+  $('#f-lichaamsbouw').value = p.lichaamsbouw || '';
+  $('#f-lengte').value = p.lengte || '';
+  $('#f-motoriek').value = p.motoriek || '';
+  $('#f-rijping').value = p.rijping || '';
   const b = p.beoordelingen || {};
   // grade pickers (skip opmerking keys)
   Object.keys(b).forEach(k => {
@@ -1659,10 +1765,13 @@ function loadIntoForm(p){
     setPickerValue(k, b[k]);
   });
   // opmerking textareas
-  $('#f-techniek-opmerking').value = b.techniek_opmerking || '';
-  $('#f-inzicht-opmerking').value  = b.inzicht_opmerking  || '';
-  $('#f-drit-opmerking').value     = b.drit_opmerking     || '';
-  $('#f-fysiek-opmerking').value   = b.fysiek_opmerking   || '';
+  $('#f-techniek-opmerking').value      = b.techniek_opmerking      || '';
+  $('#f-inzicht-opmerking').value       = b.inzicht_opmerking       || '';
+  $('#f-drit-opmerking').value          = b.drit_opmerking          || '';
+  $('#f-explosiviteit-opmerking').value = b.explosiviteit_opmerking || '';
+  $('#f-sprinten-opmerking').value      = b.sprinten_opmerking      || '';
+  $('#f-duelleren-opmerking').value     = b.duelleren_opmerking     || '';
+  $('#f-wendbaarheid-opmerking').value  = b.wendbaarheid_opmerking  || '';
   setPickerValue('huidig_niveau', p.huidig_niveau);
   setPickerValue('potentieel_niveau', p.potentieel_niveau);
 }
@@ -1692,6 +1801,10 @@ function submitReport(e){
     advies: $('#f-advies').value,
     wapen: $('#f-wapen').value.trim(),
     notities: $('#f-notities').value.trim(),
+    lichaamsbouw: $('#f-lichaamsbouw').value.trim(),
+    lengte: $('#f-lengte').value.trim(),
+    motoriek: $('#f-motoriek').value.trim(),
+    rijping: $('#f-rijping').value.trim(),
     beoordelingen: {
       techniek_huidig: getPickerValue('techniek_huidig'),
       techniek_potentieel: getPickerValue('techniek_potentieel'),
@@ -1702,9 +1815,18 @@ function submitReport(e){
       drit_huidig: getPickerValue('drit_huidig'),
       drit_potentieel: getPickerValue('drit_potentieel'),
       drit_opmerking: $('#f-drit-opmerking').value.trim(),
-      fysiek_huidig: getPickerValue('fysiek_huidig'),
-      fysiek_potentieel: getPickerValue('fysiek_potentieel'),
-      fysiek_opmerking: $('#f-fysiek-opmerking').value.trim()
+      explosiviteit_huidig: getPickerValue('explosiviteit_huidig'),
+      explosiviteit_potentieel: getPickerValue('explosiviteit_potentieel'),
+      explosiviteit_opmerking: $('#f-explosiviteit-opmerking').value.trim(),
+      sprinten_huidig: getPickerValue('sprinten_huidig'),
+      sprinten_potentieel: getPickerValue('sprinten_potentieel'),
+      sprinten_opmerking: $('#f-sprinten-opmerking').value.trim(),
+      duelleren_huidig: getPickerValue('duelleren_huidig'),
+      duelleren_potentieel: getPickerValue('duelleren_potentieel'),
+      duelleren_opmerking: $('#f-duelleren-opmerking').value.trim(),
+      wendbaarheid_huidig: getPickerValue('wendbaarheid_huidig'),
+      wendbaarheid_potentieel: getPickerValue('wendbaarheid_potentieel'),
+      wendbaarheid_opmerking: $('#f-wendbaarheid-opmerking').value.trim()
     },
     huidig_niveau: huidig,
     potentieel_niveau: pot,

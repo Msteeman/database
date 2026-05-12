@@ -48,6 +48,38 @@ html, body {
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
 }
+body {
+  background-image:
+    radial-gradient(1200px 800px at 85% 15%, rgba(227,6,19,.05), transparent 60%),
+    radial-gradient(900px 700px at 10% 90%, rgba(245,197,24,.025), transparent 60%);
+  background-attachment: fixed;
+}
+#app {
+  position: relative;
+}
+#app::before {
+  content: '';
+  position: fixed;
+  right: -60px; bottom: -60px;
+  width: 420px; height: 420px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='ag' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23ff2a3a'/><stop offset='100%25' stop-color='%238a0410'/></linearGradient></defs><path d='M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z' fill='url(%23ag)' stroke='rgba(255,255,255,0.9)' stroke-width='1.5'/><text x='40' y='51' text-anchor='middle' font-family='Arial,sans-serif' font-size='26' font-weight='900' fill='white' letter-spacing='-1.5'>SP</text><circle cx='40' cy='13' r='2.8' fill='%23f5c518'/></svg>");
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: .04;
+  pointer-events: none;
+  z-index: 0;
+}
+#app::after {
+  content: '';
+  position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.012) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.012) 1px, transparent 1px);
+  background-size: 56px 56px;
+  pointer-events: none;
+  z-index: 0;
+}
+.app-grid { position: relative; z-index: 1; }
 button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: var(--accent); text-decoration: none; }
@@ -56,8 +88,9 @@ a { color: var(--accent); text-decoration: none; }
 #login-overlay {
   position: fixed; inset: 0;
   background:
-    radial-gradient(900px 500px at 50% -10%, rgba(227,6,19,.10), transparent 60%),
-    radial-gradient(700px 400px at 50% 110%, rgba(245,197,24,.04), transparent 60%),
+    radial-gradient(800px 600px at 50% 50%, rgba(227,6,19,.14), transparent 65%),
+    radial-gradient(900px 500px at 50% -10%, rgba(227,6,19,.12), transparent 60%),
+    radial-gradient(700px 400px at 50% 110%, rgba(245,197,24,.06), transparent 60%),
     linear-gradient(180deg, #0d1320 0%, #060911 100%);
   display: flex; align-items: center; justify-content: center;
   z-index: 1000;
@@ -69,8 +102,9 @@ a { color: var(--accent); text-decoration: none; }
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23ff2a3a'/><stop offset='100%25' stop-color='%238a0410'/></linearGradient></defs><path d='M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z' fill='url(%23g)' stroke='rgba(255,255,255,0.9)' stroke-width='1.5'/><text x='40' y='51' text-anchor='middle' font-family='Arial,sans-serif' font-size='26' font-weight='900' fill='white' letter-spacing='-1.5'>SP</text><circle cx='40' cy='13' r='2.8' fill='%23f5c518'/></svg>");
   background-repeat: no-repeat;
   background-position: 50% 50%;
-  background-size: 560px 560px;
-  opacity: .035;
+  background-size: 720px 720px;
+  opacity: .085;
+  filter: drop-shadow(0 0 60px rgba(227,6,19,.35));
   pointer-events: none;
 }
 #login-overlay::after {
@@ -694,7 +728,7 @@ tbody tr:last-child td { border-bottom: none; }
   padding: 4px 9px; border-radius: 5px; font-size: 11px; font-weight: 700;
 }
 
-/* ---------- ANALYSES (Witte vlekken) ---------- */
+/* ---------- ANALYSES (Elftal analyse) ---------- */
 .analyses-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
@@ -942,6 +976,106 @@ tbody tr:last-child td { border-bottom: none; }
   .field-row, .field-row.three, .dual-grade, .detail-criteria-grid { grid-template-columns: 1fr; }
 }
 
+/* ---------- GEO MAP WIDGET ---------- */
+.geo-panel-wrap {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr;
+  gap: 16px;
+}
+.geo-breadcrumb {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  margin-bottom: 12px; font-size: 12px;
+}
+.geo-crumb {
+  background: var(--bg-3); border: 1px solid var(--border);
+  padding: 4px 10px; border-radius: 999px;
+  color: var(--text-2); cursor: pointer; transition: all .15s;
+}
+.geo-crumb:hover { border-color: var(--primary); color: var(--text); }
+.geo-crumb.current { background: var(--primary); border-color: var(--primary); color: white; cursor: default; }
+.geo-crumb-sep { color: var(--text-3); font-size: 10px; }
+
+.geo-map-wrap {
+  position: relative;
+  background:
+    radial-gradient(800px 400px at 50% 30%, rgba(78,161,255,.04), transparent 60%),
+    var(--bg-3);
+  border: 1px solid var(--border); border-radius: 10px;
+  padding: 12px;
+  aspect-ratio: 4 / 5;
+  min-height: 320px;
+}
+.geo-map-svg { width: 100%; height: 100%; display: block; }
+.geo-map-svg path.nl-outline {
+  fill: rgba(78,161,255,.08);
+  stroke: rgba(78,161,255,.45);
+  stroke-width: .6;
+  stroke-linejoin: round;
+}
+.geo-pin {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  display: flex; flex-direction: column; align-items: center;
+  pointer-events: auto;
+  transition: transform .15s;
+}
+.geo-pin:hover { transform: translate(-50%, -50%) scale(1.08); }
+.geo-pin-dot {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--primary);
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.5), 0 0 0 4px rgba(227,6,19,.18);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 800; color: white;
+}
+.geo-pin-dot.small { width: 14px; height: 14px; font-size: 0; }
+.geo-pin-label {
+  margin-top: 3px;
+  background: rgba(11,15,21,.85);
+  border: 1px solid var(--border-2);
+  padding: 2px 7px; border-radius: 4px;
+  font-size: 10px; font-weight: 600; color: var(--text);
+  white-space: nowrap;
+}
+
+.geo-list-panel {
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+  min-height: 320px;
+  display: flex; flex-direction: column;
+}
+.geo-list-title {
+  font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-3); font-weight: 700; margin-bottom: 12px;
+}
+.geo-list-items { display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; max-height: 480px; }
+.geo-list-item {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 7px; padding: 9px 12px;
+  cursor: pointer; transition: all .15s;
+}
+.geo-list-item:hover { border-color: var(--primary); transform: translateX(2px); }
+.geo-list-item-icon {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), #8a0410);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 11px; color: white; flex-shrink: 0;
+}
+.geo-list-item-info { flex: 1; min-width: 0; }
+.geo-list-item-name { font-weight: 600; font-size: 13px; }
+.geo-list-item-meta { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.geo-list-item-count {
+  background: var(--bg-3); border: 1px solid var(--border-2);
+  padding: 3px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 700; color: var(--text-2);
+}
+.geo-list-item-grades { display: flex; gap: 4px; }
+.geo-empty-text {
+  text-align: center; padding: 30px 12px; color: var(--text-3); font-size: 12px;
+}
+
 /* Print */
 @media print {
   .sidebar, .topbar .btn, .modal-close { display: none !important; }
@@ -1044,7 +1178,7 @@ tbody tr:last-child td { border-bottom: none; }
         </button>
         <button class="nav-item" data-view="pitch">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/><line x1="12" y1="5" x2="12" y2="19"/><circle cx="12" cy="12" r="2"/></svg>
-          Witte vlekken
+          Elftal analyse
         </button>
       </nav>
 
@@ -1104,7 +1238,7 @@ tbody tr:last-child td { border-bottom: none; }
           <div class="row-grid" style="margin-top:16px;">
             <div class="panel">
               <div class="panel-title">
-                Witte vlekken analyse
+                Elftal analyse
                 <span class="panel-title-icon">●</span>
               </div>
               <div id="dash-gaps"></div>
@@ -1132,6 +1266,26 @@ tbody tr:last-child td { border-bottom: none; }
                 <span class="panel-title-icon">●</span>
               </div>
               <div id="dash-positions"></div>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:16px;">
+            <div class="panel-title">
+              Geografisch overzicht
+              <span class="panel-title-icon">●</span>
+            </div>
+            <div id="geo-breadcrumb" class="geo-breadcrumb"></div>
+            <div class="geo-panel-wrap">
+              <div class="geo-map-wrap" id="geo-map-wrap">
+                <svg class="geo-map-svg" viewBox="0 0 100 120" preserveAspectRatio="xMidYMid meet">
+                  <path class="nl-outline" d="M 38 6 L 44 6 L 50 8 L 55 10 L 60 12 L 65 14 L 70 18 L 72 22 L 74 28 L 76 34 L 78 40 L 80 46 L 82 52 L 80 58 L 78 64 L 76 68 L 72 72 L 68 76 L 64 82 L 62 88 L 64 94 L 68 100 L 72 108 L 70 114 L 66 116 L 60 114 L 55 110 L 50 106 L 46 100 L 42 94 L 40 88 L 38 82 L 34 78 L 30 76 L 26 72 L 24 66 L 22 60 L 20 54 L 22 48 L 24 42 L 26 36 L 28 30 L 30 24 L 32 18 L 34 12 Z" />
+                </svg>
+                <div id="geo-pins"></div>
+              </div>
+              <div class="geo-list-panel">
+                <div class="geo-list-title" id="geo-list-title">Steden</div>
+                <div class="geo-list-items" id="geo-list-items"></div>
+              </div>
             </div>
           </div>
 
@@ -1217,11 +1371,17 @@ tbody tr:last-child td { border-bottom: none; }
                 <input id="f-geboorte" type="date" />
               </div>
             </div>
-            <div class="field-row three">
+            <div class="field-row">
               <div class="field">
                 <label>Club</label>
                 <input id="f-club" type="text" />
               </div>
+              <div class="field">
+                <label>Plaats</label>
+                <input id="f-plaats" type="text" placeholder="Automatisch ingevuld vanuit club" />
+              </div>
+            </div>
+            <div class="field-row">
               <div class="field">
                 <label>Rugnummer</label>
                 <input id="f-rugnummer" type="text" />
@@ -1509,8 +1669,8 @@ tbody tr:last-child td { border-bottom: none; }
         <div id="analyses-list-view">
           <div class="topbar">
             <div>
-              <div class="page-title">Witte vlekken analyses</div>
-              <div class="page-sub" id="analyses-sub">Overzicht van alle analyses per elftal</div>
+              <div class="page-title">Elftal analyse</div>
+              <div class="page-sub" id="analyses-sub">Overzicht van alle elftal analyses</div>
             </div>
             <button class="btn btn-primary" id="new-analysis-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1582,7 +1742,7 @@ tbody tr:last-child td { border-bottom: none; }
               </div>
 
               <div class="pitch-summary">
-                <div class="pitch-summary-title">Witte vlekken</div>
+                <div class="pitch-summary-title">Open posities</div>
                 <div id="pitch-gap-list" class="pitch-gap-list"></div>
               </div>
             </div>
@@ -1616,7 +1776,7 @@ tbody tr:last-child td { border-bottom: none; }
 <div class="modal-backdrop" id="picker-backdrop">
   <div class="modal" id="picker-modal">
     <div class="modal-header">
-      <div class="modal-title">Speler koppelen aan witte vlek</div>
+      <div class="modal-title">Speler koppelen aan positie</div>
       <button class="modal-close" id="picker-close">×</button>
     </div>
     <div class="modal-body">
@@ -1689,6 +1849,78 @@ const POSITIONS_BY_LINE = {
   ]
 };
 const ALL_POSITIONS = Object.values(POSITIONS_BY_LINE).flat();
+
+/* =============== GEO: CLUB → STAD MAPPING =============== */
+const CLUB_CITY = {
+  'fc twente': 'Enschede', 'twente': 'Enschede',
+  'heracles almelo': 'Almelo', 'heracles': 'Almelo',
+  'psv': 'Eindhoven', 'psv eindhoven': 'Eindhoven',
+  'ajax': 'Amsterdam', 'afc ajax': 'Amsterdam',
+  'feyenoord': 'Rotterdam', 'feyenoord rotterdam': 'Rotterdam',
+  'az': 'Alkmaar', 'az alkmaar': 'Alkmaar',
+  'vitesse': 'Arnhem',
+  'fc utrecht': 'Utrecht', 'utrecht': 'Utrecht',
+  'fc groningen': 'Groningen', 'groningen': 'Groningen',
+  'willem ii': 'Tilburg',
+  'nec': 'Nijmegen', 'nec nijmegen': 'Nijmegen',
+  'go ahead eagles': 'Deventer',
+  'pec zwolle': 'Zwolle',
+  'sc cambuur': 'Leeuwarden', 'cambuur': 'Leeuwarden',
+  'roda jc': 'Kerkrade', 'roda': 'Kerkrade',
+  'fc volendam': 'Volendam', 'volendam': 'Volendam',
+  'sparta rotterdam': 'Rotterdam', 'sparta': 'Rotterdam',
+  'nac breda': 'Breda', 'nac': 'Breda',
+  'mvv maastricht': 'Maastricht', 'mvv': 'Maastricht',
+  'fc den bosch': 'Den Bosch',
+  'fc eindhoven': 'Eindhoven',
+  'helmond sport': 'Helmond',
+  'almere city fc': 'Almere', 'almere city': 'Almere',
+  'fc dordrecht': 'Dordrecht',
+  'telstar': 'Velsen',
+  'excelsior': 'Rotterdam', 'excelsior rotterdam': 'Rotterdam',
+  'fc emmen': 'Emmen',
+  'rkc waalwijk': 'Waalwijk', 'rkc': 'Waalwijk',
+  'ado den haag': 'Den Haag', 'ado': 'Den Haag',
+  'de graafschap': 'Doetinchem',
+  'top oss': 'Oss',
+  'sc heerenveen': 'Heerenveen', 'heerenveen': 'Heerenveen',
+  'jong ajax': 'Amsterdam', 'jong psv': 'Eindhoven',
+  'jong az': 'Alkmaar', 'jong utrecht': 'Utrecht',
+  'jong fc utrecht': 'Utrecht'
+};
+const CITY_COORDS = {
+  'Amsterdam': {x:42, y:33}, 'Rotterdam': {x:35, y:50}, 'Den Haag': {x:28, y:43},
+  'Utrecht': {x:44, y:43}, 'Eindhoven': {x:52, y:68}, 'Groningen': {x:72, y:12},
+  'Maastricht': {x:70, y:94}, 'Enschede': {x:82, y:42}, 'Almelo': {x:76, y:36},
+  'Tilburg': {x:46, y:65}, 'Nijmegen': {x:62, y:55}, 'Arnhem': {x:62, y:47},
+  'Breda': {x:40, y:63}, 'Leeuwarden': {x:58, y:14}, 'Zwolle': {x:64, y:30},
+  'Deventer': {x:66, y:39}, 'Apeldoorn': {x:62, y:37}, 'Haarlem': {x:37, y:31},
+  'Alkmaar': {x:38, y:24}, 'Amersfoort': {x:50, y:37}, 'Hilversum': {x:46, y:36},
+  'Dordrecht': {x:38, y:53}, 'Den Bosch': {x:51, y:58}, 'Helmond': {x:56, y:68},
+  'Oss': {x:55, y:58}, 'Doetinchem': {x:70, y:50}, 'Waalwijk': {x:48, y:60},
+  'Almere': {x:49, y:33}, 'Volendam': {x:45, y:27}, 'Emmen': {x:78, y:22},
+  'Kerkrade': {x:72, y:92}, 'Velsen': {x:37, y:29}, 'Heerenveen': {x:62, y:20}
+};
+function cityForPlayer(p){
+  if(p.plaats && p.plaats.trim()) return p.plaats.trim();
+  const key = (p.club||'').trim().toLowerCase();
+  return CLUB_CITY[key] || '';
+}
+function teamForPlayer(p){
+  if(!p.club) return 'Onbekend';
+  const candidates = [p.wedstrijd?.thuis, p.wedstrijd?.uit].filter(Boolean);
+  for(const c of candidates){
+    const m = c.match(/O\d+(?:-\d+)?/i);
+    if(m && c.toLowerCase().includes(p.club.toLowerCase().split(' ')[0])){
+      return m[0].toUpperCase();
+    }
+  }
+  for(const c of candidates){
+    const m = c.match(/O\d+(?:-\d+)?/i);
+    if(m) return m[0].toUpperCase();
+  }
+  return 'Algemeen';
+}
 
 const LEEFTIJD_OPTIONS = (()=>{
   const out = [];
@@ -1815,6 +2047,7 @@ let selectedPitchPos = null;
 let sortKey = 'datum';
 let sortAsc = false;
 let appInitialized = false;
+let geoState = {level:'map', city:null, club:null, team:null};
 
 /* =============== UTILS =============== */
 function uid(){ return 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
@@ -2123,7 +2356,7 @@ function renderDashboard(){
       <div class="dash-empty-state">
         <div class="icon">○</div>
         <h3>Nog geen rapporten</h3>
-        <p>Zodra je rapporten invult verschijnen hier visualisaties: verdeling, witte vlekken, top talenten, advies-mix en positiedekking.</p>
+        <p>Zodra je rapporten invult verschijnen hier visualisaties: verdeling, open posities, top talenten, advies-mix en positiedekking.</p>
         <button class="btn btn-primary" data-go="report">+ Eerste rapport maken</button>
       </div>`;
     empty.querySelector('[data-go]').addEventListener('click', ()=> go('report'));
@@ -2160,6 +2393,7 @@ function renderDashboard(){
   renderDashAdvies(players);
   renderDashTop(players);
   renderDashPositions(players);
+  renderGeo();
   renderDashCategories(players);
 }
 
@@ -2187,7 +2421,7 @@ function renderDashGaps(){
     wrap.innerHTML = `
       <div class="gap-empty">
         <div class="icon">○</div>
-        <div>Nog geen witte vlekken analyses.</div>
+        <div>Nog geen elftal analyses.</div>
         <div style="margin-top:8px;"><button class="btn btn-sm" id="dash-gaps-open">Nieuwe analyse maken</button></div>
       </div>`;
     $('#dash-gaps-open').addEventListener('click', ()=> go('pitch'));
@@ -2196,7 +2430,7 @@ function renderDashGaps(){
   const top = analyses.slice(0, 6);
   const totalGaps = analyses.reduce((n,a)=> n + Object.values(a.slots||{}).filter(s => s && s.gap).length, 0);
   wrap.innerHTML = `
-    <div style="font-size:11px; color:var(--text-3); margin-bottom:10px;">${analyses.length} analyse${analyses.length===1?'':'s'} · ${totalGaps} witte vlek${totalGaps===1?'':'ken'} totaal</div>
+    <div style="font-size:11px; color:var(--text-3); margin-bottom:10px;">${analyses.length} analyse${analyses.length===1?'':'s'} · ${totalGaps} open positie${totalGaps===1?'':'s'} totaal</div>
     <div class="gap-grid">
       ${top.map(a=>{
         const slots = a.slots || {};
@@ -2346,6 +2580,209 @@ function renderDashCategories(players){
     </div>
   `;
 }
+/* ---- Geo widget (Netherlands drill-down) ---- */
+function renderGeo(){
+  renderGeoBreadcrumb();
+  const lvl = geoState.level;
+  if(lvl === 'team' && geoState.city && geoState.club && geoState.team) renderGeoTeam(geoState.city, geoState.club, geoState.team);
+  else if(lvl === 'club' && geoState.city && geoState.club) renderGeoClub(geoState.city, geoState.club);
+  else if(lvl === 'city' && geoState.city) renderGeoCity(geoState.city);
+  else { geoState = {level:'map', city:null, club:null, team:null}; renderGeoMap(); }
+}
+function renderGeoBreadcrumb(){
+  const bc = $('#geo-breadcrumb');
+  if(!bc) return;
+  const parts = [];
+  parts.push({label:'Nederland', level:'map'});
+  if(geoState.city) parts.push({label:geoState.city, level:'city'});
+  if(geoState.club) parts.push({label:geoState.club, level:'club'});
+  if(geoState.team) parts.push({label:geoState.team, level:'team'});
+  bc.innerHTML = parts.map((p, i)=>{
+    const isLast = i === parts.length - 1;
+    const sep = i > 0 ? '<span class="geo-crumb-sep">›</span>' : '';
+    return `${sep}<span class="geo-crumb ${isLast?'current':''}" data-level="${p.level}">${escapeHtml(p.label)}</span>`;
+  }).join('');
+  $$('.geo-crumb', bc).forEach(el=>{
+    if(el.classList.contains('current')) return;
+    el.addEventListener('click', ()=>{
+      const lvl = el.dataset.level;
+      if(lvl === 'map') geoState = {level:'map', city:null, club:null, team:null};
+      else if(lvl === 'city') geoState = {level:'city', city:geoState.city, club:null, team:null};
+      else if(lvl === 'club') geoState = {level:'club', city:geoState.city, club:geoState.club, team:null};
+      renderGeo();
+    });
+  });
+}
+function renderGeoMap(){
+  const players = loadPlayers();
+  const byCity = {};
+  players.forEach(p=>{
+    const c = cityForPlayer(p);
+    if(!c) return;
+    if(!byCity[c]) byCity[c] = [];
+    byCity[c].push(p);
+  });
+  const cities = Object.keys(byCity).sort((a,b)=> byCity[b].length - byCity[a].length);
+  const pins = $('#geo-pins');
+  if(!cities.length){
+    pins.innerHTML = '';
+    $('#geo-list-title').textContent = 'Steden';
+    $('#geo-list-items').innerHTML = '<div class="geo-empty-text">Nog geen rapporten met plaatsgegevens. Vul club of plaats in bij rapporten.</div>';
+    return;
+  }
+  pins.innerHTML = cities.map(city=>{
+    const coords = CITY_COORDS[city];
+    if(!coords) return '';
+    const n = byCity[city].length;
+    return `
+      <div class="geo-pin" data-city="${escapeHtml(city)}" style="left:${coords.x}%; top:${coords.y}%;">
+        <div class="geo-pin-dot">${n}</div>
+        <div class="geo-pin-label">${escapeHtml(city)}</div>
+      </div>`;
+  }).join('');
+  $$('.geo-pin', pins).forEach(el=>{
+    el.addEventListener('click', ()=>{
+      geoState = {level:'city', city:el.dataset.city, club:null, team:null};
+      renderGeo();
+    });
+  });
+  $('#geo-list-title').textContent = `Steden (${cities.length})`;
+  $('#geo-list-items').innerHTML = cities.map(city=>{
+    const n = byCity[city].length;
+    return `
+      <div class="geo-list-item" data-city="${escapeHtml(city)}">
+        <div class="geo-list-item-icon">${city[0]}</div>
+        <div class="geo-list-item-info">
+          <div class="geo-list-item-name">${escapeHtml(city)}</div>
+          <div class="geo-list-item-meta">${n} rapport${n===1?'':'en'}</div>
+        </div>
+        <div class="geo-list-item-count">${n}</div>
+      </div>`;
+  }).join('');
+  $$('.geo-list-item', $('#geo-list-items')).forEach(el=>{
+    el.addEventListener('click', ()=>{
+      geoState = {level:'city', city:el.dataset.city, club:null, team:null};
+      renderGeo();
+    });
+  });
+}
+function renderGeoCity(city){
+  const players = loadPlayers().filter(p => cityForPlayer(p) === city);
+  const byClub = {};
+  players.forEach(p=>{
+    const club = (p.club || 'Onbekend').trim() || 'Onbekend';
+    if(!byClub[club]) byClub[club] = [];
+    byClub[club].push(p);
+  });
+  const clubs = Object.keys(byClub).sort((a,b)=> byClub[b].length - byClub[a].length);
+  const pins = $('#geo-pins');
+  const coords = CITY_COORDS[city];
+  pins.innerHTML = coords
+    ? `<div class="geo-pin" style="left:${coords.x}%; top:${coords.y}%;">
+         <div class="geo-pin-dot">${players.length}</div>
+         <div class="geo-pin-label">${escapeHtml(city)}</div>
+       </div>`
+    : '';
+  $('#geo-list-title').textContent = `Clubs in ${city} (${clubs.length})`;
+  if(!clubs.length){
+    $('#geo-list-items').innerHTML = '<div class="geo-empty-text">Geen clubs gevonden.</div>';
+    return;
+  }
+  $('#geo-list-items').innerHTML = clubs.map(club=>{
+    const n = byClub[club].length;
+    return `
+      <div class="geo-list-item" data-club="${escapeHtml(club)}">
+        <div class="geo-list-item-icon">${initials(club)}</div>
+        <div class="geo-list-item-info">
+          <div class="geo-list-item-name">${escapeHtml(club)}</div>
+          <div class="geo-list-item-meta">${n} rapport${n===1?'':'en'}</div>
+        </div>
+        <div class="geo-list-item-count">${n}</div>
+      </div>`;
+  }).join('');
+  $$('.geo-list-item', $('#geo-list-items')).forEach(el=>{
+    el.addEventListener('click', ()=>{
+      geoState = {level:'club', city:city, club:el.dataset.club, team:null};
+      renderGeo();
+    });
+  });
+}
+function renderGeoClub(city, club){
+  const players = loadPlayers().filter(p => cityForPlayer(p) === city && (p.club || 'Onbekend').trim() === club);
+  const byTeam = {};
+  players.forEach(p=>{
+    const team = teamForPlayer(p);
+    if(!byTeam[team]) byTeam[team] = [];
+    byTeam[team].push(p);
+  });
+  const teams = Object.keys(byTeam).sort();
+  const pins = $('#geo-pins');
+  const coords = CITY_COORDS[city];
+  pins.innerHTML = coords
+    ? `<div class="geo-pin" style="left:${coords.x}%; top:${coords.y}%;">
+         <div class="geo-pin-dot">${players.length}</div>
+         <div class="geo-pin-label">${escapeHtml(club)}</div>
+       </div>`
+    : '';
+  $('#geo-list-title').textContent = `Elftallen ${club} (${teams.length})`;
+  if(!teams.length){
+    $('#geo-list-items').innerHTML = '<div class="geo-empty-text">Geen elftallen gevonden.</div>';
+    return;
+  }
+  $('#geo-list-items').innerHTML = teams.map(team=>{
+    const n = byTeam[team].length;
+    return `
+      <div class="geo-list-item" data-team="${escapeHtml(team)}">
+        <div class="geo-list-item-icon">${escapeHtml(team.slice(0,3))}</div>
+        <div class="geo-list-item-info">
+          <div class="geo-list-item-name">${escapeHtml(team)}</div>
+          <div class="geo-list-item-meta">${n} rapport${n===1?'':'en'}</div>
+        </div>
+        <div class="geo-list-item-count">${n}</div>
+      </div>`;
+  }).join('');
+  $$('.geo-list-item', $('#geo-list-items')).forEach(el=>{
+    el.addEventListener('click', ()=>{
+      geoState = {level:'team', city:city, club:club, team:el.dataset.team};
+      renderGeo();
+    });
+  });
+}
+function renderGeoTeam(city, club, team){
+  const players = loadPlayers()
+    .filter(p => cityForPlayer(p) === city && (p.club || 'Onbekend').trim() === club && teamForPlayer(p) === team)
+    .sort((a,b)=> new Date(b.datum||0) - new Date(a.datum||0));
+  const pins = $('#geo-pins');
+  const coords = CITY_COORDS[city];
+  pins.innerHTML = coords
+    ? `<div class="geo-pin" style="left:${coords.x}%; top:${coords.y}%;">
+         <div class="geo-pin-dot">${players.length}</div>
+         <div class="geo-pin-label">${escapeHtml(team)}</div>
+       </div>`
+    : '';
+  $('#geo-list-title').textContent = `Rapporten ${team} (${players.length})`;
+  if(!players.length){
+    $('#geo-list-items').innerHTML = '<div class="geo-empty-text">Geen rapporten gevonden.</div>';
+    return;
+  }
+  $('#geo-list-items').innerHTML = players.map(p=>`
+    <div class="geo-list-item" data-id="${p.id}">
+      <div class="geo-list-item-icon">${initials(p.naam)}</div>
+      <div class="geo-list-item-info">
+        <div class="geo-list-item-name">${escapeHtml(p.naam)}</div>
+        <div class="geo-list-item-meta">${escapeHtml(positionLabel(p.positie))} · ${formatDate(p.datum)}</div>
+      </div>
+      <div class="geo-list-item-grades">
+        <span class="grade ${p.huidig_niveau||'D'}" style="padding:0 6px;height:18px;font-size:10px;">${p.huidig_niveau||'-'}</span>
+        <span class="grade outline ${p.potentieel_niveau||'D'}" style="padding:0 6px;height:18px;font-size:10px;">${p.potentieel_niveau||'-'}</span>
+      </div>
+    </div>
+  `).join('');
+  $$('.geo-list-item', $('#geo-list-items')).forEach(el=>{
+    el.addEventListener('click', ()=> openDetail(el.dataset.id));
+  });
+}
+
 function countByGrade(arr, key){
   const out = {A:0,B:0,C:0,D:0};
   arr.forEach(p=>{ if(out[p[key]] !== undefined) out[p[key]]++; });
@@ -2682,6 +3119,7 @@ function loadIntoForm(p){
   $('#f-naam').value = p.naam || '';
   $('#f-geboorte').value = p.geboorte || '';
   $('#f-club').value = p.club || '';
+  $('#f-plaats').value = p.plaats || '';
   $('#f-rugnummer').value = p.rugnummer || '';
   $('#f-been').value = p.been || '';
   $('#f-tweebenig').value = p.tweebenig || '';
@@ -2756,6 +3194,7 @@ async function submitReport(e){
     naam,
     geboorte: $('#f-geboorte').value,
     club: $('#f-club').value.trim(),
+    plaats: $('#f-plaats').value.trim(),
     rugnummer: $('#f-rugnummer').value.trim(),
     been: $('#f-been').value,
     tweebenig: $('#f-tweebenig').value.trim(),
@@ -2841,7 +3280,7 @@ function renderAnalysesList(){
       <div class="analysis-empty">
         <div class="icon">○</div>
         <h3>Nog geen analyses</h3>
-        <p>Maak een witte vlekken analyse aan voor een specifiek elftal. Per analyse vul je club, leeftijdscategorie, seizoen en opstelling in. Daarna markeer je per positie of er een gap is en koppel je spelersrapporten.</p>
+        <p>Maak een elftal analyse aan voor een specifiek team. Per analyse vul je club, leeftijdscategorie, seizoen en opstelling in. Daarna markeer je per positie of er een open positie is en koppel je spelersrapporten.</p>
         <button class="btn btn-primary" id="empty-new-analysis">+ Eerste analyse maken</button>
       </div>`;
     $('#empty-new-analysis').addEventListener('click', createNewAnalysis);
@@ -2871,7 +3310,7 @@ function renderAnalysesList(){
               ${linkedCount? `<span class="analysis-meta-pill">${linkedCount} rapport${linkedCount===1?'':'en'}</span>`:''}
             </div>
             <div class="analysis-card-footer">
-              <div style="color:var(--text-3);">Witte vlekken</div>
+              <div style="color:var(--text-3);">Open posities</div>
               <div class="analysis-gap-count ${gapCount?'':'zero'}">${gapCount}</div>
             </div>
           </div>
@@ -2965,7 +3404,7 @@ function renderPitchPositions(){
   const gaps = slots.filter(slot => state[slot.key]?.gap);
   $('#pitch-gap-list').innerHTML = gaps.length
     ? gaps.map(slot=>`<span class="gap-tag">${slotMeta(slot).label}</span>`).join('')
-    : '<span style="color:var(--text-3); font-size:12px;">Geen actieve witte vlekken.</span>';
+    : '<span style="color:var(--text-3); font-size:12px;">Geen actieve open posities.</span>';
 }
 
 function renderPitchInfo(){
@@ -3011,7 +3450,7 @@ function renderPitchInfo(){
 
     <div class="gap-toggle">
       <input type="checkbox" id="pitch-gap" ${s.gap?'checked':''} />
-      <label for="pitch-gap">Markeer als <strong style="color:var(--secondary)">witte vlek</strong></label>
+      <label for="pitch-gap">Markeer als <strong style="color:var(--secondary)">open positie</strong></label>
     </div>
 
     <div class="position-grade-block">
@@ -3025,20 +3464,16 @@ function renderPitchInfo(){
 
     <div class="criteria-fields">
       <div class="criteria-field">
-        <label>Wat voor speler is er nu? (1)</label>
-        <textarea id="slot-huidige-1" placeholder="Profiel van de eerste huidige speler op deze positie...">${escapeHtml(s.huidige_speler_1||'')}</textarea>
+        <label>Profiel huidige speler(s)</label>
+        <textarea id="slot-huidige-1" placeholder="Wie speelt er nu op deze positie? Beschrijf type, kwaliteiten, beperkingen...">${escapeHtml(s.huidige_speler_1||'')}</textarea>
       </div>
       <div class="criteria-field">
-        <label>Wat voor speler is er nu? (2)</label>
-        <textarea id="slot-huidige-2" placeholder="Profiel van de tweede huidige speler op deze positie...">${escapeHtml(s.huidige_speler_2||'')}</textarea>
-      </div>
-      <div class="criteria-field">
-        <label>Wat voor speler zoeken we?</label>
-        <textarea id="slot-gezocht" placeholder="Gewenst profiel — kwaliteiten, type, leeftijd...">${escapeHtml(s.gezochte_speler||'')}</textarea>
+        <label>Profiel gewenste speler</label>
+        <textarea id="slot-gezocht" placeholder="Wat voor speler zoeken we? Type, kwaliteiten, leeftijd, voorkeursbeen...">${escapeHtml(s.gezochte_speler||'')}</textarea>
       </div>
       <div class="criteria-field">
         <label>Wat missen we?</label>
-        <textarea id="slot-missende" placeholder="Wat ontbreekt er concreet — kwaliteit, diepte, profiel?">${escapeHtml(s.missende||'')}</textarea>
+        <textarea id="slot-missende" placeholder="Wat ontbreekt er concreet — kwaliteit, diepte, specifiek profiel?">${escapeHtml(s.missende||'')}</textarea>
       </div>
     </div>
 
@@ -3059,7 +3494,7 @@ function renderPitchInfo(){
       </div>
       ${linkedKandidaatPlayers.length
         ? linkedKandidaatPlayers.map(p => renderLinkedItem(p, 'kandidaat')).join('')
-        : '<div class="linked-reports-empty">Nog geen kandidaten gekoppeld. Koppel rapporten van spelers die deze witte vlek zouden kunnen invullen.</div>'}
+        : '<div class="linked-reports-empty">Nog geen kandidaten gekoppeld. Koppel rapporten van spelers die deze open positie zouden kunnen invullen.</div>'}
     </div>
   `;
 
@@ -3090,7 +3525,6 @@ function renderPitchInfo(){
   // Criteria textareas — save on blur (avoids flooding writes on every keystroke)
   [
     ['slot-huidige-1','huidige_speler_1'],
-    ['slot-huidige-2','huidige_speler_2'],
     ['slot-gezocht','gezochte_speler'],
     ['slot-missende','missende']
   ].forEach(([id,key])=>{
@@ -3268,6 +3702,13 @@ function initApp(){
   buildGradePickers();
   refreshPositionDropdowns();
   $('#f-linie').addEventListener('change', refreshPositionDropdowns);
+  $('#f-club').addEventListener('blur', ()=>{
+    const plaatsEl = $('#f-plaats');
+    if(plaatsEl.value.trim()) return;
+    const key = ($('#f-club').value || '').trim().toLowerCase();
+    const city = CLUB_CITY[key];
+    if(city) plaatsEl.value = city;
+  });
   $('#report-form').addEventListener('submit', submitReport);
   $('#report-form').addEventListener('input', ()=> setDirty(true));
   $('#report-form').addEventListener('change', ()=> setDirty(true));

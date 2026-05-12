@@ -318,6 +318,79 @@ a { color: var(--accent); text-decoration: none; }
 .dist-count { width: 30px; text-align: right; color: var(--text-2); font-weight: 600; }
 .dist-section-title { font-size: 12px; color: var(--text-3); margin-bottom: 10px; }
 
+/* Dashboard widgets */
+.dash-empty-state {
+  text-align: center; padding: 60px 20px;
+  background: var(--panel); border: 1px dashed var(--border-2); border-radius: var(--radius);
+  color: var(--text-3);
+}
+.dash-empty-state .icon { font-size: 42px; opacity: .35; margin-bottom: 10px; }
+.dash-empty-state h3 { color: var(--text); margin: 0 0 6px 0; font-size: 16px; font-weight: 600; }
+.dash-empty-state p { margin: 0 auto 16px auto; font-size: 13px; max-width: 380px; line-height: 1.5; }
+
+.gap-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.gap-card {
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; border-left: 3px solid var(--secondary);
+  cursor: pointer; transition: all .15s;
+}
+.gap-card:hover { border-color: var(--secondary); transform: translateX(2px); }
+.gap-card-title { font-size: 12px; font-weight: 600; color: var(--text); }
+.gap-card-sub { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.gap-empty { text-align: center; padding: 28px 10px; color: var(--text-3); font-size: 13px; }
+.gap-empty .icon { font-size: 28px; opacity: .3; margin-bottom: 6px; }
+
+.advies-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.advies-label { width: 140px; font-size: 12px; color: var(--text-2); }
+.advies-bar { flex: 1; height: 22px; background: var(--bg-3); border-radius: 6px; overflow: hidden; position: relative; }
+.advies-fill { height: 100%; border-radius: 6px; transition: width .4s ease; display: flex; align-items: center; padding: 0 8px; font-size: 11px; font-weight: 700; color: rgba(0,0,0,.7); }
+.advies-count { width: 30px; text-align: right; font-weight: 600; color: var(--text-2); }
+
+.cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.cat-card {
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px;
+}
+.cat-card-name { font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--text-3); margin-bottom: 6px; }
+.cat-card-row { display: flex; align-items: baseline; gap: 8px; }
+.cat-card-grade { font-size: 22px; font-weight: 800; letter-spacing: -.5px; }
+.cat-card-score { font-size: 12px; color: var(--text-3); }
+.cat-card-bar { height: 4px; background: var(--bg-2); border-radius: 2px; margin-top: 8px; overflow: hidden; }
+.cat-card-fill { height: 100%; border-radius: 2px; transition: width .4s ease; }
+
+.top-grid { display: flex; flex-direction: column; gap: 8px; }
+.top-row {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 12px; cursor: pointer; transition: all .15s;
+}
+.top-row:hover { border-color: var(--primary); }
+.top-rank {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), #8a0410);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 11px; color: white; flex-shrink: 0;
+}
+.top-info { flex: 1; min-width: 0; }
+.top-name { font-weight: 600; font-size: 13px; }
+.top-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.top-score {
+  font-size: 16px; font-weight: 800; color: var(--secondary);
+  background: rgba(245,197,24,.12); padding: 4px 10px; border-radius: 6px;
+}
+
+.poscov-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 8px; }
+.poscov-cell {
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 7px;
+  padding: 10px 8px; text-align: center; transition: all .15s;
+}
+.poscov-cell.zero { opacity: .45; border-style: dashed; }
+.poscov-cell:not(.zero):hover { border-color: var(--primary); }
+.poscov-code { font-size: 11px; font-weight: 700; color: var(--text); }
+.poscov-count { font-size: 18px; font-weight: 800; margin-top: 3px; color: var(--text); }
+.poscov-count.zero { color: var(--text-3); }
+.poscov-label { font-size: 9px; color: var(--text-3); margin-top: 2px; line-height: 1.2; }
+
 /* Database table */
 .filters {
   display: flex; gap: 10px; flex-wrap: wrap;
@@ -475,6 +548,22 @@ tbody tr:last-child td { border-bottom: none; }
 /* ---------- PITCH ---------- */
 .pitch-wrap {
   display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px;
+}
+.formation-chooser {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 14px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  border-radius: 8px;
+}
+.formation-label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-3); font-weight: 700;
+}
+.formation-chooser select {
+  flex: 1; max-width: 240px;
+  font-weight: 600;
 }
 .pitch-panel {
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
@@ -775,24 +864,71 @@ tbody tr:last-child td { border-bottom: none; }
 
         <div class="kpi-grid" id="kpi-grid"></div>
 
-        <div class="row-grid">
-          <div class="panel">
+        <div id="dash-empty" style="display:none;"></div>
+        <div id="dash-content">
+
+          <div class="row-grid">
+            <div class="panel">
+              <div class="panel-title">
+                Recente rapporten
+                <span class="panel-title-icon">●</span>
+              </div>
+              <div id="recent-list" class="recent-list"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">
+                Niveau verdeling
+                <span class="panel-title-icon">●</span>
+              </div>
+              <div class="dist-section-title">Huidig niveau</div>
+              <div id="dist-current"></div>
+              <div class="dist-section-title" style="margin-top:18px;">Potentieel</div>
+              <div id="dist-potential"></div>
+            </div>
+          </div>
+
+          <div class="row-grid" style="margin-top:16px;">
+            <div class="panel">
+              <div class="panel-title">
+                Witte vlekken analyse
+                <span class="panel-title-icon">●</span>
+              </div>
+              <div id="dash-gaps"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">
+                Advies verdeling
+                <span class="panel-title-icon">●</span>
+              </div>
+              <div id="dash-advies"></div>
+            </div>
+          </div>
+
+          <div class="row-grid" style="margin-top:16px;">
+            <div class="panel">
+              <div class="panel-title">
+                Top talenten (potentieel A &amp; B)
+                <span class="panel-title-icon">●</span>
+              </div>
+              <div id="dash-top"></div>
+            </div>
+            <div class="panel">
+              <div class="panel-title">
+                Posities — dekking
+                <span class="panel-title-icon">●</span>
+              </div>
+              <div id="dash-positions"></div>
+            </div>
+          </div>
+
+          <div class="panel" style="margin-top:16px;">
             <div class="panel-title">
-              Recente rapporten
+              Gemiddelde beoordeling per categorie
               <span class="panel-title-icon">●</span>
             </div>
-            <div id="recent-list" class="recent-list"></div>
+            <div id="dash-categories"></div>
           </div>
-          <div class="panel">
-            <div class="panel-title">
-              Niveau verdeling
-              <span class="panel-title-icon">●</span>
-            </div>
-            <div class="dist-section-title">Huidig niveau</div>
-            <div id="dist-current"></div>
-            <div class="dist-section-title" style="margin-top:18px;">Potentieel</div>
-            <div id="dist-potential"></div>
-          </div>
+
         </div>
       </section>
 
@@ -1124,13 +1260,24 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="topbar">
           <div>
             <div class="page-title">Witte vlekken analyse</div>
-            <div class="page-sub">O15 — speelsysteem 4-3-3</div>
+            <div class="page-sub" id="pitch-sub"></div>
           </div>
           <button class="btn btn-ghost" id="pitch-reset">Reset naar standaard</button>
         </div>
 
         <div class="pitch-wrap">
           <div class="pitch-panel">
+            <div class="formation-chooser">
+              <div class="formation-label">Opstelling</div>
+              <select id="pitch-formation" class="filter-select">
+                <option value="1-4-3-3">1-4-3-3</option>
+                <option value="1-4-3-3 offensive">1-4-3-3 offensive</option>
+                <option value="1-4-2-3-1">1-4-2-3-1</option>
+                <option value="1-3-4-3">1-3-4-3</option>
+                <option value="1-4-4-2">1-4-4-2</option>
+                <option value="1-4-1-4-1">1-4-1-4-1</option>
+              </select>
+            </div>
             <div class="pitch-svg-wrap">
               <svg class="pitch-svg" viewBox="0 0 350 450" preserveAspectRatio="xMidYMid meet">
                 <rect x="10" y="10" width="330" height="430" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2"/>
@@ -1220,53 +1367,149 @@ const GRADES = ['A','B','C','D'];
 const POSITIONS_BY_LINE = {
   'Keeper':      [{code:'GK', label:'Keeper'}],
   'Verdediging': [
-    {code:'LB',  label:'Linksback'},
-    {code:'LCV', label:'Centrale verd. links'},
-    {code:'CV',  label:'Centrale verdediger'},
-    {code:'RCV', label:'Centrale verd. rechts'},
-    {code:'RB',  label:'Rechtsback'}
+    {code:'LB', label:'Linksback'},
+    {code:'CV', label:'Centrale verdediger'},
+    {code:'RB', label:'Rechtsback'}
   ],
   'Middenveld':  [
-    {code:'Nr6', label:'Controlerende mid. (6)'},
-    {code:'CML', label:'Centrale mid. links (8)'},
-    {code:'CMR', label:'Centrale mid. rechts (8)'},
-    {code:'AM',  label:'Aanvallende mid. (10)'}
+    {code:'VM', label:'Verdedigende middenvelder'},
+    {code:'CM', label:'Centrale middenvelder'},
+    {code:'AM', label:'Aanvallende middenvelder'},
+    {code:'LM', label:'Linker middenvelder'},
+    {code:'RM', label:'Rechter middenvelder'}
   ],
   'Aanval':      [
-    {code:'LV',  label:'Linksbuiten'},
-    {code:'CS',  label:'Centrumspits'},
-    {code:'RV',  label:'Rechtsbuiten'}
+    {code:'LV', label:'Linksbuiten'},
+    {code:'CS', label:'Centrumspits'},
+    {code:'RV', label:'Rechtsbuiten'}
   ]
 };
 const ALL_POSITIONS = Object.values(POSITIONS_BY_LINE).flat();
 
-const PITCH_LAYOUT = [
-  {code:'GK',  label:'Keeper',                  x:50, y:92, reden:'Stabiele 1e-keus ontbreekt: weinig diepte achter de hoofdkeeper en beperkt aanbod van keepers met meevoetbalprofiel voor opbouw van achteruit.'},
-  {code:'LB',  label:'Linksback',               x:12, y:75, reden:'Tekort aan linksbenige backs met combinatie van duelkracht en opkomende kwaliteit; vaak ingevuld met geconverteerde middenvelders.'},
-  {code:'LCV', label:'Centr. verd. links',      x:35, y:78, reden:'Linksbenige centrale verdediger met opbouw onder druk is schaars; rotatie leunt te zwaar op één speler.'},
-  {code:'RCV', label:'Centr. verd. rechts',     x:65, y:78, reden:'Rechtsbenige CV met duelkracht én leiderschap is dun bezet; doorstroming uit de O15 nog onzeker.'},
-  {code:'RB',  label:'Rechtsback',              x:88, y:75, reden:'Backs met aanvallende dreiging én verdedigende rust zijn beperkt; veel "veilige" maar weinig dominante profielen.'},
-  {code:'CML', label:'Mid. links (8)',          x:28, y:50, reden:'Box-to-box 8 met scorend vermogen ontbreekt; veel spelers met passing maar te weinig diepgang.'},
-  {code:'Nr6', label:'Controlerend (6)',        x:50, y:58, reden:'Echte 6 met spelhervatting en lef in de opbouw is een knelpunt — vaak ingevuld door een verkapte 8.'},
-  {code:'CMR', label:'Mid. rechts (8)',         x:72, y:50, reden:'Rechtsbenige 8 met aanvallend rendement (assists/goals) is een witte vlek t.o.v. wensprofiel.'},
-  {code:'LV',  label:'Linksbuiten',             x:15, y:22, reden:'Rechtsbenige linksbuiten die naar binnen komt en afrondt: weinig kandidaten van topniveau in deze leeftijd.'},
-  {code:'CS',  label:'Centrumspits',            x:50, y:18, reden:'Spits met combinatie van fysieke aanwezigheid, afronding én meevoetballen blijft het zwaarst om te vinden.'},
-  {code:'RV',  label:'Rechtsbuiten',            x:85, y:22, reden:'Linksbenige rechtsbuiten met 1-tegen-1 dreiging is schaars; rendement (goals/assists) blijft achter bij wens.'}
-];
-
-const DEFAULT_PITCH = {
-  GK:  {huidig:'', gewenst:'', gap:false},
-  LB:  {huidig:'', gewenst:'', gap:false},
-  LCV: {huidig:'', gewenst:'', gap:false},
-  RCV: {huidig:'', gewenst:'', gap:false},
-  RB:  {huidig:'', gewenst:'', gap:false},
-  CML: {huidig:'', gewenst:'', gap:false},
-  Nr6: {huidig:'', gewenst:'', gap:false},
-  CMR: {huidig:'', gewenst:'', gap:false},
-  LV:  {huidig:'', gewenst:'', gap:false},
-  CS:  {huidig:'', gewenst:'', gap:false},
-  RV:  {huidig:'', gewenst:'', gap:false}
+/* Slot meta: code → {label, short, matches[], reden}
+   `matches` = welke form-positie-codes (uit POSITIONS_BY_LINE) bij dit slot horen */
+const SLOT_META = {
+  gk:  {label:'Keeper', short:'GK', matches:['GK'],
+        reden:'Stabiele 1e-keus ontbreekt: weinig diepte achter de hoofdkeeper en beperkt aanbod van keepers met meevoetbalprofiel voor opbouw van achteruit.'},
+  lb:  {label:'Linksback', short:'LB', matches:['LB'],
+        reden:'Tekort aan linksbenige backs met combinatie van duelkracht en opkomende kwaliteit; vaak ingevuld met geconverteerde middenvelders.'},
+  rb:  {label:'Rechtsback', short:'RB', matches:['RB'],
+        reden:'Backs met aanvallende dreiging én verdedigende rust zijn beperkt; veel "veilige" maar weinig dominante profielen.'},
+  lcv: {label:'Centrale verdediger (links)', short:'LCV', matches:['CV'],
+        reden:'Linksbenige centrale verdediger met opbouw onder druk is schaars; rotatie leunt te zwaar op één speler.'},
+  cv:  {label:'Centrale verdediger', short:'CV', matches:['CV'],
+        reden:'Centrale verdediger met combinatie van duelkracht en opbouw is een sleutelpositie en relatief dun bezet.'},
+  rcv: {label:'Centrale verdediger (rechts)', short:'RCV', matches:['CV'],
+        reden:'Rechtsbenige CV met duelkracht én leiderschap is dun bezet; doorstroming uit de O15 nog onzeker.'},
+  vm:  {label:'Verdedigende middenvelder', short:'VM', matches:['VM'],
+        reden:'Echte verdedigende middenvelder met spelhervatting en lef in de opbouw is een knelpunt — vaak ingevuld door een verkapte 8.'},
+  cm:  {label:'Centrale middenvelder', short:'CM', matches:['CM'],
+        reden:'Box-to-box centrale middenvelder met scorend vermogen ontbreekt; veel spelers met passing maar te weinig diepgang.'},
+  am:  {label:'Aanvallende middenvelder', short:'AM', matches:['AM'],
+        reden:'Creatieve nummer 10 met rendement (assists/goals) is schaars — beslissend in laatste 30 meter ontbreekt.'},
+  lm:  {label:'Linker middenvelder', short:'LM', matches:['LM','CM']},
+  rm:  {label:'Rechter middenvelder', short:'RM', matches:['RM','CM']},
+  lv:  {label:'Linksbuiten', short:'LV', matches:['LV'],
+        reden:'Rechtsbenige linksbuiten die naar binnen komt en afrondt: weinig kandidaten van topniveau in deze leeftijd.'},
+  rv:  {label:'Rechtsbuiten', short:'RV', matches:['RV'],
+        reden:'Linksbenige rechtsbuiten met 1-tegen-1 dreiging is schaars; rendement (goals/assists) blijft achter bij wens.'},
+  cs:  {label:'Centrumspits', short:'CS', matches:['CS'],
+        reden:'Spits met combinatie van fysieke aanwezigheid, afronding én meevoetballen blijft het zwaarst om te vinden.'}
 };
+
+/* Per formatie: array van slots met unieke key (mag suffix _l/_r hebben),
+   bron-code (verwijst naar SLOT_META), en positie x/y (%) op het veld. */
+const FORMATIONS = {
+  '1-4-3-3': [
+    {key:'gk',   src:'gk',  x:50, y:92},
+    {key:'lb',   src:'lb',  x:12, y:75},
+    {key:'lcv',  src:'lcv', x:36, y:78},
+    {key:'rcv',  src:'rcv', x:64, y:78},
+    {key:'rb',   src:'rb',  x:88, y:75},
+    {key:'vm',   src:'vm',  x:50, y:58},
+    {key:'cm_l', src:'cm',  x:26, y:48},
+    {key:'cm_r', src:'cm',  x:74, y:48},
+    {key:'lv',   src:'lv',  x:15, y:22},
+    {key:'cs',   src:'cs',  x:50, y:18},
+    {key:'rv',   src:'rv',  x:85, y:22}
+  ],
+  '1-4-3-3 offensive': [
+    {key:'gk',   src:'gk',  x:50, y:92},
+    {key:'lb',   src:'lb',  x:10, y:72},
+    {key:'lcv',  src:'lcv', x:36, y:78},
+    {key:'rcv',  src:'rcv', x:64, y:78},
+    {key:'rb',   src:'rb',  x:90, y:72},
+    {key:'vm',   src:'vm',  x:50, y:55},
+    {key:'cm_l', src:'cm',  x:28, y:42},
+    {key:'cm_r', src:'am',  x:72, y:42},
+    {key:'lv',   src:'lv',  x:12, y:18},
+    {key:'cs',   src:'cs',  x:50, y:14},
+    {key:'rv',   src:'rv',  x:88, y:18}
+  ],
+  '1-4-2-3-1': [
+    {key:'gk',   src:'gk',  x:50, y:92},
+    {key:'lb',   src:'lb',  x:12, y:75},
+    {key:'lcv',  src:'lcv', x:36, y:78},
+    {key:'rcv',  src:'rcv', x:64, y:78},
+    {key:'rb',   src:'rb',  x:88, y:75},
+    {key:'vm_l', src:'vm',  x:36, y:58},
+    {key:'vm_r', src:'vm',  x:64, y:58},
+    {key:'lm',   src:'lm',  x:15, y:35},
+    {key:'am',   src:'am',  x:50, y:38},
+    {key:'rm',   src:'rm',  x:85, y:35},
+    {key:'cs',   src:'cs',  x:50, y:15}
+  ],
+  '1-3-4-3': [
+    {key:'gk',   src:'gk',  x:50, y:92},
+    {key:'lcv',  src:'lcv', x:25, y:78},
+    {key:'cv',   src:'cv',  x:50, y:80},
+    {key:'rcv',  src:'rcv', x:75, y:78},
+    {key:'lm',   src:'lm',  x:8,  y:55},
+    {key:'cm_l', src:'cm',  x:38, y:55},
+    {key:'cm_r', src:'cm',  x:62, y:55},
+    {key:'rm',   src:'rm',  x:92, y:55},
+    {key:'lv',   src:'lv',  x:18, y:22},
+    {key:'cs',   src:'cs',  x:50, y:18},
+    {key:'rv',   src:'rv',  x:82, y:22}
+  ],
+  '1-4-4-2': [
+    {key:'gk',   src:'gk',  x:50, y:92},
+    {key:'lb',   src:'lb',  x:12, y:75},
+    {key:'lcv',  src:'lcv', x:36, y:78},
+    {key:'rcv',  src:'rcv', x:64, y:78},
+    {key:'rb',   src:'rb',  x:88, y:75},
+    {key:'lm',   src:'lm',  x:12, y:50},
+    {key:'cm_l', src:'cm',  x:38, y:52},
+    {key:'cm_r', src:'cm',  x:62, y:52},
+    {key:'rm',   src:'rm',  x:88, y:50},
+    {key:'cs_l', src:'cs',  x:36, y:18},
+    {key:'cs_r', src:'cs',  x:64, y:18}
+  ],
+  '1-4-1-4-1': [
+    {key:'gk',   src:'gk',  x:50, y:92},
+    {key:'lb',   src:'lb',  x:12, y:75},
+    {key:'lcv',  src:'lcv', x:36, y:78},
+    {key:'rcv',  src:'rcv', x:64, y:78},
+    {key:'rb',   src:'rb',  x:88, y:75},
+    {key:'vm',   src:'vm',  x:50, y:62},
+    {key:'lm',   src:'lm',  x:12, y:42},
+    {key:'cm_l', src:'cm',  x:38, y:42},
+    {key:'cm_r', src:'cm',  x:62, y:42},
+    {key:'rm',   src:'rm',  x:88, y:42},
+    {key:'cs',   src:'cs',  x:50, y:15}
+  ]
+};
+
+const DEFAULT_FORMATION = '1-4-3-3';
+
+function blankPitchFor(formation){
+  const out = { __formation: formation };
+  (FORMATIONS[formation] || FORMATIONS[DEFAULT_FORMATION]).forEach(s=>{
+    out[s.key] = {huidig:'', gewenst:'', gap:false};
+  });
+  return out;
+}
+const DEFAULT_PITCH = blankPitchFor(DEFAULT_FORMATION);
 
 /* =============== STATE =============== */
 let currentUser = null;
@@ -1333,12 +1576,25 @@ function subscribeData(){
 
   unsubPitch = onSnapshot(pitchDocRef(), snap=>{
     if(snap.exists()){
-      pitchCache = {...structuredClone(DEFAULT_PITCH), ...snap.data()};
+      const raw = snap.data();
+      if(!raw.__formation){
+        pitchCache = blankPitchFor(DEFAULT_FORMATION);
+        setDoc(pitchDocRef(), pitchCache).catch(e=>console.error(e));
+      } else {
+        const formation = FORMATIONS[raw.__formation] ? raw.__formation : DEFAULT_FORMATION;
+        const base = blankPitchFor(formation);
+        for(const k of Object.keys(base)){
+          if(k === '__formation') continue;
+          if(raw[k] && typeof raw[k] === 'object') base[k] = raw[k];
+        }
+        pitchCache = base;
+      }
     } else {
       pitchCache = structuredClone(DEFAULT_PITCH);
       setDoc(pitchDocRef(), pitchCache).catch(e=>console.error(e));
     }
     if(currentView === 'pitch') renderPitch();
+    if(currentView === 'dashboard') renderDashboard();
     setSync('ok');
   }, err=>{
     console.error('Pitch sync error:', err);
@@ -1510,33 +1766,227 @@ function renderDashboard(){
     </div>
   `;
 
+  const empty = $('#dash-empty');
+  const content = $('#dash-content');
+  if(!players.length){
+    content.style.display = 'none';
+    empty.style.display = 'block';
+    empty.innerHTML = `
+      <div class="dash-empty-state">
+        <div class="icon">○</div>
+        <h3>Nog geen rapporten</h3>
+        <p>Zodra je rapporten invult verschijnen hier visualisaties: verdeling, witte vlekken, top talenten, advies-mix en positiedekking.</p>
+        <button class="btn btn-primary" data-go="report">+ Eerste rapport maken</button>
+      </div>`;
+    empty.querySelector('[data-go]').addEventListener('click', ()=> go('report'));
+    return;
+  }
+  empty.style.display = 'none';
+  content.style.display = 'block';
+
   const recent = [...players].sort((a,b)=> new Date(b.datum||0) - new Date(a.datum||0)).slice(0,6);
   const list = $('#recent-list');
-  if(!recent.length){
-    list.innerHTML = '<div class="empty-state"><div class="empty-icon">○</div><div>Nog geen rapporten — begin met een nieuw rapport.</div></div>';
-  } else {
-    list.innerHTML = recent.map(p => `
-      <div class="recent-item" data-id="${p.id}">
-        <div class="recent-avatar">${initials(p.naam)}</div>
-        <div class="recent-info">
-          <div class="recent-name">${escapeHtml(p.naam)}</div>
-          <div class="recent-meta">${escapeHtml(positionLabel(p.positie))} · ${formatDate(p.datum)}</div>
-        </div>
-        <div class="recent-grades">
-          <span class="grade ${p.huidig_niveau||'D'}">${p.huidig_niveau||'-'}</span>
-          <span class="grade outline ${p.potentieel_niveau||'D'}">${p.potentieel_niveau||'-'}</span>
-        </div>
+  list.innerHTML = recent.map(p => `
+    <div class="recent-item" data-id="${p.id}">
+      <div class="recent-avatar">${initials(p.naam)}</div>
+      <div class="recent-info">
+        <div class="recent-name">${escapeHtml(p.naam)}</div>
+        <div class="recent-meta">${escapeHtml(positionLabel(p.positie))} · ${formatDate(p.datum)}</div>
       </div>
-    `).join('');
-    $$('.recent-item', list).forEach(el=>{
-      el.addEventListener('click', ()=> openDetail(el.dataset.id));
-    });
-  }
+      <div class="recent-grades">
+        <span class="grade ${p.huidig_niveau||'D'}">${p.huidig_niveau||'-'}</span>
+        <span class="grade outline ${p.potentieel_niveau||'D'}">${p.potentieel_niveau||'-'}</span>
+      </div>
+    </div>
+  `).join('');
+  $$('.recent-item', list).forEach(el=>{
+    el.addEventListener('click', ()=> openDetail(el.dataset.id));
+  });
 
   const distCurrent  = countByGrade(players, 'huidig_niveau');
   const distPotential = countByGrade(players, 'potentieel_niveau');
   $('#dist-current').innerHTML  = renderDist(distCurrent, false);
   $('#dist-potential').innerHTML = renderDist(distPotential, true);
+
+  renderDashGaps();
+  renderDashAdvies(players);
+  renderDashTop(players);
+  renderDashPositions(players);
+  renderDashCategories(players);
+}
+
+/* ---- Extra dashboard widgets ---- */
+function gradeFromScore(s){
+  if(s >= 3.5) return 'A';
+  if(s >= 2.5) return 'B';
+  if(s >= 1.5) return 'C';
+  return 'D';
+}
+function avgGradeNum(players, key){
+  const map = {A:4, B:3, C:2, D:1};
+  const vals = players.map(p => map[p.beoordelingen?.[key]] || 0).filter(v => v>0);
+  if(!vals.length) return null;
+  return vals.reduce((a,b)=>a+b,0) / vals.length;
+}
+function renderDashGaps(){
+  const state = loadPitch();
+  const slots = currentSlots();
+  const gaps = slots.filter(s => state[s.key]?.gap);
+  const wrap = $('#dash-gaps');
+  if(!gaps.length){
+    wrap.innerHTML = `
+      <div class="gap-empty">
+        <div class="icon">○</div>
+        <div>Geen actieve witte vlekken in <strong>${escapeHtml(currentFormation())}</strong>.</div>
+        <div style="margin-top:8px;"><button class="btn btn-sm" id="dash-gaps-open">Open witte vlekken analyse</button></div>
+      </div>`;
+    $('#dash-gaps-open').addEventListener('click', ()=> go('pitch'));
+    return;
+  }
+  wrap.innerHTML = `
+    <div style="font-size:11px; color:var(--text-3); margin-bottom:10px;">Opstelling: <strong style="color:var(--text-2)">${escapeHtml(currentFormation())}</strong> · ${gaps.length} witte vlek${gaps.length===1?'':'ken'}</div>
+    <div class="gap-grid">
+      ${gaps.map(slot=>{
+        const meta = slotMeta(slot);
+        const s = state[slot.key];
+        const count = playersForSlot(slot).length;
+        return `
+          <div class="gap-card" data-key="${slot.key}">
+            <div class="gap-card-title">${escapeHtml(meta.label)}</div>
+            <div class="gap-card-sub">
+              ${s.huidig?`huidig <span class="grade ${s.huidig}" style="padding:0 5px;height:16px;font-size:10px;">${s.huidig}</span>`:''}
+              ${s.gewenst?` → gewenst <span class="grade outline ${s.gewenst}" style="padding:0 5px;height:16px;font-size:10px;">${s.gewenst}</span>`:''}
+              · ${count} speler${count===1?'':'s'}
+            </div>
+          </div>`;
+      }).join('')}
+    </div>
+  `;
+  $$('.gap-card', wrap).forEach(el=>{
+    el.addEventListener('click', ()=>{
+      selectedPitchPos = el.dataset.key;
+      go('pitch');
+    });
+  });
+}
+function renderDashAdvies(players){
+  const labels = {'4':'Direct aannemen','3':'Stage','2':'Blijven volgen','1':'Niet aannemen'};
+  const colors = {'4':'var(--grade-a)','3':'var(--grade-b)','2':'var(--grade-c)','1':'var(--grade-d)'};
+  const counts = {'4':0,'3':0,'2':0,'1':0};
+  players.forEach(p=>{ if(counts[p.advies] !== undefined) counts[p.advies]++; });
+  const max = Math.max(1, ...Object.values(counts));
+  $('#dash-advies').innerHTML = ['4','3','2','1'].map(k=>{
+    const pct = (counts[k] / max) * 100;
+    return `
+      <div class="advies-row">
+        <div class="advies-label">${k} — ${labels[k]}</div>
+        <div class="advies-bar"><div class="advies-fill" style="width:${pct}%; background:${colors[k]};">${counts[k]>0?counts[k]:''}</div></div>
+        <div class="advies-count">${counts[k]}</div>
+      </div>`;
+  }).join('');
+}
+function renderDashTop(players){
+  const scored = players
+    .filter(p => p.potentieel_niveau === 'A' || p.potentieel_niveau === 'B')
+    .map(p => {
+      const t = parseFloat(p.toekomst) || 0;
+      const i = parseFloat(p.indruk) || 0;
+      return { p, score: (t*0.6) + (i*0.4) };
+    })
+    .filter(x => x.score > 0)
+    .sort((a,b)=> b.score - a.score)
+    .slice(0,5);
+  const wrap = $('#dash-top');
+  if(!scored.length){
+    wrap.innerHTML = '<div class="gap-empty"><div class="icon">○</div><div>Nog geen spelers met potentieel A of B + scores.</div></div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="top-grid">
+      ${scored.map((x,idx)=>`
+        <div class="top-row" data-id="${x.p.id}">
+          <div class="top-rank">${idx+1}</div>
+          <div class="top-info">
+            <div class="top-name">${escapeHtml(x.p.naam)}</div>
+            <div class="top-meta">${escapeHtml(positionLabel(x.p.positie))}${x.p.club?(' · '+escapeHtml(x.p.club)):''} · pot. <span class="grade outline ${x.p.potentieel_niveau}" style="padding:0 5px;height:16px;font-size:10px;">${x.p.potentieel_niveau}</span></div>
+          </div>
+          <div class="top-score">${x.score.toFixed(1)}</div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  $$('.top-row', wrap).forEach(el=>{
+    el.addEventListener('click', ()=> openDetail(el.dataset.id));
+  });
+}
+function renderDashPositions(players){
+  const counts = {};
+  ALL_POSITIONS.forEach(p => counts[p.code] = 0);
+  players.forEach(p => { if(counts[p.positie] !== undefined) counts[p.positie]++; });
+  $('#dash-positions').innerHTML = `
+    <div class="poscov-grid">
+      ${ALL_POSITIONS.map(p=>{
+        const n = counts[p.code];
+        return `
+          <div class="poscov-cell ${n===0?'zero':''}" data-code="${p.code}" title="${escapeHtml(p.label)}">
+            <div class="poscov-code">${p.code}</div>
+            <div class="poscov-count ${n===0?'zero':''}">${n}</div>
+            <div class="poscov-label">${escapeHtml(p.label)}</div>
+          </div>`;
+      }).join('')}
+    </div>
+  `;
+  $$('.poscov-cell', $('#dash-positions')).forEach(el=>{
+    el.addEventListener('click', ()=>{
+      if(el.classList.contains('zero')) return;
+      go('database');
+      setTimeout(()=>{
+        const sel = $('#filter-position');
+        if(sel){ sel.value = el.dataset.code; applyFilters(); }
+      }, 50);
+    });
+  });
+}
+function renderDashCategories(players){
+  const cats = [
+    {key:'techniek_huidig', label:'Techniek'},
+    {key:'inzicht_huidig', label:'Spelinzicht'},
+    {key:'grit_huidig', label:'GRIT / Attitude'},
+    {key:'explosiviteit_huidig', label:'Explosiviteit'},
+    {key:'sprinten_huidig', label:'Sprinten'},
+    {key:'duelleren_huidig', label:'Duelleren'},
+    {key:'wendbaarheid_huidig', label:'Wendbaarheid'}
+  ];
+  $('#dash-categories').innerHTML = `
+    <div class="cat-grid">
+      ${cats.map(c=>{
+        const avg = avgGradeNum(players, c.key);
+        if(avg == null){
+          return `
+            <div class="cat-card">
+              <div class="cat-card-name">${c.label}</div>
+              <div class="cat-card-row">
+                <div class="cat-card-grade" style="color:var(--text-3)">—</div>
+                <div class="cat-card-score">geen data</div>
+              </div>
+              <div class="cat-card-bar"><div class="cat-card-fill" style="width:0%;"></div></div>
+            </div>`;
+        }
+        const grade = gradeFromScore(avg);
+        const pct = (avg / 4) * 100;
+        const color = `var(--grade-${grade.toLowerCase()})`;
+        return `
+          <div class="cat-card">
+            <div class="cat-card-name">${c.label}</div>
+            <div class="cat-card-row">
+              <div class="cat-card-grade" style="color:${color}">${grade}</div>
+              <div class="cat-card-score">${avg.toFixed(2)} / 4.00</div>
+            </div>
+            <div class="cat-card-bar"><div class="cat-card-fill" style="width:${pct}%; background:${color};"></div></div>
+          </div>`;
+      }).join('')}
+    </div>
+  `;
 }
 function countByGrade(arr, key){
   const out = {A:0,B:0,C:0,D:0};
@@ -2002,34 +2452,60 @@ async function submitReport(e){
 }
 
 /* =============== PITCH =============== */
+function currentFormation(){
+  const st = loadPitch();
+  const f = st && st.__formation;
+  return FORMATIONS[f] ? f : DEFAULT_FORMATION;
+}
+function currentSlots(){ return FORMATIONS[currentFormation()] || FORMATIONS[DEFAULT_FORMATION]; }
+function slotMeta(slot){
+  return SLOT_META[slot.src] || {label:slot.src.toUpperCase(), short:slot.src.toUpperCase(), matches:[], reden:''};
+}
+function playersForSlot(slot){
+  const matches = slotMeta(slot).matches || [];
+  return loadPlayers().filter(p => matches.includes(p.positie) || matches.includes(p.beoogd));
+}
+function emptyChipBg(){ return 'rgba(255,255,255,.08)'; }
+
 function renderPitch(){
   const state = loadPitch();
+  const slots = currentSlots();
   const container = $('#pitch-positions');
-  container.innerHTML = PITCH_LAYOUT.map(p=>{
-    const s = state[p.code] || {huidig:'-', gewenst:'-', gap:false};
+  const sel = $('#pitch-formation');
+  if(sel && sel.value !== currentFormation()) sel.value = currentFormation();
+
+  container.innerHTML = slots.map(slot=>{
+    const meta = slotMeta(slot);
+    const s = state[slot.key] || {huidig:'', gewenst:'', gap:false};
+    const cur = s.huidig;
+    const want = s.gewenst;
+    const curChip = cur
+      ? `<span class="pos-grade" style="background:var(--grade-${cur.toLowerCase()});color:#0a0a0a;">${cur}</span>`
+      : `<span class="pos-grade" style="background:${emptyChipBg()};color:var(--text-3);">·</span>`;
+    const wantChip = want
+      ? `<span class="pos-grade" style="background:transparent;border:1px solid var(--grade-${want.toLowerCase()});color:var(--grade-${want.toLowerCase()});">${want}</span>`
+      : `<span class="pos-grade" style="background:transparent;border:1px solid var(--border-2);color:var(--text-3);">·</span>`;
     return `
-      <button class="pos-btn ${s.gap?'gap':''} ${selectedPitchPos===p.code?'selected':''}"
-              data-code="${p.code}"
-              style="left:${p.x}%; top:${p.y}%;"
-              title="${p.label}">
-        <div class="pos-code">${p.code}</div>
-        <div class="pos-grades">
-          <span class="pos-grade" style="background:var(--grade-${(s.huidig||'D').toLowerCase()});color:#0a0a0a;">${s.huidig||'-'}</span>
-          <span class="pos-grade" style="background:transparent;border:1px solid var(--grade-${(s.gewenst||'D').toLowerCase()});color:var(--grade-${(s.gewenst||'D').toLowerCase()});">${s.gewenst||'-'}</span>
-        </div>
+      <button class="pos-btn ${s.gap?'gap':''} ${selectedPitchPos===slot.key?'selected':''}"
+              data-key="${slot.key}"
+              style="left:${slot.x}%; top:${slot.y}%;"
+              title="${meta.label}">
+        <div class="pos-code">${meta.short}</div>
+        <div class="pos-grades">${curChip}${wantChip}</div>
       </button>
     `;
   }).join('');
+
   $$('.pos-btn', container).forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      selectedPitchPos = btn.dataset.code;
+      selectedPitchPos = btn.dataset.key;
       renderPitch();
-      renderPitchInfo();
     });
   });
-  const gaps = PITCH_LAYOUT.filter(p => state[p.code]?.gap);
+
+  const gaps = slots.filter(slot => state[slot.key]?.gap);
   $('#pitch-gap-list').innerHTML = gaps.length
-    ? gaps.map(p=>`<span class="gap-tag">${p.label}</span>`).join('')
+    ? gaps.map(slot=>`<span class="gap-tag">${slotMeta(slot).label}</span>`).join('')
     : '<span style="color:var(--text-3); font-size:12px;">Geen actieve witte vlekken.</span>';
 
   renderPitchInfo();
@@ -2044,13 +2520,23 @@ function renderPitchInfo(){
       </div>`;
     return;
   }
-  const meta = PITCH_LAYOUT.find(p=>p.code===selectedPitchPos);
+  const slot = currentSlots().find(s=>s.key===selectedPitchPos);
+  if(!slot){
+    selectedPitchPos = null;
+    panel.innerHTML = `
+      <div class="pitch-info-empty">
+        <div style="font-size:32px; opacity:.3; margin-bottom:8px;">⚽</div>
+        <div>Klik op een positie in het veld om huidig & gewenst niveau in te stellen.</div>
+      </div>`;
+    return;
+  }
+  const meta = slotMeta(slot);
   const state = loadPitch();
-  const s = state[selectedPitchPos] || {huidig:'B', gewenst:'B', gap:false};
-  const players = loadPlayers().filter(p => p.positie === selectedPitchPos || p.beoogd === selectedPitchPos);
+  const s = state[selectedPitchPos] || {huidig:'', gewenst:'', gap:false};
+  const players = playersForSlot(slot);
   panel.innerHTML = `
     <div class="position-detail-title">${meta.label}</div>
-    <div class="position-detail-sub">${meta.code} · ${players.length} speler${players.length===1?'':'s'} in database</div>
+    <div class="position-detail-sub">${meta.short} · ${players.length} speler${players.length===1?'':'s'} in database</div>
 
     ${meta.reden ? `<div class="position-reden"><div class="position-reden-title">Waarom een witte vlek?</div><div class="position-reden-text">${escapeHtml(meta.reden)}</div></div>` : ''}
 
@@ -2094,14 +2580,14 @@ function renderPitchInfo(){
     const isPot = i===1;
     const el = $('#'+id);
     el.innerHTML = GRADES.map(g=>`<button type="button" class="grade-pick ${isPot?'grade-pick-pot':''}" data-grade="${g}">${g}</button>`).join('');
-    const sel = i===0 ? s.huidig : s.gewenst;
+    const cur = i===0 ? s.huidig : s.gewenst;
     $$('.grade-pick', el).forEach(b=>{
-      if(b.dataset.grade === sel) b.classList.add('selected');
+      if(b.dataset.grade === cur) b.classList.add('selected');
       b.addEventListener('click', async ()=>{
         $$('.grade-pick', el).forEach(x=>x.classList.remove('selected'));
         b.classList.add('selected');
         const st = structuredClone(loadPitch());
-        st[selectedPitchPos] = st[selectedPitchPos] || {huidig:'B', gewenst:'B', gap:false};
+        st[selectedPitchPos] = st[selectedPitchPos] || {huidig:'', gewenst:'', gap:false};
         if(i===0) st[selectedPitchPos].huidig = b.dataset.grade;
         else      st[selectedPitchPos].gewenst = b.dataset.grade;
         await savePitch(st);
@@ -2111,7 +2597,7 @@ function renderPitchInfo(){
   });
   $('#pitch-gap').addEventListener('change', async e=>{
     const st = structuredClone(loadPitch());
-    st[selectedPitchPos] = st[selectedPitchPos] || {huidig:'B', gewenst:'B', gap:false};
+    st[selectedPitchPos] = st[selectedPitchPos] || {huidig:'', gewenst:'', gap:false};
     st[selectedPitchPos].gap = e.target.checked;
     await savePitch(st);
     renderPitch();
@@ -2119,6 +2605,18 @@ function renderPitchInfo(){
   $$('.recent-item', panel).forEach(el=>{
     el.addEventListener('click', ()=> openDetail(el.dataset.id));
   });
+}
+async function changeFormation(newFormation){
+  if(!FORMATIONS[newFormation]) return;
+  const prev = loadPitch();
+  const fresh = blankPitchFor(newFormation);
+  for(const key of Object.keys(fresh)){
+    if(key === '__formation') continue;
+    if(prev[key]) fresh[key] = prev[key];
+  }
+  selectedPitchPos = null;
+  await savePitch(fresh);
+  renderPitch();
 }
 
 /* =============== HELPERS =============== */
@@ -2199,12 +2697,16 @@ function initApp(){
   });
 
   $('#pitch-reset').addEventListener('click', async ()=>{
-    if(confirm('Witte vlekken terugzetten naar de standaard analyse?')){
-      await savePitch(structuredClone(DEFAULT_PITCH));
+    if(confirm('Witte vlekken terugzetten naar leeg?')){
+      await savePitch(blankPitchFor(currentFormation()));
       selectedPitchPos = null;
       renderPitch();
-      toast('Standaard hersteld');
+      toast('Veld leeggemaakt');
     }
+  });
+
+  $('#pitch-formation').addEventListener('change', e=>{
+    changeFormation(e.target.value);
   });
 }
 

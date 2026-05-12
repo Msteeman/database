@@ -1269,15 +1269,15 @@ import {
    5. Voeg in Authentication → Settings → Authorized domains je GitHub Pages-domein toe
       (bijv. msteeman.github.io)
    ============================================== */
-const FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: ""
+const firebaseConfig = {
+  apiKey: "AIzaSyBDeLaGfzM1PN8Cl8E6nlIe8FxxxXLwRyY",
+  authDomain: "database-scouting.firebaseapp.com",
+  projectId: "database-scouting",
+  storageBucket: "database-scouting.firebasestorage.app",
+  messagingSenderId: "632216488963",
+  appId: "1:632216488963:web:f1ebb1d16b8a76f49c9236",
+  measurementId: "G-P74K24RBZ1"
 };
-
 const FIREBASE_READY = !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
 
 /* =============== CONSTANTS =============== */
@@ -2419,12 +2419,3 @@ document.addEventListener('DOMContentLoaded', initLoginUI);
 </script>
 </body>
 </html>
-const firebaseConfig = {
-  apiKey: "AIzaSyBDeLaGfzM1PN8Cl8E6nlIe8FxxxXLwRyY",
-  authDomain: "database-scouting.firebaseapp.com",
-  projectId: "database-scouting",
-  storageBucket: "database-scouting.firebasestorage.app",
-  messagingSenderId: "632216488963",
-  appId: "1:632216488963:web:f1ebb1d16b8a76f49c9236",
-  measurementId: "G-P74K24RBZ1"
-};

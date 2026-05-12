@@ -4509,7 +4509,7 @@ function generatePlayerPDF(p){
   const darkCard = 'background:#1a2332;border:1px solid #232d40;border-radius:8px;';
 
   const html = `
-    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#e8edf5;width:794px;box-sizing:border-box;background:${stackedBg};background-color:#0b0f15;">
+    <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#e8edf5;width:720px;box-sizing:border-box;background:${stackedBg};background-color:#0b0f15;">
 
       <div style="padding:22px 30px 16px 30px;">
         <div style="display:flex;align-items:center;">
@@ -4684,7 +4684,7 @@ function generatePlayerPDF(p){
   container.style.position = 'absolute';
   container.style.left = '0';
   container.style.top = '0';
-  container.style.width = '794px';
+  container.style.width = '720px';
   container.style.zIndex = '-1';
   container.style.opacity = '0';
   container.style.pointerEvents = 'none';
@@ -4695,14 +4695,14 @@ function generatePlayerPDF(p){
 
   html2pdf().from(container.firstElementChild).set({
     filename,
-    margin: [0, 0, 0, 0],
+    margin: [8, 8, 8, 8],
     image: { type: 'jpeg', quality: 0.96 },
     html2canvas: {
       scale: 2,
       backgroundColor: '#0b0f15',
       useCORS: true,
       logging: false,
-      windowWidth: 794
+      windowWidth: 720
     },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait', compress: true },
     pagebreak: { mode: ['css', 'legacy'] }

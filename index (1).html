@@ -1,0 +1,1972 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Scouting Platform — Marcel Steeman</title>
+<meta name="description" content="Professioneel scoutingsplatform voor jeugdvoetbal — FC Twente / Heracles" />
+<style>
+/* =========================================================
+   SCOUTING PLATFORM — Marcel Steeman
+   FC Twente / Heracles — O12/O15 jeugdscouting
+   ========================================================= */
+
+:root {
+  --bg: #0b0f15;
+  --bg-2: #111722;
+  --bg-3: #1a2332;
+  --panel: #151c28;
+  --panel-2: #1d2533;
+  --border: #232d40;
+  --border-2: #2f3b52;
+  --text: #e8edf5;
+  --text-2: #9aa8bd;
+  --text-3: #6b7689;
+  --primary: #e30613;        /* FC Twente rood */
+  --primary-2: #ff2a3a;
+  --secondary: #f5c518;      /* Heracles geel */
+  --accent: #4ea1ff;
+  --green: #22c55e;
+  --orange: #f59e0b;
+  --red: #ef4444;
+  --grade-a: #22c55e;
+  --grade-b: #84cc16;
+  --grade-c: #f59e0b;
+  --grade-d: #ef4444;
+  --shadow: 0 10px 30px rgba(0,0,0,.35);
+  --radius: 10px;
+  --radius-sm: 6px;
+}
+
+* { box-sizing: border-box; }
+html, body {
+  margin: 0; padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+}
+button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
+button { cursor: pointer; }
+a { color: var(--accent); text-decoration: none; }
+
+/* ---------- LOGIN OVERLAY ---------- */
+#login-overlay {
+  position: fixed; inset: 0;
+  background:
+    radial-gradient(1200px 600px at 70% -10%, rgba(227,6,19,.18), transparent 50%),
+    radial-gradient(900px 500px at 0% 100%, rgba(245,197,24,.08), transparent 50%),
+    linear-gradient(180deg, #0a0e15 0%, #050810 100%);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000;
+}
+.login-card {
+  width: 100%; max-width: 420px;
+  background: rgba(21,28,40,.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 38px 32px;
+  box-shadow: var(--shadow);
+}
+.login-logo {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
+}
+.login-logo-mark {
+  width: 38px; height: 38px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--primary), #8a0410);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; color: white; font-size: 17px;
+  box-shadow: 0 4px 14px rgba(227,6,19,.4);
+}
+.login-title { font-size: 20px; font-weight: 700; letter-spacing: .2px; }
+.login-sub { color: var(--text-3); font-size: 12px; margin-top: 4px; margin-bottom: 24px; }
+.login-field { margin-bottom: 14px; }
+.login-field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--text-3); margin-bottom: 6px; }
+.login-input {
+  width: 100%; padding: 12px 14px;
+  background: #0d121b; border: 1px solid var(--border-2); border-radius: 8px;
+  color: var(--text); outline: none; transition: border-color .15s;
+}
+.login-input:focus { border-color: var(--primary); }
+.login-btn {
+  width: 100%; padding: 12px 14px; margin-top: 8px;
+  background: var(--primary); color: white; border: none; border-radius: 8px;
+  font-weight: 600; letter-spacing: .3px;
+  transition: background .15s;
+}
+.login-btn:hover { background: var(--primary-2); }
+.login-btn:disabled { opacity: .5; cursor: not-allowed; }
+.login-error {
+  color: var(--red); font-size: 12px; min-height: 16px; margin-top: 10px; text-align: center;
+}
+.login-footer {
+  margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--text-3); text-align: center;
+}
+
+/* ---------- APP SHELL ---------- */
+#app { display: none; min-height: 100vh; }
+.app-grid { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+
+/* Sidebar */
+.sidebar {
+  background: var(--bg-2);
+  border-right: 1px solid var(--border);
+  padding: 22px 16px;
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh;
+}
+.brand {
+  display: flex; align-items: center; gap: 10px;
+  padding: 4px 6px 18px 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.brand-mark {
+  width: 34px; height: 34px; border-radius: 8px;
+  background: linear-gradient(135deg, var(--primary), #8a0410);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; color: white; font-size: 14px;
+}
+.brand-text { font-weight: 700; font-size: 14px; letter-spacing: .2px; }
+.brand-sub { font-size: 10px; color: var(--text-3); letter-spacing: .8px; text-transform: uppercase; }
+
+.nav { display: flex; flex-direction: column; gap: 4px; }
+.nav-item {
+  display: flex; align-items: center; gap: 11px;
+  padding: 10px 12px; border-radius: 8px;
+  color: var(--text-2); border: 1px solid transparent;
+  background: transparent;
+  text-align: left; width: 100%;
+  transition: all .15s;
+}
+.nav-item:hover { background: var(--panel); color: var(--text); }
+.nav-item.active { background: var(--panel-2); color: var(--text); border-color: var(--border-2); }
+.nav-item.active .nav-icon { color: var(--primary); }
+.nav-icon { width: 18px; height: 18px; opacity: .9; }
+
+.scout-profile {
+  margin-top: auto;
+  padding: 14px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  text-align: center;
+}
+.scout-photo {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--primary);
+  object-fit: cover;
+  display: block;
+  margin: 0 auto 10px auto;
+  box-shadow: 0 4px 14px rgba(227,6,19,.25);
+}
+.scout-name { font-weight: 600; font-size: 13px; }
+.scout-role { font-size: 11px; color: var(--text-3); margin-top: 2px; letter-spacing: .3px; }
+.logout-btn {
+  margin-top: 10px; width: 100%;
+  background: transparent; color: var(--text-3); border: 1px solid var(--border-2);
+  padding: 6px; border-radius: 6px; font-size: 11px;
+  transition: all .15s;
+}
+.logout-btn:hover { color: var(--text); border-color: var(--primary); }
+
+/* Main */
+.main { padding: 24px 32px 48px 32px; max-width: 1500px; }
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 22px;
+}
+.page-title { font-size: 22px; font-weight: 700; letter-spacing: -.2px; }
+.page-sub { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 9px 14px; border-radius: 8px;
+  background: var(--panel); border: 1px solid var(--border-2); color: var(--text);
+  transition: all .15s; font-weight: 500;
+}
+.btn:hover { border-color: var(--primary); }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: white; }
+.btn-primary:hover { background: var(--primary-2); border-color: var(--primary-2); }
+.btn-ghost { background: transparent; }
+.btn-sm { padding: 6px 10px; font-size: 12px; }
+.btn-danger { color: var(--red); border-color: rgba(239,68,68,.3); }
+.btn-danger:hover { background: rgba(239,68,68,.1); border-color: var(--red); }
+
+/* ---------- VIEWS ---------- */
+.view { display: none; animation: fadeIn .25s ease; }
+.view.active { display: block; }
+@keyframes fadeIn { from { opacity:0; transform: translateY(4px);} to { opacity:1; transform:none;} }
+
+/* Dashboard */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+.kpi-card {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px 18px; position: relative; overflow: hidden;
+}
+.kpi-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: var(--primary);
+}
+.kpi-card.green::before { background: var(--green); }
+.kpi-card.yellow::before { background: var(--secondary); }
+.kpi-card.blue::before { background: var(--accent); }
+.kpi-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-3); }
+.kpi-value { font-size: 28px; font-weight: 700; margin-top: 4px; letter-spacing: -.5px; }
+.kpi-sub { font-size: 12px; color: var(--text-2); margin-top: 4px; }
+
+.row-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.panel {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px 20px;
+}
+.panel-title {
+  font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-2); margin-bottom: 14px;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.panel-title-icon { color: var(--primary); }
+
+/* Recent players list */
+.recent-list { display: flex; flex-direction: column; gap: 8px; }
+.recent-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg-3); border-radius: 8px;
+  border: 1px solid var(--border);
+  cursor: pointer; transition: all .15s;
+}
+.recent-item:hover { border-color: var(--primary); background: var(--panel-2); }
+.recent-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, #2a3548, #1a2332);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 13px;
+}
+.recent-info { flex: 1; min-width: 0; }
+.recent-name { font-weight: 600; font-size: 13px; }
+.recent-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.recent-grades { display: flex; gap: 6px; }
+
+/* Grade chips */
+.grade {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; height: 24px; padding: 0 8px; border-radius: 5px;
+  font-weight: 700; font-size: 12px; letter-spacing: .2px;
+}
+.grade.A { background: var(--grade-a); color: #062b12; }
+.grade.B { background: var(--grade-b); color: #1a2806; }
+.grade.C { background: var(--grade-c); color: #2a1a04; }
+.grade.D { background: var(--grade-d); color: #2a0606; }
+.grade.outline {
+  background: transparent; border: 2px solid; color: var(--text);
+}
+.grade.outline.A { border-color: var(--grade-a); color: var(--grade-a); }
+.grade.outline.B { border-color: var(--grade-b); color: var(--grade-b); }
+.grade.outline.C { border-color: var(--grade-c); color: var(--grade-c); }
+.grade.outline.D { border-color: var(--grade-d); color: var(--grade-d); }
+.grade-label {
+  font-size: 9px; text-transform: uppercase; letter-spacing: .8px;
+  color: var(--text-3); margin-right: 4px; align-self: center;
+}
+
+/* Distribution bars */
+.dist-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.dist-label { width: 30px; font-weight: 700; }
+.dist-bar { flex: 1; height: 10px; background: var(--bg-3); border-radius: 5px; overflow: hidden; }
+.dist-fill { height: 100%; border-radius: 5px; transition: width .4s ease; }
+.dist-count { width: 30px; text-align: right; color: var(--text-2); font-weight: 600; }
+.dist-section-title { font-size: 12px; color: var(--text-3); margin-bottom: 10px; }
+
+/* Database table */
+.filters {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 16px; align-items: center;
+}
+.filter-input, .filter-select {
+  background: var(--panel); border: 1px solid var(--border-2); color: var(--text);
+  padding: 8px 12px; border-radius: 7px; outline: none;
+  min-width: 140px;
+}
+.filter-input:focus, .filter-select:focus { border-color: var(--primary); }
+.filter-input { flex: 1; min-width: 220px; }
+
+.table-wrap {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden;
+}
+table { width: 100%; border-collapse: collapse; }
+thead {
+  background: var(--bg-3);
+}
+thead th {
+  text-align: left; padding: 12px 14px;
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-3); border-bottom: 1px solid var(--border);
+  cursor: pointer; user-select: none;
+}
+thead th:hover { color: var(--text); }
+tbody td {
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+tbody tr { transition: background .12s; }
+tbody tr:hover { background: var(--bg-3); cursor: pointer; }
+tbody tr:last-child td { border-bottom: none; }
+.empty-state {
+  text-align: center; padding: 60px 20px; color: var(--text-3);
+}
+.empty-icon { font-size: 32px; opacity: .3; margin-bottom: 8px; }
+
+/* Form */
+.form-grid {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 24px 28px;
+}
+.form-section {
+  margin-bottom: 28px; padding-bottom: 22px; border-bottom: 1px solid var(--border);
+}
+.form-section:last-of-type { border-bottom: none; margin-bottom: 12px; }
+.form-section-title {
+  font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--primary); margin-bottom: 14px;
+  display: flex; align-items: center; gap: 8px;
+}
+.form-section-title::before {
+  content: ''; width: 3px; height: 14px; background: var(--primary); border-radius: 2px;
+}
+.field-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 12px; }
+.field-row.three { grid-template-columns: repeat(3, 1fr); }
+.field { display: flex; flex-direction: column; }
+.field label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
+  color: var(--text-3); margin-bottom: 6px; font-weight: 600;
+}
+.field input, .field select, .field textarea {
+  background: var(--bg-3); border: 1px solid var(--border-2);
+  padding: 10px 12px; border-radius: 7px; color: var(--text); outline: none;
+  transition: border-color .15s;
+}
+.field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); }
+.field textarea { min-height: 70px; resize: vertical; font-family: inherit; }
+
+/* Grade picker */
+.grade-picker { display: flex; gap: 6px; }
+.grade-pick {
+  flex: 1; padding: 9px 0; border-radius: 7px;
+  background: var(--bg-3); border: 2px solid var(--border-2); color: var(--text-2);
+  font-weight: 700; transition: all .12s;
+  text-align: center;
+}
+.grade-pick:hover { color: var(--text); }
+.grade-pick.selected[data-grade="A"] { background: var(--grade-a); border-color: var(--grade-a); color: #062b12; }
+.grade-pick.selected[data-grade="B"] { background: var(--grade-b); border-color: var(--grade-b); color: #1a2806; }
+.grade-pick.selected[data-grade="C"] { background: var(--grade-c); border-color: var(--grade-c); color: #2a1a04; }
+.grade-pick.selected[data-grade="D"] { background: var(--grade-d); border-color: var(--grade-d); color: #2a0606; }
+.grade-pick-pot.selected[data-grade="A"] { background: transparent; border-color: var(--grade-a); color: var(--grade-a); }
+.grade-pick-pot.selected[data-grade="B"] { background: transparent; border-color: var(--grade-b); color: var(--grade-b); }
+.grade-pick-pot.selected[data-grade="C"] { background: transparent; border-color: var(--grade-c); color: var(--grade-c); }
+.grade-pick-pot.selected[data-grade="D"] { background: transparent; border-color: var(--grade-d); color: var(--grade-d); }
+
+.criteria-block {
+  background: var(--bg-3); padding: 14px 16px; border-radius: 8px;
+  border: 1px solid var(--border); margin-bottom: 10px;
+}
+.criteria-block-title { font-weight: 600; margin-bottom: 6px; font-size: 13px; }
+.criteria-block-help { font-size: 11px; color: var(--text-3); margin-bottom: 10px; line-height: 1.5; }
+.dual-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.dual-grade .field label { margin-bottom: 4px; }
+.dual-label {
+  display: flex; align-items: center; gap: 5px;
+}
+.dual-label-pill {
+  font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: 700;
+}
+.pill-current { background: var(--primary); color: white; }
+.pill-potential { background: transparent; border: 1px solid var(--secondary); color: var(--secondary); }
+
+/* Legend */
+.legend {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  background: var(--bg-3); padding: 10px 14px; border-radius: 8px;
+  border: 1px solid var(--border); margin-bottom: 16px;
+  font-size: 11px;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; color: var(--text-2); }
+.legend-dot { width: 12px; height: 12px; border-radius: 3px; }
+
+/* Form actions */
+.form-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+
+/* ---------- PITCH ---------- */
+.pitch-wrap {
+  display: grid; grid-template-columns: 1.4fr 1fr; gap: 18px;
+}
+.pitch-panel {
+  background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 18px;
+}
+.pitch-svg-wrap {
+  position: relative;
+  background:
+    repeating-linear-gradient(90deg, #0f3a1b 0 60px, #0d3318 60px 120px);
+  border-radius: 10px;
+  border: 2px solid #0d3318;
+  overflow: hidden;
+  aspect-ratio: 7 / 9;
+  max-width: 540px;
+  margin: 0 auto;
+}
+.pitch-svg { width: 100%; height: 100%; display: block; }
+.pos-btn {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: rgba(20,30,40,.85);
+  border: 3px solid var(--border-2);
+  color: white;
+  font-weight: 700; font-size: 12px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  cursor: pointer;
+  transition: all .15s;
+  box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  padding: 0;
+}
+.pos-btn:hover { transform: translate(-50%, -50%) scale(1.08); border-color: var(--text); }
+.pos-btn .pos-code { font-size: 13px; line-height: 1; }
+.pos-btn .pos-grades { display: flex; gap: 3px; font-size: 9px; margin-top: 3px; line-height: 1; }
+.pos-btn .pos-grade { padding: 1px 4px; border-radius: 3px; font-weight: 800; }
+.pos-btn.gap { border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(245,197,24,.25), 0 4px 12px rgba(0,0,0,.4); }
+.pos-btn.gap::before {
+  content: '!'; position: absolute; top: -6px; right: -6px;
+  width: 18px; height: 18px; border-radius: 50%; background: var(--secondary); color: #1a1402;
+  font-size: 11px; font-weight: 900; display:flex; align-items:center; justify-content:center;
+}
+.pos-btn.selected { border-color: var(--primary); transform: translate(-50%, -50%) scale(1.1); }
+
+.pitch-info-empty {
+  text-align: center; padding: 30px 16px; color: var(--text-3);
+}
+.position-detail-title {
+  font-size: 18px; font-weight: 700; margin-bottom: 4px;
+}
+.position-detail-sub { color: var(--text-3); font-size: 12px; margin-bottom: 18px; }
+.position-grade-block { margin-bottom: 16px; }
+.position-grade-block label {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
+  color: var(--text-3); display: block; margin-bottom: 6px; font-weight: 600;
+}
+.gap-toggle {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  background: var(--bg-3); border-radius: 8px; border: 1px solid var(--border);
+  margin: 12px 0;
+}
+.gap-toggle input { accent-color: var(--secondary); width: 16px; height: 16px; }
+.gap-toggle label { font-size: 13px; cursor: pointer; }
+
+.pitch-summary {
+  margin-top: 14px;
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 8px;
+  padding: 12px 14px;
+}
+.pitch-summary-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-3); margin-bottom: 8px; }
+.pitch-gap-list { display: flex; gap: 6px; flex-wrap: wrap; }
+.gap-tag {
+  background: var(--secondary); color: #1a1402;
+  padding: 4px 9px; border-radius: 5px; font-size: 11px; font-weight: 700;
+}
+
+/* Detail modal */
+.modal-backdrop {
+  position: fixed; inset: 0; background: rgba(0,0,0,.6);
+  z-index: 500; display: none; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.modal-backdrop.open { display: flex; }
+.modal {
+  background: var(--panel); border: 1px solid var(--border); border-radius: 12px;
+  max-width: 720px; width: 100%; max-height: 90vh; overflow-y: auto;
+  box-shadow: var(--shadow);
+}
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 20px 24px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--panel); z-index: 2;
+}
+.modal-title { font-size: 18px; font-weight: 700; }
+.modal-close {
+  background: transparent; border: none; color: var(--text-3); font-size: 22px;
+  width: 32px; height: 32px; border-radius: 6px;
+}
+.modal-close:hover { background: var(--bg-3); color: var(--text); }
+.modal-body { padding: 22px 24px; }
+
+.detail-header {
+  display: flex; gap: 16px; align-items: center; margin-bottom: 20px;
+}
+.detail-avatar {
+  width: 70px; height: 70px; border-radius: 50%;
+  background: linear-gradient(135deg, #2a3548, #1a2332);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 22px; color: var(--text);
+  border: 2px solid var(--primary);
+}
+.detail-name { font-size: 20px; font-weight: 700; }
+.detail-meta { font-size: 12px; color: var(--text-3); margin-top: 4px; }
+.detail-grade-row { display: flex; gap: 12px; margin-top: 10px; }
+
+.detail-section { margin-top: 22px; }
+.detail-section h4 {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+  color: var(--text-3); margin: 0 0 10px 0;
+}
+.detail-criteria-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.detail-criteria {
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 7px;
+  padding: 10px 12px;
+}
+.detail-criteria-name { font-size: 12px; color: var(--text-2); margin-bottom: 6px; }
+.detail-criteria-grades { display: flex; gap: 6px; align-items: center; }
+
+.detail-notes {
+  background: var(--bg-3); border: 1px solid var(--border); border-radius: 7px;
+  padding: 12px 14px; font-size: 13px; line-height: 1.6; white-space: pre-wrap;
+}
+
+/* Setup screen */
+.setup-help {
+  font-size: 11px; color: var(--text-3); margin-top: 6px; line-height: 1.5;
+}
+
+/* Toast */
+.toast {
+  position: fixed; bottom: 24px; right: 24px; z-index: 800;
+  background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--green);
+  padding: 12px 16px; border-radius: 8px; font-size: 13px;
+  box-shadow: var(--shadow);
+  transform: translateY(20px); opacity: 0; pointer-events: none;
+  transition: all .25s;
+}
+.toast.show { transform: none; opacity: 1; }
+.toast.error { border-left-color: var(--red); }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .app-grid { grid-template-columns: 1fr; }
+  .sidebar { position: relative; height: auto; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .row-grid, .pitch-wrap { grid-template-columns: 1fr; }
+  .field-row, .field-row.three, .dual-grade, .detail-criteria-grid { grid-template-columns: 1fr; }
+}
+
+/* Print */
+@media print {
+  .sidebar, .topbar .btn, .modal-close { display: none !important; }
+  .main { padding: 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- =================== LOGIN OVERLAY =================== -->
+<div id="login-overlay">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-logo-mark">SP</div>
+      <div>
+        <div class="login-title">Scouting Platform</div>
+        <div class="login-sub">FC Twente / Heracles — Marcel Steeman</div>
+      </div>
+    </div>
+
+    <!-- Setup screen (eerste keer) -->
+    <div id="setup-form" style="display:none;">
+      <div class="login-field">
+        <label>Stel een wachtwoord in</label>
+        <input id="setup-pw" type="password" class="login-input" placeholder="Minimaal 8 tekens" autocomplete="new-password" />
+      </div>
+      <div class="login-field">
+        <label>Bevestig wachtwoord</label>
+        <input id="setup-pw2" type="password" class="login-input" placeholder="Herhaal wachtwoord" autocomplete="new-password" />
+      </div>
+      <button id="setup-btn" class="login-btn">Account aanmaken</button>
+      <div id="setup-error" class="login-error"></div>
+      <div class="setup-help">
+        Dit wachtwoord wordt veilig gehashed (SHA-256) en lokaal opgeslagen.<br>
+        Vergeet je het, dan moet je localStorage wissen om opnieuw te beginnen.
+      </div>
+    </div>
+
+    <!-- Login screen -->
+    <div id="login-form">
+      <div class="login-field">
+        <label>Wachtwoord</label>
+        <input id="login-pw" type="password" class="login-input" placeholder="Voer wachtwoord in" autocomplete="current-password" />
+      </div>
+      <button id="login-btn" class="login-btn">Inloggen</button>
+      <div id="login-error" class="login-error"></div>
+      <div class="login-footer">
+        Sessie verloopt automatisch na 30 minuten inactiviteit.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== APP =================== -->
+<div id="app">
+  <div class="app-grid">
+
+    <!-- ============ SIDEBAR ============ -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">SP</div>
+        <div>
+          <div class="brand-text">Scouting</div>
+          <div class="brand-sub">Platform</div>
+        </div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-view="dashboard">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+          Dashboard
+        </button>
+        <button class="nav-item" data-view="database">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 11v6c0 1.7 4 3 9 3s9-1.3 9-3v-6"/></svg>
+          Database
+        </button>
+        <button class="nav-item" data-view="report">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+          Nieuw rapport
+        </button>
+        <button class="nav-item" data-view="pitch">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/><line x1="12" y1="5" x2="12" y2="19"/><circle cx="12" cy="12" r="2"/></svg>
+          Witte vlekken
+        </button>
+      </nav>
+
+      <div class="scout-profile">
+        <img src="marcel.png" alt="Marcel Steeman" class="scout-photo" onerror="this.style.display='none'" />
+        <div class="scout-name">Marcel Steeman</div>
+        <div class="scout-role">Scout</div>
+        <button class="logout-btn" id="logout-btn">Uitloggen</button>
+      </div>
+    </aside>
+
+    <!-- ============ MAIN ============ -->
+    <main class="main">
+
+      <!-- ====== DASHBOARD ====== -->
+      <section class="view active" id="view-dashboard">
+        <div class="topbar">
+          <div>
+            <div class="page-title">Dashboard</div>
+            <div class="page-sub" id="dashboard-date">—</div>
+          </div>
+          <button class="btn btn-primary" data-go="report">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nieuw rapport
+          </button>
+        </div>
+
+        <div class="kpi-grid" id="kpi-grid"></div>
+
+        <div class="row-grid">
+          <div class="panel">
+            <div class="panel-title">
+              Recente rapporten
+              <span class="panel-title-icon">●</span>
+            </div>
+            <div id="recent-list" class="recent-list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">
+              Niveau verdeling
+              <span class="panel-title-icon">●</span>
+            </div>
+            <div class="dist-section-title">Huidig niveau</div>
+            <div id="dist-current"></div>
+            <div class="dist-section-title" style="margin-top:18px;">Potentieel</div>
+            <div id="dist-potential"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ====== DATABASE ====== -->
+      <section class="view" id="view-database">
+        <div class="topbar">
+          <div>
+            <div class="page-title">Spelersdatabase</div>
+            <div class="page-sub" id="db-count">0 spelers</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn" id="export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export JSON
+            </button>
+            <button class="btn btn-primary" data-go="report">+ Nieuw rapport</button>
+          </div>
+        </div>
+
+        <div class="filters">
+          <input id="filter-search" class="filter-input" type="text" placeholder="Zoek op naam, club, positie..." />
+          <select id="filter-position" class="filter-select"><option value="">Alle posities</option></select>
+          <select id="filter-current" class="filter-select">
+            <option value="">Huidig: alle</option>
+            <option value="A">Huidig: A</option>
+            <option value="B">Huidig: B</option>
+            <option value="C">Huidig: C</option>
+            <option value="D">Huidig: D</option>
+          </select>
+          <select id="filter-potential" class="filter-select">
+            <option value="">Potentieel: alle</option>
+            <option value="A">Potentieel: A</option>
+            <option value="B">Potentieel: B</option>
+            <option value="C">Potentieel: C</option>
+            <option value="D">Potentieel: D</option>
+          </select>
+        </div>
+
+        <div class="legend">
+          <div class="legend-item"><span class="legend-dot" style="background:var(--grade-a)"></span>A — Champions League</div>
+          <div class="legend-item"><span class="legend-dot" style="background:var(--grade-b)"></span>B — Top Eredivisie</div>
+          <div class="legend-item"><span class="legend-dot" style="background:var(--grade-c)"></span>C — Eredivisie</div>
+          <div class="legend-item"><span class="legend-dot" style="background:var(--grade-d)"></span>D — KKD / onder niveau</div>
+        </div>
+
+        <div class="table-wrap" id="db-table-wrap"></div>
+      </section>
+
+      <!-- ====== REPORT ====== -->
+      <section class="view" id="view-report">
+        <div class="topbar">
+          <div>
+            <div class="page-title" id="report-title">Nieuw scoutingsrapport</div>
+            <div class="page-sub">Snel invulbaar — gemiddeld &lt; 2 minuten</div>
+          </div>
+          <button class="btn btn-ghost" id="report-cancel">Annuleren</button>
+        </div>
+
+        <form id="report-form" class="form-grid" autocomplete="off">
+          <input type="hidden" id="f-id" />
+
+          <!-- Speler info -->
+          <div class="form-section">
+            <div class="form-section-title">Speler informatie</div>
+            <div class="field-row">
+              <div class="field">
+                <label>Naam *</label>
+                <input id="f-naam" type="text" required />
+              </div>
+              <div class="field">
+                <label>Geboortedatum</label>
+                <input id="f-geboorte" type="date" />
+              </div>
+            </div>
+            <div class="field-row three">
+              <div class="field">
+                <label>Club</label>
+                <input id="f-club" type="text" />
+              </div>
+              <div class="field">
+                <label>Rugnummer</label>
+                <input id="f-rugnummer" type="text" />
+              </div>
+              <div class="field">
+                <label>Voorkeursbeen *</label>
+                <select id="f-been" required>
+                  <option value="">Kies...</option>
+                  <option>Links</option><option>Rechts</option><option>Tweebenig</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Positie -->
+          <div class="form-section">
+            <div class="form-section-title">Positie</div>
+            <div class="field-row three">
+              <div class="field">
+                <label>Linie *</label>
+                <select id="f-linie" required>
+                  <option value="">Kies...</option>
+                  <option>Keeper</option><option>Verdediging</option>
+                  <option>Middenveld</option><option>Aanval</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Positie wedstrijd *</label>
+                <select id="f-positie" required></select>
+              </div>
+              <div class="field">
+                <label>Beoogde positie</label>
+                <select id="f-beoogd"></select>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <label>Leeftijdsgroep</label>
+                <select id="f-leeftijd">
+                  <option>Eigen leeftijd</option>
+                  <option>Eén jaar ouder</option>
+                  <option>Eén jaar jonger</option>
+                  <option>Twee jaar verschil</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Scoutingmethode</label>
+                <select id="f-methode">
+                  <option>Live</option>
+                  <option>Video</option>
+                  <option>Dataplatform</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Beoordelingen -->
+          <div class="form-section">
+            <div class="form-section-title">Beoordeling per categorie (Huidig & Potentieel)</div>
+
+            <div class="legend" style="margin-top:0;">
+              <div class="legend-item"><span class="dual-label-pill pill-current">HUIDIG</span> wat speler nú is</div>
+              <div class="legend-item"><span class="dual-label-pill pill-potential">POTENTIEEL</span> wat speler kan worden</div>
+            </div>
+
+            <!-- Techniek -->
+            <div class="criteria-block">
+              <div class="criteria-block-title">Spelvaardigheden / Techniek</div>
+              <div class="criteria-block-help">Functionele techniek: aan de bal comfortabel, aanname goed, soepel in actie loslaten.</div>
+              <div class="dual-grade">
+                <div class="field">
+                  <label><span class="dual-label-pill pill-current">Huidig</span></label>
+                  <div class="grade-picker" data-key="techniek_huidig"></div>
+                </div>
+                <div class="field">
+                  <label><span class="dual-label-pill pill-potential">Potentieel</span></label>
+                  <div class="grade-picker pot" data-key="techniek_potentieel"></div>
+                </div>
+              </div>
+              <div class="field" style="margin-top:10px;">
+                <label>Opmerking / onderbouwing</label>
+                <textarea id="f-techniek-opmerking" placeholder="Concrete observatie ter ondersteuning van de beoordeling..."></textarea>
+              </div>
+            </div>
+
+            <!-- Inzicht -->
+            <div class="criteria-block">
+              <div class="criteria-block-title">Functioneel tactisch / Spelinzicht</div>
+              <div class="criteria-block-help">Ziet gaten om in te lopen, weet wanneer wel of niet, creëert ruimte voor anderen.</div>
+              <div class="dual-grade">
+                <div class="field">
+                  <label><span class="dual-label-pill pill-current">Huidig</span></label>
+                  <div class="grade-picker" data-key="inzicht_huidig"></div>
+                </div>
+                <div class="field">
+                  <label><span class="dual-label-pill pill-potential">Potentieel</span></label>
+                  <div class="grade-picker pot" data-key="inzicht_potentieel"></div>
+                </div>
+              </div>
+              <div class="field" style="margin-top:10px;">
+                <label>Opmerking / onderbouwing</label>
+                <textarea id="f-inzicht-opmerking" placeholder="Concrete observatie ter ondersteuning van de beoordeling..."></textarea>
+              </div>
+            </div>
+
+            <!-- DRIT -->
+            <div class="criteria-block">
+              <div class="criteria-block-title">DRIT / Passie & Attitude</div>
+              <div class="criteria-block-help">Mentaliteit, focus, doorzettingsvermogen, leiderschap, coachbaarheid.</div>
+              <div class="dual-grade">
+                <div class="field">
+                  <label><span class="dual-label-pill pill-current">Huidig</span></label>
+                  <div class="grade-picker" data-key="drit_huidig"></div>
+                </div>
+                <div class="field">
+                  <label><span class="dual-label-pill pill-potential">Potentieel</span></label>
+                  <div class="grade-picker pot" data-key="drit_potentieel"></div>
+                </div>
+              </div>
+              <div class="field" style="margin-top:10px;">
+                <label>Opmerking / onderbouwing</label>
+                <textarea id="f-drit-opmerking" placeholder="Concrete observatie ter ondersteuning van de beoordeling..."></textarea>
+              </div>
+            </div>
+
+            <!-- Fysiek / Atletisch -->
+            <div class="criteria-block">
+              <div class="criteria-block-title">Atletisch vermogen / Fysiek</div>
+              <div class="criteria-block-help">Explosiviteit, sprintvermogen, duelkracht, wendbaarheid — gecombineerd in één oordeel.</div>
+              <div class="dual-grade">
+                <div class="field">
+                  <label><span class="dual-label-pill pill-current">Huidig</span></label>
+                  <div class="grade-picker" data-key="fysiek_huidig"></div>
+                </div>
+                <div class="field">
+                  <label><span class="dual-label-pill pill-potential">Potentieel</span></label>
+                  <div class="grade-picker pot" data-key="fysiek_potentieel"></div>
+                </div>
+              </div>
+              <div class="field" style="margin-top:10px;">
+                <label>Opmerking / onderbouwing</label>
+                <textarea id="f-fysiek-opmerking" placeholder="Concrete observatie ter ondersteuning van de beoordeling..."></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Eindniveau -->
+          <div class="form-section">
+            <div class="form-section-title">Eindbeoordeling</div>
+            <div class="dual-grade">
+              <div class="field">
+                <label><span class="dual-label-pill pill-current">Huidig niveau *</span></label>
+                <div class="grade-picker" data-key="huidig_niveau" data-required="1"></div>
+              </div>
+              <div class="field">
+                <label><span class="dual-label-pill pill-potential">Potentieel eindniveau *</span></label>
+                <div class="grade-picker pot" data-key="potentieel_niveau" data-required="1"></div>
+              </div>
+            </div>
+            <div class="field-row" style="margin-top:14px;">
+              <div class="field">
+                <label>Advies *</label>
+                <select id="f-advies" required>
+                  <option value="">Kies...</option>
+                  <option value="1">1 — Direct contracteren / topkandidaat</option>
+                  <option value="2">2 — Sterke kandidaat, doorstromen</option>
+                  <option value="3">3 — Volgen, meerdere observaties</option>
+                  <option value="4">4 — Heroverwegen</option>
+                  <option value="5">5 — Niet selecteren</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Persoonlijk wapen</label>
+                <input id="f-wapen" type="text" placeholder="Wat onderscheidt deze speler?" />
+              </div>
+            </div>
+            <div class="field" style="margin-top:14px;">
+              <label>Notities / Toelichting</label>
+              <textarea id="f-notities" placeholder="Observaties, ontwikkelpunten, context, advies-onderbouwing..."></textarea>
+            </div>
+          </div>
+
+          <div class="form-actions">
+            <button type="button" class="btn" id="report-clear">Wissen</button>
+            <button type="submit" class="btn btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Rapport opslaan
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- ====== PITCH ====== -->
+      <section class="view" id="view-pitch">
+        <div class="topbar">
+          <div>
+            <div class="page-title">Witte vlekken analyse</div>
+            <div class="page-sub" id="pitch-subtitle">Vul de gegevens hieronder in en sla op</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-ghost" id="pitch-reset">Wis alles</button>
+            <button class="btn btn-primary" id="pitch-save">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Opslaan
+            </button>
+          </div>
+        </div>
+
+        <!-- Metadata invulvelden -->
+        <div class="form-grid" style="margin-bottom:18px; padding:18px 22px;">
+          <div class="field-row three">
+            <div class="field">
+              <label>Team / elftal</label>
+              <input id="pm-team" type="text" placeholder="bijv. FC Twente / Heracles O15" />
+            </div>
+            <div class="field">
+              <label>Seizoen</label>
+              <input id="pm-seizoen" type="text" placeholder="bijv. 2025/2026" />
+            </div>
+            <div class="field">
+              <label>Datum</label>
+              <input id="pm-datum" type="date" />
+            </div>
+          </div>
+          <div class="field-row">
+            <div class="field">
+              <label>Speelsysteem</label>
+              <select id="pm-systeem">
+                <option>4-3-3</option>
+                <option>4-4-2</option>
+                <option>4-2-3-1</option>
+                <option>3-5-2</option>
+                <option>3-4-3</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Opgesteld door</label>
+              <input id="pm-opsteller" type="text" />
+            </div>
+          </div>
+          <div class="field" style="margin-top:10px;">
+            <label>Algemene notities</label>
+            <textarea id="pm-notities" placeholder="Korte toelichting bij deze analyse..."></textarea>
+          </div>
+        </div>
+
+        <div class="pitch-wrap">
+          <div class="pitch-panel">
+            <div class="pitch-svg-wrap">
+              <svg class="pitch-svg" viewBox="0 0 350 450" preserveAspectRatio="xMidYMid meet">
+                <!-- Field lines -->
+                <rect x="10" y="10" width="330" height="430" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2"/>
+                <line x1="10" y1="225" x2="340" y2="225" stroke="rgba(255,255,255,.4)" stroke-width="2"/>
+                <circle cx="175" cy="225" r="40" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2"/>
+                <circle cx="175" cy="225" r="2" fill="rgba(255,255,255,.6)"/>
+                <!-- Top penalty -->
+                <rect x="75" y="10" width="200" height="60" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2"/>
+                <rect x="115" y="10" width="120" height="25" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2"/>
+                <!-- Bottom penalty -->
+                <rect x="75" y="380" width="200" height="60" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2"/>
+                <rect x="115" y="415" width="120" height="25" fill="none" stroke="rgba(255,255,255,.4)" stroke-width="2"/>
+              </svg>
+              <div id="pitch-positions"></div>
+            </div>
+
+            <div class="pitch-summary">
+              <div class="pitch-summary-title">Witte vlekken (kwaliteits-gap)</div>
+              <div id="pitch-gap-list" class="pitch-gap-list"></div>
+            </div>
+          </div>
+
+          <div class="pitch-panel" id="pitch-info">
+            <div class="pitch-info-empty">
+              <div style="font-size:32px; opacity:.3; margin-bottom:8px;">⚽</div>
+              <div>Klik op een positie in het veld om huidig & gewenst niveau in te stellen.</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- =================== DETAIL MODAL =================== -->
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-title">Speler detail</div>
+      <button class="modal-close" id="modal-close">×</button>
+    </div>
+    <div class="modal-body" id="modal-body"></div>
+  </div>
+</div>
+
+<!-- =================== TOAST =================== -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* ==========================================================
+   SCOUTING PLATFORM — Marcel Steeman
+   FC Twente / Heracles — O12/O15
+   NOTE: Client-side security only, intended for personal use
+   ========================================================== */
+
+(function(){
+'use strict';
+
+/* =============== CONFIG =============== */
+// Vast wachtwoord — werkt op elk apparaat / elke browser.
+// SHA-256 hash (irreversibel). Wijzigen? Genereer nieuwe hash met:
+//   crypto.subtle.digest('SHA-256', new TextEncoder().encode('jouwwachtwoord'))
+//     .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
+const BAKED_HASH = '2b30cf422614f18f36562b5bb8f5462a9735e29f76744236b131c485305a5264';
+
+const STORAGE_PLAYERS    = 'scouting_app_players';
+const STORAGE_PITCH      = 'scouting_app_pitch';
+const STORAGE_PITCH_META = 'scouting_app_pitch_meta';
+const STORAGE_PWHASH     = 'scouting_app_pwhash';
+const SESSION_KEY      = 'loggedIn';
+const SESSION_LAST     = 'lastActivity';
+const AUTO_LOGOUT_MS   = 30 * 60 * 1000;
+const FAIL_DELAY_MS    = 800;
+
+const GRADES = ['A','B','C','D'];
+const GRADE_LABEL = {
+  A: 'Champions League',
+  B: 'Top Eredivisie',
+  C: 'Eredivisie',
+  D: 'KKD / onder niveau'
+};
+
+const POSITIONS_BY_LINE = {
+  'Keeper':      [{code:'GK', label:'Keeper'}],
+  'Verdediging': [
+    {code:'LB',  label:'Linksback'},
+    {code:'LCV', label:'Centrale verd. links'},
+    {code:'CV',  label:'Centrale verdediger'},
+    {code:'RCV', label:'Centrale verd. rechts'},
+    {code:'RB',  label:'Rechtsback'}
+  ],
+  'Middenveld':  [
+    {code:'Nr6', label:'Controlerende mid. (6)'},
+    {code:'CML', label:'Centrale mid. links (8)'},
+    {code:'CMR', label:'Centrale mid. rechts (8)'},
+    {code:'AM',  label:'Aanvallende mid. (10)'}
+  ],
+  'Aanval':      [
+    {code:'LV',  label:'Linksbuiten'},
+    {code:'CS',  label:'Centrumspits'},
+    {code:'RV',  label:'Rechtsbuiten'}
+  ]
+};
+const ALL_POSITIONS = Object.values(POSITIONS_BY_LINE).flat();
+
+// Pitch layout 4-3-3 — percent coordinates {x,y} on pitch (0-100)
+const PITCH_LAYOUT = [
+  {code:'GK',  label:'Keeper',                  x:50, y:92},
+  {code:'LB',  label:'Linksback',               x:12, y:75},
+  {code:'LCV', label:'Centr. verd. links',      x:35, y:78},
+  {code:'RCV', label:'Centr. verd. rechts',     x:65, y:78},
+  {code:'RB',  label:'Rechtsback',              x:88, y:75},
+  {code:'CML', label:'Mid. links (8)',          x:28, y:50},
+  {code:'Nr6', label:'Controlerend (6)',        x:50, y:58},
+  {code:'CMR', label:'Mid. rechts (8)',         x:72, y:50},
+  {code:'LV',  label:'Linksbuiten',             x:15, y:22},
+  {code:'CS',  label:'Centrumspits',            x:50, y:18},
+  {code:'RV',  label:'Rechtsbuiten',            x:85, y:22}
+];
+
+// Standaard: leeg — gebruiker vult zelf in en slaat op
+const DEFAULT_PITCH = {
+  GK:  {huidig:'', gewenst:'', gap:false},
+  LB:  {huidig:'', gewenst:'', gap:false},
+  LCV: {huidig:'', gewenst:'', gap:false},
+  RCV: {huidig:'', gewenst:'', gap:false},
+  RB:  {huidig:'', gewenst:'', gap:false},
+  CML: {huidig:'', gewenst:'', gap:false},
+  Nr6: {huidig:'', gewenst:'', gap:false},
+  CMR: {huidig:'', gewenst:'', gap:false},
+  LV:  {huidig:'', gewenst:'', gap:false},
+  CS:  {huidig:'', gewenst:'', gap:false},
+  RV:  {huidig:'', gewenst:'', gap:false}
+};
+const DEFAULT_PITCH_META = {
+  team: '',
+  seizoen: '',
+  systeem: '4-3-3',
+  datum: '',
+  opsteller: 'Marcel Steeman',
+  notities: ''
+};
+
+/* =============== UTILS =============== */
+async function sha256(text){
+  const buf = new TextEncoder().encode(text);
+  const hash = await crypto.subtle.digest('SHA-256', buf);
+  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+function uid(){ return 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
+function $(s, p=document){ return p.querySelector(s); }
+function $$(s, p=document){ return Array.from(p.querySelectorAll(s)); }
+function initials(name){
+  return (name||'?').split(/\s+/).filter(Boolean).slice(0,2).map(s=>s[0].toUpperCase()).join('');
+}
+function formatDate(iso){
+  if(!iso) return '—';
+  try { return new Date(iso).toLocaleDateString('nl-NL', {day:'2-digit',month:'short',year:'numeric'}); }
+  catch(e){ return iso; }
+}
+function todayISO(){ return new Date().toISOString().slice(0,10); }
+function toast(msg, isError=false){
+  const t = $('#toast');
+  t.textContent = msg;
+  t.classList.toggle('error', !!isError);
+  t.classList.add('show');
+  clearTimeout(t._tm);
+  t._tm = setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+function loadPlayers(){
+  try { return JSON.parse(localStorage.getItem(STORAGE_PLAYERS)) || []; }
+  catch(e){ return []; }
+}
+function savePlayers(arr){ localStorage.setItem(STORAGE_PLAYERS, JSON.stringify(arr)); }
+
+function loadPitch(){
+  try {
+    const v = JSON.parse(localStorage.getItem(STORAGE_PITCH));
+    return v && typeof v === 'object' ? v : structuredClone(DEFAULT_PITCH);
+  } catch(e){ return structuredClone(DEFAULT_PITCH); }
+}
+function savePitch(obj){ localStorage.setItem(STORAGE_PITCH, JSON.stringify(obj)); }
+function loadPitchMeta(){
+  try {
+    const v = JSON.parse(localStorage.getItem(STORAGE_PITCH_META));
+    return v && typeof v === 'object' ? {...DEFAULT_PITCH_META, ...v} : structuredClone(DEFAULT_PITCH_META);
+  } catch(e){ return structuredClone(DEFAULT_PITCH_META); }
+}
+function savePitchMeta(obj){ localStorage.setItem(STORAGE_PITCH_META, JSON.stringify(obj)); }
+
+/* =============== LOGIN =============== */
+let inactivityTimer = null;
+function resetInactivity(){
+  sessionStorage.setItem(SESSION_LAST, Date.now().toString());
+  if(inactivityTimer) clearTimeout(inactivityTimer);
+  inactivityTimer = setTimeout(()=>{ logout(true); }, AUTO_LOGOUT_MS);
+}
+function logout(auto){
+  sessionStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(SESSION_LAST);
+  if(inactivityTimer) clearTimeout(inactivityTimer);
+  if(auto) toast('Sessie verlopen — log opnieuw in', true);
+  location.reload();
+}
+async function setupPassword(){
+  const pw  = $('#setup-pw').value;
+  const pw2 = $('#setup-pw2').value;
+  const err = $('#setup-error');
+  err.textContent = '';
+  if(pw.length < 8){ err.textContent = 'Wachtwoord moet minimaal 8 tekens zijn.'; return; }
+  if(pw !== pw2){ err.textContent = 'Wachtwoorden komen niet overeen.'; return; }
+  const h = await sha256(pw);
+  localStorage.setItem(STORAGE_PWHASH, h);
+  sessionStorage.setItem(SESSION_KEY, 'true');
+  resetInactivity();
+  showApp();
+}
+async function tryLogin(){
+  const btn = $('#login-btn');
+  const pw  = $('#login-pw').value;
+  const err = $('#login-error');
+  // BAKED_HASH (in code) is authoritative; fallback alleen als die leeg is
+  const stored = BAKED_HASH || localStorage.getItem(STORAGE_PWHASH);
+  err.textContent = '';
+  if(!pw){ err.textContent = 'Voer een wachtwoord in.'; return; }
+  btn.disabled = true; btn.textContent = 'Bezig...';
+  const h = await sha256(pw);
+  if(h === stored){
+    sessionStorage.setItem(SESSION_KEY, 'true');
+    resetInactivity();
+    btn.disabled = false; btn.textContent = 'Inloggen';
+    showApp();
+  } else {
+    // Delay bij fout wachtwoord
+    setTimeout(()=>{
+      err.textContent = 'Onjuist wachtwoord.';
+      $('#login-pw').value = '';
+      btn.disabled = false; btn.textContent = 'Inloggen';
+    }, FAIL_DELAY_MS);
+  }
+}
+function initLoginUI(){
+  // BAKED_HASH in code? Dan geen setup ooit — altijd direct login screen.
+  const hasPw = !!BAKED_HASH || !!localStorage.getItem(STORAGE_PWHASH);
+  $('#setup-form').style.display = hasPw ? 'none' : 'block';
+  $('#login-form').style.display = hasPw ? 'block' : 'none';
+
+  // Already logged in?
+  if(hasPw && sessionStorage.getItem(SESSION_KEY) === 'true'){
+    const last = parseInt(sessionStorage.getItem(SESSION_LAST)||'0', 10);
+    if(Date.now() - last < AUTO_LOGOUT_MS){
+      resetInactivity();
+      showApp();
+      return;
+    }
+    sessionStorage.removeItem(SESSION_KEY);
+  }
+
+  $('#setup-btn').addEventListener('click', setupPassword);
+  $('#setup-pw2').addEventListener('keydown', e=>{ if(e.key==='Enter') setupPassword(); });
+  $('#login-btn').addEventListener('click', tryLogin);
+  $('#login-pw').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
+  setTimeout(()=>{ (hasPw ? $('#login-pw') : $('#setup-pw')).focus(); }, 100);
+}
+function showApp(){
+  $('#login-overlay').style.display = 'none';
+  $('#app').style.display = 'block';
+  initApp();
+  ['mousemove','keydown','click','scroll','touchstart'].forEach(ev=>{
+    document.addEventListener(ev, resetInactivity, {passive:true});
+  });
+}
+
+/* =============== NAVIGATION =============== */
+function go(view){
+  $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-'+view));
+  $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
+  if(view === 'dashboard') renderDashboard();
+  if(view === 'database')  renderDatabase();
+  if(view === 'pitch')     renderPitch();
+  if(view === 'report')    resetReportForm();
+  window.scrollTo({top:0});
+}
+
+/* =============== DASHBOARD =============== */
+function renderDashboard(){
+  const players = loadPlayers();
+  $('#dashboard-date').textContent =
+    new Date().toLocaleDateString('nl-NL',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+  // KPIs
+  const total = players.length;
+  const last7 = players.filter(p => p.datum && (Date.now() - new Date(p.datum).getTime()) < 7*24*3600*1000).length;
+  const topPotential = players.filter(p => p.potentieel_niveau === 'A').length;
+  const advice1 = players.filter(p => String(p.advies) === '1').length;
+
+  $('#kpi-grid').innerHTML = `
+    <div class="kpi-card">
+      <div class="kpi-label">Totaal spelers</div>
+      <div class="kpi-value">${total}</div>
+      <div class="kpi-sub">in database</div>
+    </div>
+    <div class="kpi-card blue">
+      <div class="kpi-label">Deze week</div>
+      <div class="kpi-value">${last7}</div>
+      <div class="kpi-sub">nieuwe rapporten</div>
+    </div>
+    <div class="kpi-card green">
+      <div class="kpi-label">Topotentieel (A)</div>
+      <div class="kpi-value">${topPotential}</div>
+      <div class="kpi-sub">kan doorgroeien naar top</div>
+    </div>
+    <div class="kpi-card yellow">
+      <div class="kpi-label">Advies 1</div>
+      <div class="kpi-value">${advice1}</div>
+      <div class="kpi-sub">direct contracteren</div>
+    </div>
+  `;
+
+  // Recent
+  const recent = [...players].sort((a,b)=> new Date(b.datum||0) - new Date(a.datum||0)).slice(0,6);
+  const list = $('#recent-list');
+  if(!recent.length){
+    list.innerHTML = '<div class="empty-state"><div class="empty-icon">○</div><div>Nog geen rapporten — begin met een nieuw rapport.</div></div>';
+  } else {
+    list.innerHTML = recent.map(p => `
+      <div class="recent-item" data-id="${p.id}">
+        <div class="recent-avatar">${initials(p.naam)}</div>
+        <div class="recent-info">
+          <div class="recent-name">${escapeHtml(p.naam)}</div>
+          <div class="recent-meta">${escapeHtml(positionLabel(p.positie))} · ${formatDate(p.datum)}</div>
+        </div>
+        <div class="recent-grades">
+          <span class="grade ${p.huidig_niveau||'D'}">${p.huidig_niveau||'-'}</span>
+          <span class="grade outline ${p.potentieel_niveau||'D'}">${p.potentieel_niveau||'-'}</span>
+        </div>
+      </div>
+    `).join('');
+    $$('.recent-item', list).forEach(el=>{
+      el.addEventListener('click', ()=> openDetail(el.dataset.id));
+    });
+  }
+
+  // Distribution
+  const distCurrent  = countByGrade(players, 'huidig_niveau');
+  const distPotential = countByGrade(players, 'potentieel_niveau');
+  $('#dist-current').innerHTML  = renderDist(distCurrent, false);
+  $('#dist-potential').innerHTML = renderDist(distPotential, true);
+}
+function countByGrade(arr, key){
+  const out = {A:0,B:0,C:0,D:0};
+  arr.forEach(p=>{ if(out[p[key]] !== undefined) out[p[key]]++; });
+  return out;
+}
+function renderDist(dist, outline){
+  const total = Object.values(dist).reduce((a,b)=>a+b,0) || 1;
+  return GRADES.map(g=>{
+    const pct = (dist[g]/total)*100;
+    const color = `var(--grade-${g.toLowerCase()})`;
+    return `
+      <div class="dist-row">
+        <div class="dist-label"><span class="grade ${outline?'outline ':''}${g}">${g}</span></div>
+        <div class="dist-bar"><div class="dist-fill" style="width:${pct}%; background:${color}; ${outline?'opacity:.6;':''}"></div></div>
+        <div class="dist-count">${dist[g]}</div>
+      </div>`;
+  }).join('');
+}
+
+/* =============== DATABASE =============== */
+let sortKey = 'datum'; let sortAsc = false;
+function renderDatabase(){
+  const players = loadPlayers();
+  $('#db-count').textContent = `${players.length} speler${players.length===1?'':'s'}`;
+
+  // Populate position filter
+  const posSel = $('#filter-position');
+  const cur = posSel.value;
+  posSel.innerHTML = '<option value="">Alle posities</option>' +
+    ALL_POSITIONS.map(p=>`<option value="${p.code}">${p.label}</option>`).join('');
+  posSel.value = cur;
+
+  applyFilters();
+}
+function applyFilters(){
+  const players = loadPlayers();
+  const q  = $('#filter-search').value.trim().toLowerCase();
+  const fp = $('#filter-position').value;
+  const fc = $('#filter-current').value;
+  const fpot = $('#filter-potential').value;
+
+  let filtered = players.filter(p=>{
+    if(fp && p.positie !== fp) return false;
+    if(fc && p.huidig_niveau !== fc) return false;
+    if(fpot && p.potentieel_niveau !== fpot) return false;
+    if(q){
+      const hay = `${p.naam||''} ${p.club||''} ${positionLabel(p.positie)}`.toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  filtered.sort((a,b)=>{
+    let av = a[sortKey], bv = b[sortKey];
+    if(sortKey === 'datum'){ av = new Date(av||0).getTime(); bv = new Date(bv||0).getTime(); }
+    if(av == null) av = '';
+    if(bv == null) bv = '';
+    if(av < bv) return sortAsc ? -1 : 1;
+    if(av > bv) return sortAsc ? 1 : -1;
+    return 0;
+  });
+
+  const wrap = $('#db-table-wrap');
+  if(!filtered.length){
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">○</div><div>Geen spelers gevonden.</div></div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <table>
+      <thead>
+        <tr>
+          <th data-sort="naam">Speler</th>
+          <th data-sort="positie">Positie</th>
+          <th data-sort="club">Club</th>
+          <th data-sort="huidig_niveau">Huidig</th>
+          <th data-sort="potentieel_niveau">Potentieel</th>
+          <th data-sort="advies">Advies</th>
+          <th data-sort="datum">Datum</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filtered.map(p=>`
+          <tr data-id="${p.id}">
+            <td>
+              <div style="display:flex; align-items:center; gap:10px;">
+                <div class="recent-avatar" style="width:30px;height:30px;font-size:11px;">${initials(p.naam)}</div>
+                <div>
+                  <div style="font-weight:600;">${escapeHtml(p.naam)}</div>
+                  <div style="font-size:11px; color:var(--text-3);">${p.been||''}</div>
+                </div>
+              </div>
+            </td>
+            <td>${escapeHtml(positionLabel(p.positie))}</td>
+            <td>${escapeHtml(p.club||'—')}</td>
+            <td><span class="grade ${p.huidig_niveau||'D'}">${p.huidig_niveau||'-'}</span></td>
+            <td><span class="grade outline ${p.potentieel_niveau||'D'}">${p.potentieel_niveau||'-'}</span></td>
+            <td>${p.advies||'—'}</td>
+            <td>${formatDate(p.datum)}</td>
+          </tr>
+        `).join('')}
+      </tbody>
+    </table>
+  `;
+  $$('tbody tr', wrap).forEach(tr=>{
+    tr.addEventListener('click', ()=> openDetail(tr.dataset.id));
+  });
+  $$('thead th', wrap).forEach(th=>{
+    th.addEventListener('click', ()=>{
+      const k = th.dataset.sort;
+      if(sortKey === k) sortAsc = !sortAsc;
+      else { sortKey = k; sortAsc = true; }
+      applyFilters();
+    });
+  });
+}
+
+/* =============== DETAIL MODAL =============== */
+function openDetail(id){
+  const players = loadPlayers();
+  const p = players.find(x=>x.id===id);
+  if(!p) return;
+  const b = p.beoordelingen || {};
+  $('#modal-body').innerHTML = `
+    <div class="detail-header">
+      <div class="detail-avatar">${initials(p.naam)}</div>
+      <div style="flex:1;">
+        <div class="detail-name">${escapeHtml(p.naam)}</div>
+        <div class="detail-meta">
+          ${escapeHtml(positionLabel(p.positie))}${p.club?(' · '+escapeHtml(p.club)):''}${p.rugnummer?(' · #'+escapeHtml(p.rugnummer)):''}
+          ${p.been?(' · '+escapeHtml(p.been)):''}
+          ${p.geboorte?(' · '+formatDate(p.geboorte)):''}
+        </div>
+        <div class="detail-grade-row">
+          <div><span class="grade-label">Huidig</span> <span class="grade ${p.huidig_niveau||'D'}">${p.huidig_niveau||'-'}</span></div>
+          <div><span class="grade-label">Potentieel</span> <span class="grade outline ${p.potentieel_niveau||'D'}">${p.potentieel_niveau||'-'}</span></div>
+          <div><span class="grade-label">Advies</span> <span class="grade ${gradeForAdvies(p.advies)}">${p.advies||'-'}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-section">
+      <h4>Beoordeling per categorie</h4>
+      <div class="detail-criteria-grid">
+        ${renderCriteriaCard('Spelvaardigheden / Techniek', b.techniek_huidig, b.techniek_potentieel, b.techniek_opmerking)}
+        ${renderCriteriaCard('Functioneel tactisch / Inzicht', b.inzicht_huidig, b.inzicht_potentieel, b.inzicht_opmerking)}
+        ${renderCriteriaCard('DRIT / Passie & Attitude', b.drit_huidig, b.drit_potentieel, b.drit_opmerking)}
+        ${renderCriteriaCard('Atletisch / Fysiek', b.fysiek_huidig, b.fysiek_potentieel, b.fysiek_opmerking)}
+      </div>
+    </div>
+
+    ${p.wapen ? `
+    <div class="detail-section">
+      <h4>Persoonlijk wapen</h4>
+      <div class="detail-notes">${escapeHtml(p.wapen)}</div>
+    </div>` : ''}
+
+    ${p.notities ? `
+    <div class="detail-section">
+      <h4>Notities</h4>
+      <div class="detail-notes">${escapeHtml(p.notities)}</div>
+    </div>` : ''}
+
+    <div class="detail-section">
+      <h4>Context</h4>
+      <div class="detail-criteria-grid">
+        <div class="detail-criteria"><div class="detail-criteria-name">Beoogde positie</div><div>${escapeHtml(positionLabel(p.beoogd)||'—')}</div></div>
+        <div class="detail-criteria"><div class="detail-criteria-name">Leeftijdsgroep</div><div>${escapeHtml(p.leeftijd||'—')}</div></div>
+        <div class="detail-criteria"><div class="detail-criteria-name">Scoutingmethode</div><div>${escapeHtml(p.methode||'—')}</div></div>
+        <div class="detail-criteria"><div class="detail-criteria-name">Datum</div><div>${formatDate(p.datum)}</div></div>
+      </div>
+    </div>
+
+    <div class="form-actions" style="margin-top:24px;">
+      <button class="btn btn-danger btn-sm" id="del-${p.id}">Verwijder rapport</button>
+      <button class="btn btn-sm" id="edit-${p.id}">Bewerken</button>
+    </div>
+  `;
+  $('#modal-backdrop').classList.add('open');
+  $(`#del-${p.id}`).addEventListener('click', ()=>{
+    if(confirm('Dit rapport verwijderen?')){
+      const arr = loadPlayers().filter(x=>x.id!==id);
+      savePlayers(arr);
+      closeDetail();
+      renderDatabase(); renderDashboard();
+      toast('Rapport verwijderd');
+    }
+  });
+  $(`#edit-${p.id}`).addEventListener('click', ()=>{
+    closeDetail();
+    loadIntoForm(p);
+    go('report');
+  });
+}
+function renderCriteriaCard(name, cur, pot, opmerking){
+  return `
+    <div class="detail-criteria">
+      <div class="detail-criteria-name">${name}</div>
+      <div class="detail-criteria-grades">
+        <span class="grade-label">H</span><span class="grade ${cur||'D'}">${cur||'-'}</span>
+        <span class="grade-label" style="margin-left:8px;">P</span><span class="grade outline ${pot||'D'}">${pot||'-'}</span>
+      </div>
+      ${opmerking ? `<div style="margin-top:8px; font-size:12px; color:var(--text-2); line-height:1.5; white-space:pre-wrap;">${escapeHtml(opmerking)}</div>` : ''}
+    </div>`;
+}
+function gradeForAdvies(a){
+  const n = parseInt(a,10);
+  if(n===1) return 'A'; if(n===2) return 'B'; if(n===3) return 'C';
+  return 'D';
+}
+function closeDetail(){ $('#modal-backdrop').classList.remove('open'); }
+
+/* =============== REPORT FORM =============== */
+function buildGradePickers(){
+  $$('.grade-picker').forEach(picker=>{
+    const isPot = picker.classList.contains('pot');
+    picker.innerHTML = GRADES.map(g=>`
+      <button type="button" class="grade-pick ${isPot?'grade-pick-pot':''}" data-grade="${g}">${g}</button>
+    `).join('');
+    $$('.grade-pick', picker).forEach(b=>{
+      b.addEventListener('click', ()=>{
+        $$('.grade-pick', picker).forEach(x=>x.classList.remove('selected'));
+        b.classList.add('selected');
+        picker.dataset.value = b.dataset.grade;
+      });
+    });
+  });
+}
+function setPickerValue(key, val){
+  const picker = document.querySelector(`.grade-picker[data-key="${key}"]`);
+  if(!picker) return;
+  picker.dataset.value = val || '';
+  $$('.grade-pick', picker).forEach(b=>{
+    b.classList.toggle('selected', b.dataset.grade === val);
+  });
+}
+function getPickerValue(key){
+  return document.querySelector(`.grade-picker[data-key="${key}"]`)?.dataset.value || '';
+}
+function refreshPositionDropdowns(){
+  const linie = $('#f-linie').value;
+  const positionsForLine = POSITIONS_BY_LINE[linie] || ALL_POSITIONS;
+  const posSel = $('#f-positie');
+  const beoogdSel = $('#f-beoogd');
+  const currentPos = posSel.value;
+  const currentBeoogd = beoogdSel.value;
+
+  posSel.innerHTML = '<option value="">Kies...</option>' +
+    positionsForLine.map(p=>`<option value="${p.code}">${p.label}</option>`).join('');
+  beoogdSel.innerHTML = '<option value="">— Zelfde als positie —</option>' +
+    ALL_POSITIONS.map(p=>`<option value="${p.code}">${p.label}</option>`).join('');
+
+  if(positionsForLine.some(p=>p.code===currentPos)) posSel.value = currentPos;
+  if(currentBeoogd) beoogdSel.value = currentBeoogd;
+}
+function resetReportForm(){
+  $('#report-title').textContent = 'Nieuw scoutingsrapport';
+  $('#report-form').reset();
+  $('#f-id').value = '';
+  refreshPositionDropdowns();
+  $$('.grade-pick').forEach(b=>b.classList.remove('selected'));
+  $$('.grade-picker').forEach(p=>p.dataset.value='');
+}
+function loadIntoForm(p){
+  $('#report-title').textContent = 'Rapport bewerken — ' + p.naam;
+  $('#f-id').value = p.id;
+  $('#f-naam').value = p.naam || '';
+  $('#f-geboorte').value = p.geboorte || '';
+  $('#f-club').value = p.club || '';
+  $('#f-rugnummer').value = p.rugnummer || '';
+  $('#f-been').value = p.been || '';
+  $('#f-linie').value = p.linie || '';
+  refreshPositionDropdowns();
+  $('#f-positie').value = p.positie || '';
+  $('#f-beoogd').value = p.beoogd || '';
+  $('#f-leeftijd').value = p.leeftijd || 'Eigen leeftijd';
+  $('#f-methode').value = p.methode || 'Live';
+  $('#f-advies').value = p.advies || '';
+  $('#f-wapen').value = p.wapen || '';
+  $('#f-notities').value = p.notities || '';
+  const b = p.beoordelingen || {};
+  // grade pickers (skip opmerking keys)
+  Object.keys(b).forEach(k => {
+    if(k.endsWith('_opmerking')) return;
+    setPickerValue(k, b[k]);
+  });
+  // opmerking textareas
+  $('#f-techniek-opmerking').value = b.techniek_opmerking || '';
+  $('#f-inzicht-opmerking').value  = b.inzicht_opmerking  || '';
+  $('#f-drit-opmerking').value     = b.drit_opmerking     || '';
+  $('#f-fysiek-opmerking').value   = b.fysiek_opmerking   || '';
+  setPickerValue('huidig_niveau', p.huidig_niveau);
+  setPickerValue('potentieel_niveau', p.potentieel_niveau);
+}
+function submitReport(e){
+  e.preventDefault();
+  const id = $('#f-id').value || uid();
+  const naam = $('#f-naam').value.trim();
+  if(!naam){ toast('Vul een naam in', true); return; }
+  const huidig = getPickerValue('huidig_niveau');
+  const pot = getPickerValue('potentieel_niveau');
+  if(!huidig || !pot){
+    toast('Geef huidig én potentieel eindniveau op', true);
+    return;
+  }
+  const player = {
+    id,
+    naam,
+    geboorte: $('#f-geboorte').value,
+    club: $('#f-club').value.trim(),
+    rugnummer: $('#f-rugnummer').value.trim(),
+    been: $('#f-been').value,
+    linie: $('#f-linie').value,
+    positie: $('#f-positie').value,
+    beoogd: $('#f-beoogd').value,
+    leeftijd: $('#f-leeftijd').value,
+    methode: $('#f-methode').value,
+    advies: $('#f-advies').value,
+    wapen: $('#f-wapen').value.trim(),
+    notities: $('#f-notities').value.trim(),
+    beoordelingen: {
+      techniek_huidig: getPickerValue('techniek_huidig'),
+      techniek_potentieel: getPickerValue('techniek_potentieel'),
+      techniek_opmerking: $('#f-techniek-opmerking').value.trim(),
+      inzicht_huidig: getPickerValue('inzicht_huidig'),
+      inzicht_potentieel: getPickerValue('inzicht_potentieel'),
+      inzicht_opmerking: $('#f-inzicht-opmerking').value.trim(),
+      drit_huidig: getPickerValue('drit_huidig'),
+      drit_potentieel: getPickerValue('drit_potentieel'),
+      drit_opmerking: $('#f-drit-opmerking').value.trim(),
+      fysiek_huidig: getPickerValue('fysiek_huidig'),
+      fysiek_potentieel: getPickerValue('fysiek_potentieel'),
+      fysiek_opmerking: $('#f-fysiek-opmerking').value.trim()
+    },
+    huidig_niveau: huidig,
+    potentieel_niveau: pot,
+    datum: todayISO()
+  };
+  const arr = loadPlayers();
+  const idx = arr.findIndex(x=>x.id===id);
+  if(idx >= 0) arr[idx] = {...arr[idx], ...player};
+  else arr.unshift(player);
+  savePlayers(arr);
+  toast(idx>=0 ? 'Rapport bijgewerkt' : 'Rapport opgeslagen');
+  resetReportForm();
+  go('database');
+}
+
+/* =============== PITCH =============== */
+let selectedPitchPos = null;
+function persistPitchMetaFromInputs(){
+  savePitchMeta({
+    team:      $('#pm-team').value.trim(),
+    seizoen:   $('#pm-seizoen').value.trim(),
+    datum:     $('#pm-datum').value,
+    systeem:   $('#pm-systeem').value,
+    opsteller: $('#pm-opsteller').value.trim(),
+    notities:  $('#pm-notities').value.trim()
+  });
+  // Update subtitle live
+  const meta = loadPitchMeta();
+  const sub = [meta.team, meta.seizoen, meta.systeem ? 'systeem '+meta.systeem : '']
+    .filter(Boolean).join(' — ');
+  $('#pitch-subtitle').textContent = sub || 'Vul de gegevens hieronder in en sla op';
+}
+function gradeStyle(g, outline){
+  if(!g) return outline
+    ? 'background:transparent;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.5);'
+    : 'background:rgba(255,255,255,.15);color:rgba(255,255,255,.6);';
+  const c = `var(--grade-${g.toLowerCase()})`;
+  return outline
+    ? `background:transparent;border:1px solid ${c};color:${c};`
+    : `background:${c};color:#0a0a0a;`;
+}
+function renderPitch(){
+  // metadata invulvelden
+  const meta = loadPitchMeta();
+  $('#pm-team').value      = meta.team || '';
+  $('#pm-seizoen').value   = meta.seizoen || '';
+  $('#pm-datum').value     = meta.datum || '';
+  $('#pm-systeem').value   = meta.systeem || '4-3-3';
+  $('#pm-opsteller').value = meta.opsteller || '';
+  $('#pm-notities').value  = meta.notities || '';
+  const sub = [meta.team, meta.seizoen, meta.systeem ? 'systeem '+meta.systeem : '']
+    .filter(Boolean).join(' — ');
+  $('#pitch-subtitle').textContent = sub || 'Vul de gegevens hieronder in en sla op';
+
+  const state = loadPitch();
+  const container = $('#pitch-positions');
+  container.innerHTML = PITCH_LAYOUT.map(p=>{
+    const s = state[p.code] || {huidig:'', gewenst:'', gap:false};
+    return `
+      <button class="pos-btn ${s.gap?'gap':''} ${selectedPitchPos===p.code?'selected':''}"
+              data-code="${p.code}"
+              style="left:${p.x}%; top:${p.y}%;"
+              title="${p.label}">
+        <div class="pos-code">${p.code}</div>
+        <div class="pos-grades">
+          <span class="pos-grade" style="${gradeStyle(s.huidig, false)}">${s.huidig||'·'}</span>
+          <span class="pos-grade" style="${gradeStyle(s.gewenst, true)}">${s.gewenst||'·'}</span>
+        </div>
+      </button>
+    `;
+  }).join('');
+  $$('.pos-btn', container).forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      selectedPitchPos = btn.dataset.code;
+      renderPitch();
+      renderPitchInfo();
+    });
+  });
+  // Gap summary
+  const gaps = PITCH_LAYOUT.filter(p => state[p.code]?.gap);
+  $('#pitch-gap-list').innerHTML = gaps.length
+    ? gaps.map(p=>`<span class="gap-tag">${p.label}</span>`).join('')
+    : '<span style="color:var(--text-3); font-size:12px;">Geen actieve witte vlekken.</span>';
+
+  renderPitchInfo();
+}
+function renderPitchInfo(){
+  const panel = $('#pitch-info');
+  if(!selectedPitchPos){
+    panel.innerHTML = `
+      <div class="pitch-info-empty">
+        <div style="font-size:32px; opacity:.3; margin-bottom:8px;">⚽</div>
+        <div>Klik op een positie in het veld om huidig & gewenst niveau in te stellen.</div>
+      </div>`;
+    return;
+  }
+  const meta = PITCH_LAYOUT.find(p=>p.code===selectedPitchPos);
+  const state = loadPitch();
+  const s = state[selectedPitchPos] || {huidig:'B', gewenst:'B', gap:false};
+  const players = loadPlayers().filter(p => p.positie === selectedPitchPos || p.beoogd === selectedPitchPos);
+  panel.innerHTML = `
+    <div class="position-detail-title">${meta.label}</div>
+    <div class="position-detail-sub">${meta.code} · ${players.length} speler${players.length===1?'':'s'} in database</div>
+
+    <div class="position-grade-block">
+      <label><span class="dual-label-pill pill-current">Huidig kwaliteitsniveau</span></label>
+      <div class="grade-picker" id="pitch-cur"></div>
+    </div>
+    <div class="position-grade-block">
+      <label><span class="dual-label-pill pill-potential">Gewenst niveau</span></label>
+      <div class="grade-picker pot" id="pitch-want"></div>
+    </div>
+
+    <div class="gap-toggle">
+      <input type="checkbox" id="pitch-gap" ${s.gap?'checked':''} />
+      <label for="pitch-gap">Markeer als <strong style="color:var(--secondary)">witte vlek</strong></label>
+    </div>
+
+    ${players.length ? `
+      <div style="margin-top:14px;">
+        <div style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-3);margin-bottom:8px;">Spelers op deze positie</div>
+        <div class="recent-list">
+          ${players.slice(0,5).map(p=>`
+            <div class="recent-item" data-id="${p.id}">
+              <div class="recent-avatar">${initials(p.naam)}</div>
+              <div class="recent-info">
+                <div class="recent-name">${escapeHtml(p.naam)}</div>
+                <div class="recent-meta">${escapeHtml(p.club||'')} · ${formatDate(p.datum)}</div>
+              </div>
+              <div class="recent-grades">
+                <span class="grade ${p.huidig_niveau||'D'}">${p.huidig_niveau||'-'}</span>
+                <span class="grade outline ${p.potentieel_niveau||'D'}">${p.potentieel_niveau||'-'}</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    ` : ''}
+  `;
+
+  // build pickers
+  ['pitch-cur','pitch-want'].forEach((id,i)=>{
+    const isPot = i===1;
+    const el = $('#'+id);
+    el.innerHTML = GRADES.map(g=>`<button type="button" class="grade-pick ${isPot?'grade-pick-pot':''}" data-grade="${g}">${g}</button>`).join('');
+    const sel = i===0 ? s.huidig : s.gewenst;
+    $$('.grade-pick', el).forEach(b=>{
+      if(b.dataset.grade === sel) b.classList.add('selected');
+      b.addEventListener('click', ()=>{
+        $$('.grade-pick', el).forEach(x=>x.classList.remove('selected'));
+        b.classList.add('selected');
+        const st = loadPitch();
+        st[selectedPitchPos] = st[selectedPitchPos] || {huidig:'B', gewenst:'B', gap:false};
+        if(i===0) st[selectedPitchPos].huidig = b.dataset.grade;
+        else      st[selectedPitchPos].gewenst = b.dataset.grade;
+        savePitch(st);
+        renderPitch();
+      });
+    });
+  });
+  $('#pitch-gap').addEventListener('change', e=>{
+    const st = loadPitch();
+    st[selectedPitchPos] = st[selectedPitchPos] || {huidig:'B', gewenst:'B', gap:false};
+    st[selectedPitchPos].gap = e.target.checked;
+    savePitch(st);
+    renderPitch();
+  });
+  $$('.recent-item', panel).forEach(el=>{
+    el.addEventListener('click', ()=> openDetail(el.dataset.id));
+  });
+}
+
+/* =============== HELPERS =============== */
+function positionLabel(code){
+  if(!code) return '';
+  const p = ALL_POSITIONS.find(x=>x.code===code);
+  return p ? p.label : code;
+}
+function escapeHtml(s){
+  if(s==null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+function exportJSON(){
+  const data = {
+    exported: new Date().toISOString(),
+    scout: 'Marcel Steeman',
+    players: loadPlayers(),
+    pitch: loadPitch()
+  };
+  const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `scouting_export_${todayISO()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Export gedownload');
+}
+
+/* =============== INIT =============== */
+function initApp(){
+  // Nav
+  $$('.nav-item').forEach(b=>{
+    b.addEventListener('click', ()=> go(b.dataset.view));
+  });
+  $$('[data-go]').forEach(b=>{
+    b.addEventListener('click', ()=> go(b.dataset.go));
+  });
+  $('#logout-btn').addEventListener('click', ()=> logout(false));
+
+  // Form
+  buildGradePickers();
+  refreshPositionDropdowns();
+  $('#f-linie').addEventListener('change', refreshPositionDropdowns);
+  $('#report-form').addEventListener('submit', submitReport);
+  $('#report-clear').addEventListener('click', resetReportForm);
+  $('#report-cancel').addEventListener('click', ()=>{ resetReportForm(); go('dashboard'); });
+
+  // DB filters
+  ['filter-search','filter-position','filter-current','filter-potential'].forEach(id=>{
+    $('#'+id).addEventListener('input', applyFilters);
+    $('#'+id).addEventListener('change', applyFilters);
+  });
+  $('#export-btn').addEventListener('click', exportJSON);
+
+  // Modal
+  $('#modal-close').addEventListener('click', closeDetail);
+  $('#modal-backdrop').addEventListener('click', e=>{
+    if(e.target.id === 'modal-backdrop') closeDetail();
+  });
+  document.addEventListener('keydown', e=>{
+    if(e.key==='Escape') closeDetail();
+  });
+
+  // Pitch — metadata autosave on change + save button
+  ['pm-team','pm-seizoen','pm-datum','pm-systeem','pm-opsteller','pm-notities'].forEach(id=>{
+    $('#'+id).addEventListener('input', persistPitchMetaFromInputs);
+    $('#'+id).addEventListener('change', persistPitchMetaFromInputs);
+  });
+  $('#pitch-save').addEventListener('click', ()=>{
+    persistPitchMetaFromInputs();
+    renderPitch();
+    toast('Witte vlekken analyse opgeslagen');
+  });
+  $('#pitch-reset').addEventListener('click', ()=>{
+    if(confirm('Alle witte vlekken-gegevens wissen? Beoordelingen, gap-markeringen én team/seizoen/datum worden leeggemaakt.')){
+      savePitch(structuredClone(DEFAULT_PITCH));
+      savePitchMeta(structuredClone(DEFAULT_PITCH_META));
+      selectedPitchPos = null;
+      renderPitch();
+      toast('Alles gewist');
+    }
+  });
+
+  renderDashboard();
+}
+
+/* =============== BOOT =============== */
+document.addEventListener('DOMContentLoaded', initLoginUI);
+})();
+</script>
+</body>
+</html>

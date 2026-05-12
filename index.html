@@ -63,7 +63,7 @@ a { color: var(--accent); text-decoration: none; }
   z-index: 1000;
 }
 .login-card {
-  width: 100%; max-width: 420px;
+  width: 100%; max-width: 440px;
   background: rgba(21,28,40,.85);
   backdrop-filter: blur(12px);
   border: 1px solid var(--border);
@@ -105,6 +105,23 @@ a { color: var(--accent); text-decoration: none; }
 .login-footer {
   margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border);
   font-size: 11px; color: var(--text-3); text-align: center;
+}
+.login-link-btn {
+  background: transparent; border: none; color: var(--accent);
+  font-size: 12px; padding: 6px 0; margin-top: 8px;
+  text-decoration: underline; text-underline-offset: 2px;
+  width: 100%; text-align: center;
+}
+.login-link-btn:hover { color: var(--primary-2); }
+.config-missing {
+  background: rgba(239,68,68,.08); border: 1px solid rgba(239,68,68,.35);
+  border-radius: 8px; padding: 14px 16px; font-size: 12px; color: var(--text-2);
+  line-height: 1.6;
+}
+.config-missing strong { color: var(--red); display: block; margin-bottom: 6px; font-size: 13px; }
+.config-missing code {
+  background: #0d121b; padding: 1px 6px; border-radius: 4px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 11px;
 }
 
 /* ---------- APP SHELL ---------- */
@@ -167,6 +184,7 @@ a { color: var(--accent); text-decoration: none; }
 }
 .scout-name { font-weight: 600; font-size: 13px; }
 .scout-role { font-size: 11px; color: var(--text-3); margin-top: 2px; letter-spacing: .3px; }
+.scout-email { font-size: 10px; color: var(--text-3); margin-top: 4px; word-break: break-all; }
 .logout-btn {
   margin-top: 10px; width: 100%;
   background: transparent; color: var(--text-3); border: 1px solid var(--border-2);
@@ -196,6 +214,23 @@ a { color: var(--accent); text-decoration: none; }
 .btn-sm { padding: 6px 10px; font-size: 12px; }
 .btn-danger { color: var(--red); border-color: rgba(239,68,68,.3); }
 .btn-danger:hover { background: rgba(239,68,68,.1); border-color: var(--red); }
+
+/* Sync indicator */
+.sync-status {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; color: var(--text-3); margin-left: 12px;
+}
+.sync-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--text-3); transition: background .2s;
+}
+.sync-dot.online { background: var(--green); box-shadow: 0 0 6px rgba(34,197,94,.6); }
+.sync-dot.offline { background: var(--red); }
+.sync-dot.syncing {
+  background: var(--secondary);
+  animation: pulse 1s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .4; } }
 
 /* ---------- VIEWS ---------- */
 .view { display: none; animation: fadeIn .25s ease; }
@@ -555,6 +590,21 @@ tbody tr:last-child td { border-bottom: none; }
 .toast.show { transform: none; opacity: 1; }
 .toast.error { border-left-color: var(--red); }
 
+/* Loading spinner */
+.spinner-overlay {
+  position: fixed; inset: 0; background: rgba(11,15,21,.85);
+  display: none; align-items: center; justify-content: center;
+  z-index: 1500; flex-direction: column; gap: 16px;
+}
+.spinner-overlay.show { display: flex; }
+.spinner {
+  width: 38px; height: 38px; border: 3px solid var(--border-2);
+  border-top-color: var(--primary); border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+.spinner-text { color: var(--text-2); font-size: 13px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
 /* Responsive */
 @media (max-width: 900px) {
   .app-grid { grid-template-columns: 1fr; }
@@ -584,10 +634,23 @@ tbody tr:last-child td { border-bottom: none; }
       </div>
     </div>
 
-    <!-- Setup screen (eerste keer) -->
+    <!-- Config-missing screen -->
+    <div id="config-missing" style="display:none;">
+      <div class="config-missing">
+        <strong>Firebase nog niet geconfigureerd</strong>
+        Open <code>index.html</code> en vul je Firebase-projectgegevens in bij <code>FIREBASE_CONFIG</code>.
+        Zie de <code>README.md</code> voor de stap-voor-stap installatiehandleiding.
+      </div>
+    </div>
+
+    <!-- Setup / Register screen -->
     <div id="setup-form" style="display:none;">
       <div class="login-field">
-        <label>Stel een wachtwoord in</label>
+        <label>E-mailadres</label>
+        <input id="setup-email" type="email" class="login-input" placeholder="naam@voorbeeld.nl" autocomplete="email" />
+      </div>
+      <div class="login-field">
+        <label>Wachtwoord</label>
         <input id="setup-pw" type="password" class="login-input" placeholder="Minimaal 8 tekens" autocomplete="new-password" />
       </div>
       <div class="login-field">
@@ -596,22 +659,27 @@ tbody tr:last-child td { border-bottom: none; }
       </div>
       <button id="setup-btn" class="login-btn">Account aanmaken</button>
       <div id="setup-error" class="login-error"></div>
+      <button type="button" class="login-link-btn" id="switch-to-login">Heb je al een account? Inloggen</button>
       <div class="setup-help">
-        Dit wachtwoord wordt veilig gehashed (SHA-256) en lokaal opgeslagen.<br>
-        Vergeet je het, dan moet je localStorage wissen om opnieuw te beginnen.
+        Account wordt aangemaakt in Firebase Authentication. Gegevens worden veilig opgeslagen in Firestore en zijn op elk apparaat beschikbaar.
       </div>
     </div>
 
     <!-- Login screen -->
-    <div id="login-form">
+    <div id="login-form" style="display:none;">
+      <div class="login-field">
+        <label>E-mailadres</label>
+        <input id="login-email" type="email" class="login-input" placeholder="naam@voorbeeld.nl" autocomplete="email" />
+      </div>
       <div class="login-field">
         <label>Wachtwoord</label>
         <input id="login-pw" type="password" class="login-input" placeholder="Voer wachtwoord in" autocomplete="current-password" />
       </div>
       <button id="login-btn" class="login-btn">Inloggen</button>
       <div id="login-error" class="login-error"></div>
+      <button type="button" class="login-link-btn" id="switch-to-setup">Nog geen account? Maak er een aan</button>
       <div class="login-footer">
-        Sessie verloopt automatisch na 30 minuten inactiviteit.
+        Je sessie verloopt automatisch na 30 minuten inactiviteit.
       </div>
     </div>
   </div>
@@ -654,6 +722,7 @@ tbody tr:last-child td { border-bottom: none; }
         <img src="marcel.png" alt="Marcel Steeman" class="scout-photo" onerror="this.style.display='none'" />
         <div class="scout-name">Marcel Steeman</div>
         <div class="scout-role">Scout</div>
+        <div class="scout-email" id="scout-email">—</div>
         <button class="logout-btn" id="logout-btn">Uitloggen</button>
       </div>
     </aside>
@@ -665,7 +734,10 @@ tbody tr:last-child td { border-bottom: none; }
       <section class="view active" id="view-dashboard">
         <div class="topbar">
           <div>
-            <div class="page-title">Dashboard</div>
+            <div class="page-title">
+              Dashboard
+              <span class="sync-status"><span class="sync-dot" id="sync-dot"></span><span id="sync-text">Verbinden...</span></span>
+            </div>
             <div class="page-sub" id="dashboard-date">—</div>
           </div>
           <button class="btn btn-primary" data-go="report">
@@ -1025,10 +1097,10 @@ tbody tr:last-child td { border-bottom: none; }
                 <label>Advies *</label>
                 <select id="f-advies" required>
                   <option value="">Kies...</option>
-                  <option value="4">4 — Direct aannemen</option>
-                  <option value="3">3 — Uitnodigen voor stage</option>
-                  <option value="2">2 — Blijven volgen</option>
                   <option value="1">1 — Niet selecteren</option>
+                  <option value="2">2 — Blijven volgen</option>
+                  <option value="3">3 — Uitnodigen voor stage</option>
+                  <option value="4">4 — Direct aannemen</option>
                 </select>
               </div>
               <div class="field">
@@ -1044,7 +1116,7 @@ tbody tr:last-child td { border-bottom: none; }
 
           <div class="form-actions">
             <button type="button" class="btn" id="report-clear">Wissen</button>
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" id="report-submit">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               Rapport opslaan
             </button>
@@ -1138,6 +1210,15 @@ tbody tr:last-child td { border-bottom: none; }
             </div>
           </div>
         </div>
+
+        <!-- Opgeslagen analyses -->
+        <div class="panel" style="margin-top:18px;">
+          <div class="panel-title">
+            Opgeslagen analyses
+            <span class="panel-title-icon">●</span>
+          </div>
+          <div id="pitch-history-list"></div>
+        </div>
       </section>
 
     </main>
@@ -1158,38 +1239,53 @@ tbody tr:last-child td { border-bottom: none; }
 <!-- =================== TOAST =================== -->
 <div class="toast" id="toast"></div>
 
-<script>
+<!-- =================== LOADING =================== -->
+<div class="spinner-overlay" id="spinner-overlay">
+  <div class="spinner"></div>
+  <div class="spinner-text" id="spinner-text">Bezig met laden...</div>
+</div>
+
+<script type="module">
 /* ==========================================================
    SCOUTING PLATFORM — Marcel Steeman
    FC Twente / Heracles — O12/O15
-   NOTE: Client-side security only, intended for personal use
+   Data: Firebase (Authentication + Firestore)
    ========================================================== */
 
-(function(){
-'use strict';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signOut, onAuthStateChanged, setPersistence, browserLocalPersistence
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-/* =============== CONFIG =============== */
-// Vast wachtwoord — werkt op elk apparaat / elke browser.
-// SHA-256 hash (irreversibel). Wijzigen? Genereer nieuwe hash met:
-//   crypto.subtle.digest('SHA-256', new TextEncoder().encode('jouwwachtwoord'))
-//     .then(b => console.log([...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('')))
-const BAKED_HASH = '2b30cf422614f18f36562b5bb8f5462a9735e29f76744236b131c485305a5264';
+/* =============== FIREBASE CONFIG ===============
+   1. Maak een Firebase-project op https://console.firebase.google.com
+   2. Activeer Authentication → Sign-in method → Email/Password
+   3. Maak een Firestore Database aan (production mode)
+   4. Plak hieronder de gegevens uit "Project settings → Your apps → Web app → SDK setup"
+   5. Voeg in Authentication → Settings → Authorized domains je GitHub Pages-domein toe
+      (bijv. msteeman.github.io)
+   ============================================== */
+const FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  storageBucket: "",
+  messagingSenderId: "",
+  appId: ""
+};
 
-const STORAGE_PLAYERS    = 'scouting_app_players';
-const STORAGE_PITCH      = 'scouting_app_pitch';
-const STORAGE_PITCH_META = 'scouting_app_pitch_meta';
-const STORAGE_PWHASH     = 'scouting_app_pwhash';
-const SESSION_KEY      = 'loggedIn';
-const SESSION_LAST     = 'lastActivity';
-const AUTO_LOGOUT_MS   = 30 * 60 * 1000;
-const FAIL_DELAY_MS    = 800;
+const FIREBASE_READY = !!(FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
+
+/* =============== CONSTANTS =============== */
+const AUTO_LOGOUT_MS = 30 * 60 * 1000;
 
 const GRADES = ['A','B','C','D'];
 const GRADE_LABEL = {
-  A: 'Champions League',
-  B: 'Top Eredivisie',
-  C: 'Eredivisie',
-  D: 'KKD / onder niveau'
+  A: 'Champions League', B: 'Top Eredivisie', C: 'Eredivisie', D: 'KKD / onder niveau'
 };
 
 const POSITIONS_BY_LINE = {
@@ -1215,7 +1311,6 @@ const POSITIONS_BY_LINE = {
 };
 const ALL_POSITIONS = Object.values(POSITIONS_BY_LINE).flat();
 
-// Pitch layout 4-3-3 — percent coordinates {x,y} on pitch (0-100)
 const PITCH_LAYOUT = [
   {code:'GK',  label:'Keeper',                  x:50, y:92},
   {code:'LB',  label:'Linksback',               x:12, y:75},
@@ -1230,35 +1325,46 @@ const PITCH_LAYOUT = [
   {code:'RV',  label:'Rechtsbuiten',            x:85, y:22}
 ];
 
-// Standaard: leeg — gebruiker vult zelf in en slaat op
 const DEFAULT_PITCH = {
-  GK:  {huidig:'', gewenst:'', gap:false},
-  LB:  {huidig:'', gewenst:'', gap:false},
-  LCV: {huidig:'', gewenst:'', gap:false},
-  RCV: {huidig:'', gewenst:'', gap:false},
-  RB:  {huidig:'', gewenst:'', gap:false},
-  CML: {huidig:'', gewenst:'', gap:false},
-  Nr6: {huidig:'', gewenst:'', gap:false},
-  CMR: {huidig:'', gewenst:'', gap:false},
-  LV:  {huidig:'', gewenst:'', gap:false},
-  CS:  {huidig:'', gewenst:'', gap:false},
-  RV:  {huidig:'', gewenst:'', gap:false}
+  GK:{huidig:'',gewenst:'',gap:false}, LB:{huidig:'',gewenst:'',gap:false},
+  LCV:{huidig:'',gewenst:'',gap:false}, RCV:{huidig:'',gewenst:'',gap:false},
+  RB:{huidig:'',gewenst:'',gap:false}, CML:{huidig:'',gewenst:'',gap:false},
+  Nr6:{huidig:'',gewenst:'',gap:false}, CMR:{huidig:'',gewenst:'',gap:false},
+  LV:{huidig:'',gewenst:'',gap:false}, CS:{huidig:'',gewenst:'',gap:false},
+  RV:{huidig:'',gewenst:'',gap:false}
 };
 const DEFAULT_PITCH_META = {
-  team: '',
-  seizoen: '',
-  systeem: '4-3-3',
-  datum: '',
-  opsteller: 'Marcel Steeman',
-  notities: ''
+  team:'', seizoen:'', systeem:'4-3-3', datum:'', opsteller:'Marcel Steeman', notities:''
 };
 
-/* =============== UTILS =============== */
-async function sha256(text){
-  const buf = new TextEncoder().encode(text);
-  const hash = await crypto.subtle.digest('SHA-256', buf);
-  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+/* =============== FIREBASE INIT =============== */
+let firebaseApp = null, auth = null, db = null;
+let currentUser = null;
+
+if(FIREBASE_READY){
+  firebaseApp = initializeApp(FIREBASE_CONFIG);
+  auth = getAuth(firebaseApp);
+  db = getFirestore(firebaseApp);
+  setPersistence(auth, browserLocalPersistence).catch(()=>{});
 }
+
+/* =============== STATE / CACHE =============== */
+let playersCache = [];
+let pitchHistoryCache = [];
+let playersUnsub = null;
+let historyUnsub = null;
+let playersLoaded = false;
+let historyLoaded = false;
+
+// In-memory pitch state (analysis in progress, only saved as snapshot on click)
+let pitchState = structuredClone(DEFAULT_PITCH);
+let pitchMeta  = structuredClone(DEFAULT_PITCH_META);
+let selectedPitchPos = null;
+
+let currentView = 'dashboard';
+let inactivityTimer = null;
+
+/* =============== UTILS =============== */
 function uid(){ return 'p_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8); }
 function $(s, p=document){ return p.querySelector(s); }
 function $$(s, p=document){ return Array.from(p.querySelectorAll(s)); }
@@ -1271,114 +1377,238 @@ function formatDate(iso){
   catch(e){ return iso; }
 }
 function todayISO(){ return new Date().toISOString().slice(0,10); }
+function escapeHtml(s){
+  if(s==null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
 function toast(msg, isError=false){
   const t = $('#toast');
   t.textContent = msg;
   t.classList.toggle('error', !!isError);
   t.classList.add('show');
   clearTimeout(t._tm);
-  t._tm = setTimeout(()=>t.classList.remove('show'), 2200);
+  t._tm = setTimeout(()=>t.classList.remove('show'), 2400);
+}
+function showSpinner(text='Bezig met laden...'){
+  $('#spinner-text').textContent = text;
+  $('#spinner-overlay').classList.add('show');
+}
+function hideSpinner(){ $('#spinner-overlay').classList.remove('show'); }
+function setSync(state, label){
+  const dot = $('#sync-dot');
+  const txt = $('#sync-text');
+  if(!dot) return;
+  dot.classList.remove('online','offline','syncing');
+  if(state) dot.classList.add(state);
+  if(txt) txt.textContent = label || '';
+}
+function friendlyAuthError(err){
+  const c = err?.code || '';
+  if(c.includes('invalid-email')) return 'Ongeldig e-mailadres.';
+  if(c.includes('email-already-in-use')) return 'Dit e-mailadres is al geregistreerd.';
+  if(c.includes('weak-password')) return 'Wachtwoord te zwak (minimaal 6 tekens).';
+  if(c.includes('wrong-password') || c.includes('invalid-credential')) return 'E-mailadres of wachtwoord onjuist.';
+  if(c.includes('user-not-found')) return 'Geen account gevonden met dit e-mailadres.';
+  if(c.includes('too-many-requests')) return 'Te veel pogingen. Probeer het later opnieuw.';
+  if(c.includes('network')) return 'Geen verbinding met Firebase. Controleer je internet.';
+  if(c.includes('unauthorized-domain')) return 'Dit domein is niet geautoriseerd. Voeg het toe in de Firebase Console.';
+  return err?.message || 'Inloggen mislukt.';
 }
 
-function loadPlayers(){
-  try { return JSON.parse(localStorage.getItem(STORAGE_PLAYERS)) || []; }
-  catch(e){ return []; }
+/* =============== DATA ACCESS (cache-backed) =============== */
+function loadPlayers(){ return playersCache; }
+function loadPitchHistory(){ return pitchHistoryCache; }
+function loadPitch(){ return pitchState; }
+function savePitch(obj){ pitchState = obj; }
+function loadPitchMeta(){ return pitchMeta; }
+function savePitchMeta(obj){ pitchMeta = {...DEFAULT_PITCH_META, ...obj}; }
+function resetPitchInMemory(){
+  pitchState = structuredClone(DEFAULT_PITCH);
+  pitchMeta  = structuredClone(DEFAULT_PITCH_META);
+  selectedPitchPos = null;
 }
-function savePlayers(arr){ localStorage.setItem(STORAGE_PLAYERS, JSON.stringify(arr)); }
 
-function loadPitch(){
-  try {
-    const v = JSON.parse(localStorage.getItem(STORAGE_PITCH));
-    return v && typeof v === 'object' ? v : structuredClone(DEFAULT_PITCH);
-  } catch(e){ return structuredClone(DEFAULT_PITCH); }
+async function savePlayer(player){
+  if(!currentUser) throw new Error('Niet ingelogd');
+  const ref = doc(db, 'users', currentUser.uid, 'players', player.id);
+  // Strip id from saved data (it's the doc key)
+  const { id, ...data } = player;
+  await setDoc(ref, data, { merge: true });
 }
-function savePitch(obj){ localStorage.setItem(STORAGE_PITCH, JSON.stringify(obj)); }
-function loadPitchMeta(){
-  try {
-    const v = JSON.parse(localStorage.getItem(STORAGE_PITCH_META));
-    return v && typeof v === 'object' ? {...DEFAULT_PITCH_META, ...v} : structuredClone(DEFAULT_PITCH_META);
-  } catch(e){ return structuredClone(DEFAULT_PITCH_META); }
+async function deletePlayer(id){
+  if(!currentUser) throw new Error('Niet ingelogd');
+  await deleteDoc(doc(db, 'users', currentUser.uid, 'players', id));
 }
-function savePitchMeta(obj){ localStorage.setItem(STORAGE_PITCH_META, JSON.stringify(obj)); }
+async function savePitchSnapshot(snap){
+  if(!currentUser) throw new Error('Niet ingelogd');
+  const { id, ...data } = snap;
+  await setDoc(doc(db, 'users', currentUser.uid, 'pitch_history', id), data);
+}
+async function deletePitchSnapshot(id){
+  if(!currentUser) throw new Error('Niet ingelogd');
+  await deleteDoc(doc(db, 'users', currentUser.uid, 'pitch_history', id));
+}
+
+function subscribeData(){
+  if(!currentUser) return;
+  setSync('syncing', 'Synchroniseren...');
+
+  // Players
+  if(playersUnsub) playersUnsub();
+  const playersRef = collection(db, 'users', currentUser.uid, 'players');
+  playersUnsub = onSnapshot(playersRef, snap => {
+    playersCache = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    playersLoaded = true;
+    checkSyncReady();
+    rerenderCurrent();
+  }, err => {
+    console.error(err);
+    setSync('offline', 'Offline');
+    toast('Kon spelers niet laden: ' + err.message, true);
+  });
+
+  // Pitch history
+  if(historyUnsub) historyUnsub();
+  const histRef = collection(db, 'users', currentUser.uid, 'pitch_history');
+  historyUnsub = onSnapshot(histRef, snap => {
+    pitchHistoryCache = snap.docs
+      .map(d => ({ ...d.data(), id: d.id }))
+      .sort((a,b) => new Date(b.savedAt||0) - new Date(a.savedAt||0));
+    historyLoaded = true;
+    checkSyncReady();
+    if(currentView === 'pitch') renderPitchHistory();
+  }, err => {
+    console.error(err);
+    setSync('offline', 'Offline');
+  });
+}
+function checkSyncReady(){
+  if(playersLoaded && historyLoaded){
+    setSync('online', 'Online');
+  }
+}
+function unsubscribeData(){
+  if(playersUnsub) { playersUnsub(); playersUnsub = null; }
+  if(historyUnsub) { historyUnsub(); historyUnsub = null; }
+  playersCache = []; pitchHistoryCache = [];
+  playersLoaded = false; historyLoaded = false;
+}
+
+function rerenderCurrent(){
+  if(currentView === 'dashboard') renderDashboard();
+  if(currentView === 'database')  renderDatabase();
+  if(currentView === 'pitch')     renderPitch();
+}
 
 /* =============== LOGIN =============== */
-let inactivityTimer = null;
 function resetInactivity(){
-  sessionStorage.setItem(SESSION_LAST, Date.now().toString());
   if(inactivityTimer) clearTimeout(inactivityTimer);
-  inactivityTimer = setTimeout(()=>{ logout(true); }, AUTO_LOGOUT_MS);
+  inactivityTimer = setTimeout(()=>{ doLogout(true); }, AUTO_LOGOUT_MS);
 }
-function logout(auto){
-  sessionStorage.removeItem(SESSION_KEY);
-  sessionStorage.removeItem(SESSION_LAST);
+async function doLogout(auto){
   if(inactivityTimer) clearTimeout(inactivityTimer);
+  unsubscribeData();
+  try { await signOut(auth); } catch(e){}
   if(auto) toast('Sessie verlopen — log opnieuw in', true);
-  location.reload();
+  // Reset UI to login
+  $('#app').style.display = 'none';
+  $('#login-overlay').style.display = 'flex';
+  showLoginForm();
 }
-async function setupPassword(){
+
+async function tryRegister(){
+  const btn = $('#setup-btn');
+  const email = $('#setup-email').value.trim();
   const pw  = $('#setup-pw').value;
   const pw2 = $('#setup-pw2').value;
   const err = $('#setup-error');
   err.textContent = '';
+  if(!email){ err.textContent = 'Vul een e-mailadres in.'; return; }
   if(pw.length < 8){ err.textContent = 'Wachtwoord moet minimaal 8 tekens zijn.'; return; }
   if(pw !== pw2){ err.textContent = 'Wachtwoorden komen niet overeen.'; return; }
-  const h = await sha256(pw);
-  localStorage.setItem(STORAGE_PWHASH, h);
-  sessionStorage.setItem(SESSION_KEY, 'true');
-  resetInactivity();
-  showApp();
+  btn.disabled = true; btn.textContent = 'Account aanmaken...';
+  try {
+    await createUserWithEmailAndPassword(auth, email, pw);
+    // onAuthStateChanged handles the rest
+  } catch(e){
+    err.textContent = friendlyAuthError(e);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Account aanmaken';
+  }
 }
 async function tryLogin(){
   const btn = $('#login-btn');
+  const email = $('#login-email').value.trim();
   const pw  = $('#login-pw').value;
   const err = $('#login-error');
-  // BAKED_HASH (in code) is authoritative; fallback alleen als die leeg is
-  const stored = BAKED_HASH || localStorage.getItem(STORAGE_PWHASH);
   err.textContent = '';
+  if(!email){ err.textContent = 'Vul een e-mailadres in.'; return; }
   if(!pw){ err.textContent = 'Voer een wachtwoord in.'; return; }
   btn.disabled = true; btn.textContent = 'Bezig...';
-  const h = await sha256(pw);
-  if(h === stored){
-    sessionStorage.setItem(SESSION_KEY, 'true');
-    resetInactivity();
+  try {
+    await signInWithEmailAndPassword(auth, email, pw);
+  } catch(e){
+    err.textContent = friendlyAuthError(e);
+    $('#login-pw').value = '';
+  } finally {
     btn.disabled = false; btn.textContent = 'Inloggen';
-    showApp();
-  } else {
-    // Delay bij fout wachtwoord
-    setTimeout(()=>{
-      err.textContent = 'Onjuist wachtwoord.';
-      $('#login-pw').value = '';
-      btn.disabled = false; btn.textContent = 'Inloggen';
-    }, FAIL_DELAY_MS);
   }
 }
+
+function showLoginForm(){
+  $('#config-missing').style.display = 'none';
+  $('#setup-form').style.display = 'none';
+  $('#login-form').style.display = 'block';
+  setTimeout(()=> $('#login-email').focus(), 50);
+}
+function showSetupForm(){
+  $('#config-missing').style.display = 'none';
+  $('#login-form').style.display = 'none';
+  $('#setup-form').style.display = 'block';
+  setTimeout(()=> $('#setup-email').focus(), 50);
+}
+function showConfigMissing(){
+  $('#login-form').style.display = 'none';
+  $('#setup-form').style.display = 'none';
+  $('#config-missing').style.display = 'block';
+}
+
 function initLoginUI(){
-  // BAKED_HASH in code? Dan geen setup ooit — altijd direct login screen.
-  const hasPw = !!BAKED_HASH || !!localStorage.getItem(STORAGE_PWHASH);
-  $('#setup-form').style.display = hasPw ? 'none' : 'block';
-  $('#login-form').style.display = hasPw ? 'block' : 'none';
-
-  // Already logged in?
-  if(hasPw && sessionStorage.getItem(SESSION_KEY) === 'true'){
-    const last = parseInt(sessionStorage.getItem(SESSION_LAST)||'0', 10);
-    if(Date.now() - last < AUTO_LOGOUT_MS){
-      resetInactivity();
-      showApp();
-      return;
-    }
-    sessionStorage.removeItem(SESSION_KEY);
+  if(!FIREBASE_READY){
+    showConfigMissing();
+    return;
   }
+  showLoginForm();
 
-  $('#setup-btn').addEventListener('click', setupPassword);
-  $('#setup-pw2').addEventListener('keydown', e=>{ if(e.key==='Enter') setupPassword(); });
+  $('#setup-btn').addEventListener('click', tryRegister);
   $('#login-btn').addEventListener('click', tryLogin);
+  $('#switch-to-setup').addEventListener('click', showSetupForm);
+  $('#switch-to-login').addEventListener('click', showLoginForm);
+  $('#setup-pw2').addEventListener('keydown', e=>{ if(e.key==='Enter') tryRegister(); });
   $('#login-pw').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
-  setTimeout(()=>{ (hasPw ? $('#login-pw') : $('#setup-pw')).focus(); }, 100);
+  $('#setup-email').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#setup-pw').focus(); });
+  $('#login-email').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#login-pw').focus(); });
+
+  // Auth state listener — handles auto-login and post-login bootstrap
+  onAuthStateChanged(auth, user => {
+    currentUser = user;
+    if(user){
+      enterApp();
+    } else {
+      // Stay on login screen
+    }
+  });
 }
-function showApp(){
+
+function enterApp(){
   $('#login-overlay').style.display = 'none';
   $('#app').style.display = 'block';
-  initApp();
+  $('#scout-email').textContent = currentUser?.email || '';
+  resetInactivity();
+  initAppOnce();
+  subscribeData();
   ['mousemove','keydown','click','scroll','touchstart'].forEach(ev=>{
     document.addEventListener(ev, resetInactivity, {passive:true});
   });
@@ -1386,6 +1616,7 @@ function showApp(){
 
 /* =============== NAVIGATION =============== */
 function go(view){
+  currentView = view;
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-'+view));
   $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
   if(view === 'dashboard') renderDashboard();
@@ -1401,7 +1632,6 @@ function renderDashboard(){
   $('#dashboard-date').textContent =
     new Date().toLocaleDateString('nl-NL',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
 
-  // KPIs
   const total = players.length;
   const last7 = players.filter(p => p.datum && (Date.now() - new Date(p.datum).getTime()) < 7*24*3600*1000).length;
   const topPotential = players.filter(p => p.potentieel_niveau === 'A').length;
@@ -1430,7 +1660,6 @@ function renderDashboard(){
     </div>
   `;
 
-  // Recent
   const recent = [...players].sort((a,b)=> new Date(b.datum||0) - new Date(a.datum||0)).slice(0,6);
   const list = $('#recent-list');
   if(!recent.length){
@@ -1454,7 +1683,6 @@ function renderDashboard(){
     });
   }
 
-  // Distribution
   const distCurrent  = countByGrade(players, 'huidig_niveau');
   const distPotential = countByGrade(players, 'potentieel_niveau');
   $('#dist-current').innerHTML  = renderDist(distCurrent, false);
@@ -1485,7 +1713,6 @@ function renderDatabase(){
   const players = loadPlayers();
   $('#db-count').textContent = `${players.length} speler${players.length===1?'':'s'}`;
 
-  // Populate position filter
   const posSel = $('#filter-position');
   const cur = posSel.value;
   posSel.innerHTML = '<option value="">Alle posities</option>' +
@@ -1652,13 +1879,14 @@ function openDetail(id){
     </div>
   `;
   $('#modal-backdrop').classList.add('open');
-  $(`#del-${p.id}`).addEventListener('click', ()=>{
-    if(confirm('Dit rapport verwijderen?')){
-      const arr = loadPlayers().filter(x=>x.id!==id);
-      savePlayers(arr);
+  $(`#del-${p.id}`).addEventListener('click', async ()=>{
+    if(!confirm('Dit rapport verwijderen?')) return;
+    try {
+      await deletePlayer(id);
       closeDetail();
-      renderDatabase(); renderDashboard();
       toast('Rapport verwijderd');
+    } catch(e){
+      toast('Verwijderen mislukt: ' + e.message, true);
     }
   });
   $(`#edit-${p.id}`).addEventListener('click', ()=>{
@@ -1753,18 +1981,15 @@ function loadIntoForm(p){
   $('#f-advies').value = p.advies || '';
   $('#f-wapen').value = p.wapen || '';
   $('#f-notities').value = p.notities || '';
-  // Fysieke kenmerken (tekst)
   $('#f-lichaamsbouw').value = p.lichaamsbouw || '';
   $('#f-lengte').value = p.lengte || '';
   $('#f-motoriek').value = p.motoriek || '';
   $('#f-rijping').value = p.rijping || '';
   const b = p.beoordelingen || {};
-  // grade pickers (skip opmerking keys)
   Object.keys(b).forEach(k => {
     if(k.endsWith('_opmerking')) return;
     setPickerValue(k, b[k]);
   });
-  // opmerking textareas
   $('#f-techniek-opmerking').value      = b.techniek_opmerking      || '';
   $('#f-inzicht-opmerking').value       = b.inzicht_opmerking       || '';
   $('#f-drit-opmerking').value          = b.drit_opmerking          || '';
@@ -1775,7 +2000,7 @@ function loadIntoForm(p){
   setPickerValue('huidig_niveau', p.huidig_niveau);
   setPickerValue('potentieel_niveau', p.potentieel_niveau);
 }
-function submitReport(e){
+async function submitReport(e){
   e.preventDefault();
   const id = $('#f-id').value || uid();
   const naam = $('#f-naam').value.trim();
@@ -1832,18 +2057,22 @@ function submitReport(e){
     potentieel_niveau: pot,
     datum: todayISO()
   };
-  const arr = loadPlayers();
-  const idx = arr.findIndex(x=>x.id===id);
-  if(idx >= 0) arr[idx] = {...arr[idx], ...player};
-  else arr.unshift(player);
-  savePlayers(arr);
-  toast(idx>=0 ? 'Rapport bijgewerkt' : 'Rapport opgeslagen');
-  resetReportForm();
-  go('database');
+  const submitBtn = $('#report-submit');
+  submitBtn.disabled = true;
+  const existing = loadPlayers().find(x => x.id === id);
+  try {
+    await savePlayer(player);
+    toast(existing ? 'Rapport bijgewerkt' : 'Rapport opgeslagen');
+    resetReportForm();
+    go('database');
+  } catch(e){
+    toast('Opslaan mislukt: ' + e.message, true);
+  } finally {
+    submitBtn.disabled = false;
+  }
 }
 
 /* =============== PITCH =============== */
-let selectedPitchPos = null;
 function persistPitchMetaFromInputs(){
   savePitchMeta({
     team:      $('#pm-team').value.trim(),
@@ -1853,7 +2082,6 @@ function persistPitchMetaFromInputs(){
     opsteller: $('#pm-opsteller').value.trim(),
     notities:  $('#pm-notities').value.trim()
   });
-  // Update subtitle live
   const meta = loadPitchMeta();
   const sub = [meta.team, meta.seizoen, meta.systeem ? 'systeem '+meta.systeem : '']
     .filter(Boolean).join(' — ');
@@ -1869,7 +2097,6 @@ function gradeStyle(g, outline){
     : `background:${c};color:#0a0a0a;`;
 }
 function renderPitch(){
-  // metadata invulvelden
   const meta = loadPitchMeta();
   $('#pm-team').value      = meta.team || '';
   $('#pm-seizoen').value   = meta.seizoen || '';
@@ -1905,13 +2132,106 @@ function renderPitch(){
       renderPitchInfo();
     });
   });
-  // Gap summary
   const gaps = PITCH_LAYOUT.filter(p => state[p.code]?.gap);
   $('#pitch-gap-list').innerHTML = gaps.length
     ? gaps.map(p=>`<span class="gap-tag">${p.label}</span>`).join('')
     : '<span style="color:var(--text-3); font-size:12px;">Geen actieve witte vlekken.</span>';
 
   renderPitchInfo();
+  renderPitchHistory();
+}
+function renderPitchHistory(){
+  const wrap = $('#pitch-history-list');
+  if(!wrap) return;
+  const hist = loadPitchHistory();
+  if(!hist.length){
+    wrap.innerHTML = '<div class="empty-state" style="padding:30px 16px;"><div class="empty-icon">○</div><div>Nog geen opgeslagen analyses.</div></div>';
+    return;
+  }
+  wrap.innerHTML = `
+    <div class="recent-list">
+      ${hist.map(h => {
+        const gaps = Object.values(h.state||{}).filter(s => s && s.gap).length;
+        const titleParts = [h.meta?.team, h.meta?.seizoen].filter(Boolean);
+        const title = titleParts.join(' — ') || 'Analyse zonder team';
+        const sub   = [h.meta?.systeem ? 'systeem '+h.meta.systeem : '', formatDate(h.savedAt)]
+                       .filter(Boolean).join(' · ');
+        return `
+          <div class="recent-item" data-id="${h.id}" style="cursor:default;">
+            <div class="recent-avatar" style="font-size:11px;">${gaps}</div>
+            <div class="recent-info">
+              <div class="recent-name">${escapeHtml(title)}</div>
+              <div class="recent-meta">${escapeHtml(sub)} · ${gaps} witte vlek${gaps===1?'':'ken'}</div>
+            </div>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-sm" data-act="open" data-id="${h.id}">Bekijken</button>
+              <button class="btn btn-sm btn-danger" data-act="del" data-id="${h.id}">Verwijderen</button>
+            </div>
+          </div>`;
+      }).join('')}
+    </div>`;
+  $$('button[data-act="open"]', wrap).forEach(b=>{
+    b.addEventListener('click', e=>{ e.stopPropagation(); openPitchSnapshot(b.dataset.id); });
+  });
+  $$('button[data-act="del"]', wrap).forEach(b=>{
+    b.addEventListener('click', async e=>{
+      e.stopPropagation();
+      if(!confirm('Deze opgeslagen analyse verwijderen?')) return;
+      try {
+        await deletePitchSnapshot(b.dataset.id);
+        toast('Analyse verwijderd');
+      } catch(err){
+        toast('Verwijderen mislukt: ' + err.message, true);
+      }
+    });
+  });
+}
+function openPitchSnapshot(id){
+  const snap = loadPitchHistory().find(x => x.id === id);
+  if(!snap) return;
+  const gaps = PITCH_LAYOUT.filter(p => snap.state?.[p.code]?.gap);
+  const posRows = PITCH_LAYOUT.map(p=>{
+    const s = snap.state?.[p.code] || {};
+    return `
+      <div class="detail-criteria">
+        <div class="detail-criteria-name">${p.label} <span style="color:var(--text-3);">(${p.code})</span></div>
+        <div class="detail-criteria-grades">
+          <span class="grade-label">H</span><span class="grade ${s.huidig||'D'}">${s.huidig||'-'}</span>
+          <span class="grade-label" style="margin-left:8px;">G</span><span class="grade outline ${s.gewenst||'D'}">${s.gewenst||'-'}</span>
+          ${s.gap?'<span class="gap-tag" style="margin-left:8px;">witte vlek</span>':''}
+        </div>
+      </div>`;
+  }).join('');
+  $('#modal-body').innerHTML = `
+    <div class="detail-header">
+      <div class="detail-avatar">${gaps.length}</div>
+      <div style="flex:1;">
+        <div class="detail-name">${escapeHtml(snap.meta?.team || 'Witte vlekken analyse')}</div>
+        <div class="detail-meta">
+          ${escapeHtml(snap.meta?.seizoen||'')}
+          ${snap.meta?.systeem ? ' · systeem '+escapeHtml(snap.meta.systeem) : ''}
+          ${snap.meta?.datum ? ' · '+formatDate(snap.meta.datum) : ''}
+          ${snap.meta?.opsteller ? ' · '+escapeHtml(snap.meta.opsteller) : ''}
+        </div>
+        <div class="detail-meta">Opgeslagen: ${formatDate(snap.savedAt)}</div>
+      </div>
+    </div>
+    <div class="detail-section">
+      <h4>Posities</h4>
+      <div class="detail-criteria-grid">${posRows}</div>
+    </div>
+    ${gaps.length ? `
+    <div class="detail-section">
+      <h4>Witte vlekken</h4>
+      <div class="pitch-gap-list">${gaps.map(p=>`<span class="gap-tag">${p.label}</span>`).join('')}</div>
+    </div>` : ''}
+    ${snap.meta?.notities ? `
+    <div class="detail-section">
+      <h4>Notities</h4>
+      <div class="detail-notes">${escapeHtml(snap.meta.notities)}</div>
+    </div>` : ''}
+  `;
+  $('#modal-backdrop').classList.add('open');
 }
 function renderPitchInfo(){
   const panel = $('#pitch-info');
@@ -1967,7 +2287,6 @@ function renderPitchInfo(){
     ` : ''}
   `;
 
-  // build pickers
   ['pitch-cur','pitch-want'].forEach((id,i)=>{
     const isPot = i===1;
     const el = $('#'+id);
@@ -2005,18 +2324,12 @@ function positionLabel(code){
   const p = ALL_POSITIONS.find(x=>x.code===code);
   return p ? p.label : code;
 }
-function escapeHtml(s){
-  if(s==null) return '';
-  return String(s).replace(/[&<>"']/g, c => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-  }[c]));
-}
 function exportJSON(){
   const data = {
     exported: new Date().toISOString(),
-    scout: 'Marcel Steeman',
+    scout: currentUser?.email || 'Marcel Steeman',
     players: loadPlayers(),
-    pitch: loadPitch()
+    pitch_history: loadPitchHistory()
   };
   const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
   const url = URL.createObjectURL(blob);
@@ -2029,17 +2342,19 @@ function exportJSON(){
 }
 
 /* =============== INIT =============== */
-function initApp(){
-  // Nav
+let appInitialized = false;
+function initAppOnce(){
+  if(appInitialized) return;
+  appInitialized = true;
+
   $$('.nav-item').forEach(b=>{
     b.addEventListener('click', ()=> go(b.dataset.view));
   });
   $$('[data-go]').forEach(b=>{
     b.addEventListener('click', ()=> go(b.dataset.go));
   });
-  $('#logout-btn').addEventListener('click', ()=> logout(false));
+  $('#logout-btn').addEventListener('click', ()=> doLogout(false));
 
-  // Form
   buildGradePickers();
   refreshPositionDropdowns();
   $('#f-linie').addEventListener('change', refreshPositionDropdowns);
@@ -2047,14 +2362,12 @@ function initApp(){
   $('#report-clear').addEventListener('click', resetReportForm);
   $('#report-cancel').addEventListener('click', ()=>{ resetReportForm(); go('dashboard'); });
 
-  // DB filters
   ['filter-search','filter-position','filter-current','filter-potential'].forEach(id=>{
     $('#'+id).addEventListener('input', applyFilters);
     $('#'+id).addEventListener('change', applyFilters);
   });
   $('#export-btn').addEventListener('click', exportJSON);
 
-  // Modal
   $('#modal-close').addEventListener('click', closeDetail);
   $('#modal-backdrop').addEventListener('click', e=>{
     if(e.target.id === 'modal-backdrop') closeDetail();
@@ -2063,23 +2376,38 @@ function initApp(){
     if(e.key==='Escape') closeDetail();
   });
 
-  // Pitch — metadata autosave on change + save button
   ['pm-team','pm-seizoen','pm-datum','pm-systeem','pm-opsteller','pm-notities'].forEach(id=>{
     $('#'+id).addEventListener('input', persistPitchMetaFromInputs);
     $('#'+id).addEventListener('change', persistPitchMetaFromInputs);
   });
-  $('#pitch-save').addEventListener('click', ()=>{
+  $('#pitch-save').addEventListener('click', async ()=>{
     persistPitchMetaFromInputs();
-    renderPitch();
-    toast('Witte vlekken analyse opgeslagen');
+    const hasAny = Object.values(pitchState).some(s => s.huidig || s.gewenst || s.gap);
+    const hasMeta = pitchMeta.team || pitchMeta.seizoen || pitchMeta.datum || pitchMeta.notities;
+    if(!hasAny && !hasMeta){
+      toast('Nog niets ingevuld om op te slaan', true);
+      return;
+    }
+    const snapshot = {
+      id: 'wv_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,6),
+      savedAt: new Date().toISOString(),
+      meta: structuredClone(pitchMeta),
+      state: structuredClone(pitchState)
+    };
+    try {
+      await savePitchSnapshot(snapshot);
+      resetPitchInMemory();
+      renderPitch();
+      toast('Witte vlekken analyse opgeslagen');
+    } catch(e){
+      toast('Opslaan mislukt: ' + e.message, true);
+    }
   });
   $('#pitch-reset').addEventListener('click', ()=>{
-    if(confirm('Alle witte vlekken-gegevens wissen? Beoordelingen, gap-markeringen én team/seizoen/datum worden leeggemaakt.')){
-      savePitch(structuredClone(DEFAULT_PITCH));
-      savePitchMeta(structuredClone(DEFAULT_PITCH_META));
-      selectedPitchPos = null;
+    if(confirm('Huidige analyse wissen? Opgeslagen analyses in de lijst blijven bewaard.')){
+      resetPitchInMemory();
       renderPitch();
-      toast('Alles gewist');
+      toast('Analyse gewist');
     }
   });
 
@@ -2088,7 +2416,15 @@ function initApp(){
 
 /* =============== BOOT =============== */
 document.addEventListener('DOMContentLoaded', initLoginUI);
-})();
 </script>
 </body>
 </html>
+const firebaseConfig = {
+  apiKey: "AIzaSyBDeLaGfzM1PN8Cl8E6nlIe8FxxxXLwRyY",
+  authDomain: "database-scouting.firebaseapp.com",
+  projectId: "database-scouting",
+  storageBucket: "database-scouting.firebasestorage.app",
+  messagingSenderId: "632216488963",
+  appId: "1:632216488963:web:f1ebb1d16b8a76f49c9236",
+  measurementId: "G-P74K24RBZ1"
+};

@@ -4407,22 +4407,22 @@ const WATERMARK_SVG = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 8
 
 function pdfCriteriaCard(name, val){
   const v = val || '—';
-  const color = val ? `#${({A:'22c55e',B:'84cc16',C:'f59e0b',D:'ef4444'})[val]||'888'}` : '#bbb';
+  const color = val ? `#${({A:'22c55e',B:'84cc16',C:'f59e0b',D:'ef4444'})[val]||'888'}` : '#3a4660';
   return `
-    <div style="background:#fafbfc;border:1px solid #e3e6ec;border-left:3px solid ${color};border-radius:6px;padding:10px 12px;">
-      <div style="font-size:11px;color:#374151;margin-bottom:6px;font-weight:600;">${name}</div>
+    <div style="background:#1a2332;border:1px solid #232d40;border-left:3px solid ${color};border-radius:8px;padding:10px 12px;">
+      <div style="font-size:11px;color:#e8edf5;margin-bottom:6px;font-weight:600;">${name}</div>
       <div style="display:flex;align-items:center;gap:6px;">
-        <span style="font-size:9px;color:#9ca3af;text-transform:uppercase;letter-spacing:1px;">Huidig</span>
+        <span style="font-size:9px;color:#9aa8bd;text-transform:uppercase;letter-spacing:1px;">Huidig</span>
         <span style="display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:22px;padding:0 7px;border-radius:4px;background:${color};color:#fff;font-weight:800;font-size:12px;">${v}</span>
       </div>
     </div>`;
 }
 
 function pdfGradeChip(val, outline){
-  if(!val) return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:#f0f0f0;color:#999;font-weight:700;font-size:12px;">—</span>`;
+  if(!val) return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:#1d2533;color:#6b7689;font-weight:700;font-size:12px;border:1px solid #2f3b52;">—</span>`;
   const hex = ({A:'#22c55e',B:'#84cc16',C:'#f59e0b',D:'#ef4444'})[val] || '#888';
   if(outline){
-    return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:#fff;border:2px solid ${hex};color:${hex};font-weight:800;font-size:12px;">${val}</span>`;
+    return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:transparent;border:2px solid ${hex};color:${hex};font-weight:800;font-size:12px;">${val}</span>`;
   }
   return `<span style="display:inline-block;padding:2px 8px;border-radius:4px;background:${hex};color:#fff;font-weight:800;font-size:12px;">${val}</span>`;
 }
@@ -4453,10 +4453,10 @@ function generatePlayerPDF(p){
   const atletischDetail = (b.explosiviteit_huidig || b.sprinten_huidig || b.duelleren_huidig || b.wendbaarheid_huidig)
     ? `
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:6px;margin-top:6px;">
-        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#374151;">Explosiviteit ${pdfGradeChip(b.explosiviteit_huidig)}</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#374151;">Sprinten ${pdfGradeChip(b.sprinten_huidig)}</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#374151;">Duelleren ${pdfGradeChip(b.duelleren_huidig)}</div>
-        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#374151;">Wendbaarheid ${pdfGradeChip(b.wendbaarheid_huidig)}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#9aa8bd;">Explosiviteit ${pdfGradeChip(b.explosiviteit_huidig)}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#9aa8bd;">Sprinten ${pdfGradeChip(b.sprinten_huidig)}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#9aa8bd;">Duelleren ${pdfGradeChip(b.duelleren_huidig)}</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;font-size:11px;color:#9aa8bd;">Wendbaarheid ${pdfGradeChip(b.wendbaarheid_huidig)}</div>
       </div>`
     : '';
 
@@ -4485,54 +4485,61 @@ function generatePlayerPDF(p){
     p.rijping ? ['Rijping', p.rijping] : null
   ].filter(Boolean);
 
-  const sectionLabel = (txt) => `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#e30613;margin-bottom:8px;font-weight:800;display:flex;align-items:center;gap:8px;"><span style="display:inline-block;width:14px;height:2px;background:#e30613;"></span>${txt}</div>`;
+  const sectionLabel = (txt) => `<div style="font-size:10px;text-transform:uppercase;letter-spacing:1.4px;color:#ff2a3a;margin-bottom:8px;font-weight:800;display:flex;align-items:center;gap:8px;"><span style="display:inline-block;width:14px;height:2px;background:#e30613;"></span>${txt}</div>`;
+
+  const gridPatternBg = `url("data:image/svg+xml;utf8,${encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'><path d='M56 0H0V56' fill='none' stroke='rgba(255,255,255,0.035)' stroke-width='1'/></svg>")}")`;
+
+  const darkCard = 'background:#1a2332;border:1px solid #232d40;border-radius:8px;';
 
   const html = `
-    <div style="position:relative;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#1f2937;background:#ffffff;width:794px;box-sizing:border-box;overflow:hidden;">
+    <div style="position:relative;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;color:#e8edf5;background:#0b0f15;width:794px;box-sizing:border-box;overflow:hidden;">
 
-      <div style="background:linear-gradient(135deg,#0d1320 0%,#1a2332 60%,#0d1320 100%);color:#fff;padding:18px 28px 16px 28px;position:relative;overflow:hidden;">
-        <div style="position:absolute;right:-50px;top:-50px;width:200px;height:200px;opacity:.08;pointer-events:none;">${BRAND_SHIELD_SVG}</div>
-        <div style="display:flex;align-items:center;gap:14px;position:relative;z-index:1;">
-          <div style="width:48px;height:48px;flex-shrink:0;">${BRAND_SHIELD_SVG}</div>
-          <div style="flex:1;min-width:0;">
-            <div style="font-size:19px;font-weight:800;letter-spacing:-.3px;color:#fff;line-height:1.1;">Scouting Platform</div>
-            <div style="font-size:10px;color:rgba(255,255,255,.6);margin-top:3px;letter-spacing:1px;text-transform:uppercase;">Scoutingsrapport · Marcel Steeman</div>
+      <div style="position:absolute;inset:0;background:radial-gradient(900px 650px at 85% 15%, rgba(227,6,19,.13), transparent 62%),radial-gradient(800px 500px at 15% 110%, rgba(245,197,24,.06), transparent 60%),radial-gradient(1000px 600px at 50% -10%, rgba(227,6,19,.10), transparent 60%),linear-gradient(180deg,#0d1320 0%,#060911 100%);z-index:0;"></div>
+
+      <div style="position:absolute;inset:0;background-image:${gridPatternBg};background-repeat:repeat;z-index:0;pointer-events:none;"></div>
+
+      <div style="position:absolute;right:-120px;bottom:-120px;width:520px;height:520px;opacity:.14;z-index:0;pointer-events:none;filter:drop-shadow(0 12px 40px rgba(227,6,19,.45));">${BRAND_SHIELD_SVG}</div>
+
+      <div style="position:relative;z-index:1;">
+
+        <div style="padding:18px 28px 14px 28px;position:relative;">
+          <div style="display:flex;align-items:center;gap:14px;">
+            <div style="width:48px;height:48px;flex-shrink:0;">${BRAND_SHIELD_SVG}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:19px;font-weight:800;letter-spacing:-.3px;color:#fff;line-height:1.1;">Scouting Platform</div>
+              <div style="font-size:10px;color:#9aa8bd;margin-top:3px;letter-spacing:1px;text-transform:uppercase;">Scoutingsrapport · Marcel Steeman</div>
+            </div>
+            <div style="text-align:right;font-size:9px;color:#9aa8bd;text-transform:uppercase;letter-spacing:1.2px;">
+              <div>Rapportdatum</div>
+              <div style="font-weight:800;color:#f5c518;font-size:13px;margin-top:3px;letter-spacing:.3px;text-transform:none;">${formatDate(reportDate)}</div>
+            </div>
           </div>
-          <div style="text-align:right;font-size:9px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:1.2px;">
-            <div>Rapportdatum</div>
-            <div style="font-weight:800;color:#f5c518;font-size:13px;margin-top:3px;letter-spacing:.3px;text-transform:none;">${formatDate(reportDate)}</div>
-          </div>
+          <div style="height:3px;background:linear-gradient(90deg,#e30613 0%,#ff2a3a 45%,#f5c518 100%);margin-top:14px;border-radius:2px;"></div>
         </div>
-        <div style="height:3px;background:linear-gradient(90deg,#e30613 0%,#ff2a3a 45%,#f5c518 100%);margin:14px -28px -16px -28px;"></div>
-      </div>
 
-      <div style="position:relative;padding:22px 28px 24px 28px;">
-
-        <div style="position:absolute;inset:0;background-image:${watermarkBg};background-repeat:repeat;background-size:180px 180px;opacity:0.05;pointer-events:none;z-index:0;"></div>
-
-        <div style="position:relative;z-index:1;">
+        <div style="padding:14px 28px 24px 28px;">
 
           <div style="margin-bottom:14px;">
-            <div style="font-size:26px;font-weight:800;color:#0d1320;letter-spacing:-.5px;line-height:1.1;">${escapeHtml(p.naam)}</div>
-            <div style="font-size:12px;color:#4b5563;margin-top:5px;">
-              ${escapeHtml(positionLabel(p.positie))}${p.club?(' · <strong style="color:#0d1320;">'+escapeHtml(p.club)+'</strong>'):''}${p.rugnummer?(' · #'+escapeHtml(p.rugnummer)):''}
+            <div style="font-size:26px;font-weight:800;color:#fff;letter-spacing:-.5px;line-height:1.1;">${escapeHtml(p.naam)}</div>
+            <div style="font-size:12px;color:#9aa8bd;margin-top:5px;">
+              ${escapeHtml(positionLabel(p.positie))}${p.club?(' · <strong style="color:#e8edf5;">'+escapeHtml(p.club)+'</strong>'):''}${p.rugnummer?(' · #'+escapeHtml(p.rugnummer)):''}
               ${p.been?(' · '+escapeHtml(p.been)):''}
               ${p.geboorte?(' · geb. '+formatDate(p.geboorte)):''}
             </div>
-            ${p.tweebenig ? `<div style="font-size:11px;color:#6b7280;margin-top:3px;font-style:italic;">${escapeHtml(p.tweebenig)}</div>` : ''}
+            ${p.tweebenig ? `<div style="font-size:11px;color:#6b7689;margin-top:3px;font-style:italic;">${escapeHtml(p.tweebenig)}</div>` : ''}
           </div>
 
-          <div style="background:linear-gradient(135deg,#0d1320 0%,#1a2332 100%);border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;color:#fff;">
+          <div style="background:linear-gradient(135deg,#151c28 0%,#1d2533 100%);border:1px solid #232d40;border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;color:#fff;">
             <div style="flex:1;padding-right:14px;">
-              <div style="font-size:9px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-weight:600;">Huidig niveau</div>
+              <div style="font-size:9px;color:#9aa8bd;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-weight:600;">Huidig niveau</div>
               ${pdfGradeChipLg(p.huidig_niveau)}
             </div>
-            <div style="flex:1;padding:0 14px;border-left:1px solid rgba(255,255,255,.1);">
-              <div style="font-size:9px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-weight:600;">Potentieel</div>
+            <div style="flex:1;padding:0 14px;border-left:1px solid #232d40;">
+              <div style="font-size:9px;color:#9aa8bd;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-weight:600;">Potentieel</div>
               ${pdfGradeChipLg(p.potentieel_niveau, true)}
             </div>
-            <div style="flex:1.4;padding-left:14px;border-left:1px solid rgba(255,255,255,.1);">
-              <div style="font-size:9px;color:rgba(255,255,255,.55);text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-weight:600;">Advies</div>
+            <div style="flex:1.4;padding-left:14px;border-left:1px solid #232d40;">
+              <div style="font-size:9px;color:#9aa8bd;text-transform:uppercase;letter-spacing:1.4px;margin-bottom:8px;font-weight:600;">Advies</div>
               <div style="font-size:16px;font-weight:800;color:#f5c518;line-height:1.2;">${escapeHtml(adviesLabel(p.advies)||'—')}</div>
             </div>
           </div>
@@ -4543,9 +4550,9 @@ function generatePlayerPDF(p){
               ${pdfCriteriaCard('Functionele techniek / Spelvaardigheden', b.techniek_huidig)}
               ${pdfCriteriaCard('Spelintelligentie / Tactisch', b.inzicht_huidig)}
               ${pdfCriteriaCard('GRIT / Passie &amp; Attitude', gritVal)}
-              <div style="background:#fafbfc;border:1px solid #e3e6ec;border-left:3px solid #0d1320;border-radius:6px;padding:10px 12px;">
-                <div style="font-size:11px;color:#374151;margin-bottom:4px;font-weight:600;">Atletisch vermogen</div>
-                ${atletischDetail || '<div style="font-size:11px;color:#9ca3af;">Geen subscores ingevuld</div>'}
+              <div style="${darkCard}border-left:3px solid #e30613;padding:10px 12px;">
+                <div style="font-size:11px;color:#e8edf5;margin-bottom:4px;font-weight:600;">Atletisch vermogen</div>
+                ${atletischDetail || '<div style="font-size:11px;color:#6b7689;">Geen subscores ingevuld</div>'}
               </div>
             </div>
           </div>
@@ -4555,8 +4562,8 @@ function generatePlayerPDF(p){
             ${sectionLabel('Toelichtingen per categorie')}
             ${toelichtingen.map(([n,t]) => `
               <div style="margin-bottom:8px;">
-                <div style="font-size:10px;color:#0d1320;text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px;font-weight:700;">${n}</div>
-                <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;font-size:12px;line-height:1.5;color:#1f2937;white-space:pre-wrap;">${escapeHtml(t)}</div>
+                <div style="font-size:10px;color:#e8edf5;text-transform:uppercase;letter-spacing:.8px;margin-bottom:3px;font-weight:700;">${n}</div>
+                <div style="${darkCard}padding:8px 10px;font-size:12px;line-height:1.5;color:#e8edf5;white-space:pre-wrap;">${escapeHtml(t)}</div>
               </div>`).join('')}
           </div>` : ''}
 
@@ -4566,12 +4573,12 @@ function generatePlayerPDF(p){
             ${wedstrijdInfo.length ? `
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;">
               ${wedstrijdInfo.map(([n,v]) => `
-                <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
-                  <div style="font-size:10px;color:#6b7280;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">${n}</div>
-                  <div style="font-size:12px;color:#0d1320;font-weight:600;">${escapeHtml(v)}</div>
+                <div style="${darkCard}padding:8px 10px;">
+                  <div style="font-size:10px;color:#9aa8bd;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">${n}</div>
+                  <div style="font-size:12px;color:#fff;font-weight:600;">${escapeHtml(v)}</div>
                 </div>`).join('')}
             </div>` : ''}
-            ${w.context ? `<div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;font-size:12px;line-height:1.5;color:#1f2937;white-space:pre-wrap;">${escapeHtml(w.context)}</div>` : ''}
+            ${w.context ? `<div style="${darkCard}padding:8px 10px;font-size:12px;line-height:1.5;color:#e8edf5;white-space:pre-wrap;">${escapeHtml(w.context)}</div>` : ''}
           </div>` : ''}
 
           ${fysiekInfo.length ? `
@@ -4579,9 +4586,9 @@ function generatePlayerPDF(p){
             ${sectionLabel('Lichaamsbouw & motoriek')}
             <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
               ${fysiekInfo.map(([n,v]) => `
-                <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
-                  <div style="font-size:10px;color:#6b7280;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">${n}</div>
-                  <div style="font-size:12px;color:#0d1320;font-weight:600;">${escapeHtml(v)}</div>
+                <div style="${darkCard}padding:8px 10px;">
+                  <div style="font-size:10px;color:#9aa8bd;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">${n}</div>
+                  <div style="font-size:12px;color:#fff;font-weight:600;">${escapeHtml(v)}</div>
                 </div>`).join('')}
             </div>
           </div>` : ''}
@@ -4589,46 +4596,47 @@ function generatePlayerPDF(p){
           ${p.wapen ? `
           <div style="margin-bottom:18px;">
             ${sectionLabel('Persoonlijk wapen')}
-            <div style="background:linear-gradient(135deg,#fffbea 0%,#fff5d6 100%);border-left:4px solid #f5c518;border-radius:6px;padding:12px 14px;font-size:12px;line-height:1.5;color:#1f2937;font-weight:500;">${escapeHtml(p.wapen)}</div>
+            <div style="background:linear-gradient(135deg, rgba(245,197,24,0.18), rgba(245,197,24,0.04));border:1px solid rgba(245,197,24,0.35);border-left:4px solid #f5c518;border-radius:8px;padding:12px 14px;font-size:12px;line-height:1.5;color:#fff;font-weight:500;">${escapeHtml(p.wapen)}</div>
           </div>` : ''}
 
           ${p.notities ? `
           <div style="margin-bottom:18px;">
             ${sectionLabel('Notities')}
-            <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:10px 12px;font-size:12px;line-height:1.6;color:#1f2937;white-space:pre-wrap;">${escapeHtml(p.notities)}</div>
+            <div style="${darkCard}padding:10px 12px;font-size:12px;line-height:1.6;color:#e8edf5;white-space:pre-wrap;">${escapeHtml(p.notities)}</div>
           </div>` : ''}
 
           <div style="margin-bottom:8px;">
             ${sectionLabel('Context')}
             <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;">
-              <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
-                <div style="font-size:10px;color:#6b7280;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">Beoogde positie</div>
-                <div style="font-size:12px;color:#0d1320;font-weight:600;">${escapeHtml(positionLabel(p.beoogd)||'—')}</div>
+              <div style="${darkCard}padding:8px 10px;">
+                <div style="font-size:10px;color:#9aa8bd;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">Beoogde positie</div>
+                <div style="font-size:12px;color:#fff;font-weight:600;">${escapeHtml(positionLabel(p.beoogd)||'—')}</div>
               </div>
-              <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
-                <div style="font-size:10px;color:#6b7280;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">Leeftijdsgroep</div>
-                <div style="font-size:12px;color:#0d1320;font-weight:600;">${escapeHtml(p.leeftijd||'—')}</div>
+              <div style="${darkCard}padding:8px 10px;">
+                <div style="font-size:10px;color:#9aa8bd;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">Leeftijdsgroep</div>
+                <div style="font-size:12px;color:#fff;font-weight:600;">${escapeHtml(p.leeftijd||'—')}</div>
               </div>
-              <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
-                <div style="font-size:10px;color:#6b7280;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">Scoutingmethode</div>
-                <div style="font-size:12px;color:#0d1320;font-weight:600;">${escapeHtml(p.methode||'—')}</div>
+              <div style="${darkCard}padding:8px 10px;">
+                <div style="font-size:10px;color:#9aa8bd;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">Scoutingmethode</div>
+                <div style="font-size:12px;color:#fff;font-weight:600;">${escapeHtml(p.methode||'—')}</div>
               </div>
-              <div style="background:#fafbfc;border:1px solid #e3e6ec;border-radius:6px;padding:8px 10px;">
-                <div style="font-size:10px;color:#6b7280;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">Rapportdatum</div>
-                <div style="font-size:12px;color:#0d1320;font-weight:600;">${formatDate(p.datum)}</div>
+              <div style="${darkCard}padding:8px 10px;">
+                <div style="font-size:10px;color:#9aa8bd;margin-bottom:2px;text-transform:uppercase;letter-spacing:.6px;">Rapportdatum</div>
+                <div style="font-size:12px;color:#fff;font-weight:600;">${formatDate(p.datum)}</div>
               </div>
             </div>
           </div>
 
         </div>
-      </div>
 
-      <div style="background:#0d1320;color:rgba(255,255,255,.55);padding:10px 28px;display:flex;justify-content:space-between;align-items:center;font-size:10px;letter-spacing:.5px;">
-        <div style="display:flex;align-items:center;gap:8px;">
-          <div style="width:18px;height:18px;">${BRAND_SHIELD_SVG}</div>
-          <span style="color:rgba(255,255,255,.75);font-weight:600;">Marcel Steeman · Scouting Platform</span>
+        <div style="border-top:1px solid #232d40;padding:10px 28px;display:flex;justify-content:space-between;align-items:center;font-size:10px;letter-spacing:.5px;color:#9aa8bd;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:18px;height:18px;">${BRAND_SHIELD_SVG}</div>
+            <span style="color:#e8edf5;font-weight:600;">Marcel Steeman · Scouting Platform</span>
+          </div>
+          <div>Gegenereerd op ${formatDate(todayISO())}</div>
         </div>
-        <div>Gegenereerd op ${formatDate(todayISO())}</div>
+
       </div>
     </div>
   `;
@@ -4645,7 +4653,7 @@ function generatePlayerPDF(p){
   html2pdf().from(container.firstElementChild).set({
     filename,
     margin: [10, 10, 14, 10],
-    html2canvas: { scale: 2, backgroundColor: '#ffffff', useCORS: true },
+    html2canvas: { scale: 2, backgroundColor: '#0b0f15', useCORS: true },
     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
     pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
   }).save().then(()=>{

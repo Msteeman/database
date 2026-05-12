@@ -101,7 +101,8 @@ body {
   pointer-events: none;
   z-index: 0;
 }
-.app-grid { position: relative; z-index: 1; }
+.app-grid { position: relative; }
+.main { position: relative; z-index: 1; }
 button, input, select, textarea { font-family: inherit; font-size: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: var(--accent); text-decoration: none; }
@@ -621,6 +622,34 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .criteria-block-title { font-weight: 600; margin-bottom: 6px; font-size: 13px; }
 .criteria-block-help { font-size: 11px; color: var(--text-3); margin-bottom: 10px; line-height: 1.5; }
+.subcriteria-stack { display: flex; flex-direction: column; gap: 14px; }
+.subcriteria-row {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.subcriteria-label {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--text-1);
+  margin: 0;
+}
+.subcriteria-row .grade-picker {
+  width: 100%;
+  flex-wrap: nowrap;
+}
+.subcriteria-row .grade-picker .grade-pick {
+  flex: 1;
+  min-width: 0;
+}
+.subcriteria-note {
+  width: 100%;
+  resize: vertical;
+}
 .dual-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .dual-grade .field label { margin-bottom: 4px; }
 .dual-label {
@@ -1082,7 +1111,7 @@ tbody tr:last-child td { border-bottom: none; }
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,.55);
-  z-index: 95;
+  z-index: 940;
   opacity: 0;
   transition: opacity .25s ease;
 }
@@ -1207,7 +1236,7 @@ tbody tr:last-child td { border-bottom: none; }
     height: 100vh; height: 100dvh;
     width: 78%;
     max-width: 320px;
-    z-index: 100;
+    z-index: 950;
     transform: translateX(-100%);
     transition: transform .28s cubic-bezier(.2,.8,.2,1);
     border-right: 1px solid var(--border);
@@ -1479,6 +1508,60 @@ tbody tr:last-child td { border-bottom: none; }
 .geo-empty-text {
   text-align: center; padding: 30px 12px; color: var(--text-3); font-size: 12px;
 }
+
+/* ---------- CONTACTPERSONEN LIST ---------- */
+.contacts-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+.contact-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  transition: transform .12s, border-color .12s, box-shadow .12s;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.contact-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0,0,0,.25);
+}
+.contact-card-head { display: flex; align-items: center; gap: 12px; }
+.contact-avatar {
+  width: 42px; height: 42px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 15px;
+  flex-shrink: 0;
+}
+.contact-name { font-weight: 700; font-size: 14px; color: var(--text); line-height: 1.2; }
+.contact-functie { font-size: 12px; color: var(--text-2); margin-top: 2px; }
+.contact-club {
+  display: inline-block;
+  font-size: 11px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  padding: 3px 8px;
+  border-radius: 999px;
+  color: var(--text-2);
+  align-self: flex-start;
+}
+.contact-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text-2); min-width: 0; }
+.contact-row svg { width: 14px; height: 14px; flex-shrink: 0; color: var(--text-3); }
+.contact-row a {
+  color: var(--text-2);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 1;
+}
+.contact-row a:hover { color: var(--primary); text-decoration: underline; }
+.contact-row.empty { color: var(--text-3); font-style: italic; }
 
 /* ---------- WEDSTRIJDEN LIST ---------- */
 .matches-list { display: flex; flex-direction: column; gap: 10px; }
@@ -1806,6 +1889,10 @@ tbody tr:last-child td { border-bottom: none; }
         <button class="nav-item" data-view="pitch">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/><line x1="12" y1="5" x2="12" y2="19"/><circle cx="12" cy="12" r="2"/></svg>
           Elftal analyse
+        </button>
+        <button class="nav-item" data-view="contacts">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Contacten
         </button>
       </nav>
 
@@ -2246,43 +2333,27 @@ tbody tr:last-child td { border-bottom: none; }
                 </div>
               </div>
 
-              <div class="field-row" style="grid-template-columns:repeat(4,1fr); margin-top:14px;">
-                <div class="field">
-                  <label>Explosiviteit</label>
+              <!-- Subcriteria — elk op een volle rij met A-D horizontaal eronder -->
+              <div class="subcriteria-stack" style="margin-top:14px;">
+                <div class="subcriteria-row">
+                  <label class="subcriteria-label">Explosiviteit</label>
                   <div class="grade-picker" data-key="explosiviteit_huidig"></div>
+                  <textarea id="f-tekst-explosiviteit" rows="2" placeholder="Korte observatie (optioneel)..." class="subcriteria-note"></textarea>
                 </div>
-                <div class="field">
-                  <label>Sprinten</label>
+                <div class="subcriteria-row">
+                  <label class="subcriteria-label">Sprinten</label>
                   <div class="grade-picker" data-key="sprinten_huidig"></div>
+                  <textarea id="f-tekst-sprinten" rows="2" placeholder="Korte observatie (optioneel)..." class="subcriteria-note"></textarea>
                 </div>
-                <div class="field">
-                  <label>Duelleren</label>
+                <div class="subcriteria-row">
+                  <label class="subcriteria-label">Duelleren</label>
                   <div class="grade-picker" data-key="duelleren_huidig"></div>
+                  <textarea id="f-tekst-duelleren" rows="2" placeholder="Korte observatie (optioneel)..." class="subcriteria-note"></textarea>
                 </div>
-                <div class="field">
-                  <label>Wendbaarheid</label>
+                <div class="subcriteria-row">
+                  <label class="subcriteria-label">Wendbaarheid</label>
                   <div class="grade-picker" data-key="wendbaarheid_huidig"></div>
-                </div>
-              </div>
-
-              <div class="field-row" style="margin-top:10px;">
-                <div class="field">
-                  <label>Opmerking explosiviteit</label>
-                  <textarea id="f-tekst-explosiviteit" rows="2" placeholder="Korte observatie..."></textarea>
-                </div>
-                <div class="field">
-                  <label>Opmerking sprinten</label>
-                  <textarea id="f-tekst-sprinten" rows="2" placeholder="Korte observatie..."></textarea>
-                </div>
-              </div>
-              <div class="field-row" style="margin-top:10px;">
-                <div class="field">
-                  <label>Opmerking duelleren</label>
-                  <textarea id="f-tekst-duelleren" rows="2" placeholder="Korte observatie..."></textarea>
-                </div>
-                <div class="field">
-                  <label>Opmerking wendbaarheid</label>
-                  <textarea id="f-tekst-wendbaarheid" rows="2" placeholder="Korte observatie..."></textarea>
+                  <textarea id="f-tekst-wendbaarheid" rows="2" placeholder="Korte observatie (optioneel)..." class="subcriteria-note"></textarea>
                 </div>
               </div>
             </div>
@@ -2429,6 +2500,36 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
       </section>
 
+      <!-- ====== CONTACTS ====== -->
+      <section class="view" id="view-contacts">
+        <div class="topbar">
+          <div>
+            <div class="page-title">Contactpersonen</div>
+            <div class="page-sub" id="contacts-sub">Overzicht van trainers, scouts, ouders en andere contacten</div>
+          </div>
+          <button class="btn btn-primary" id="contact-new-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nieuw contact
+          </button>
+        </div>
+
+        <div class="filters" style="margin-bottom:14px;">
+          <input id="contact-search" class="filter-input" type="text" placeholder="Zoek op naam, club, functie..." />
+          <select id="contact-sort" class="filter-select">
+            <option value="naam">Op naam (A–Z)</option>
+            <option value="club">Op club</option>
+            <option value="functie">Op functie</option>
+            <option value="nieuwste">Nieuwste eerst</option>
+          </select>
+        </div>
+
+        <div id="contacts-list" class="contacts-list"></div>
+        <div id="contacts-empty" style="display:none; text-align:center; padding:60px 20px; color:var(--text-3);">
+          <div style="font-size:14px; margin-bottom:10px;">Nog geen contactpersonen.</div>
+          <div style="font-size:12px;">Voeg trainers, scouts of ouders toe via de knop <strong>Nieuw contact</strong>.</div>
+        </div>
+      </section>
+
     </main>
   </div>
 
@@ -2448,11 +2549,15 @@ tbody tr:last-child td { border-bottom: none; }
     </button>
     <button class="bn-item" data-view="matches" aria-label="Wedstrijden">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="1"/><line x1="12" y1="6" x2="12" y2="19"/><circle cx="12" cy="12.5" r="2"/></svg>
-      <span class="bn-label">Wedstrijden</span>
+      <span class="bn-label">Wedstr.</span>
     </button>
     <button class="bn-item" data-view="pitch" aria-label="Elftal analyse">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="1"/><line x1="12" y1="5" x2="12" y2="19"/><circle cx="12" cy="12" r="2"/></svg>
       <span class="bn-label">Elftal</span>
+    </button>
+    <button class="bn-item" data-view="contacts" aria-label="Contactpersonen">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      <span class="bn-label">Contact</span>
     </button>
   </nav>
 </div>
@@ -2478,6 +2583,59 @@ tbody tr:last-child td { border-bottom: none; }
     <div class="modal-body">
       <input id="picker-search" class="player-picker-search" type="text" placeholder="Zoek op naam, club, positie..." />
       <div id="picker-list" class="player-picker-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== CONTACT MODAL =================== -->
+<div class="modal-backdrop" id="contact-backdrop">
+  <div class="modal" id="contact-modal">
+    <div class="modal-header">
+      <div class="modal-title" id="contact-modal-title">Nieuw contact</div>
+      <button class="modal-close" id="contact-close">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="contact-form" autocomplete="off">
+        <input type="hidden" id="c-id" />
+        <div class="field" style="margin-bottom:12px;">
+          <label>Naam *</label>
+          <input id="c-naam" type="text" required placeholder="Voor- en achternaam" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>Telefoonnummer</label>
+            <input id="c-tel" type="tel" placeholder="06-12345678" />
+          </div>
+          <div class="field">
+            <label>E-mailadres</label>
+            <input id="c-email" type="email" placeholder="naam@voorbeeld.nl" />
+          </div>
+        </div>
+        <div class="field-row" style="margin-top:12px;">
+          <div class="field">
+            <label>Club</label>
+            <input id="c-club" type="text" placeholder="Bijv. FC Twente" />
+          </div>
+          <div class="field">
+            <label>Functie</label>
+            <input id="c-functie" type="text" placeholder="Bijv. Hoofdtrainer, Ouder, Scout" />
+          </div>
+        </div>
+        <div class="field" style="margin-top:12px;">
+          <label>Notities (optioneel)</label>
+          <textarea id="c-notes" rows="3" placeholder="Aanvullende informatie over deze persoon..."></textarea>
+        </div>
+        <div class="form-actions" style="margin-top:18px; justify-content:space-between;">
+          <button type="button" class="btn" id="contact-delete" style="display:none; color:#ef4444;">Verwijderen</button>
+          <div style="display:flex; gap:10px; margin-left:auto;">
+            <button type="button" class="btn" id="contact-cancel">Annuleren</button>
+            <button type="submit" class="btn btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Opslaan
+            </button>
+          </div>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -2897,9 +3055,11 @@ let currentUser = null;
 let currentView = 'dashboard';
 let playersCache = [];
 let analysesCache = [];
+let contactsCache = [];
 let currentAnalysisId = null;
 let unsubPlayers = null;
 let unsubAnalyses = null;
+let unsubContacts = null;
 let inactivityTimer = null;
 let selectedPitchPos = null;
 let sortKey = 'datum';
@@ -2941,9 +3101,11 @@ function setSync(state){
 /* =============== DATA LAYER (Firestore) =============== */
 function playersCol(){ return collection(db, 'users', currentUser.uid, 'players'); }
 function analysesCol(){ return collection(db, 'users', currentUser.uid, 'analyses'); }
+function contactsCol(){ return collection(db, 'users', currentUser.uid, 'contacts'); }
 
 function loadPlayers(){ return playersCache; }
 function loadAnalyses(){ return analysesCache; }
+function loadContacts(){ return contactsCache; }
 function getAnalysis(id){ return analysesCache.find(a => a.id === id); }
 function currentAnalysis(){ return currentAnalysisId ? getAnalysis(currentAnalysisId) : null; }
 
@@ -2980,12 +3142,23 @@ function subscribeData(){
     console.error('Analyses sync error:', err);
     setSync('offline');
   });
+
+  unsubContacts = onSnapshot(contactsCol(), snap=>{
+    contactsCache = snap.docs.map(d => ({...d.data(), id: d.id}));
+    if(currentView === 'contacts') renderContacts();
+    setSync('ok');
+  }, err=>{
+    console.error('Contacts sync error:', err);
+    setSync('offline');
+  });
 }
 function unsubscribeData(){
   if(unsubPlayers){ unsubPlayers(); unsubPlayers = null; }
   if(unsubAnalyses){ unsubAnalyses(); unsubAnalyses = null; }
+  if(unsubContacts){ unsubContacts(); unsubContacts = null; }
   playersCache = [];
   analysesCache = [];
+  contactsCache = [];
 }
 
 async function savePlayer(player){
@@ -3010,6 +3183,159 @@ async function deletePlayer(id){
     setSync('offline');
     throw e;
   }
+}
+
+async function saveContact(contact){
+  setSync('syncing');
+  try {
+    const id = contact.id;
+    const {id: _drop, ...data} = contact;
+    await setDoc(doc(contactsCol(), id), data);
+  } catch(e){
+    console.error('Save contact error:', e);
+    toast('Opslaan mislukt — controleer je verbinding', true);
+    setSync('offline');
+    throw e;
+  }
+}
+async function deleteContact(id){
+  setSync('syncing');
+  try { await deleteDoc(doc(contactsCol(), id)); }
+  catch(e){
+    console.error('Delete contact error:', e);
+    toast('Verwijderen mislukt', true);
+    setSync('offline');
+    throw e;
+  }
+}
+
+/* =============== CONTACTS RENDERING =============== */
+function contactInitials(naam){
+  const parts = (naam || '').trim().split(/\s+/).filter(Boolean);
+  if(!parts.length) return '?';
+  if(parts.length === 1) return parts[0].slice(0,2).toUpperCase();
+  return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+}
+
+function renderContacts(){
+  const list = $('#contacts-list');
+  const empty = $('#contacts-empty');
+  const sub = $('#contacts-sub');
+  if(!list) return;
+
+  const search = ($('#contact-search')?.value || '').toLowerCase().trim();
+  const sortMode = $('#contact-sort')?.value || 'naam';
+
+  let items = contactsCache.slice();
+
+  if(search){
+    items = items.filter(c =>
+      (c.naam || '').toLowerCase().includes(search) ||
+      (c.club || '').toLowerCase().includes(search) ||
+      (c.functie || '').toLowerCase().includes(search) ||
+      (c.email || '').toLowerCase().includes(search) ||
+      (c.tel || '').toLowerCase().includes(search)
+    );
+  }
+
+  const cmp = (a,b,k)=> (a[k]||'').toString().localeCompare((b[k]||'').toString(), 'nl', {sensitivity:'base'});
+  if(sortMode === 'naam')         items.sort((a,b)=> cmp(a,b,'naam'));
+  else if(sortMode === 'club')    items.sort((a,b)=> cmp(a,b,'club') || cmp(a,b,'naam'));
+  else if(sortMode === 'functie') items.sort((a,b)=> cmp(a,b,'functie') || cmp(a,b,'naam'));
+  else if(sortMode === 'nieuwste')items.sort((a,b)=> (b.created_at||'').localeCompare(a.created_at||''));
+
+  const total = contactsCache.length;
+  if(sub) sub.textContent = total === 0
+    ? 'Nog geen contacten — voeg je eerste contact toe'
+    : `${total} contact${total===1?'':'en'}${search ? ` · ${items.length} gevonden` : ''}`;
+
+  if(!items.length){
+    list.innerHTML = '';
+    if(empty){
+      empty.style.display = '';
+      empty.innerHTML = total === 0
+        ? '<div style="padding:40px 20px; text-align:center; color:var(--text-2);"><div style="font-size:48px; margin-bottom:12px;">👥</div><div style="font-size:16px; margin-bottom:4px;">Nog geen contacten</div><div style="font-size:13px;">Klik op <strong>Nieuw contact</strong> om je eerste contact toe te voegen.</div></div>'
+        : '<div style="padding:40px 20px; text-align:center; color:var(--text-2);">Geen resultaten voor je zoekopdracht.</div>';
+    }
+    return;
+  }
+  if(empty) empty.style.display = 'none';
+
+  const esc = s => (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  list.innerHTML = items.map(c => {
+    const initials = esc(contactInitials(c.naam));
+    const naam = esc(c.naam || '(zonder naam)');
+    const functie = c.functie ? `<div class="contact-functie">${esc(c.functie)}</div>` : '';
+    const club = c.club ? `<span class="contact-club">${esc(c.club)}</span>` : '';
+    const tel = c.tel ? `<div class="contact-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg><a href="tel:${esc(c.tel)}" onclick="event.stopPropagation()">${esc(c.tel)}</a></div>` : '';
+    const email = c.email ? `<div class="contact-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg><a href="mailto:${esc(c.email)}" onclick="event.stopPropagation()">${esc(c.email)}</a></div>` : '';
+    return `
+      <div class="contact-card" data-id="${esc(c.id)}">
+        <div class="contact-avatar">${initials}</div>
+        <div style="flex:1; min-width:0;">
+          <div class="contact-name">${naam}</div>
+          ${functie}
+          ${club ? `<div style="margin-top:6px;">${club}</div>` : ''}
+          ${(tel || email) ? `<div style="margin-top:10px; display:flex; flex-direction:column; gap:6px;">${tel}${email}</div>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  list.querySelectorAll('.contact-card').forEach(card => {
+    card.addEventListener('click', ()=> openContactModal(card.dataset.id));
+  });
+}
+
+function openContactModal(id){
+  const bd = $('#contact-backdrop');
+  const titleEl = $('#contact-modal-title');
+  const delBtn = $('#contact-delete');
+  const c = id ? contactsCache.find(x => x.id === id) : null;
+
+  $('#c-id').value      = c ? c.id : '';
+  $('#c-naam').value    = c ? (c.naam || '')    : '';
+  $('#c-tel').value     = c ? (c.tel || '')     : '';
+  $('#c-email').value   = c ? (c.email || '')   : '';
+  $('#c-club').value    = c ? (c.club || '')    : '';
+  $('#c-functie').value = c ? (c.functie || '') : '';
+  $('#c-notes').value   = c ? (c.notes || '')   : '';
+
+  if(titleEl) titleEl.textContent = c ? 'Contact bewerken' : 'Nieuw contact';
+  if(delBtn)  delBtn.style.display = c ? '' : 'none';
+
+  bd.classList.add('open');
+  setTimeout(()=> $('#c-naam').focus(), 50);
+}
+
+function closeContactModal(){
+  $('#contact-backdrop').classList.remove('open');
+}
+
+async function submitContactForm(e){
+  e.preventDefault();
+  const naam = $('#c-naam').value.trim();
+  if(!naam){ toast('Naam is verplicht', true); $('#c-naam').focus(); return; }
+
+  const id = $('#c-id').value || ('c_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6));
+  const existing = contactsCache.find(x => x.id === id);
+
+  const contact = {
+    id,
+    naam,
+    tel:     $('#c-tel').value.trim(),
+    email:   $('#c-email').value.trim(),
+    club:    $('#c-club').value.trim(),
+    functie: $('#c-functie').value.trim(),
+    notes:   $('#c-notes').value.trim(),
+    created_at: existing?.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    await saveContact(contact);
+    closeContactModal();
+    toast(existing ? 'Contact bijgewerkt' : 'Contact opgeslagen');
+  } catch(_) { /* error toast already shown */ }
 }
 
 function blankAnalysisSlots(formation){
@@ -3179,6 +3505,7 @@ function go(view){
   if(view === 'matches')   renderMatches();
   if(view === 'pitch')     renderPitch();
   if(view === 'report')    resetReportForm();
+  if(view === 'contacts')  renderContacts();
   window.scrollTo({top:0});
 }
 
@@ -5653,6 +5980,29 @@ function initApp(){
     if(e.target.id === 'picker-backdrop') closePlayerPicker();
   });
   $('#picker-search').addEventListener('input', e=> renderPickerList(e.target.value));
+
+  // Contacts
+  $('#contact-new-btn')?.addEventListener('click', ()=> openContactModal());
+  $('#contact-close')?.addEventListener('click', closeContactModal);
+  $('#contact-cancel')?.addEventListener('click', closeContactModal);
+  $('#contact-backdrop')?.addEventListener('click', e=>{
+    if(e.target.id === 'contact-backdrop') closeContactModal();
+  });
+  $('#contact-form')?.addEventListener('submit', submitContactForm);
+  $('#contact-delete')?.addEventListener('click', async ()=>{
+    const id = $('#c-id').value;
+    if(!id) return;
+    const c = contactsCache.find(x => x.id === id);
+    const naam = c?.naam || 'dit contact';
+    if(!confirm(`Weet je zeker dat je ${naam} wilt verwijderen?`)) return;
+    try {
+      await deleteContact(id);
+      closeContactModal();
+      toast('Contact verwijderd');
+    } catch(_) {}
+  });
+  $('#contact-search')?.addEventListener('input', renderContacts);
+  $('#contact-sort')?.addEventListener('change', renderContacts);
 }
 
 function initAuthForms(){

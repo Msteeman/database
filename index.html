@@ -2042,7 +2042,7 @@ tbody tr:last-child td { border-bottom: none; }
     <div class="modal-body">
       <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.5;">
         Plak hieronder het rapport-blokje dat Copilot voor je heeft gemaakt en klik op <strong>Importeren</strong>.
-        Je kunt één speler of meerdere spelers tegelijk plakken.
+        Je kunt één speler of meerdere spelers tegelijk plakken — ook één rapport per regel werkt.
       </div>
       <textarea id="import-text" style="width:100%; min-height:200px; background:var(--bg-3); border:1px solid var(--border-2); color:var(--text); padding:12px; border-radius:7px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; outline:none; resize:vertical;" placeholder='Plak hier het rapport-blokje...'></textarea>
       <div id="import-status" style="margin-top:10px; font-size:12px; min-height:18px;"></div>
@@ -4685,15 +4685,36 @@ async function runImport(){
     status.textContent = 'Plak eerst een rapport-blokje in het veld.';
     return;
   }
-  let data;
+  let list = null;
+  // 1) probeer als enkel JSON-object of JSON-array
   try {
-    data = JSON.parse(raw);
-  } catch(e){
+    const data = JSON.parse(raw);
+    list = Array.isArray(data) ? data : [data];
+  } catch(e) {
+    // 2) probeer als JSONL (één rapport per regel)
+    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if(lines.length > 1){
+      const parsed = [];
+      let allOk = true;
+      for(const line of lines){
+        try { parsed.push(JSON.parse(line)); }
+        catch(_) { allOk = false; break; }
+      }
+      if(allOk && parsed.length) list = parsed;
+    }
+    // 3) probeer als JSON-objecten gescheiden door komma's (zonder omsluitende [])
+    if(!list){
+      try {
+        const wrapped = JSON.parse('[' + raw.replace(/}\s*[\r\n]+\s*{/g, '},{') + ']');
+        if(Array.isArray(wrapped) && wrapped.length) list = wrapped;
+      } catch(_) {}
+    }
+  }
+  if(!list){
     status.style.color = 'var(--red)';
     status.textContent = 'Het geplakte tekstblok kan niet gelezen worden. Controleer of je het hele blokje hebt gekopieerd.';
     return;
   }
-  const list = Array.isArray(data) ? data : [data];
   if(!list.length){
     status.style.color = 'var(--red)';
     status.textContent = 'Geen rapporten gevonden in het blokje.';

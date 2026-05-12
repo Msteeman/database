@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Scouting Platform — Marcel Steeman</title>
-<meta name="description" content="Professioneel scoutingsplatform voor jeugdvoetbal — FC Twente / Heracles" />
+<meta name="description" content="Professioneel scoutingsplatform voor jeugdvoetbal" />
 <style>
 /* =========================================================
    SCOUTING PLATFORM — Marcel Steeman
@@ -168,9 +168,31 @@ a { color: var(--accent); text-decoration: none; }
   font-weight: 700; color: var(--text);
   margin-bottom: 10px;
 }
+.scout-avatar-img {
+  width: 56px; height: 56px; border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--primary);
+  box-shadow: 0 2px 10px rgba(11, 196, 132, 0.25);
+  margin-bottom: 10px;
+  display: block;
+}
 .scout-name { font-weight: 600; font-size: 13px; }
 .scout-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; line-height: 1.5; }
 .scout-meta span { color: var(--secondary); font-weight: 600; }
+.scout-club { margin-top: 8px; }
+.scout-club-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, rgba(11, 196, 132, 0.18), rgba(11, 196, 132, 0.06));
+  border: 1px solid rgba(11, 196, 132, 0.35);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 10px;
+  border-radius: 999px;
+  letter-spacing: 0.2px;
+}
+.scout-club-badge .club-sep { color: var(--primary); margin: 0 2px; }
+.scout-club-prev { font-size: 10px; color: var(--text-3); margin-top: 5px; }
 .scout-email { font-size: 10px; color: var(--text-3); margin-top: 6px; word-break: break-all; }
 .logout-btn {
   margin-top: 10px; width: 100%;
@@ -470,6 +492,22 @@ tbody tr:last-child td { border-bottom: none; }
   font-size: 18px; font-weight: 700; margin-bottom: 4px;
 }
 .position-detail-sub { color: var(--text-3); font-size: 12px; margin-bottom: 18px; }
+.position-reden {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.04));
+  border-left: 3px solid var(--secondary);
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-bottom: 18px;
+}
+.position-reden-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--secondary);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+.position-reden-text { font-size: 13px; color: var(--text); line-height: 1.45; }
 .position-grade-block { margin-bottom: 16px; }
 .position-grade-block label {
   font-size: 11px; text-transform: uppercase; letter-spacing: .8px;
@@ -617,28 +655,7 @@ tbody tr:last-child td { border-bottom: none; }
       <div class="login-logo-mark">SP</div>
       <div>
         <div class="login-title">Scouting Platform</div>
-        <div class="login-sub">FC Twente / Heracles — Marcel Steeman</div>
-      </div>
-    </div>
-
-    <!-- Register screen -->
-    <div id="register-form" style="display:none;">
-      <div class="login-field">
-        <label>E-mailadres</label>
-        <input id="register-email" type="email" class="login-input" placeholder="jouw@email.nl" autocomplete="email" />
-      </div>
-      <div class="login-field">
-        <label>Wachtwoord</label>
-        <input id="register-pw" type="password" class="login-input" placeholder="Minimaal 8 tekens" autocomplete="new-password" />
-      </div>
-      <div class="login-field">
-        <label>Bevestig wachtwoord</label>
-        <input id="register-pw2" type="password" class="login-input" placeholder="Herhaal wachtwoord" autocomplete="new-password" />
-      </div>
-      <button id="register-btn" class="login-btn">Account aanmaken</button>
-      <div id="register-error" class="login-error"></div>
-      <div class="login-toggle">
-        Al een account? <a id="show-login">Inloggen</a>
+        <div class="login-sub">Marcel Steeman</div>
       </div>
     </div>
 
@@ -654,9 +671,6 @@ tbody tr:last-child td { border-bottom: none; }
       </div>
       <button id="login-btn" class="login-btn">Inloggen</button>
       <div id="login-error" class="login-error"></div>
-      <div class="login-toggle">
-        Nog geen account? <a id="show-register">Maak er een aan</a>
-      </div>
       <div class="login-footer">
         Je gegevens worden veilig opgeslagen in de cloud en zijn op elk apparaat beschikbaar.
       </div>
@@ -698,12 +712,8 @@ tbody tr:last-child td { border-bottom: none; }
       </nav>
 
       <div class="scout-profile">
-        <div class="scout-avatar">MS</div>
+        <img class="scout-avatar-img" alt="Marcel Steeman" src="data:image/jpeg;base64,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" />
         <div class="scout-name">Marcel Steeman</div>
-        <div class="scout-meta">
-          Huidig: <span>FC Twente / Heracles</span><br>
-          Voorheen: <span>Ajax</span>
-        </div>
         <div class="scout-email" id="user-email">—</div>
         <div class="sync-indicator">
           <span class="sync-dot" id="sync-dot"></span>
@@ -886,26 +896,19 @@ tbody tr:last-child td { border-bottom: none; }
 
           <!-- Beoordelingen -->
           <div class="form-section">
-            <div class="form-section-title">Beoordeling per categorie (Huidig & Potentieel)</div>
+            <div class="form-section-title">Beoordeling per categorie</div>
 
             <div class="legend" style="margin-top:0;">
               <div class="legend-item"><span class="dual-label-pill pill-current">HUIDIG</span> wat speler nú is</div>
-              <div class="legend-item"><span class="dual-label-pill pill-potential">POTENTIEEL</span> wat speler kan worden</div>
             </div>
 
             <!-- Techniek -->
             <div class="criteria-block">
               <div class="criteria-block-title">Spelvaardigheden / Techniek</div>
               <div class="criteria-block-help">Functionele techniek: aan de bal comfortabel, aanname goed, soepel in actie loslaten.</div>
-              <div class="dual-grade">
-                <div class="field">
-                  <label><span class="dual-label-pill pill-current">Huidig</span></label>
-                  <div class="grade-picker" data-key="techniek_huidig"></div>
-                </div>
-                <div class="field">
-                  <label><span class="dual-label-pill pill-potential">Potentieel</span></label>
-                  <div class="grade-picker pot" data-key="techniek_potentieel"></div>
-                </div>
+              <div class="field">
+                <label><span class="dual-label-pill pill-current">Huidig</span></label>
+                <div class="grade-picker" data-key="techniek_huidig"></div>
               </div>
             </div>
 
@@ -913,15 +916,9 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="criteria-block">
               <div class="criteria-block-title">Functioneel tactisch / Spelinzicht</div>
               <div class="criteria-block-help">Ziet gaten om in te lopen, weet wanneer wel of niet, creëert ruimte voor anderen.</div>
-              <div class="dual-grade">
-                <div class="field">
-                  <label><span class="dual-label-pill pill-current">Huidig</span></label>
-                  <div class="grade-picker" data-key="inzicht_huidig"></div>
-                </div>
-                <div class="field">
-                  <label><span class="dual-label-pill pill-potential">Potentieel</span></label>
-                  <div class="grade-picker pot" data-key="inzicht_potentieel"></div>
-                </div>
+              <div class="field">
+                <label><span class="dual-label-pill pill-current">Huidig</span></label>
+                <div class="grade-picker" data-key="inzicht_huidig"></div>
               </div>
             </div>
 
@@ -929,15 +926,9 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="criteria-block">
               <div class="criteria-block-title">DRIT / Passie & Attitude</div>
               <div class="criteria-block-help">Mentaliteit, focus, doorzettingsvermogen, leiderschap, coachbaarheid.</div>
-              <div class="dual-grade">
-                <div class="field">
-                  <label><span class="dual-label-pill pill-current">Huidig</span></label>
-                  <div class="grade-picker" data-key="drit_huidig"></div>
-                </div>
-                <div class="field">
-                  <label><span class="dual-label-pill pill-potential">Potentieel</span></label>
-                  <div class="grade-picker pot" data-key="drit_potentieel"></div>
-                </div>
+              <div class="field">
+                <label><span class="dual-label-pill pill-current">Huidig</span></label>
+                <div class="grade-picker" data-key="drit_huidig"></div>
               </div>
             </div>
 
@@ -945,15 +936,9 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="criteria-block">
               <div class="criteria-block-title">Atletisch vermogen / Fysiek</div>
               <div class="criteria-block-help">Explosiviteit, sprintvermogen, duelkracht, wendbaarheid — gecombineerd in één oordeel.</div>
-              <div class="dual-grade">
-                <div class="field">
-                  <label><span class="dual-label-pill pill-current">Huidig</span></label>
-                  <div class="grade-picker" data-key="fysiek_huidig"></div>
-                </div>
-                <div class="field">
-                  <label><span class="dual-label-pill pill-potential">Potentieel</span></label>
-                  <div class="grade-picker pot" data-key="fysiek_potentieel"></div>
-                </div>
+              <div class="field">
+                <label><span class="dual-label-pill pill-current">Huidig</span></label>
+                <div class="grade-picker" data-key="fysiek_huidig"></div>
               </div>
             </div>
           </div>
@@ -976,11 +961,10 @@ tbody tr:last-child td { border-bottom: none; }
                 <label>Advies *</label>
                 <select id="f-advies" required>
                   <option value="">Kies...</option>
-                  <option value="1">1 — Direct contracteren / topkandidaat</option>
-                  <option value="2">2 — Sterke kandidaat, doorstromen</option>
-                  <option value="3">3 — Volgen, meerdere observaties</option>
-                  <option value="4">4 — Heroverwegen</option>
-                  <option value="5">5 — Niet selecteren</option>
+                  <option value="4">4 — Direct aannemen</option>
+                  <option value="3">3 — Stage</option>
+                  <option value="2">2 — Blijven volgen</option>
+                  <option value="1">1 — Niet aannemen</option>
                 </select>
               </div>
               <div class="field">
@@ -1009,7 +993,7 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="topbar">
           <div>
             <div class="page-title">Witte vlekken analyse</div>
-            <div class="page-sub">FC Twente / Heracles O15 — speelsysteem 4-3-3</div>
+            <div class="page-sub">O15 — speelsysteem 4-3-3</div>
           </div>
           <button class="btn btn-ghost" id="pitch-reset">Reset naar standaard</button>
         </div>
@@ -1073,7 +1057,7 @@ tbody tr:last-child td { border-bottom: none; }
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, onAuthStateChanged,
-  signInWithEmailAndPassword, createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
   signOut, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
@@ -1126,31 +1110,31 @@ const POSITIONS_BY_LINE = {
 const ALL_POSITIONS = Object.values(POSITIONS_BY_LINE).flat();
 
 const PITCH_LAYOUT = [
-  {code:'GK',  label:'Keeper',                  x:50, y:92},
-  {code:'LB',  label:'Linksback',               x:12, y:75},
-  {code:'LCV', label:'Centr. verd. links',      x:35, y:78},
-  {code:'RCV', label:'Centr. verd. rechts',     x:65, y:78},
-  {code:'RB',  label:'Rechtsback',              x:88, y:75},
-  {code:'CML', label:'Mid. links (8)',          x:28, y:50},
-  {code:'Nr6', label:'Controlerend (6)',        x:50, y:58},
-  {code:'CMR', label:'Mid. rechts (8)',         x:72, y:50},
-  {code:'LV',  label:'Linksbuiten',             x:15, y:22},
-  {code:'CS',  label:'Centrumspits',            x:50, y:18},
-  {code:'RV',  label:'Rechtsbuiten',            x:85, y:22}
+  {code:'GK',  label:'Keeper',                  x:50, y:92, reden:'Stabiele 1e-keus ontbreekt: weinig diepte achter de hoofdkeeper en beperkt aanbod van keepers met meevoetbalprofiel voor opbouw van achteruit.'},
+  {code:'LB',  label:'Linksback',               x:12, y:75, reden:'Tekort aan linksbenige backs met combinatie van duelkracht en opkomende kwaliteit; vaak ingevuld met geconverteerde middenvelders.'},
+  {code:'LCV', label:'Centr. verd. links',      x:35, y:78, reden:'Linksbenige centrale verdediger met opbouw onder druk is schaars; rotatie leunt te zwaar op één speler.'},
+  {code:'RCV', label:'Centr. verd. rechts',     x:65, y:78, reden:'Rechtsbenige CV met duelkracht én leiderschap is dun bezet; doorstroming uit de O15 nog onzeker.'},
+  {code:'RB',  label:'Rechtsback',              x:88, y:75, reden:'Backs met aanvallende dreiging én verdedigende rust zijn beperkt; veel "veilige" maar weinig dominante profielen.'},
+  {code:'CML', label:'Mid. links (8)',          x:28, y:50, reden:'Box-to-box 8 met scorend vermogen ontbreekt; veel spelers met passing maar te weinig diepgang.'},
+  {code:'Nr6', label:'Controlerend (6)',        x:50, y:58, reden:'Echte 6 met spelhervatting en lef in de opbouw is een knelpunt — vaak ingevuld door een verkapte 8.'},
+  {code:'CMR', label:'Mid. rechts (8)',         x:72, y:50, reden:'Rechtsbenige 8 met aanvallend rendement (assists/goals) is een witte vlek t.o.v. wensprofiel.'},
+  {code:'LV',  label:'Linksbuiten',             x:15, y:22, reden:'Rechtsbenige linksbuiten die naar binnen komt en afrondt: weinig kandidaten van topniveau in deze leeftijd.'},
+  {code:'CS',  label:'Centrumspits',            x:50, y:18, reden:'Spits met combinatie van fysieke aanwezigheid, afronding én meevoetballen blijft het zwaarst om te vinden.'},
+  {code:'RV',  label:'Rechtsbuiten',            x:85, y:22, reden:'Linksbenige rechtsbuiten met 1-tegen-1 dreiging is schaars; rendement (goals/assists) blijft achter bij wens.'}
 ];
 
 const DEFAULT_PITCH = {
-  GK:  {huidig:'B', gewenst:'B', gap:false},
-  LB:  {huidig:'D', gewenst:'B', gap:true},
-  LCV: {huidig:'D', gewenst:'B', gap:true},
-  RCV: {huidig:'B', gewenst:'B', gap:false},
-  RB:  {huidig:'B', gewenst:'B', gap:false},
-  CML: {huidig:'B', gewenst:'B', gap:false},
-  Nr6: {huidig:'B', gewenst:'B', gap:false},
-  CMR: {huidig:'D', gewenst:'B', gap:true},
-  LV:  {huidig:'D', gewenst:'A', gap:true},
-  CS:  {huidig:'B', gewenst:'A', gap:false},
-  RV:  {huidig:'D', gewenst:'A', gap:true}
+  GK:  {huidig:'', gewenst:'', gap:false},
+  LB:  {huidig:'', gewenst:'', gap:false},
+  LCV: {huidig:'', gewenst:'', gap:false},
+  RCV: {huidig:'', gewenst:'', gap:false},
+  RB:  {huidig:'', gewenst:'', gap:false},
+  CML: {huidig:'', gewenst:'', gap:false},
+  Nr6: {huidig:'', gewenst:'', gap:false},
+  CMR: {huidig:'', gewenst:'', gap:false},
+  LV:  {huidig:'', gewenst:'', gap:false},
+  CS:  {huidig:'', gewenst:'', gap:false},
+  RV:  {huidig:'', gewenst:'', gap:false}
 };
 
 /* =============== STATE =============== */
@@ -1311,39 +1295,12 @@ async function tryLogin(){
     btn.disabled = false; btn.textContent = 'Inloggen';
   }
 }
-async function tryRegister(){
-  const btn = $('#register-btn');
-  const email = $('#register-email').value.trim();
-  const pw = $('#register-pw').value;
-  const pw2 = $('#register-pw2').value;
-  const err = $('#register-error');
-  err.textContent = '';
-  if(!email){ err.textContent = 'Vul je e-mailadres in.'; return; }
-  if(pw.length < 8){ err.textContent = 'Wachtwoord moet minimaal 8 tekens zijn.'; return; }
-  if(pw !== pw2){ err.textContent = 'Wachtwoorden komen niet overeen.'; return; }
-  btn.disabled = true; btn.textContent = 'Bezig...';
-  try {
-    await createUserWithEmailAndPassword(auth, email, pw);
-    toast('Account aangemaakt — welkom!');
-  } catch(e){
-    err.textContent = authErrorNL(e.code);
-  } finally {
-    btn.disabled = false; btn.textContent = 'Account aanmaken';
-  }
-}
-
 function showLogin(){
   $('#loader').style.display = 'none';
   $('#login-overlay').style.display = 'flex';
   $('#app').style.display = 'none';
   $('#login-form').style.display = 'block';
-  $('#register-form').style.display = 'none';
   setTimeout(()=>{ $('#login-email').focus(); }, 100);
-}
-function showRegister(){
-  $('#login-form').style.display = 'none';
-  $('#register-form').style.display = 'block';
-  setTimeout(()=>{ $('#register-email').focus(); }, 100);
 }
 function showApp(){
   $('#loader').style.display = 'none';
@@ -1356,8 +1313,28 @@ function showApp(){
   });
 }
 
+/* =============== DIRTY FORM TRACKING =============== */
+let formDirty = false;
+function setDirty(v){ formDirty = !!v; }
+function confirmDiscard(){
+  if(!formDirty) return true;
+  const ok = confirm('Je hebt niet-opgeslagen wijzigingen in het rapport. Weet je zeker dat je weg wilt? Wijzigingen gaan verloren.');
+  if(ok) setDirty(false);
+  return ok;
+}
+window.addEventListener('beforeunload', (e)=>{
+  if(formDirty){
+    e.preventDefault();
+    e.returnValue = '';
+    return '';
+  }
+});
+
 /* =============== NAVIGATION =============== */
 function go(view){
+  if(currentView === 'report' && view !== 'report'){
+    if(!confirmDiscard()) return;
+  }
   currentView = view;
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-'+view));
   $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
@@ -1377,7 +1354,7 @@ function renderDashboard(){
   const total = players.length;
   const last7 = players.filter(p => p.datum && (Date.now() - new Date(p.datum).getTime()) < 7*24*3600*1000).length;
   const topPotential = players.filter(p => p.potentieel_niveau === 'A').length;
-  const advice1 = players.filter(p => String(p.advies) === '1').length;
+  const advice1 = players.filter(p => String(p.advies) === '4').length;
 
   $('#kpi-grid').innerHTML = `
     <div class="kpi-card">
@@ -1396,9 +1373,9 @@ function renderDashboard(){
       <div class="kpi-sub">kan doorgroeien naar top</div>
     </div>
     <div class="kpi-card yellow">
-      <div class="kpi-label">Advies 1</div>
+      <div class="kpi-label">Advies 4</div>
       <div class="kpi-value">${advice1}</div>
-      <div class="kpi-sub">direct contracteren</div>
+      <div class="kpi-sub">direct aannemen</div>
     </div>
   `;
 
@@ -1572,10 +1549,10 @@ function openDetail(id){
     <div class="detail-section">
       <h4>Beoordeling per categorie</h4>
       <div class="detail-criteria-grid">
-        ${renderCriteriaCard('Spelvaardigheden / Techniek', b.techniek_huidig, b.techniek_potentieel)}
-        ${renderCriteriaCard('Functioneel tactisch / Inzicht', b.inzicht_huidig, b.inzicht_potentieel)}
-        ${renderCriteriaCard('DRIT / Passie & Attitude', b.drit_huidig, b.drit_potentieel)}
-        ${renderCriteriaCard('Atletisch / Fysiek', b.fysiek_huidig, b.fysiek_potentieel)}
+        ${renderCriteriaCard('Spelvaardigheden / Techniek', b.techniek_huidig)}
+        ${renderCriteriaCard('Functioneel tactisch / Inzicht', b.inzicht_huidig)}
+        ${renderCriteriaCard('DRIT / Passie & Attitude', b.drit_huidig)}
+        ${renderCriteriaCard('Atletisch / Fysiek', b.fysiek_huidig)}
       </div>
     </div>
 
@@ -1620,19 +1597,18 @@ function openDetail(id){
     go('report');
   });
 }
-function renderCriteriaCard(name, cur, pot){
+function renderCriteriaCard(name, cur){
   return `
     <div class="detail-criteria">
       <div class="detail-criteria-name">${name}</div>
       <div class="detail-criteria-grades">
         <span class="grade-label">H</span><span class="grade ${cur||'D'}">${cur||'-'}</span>
-        <span class="grade-label" style="margin-left:8px;">P</span><span class="grade outline ${pot||'D'}">${pot||'-'}</span>
       </div>
     </div>`;
 }
 function gradeForAdvies(a){
   const n = parseInt(a,10);
-  if(n===1) return 'A'; if(n===2) return 'B'; if(n===3) return 'C';
+  if(n===4) return 'A'; if(n===3) return 'B'; if(n===2) return 'C';
   return 'D';
 }
 function closeDetail(){ $('#modal-backdrop').classList.remove('open'); }
@@ -1687,6 +1663,7 @@ function resetReportForm(){
   refreshPositionDropdowns();
   $$('.grade-pick').forEach(b=>b.classList.remove('selected'));
   $$('.grade-picker').forEach(p=>p.dataset.value='');
+  setDirty(false);
 }
 function loadIntoForm(p){
   $('#report-title').textContent = 'Rapport bewerken — ' + p.naam;
@@ -1739,13 +1716,9 @@ async function submitReport(e){
     notities: $('#f-notities').value.trim(),
     beoordelingen: {
       techniek_huidig: getPickerValue('techniek_huidig'),
-      techniek_potentieel: getPickerValue('techniek_potentieel'),
       inzicht_huidig: getPickerValue('inzicht_huidig'),
-      inzicht_potentieel: getPickerValue('inzicht_potentieel'),
       drit_huidig: getPickerValue('drit_huidig'),
-      drit_potentieel: getPickerValue('drit_potentieel'),
-      fysiek_huidig: getPickerValue('fysiek_huidig'),
-      fysiek_potentieel: getPickerValue('fysiek_potentieel')
+      fysiek_huidig: getPickerValue('fysiek_huidig')
     },
     huidig_niveau: huidig,
     potentieel_niveau: pot,
@@ -1754,6 +1727,7 @@ async function submitReport(e){
   try {
     await savePlayer(player);
     toast(isEdit ? 'Rapport bijgewerkt' : 'Rapport opgeslagen');
+    setDirty(false);
     resetReportForm();
     go('database');
   } catch(e){ /* error already toasted */ }
@@ -1809,6 +1783,8 @@ function renderPitchInfo(){
   panel.innerHTML = `
     <div class="position-detail-title">${meta.label}</div>
     <div class="position-detail-sub">${meta.code} · ${players.length} speler${players.length===1?'':'s'} in database</div>
+
+    ${meta.reden ? `<div class="position-reden"><div class="position-reden-title">Waarom een witte vlek?</div><div class="position-reden-text">${escapeHtml(meta.reden)}</div></div>` : ''}
 
     <div class="position-grade-block">
       <label><span class="dual-label-pill pill-current">Huidig kwaliteitsniveau</span></label>
@@ -1923,8 +1899,20 @@ function initApp(){
   refreshPositionDropdowns();
   $('#f-linie').addEventListener('change', refreshPositionDropdowns);
   $('#report-form').addEventListener('submit', submitReport);
-  $('#report-clear').addEventListener('click', resetReportForm);
-  $('#report-cancel').addEventListener('click', ()=>{ resetReportForm(); go('dashboard'); });
+  $('#report-form').addEventListener('input', ()=> setDirty(true));
+  $('#report-form').addEventListener('change', ()=> setDirty(true));
+  $('#report-form').addEventListener('click', (e)=>{
+    if(e.target.classList && e.target.classList.contains('grade-pick')) setDirty(true);
+  });
+  $('#report-clear').addEventListener('click', ()=>{
+    if(!confirmDiscard()) return;
+    resetReportForm();
+  });
+  $('#report-cancel').addEventListener('click', ()=>{
+    if(!confirmDiscard()) return;
+    resetReportForm();
+    go('dashboard');
+  });
 
   ['filter-search','filter-position','filter-current','filter-potential'].forEach(id=>{
     $('#'+id).addEventListener('input', applyFilters);
@@ -1954,12 +1942,6 @@ function initAuthForms(){
   $('#login-btn').addEventListener('click', tryLogin);
   $('#login-pw').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
   $('#login-email').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#login-pw').focus(); });
-
-  $('#register-btn').addEventListener('click', tryRegister);
-  $('#register-pw2').addEventListener('keydown', e=>{ if(e.key==='Enter') tryRegister(); });
-
-  $('#show-register').addEventListener('click', showRegister);
-  $('#show-login').addEventListener('click', showLogin);
 }
 
 /* =============== BOOT =============== */

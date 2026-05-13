@@ -1637,6 +1637,27 @@ tbody tr:last-child td { border-bottom: none; }
   padding: 2px 8px; border-radius: 999px;
   font-size: 11px; color: var(--text-2);
 }
+.match-report-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(34,197,94,.12); border: 1px solid rgba(34,197,94,.32);
+  color: #4ade80;
+  padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 700;
+}
+.match-report-card .match-teams { gap: 8px; }
+.match-report-note {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 13px; color: var(--text-2);
+  white-space: pre-wrap; word-wrap: break-word;
+  line-height: 1.5;
+}
+.match-report-actions {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;
+}
+.match-report-actions .btn { padding: 6px 12px; font-size: 12px; }
 .match-players {
   display: flex; flex-wrap: wrap; gap: 5px;
   justify-content: flex-end; max-width: 280px;
@@ -2080,6 +2101,10 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="page-title">Wedstrijden</div>
             <div class="page-sub" id="matches-count">0 wedstrijden</div>
           </div>
+          <button class="btn btn-primary" id="match-report-new-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Wedstrijd rapporteren
+          </button>
         </div>
 
         <div class="filters">
@@ -2094,7 +2119,7 @@ tbody tr:last-child td { border-bottom: none; }
         <div id="matches-list" class="matches-list"></div>
         <div id="matches-empty" style="display:none; text-align:center; padding:60px 20px; color:var(--text-3);">
           <div style="font-size:14px; margin-bottom:10px;">Nog geen wedstrijden bekend.</div>
-          <div style="font-size:12px;">Wedstrijden verschijnen automatisch zodra je rapporten opslaat met een thuis- en uitspelende ploeg.</div>
+          <div style="font-size:12px;">Wedstrijden verschijnen automatisch zodra je rapporten opslaat met een thuis- en uitspelende ploeg, of klik op <strong>Wedstrijd rapporteren</strong>.</div>
         </div>
       </section>
 
@@ -2640,6 +2665,59 @@ tbody tr:last-child td { border-bottom: none; }
   </div>
 </div>
 
+<!-- =================== MATCH-REPORT MODAL =================== -->
+<div class="modal-backdrop" id="mreport-backdrop">
+  <div class="modal" id="mreport-modal">
+    <div class="modal-header">
+      <div class="modal-title" id="mreport-modal-title">Wedstrijd rapporteren</div>
+      <button class="modal-close" id="mreport-close">×</button>
+    </div>
+    <div class="modal-body">
+      <form id="mreport-form" autocomplete="off">
+        <input type="hidden" id="mr-id" />
+        <div class="field-row">
+          <div class="field">
+            <label>Datum rapportage *</label>
+            <input id="mr-datum" type="date" required />
+          </div>
+          <div class="field">
+            <label>Leeftijdscategorie</label>
+            <select id="mr-leeftijd"></select>
+          </div>
+        </div>
+        <div class="field-row" style="margin-top:12px;">
+          <div class="field">
+            <label>Thuisspelende ploeg *</label>
+            <input id="mr-thuis" type="text" required placeholder="Bijv. Roda'46 12.2" />
+          </div>
+          <div class="field">
+            <label>Uitspelende ploeg *</label>
+            <input id="mr-uit" type="text" required placeholder="Bijv. Scherpenzeel 12.1" />
+          </div>
+        </div>
+        <div class="field" style="margin-top:12px;">
+          <label>Opmerking *</label>
+          <textarea id="mr-opmerking" rows="4" required placeholder="Beschrijving wedstrijd, niveau, tempo, bijzonderheden..."></textarea>
+        </div>
+        <label style="display:flex; align-items:center; gap:8px; margin-top:14px; font-size:13px; color:var(--text-2); cursor:pointer;">
+          <input id="mr-also-player" type="checkbox" style="width:16px; height:16px; cursor:pointer;" />
+          <span>Ook een speler rapporteren — opent het spelersformulier met deze wedstrijd vooringevuld.</span>
+        </label>
+        <div class="form-actions" style="margin-top:18px; justify-content:space-between;">
+          <button type="button" class="btn" id="mreport-delete" style="display:none; color:#ef4444;">Verwijderen</button>
+          <div style="display:flex; gap:10px; margin-left:auto;">
+            <button type="button" class="btn" id="mreport-cancel">Annuleren</button>
+            <button type="submit" class="btn btn-primary">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Opslaan
+            </button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
 <!-- =================== IMPORT MODAL =================== -->
 <div class="modal-backdrop" id="import-backdrop">
   <div class="modal" id="import-modal">
@@ -3056,10 +3134,12 @@ let currentView = 'dashboard';
 let playersCache = [];
 let analysesCache = [];
 let contactsCache = [];
+let matchReportsCache = [];
 let currentAnalysisId = null;
 let unsubPlayers = null;
 let unsubAnalyses = null;
 let unsubContacts = null;
+let unsubMatchReports = null;
 let inactivityTimer = null;
 let selectedPitchPos = null;
 let sortKey = 'datum';
@@ -3102,10 +3182,12 @@ function setSync(state){
 function playersCol(){ return collection(db, 'users', currentUser.uid, 'players'); }
 function analysesCol(){ return collection(db, 'users', currentUser.uid, 'analyses'); }
 function contactsCol(){ return collection(db, 'users', currentUser.uid, 'contacts'); }
+function matchReportsCol(){ return collection(db, 'users', currentUser.uid, 'match_reports'); }
 
 function loadPlayers(){ return playersCache; }
 function loadAnalyses(){ return analysesCache; }
 function loadContacts(){ return contactsCache; }
+function loadMatchReports(){ return matchReportsCache; }
 function getAnalysis(id){ return analysesCache.find(a => a.id === id); }
 function currentAnalysis(){ return currentAnalysisId ? getAnalysis(currentAnalysisId) : null; }
 
@@ -3151,14 +3233,25 @@ function subscribeData(){
     console.error('Contacts sync error:', err);
     setSync('offline');
   });
+
+  unsubMatchReports = onSnapshot(matchReportsCol(), snap=>{
+    matchReportsCache = snap.docs.map(d => ({...d.data(), id: d.id}));
+    if(currentView === 'matches') renderMatches();
+    setSync('ok');
+  }, err=>{
+    console.error('Match reports sync error:', err);
+    setSync('offline');
+  });
 }
 function unsubscribeData(){
   if(unsubPlayers){ unsubPlayers(); unsubPlayers = null; }
   if(unsubAnalyses){ unsubAnalyses(); unsubAnalyses = null; }
   if(unsubContacts){ unsubContacts(); unsubContacts = null; }
+  if(unsubMatchReports){ unsubMatchReports(); unsubMatchReports = null; }
   playersCache = [];
   analysesCache = [];
   contactsCache = [];
+  matchReportsCache = [];
 }
 
 async function savePlayer(player){
@@ -3203,6 +3296,30 @@ async function deleteContact(id){
   try { await deleteDoc(doc(contactsCol(), id)); }
   catch(e){
     console.error('Delete contact error:', e);
+    toast('Verwijderen mislukt', true);
+    setSync('offline');
+    throw e;
+  }
+}
+
+async function saveMatchReport(report){
+  setSync('syncing');
+  try {
+    const id = report.id;
+    const {id: _drop, ...data} = report;
+    await setDoc(doc(matchReportsCol(), id), data);
+  } catch(e){
+    console.error('Save match report error:', e);
+    toast('Opslaan mislukt — controleer je verbinding', true);
+    setSync('offline');
+    throw e;
+  }
+}
+async function deleteMatchReport(id){
+  setSync('syncing');
+  try { await deleteDoc(doc(matchReportsCol(), id)); }
+  catch(e){
+    console.error('Delete match report error:', e);
     toast('Verwijderen mislukt', true);
     setSync('offline');
     throw e;
@@ -3335,6 +3452,80 @@ async function submitContactForm(e){
     await saveContact(contact);
     closeContactModal();
     toast(existing ? 'Contact bijgewerkt' : 'Contact opgeslagen');
+  } catch(_) { /* error toast already shown */ }
+}
+
+/* =============== MATCH-REPORT MODAL =============== */
+function openMatchReportModal(id){
+  const bd = $('#mreport-backdrop');
+  const titleEl = $('#mreport-modal-title');
+  const delBtn = $('#mreport-delete');
+  const ageSel = $('#mr-leeftijd');
+  if(ageSel && !ageSel.dataset.filled){
+    ageSel.innerHTML = '<option value="">Kies leeftijd...</option>' +
+      LEEFTIJD_OPTIONS.map(o => `<option value="${o}">${o}</option>`).join('');
+    ageSel.dataset.filled = '1';
+  }
+  const r = id ? matchReportsCache.find(x => x.id === id) : null;
+
+  $('#mr-id').value        = r ? r.id : '';
+  $('#mr-datum').value     = r ? (r.datum || todayISO()) : todayISO();
+  $('#mr-leeftijd').value  = r ? (r.leeftijd || '') : '';
+  $('#mr-thuis').value     = r ? (r.thuis || '')    : '';
+  $('#mr-uit').value       = r ? (r.uit || '')      : '';
+  $('#mr-opmerking').value = r ? (r.opmerking || ''): '';
+  $('#mr-also-player').checked = false;
+
+  if(titleEl) titleEl.textContent = r ? 'Wedstrijdrapport bewerken' : 'Wedstrijd rapporteren';
+  if(delBtn)  delBtn.style.display = r ? '' : 'none';
+
+  bd.classList.add('open');
+  setTimeout(()=> $('#mr-thuis').focus(), 50);
+}
+
+function closeMatchReportModal(){
+  $('#mreport-backdrop').classList.remove('open');
+}
+
+async function submitMatchReportForm(e){
+  e.preventDefault();
+  const thuis = $('#mr-thuis').value.trim();
+  const uit = $('#mr-uit').value.trim();
+  const opmerking = $('#mr-opmerking').value.trim();
+  if(!thuis || !uit){ toast('Thuis- en uitspelende ploeg zijn verplicht', true); return; }
+  if(!opmerking){ toast('Opmerking is verplicht', true); $('#mr-opmerking').focus(); return; }
+
+  const id = $('#mr-id').value || ('mr_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6));
+  const existing = matchReportsCache.find(x => x.id === id);
+  const alsoPlayer = $('#mr-also-player').checked;
+
+  const report = {
+    id,
+    datum:     $('#mr-datum').value || todayISO(),
+    leeftijd:  $('#mr-leeftijd').value || '',
+    thuis,
+    uit,
+    opmerking,
+    created_at: existing?.created_at || new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+
+  try {
+    await saveMatchReport(report);
+    closeMatchReportModal();
+    toast(existing ? 'Wedstrijdrapport bijgewerkt' : 'Wedstrijd opgeslagen');
+    if(alsoPlayer){
+      go('report');
+      setTimeout(()=>{
+        try {
+          $('#f-w-datum').value = report.datum || '';
+          $('#f-w-thuis').value = report.thuis || '';
+          $('#f-w-uit').value = report.uit || '';
+          $('#f-w-context').value = report.opmerking || '';
+          if(report.leeftijd) $('#f-leeftijd').value = report.leeftijd;
+        } catch(_){}
+      }, 80);
+    }
   } catch(_) { /* error toast already shown */ }
 }
 
@@ -4636,7 +4827,22 @@ function groupKeyMonth(iso){
 }
 function renderMatches(){
   const players = loadPlayers();
-  let matches = aggregateMatches(players);
+  let matches = aggregateMatches(players).map(m => ({...m, kind: 'aggregated'}));
+
+  // Merge in standalone match-reports
+  const reports = loadMatchReports().map(r => ({
+    id: r.id,
+    datum: r.datum,
+    thuis: r.thuis || '',
+    uit: r.uit || '',
+    age: r.leeftijd || '',
+    opmerking: r.opmerking || '',
+    uitslag: '',
+    opstelling: '',
+    players: [],
+    kind: 'report'
+  }));
+  matches = matches.concat(reports);
 
   // Filters
   const search = ($('#match-search').value || '').toLowerCase().trim();
@@ -4657,7 +4863,8 @@ function renderMatches(){
     matches = matches.filter(m =>
       m.thuis.toLowerCase().includes(search) ||
       m.uit.toLowerCase().includes(search) ||
-      (m.age || '').toLowerCase().includes(search)
+      (m.age || '').toLowerCase().includes(search) ||
+      (m.opmerking || '').toLowerCase().includes(search)
     );
   }
   if(ageFilter){
@@ -4695,6 +4902,40 @@ function renderMatches(){
     const d = formatDayMonth(m.datum);
     const thuisClean = escapeHtml(stripAgeFromTeam(m.thuis) || m.thuis || '—');
     const uitClean = escapeHtml(stripAgeFromTeam(m.uit) || m.uit || '—');
+
+    if(m.kind === 'report'){
+      const ageBadgeR = m.age
+        ? `<span class="match-age-badge">${escapeHtml(m.age)}</span>`
+        : '';
+      html += `
+        <div class="match-card match-report-card" data-report-id="${escapeHtml(m.id)}">
+          <div class="match-date">
+            <div class="match-date-day">${d.day}</div>
+            <div class="match-date-month">${d.month}</div>
+            <div class="match-date-year">${d.year}</div>
+          </div>
+          <div class="match-teams">
+            <div class="match-teams-row">
+              <span class="match-team-home">${thuisClean}</span>
+              <span class="match-vs">vs</span>
+              <span class="match-team-away">${uitClean}</span>
+            </div>
+            <div class="match-meta">
+              <span class="match-report-badge">Wedstrijdrapport</span>
+              ${ageBadgeR}
+            </div>
+            ${m.opmerking ? `<div class="match-report-note">${escapeHtml(m.opmerking)}</div>` : ''}
+            <div class="match-report-actions">
+              <button type="button" class="btn btn-ghost match-report-edit" data-report-id="${escapeHtml(m.id)}">Bewerken</button>
+              <button type="button" class="btn btn-ghost match-report-add-player" data-report-id="${escapeHtml(m.id)}">+ Speler rapporteren</button>
+              <button type="button" class="btn btn-ghost match-report-delete" data-report-id="${escapeHtml(m.id)}" style="color:#ef4444;">Verwijderen</button>
+            </div>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
     const scoreHtml = m.uitslag
       ? `<span class="match-score">${escapeHtml(m.uitslag)}</span>`
       : `<span class="match-vs">vs</span>`;
@@ -4779,6 +5020,37 @@ function renderMatches(){
     row.addEventListener('click', (e)=>{
       e.stopPropagation();
       openDetail(row.dataset.playerId);
+    });
+  });
+
+  list.querySelectorAll('.match-report-edit').forEach(btn => {
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      openMatchReportModal(btn.dataset.reportId);
+    });
+  });
+  list.querySelectorAll('.match-report-add-player').forEach(btn => {
+    btn.addEventListener('click', (e)=>{
+      e.stopPropagation();
+      const r = matchReportsCache.find(x => x.id === btn.dataset.reportId);
+      if(!r) return;
+      go('report');
+      setTimeout(()=>{
+        try {
+          $('#f-w-datum').value = r.datum || '';
+          $('#f-w-thuis').value = r.thuis || '';
+          $('#f-w-uit').value = r.uit || '';
+          $('#f-w-context').value = r.opmerking || '';
+          if(r.leeftijd) $('#f-leeftijd').value = r.leeftijd;
+        } catch(_){}
+      }, 80);
+    });
+  });
+  list.querySelectorAll('.match-report-delete').forEach(btn => {
+    btn.addEventListener('click', async (e)=>{
+      e.stopPropagation();
+      if(!confirm('Wedstrijdrapport verwijderen?')) return;
+      try { await deleteMatchReport(btn.dataset.reportId); toast('Verwijderd'); } catch(_){}
     });
   });
 }
@@ -6003,6 +6275,25 @@ function initApp(){
   });
   $('#contact-search')?.addEventListener('input', renderContacts);
   $('#contact-sort')?.addEventListener('change', renderContacts);
+
+  // Match-report modal
+  $('#match-report-new-btn')?.addEventListener('click', ()=> openMatchReportModal());
+  $('#mreport-close')?.addEventListener('click', closeMatchReportModal);
+  $('#mreport-cancel')?.addEventListener('click', closeMatchReportModal);
+  $('#mreport-backdrop')?.addEventListener('click', e=>{
+    if(e.target.id === 'mreport-backdrop') closeMatchReportModal();
+  });
+  $('#mreport-form')?.addEventListener('submit', submitMatchReportForm);
+  $('#mreport-delete')?.addEventListener('click', async ()=>{
+    const id = $('#mr-id').value;
+    if(!id) return;
+    if(!confirm('Wedstrijdrapport verwijderen?')) return;
+    try {
+      await deleteMatchReport(id);
+      closeMatchReportModal();
+      toast('Wedstrijdrapport verwijderd');
+    } catch(_) {}
+  });
 }
 
 function initAuthForms(){

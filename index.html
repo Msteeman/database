@@ -3821,6 +3821,10 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="page-title">Adresboek</div>
             <div class="page-sub" id="adresboek-sub">Alle clubs uit je rapporten — klik op een kaart voor route in Google Maps</div>
           </div>
+          <button class="btn btn-sm" id="adresboek-refresh" title="Adressen opnieuw zoeken via OpenStreetMap">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+            Adressen vernieuwen
+          </button>
         </div>
 
         <div class="filters" style="margin-bottom:14px;">
@@ -4451,6 +4455,78 @@ function coordsForCity(city){
   return null;
 }
 
+/* ========= Nominatim helpers (v2) =========
+   Strategie: meerdere zoekqueries (sportpark/stadion/clubnaam) met POI-scoring,
+   daarna reverse-geocode op coords als straatadres ontbreekt. */
+async function _nominatimSearch(query){
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=10&addressdetails=1&extratags=1&countrycodes=nl&accept-language=nl`;
+  try {
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if(!res.ok) return [];
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch(_){ return []; }
+}
+async function _nominatimReverse(lat, lon){
+  const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1&accept-language=nl&zoom=18`;
+  try {
+    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    if(!res.ok) return null;
+    return await res.json();
+  } catch(_){ return null; }
+}
+function _scoreHit(h){
+  // Hogere score = beter resultaat. POI (sportpark/stadion) wint van settlement.
+  const cls = (h.class || '').toLowerCase();
+  const typ = (h.type || '').toLowerCase();
+  let s = 0;
+  if(cls === 'leisure'  && /sports_centre|stadium|pitch|track|park/.test(typ))      s += 220;
+  else if(cls === 'amenity' && /sports_centre|stadium/.test(typ))                   s += 200;
+  else if(cls === 'building'&& /sports|stadium|hall/.test(typ))                     s += 170;
+  else if(cls === 'tourism'&& typ === 'attraction')                                 s += 60;
+  else if(cls === 'building')                                                       s += 90;
+  else if(cls === 'amenity')                                                        s += 70;
+  else if(cls === 'shop')                                                           s += 40;
+  else if(cls === 'highway')                                                        s += 30;
+  else if(cls === 'place')                                                          s -= 60; // settlement: laatste keuze
+  const tags = h.extratags || {};
+  if(tags.sport && /soccer|football/i.test(tags.sport))                             s += 110;
+  if(tags.club  && /sport|soccer|football/i.test(tags.club))                        s += 90;
+  if(/sportpark|stadion|stadium|sportcomplex/i.test(h.display_name || ''))          s += 50;
+  if(h.address?.house_number)                                                       s += 40;
+  if(h.address?.road)                                                               s += 20;
+  s += (parseFloat(h.importance) || 0) * 5;
+  return s;
+}
+function _fmtAddress(a){
+  if(!a) return '';
+  const straat = [a.road, a.house_number].filter(Boolean).join(' ');
+  const stad = a.city || a.town || a.village || a.municipality || a.suburb || a.hamlet || '';
+  const postStad = [a.postcode, stad].filter(Boolean).join(' ');
+  return [straat, postStad].filter(Boolean).join(', ');
+}
+async function _findBestClubHit(clubName){
+  // Per query 1 request; stop zodra we een sterke POI hebben.
+  const queries = [
+    `sportpark ${clubName}`,
+    `${clubName} sportpark`,
+    `${clubName} stadion`,
+    `${clubName}`,
+    `${clubName} voetbal Nederland`,
+  ];
+  let best = null, bestScore = -Infinity;
+  for(const q of queries){
+    const hits = await _nominatimSearch(q);
+    for(const h of hits){
+      const sc = _scoreHit(h);
+      if(sc > bestScore){ bestScore = sc; best = h; }
+    }
+    if(bestScore >= 180) break;
+    await new Promise(r => setTimeout(r, 1100)); // Nominatim policy: max 1 req/sec
+  }
+  return best;
+}
+
 async function lookupClubCity(clubName){
   if(!clubName) return '';
   const key = clubName.trim().toLowerCase();
@@ -4460,28 +4536,36 @@ async function lookupClubCity(clubName){
   if(_inflightLookups.has(key)) return _inflightLookups.get(key);
   const promise = (async ()=>{
     try {
-      const q = encodeURIComponent(`${clubName} voetbal Nederland`);
-      const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&addressdetails=1&countrycodes=nl&accept-language=nl`;
-      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      if(!res.ok) return '';
-      const data = await res.json();
-      if(!Array.isArray(data) || !data.length) return '';
-      const r = data[0];
-      const a = r.address || {};
-      const city = a.city || a.town || a.village || a.municipality || a.suburb || a.hamlet || '';
+      const best = await _findBestClubHit(clubName);
+      if(!best) return '';
+      let addr = best.address || {};
+      let city = addr.city || addr.town || addr.village || addr.municipality || addr.suburb || addr.hamlet || '';
+      let formatted = _fmtAddress(addr);
+
+      // Geen huisnummer maar wel coords? Reverse geocode voor compleet straatadres.
+      if(!addr.house_number && best.lat && best.lon){
+        await new Promise(r => setTimeout(r, 1100));
+        const rev = await _nominatimReverse(best.lat, best.lon);
+        if(rev && rev.address){
+          const revFormatted = _fmtAddress(rev.address);
+          if(revFormatted && revFormatted.length > formatted.length){
+            formatted = revFormatted;
+            addr = rev.address;
+            city = city || addr.city || addr.town || addr.village || addr.municipality || addr.suburb || addr.hamlet || '';
+          }
+        }
+      }
+
       if(!city) return '';
       _clubCache[key] = city;
       saveClubCache();
-      // Stel volledig adres samen uit address-details (straat + huisnummer, postcode + stad)
-      const straat = [a.road, a.house_number].filter(Boolean).join(' ');
-      const postStad = [a.postcode, city].filter(Boolean).join(' ');
-      const adres = [straat, postStad].filter(Boolean).join(', ') || r.display_name || '';
+      const adres = formatted || best.display_name || '';
       if(adres){
         _clubAddrCache[key] = adres;
         saveClubAddrCache();
       }
-      if(!CITY_COORDS[city] && !_cityCache[city] && r.lat && r.lon){
-        _cityCache[city] = { lat: parseFloat(r.lat), lng: parseFloat(r.lon) };
+      if(!CITY_COORDS[city] && !_cityCache[city] && best.lat && best.lon){
+        _cityCache[city] = { lat: parseFloat(best.lat), lng: parseFloat(best.lon) };
         saveCityCache();
       }
       return city;
@@ -5057,11 +5141,19 @@ function renderAdresboek(){
     const naam   = esc(c.naam);
     const plaats = c.plaats ? esc(c.plaats) : '';
     const adres  = c.adres ? esc(c.adres) : '(adres onbekend)';
+    const heeftAdres = !!c.adres;
+    const heeftHuisnr = /\d/.test(c.adres || '') && /\,/.test(c.adres || '');
+    const adresKwaliteit = !heeftAdres ? 'leeg' : (heeftHuisnr ? 'compleet' : 'gemeente');
+    const kwaliteitBadge = adresKwaliteit === 'leeg'
+      ? '<span style="font-size:10px; color:#ef4444; font-weight:600;">geen adres</span>'
+      : (adresKwaliteit === 'gemeente'
+        ? '<span style="font-size:10px; color:#f5c518; font-weight:600;">alleen plaats</span>'
+        : '<span style="font-size:10px; color:#22c55e; font-weight:600;">compleet</span>');
     const n      = c.spelers.length;
     const query  = encodeURIComponent(c.adres ? c.adres : c.naam + (c.plaats ? ' ' + c.plaats : ''));
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
     return `
-      <a class="contact-card" href="${mapsUrl}" target="_blank" rel="noopener" style="text-decoration:none; color:inherit;">
+      <div class="contact-card" data-key="${esc(c.key)}" data-club="${esc(c.naam)}" style="position:relative; cursor:default;">
         <div class="contact-avatar">${pinSvg}</div>
         <div style="flex:1; min-width:0;">
           <div class="contact-name">${naam}</div>
@@ -5070,10 +5162,118 @@ function renderAdresboek(){
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
             <span>${adres}</span>
           </div>
-          <div style="margin-top:8px;"><span class="contact-club">${n} speler${n===1?'':'s'}</span></div>
+          <div style="margin-top:8px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+            <span class="contact-club">${n} speler${n===1?'':'s'}</span>
+            ${kwaliteitBadge}
+          </div>
+          <div style="margin-top:10px; display:flex; gap:8px; flex-wrap:wrap;">
+            <a class="btn btn-sm" href="${mapsUrl}" target="_blank" rel="noopener" style="text-decoration:none;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              Route
+            </a>
+            <button class="btn btn-sm adres-edit-btn" type="button" data-key="${esc(c.key)}" data-club="${esc(c.naam)}" data-adres="${esc(c.adres || '')}">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+              Bewerk adres
+            </button>
+            <button class="btn btn-sm adres-refresh-btn" type="button" data-key="${esc(c.key)}" data-club="${esc(c.naam)}" title="Zoek opnieuw via OpenStreetMap">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Zoek opnieuw
+            </button>
+          </div>
         </div>
-      </a>`;
+      </div>`;
   }).join('');
+
+  // Wire edit-knoppen
+  list.querySelectorAll('.adres-edit-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      openAdresEditModal(btn.dataset.key, btn.dataset.club, btn.dataset.adres);
+    });
+  });
+  // Wire per-kaart refresh
+  list.querySelectorAll('.adres-refresh-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const key = btn.dataset.key;
+      const club = btn.dataset.club;
+      btn.disabled = true;
+      btn.textContent = 'Zoeken...';
+      try {
+        delete _clubAddrCache[key];
+        delete _clubCache[key];
+        saveClubAddrCache();
+        saveClubCache();
+        await lookupClubCity(club);
+        toast('Adres bijgewerkt voor ' + club);
+        renderAdresboek();
+      } catch(_){ toast('Adres ophalen mislukt', true); }
+    });
+  });
+}
+
+/* === Adres handmatig bewerken === */
+function openAdresEditModal(key, club, huidigAdres){
+  const nieuw = prompt(
+    `Adres voor ${club}\n\nLaat leeg om te wissen, of typ het juiste adres:\n(bv. "Stadionlaan 1, 7606 JZ Almelo")`,
+    huidigAdres || ''
+  );
+  if(nieuw === null) return; // user cancelled
+  const trimmed = nieuw.trim();
+  if(trimmed){
+    _clubAddrCache[key] = trimmed;
+  } else {
+    delete _clubAddrCache[key];
+  }
+  saveClubAddrCache();
+  toast(trimmed ? 'Adres bijgewerkt' : 'Adres gewist');
+  renderAdresboek();
+}
+
+/* === Bulk-refresh alle adressen via Nominatim === */
+async function refreshAllAdressen(){
+  const btn = document.getElementById('adresboek-refresh');
+  if(btn && btn.dataset.busy === '1') return;
+  if(btn){ btn.dataset.busy = '1'; btn.disabled = true; }
+
+  // Verzamel unieke clubs uit alle spelers
+  const players = loadPlayers();
+  const clubMap = new Map();
+  for(const p of players){
+    const club = (p.club || '').trim();
+    if(!club) continue;
+    const k = club.toLowerCase();
+    if(!clubMap.has(k)) clubMap.set(k, club);
+  }
+  const total = clubMap.size;
+  if(!total){
+    if(btn){ btn.dataset.busy = '0'; btn.disabled = false; btn.innerHTML = btn.dataset.originalHtml || btn.innerHTML; }
+    toast('Geen clubs om te verwerken', true);
+    return;
+  }
+
+  const sub = document.getElementById('adresboek-sub');
+  const originalSub = sub ? sub.textContent : '';
+  let done = 0;
+
+  // Wis cache voor alle clubs zodat lookupClubCity opnieuw doet
+  for(const k of clubMap.keys()){
+    delete _clubAddrCache[k];
+    delete _clubCache[k];
+  }
+  saveClubAddrCache();
+  saveClubCache();
+
+  for(const [k, clubNaam] of clubMap){
+    done++;
+    if(sub) sub.textContent = `Adres ${done} van ${total} ophalen: ${clubNaam}...`;
+    try { await lookupClubCity(clubNaam); } catch(_){}
+  }
+
+  if(sub) sub.textContent = originalSub;
+  if(btn){ btn.dataset.busy = '0'; btn.disabled = false; }
+  toast(`${total} clubs vernieuwd`);
+  renderAdresboek();
 }
 
 function openContactModal(id){
@@ -9700,6 +9900,7 @@ function initApp(){
   // Adresboek filters
   $('#adresboek-search')?.addEventListener('input', renderAdresboek);
   $('#adresboek-sort')?.addEventListener('change', renderAdresboek);
+  $('#adresboek-refresh')?.addEventListener('click', refreshAllAdressen);
 
   // Match-report modal
   $('#match-report-new-btn')?.addEventListener('click', ()=> openMatchReportModal());

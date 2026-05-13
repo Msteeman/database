@@ -488,6 +488,9 @@ a { color: var(--accent); text-decoration: none; }
   margin-bottom: 18px;
   text-align: center;
 }
+.brand[role="button"] { cursor: pointer; transition: transform .15s ease, opacity .15s ease; }
+.brand[role="button"]:hover { transform: translateY(-1px); opacity: 0.92; }
+.brand[role="button"]:active { transform: translateY(0); }
 .brand-mark {
   width: 64px; height: 64px;
   display: flex; align-items: center; justify-content: center;
@@ -2569,6 +2572,7 @@ tbody tr:last-child td { border-bottom: none; }
 .intro-corner.tr { top: 22px;    right: 26px;  text-align: right; }
 .intro-corner.bl { bottom: 22px; left: 26px;   }
 .intro-corner.br { bottom: 22px; right: 26px;  text-align: right; }
+.intro-corner.intro-corner-small { font-size: 9px; opacity: 0.45; letter-spacing: 1.2px; }
 .intro-corner b { color: rgba(255,255,255,0.55); font-weight: 700; }
 
 .intro-skip {
@@ -2764,8 +2768,7 @@ tbody tr:last-child td { border-bottom: none; }
   <div class="intro-corner tl"><b>SH</b> &middot; Scouting Hub</div>
   <div class="intro-corner tr"><b>2026</b></div>
   <div class="intro-corner bl"></div>
-  <div class="intro-corner br">Marcel Steeman &middot; <b>NLD</b></div>
-  <button class="intro-skip" type="button" id="intro-skip">Skip</button>
+  <div class="intro-corner br intro-corner-small">Marcel Steeman</div>
   <div class="intro-stage">
     <div class="intro-logo">
       <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -2914,7 +2917,7 @@ tbody tr:last-child td { border-bottom: none; }
 
     <!-- ============ SIDEBAR ============ -->
     <aside class="sidebar" id="sidebar">
-      <div class="brand">
+      <div class="brand" id="brand-logo" role="button" tabindex="0" title="Naar dashboard">
         <div class="brand-mark">
           <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
             <defs>
@@ -3741,6 +3744,11 @@ tbody tr:last-child td { border-bottom: none; }
           <div style="font-size:14px; margin-bottom:10px;">Nog geen tips.</div>
           <div style="font-size:12px;">Voeg tips van coaches, ouders of contacten toe via de knop <strong>Nieuwe tip</strong>.</div>
         </div>
+      </section>
+
+      <!-- ====== PLAYER DETAIL (full-page) ====== -->
+      <section class="view" id="view-player">
+        <div id="player-view-body"></div>
       </section>
 
     </main>
@@ -5303,6 +5311,7 @@ function go(view){
   if(view === 'report')    resetReportForm();
   if(view === 'contacts')  renderContacts();
   if(view === 'tips')      renderTips();
+  if(view === 'player')    renderPlayer();
   window.scrollTo({top:0});
 }
 
@@ -6614,18 +6623,42 @@ function renderCompareTable(players){
   });
 }
 
-/* =============== DETAIL MODAL =============== */
+/* =============== PLAYER DETAIL (full-page) =============== */
+let currentPlayerId = null;
+let previousViewBeforePlayer = 'database';
+
 function openDetail(id){
   const players = loadPlayers();
   const p = players.find(x=>x.id===id);
   if(!p) return;
+  currentPlayerId = id;
+  if(currentView !== 'player') previousViewBeforePlayer = currentView || 'database';
+  go('player');
+}
+
+function renderPlayer(){
+  const players = loadPlayers();
+  const p = players.find(x=>x.id===currentPlayerId);
+  if(!p){
+    $('#player-view-body').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-3);">Speler niet gevonden.</div>';
+    return;
+  }
   renderDetailOverview(p);
-  $('#modal-backdrop').classList.add('open');
 }
 
 function renderDetailOverview(p){
   const meta = [positionLabel(p.positie), p.club, p.elftal||deriveElftalFromReport(p)].filter(Boolean).join(' · ');
-  $('#modal-body').innerHTML = `
+  const backLabel = previousViewBeforePlayer === 'compare' ? 'Terug naar vergelijken'
+                  : previousViewBeforePlayer === 'dashboard' ? 'Terug naar dashboard'
+                  : previousViewBeforePlayer === 'pitch' ? 'Terug naar elftal analyse'
+                  : 'Terug naar spelers';
+  $('#player-view-body').innerHTML = `
+    <div style="margin-bottom:14px;">
+      <button class="btn btn-sm" id="dtl-back-prev">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><polyline points="15 18 9 12 15 6"/></svg>
+        ${backLabel}
+      </button>
+    </div>
     <div class="detail-header">
       <div class="detail-avatar">${initials(p.naam)}</div>
       <div style="flex:1;">
@@ -6685,20 +6718,21 @@ function renderDetailOverview(p){
   renderDetailGauge(p);
   renderDetailRadar(p);
   renderDetailBars(p);
+  $('#dtl-back-prev').addEventListener('click', () => go(previousViewBeforePlayer || 'database'));
   $('#dtl-show-report').addEventListener('click', () => renderDetailFullReport(p));
   $('#dtl-pdf').addEventListener('click', () => generatePlayerPDF(p));
   $('#dtl-edit').addEventListener('click', () => {
-    closeDetail();
     loadIntoForm(p);
     go('report');
   });
   $('#dtl-del').addEventListener('click', async () => {
     if(confirm('Dit rapport verwijderen?')){
       await deletePlayer(p.id);
-      closeDetail();
+      go(previousViewBeforePlayer || 'database');
       toast('Rapport verwijderd');
     }
   });
+  window.scrollTo({top:0});
 }
 
 function renderDetailGauge(p){
@@ -6928,7 +6962,7 @@ function renderDetailFullReport(p){
       </div>`
     : '';
 
-  $('#modal-body').innerHTML = `
+  $('#player-view-body').innerHTML = `
     ${backBtnHtml}
     <div class="detail-header">
       <div class="detail-avatar">${initials(p.naam)}</div>
@@ -7001,16 +7035,16 @@ function renderDetailFullReport(p){
   $(`#del-${p.id}`).addEventListener('click', async ()=>{
     if(confirm('Dit rapport verwijderen?')){
       await deletePlayer(p.id);
-      closeDetail();
+      go(previousViewBeforePlayer || 'database');
       toast('Rapport verwijderd');
     }
   });
   $(`#pdf-${p.id}`).addEventListener('click', ()=> generatePlayerPDF(p));
   $(`#edit-${p.id}`).addEventListener('click', ()=>{
-    closeDetail();
     loadIntoForm(p);
     go('report');
   });
+  window.scrollTo({top:0});
 }
 function renderCriteriaCard(name, cur){
   return `
@@ -9279,6 +9313,14 @@ function initAuthForms(){
   $('#login-btn').addEventListener('click', tryLogin);
   $('#login-pw').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
   $('#login-email').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#login-pw').focus(); });
+  const brand = document.getElementById('brand-logo');
+  if(brand){
+    const goDash = ()=>{ if(typeof go === 'function') go('dashboard'); };
+    brand.addEventListener('click', goDash);
+    brand.addEventListener('keydown', e=>{
+      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); goDash(); }
+    });
+  }
 }
 
 
@@ -9293,31 +9335,21 @@ function initAuthForms(){
     }
   } catch(e){}
   const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const holdMs = prefersReduced ? 800 : 5400;
-  const outMs  = prefersReduced ? 200 : 1100;
+  const holdMs = prefersReduced ? 600 : 3500;
+  const outMs  = prefersReduced ? 200 : 900;
   let dismissed = false;
-  function triggerLoginEnter(){
-    // Add a one-shot entrance class on the login overlay as soon as it appears
-    const login = document.getElementById('login-overlay');
-    if(!login) return;
-    login.classList.add('login-enter');
-    setTimeout(() => login.classList.remove('login-enter'), 1400);
-  }
   function dismiss(){
     if(dismissed) return;
     dismissed = true;
-    overlay.classList.add('intro-out');           // zoom stage + bloom
+    overlay.classList.add('intro-out');
     setTimeout(() => {
       overlay.classList.add('intro-hide');
-      triggerLoginEnter();
-    }, Math.max(0, outMs - 250));                  // start login slide while bloom is at peak
+    }, Math.max(0, outMs - 250));
     setTimeout(() => {
       overlay.classList.add('intro-gone');
       try { sessionStorage.setItem('sh_intro_done', '1'); } catch(e){}
     }, outMs + 600);
   }
-  const skip = document.getElementById('intro-skip');
-  if(skip){ skip.addEventListener('click', dismiss); }
   document.addEventListener('keydown', function onKey(e){
     if(e.key === 'Escape' || e.key === 'Enter' || e.key === ' '){
       dismiss();

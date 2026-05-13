@@ -177,15 +177,28 @@ a { color: var(--accent); text-decoration: none; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 28px;
+  justify-content: center;
+  gap: 24px;
   max-width: 480px;
+  text-align: center;
+}
+.login-hero-mark, .login-hero-title, .login-hero-tag {
+  margin-left: auto;
+  margin-right: auto;
 }
 .login-hero-mark {
   width: 340px; height: 340px;
   filter: drop-shadow(0 24px 60px rgba(227,6,19,.45));
-  animation: appleHeroIn 1.8s cubic-bezier(.16,1,.3,1) both, appleFloat 7s ease-in-out 2.4s infinite;
+  animation: appleHeroIn 1.8s cubic-bezier(.16,1,.3,1) both,
+             appleFloat 7s ease-in-out 2.4s infinite,
+             appleShinePulse 4.5s ease-in-out 2.2s infinite;
   position: relative;
   will-change: transform, opacity, filter;
+}
+@keyframes appleShinePulse {
+  0%, 100% { filter: drop-shadow(0 24px 60px rgba(227,6,19,.45)); }
+  50%      { filter: drop-shadow(0 28px 72px rgba(227,6,19,.62))
+                     drop-shadow(0 0 22px rgba(255,200,210,.32)); }
 }
 /* Achtergrond glow-puls */
 .login-hero-mark::before {
@@ -270,8 +283,10 @@ a { color: var(--accent); text-decoration: none; }
   animation: appleBeamSweep 2.4s cubic-bezier(.16,1,.3,1) 1.6s both;
 }
 .login-hero-title {
-  font-size: 56px; font-weight: 700; letter-spacing: -1.5px;
+  font-size: clamp(36px, 5.5vw, 56px);
+  font-weight: 700; letter-spacing: -1.5px;
   text-align: center;
+  white-space: nowrap;
   background: linear-gradient(110deg,
     #ffffff 0%,
     #ffffff 25%,
@@ -284,7 +299,7 @@ a { color: var(--accent); text-decoration: none; }
   background-clip: text;
   -webkit-text-fill-color: transparent;
   margin: 0;
-  line-height: .98;
+  line-height: 1;
   will-change: transform, opacity, filter, background-position;
   animation: appleTitleSweep 6s ease-in-out 2.2s infinite;
 }
@@ -2864,10 +2879,10 @@ tbody tr:last-child td { border-bottom: none; }
 <div id="intro-overlay">
   <div class="intro-beam"></div>
   <div class="intro-particles"><span></span><span></span><span></span><span></span><span></span><span></span></div>
-  <div class="intro-corner tl"><b>SH</b> &middot; Scouting Hub</div>
-  <div class="intro-corner tr"><b>2026</b></div>
-  <div class="intro-corner bl"></div>
-  <div class="intro-corner br intro-corner-small">Marcel Steeman</div>
+  <div class="intro-corner tl"></div>
+  <div class="intro-corner tr"></div>
+  <div class="intro-corner bl"><b>SH</b> &middot; Scouting Hub</div>
+  <div class="intro-corner br intro-corner-small">&copy; Marcel Steeman</div>
   <div class="intro-stage">
     <div class="intro-logo">
       <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -2894,13 +2909,13 @@ tbody tr:last-child td { border-bottom: none; }
       <span class="letter" style="animation-delay:1.30s">S</span><span class="letter" style="animation-delay:1.38s">c</span><span class="letter" style="animation-delay:1.46s">o</span><span class="letter" style="animation-delay:1.54s">u</span><span class="letter" style="animation-delay:1.62s">t</span><span class="letter" style="animation-delay:1.70s">i</span><span class="letter" style="animation-delay:1.78s">n</span><span class="letter" style="animation-delay:1.86s">g</span><span class="letter accent" style="animation-delay:2.00s">H</span><span class="letter accent" style="animation-delay:2.08s">u</span><span class="letter accent" style="animation-delay:2.16s">b</span>
     </h1>
     <div class="intro-rule"></div>
-    <div class="intro-tagline">Professional <em>&middot;</em> Youth Football Scouting</div>
+    <div class="intro-tagline">Professional Youth Football Scouting</div>
     <div class="intro-meta">
-      <span><b>Netherlands</b></span>
+      <span><b>Youth Academy</b></span>
       <i></i>
-      <span>Youth Academy</span>
+      <span>Player Database</span>
       <i></i>
-      <span>Est. <b>2026</b></span>
+      <span>Match Intel</span>
     </div>
   </div>
   <div class="intro-bloom"></div>
@@ -2925,18 +2940,44 @@ tbody tr:last-child td { border-bottom: none; }
       <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ff2a3a"/>
-            <stop offset="100%" stop-color="#8a0410"/>
+            <stop offset="0%" stop-color="#ff4757"/>
+            <stop offset="55%" stop-color="#e30613"/>
+            <stop offset="100%" stop-color="#7a0410"/>
+          </linearGradient>
+          <linearGradient id="heroShine" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%"  stop-color="#ffffff" stop-opacity="0.55"/>
+            <stop offset="40%" stop-color="#ffffff" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+          </linearGradient>
+          <radialGradient id="heroSpec" cx="32%" cy="22%" r="38%">
+            <stop offset="0%"  stop-color="#ffffff" stop-opacity="0.55"/>
+            <stop offset="60%" stop-color="#ffffff" stop-opacity="0.08"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="heroEdge" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%"  stop-color="rgba(255,255,255,0.95)"/>
+            <stop offset="50%" stop-color="rgba(255,255,255,0.55)"/>
+            <stop offset="100%" stop-color="rgba(255,255,255,0.25)"/>
           </linearGradient>
         </defs>
+        <!-- Base shield -->
         <path d="M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z"
-              fill="url(#heroGrad)" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>
+              fill="url(#heroGrad)" stroke="url(#heroEdge)" stroke-width="1.3"/>
+        <!-- Top glossy band (subtle, niet te veel) -->
+        <path d="M40 4 L70 14 L70 32 Q55 36 40 32 Q25 36 10 32 L10 14 Z"
+              fill="url(#heroShine)" opacity="0.85"/>
+        <!-- Specular highlight (zachte glans linksboven) -->
+        <ellipse cx="28" cy="22" rx="14" ry="9" fill="url(#heroSpec)" opacity="0.7"/>
+        <!-- SH text -->
         <text x="40" y="51" text-anchor="middle" font-family="Arial,sans-serif"
-              font-size="26" font-weight="900" fill="white" letter-spacing="-1.5">SH</text>
+              font-size="26" font-weight="900" fill="white" letter-spacing="-1.5"
+              style="filter:drop-shadow(0 1px 0 rgba(0,0,0,0.18));">SH</text>
+        <!-- Gold pin -->
         <circle cx="40" cy="13" r="2.8" fill="#f5c518"/>
+        <circle cx="40" cy="13" r="2.8" fill="url(#heroSpec)" opacity="0.6"/>
       </svg>
     </div>
-    <h1 class="login-hero-title"><span class="word film-text">Scouting</span><span class="word">Hub</span></h1>
+    <h1 class="login-hero-title film-text"><span class="word">ScoutingHub</span></h1>
     <div class="login-hero-tag">Professional<span>•</span>Edition</div>
   </div>
   <div class="login-card">
@@ -4424,58 +4465,73 @@ const CITY_COORDS = {
 
 /* === CLUB_ADRESSEN: handmatig geverifieerde sportpark-adressen === */
 const CLUB_ADRESSEN = {
-  "afc":{naam:"AFC (Amsterdamsche FC)",sportpark:"Sportpark Goed Genoeg",adres:"De Boelelaan 50, 1082 LR Amsterdam",plaats:"Amsterdam",lat:52.331,lon:4.875},
-  "afc 34":{naam:"AFC '34",sportpark:"Sportpark Sloten",adres:"Sloterweg 1045, 1066 CC Amsterdam",plaats:"Amsterdam",lat:52.342,lon:4.802},
-  "afc amsterdam":{naam:"AFC (Amsterdamsche FC)",sportpark:"Sportpark Goed Genoeg",adres:"De Boelelaan 50, 1082 LR Amsterdam",plaats:"Amsterdam",lat:52.331,lon:4.875},
-  "fc amsterdam":{naam:"AFC (Amsterdamsche FC)",sportpark:"Sportpark Goed Genoeg",adres:"De Boelelaan 50, 1082 LR Amsterdam",plaats:"Amsterdam",lat:52.331,lon:4.875},
-  "asc":{naam:"ASC SDW (Sterk Door Wilskracht)",sportpark:"Sportpark Spieringhorn",adres:"Sportpark Spieringhorn 11, 1043 AA Amsterdam",plaats:"Amsterdam",lat:52.386,lon:4.821},
-  "as'80":{naam:"AS '80 (Almere Stad 1980)",sportpark:"Sportpark Klein Brandt",adres:"Klein Brandt Sportpark 7, 1312 JW Almere",plaats:"Almere",lat:52.376,lon:5.226},
-  "as’80":{naam:"AS '80 (Almere Stad 1980)",sportpark:"Sportpark Klein Brandt",adres:"Klein Brandt Sportpark 7, 1312 JW Almere",plaats:"Almere",lat:52.376,lon:5.226},
-  "avv zeeburgia":{naam:"AVV Zeeburgia",sportpark:"Sportpark Zeeburgia",adres:"Zuiderzeeweg 84, 1095 KL Amsterdam",plaats:"Amsterdam",lat:52.378,lon:4.974},
-  "zeeburgia":{naam:"AVV Zeeburgia",sportpark:"Sportpark Zeeburgia",adres:"Zuiderzeeweg 84, 1095 KL Amsterdam",plaats:"Amsterdam",lat:52.378,lon:4.974},
-  "beemster":{naam:"SV Beemster",sportpark:"Sportpark De Keyser",adres:"Middenweg 78, 1462 HM Middenbeemster",plaats:"Middenbeemster",lat:52.555,lon:4.929},
-  "bfc":{naam:"BFC (Bussumse FC)",sportpark:"Sportpark Zuid",adres:"Struikheiweg 25, 1406 TD Bussum",plaats:"Bussum",lat:52.262,lon:5.165},
-  "buitenboys":{naam:"SV Buitenboys",sportpark:"Sportpark De Buitenhof",adres:"Beneluxbaan 950, 1363 BJ Almere",plaats:"Almere",lat:52.342,lon:5.213},
-  "csv'28":{naam:"CSV '28",sportpark:"Sportpark De Verbinding",adres:"Sportlaan 4, 8044 PG Zwolle",plaats:"Zwolle",lat:52.541,lon:6.06},
-  "csv’28":{naam:"CSV '28",sportpark:"Sportpark De Verbinding",adres:"Sportlaan 4, 8044 PG Zwolle",plaats:"Zwolle",lat:52.541,lon:6.06},
-  "de graafschap (rugnummer 10)":{naam:"BV De Graafschap",sportpark:"Stadion De Vijverberg",adres:"Lijsterbeslaan 101, 7004 AT Doetinchem",plaats:"Doetinchem",lat:51.971,lon:6.292},
-  "dvs '33 ermelo":{naam:"DVS '33 Ermelo",sportpark:"Sportpark De Zanderij",adres:"Sportlaan 3, 3853 LK Ermelo",plaats:"Ermelo",lat:52.298,lon:5.628},
-  "excelsior":{naam:"SBV Excelsior",sportpark:"Van Donge & De Roo Stadion",adres:"Honingerdijk 110, 3062 NX Rotterdam",plaats:"Rotterdam",lat:51.91,lon:4.52},
-  "fc twente/heracles":{naam:"FC Twente/Heracles Academie",sportpark:"Voetbalacademie FC Twente / Heracles",adres:"Sportlaan Driene 4, 7552 HA Hengelo",plaats:"Hengelo / Enschede",lat:52.252,lon:6.792},
-  "twente":{naam:"FC Twente/Heracles Academie",sportpark:"Voetbalacademie FC Twente / Heracles",adres:"Sportlaan Driene 4, 7552 HA Hengelo",plaats:"Hengelo / Enschede",lat:52.252,lon:6.792},
-  "twente/heracles":{naam:"FC Twente/Heracles Academie",sportpark:"Voetbalacademie FC Twente / Heracles",adres:"Sportlaan Driene 4, 7552 HA Hengelo",plaats:"Hengelo / Enschede",lat:52.252,lon:6.792},
-  "fc utrecht":{naam:"FC Utrecht",sportpark:"Stadion Galgenwaard",adres:"Herculesplein 341, 3584 AA Utrecht",plaats:"Utrecht",lat:52.082,lon:5.143},
-  "fc volendam":{naam:"FC Volendam",sportpark:"Kras Stadion",adres:"Sportlaan 10, 1131 DL Volendam",plaats:"Volendam",lat:52.491,lon:5.063},
-  "fortius/dta":{naam:"asv DTA Fortius",sportpark:"Sportpark Middenmeer",adres:"Radioweg 77, 1098 NG Amsterdam",plaats:"Amsterdam",lat:52.349,lon:4.946},
-  "gvv unitas":{naam:"GVV Unitas",sportpark:"Sportpark Molenvliet",adres:"Bullekeshoeflaan 1, 4204 GL Gorinchem",plaats:"Gorinchem",lat:51.836,lon:4.949},
-  "hoogland":{naam:"SC Hoogland",sportpark:"Sportpark Langenoord",adres:"Bartholomeus Wapenaarstraat 90, 3828 AT Hoogland",plaats:"Hoogland (Amersfoort)",lat:52.19,lon:5.395},
-  "hvc":{naam:"HVC (Hoogland Voetbal Club)",sportpark:"Sportpark Nimmerdor",adres:"Heiligenbergerweg 165, 3816 AL Amersfoort",plaats:"Amersfoort",lat:52.139,lon:5.385},
-  "hyenas fc":{naam:"Hyenas FC",sportpark:"Sportpark Papendorp",adres:"Sportparklaan 1, 3528 BJ Utrecht",plaats:"Utrecht",lat:52.072,lon:5.075},
-  "jonathan":{naam:"RVV Jonathan",sportpark:"Sportpark Honingerdijk",adres:"Honingerdijk 8, 3063 AL Rotterdam",plaats:"Rotterdam",lat:51.913,lon:4.514},
-  "k hfc":{naam:"Koninklijke HFC",sportpark:"Sportpark Spanjaardslaan",adres:"Spanjaardslaan 17, 2012 RV Haarlem",plaats:"Haarlem",lat:52.394,lon:4.64},
-  "k. hfc":{naam:"Koninklijke HFC",sportpark:"Sportpark Spanjaardslaan",adres:"Spanjaardslaan 17, 2012 RV Haarlem",plaats:"Haarlem",lat:52.394,lon:4.64},
-  "kfc turnhout":{naam:"KFC Turnhout",sportpark:"Stadion Park Heynen",adres:"Stadionlaan, 2300 Turnhout, België",plaats:"Turnhout (BE)",lat:51.317,lon:4.939},
-  "lelystad '67":{naam:"SV Lelystad '67",sportpark:"Sportpark De Schouw",adres:"Visarenddreef 22, 8222 AS Lelystad",plaats:"Lelystad",lat:52.512,lon:5.456},
-  "malmö ff":{naam:"Malmö FF",sportpark:"Eleda Stadion",adres:"Eric Perssons väg 41, 217 62 Malmö, Zweden",plaats:"Malmö (SE)",lat:55.581,lon:12.991},
-  "nac breda":{naam:"NAC Breda",sportpark:"Rat Verlegh Stadion",adres:"Stadionstraat 23, 4815 NC Breda",plaats:"Breda",lat:51.587,lon:4.755},
-  "nec nijmegen":{naam:"NEC Nijmegen",sportpark:"Goffertstadion",adres:"Stadionplein 1, 6532 AA Nijmegen",plaats:"Nijmegen",lat:51.821,lon:5.847},
-  "pec zwolle":{naam:"PEC Zwolle",sportpark:"MAC³PARK Stadion",adres:"Stadionplein 1, 8025 CP Zwolle",plaats:"Zwolle",lat:52.515,lon:6.105},
-  "psv eindhoven":{naam:"PSV Eindhoven",sportpark:"Philips Stadion / De Herdgang (jeugd)",adres:"Frederiklaan 10a, 5616 NH Eindhoven",plaats:"Eindhoven",lat:51.442,lon:5.466},
-  "pvcv":{naam:"PVCV (Vleuten)",sportpark:"Sportpark Parkwijk",adres:"Stadionweg 2, 3451 RV Vleuten",plaats:"Vleuten",lat:52.107,lon:5.026},
-  "roda '46":{naam:"VV Roda '46",sportpark:"Sportpark De Lichtenberg",adres:"Sportlaan 2, 3833 BC Leusden",plaats:"Leusden",lat:52.135,lon:5.434},
-  "sc buitenveldert":{naam:"sc Buitenveldert",sportpark:"Sportpark Buitenveldert",adres:"Wim Duisenbergplantsoen 26, 1082 MD Amsterdam",plaats:"Amsterdam",lat:52.337,lon:4.879},
-  "sc heerenveen":{naam:"SC Heerenveen",sportpark:"Abe Lenstra Stadion",adres:"Abe Lenstra Boulevard 19, 8448 JA Heerenveen",plaats:"Heerenveen",lat:52.961,lon:5.939},
-  "sdz":{naam:"SDZ (Sport Door Zelfwerkzaamheid)",sportpark:"Sportpark Drieburg",adres:"Kruislaan 405, 1098 SM Amsterdam",plaats:"Amsterdam",lat:52.349,lon:4.947},
-  "sdz (rugnummer 15)":{naam:"SDZ (Sport Door Zelfwerkzaamheid)",sportpark:"Sportpark Drieburg",adres:"Kruislaan 405, 1098 SM Amsterdam",plaats:"Amsterdam",lat:52.349,lon:4.947},
-  "sparta rotterdam":{naam:"Sparta Rotterdam",sportpark:"Het Kasteel",adres:"Spartastraat 7, 3027 ER Rotterdam",plaats:"Rotterdam",lat:51.911,lon:4.439},
-  "stichting sparta rotterdam":{naam:"Sparta Rotterdam",sportpark:"Het Kasteel",adres:"Spartastraat 7, 3027 ER Rotterdam",plaats:"Rotterdam",lat:51.911,lon:4.439},
-  "sportlust '46":{naam:"VV Sportlust '46",sportpark:"Sportpark Zandweg",adres:"Zandweg 195, 3454 HA De Meern",plaats:"De Meern (Utrecht)",lat:52.085,lon:5.034},
-  "sv houten":{naam:"SV Houten",sportpark:"Sportpark Den Oord",adres:"De Koppeling 1, 3994 XB Houten",plaats:"Houten",lat:52.038,lon:5.171},
-  "udi'19":{naam:"UDI '19/CSU",sportpark:"Sportpark Bitswijk",adres:"Hockeyweg 5, 5404 NL Uden",plaats:"Uden",lat:51.665,lon:5.617},
-  "udi’19":{naam:"UDI '19/CSU",sportpark:"Sportpark Bitswijk",adres:"Hockeyweg 5, 5404 NL Uden",plaats:"Uden",lat:51.665,lon:5.617},
-  "uvv":{naam:"UVV (Utrechtse Voetbalvereniging)",sportpark:"Sportpark Voordorp",adres:"Atjehstraat 5, 3573 PT Utrecht",plaats:"Utrecht",lat:52.103,lon:5.148},
-  "waterijk":{naam:"SV Waterwijk",sportpark:"Sportpark De Waterwijk",adres:"Hoekwierde 145, 1353 KG Almere",plaats:"Almere",lat:52.357,lon:5.244},
-  "waterwijk":{naam:"SV Waterwijk",sportpark:"Sportpark De Waterwijk",adres:"Hoekwierde 145, 1353 KG Almere",plaats:"Almere",lat:52.357,lon:5.244},
+  "afc": { naam: "AFC (Amsterdamsche FC)", sportpark: "Sportpark Goed Genoeg", adres: "Maurice Ravellaan 4, 1083 HK Amsterdam", plaats: "Amsterdam", lat: 52.339, lon: 4.872 },
+  "afc amsterdam": { naam: "AFC (Amsterdamsche FC)", sportpark: "Sportpark Goed Genoeg", adres: "Maurice Ravellaan 4, 1083 HK Amsterdam", plaats: "Amsterdam", lat: 52.339, lon: 4.872 },
+  "fc amsterdam": { naam: "AFC (Amsterdamsche FC)", sportpark: "Sportpark Goed Genoeg", adres: "Maurice Ravellaan 4, 1083 HK Amsterdam", plaats: "Amsterdam", lat: 52.339, lon: 4.872 },
+  "afc 34": { naam: "AFC '34", sportpark: "Sportpark De Vroonermeer", adres: "Pettemerstraat 19, 1823 CW Alkmaar", plaats: "Alkmaar", lat: 52.652, lon: 4.738 },
+  "asc": { naam: "ASC SDW (Sterk Door Wilskracht)", sportpark: "Sportpark Spieringhorn", adres: "Sportpark Spieringhorn 11, 1043 AA Amsterdam", plaats: "Amsterdam", lat: 52.386, lon: 4.821 },
+  "as'80": { naam: "AS '80 (Almere Stad 1980)", sportpark: "Sportpark Fanny Blankers-Koen", adres: "Pierre de Coubertinlaan 4, 1362 LB Almere", plaats: "Almere", lat: 52.376, lon: 5.226 },
+  "as’80": { naam: "AS '80 (Almere Stad 1980)", sportpark: "Sportpark Fanny Blankers-Koen", adres: "Pierre de Coubertinlaan 4, 1362 LB Almere", plaats: "Almere", lat: 52.376, lon: 5.226 },
+  "avv zeeburgia": { naam: "AVV Zeeburgia", sportpark: "Sportpark Zeeburg", adres: "Zuiderzeeweg 84, 1095 KL Amsterdam", plaats: "Amsterdam", lat: 52.378, lon: 4.974 },
+  "zeeburgia": { naam: "AVV Zeeburgia", sportpark: "Sportpark Zeeburg", adres: "Zuiderzeeweg 84, 1095 KL Amsterdam", plaats: "Amsterdam", lat: 52.378, lon: 4.974 },
+  "beemster": { naam: "SV Beemster", sportpark: "Sportpark Insulindeweg", adres: "Insulindeweg 11, 1462 MJ Middenbeemster", plaats: "Middenbeemster", lat: 52.557, lon: 4.927 },
+  "bfc": { naam: "BFC (Bussumse FC)", sportpark: "Sportpark Zuid (Meerweg)", adres: "Meerweg 1, 1404 BB Bussum", plaats: "Bussum", lat: 52.262, lon: 5.165 },
+  "buitenboys": { naam: "SV Buitenboys", sportpark: "Sportpark De Polderkwartier", adres: "Beneluxbaan 950, 1363 BJ Almere", plaats: "Almere", lat: 52.342, lon: 5.213 },
+  "csv'28": { naam: "CSV '28", sportpark: "Sportpark De Verbinding", adres: "Sportlaan 4, 8044 PG Zwolle", plaats: "Zwolle", lat: 52.541, lon: 6.06 },
+  "csv’28": { naam: "CSV '28", sportpark: "Sportpark De Verbinding", adres: "Sportlaan 4, 8044 PG Zwolle", plaats: "Zwolle", lat: 52.541, lon: 6.06 },
+  "de graafschap (rugnummer 10)": { naam: "BV De Graafschap", sportpark: "Stadion De Vijverberg", adres: "Lijsterbeslaan 101, 7004 AT Doetinchem", plaats: "Doetinchem", lat: 51.971, lon: 6.292 },
+  "de graafschap": { naam: "BV De Graafschap", sportpark: "Stadion De Vijverberg", adres: "Lijsterbeslaan 101, 7004 AT Doetinchem", plaats: "Doetinchem", lat: 51.971, lon: 6.292 },
+  "dvs '33 ermelo": { naam: "DVS '33 Ermelo", sportpark: "Sportpark Zuid", adres: "Sportlaan 25-27, 3853 LK Ermelo", plaats: "Ermelo", lat: 52.298, lon: 5.628 },
+  "excelsior": { naam: "SBV Excelsior", sportpark: "Stadion Woudestein", adres: "Honingerdijk 110, 3062 NX Rotterdam", plaats: "Rotterdam", lat: 51.91, lon: 4.52 },
+  "fc twente/heracles": { naam: "FC Twente / Heracles Academie", sportpark: "Trainingscentrum FC Twente (Hengelo)", adres: "Kuipersdijk 40, 7552 BJ Hengelo", plaats: "Hengelo / Enschede", lat: 52.252, lon: 6.792 },
+  "twente": { naam: "FC Twente / Heracles Academie", sportpark: "Trainingscentrum FC Twente (Hengelo)", adres: "Kuipersdijk 40, 7552 BJ Hengelo", plaats: "Hengelo / Enschede", lat: 52.252, lon: 6.792 },
+  "twente/heracles": { naam: "FC Twente / Heracles Academie", sportpark: "Trainingscentrum FC Twente (Hengelo)", adres: "Kuipersdijk 40, 7552 BJ Hengelo", plaats: "Hengelo / Enschede", lat: 52.252, lon: 6.792 },
+  "fc utrecht": { naam: "FC Utrecht", sportpark: "Stadion Galgenwaard (hoofdteam) / Sportcomplex Zoudenbalch (jeugd)", adres: "Herculesplein 341, 3584 AA Utrecht (jeugd: Koningsweg 320, 3585 LE Utrecht)", plaats: "Utrecht", lat: 52.082, lon: 5.143 },
+  "fc volendam": { naam: "FC Volendam", sportpark: "Kras Stadion", adres: "Sportlaan 10, 1131 BK Volendam", plaats: "Volendam", lat: 52.491, lon: 5.063 },
+  "fortius/dta": { naam: "asv DTA Fortius", sportpark: "Sportpark Middenmeer", adres: "Radioweg 77, 1098 NG Amsterdam", plaats: "Amsterdam", lat: 52.349, lon: 4.946 },
+  "fortius": { naam: "asv DTA Fortius", sportpark: "Sportpark Middenmeer", adres: "Radioweg 77, 1098 NG Amsterdam", plaats: "Amsterdam", lat: 52.349, lon: 4.946 },
+  "dta": { naam: "asv DTA Fortius", sportpark: "Sportpark Middenmeer", adres: "Radioweg 77, 1098 NG Amsterdam", plaats: "Amsterdam", lat: 52.349, lon: 4.946 },
+  "gvv unitas": { naam: "GVV Unitas", sportpark: "Sportpark Molenvliet", adres: "Bataafsekade 6, 4204 AX Gorinchem", plaats: "Gorinchem", lat: 51.836, lon: 4.949 },
+  "unitas": { naam: "GVV Unitas", sportpark: "Sportpark Molenvliet", adres: "Bataafsekade 6, 4204 AX Gorinchem", plaats: "Gorinchem", lat: 51.836, lon: 4.949 },
+  "hoogland": { naam: "vv Hoogland", sportpark: "Sportpark Langenoord", adres: "Sportlaan 30, 3828 AZ Hoogland", plaats: "Hoogland (Amersfoort)", lat: 52.19, lon: 5.395 },
+  "sc hoogland": { naam: "vv Hoogland", sportpark: "Sportpark Langenoord", adres: "Sportlaan 30, 3828 AZ Hoogland", plaats: "Hoogland (Amersfoort)", lat: 52.19, lon: 5.395 },
+  "vv hoogland": { naam: "vv Hoogland", sportpark: "Sportpark Langenoord", adres: "Sportlaan 30, 3828 AZ Hoogland", plaats: "Hoogland (Amersfoort)", lat: 52.19, lon: 5.395 },
+  "hvc": { naam: "HVC (Hollandia Victoria Combinatie)", sportpark: "Sportpark Zielhorst", adres: "Rondweg Noord 6, 3822 ZR Amersfoort", plaats: "Amersfoort", lat: 52.176, lon: 5.412 },
+  "hyenas fc": { naam: "Hyenas FC", sportpark: "Sportpark Papendorp", adres: "Tirionlaan 3, 3526 KS Utrecht", plaats: "Utrecht", lat: 52.072, lon: 5.075 },
+  "hyenas": { naam: "Hyenas FC", sportpark: "Sportpark Papendorp", adres: "Tirionlaan 3, 3526 KS Utrecht", plaats: "Utrecht", lat: 52.072, lon: 5.075 },
+  "jonathan": { naam: "vv Jonathan", sportpark: "Sportpark Dijnselburg", adres: "Brouwerij 8 (parkeerplaats) / Hernhuttersingel, 3703 CD Zeist", plaats: "Zeist", lat: 52.108, lon: 5.252 },
+  "k hfc": { naam: "Koninklijke HFC", sportpark: "Sportpark Spanjaardslaan", adres: "Emauslaan 2, 2012 PH Haarlem", plaats: "Haarlem", lat: 52.394, lon: 4.64 },
+  "k. hfc": { naam: "Koninklijke HFC", sportpark: "Sportpark Spanjaardslaan", adres: "Emauslaan 2, 2012 PH Haarlem", plaats: "Haarlem", lat: 52.394, lon: 4.64 },
+  "koninklijke hfc": { naam: "Koninklijke HFC", sportpark: "Sportpark Spanjaardslaan", adres: "Emauslaan 2, 2012 PH Haarlem", plaats: "Haarlem", lat: 52.394, lon: 4.64 },
+  "kfc turnhout": { naam: "KFC Turnhout", sportpark: "Stadsparkstadion (Stabco Stadion)", adres: "Parklaan 50, 2300 Turnhout, België", plaats: "Turnhout (BE)", lat: 51.323, lon: 4.945 },
+  "lelystad '67": { naam: "SV Lelystad '67", sportpark: "Sportpark Langezand", adres: "Sportparkweg 5, 8223 PB Lelystad", plaats: "Lelystad", lat: 52.512, lon: 5.456 },
+  "malmö ff": { naam: "Malmö FF", sportpark: "Eleda Stadion", adres: "Eric Perssons väg 31, 217 62 Malmö, Zweden", plaats: "Malmö (SE)", lat: 55.581, lon: 12.991 },
+  "malmo ff": { naam: "Malmö FF", sportpark: "Eleda Stadion", adres: "Eric Perssons väg 31, 217 62 Malmö, Zweden", plaats: "Malmö (SE)", lat: 55.581, lon: 12.991 },
+  "nac breda": { naam: "NAC Breda", sportpark: "Rat Verlegh Stadion (hoofdteam) / Sportpark Heksenwiel (jeugd)", adres: "Stadionstraat 23, 4815 NC Breda (jeugd: Heksendans 4, 4823 NX Breda)", plaats: "Breda", lat: 51.587, lon: 4.755 },
+  "nec nijmegen": { naam: "NEC Nijmegen", sportpark: "Goffertstadion", adres: "Stadionplein 1, 6532 AJ Nijmegen", plaats: "Nijmegen", lat: 51.821, lon: 5.847 },
+  "pec zwolle": { naam: "PEC Zwolle", sportpark: "MAC³PARK Stadion (hoofdteam) / Sportpark Be Quick '28 (jeugd)", adres: "Stadionplein 1, 8025 CP Zwolle (jeugd: Marsweg 39, 8013 PD Zwolle)", plaats: "Zwolle", lat: 52.515, lon: 6.105 },
+  "psv eindhoven": { naam: "PSV Eindhoven", sportpark: "Philips Stadion (hoofdteam) / De Herdgang (jeugd)", adres: "Frederiklaan 10a, 5616 NH Eindhoven (jeugd: Oirschotsedijk 12a, 5651 GC Eindhoven)", plaats: "Eindhoven", lat: 51.442, lon: 5.466 },
+  "psv": { naam: "PSV Eindhoven", sportpark: "Philips Stadion (hoofdteam) / De Herdgang (jeugd)", adres: "Frederiklaan 10a, 5616 NH Eindhoven (jeugd: Oirschotsedijk 12a, 5651 GC Eindhoven)", plaats: "Eindhoven", lat: 51.442, lon: 5.466 },
+  "pvcv": { naam: "PVCV (Vleuten)", sportpark: "Sportpark Fletiomare-Oost", adres: "Europaweg 52, 3451 HG Vleuten", plaats: "Vleuten", lat: 52.107, lon: 5.026 },
+  "roda '46": { naam: "VV Roda '46", sportpark: "Sportpark Burgemeester Buiningpark", adres: "Bavoortseweg 2, 3833 BM Leusden", plaats: "Leusden", lat: 52.135, lon: 5.434 },
+  "sc buitenveldert": { naam: "sc Buitenveldert", sportpark: "Sportpark Buitenveldert", adres: "Gustav Mahlerlaan 2009, 1081 LB Amsterdam", plaats: "Amsterdam", lat: 52.337, lon: 4.879 },
+  "buitenveldert": { naam: "sc Buitenveldert", sportpark: "Sportpark Buitenveldert", adres: "Gustav Mahlerlaan 2009, 1081 LB Amsterdam", plaats: "Amsterdam", lat: 52.337, lon: 4.879 },
+  "sc heerenveen": { naam: "SC Heerenveen", sportpark: "Abe Lenstra Stadion (hoofdteam) / Sportpark Skoatterwâld (jeugd)", adres: "Abe Lenstra Boulevard 19, 8448 JA Heerenveen (jeugd: Domela Nieuwenhuisweg 8, 8444 DD Heerenveen)", plaats: "Heerenveen", lat: 52.961, lon: 5.939 },
+  "heerenveen": { naam: "SC Heerenveen", sportpark: "Abe Lenstra Stadion (hoofdteam) / Sportpark Skoatterwâld (jeugd)", adres: "Abe Lenstra Boulevard 19, 8448 JA Heerenveen (jeugd: Domela Nieuwenhuisweg 8, 8444 DD Heerenveen)", plaats: "Heerenveen", lat: 52.961, lon: 5.939 },
+  "sdz": { naam: "AVV SDZ (Sport Door Zelfwerkzaamheid)", sportpark: "Sportpark Transformatorweg", adres: "Transformatorweg 10, 1014 AK Amsterdam", plaats: "Amsterdam", lat: 52.391, lon: 4.853 },
+  "sdz (rugnummer 15)": { naam: "AVV SDZ (Sport Door Zelfwerkzaamheid)", sportpark: "Sportpark Transformatorweg", adres: "Transformatorweg 10, 1014 AK Amsterdam", plaats: "Amsterdam", lat: 52.391, lon: 4.853 },
+  "sparta rotterdam": { naam: "Sparta Rotterdam", sportpark: "Sparta Stadion (Het Kasteel)", adres: "Spartastraat 7, 3027 ER Rotterdam (postadres: Spartapark Noord 1, 3027 VW Rotterdam)", plaats: "Rotterdam", lat: 51.911, lon: 4.439 },
+  "stichting sparta rotterdam": { naam: "Sparta Rotterdam", sportpark: "Sparta Stadion (Het Kasteel)", adres: "Spartastraat 7, 3027 ER Rotterdam (postadres: Spartapark Noord 1, 3027 VW Rotterdam)", plaats: "Rotterdam", lat: 51.911, lon: 4.439 },
+  "sportlust '46": { naam: "VV Sportlust '46", sportpark: "Sportpark Cromwijck", adres: "Waardsedijk 31, 3448 HV Woerden", plaats: "Woerden", lat: 52.085, lon: 4.892 },
+  "sv houten": { naam: "SV Houten", sportpark: "Sportpark Oud Wulven", adres: "Oud Wulfseweg 2, 3992 LT Houten", plaats: "Houten", lat: 52.04, lon: 5.155 },
+  "udi'19": { naam: "UDI '19 / Swiss Sense", sportpark: "Gemeentelijk Sportpark Parkzicht", adres: "Parklaan 4, 5404 NH Uden", plaats: "Uden", lat: 51.65, lon: 5.631 },
+  "udi’19": { naam: "UDI '19 / Swiss Sense", sportpark: "Gemeentelijk Sportpark Parkzicht", adres: "Parklaan 4, 5404 NH Uden", plaats: "Uden", lat: 51.65, lon: 5.631 },
+  "udi '19": { naam: "UDI '19 / Swiss Sense", sportpark: "Gemeentelijk Sportpark Parkzicht", adres: "Parklaan 4, 5404 NH Uden", plaats: "Uden", lat: 51.65, lon: 5.631 },
+  "uvv": { naam: "ASV UVV (Utrechtse Voetbal Vereniging)", sportpark: "Sportpark De Paperclip (Maximapark)", adres: "Parkzichtlaan 201, 3544 MN Utrecht", plaats: "Utrecht", lat: 52.094, lon: 5.026 },
+  "waterijk": { naam: "ASC Waterwijk", sportpark: "Sportpark Rie Mastenbroek", adres: "Rie Mastenbroeksportpark 4, 1314 AZ Almere", plaats: "Almere", lat: 52.386, lon: 5.211 },
+  "waterwijk": { naam: "ASC Waterwijk", sportpark: "Sportpark Rie Mastenbroek", adres: "Rie Mastenbroeksportpark 4, 1314 AZ Almere", plaats: "Almere", lat: 52.386, lon: 5.211 },
+  "asc waterwijk": { naam: "ASC Waterwijk", sportpark: "Sportpark Rie Mastenbroek", adres: "Rie Mastenbroeksportpark 4, 1314 AZ Almere", plaats: "Almere", lat: 52.386, lon: 5.211 },
+  "sv waterwijk": { naam: "ASC Waterwijk", sportpark: "Sportpark Rie Mastenbroek", adres: "Rie Mastenbroeksportpark 4, 1314 AZ Almere", plaats: "Almere", lat: 52.386, lon: 5.211 },
 };
 
 const CLUB_CACHE_KEY = 'scout_club_city_cache_v1';
@@ -8833,8 +8889,8 @@ function pdfGradeChipLg(val, outline){
   return `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:32px;padding:0 10px;border-radius:6px;background:${hex};color:#fff;font-weight:800;font-size:18px;">${val}</span>`;
 }
 
-function generatePlayerPDF(p){
-  // Pure jsPDF — no html2canvas, no clipping. Eigen documentstijl, niet website-kopie.
+async function generatePlayerPDF(p){
+  // === ScoutingHub PDF v2 — eigen stijl + embedded sportpark-kaart ===
   const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
   if(!jsPDFCtor){
     toast('PDF-bibliotheek niet geladen — vernieuw de pagina', true);
@@ -8842,23 +8898,127 @@ function generatePlayerPDF(p){
   }
   toast('PDF wordt gemaakt...');
 
+  // -------- Kaart-snapshot (OSM tiles -> canvas -> dataURL) --------
+  async function buildMapDataURL(lat, lon, zoom){
+    return new Promise((resolve) => {
+      try {
+        const z = zoom || 14;
+        const n = Math.pow(2, z);
+        const xT = ((lon + 180) / 360) * n;
+        const latRad = lat * Math.PI / 180;
+        const yT = (1 - Math.log(Math.tan(latRad) + 1/Math.cos(latRad)) / Math.PI) / 2 * n;
+        const COLS = 3, ROWS = 2;
+        const TILE = 256;
+        const baseX = Math.floor(xT) - 1;
+        const baseY = Math.floor(yT);
+        const pxX = (xT - baseX) * TILE;
+        const pxY = (yT - baseY) * TILE;
+        const W = COLS * TILE, H = ROWS * TILE;
+        const canvas = document.createElement('canvas');
+        canvas.width = W; canvas.height = H;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#e8eef5'; ctx.fillRect(0, 0, W, H);
+
+        const tiles = [];
+        for(let r = 0; r < ROWS; r++){
+          for(let c = 0; c < COLS; c++){
+            tiles.push({ r, c, x: baseX + c, y: baseY + r });
+          }
+        }
+        let loaded = 0, errored = 0;
+        const tryFinish = () => {
+          if(loaded + errored < tiles.length) return;
+          const TARGET_W = 720, TARGET_H = 380;
+          const sx = Math.max(0, Math.min(W - TARGET_W, pxX - TARGET_W/2));
+          const sy = Math.max(0, Math.min(H - TARGET_H, pxY - TARGET_H/2));
+          const out = document.createElement('canvas');
+          out.width = TARGET_W; out.height = TARGET_H;
+          const octx = out.getContext('2d');
+          octx.drawImage(canvas, sx, sy, TARGET_W, TARGET_H, 0, 0, TARGET_W, TARGET_H);
+          const grad = octx.createRadialGradient(TARGET_W/2, TARGET_H/2, TARGET_H*0.3, TARGET_W/2, TARGET_H/2, TARGET_W*0.7);
+          grad.addColorStop(0, 'rgba(0,0,0,0)');
+          grad.addColorStop(1, 'rgba(0,0,0,0.22)');
+          octx.fillStyle = grad; octx.fillRect(0, 0, TARGET_W, TARGET_H);
+          const pinX = pxX - sx, pinY = pxY - sy;
+          const glow = octx.createRadialGradient(pinX, pinY-18, 0, pinX, pinY-18, 38);
+          glow.addColorStop(0, 'rgba(227,6,19,0.55)');
+          glow.addColorStop(1, 'rgba(227,6,19,0)');
+          octx.fillStyle = glow;
+          octx.beginPath(); octx.arc(pinX, pinY-18, 38, 0, Math.PI*2); octx.fill();
+          octx.save();
+          octx.translate(pinX, pinY);
+          octx.shadowColor = 'rgba(0,0,0,0.45)';
+          octx.shadowBlur = 8; octx.shadowOffsetY = 3;
+          octx.fillStyle = '#e30613';
+          octx.beginPath();
+          octx.moveTo(0, 0);
+          octx.bezierCurveTo(-22, -18, -22, -52, 0, -52);
+          octx.bezierCurveTo(22, -52, 22, -18, 0, 0);
+          octx.closePath(); octx.fill();
+          octx.shadowColor = 'transparent';
+          octx.fillStyle = 'rgba(255,255,255,0.22)';
+          octx.beginPath();
+          octx.ellipse(-6, -40, 8, 12, 0, 0, Math.PI*2);
+          octx.fill();
+          octx.fillStyle = '#f5c518';
+          octx.beginPath(); octx.arc(0, -34, 8.5, 0, Math.PI*2); octx.fill();
+          octx.fillStyle = '#fff';
+          octx.font = 'bold 10px Inter, Arial, sans-serif';
+          octx.textAlign = 'center'; octx.textBaseline = 'middle';
+          octx.fillText('SH', 0, -34);
+          octx.restore();
+          try { resolve(out.toDataURL('image/jpeg', 0.82)); }
+          catch(e){ resolve(null); }
+        };
+
+        const TIMEOUT_MS = 6000;
+        const timer = setTimeout(()=>{ errored = tiles.length - loaded; tryFinish(); }, TIMEOUT_MS);
+
+        tiles.forEach(t => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => {
+            ctx.drawImage(img, t.c * TILE, t.r * TILE, TILE, TILE);
+            loaded++;
+            if(loaded + errored === tiles.length){ clearTimeout(timer); tryFinish(); }
+          };
+          img.onerror = () => {
+            errored++;
+            if(loaded + errored === tiles.length){ clearTimeout(timer); tryFinish(); }
+          };
+          img.src = `https://tile.openstreetmap.org/${z}/${t.x}/${t.y}.png`;
+        });
+      } catch(err){ resolve(null); }
+    });
+  }
+
+  const clubKey = (p.club || '').trim().toLowerCase();
+  const clubInfo = (typeof CLUB_ADRESSEN !== 'undefined' && CLUB_ADRESSEN[clubKey]) ? CLUB_ADRESSEN[clubKey] : null;
+  let mapData = null;
+  if(clubInfo && clubInfo.lat && clubInfo.lon){
+    mapData = await buildMapDataURL(clubInfo.lat, clubInfo.lon, 14);
+  }
+
   const doc = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
 
-  // Design tokens — eigen palet (licht papier, brand-accenten)
   const COL = {
     paper:    [250, 249, 246],
     paperAlt: [245, 244, 240],
+    deep:     [12, 16, 28],
     ink:      [22, 28, 40],
     sub:      [70, 78, 95],
     muted:    [120, 128, 145],
     red:      [227, 6, 19],
-    gold:     [217, 162, 22],
+    redDeep:  [138, 4, 16],
+    redBright:[255, 71, 87],
+    gold:     [245, 197, 24],
+    goldDeep: [184, 134, 11],
     line:     [220, 222, 228],
     cardBg:   [255, 255, 255],
     A: [34, 161, 92], B: [120, 174, 30], C: [218, 156, 18], D: [203, 49, 49]
   };
   const PAGE_W = 210, PAGE_H = 297;
-  const MARGIN_L = 16, MARGIN_R = 16, MARGIN_T = 22, MARGIN_B = 22;
+  const MARGIN_L = 16, MARGIN_R = 16, MARGIN_T = 20, MARGIN_B = 22;
   const CONTENT_W = PAGE_W - MARGIN_L - MARGIN_R;
   let y = MARGIN_T;
 
@@ -8875,63 +9035,89 @@ function generatePlayerPDF(p){
     }
   }
 
-  function drawShield(cx, cy, size, watermark){
+  function drawShield(cx, cy, size, opts){
+    opts = opts || {};
     const s = size;
-    if(watermark){
-      setFill([236, 230, 222]);
-      setStroke([228, 220, 208]);
-    } else {
-      setFill(COL.red);
-      setStroke([255, 255, 255]);
-    }
-    doc.setLineWidth(watermark ? 0.2 : 0.35);
     const x = cx, ty = cy;
-    const pts = [
-      [x + s/2, ty],
-      [x + s,   ty + s*0.13],
-      [x + s,   ty + s*0.55],
-      [x + s*0.85, ty + s*0.78],
-      [x + s/2, ty + s*0.96],
-      [x + s*0.15, ty + s*0.78],
-      [x,       ty + s*0.55],
-      [x,       ty + s*0.13]
+    const pts = (insetPct) => {
+      const k = insetPct || 0;
+      const inset = s * k;
+      return [
+        [x + s/2,            ty + inset],
+        [x + s - inset*0.7,  ty + s*0.13 + inset*0.3],
+        [x + s - inset*0.7,  ty + s*0.55],
+        [x + s*0.85 - inset*0.4, ty + s*0.78 - inset*0.2],
+        [x + s/2,            ty + s*0.96 - inset*0.5],
+        [x + s*0.15 + inset*0.4, ty + s*0.78 - inset*0.2],
+        [x + inset*0.7,      ty + s*0.55],
+        [x + inset*0.7,      ty + s*0.13 + inset*0.3]
+      ];
+    };
+    const drawPath = (P, mode) => {
+      doc.lines(
+        P.slice(1).concat([P[0]]).map((pt, i) => [pt[0]-P[i][0], pt[1]-P[i][1]]),
+        P[0][0], P[0][1], [1,1], mode, true
+      );
+    };
+    if(opts.watermark){
+      setFill([236, 230, 222]); setStroke([228, 220, 208]);
+      doc.setLineWidth(0.2);
+      drawPath(pts(0), 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(s * 0.5);
+      setText([228, 222, 212]);
+      doc.text('SH', x + s/2, ty + s*0.62, { align: 'center' });
+      return;
+    }
+    setFill(COL.redDeep); setStroke([255,255,255]);
+    doc.setLineWidth(0.4);
+    drawPath(pts(0), 'FD');
+    setFill(COL.red);
+    drawPath(pts(0.04), 'F');
+    setFill(COL.redBright);
+    const topPts = pts(0.04);
+    const half = [
+      topPts[0],
+      topPts[1],
+      [x + s - s*0.05, ty + s*0.42],
+      [x + s/2, ty + s*0.40],
+      [x + s*0.05, ty + s*0.42],
+      topPts[7]
     ];
-    doc.lines(
-      pts.slice(1).concat([pts[0]]).map((pt, i) => [pt[0]-pts[i][0], pt[1]-pts[i][1]]),
-      pts[0][0], pts[0][1],
-      [1,1], watermark ? 'F' : 'FD', true
-    );
+    drawPath(half, 'F');
+    setFill(COL.gold);
+    doc.circle(x + s/2, ty + s*0.13, s*0.035, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(s * 0.5);
-    if(watermark) setText([228, 222, 212]); else setText([255, 255, 255]);
-    doc.text('SP', x + s/2, ty + s*0.62, { align: 'center' });
+    doc.setFontSize(s * 0.48);
+    setText([255, 255, 255]);
+    doc.text('SH', x + s/2, ty + s*0.65, { align: 'center' });
   }
 
   function drawPageBg(){
     setFill(COL.paper);
     doc.rect(0, 0, PAGE_W, PAGE_H, 'F');
-    // Soft corner accent
-    setFill([252, 246, 240]);
-    doc.triangle(PAGE_W, 0, PAGE_W, 55, PAGE_W - 75, 0, 'F');
-    // Left brand stripe
+    setFill([252, 244, 232]);
+    doc.triangle(PAGE_W, 0, PAGE_W, 60, PAGE_W - 90, 0, 'F');
+    setFill([248, 230, 200]);
+    doc.triangle(PAGE_W, 0, PAGE_W, 28, PAGE_W - 50, 0, 'F');
     setFill(COL.red);
     doc.rect(0, 0, 4, PAGE_H, 'F');
     setFill(COL.gold);
-    doc.rect(4, 0, 1, PAGE_H, 'F');
-    // Watermark shield bottom-right
-    drawShield(PAGE_W - 78, PAGE_H - 130, 70, true);
+    doc.rect(4, 0, 1.2, PAGE_H, 'F');
+    drawShield(PAGE_W - 78, PAGE_H - 130, 70, { watermark: true });
   }
 
   function sectionHeading(label){
     newPageIfNeeded(13);
     setFill(COL.red);
     doc.rect(MARGIN_L, y + 1, 3, 4, 'F');
+    setFill(COL.gold);
+    doc.rect(MARGIN_L + 3, y + 1, 1, 4, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
     setText(COL.red);
-    doc.text(label.toUpperCase(), MARGIN_L + 6, y + 4.5);
-    setStroke(COL.line);
-    doc.setLineWidth(0.25);
+    doc.text(label.toUpperCase(), MARGIN_L + 7, y + 4.5);
+    setStroke(COL.line); doc.setLineWidth(0.25);
     doc.line(MARGIN_L, y + 7, PAGE_W - MARGIN_R, y + 7);
     y += 11;
   }
@@ -8943,7 +9129,7 @@ function generatePlayerPDF(p){
       setText(COL.muted);
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(h * 1.6);
-      doc.text('—', x + w/2, cy + h*0.72, { align: 'center' });
+      doc.text('-', x + w/2, cy + h*0.72, { align: 'center' });
       return;
     }
     setFill(gradeColor(g));
@@ -8963,43 +9149,50 @@ function generatePlayerPDF(p){
   drawPageBg();
 
   // === HEADER ===
-  drawShield(MARGIN_L, y, 16);
+  drawShield(MARGIN_L, y, 18);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
+  doc.setFontSize(15.5);
   setText(COL.ink);
-  doc.text('SCOUTINGHUB', MARGIN_L + 20, y + 6);
+  doc.text('ScoutingHub', MARGIN_L + 23, y + 7);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8.5);
+  doc.setFontSize(7.5);
+  setText(COL.goldDeep);
+  doc.text('PROFESSIONAL  -  YOUTH FOOTBALL SCOUTING', MARGIN_L + 23, y + 11.5);
+  doc.setFontSize(7);
   setText(COL.muted);
-  doc.text('Officieel scoutingsrapport · vertrouwelijk', MARGIN_L + 20, y + 10.5);
+  doc.text('Scouting & talentbeoordeling - vertrouwelijk rapport', MARGIN_L + 23, y + 15);
 
   const w = p.wedstrijd || {};
   const reportDate = w.datum || p.datum || todayISO();
-  const badgeW = 46, badgeX = PAGE_W - MARGIN_R - badgeW;
-  setFill(COL.ink);
-  doc.roundedRect(badgeX, y, badgeW, 14, 1.5, 1.5, 'F');
+  const badgeW = 50, badgeX = PAGE_W - MARGIN_R - badgeW;
+  setFill(COL.deep);
+  doc.roundedRect(badgeX, y, badgeW, 16, 1.8, 1.8, 'F');
+  setFill(COL.gold);
+  doc.rect(badgeX, y, badgeW, 1.2, 'F');
   setText([255, 220, 100]);
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.8);
-  doc.text('RAPPORTDATUM', badgeX + badgeW/2, y + 4.5, { align: 'center' });
+  doc.setFontSize(6.6);
+  doc.text('RAPPORTDATUM', badgeX + badgeW/2, y + 5.5, { align: 'center' });
   setText([255,255,255]);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(10);
-  doc.text(formatDate(reportDate), badgeX + badgeW/2, y + 10.5, { align: 'center' });
+  doc.setFontSize(11);
+  doc.text(formatDate(reportDate), badgeX + badgeW/2, y + 11.8, { align: 'center' });
 
-  y += 18;
+  y += 22;
   setFill(COL.red);
-  doc.rect(MARGIN_L, y, CONTENT_W * 0.55, 1.2, 'F');
+  doc.rect(MARGIN_L, y, CONTENT_W * 0.45, 1.3, 'F');
   setFill(COL.gold);
-  doc.rect(MARGIN_L + CONTENT_W * 0.55, y, CONTENT_W * 0.15, 1.2, 'F');
+  doc.rect(MARGIN_L + CONTENT_W * 0.45, y, CONTENT_W * 0.20, 1.3, 'F');
+  setFill([240, 200, 80]);
+  doc.rect(MARGIN_L + CONTENT_W * 0.65, y, CONTENT_W * 0.10, 1.3, 'F');
   y += 8;
 
   // === NAAM + META ===
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
+  doc.setFontSize(24);
   setText(COL.ink);
-  doc.text(p.naam || '—', MARGIN_L, y + 7);
-  y += 11;
+  doc.text(p.naam || '-', MARGIN_L, y + 7);
+  y += 12;
 
   const metaParts = [
     positionLabel(p.positie),
@@ -9011,7 +9204,7 @@ function generatePlayerPDF(p){
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9.5);
   setText(COL.sub);
-  doc.text(metaParts.join('  ·  '), MARGIN_L, y);
+  doc.text(metaParts.join('  -  '), MARGIN_L, y);
   y += 4;
   if(p.tweebenig){
     const tw = wrapText(p.tweebenig, CONTENT_W, 8.5, 'italic');
@@ -9024,43 +9217,48 @@ function generatePlayerPDF(p){
   y += 6;
 
   // === KPI BAR ===
-  const kpiH = 22;
+  const kpiH = 24;
   newPageIfNeeded(kpiH + 4);
   const kpiW = (CONTENT_W - 8) / 3;
-  // Huidig
   setFill(COL.cardBg);
-  doc.roundedRect(MARGIN_L, y, kpiW, kpiH, 2, 2, 'F');
+  doc.roundedRect(MARGIN_L, y, kpiW, kpiH, 2.2, 2.2, 'F');
   setStroke(COL.line); doc.setLineWidth(0.3);
-  doc.roundedRect(MARGIN_L, y, kpiW, kpiH, 2, 2, 'S');
+  doc.roundedRect(MARGIN_L, y, kpiW, kpiH, 2.2, 2.2, 'S');
+  setFill(COL.red);
+  doc.rect(MARGIN_L, y, kpiW, 1.5, 'F');
   doc.setFont('helvetica', 'normal'); doc.setFontSize(7); setText(COL.muted);
-  doc.text('HUIDIG NIVEAU', MARGIN_L + 4, y + 5);
-  gradePill(p.huidig_niveau, MARGIN_L + 4, y + 8, 14, 10);
-  // Potentieel (outline pill)
+  doc.text('HUIDIG NIVEAU', MARGIN_L + 4, y + 6.5);
+  gradePill(p.huidig_niveau, MARGIN_L + 4, y + 9.5, 14, 11);
+
   const cx2 = MARGIN_L + kpiW + 4;
   setFill(COL.cardBg);
-  doc.roundedRect(cx2, y, kpiW, kpiH, 2, 2, 'F');
-  doc.roundedRect(cx2, y, kpiW, kpiH, 2, 2, 'S');
+  doc.roundedRect(cx2, y, kpiW, kpiH, 2.2, 2.2, 'F');
+  doc.roundedRect(cx2, y, kpiW, kpiH, 2.2, 2.2, 'S');
+  setFill(COL.gold);
+  doc.rect(cx2, y, kpiW, 1.5, 'F');
   setText(COL.muted); doc.setFontSize(7);
-  doc.text('POTENTIEEL', cx2 + 4, y + 5);
+  doc.text('POTENTIEEL', cx2 + 4, y + 6.5);
   if(p.potentieel_niveau){
     const pc = gradeColor(p.potentieel_niveau);
     setStroke(pc); setFill(COL.cardBg);
-    doc.setLineWidth(0.8);
-    doc.roundedRect(cx2 + 4, y + 8, 14, 10, 1.2, 1.2, 'FD');
+    doc.setLineWidth(0.9);
+    doc.roundedRect(cx2 + 4, y + 9.5, 14, 11, 1.2, 1.2, 'FD');
     setText(pc); doc.setFont('helvetica', 'bold'); doc.setFontSize(18);
-    doc.text(p.potentieel_niveau, cx2 + 11, y + 15.5, { align: 'center' });
+    doc.text(p.potentieel_niveau, cx2 + 11, y + 17.5, { align: 'center' });
   } else {
-    gradePill(null, cx2 + 4, y + 8, 14, 10);
+    gradePill(null, cx2 + 4, y + 9.5, 14, 11);
   }
-  // Advies
+
   const cx3 = MARGIN_L + (kpiW + 4) * 2;
-  setFill(COL.ink);
-  doc.roundedRect(cx3, y, kpiW, kpiH, 2, 2, 'F');
+  setFill(COL.deep);
+  doc.roundedRect(cx3, y, kpiW, kpiH, 2.2, 2.2, 'F');
+  setFill(COL.gold);
+  doc.rect(cx3, y, kpiW, 1.5, 'F');
   setText([255, 220, 100]); doc.setFont('helvetica', 'normal'); doc.setFontSize(7);
-  doc.text('ADVIES', cx3 + 4, y + 5);
+  doc.text('ADVIES', cx3 + 4, y + 6.5);
   setText([255,255,255]); doc.setFont('helvetica', 'bold'); doc.setFontSize(11);
-  const adviesLines = wrapText(adviesLabel(p.advies) || '—', kpiW - 8, 11, 'bold');
-  doc.text(adviesLines.slice(0, 2), cx3 + 4, y + 11);
+  const adviesLines = wrapText(adviesLabel(p.advies) || '-', kpiW - 8, 11, 'bold');
+  doc.text(adviesLines.slice(0, 2), cx3 + 4, y + 13);
   y += kpiH + 8;
 
   // === CRITERIA ===
@@ -9084,7 +9282,7 @@ function generatePlayerPDF(p){
     setFill(COL.cardBg);
     doc.roundedRect(cx, cy, cardW, cardH, 1.8, 1.8, 'F');
     setFill(val ? gradeColor(val) : COL.line);
-    doc.rect(cx, cy, 1.6, cardH, 'F');
+    doc.rect(cx, cy, 1.8, cardH, 'F');
     setStroke(COL.line); doc.setLineWidth(0.3);
     doc.roundedRect(cx, cy, cardW, cardH, 1.8, 1.8, 'S');
     doc.setFont('helvetica', 'bold'); doc.setFontSize(9); setText(COL.ink);
@@ -9093,7 +9291,6 @@ function generatePlayerPDF(p){
   }
   y += Math.ceil(criteria.length / 2) * (cardH + 4) + 4;
 
-  // Atletisch subscores
   const atletischSubs = [
     ['Explosiviteit', b.explosiviteit_huidig],
     ['Sprinten', b.sprinten_huidig],
@@ -9152,7 +9349,6 @@ function generatePlayerPDF(p){
     y += 2;
   }
 
-  // Shared 2-col info grid
   function infoGrid(items){
     const colW = (CONTENT_W - 4) / 2;
     const rowH = 11;
@@ -9195,7 +9391,7 @@ function generatePlayerPDF(p){
       doc.roundedRect(MARGIN_L, y, CONTENT_W, blockH, 1.6, 1.6, 'F');
       setFill(COL.gold);
       doc.rect(MARGIN_L, y, 2, blockH, 'F');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); setText(COL.gold);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(7.5); setText(COL.goldDeep);
       doc.text('CONTEXT', MARGIN_L + 6, y + 4.5);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); setText(COL.ink);
       doc.text(lines, MARGIN_L + 6, y + 9.5);
@@ -9248,13 +9444,67 @@ function generatePlayerPDF(p){
     y += blockH + 4;
   }
 
+  // === LOCATIE & SPORTPARK ===
+  if(clubInfo){
+    const mapBlockH = (mapData ? 100 : 18) + 30;
+    newPageIfNeeded(mapBlockH);
+    sectionHeading('Locatie & sportpark');
+
+    if(mapData){
+      const mapW = CONTENT_W;
+      const mapH = mapW * (380 / 720);
+      setFill(COL.cardBg);
+      doc.roundedRect(MARGIN_L, y, mapW, mapH, 2, 2, 'F');
+      setStroke(COL.line); doc.setLineWidth(0.35);
+      doc.roundedRect(MARGIN_L, y, mapW, mapH, 2, 2, 'S');
+      try {
+        doc.addImage(mapData, 'JPEG', MARGIN_L + 0.6, y + 0.6, mapW - 1.2, mapH - 1.2, undefined, 'FAST');
+      } catch(e){
+        setText(COL.muted); doc.setFontSize(9);
+        doc.text('(kaart kon niet geladen worden)', MARGIN_L + mapW/2, y + mapH/2, { align: 'center' });
+      }
+      setFill([255, 255, 255]);
+      doc.roundedRect(MARGIN_L + mapW - 44, y + mapH - 5.5, 42, 4.2, 0.8, 0.8, 'F');
+      setText(COL.muted); doc.setFontSize(5.5); doc.setFont('helvetica', 'normal');
+      doc.text('(c) OpenStreetMap contributors', MARGIN_L + mapW - 2, y + mapH - 2.4, { align: 'right' });
+      y += mapH + 4;
+    } else {
+      setFill([252, 246, 238]);
+      doc.roundedRect(MARGIN_L, y, CONTENT_W, 14, 1.6, 1.6, 'F');
+      setFill(COL.gold); doc.rect(MARGIN_L, y, 2, 14, 'F');
+      setText(COL.muted); doc.setFont('helvetica', 'italic'); doc.setFontSize(9);
+      doc.text('Kaartweergave niet beschikbaar (kaarttegels konden niet geladen worden).', MARGIN_L + 6, y + 9);
+      y += 16;
+    }
+
+    const infoH = 26;
+    newPageIfNeeded(infoH + 2);
+    setFill(COL.deep);
+    doc.roundedRect(MARGIN_L, y, CONTENT_W, infoH, 2, 2, 'F');
+    setFill(COL.gold);
+    doc.rect(MARGIN_L, y, CONTENT_W, 1.5, 'F');
+    setText([255, 220, 100]); doc.setFont('helvetica', 'normal'); doc.setFontSize(6.8);
+    doc.text('SPORTPARK', MARGIN_L + 5, y + 6.5);
+    setText([255,255,255]); doc.setFont('helvetica', 'bold'); doc.setFontSize(12);
+    doc.text(clubInfo.sportpark || clubInfo.naam || (p.club || '-'), MARGIN_L + 5, y + 12);
+    setText([200, 208, 220]); doc.setFont('helvetica', 'normal'); doc.setFontSize(9);
+    doc.text(clubInfo.adres || '', MARGIN_L + 5, y + 18);
+    if(clubInfo.naam && clubInfo.naam.toLowerCase() !== (p.club || '').toLowerCase()){
+      doc.setFontSize(7.5); setText([170, 178, 195]);
+      doc.text(`Club: ${clubInfo.naam}`, MARGIN_L + 5, y + 23);
+    }
+    setText([255, 220, 100]); doc.setFontSize(6.5);
+    doc.text(`${clubInfo.lat.toFixed(4)} N  -  ${clubInfo.lon.toFixed(4)} E`, PAGE_W - MARGIN_R - 5, y + 23, { align: 'right' });
+    y += infoH + 6;
+  }
+
   // === CONTEXT ===
   sectionHeading('Context');
   infoGrid([
-    ['Beoogde positie', positionLabel(p.beoogd) || '—'],
-    ['Leeftijdsgroep', p.leeftijd || '—'],
-    ['Scoutingmethode', p.methode || '—'],
-    ['Rapportdatum', formatDate(p.datum) || '—']
+    ['Beoogde positie', positionLabel(p.beoogd) || '-'],
+    ['Leeftijdsgroep', p.leeftijd || '-'],
+    ['Scoutingmethode', p.methode || '-'],
+    ['Rapportdatum', formatDate(p.datum) || '-']
   ]);
 
   // === FOOTER op elke pagina ===
@@ -9263,11 +9513,11 @@ function generatePlayerPDF(p){
     doc.setPage(i);
     setStroke(COL.line); doc.setLineWidth(0.3);
     doc.line(MARGIN_L, PAGE_H - 14, PAGE_W - MARGIN_R, PAGE_H - 14);
-    drawShield(MARGIN_L, PAGE_H - 12, 8);
+    drawShield(MARGIN_L, PAGE_H - 12, 9);
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8); setText(COL.ink);
-    doc.text('ScoutingHub', MARGIN_L + 11, PAGE_H - 8);
+    doc.text('ScoutingHub', MARGIN_L + 12, PAGE_H - 8);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7); setText(COL.muted);
-    doc.text('Opgesteld door Marcel Steeman', MARGIN_L + 11, PAGE_H - 4.5);
+    doc.text('Opgesteld door Marcel Steeman', MARGIN_L + 12, PAGE_H - 4.5);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7); setText(COL.muted);
     doc.text(`${i} / ${totalPages}`, PAGE_W - MARGIN_R, PAGE_H - 6, { align: 'right' });
     doc.setFontSize(6.5);

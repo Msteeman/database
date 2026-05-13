@@ -6619,8 +6619,252 @@ function openDetail(id){
   const players = loadPlayers();
   const p = players.find(x=>x.id===id);
   if(!p) return;
+  renderDetailOverview(p);
+  $('#modal-backdrop').classList.add('open');
+}
+
+function renderDetailOverview(p){
+  const meta = [positionLabel(p.positie), p.club, p.elftal||deriveElftalFromReport(p)].filter(Boolean).join(' · ');
+  $('#modal-body').innerHTML = `
+    <div class="detail-header">
+      <div class="detail-avatar">${initials(p.naam)}</div>
+      <div style="flex:1;">
+        <div class="detail-name">${escapeHtml(p.naam)}</div>
+        <div class="detail-meta">
+          ${escapeHtml(meta||'—')}${p.rugnummer?(' · #'+escapeHtml(p.rugnummer)):''}${p.been?(' · '+escapeHtml(p.been)):''}${p.geboorte?(' · '+formatDate(p.geboorte)):''}
+        </div>
+        ${p.tweebenig ? `<div class="detail-meta" style="margin-top:2px;font-style:italic;">${escapeHtml(p.tweebenig)}</div>` : ''}
+        <div class="detail-grade-row">
+          <div><span class="grade-label">Huidig</span> <span class="grade ${p.huidig_niveau||'D'}">${p.huidig_niveau||'-'}</span></div>
+          <div><span class="grade-label">Potentieel</span> <span class="grade outline ${p.potentieel_niveau||'D'}">${p.potentieel_niveau||'-'}</span></div>
+          <div><span class="grade-label">Advies</span> <span class="grade ${gradeForAdvies(p.advies)}">${adviesLabel(p.advies)||'-'}</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card compare-card" style="margin-top:16px;">
+      <div class="compare-card-title">
+        <span>Totaalindruk</span>
+        <span class="compare-card-sub">Huidig &amp; potentieel niveau</span>
+      </div>
+      <div class="compare-gauges" id="dtl-gauges"></div>
+    </div>
+
+    <div class="compare-twocol" style="margin-top:16px;">
+      <div class="card compare-card">
+        <div class="compare-card-title">
+          <span>Radar — 7 criteria</span>
+          <span class="compare-card-sub">Hoe groter de vorm, hoe completer de speler</span>
+        </div>
+        <div class="compare-radar-wrap">
+          <canvas id="dtl-radar" width="520" height="520"></canvas>
+        </div>
+      </div>
+      <div class="card compare-card">
+        <div class="compare-card-title">
+          <span>Criterium-balken</span>
+          <span class="compare-card-sub">Beoordeling per criterium</span>
+        </div>
+        <div class="compare-bars" id="dtl-bars"></div>
+      </div>
+    </div>
+
+    <div class="form-actions" style="margin-top:24px;">
+      <button class="btn" id="dtl-show-report" style="background:var(--primary-2);color:#fff;border-color:var(--primary-2);">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Bekijk volledig rapport
+      </button>
+      <button class="btn btn-sm" id="dtl-pdf">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        Download als PDF
+      </button>
+      <button class="btn btn-sm" id="dtl-edit">Bewerken</button>
+      <button class="btn btn-danger btn-sm" id="dtl-del">Verwijder rapport</button>
+    </div>
+  `;
+  renderDetailGauge(p);
+  renderDetailRadar(p);
+  renderDetailBars(p);
+  $('#dtl-show-report').addEventListener('click', () => renderDetailFullReport(p));
+  $('#dtl-pdf').addEventListener('click', () => generatePlayerPDF(p));
+  $('#dtl-edit').addEventListener('click', () => {
+    closeDetail();
+    loadIntoForm(p);
+    go('report');
+  });
+  $('#dtl-del').addEventListener('click', async () => {
+    if(confirm('Dit rapport verwijderen?')){
+      await deletePlayer(p.id);
+      closeDetail();
+      toast('Rapport verwijderd');
+    }
+  });
+}
+
+function renderDetailGauge(p){
+  const wrap = $('#dtl-gauges');
+  if(!wrap) return;
+  const col = cmpColorFor(0);
+  const score = cmpOverallScore(p);
+  const grade = cmpGradeFromNum(score);
+  const pct = Math.max(0, Math.min(1, score / 4));
+  const R = 46, C = 2 * Math.PI * R;
+  const off = C * (1 - pct);
+  const potVal = cmpGradeNum(p.potentieel_niveau);
+  const potPct = potVal ? potVal/4 : 0;
+  const potOff = C * (1 - potPct);
+  const meta = [positionLabel(p.positie), p.club].filter(Boolean).join(' · ');
+  wrap.innerHTML = `
+    <div class="compare-gauge" style="--player-color:${col.c}">
+      <div class="compare-gauge-name">${escapeHtml(p.naam||'?')}</div>
+      <div class="compare-gauge-meta">${escapeHtml(meta||'—')}</div>
+      <div class="compare-gauge-ring">
+        <svg width="110" height="110" viewBox="0 0 110 110">
+          <circle class="compare-gauge-ring-bg" cx="55" cy="55" r="${R}" fill="none" stroke-width="8"/>
+          <circle class="compare-gauge-ring-pot" cx="55" cy="55" r="${R}" fill="none" stroke-width="3"
+                  stroke-dasharray="${C}" stroke-dashoffset="${potOff}" stroke-linecap="round"/>
+          <circle class="compare-gauge-ring-fg" cx="55" cy="55" r="${R}" fill="none" stroke-width="8"
+                  stroke-dasharray="${C}" stroke-dashoffset="${off}" stroke-linecap="round"/>
+        </svg>
+        <div class="compare-gauge-center">
+          <div class="compare-gauge-grade">${escapeHtml(grade)}</div>
+          <div class="compare-gauge-score">${score ? score.toFixed(2) : '–'} / 4</div>
+        </div>
+      </div>
+      <div class="compare-gauge-dual">
+        <div>Huidig<b>${escapeHtml(p.huidig_niveau||'–')}</b></div>
+        <div>Potentieel<b>${escapeHtml(p.potentieel_niveau||'–')}</b></div>
+      </div>
+    </div>`;
+}
+
+function renderDetailRadar(p){
+  const canvas = $('#dtl-radar');
+  if(!canvas) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = 520, H = 520;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const cx = W/2, cy = H/2 + 8, R = 180;
+  const N = CMP_CRITERIA.length;
+  const angle = (i) => -Math.PI/2 + (i * 2*Math.PI / N);
+  // Background rings
+  for(let lvl=1; lvl<=4; lvl++){
+    ctx.beginPath();
+    for(let i=0;i<N;i++){
+      const a = angle(i);
+      const r = R * (lvl/4);
+      const x = cx + Math.cos(a)*r;
+      const y = cy + Math.sin(a)*r;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = lvl===4 ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.08)';
+    ctx.lineWidth = lvl===4 ? 1.2 : 1;
+    ctx.stroke();
+    if(lvl<4){ ctx.fillStyle = 'rgba(255,255,255,.02)'; ctx.fill(); }
+  }
+  for(let i=0;i<N;i++){
+    const a = angle(i);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a)*R, cy + Math.sin(a)*R);
+    ctx.strokeStyle = 'rgba(255,255,255,.06)';
+    ctx.stroke();
+  }
+  ctx.fillStyle = 'rgba(255,255,255,.35)';
+  ctx.font = '10px -apple-system, Segoe UI, sans-serif';
+  ctx.textAlign = 'center';
+  ['D','C','B','A'].forEach((g, i) => {
+    const r = R * ((i+1)/4);
+    ctx.fillText(g, cx + 8, cy - r + 3);
+  });
+  ctx.fillStyle = 'rgba(232,237,245,.9)';
+  ctx.font = '600 12.5px -apple-system, Segoe UI, sans-serif';
+  for(let i=0;i<N;i++){
+    const a = angle(i);
+    const lx = cx + Math.cos(a)*(R+24);
+    const ly = cy + Math.sin(a)*(R+24);
+    ctx.textAlign = Math.abs(Math.cos(a)) < 0.2 ? 'center' : (Math.cos(a) > 0 ? 'left' : 'right');
+    ctx.textBaseline = Math.abs(Math.sin(a)) < 0.2 ? 'middle' : (Math.sin(a) > 0 ? 'top' : 'bottom');
+    ctx.fillText(CMP_CRITERIA[i].label, lx, ly);
+  }
+  const col = cmpColorFor(0);
+  const b = p.beoordelingen || {};
+  const points = CMP_CRITERIA.map((c, i) => {
+    let v = cmpGradeNum(b[c.key]);
+    if(!v && c.key === 'grit_huidig') v = cmpGradeNum(b.drit_huidig);
+    const r = R * (v / 4);
+    const a = angle(i);
+    return { x: cx + Math.cos(a)*r, y: cy + Math.sin(a)*r, v };
+  });
+  ctx.beginPath();
+  points.forEach((pt, i) => { if(i===0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y); });
+  ctx.closePath();
+  ctx.fillStyle = hexA(col.c, 0.22);
+  ctx.fill();
+  ctx.strokeStyle = col.c;
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  points.forEach(pt => {
+    if(pt.v <= 0) return;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 4, 0, Math.PI*2);
+    ctx.fillStyle = col.c;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(11,15,21,.9)';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  });
+  ctx.beginPath();
+  ctx.arc(cx, cy, 2.5, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(255,255,255,.4)';
+  ctx.fill();
+}
+
+function renderDetailBars(p){
+  const wrap = $('#dtl-bars');
+  if(!wrap) return;
+  const col = cmpColorFor(0);
+  const b = p.beoordelingen || {};
+  wrap.innerHTML = CMP_CRITERIA.map(c => {
+    let g = b[c.key];
+    if(!g && c.key === 'grit_huidig') g = b.drit_huidig;
+    const v = cmpGradeNum(g);
+    const pct = v ? (v/4)*100 : 0;
+    const display = g || '–';
+    return `
+      <div class="compare-bar-group">
+        <div class="compare-bar-group-title">
+          <span>${escapeHtml(c.label)}</span>
+          <em>${escapeHtml(display)}</em>
+        </div>
+        <div class="compare-bar-rows">
+          <div class="compare-bar-row">
+            <div class="compare-bar-name">&nbsp;</div>
+            <div class="compare-bar-track">
+              <div class="compare-bar-fill" style="width:${pct}%;--player-color:${col.c};--player-color-2:${col.c2}"></div>
+            </div>
+            <div class="compare-bar-grade">${escapeHtml(display)}</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderDetailFullReport(p){
   const b = p.beoordelingen || {};
   const w = p.wedstrijd || {};
+  const backBtnHtml = `
+    <div style="margin-bottom:14px;">
+      <button class="btn btn-sm" id="dtl-back-overview">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><polyline points="15 18 9 12 15 6"/></svg>
+        Terug naar overzicht
+      </button>
+    </div>`;
   // backwards compat: oude records hebben drit_huidig / fysiek_huidig
   const gritVal = b.grit_huidig || b.drit_huidig;
   const fysiekFallback = b.fysiek_huidig;
@@ -6685,6 +6929,7 @@ function openDetail(id){
     : '';
 
   $('#modal-body').innerHTML = `
+    ${backBtnHtml}
     <div class="detail-header">
       <div class="detail-avatar">${initials(p.naam)}</div>
       <div style="flex:1;">
@@ -6752,10 +6997,10 @@ function openDetail(id){
       <button class="btn btn-sm" id="edit-${p.id}">Bewerken</button>
     </div>
   `;
-  $('#modal-backdrop').classList.add('open');
+  $('#dtl-back-overview').addEventListener('click', ()=> renderDetailOverview(p));
   $(`#del-${p.id}`).addEventListener('click', async ()=>{
     if(confirm('Dit rapport verwijderen?')){
-      await deletePlayer(id);
+      await deletePlayer(p.id);
       closeDetail();
       toast('Rapport verwijderd');
     }

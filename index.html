@@ -122,82 +122,89 @@ a { color: var(--accent); text-decoration: none; }
 #login-overlay {
   gap: 64px;
 }
+/* Apple-style: cubic-bezier(.16,1,.3,1) = ease-out-expo. Geen bounce, geen rotatie. */
 .login-hero {
   position: relative;
   z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 22px;
-  max-width: 460px;
-  perspective: 1200px;
+  gap: 28px;
+  max-width: 480px;
 }
 .login-hero-mark {
-  width: 360px; height: 360px;
-  filter: drop-shadow(0 18px 50px rgba(227,6,19,.65));
-  animation: heroEntrance 1.2s cubic-bezier(.2,.9,.25,1.1) both, heroFloat 6s ease-in-out 1.2s infinite;
+  width: 340px; height: 340px;
+  filter: drop-shadow(0 24px 60px rgba(227,6,19,.45));
+  animation: appleHeroIn 1.6s cubic-bezier(.16,1,.3,1) both, appleFloat 7s ease-in-out 2s infinite;
   position: relative;
+  will-change: transform, opacity, filter;
 }
 .login-hero-mark::before {
   content: '';
-  position: absolute; inset: -30px;
-  background: radial-gradient(circle at center, rgba(227,6,19,.35), transparent 55%);
-  filter: blur(20px);
+  position: absolute; inset: -40px;
+  background: radial-gradient(circle at center, rgba(227,6,19,.28), transparent 60%);
+  filter: blur(30px);
   z-index: -1;
-  animation: heroGlow 4s ease-in-out infinite;
+  animation: appleGlow 6s ease-in-out 1.5s infinite both;
+  opacity: 0;
 }
 .login-hero-mark svg { width: 100%; height: 100%; display: block; }
 .login-hero-title {
-  font-size: 48px; font-weight: 900; letter-spacing: .5px;
+  font-size: 56px; font-weight: 700; letter-spacing: -1.5px;
   text-align: center;
-  background: linear-gradient(135deg, #ff2a3a 0%, #ff7a18 50%, #f5c518 100%);
-  background-size: 200% 200%;
+  background: linear-gradient(180deg, #ffffff 0%, #c8cdd6 100%);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   margin: 0;
-  line-height: 1.05;
-  animation: heroTitleIn 1s cubic-bezier(.2,.9,.25,1.1) .3s both, heroTitleShine 6s ease-in-out 1.3s infinite;
+  line-height: .98;
+  will-change: transform, opacity, filter;
 }
+.login-hero-title .word {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(28px);
+  filter: blur(10px);
+  animation: appleWordIn 1.2s cubic-bezier(.16,1,.3,1) both;
+}
+.login-hero-title .word:nth-child(1) { animation-delay: .55s; }
+.login-hero-title .word:nth-child(2) { animation-delay: .70s; }
 .login-hero-tag {
-  color: var(--text-2);
-  font-size: 14px;
-  letter-spacing: 4px;
-  text-transform: uppercase;
+  color: var(--text-3);
+  font-size: 15px;
+  letter-spacing: .4px;
   text-align: center;
-  font-weight: 600;
-  animation: heroTagIn 1s cubic-bezier(.2,.9,.25,1.1) .55s both;
+  font-weight: 400;
+  margin-top: -10px;
+  opacity: 0;
+  animation: appleFadeUp 1.1s cubic-bezier(.16,1,.3,1) 1.05s both;
 }
 .login-hero-tag span {
   display: inline-block;
   color: var(--primary);
-  margin: 0 6px;
+  margin: 0 8px;
+  opacity: .7;
 }
-@keyframes heroEntrance {
-  0%   { opacity: 0; transform: translateY(-60px) scale(.4) rotateX(-30deg); filter: blur(8px) drop-shadow(0 0 0 rgba(227,6,19,0)); }
-  60%  { opacity: 1; transform: translateY(8px) scale(1.05) rotateX(0); filter: blur(0) drop-shadow(0 18px 50px rgba(227,6,19,.65)); }
-  100% { transform: translateY(0) scale(1) rotateX(0); }
+
+@keyframes appleHeroIn {
+  0%   { opacity: 0; transform: translateY(40px) scale(.94); filter: blur(14px) drop-shadow(0 0 0 rgba(227,6,19,0)); }
+  100% { opacity: 1; transform: translateY(0)    scale(1);   filter: blur(0)  drop-shadow(0 24px 60px rgba(227,6,19,.45)); }
 }
-@keyframes heroTitleIn {
-  0%   { opacity: 0; transform: translateX(-40px); filter: blur(6px); }
-  60%  { opacity: 1; transform: translateX(4px); filter: blur(0); }
-  100% { transform: translateX(0); }
+@keyframes appleWordIn {
+  0%   { opacity: 0; transform: translateY(28px); filter: blur(10px); }
+  100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
 }
-@keyframes heroTagIn {
-  0%   { opacity: 0; transform: translateY(20px); letter-spacing: 8px; }
-  100% { opacity: 1; transform: translateY(0); letter-spacing: 4px; }
+@keyframes appleFadeUp {
+  0%   { opacity: 0; transform: translateY(16px); filter: blur(6px); }
+  100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
 }
-@keyframes heroTitleShine {
-  0%, 100% { background-position: 0% 50%; }
-  50%      { background-position: 100% 50%; }
-}
-@keyframes heroFloat {
+@keyframes appleFloat {
   0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-10px); }
+  50%      { transform: translateY(-6px); }
 }
-@keyframes heroGlow {
-  0%, 100% { opacity: .5; transform: scale(1); }
-  50%      { opacity: 1;  transform: scale(1.15); }
+@keyframes appleGlow {
+  0%, 100% { opacity: .55; transform: scale(1); }
+  50%      { opacity: .85; transform: scale(1.08); }
 }
 @media (max-width: 1100px) {
   .login-hero-mark { width: 280px; height: 280px; }
@@ -220,35 +227,28 @@ a { color: var(--accent); text-decoration: none; }
 .login-card {
   width: 100%; max-width: 420px;
   background: rgba(18,24,36,.78);
-  backdrop-filter: blur(16px);
+  backdrop-filter: blur(20px) saturate(140%);
+  -webkit-backdrop-filter: blur(20px) saturate(140%);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 42px 36px 32px 36px;
-  box-shadow: 0 20px 60px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.02) inset;
+  box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.02) inset;
   position: relative;
   z-index: 1;
-  animation: cardSlideIn .9s cubic-bezier(.2,.9,.25,1.1) .4s both;
+  animation: appleCardIn 1.3s cubic-bezier(.16,1,.3,1) .55s both;
+  will-change: transform, opacity, filter;
 }
-@keyframes cardSlideIn {
-  0%   { opacity: 0; transform: translateX(60px) scale(.96); filter: blur(8px); }
-  100% { opacity: 1; transform: translateX(0) scale(1); filter: blur(0); }
+@keyframes appleCardIn {
+  0%   { opacity: 0; transform: translateY(36px) scale(.97); filter: blur(12px); }
+  100% { opacity: 1; transform: translateY(0)    scale(1);   filter: blur(0); }
 }
-.login-card .login-logo-mark { animation: logoMarkPop .7s cubic-bezier(.2,.9,.25,1.4) .9s both; }
-.login-card .login-title     { animation: fadeUp .6s ease 1.05s both; }
-.login-card .login-sub       { animation: fadeUp .6s ease 1.15s both; }
-.login-card .login-field     { animation: fadeUp .5s ease both; }
-.login-card .login-field:nth-of-type(1) { animation-delay: 1.25s; }
-.login-card .login-field:nth-of-type(2) { animation-delay: 1.35s; }
-.login-card .login-btn       { animation: fadeUp .5s ease 1.45s both; }
-@keyframes logoMarkPop {
-  0%   { opacity: 0; transform: scale(.3) rotate(-20deg); }
-  60%  { opacity: 1; transform: scale(1.15) rotate(4deg); }
-  100% { transform: scale(1) rotate(0); }
-}
-@keyframes fadeUp {
-  0%   { opacity: 0; transform: translateY(14px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
+.login-card .login-logo-mark { opacity: 0; animation: appleFadeUp .9s cubic-bezier(.16,1,.3,1) 1.10s both; }
+.login-card .login-title     { opacity: 0; animation: appleFadeUp .9s cubic-bezier(.16,1,.3,1) 1.22s both; }
+.login-card .login-sub       { opacity: 0; animation: appleFadeUp .9s cubic-bezier(.16,1,.3,1) 1.32s both; }
+.login-card .login-field     { opacity: 0; animation: appleFadeUp .85s cubic-bezier(.16,1,.3,1) both; }
+.login-card .login-field:nth-of-type(1) { animation-delay: 1.44s; }
+.login-card .login-field:nth-of-type(2) { animation-delay: 1.54s; }
+.login-card .login-btn       { opacity: 0; animation: appleFadeUp .85s cubic-bezier(.16,1,.3,1) 1.66s both; }
 .login-logo {
   display: flex; flex-direction: column; align-items: center; gap: 14px;
   margin-bottom: 28px;
@@ -427,45 +427,153 @@ a { color: var(--accent); text-decoration: none; }
 .btn-danger { color: var(--red); border-color: rgba(239,68,68,.3); }
 .btn-danger:hover { background: rgba(239,68,68,.1); border-color: var(--red); }
 
-/* ---------- VIEWS ---------- */
+/* ---------- VIEWS — Apple-style transitions (pronounced) ---------- */
 .view { display: none; }
 .view.active {
   display: block;
-  animation: viewIn .42s cubic-bezier(.2,.85,.3,1) both;
+  animation: appleViewIn 1.0s cubic-bezier(.16,1,.3,1) both;
+  will-change: transform, opacity, filter;
 }
-@keyframes viewIn {
-  0%   { opacity: 0; transform: translateY(14px) scale(.985); filter: blur(4px); }
-  60%  { opacity: 1; filter: blur(0); }
-  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+@keyframes appleViewIn {
+  0%   { opacity: 0; transform: translateY(36px) scale(.97); filter: blur(14px); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0)    scale(1);    filter: blur(0); }
 }
-.view.active > *:nth-child(1) { animation: childIn .5s cubic-bezier(.2,.85,.3,1) .05s both; }
-.view.active > *:nth-child(2) { animation: childIn .5s cubic-bezier(.2,.85,.3,1) .12s both; }
-.view.active > *:nth-child(3) { animation: childIn .5s cubic-bezier(.2,.85,.3,1) .18s both; }
-.view.active > *:nth-child(4) { animation: childIn .5s cubic-bezier(.2,.85,.3,1) .24s both; }
-.view.active > *:nth-child(5) { animation: childIn .5s cubic-bezier(.2,.85,.3,1) .30s both; }
-@keyframes childIn {
-  0%   { opacity: 0; transform: translateY(10px); }
-  100% { opacity: 1; transform: translateY(0); }
+.view.active > *:nth-child(1) { opacity: 0; animation: appleChildIn .9s cubic-bezier(.16,1,.3,1) .10s both; }
+.view.active > *:nth-child(2) { opacity: 0; animation: appleChildIn .9s cubic-bezier(.16,1,.3,1) .20s both; }
+.view.active > *:nth-child(3) { opacity: 0; animation: appleChildIn .9s cubic-bezier(.16,1,.3,1) .30s both; }
+.view.active > *:nth-child(4) { opacity: 0; animation: appleChildIn .9s cubic-bezier(.16,1,.3,1) .40s both; }
+.view.active > *:nth-child(5) { opacity: 0; animation: appleChildIn .9s cubic-bezier(.16,1,.3,1) .50s both; }
+.view.active > *:nth-child(6) { opacity: 0; animation: appleChildIn .9s cubic-bezier(.16,1,.3,1) .58s both; }
+.view.active > *:nth-child(7) { opacity: 0; animation: appleChildIn .9s cubic-bezier(.16,1,.3,1) .64s both; }
+@keyframes appleChildIn {
+  0%   { opacity: 0; transform: translateY(28px); filter: blur(8px); }
+  100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
 }
 
-/* Nav item klik-pulse */
-.nav-item { position: relative; overflow: hidden; }
-.nav-item:active { transform: scale(.97); }
+/* Tabellen — rij-voor-rij cascade-in zodat de database echt opbouwt */
+.view.active tbody tr {
+  opacity: 0;
+  animation: appleRowIn .65s cubic-bezier(.16,1,.3,1) both;
+}
+.view.active tbody tr:nth-child(1)  { animation-delay: .45s; }
+.view.active tbody tr:nth-child(2)  { animation-delay: .49s; }
+.view.active tbody tr:nth-child(3)  { animation-delay: .53s; }
+.view.active tbody tr:nth-child(4)  { animation-delay: .57s; }
+.view.active tbody tr:nth-child(5)  { animation-delay: .61s; }
+.view.active tbody tr:nth-child(6)  { animation-delay: .65s; }
+.view.active tbody tr:nth-child(7)  { animation-delay: .69s; }
+.view.active tbody tr:nth-child(8)  { animation-delay: .73s; }
+.view.active tbody tr:nth-child(9)  { animation-delay: .77s; }
+.view.active tbody tr:nth-child(10) { animation-delay: .81s; }
+.view.active tbody tr:nth-child(11) { animation-delay: .85s; }
+.view.active tbody tr:nth-child(12) { animation-delay: .89s; }
+.view.active tbody tr:nth-child(13) { animation-delay: .92s; }
+.view.active tbody tr:nth-child(14) { animation-delay: .95s; }
+.view.active tbody tr:nth-child(15) { animation-delay: .98s; }
+.view.active tbody tr:nth-child(n+16) { animation-delay: 1.00s; }
+@keyframes appleRowIn {
+  0%   { opacity: 0; transform: translateY(14px); filter: blur(4px); }
+  100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
+}
+
+/* Wedstrijdkaarten / dashboard cards — cascade-in */
+.view.active .match-card,
+.view.active .card,
+.view.active .stat-card,
+.view.active .kpi-card {
+  opacity: 0;
+  animation: appleCardCascade .75s cubic-bezier(.16,1,.3,1) both;
+}
+.view.active .match-card:nth-child(1),
+.view.active .card:nth-child(1),
+.view.active .stat-card:nth-child(1),
+.view.active .kpi-card:nth-child(1) { animation-delay: .40s; }
+.view.active .match-card:nth-child(2),
+.view.active .card:nth-child(2),
+.view.active .stat-card:nth-child(2),
+.view.active .kpi-card:nth-child(2) { animation-delay: .48s; }
+.view.active .match-card:nth-child(3),
+.view.active .card:nth-child(3),
+.view.active .stat-card:nth-child(3),
+.view.active .kpi-card:nth-child(3) { animation-delay: .56s; }
+.view.active .match-card:nth-child(4),
+.view.active .card:nth-child(4),
+.view.active .stat-card:nth-child(4),
+.view.active .kpi-card:nth-child(4) { animation-delay: .64s; }
+.view.active .match-card:nth-child(5),
+.view.active .card:nth-child(5),
+.view.active .stat-card:nth-child(5),
+.view.active .kpi-card:nth-child(5) { animation-delay: .72s; }
+.view.active .match-card:nth-child(6),
+.view.active .card:nth-child(6),
+.view.active .stat-card:nth-child(6),
+.view.active .kpi-card:nth-child(6) { animation-delay: .80s; }
+.view.active .match-card:nth-child(n+7),
+.view.active .card:nth-child(n+7),
+.view.active .stat-card:nth-child(n+7),
+.view.active .kpi-card:nth-child(n+7) { animation-delay: .88s; }
+@keyframes appleCardCascade {
+  0%   { opacity: 0; transform: translateY(22px) scale(.97); filter: blur(6px); }
+  100% { opacity: 1; transform: translateY(0)    scale(1);   filter: blur(0); }
+}
+
+/* Topbar / toolbar / filters in elke view — apart laten invliegen voor extra feel */
+.view.active .topbar,
+.view.active .toolbar,
+.view.active .filters,
+.view.active .view-header {
+  animation: appleToolbarIn .8s cubic-bezier(.16,1,.3,1) both;
+}
+@keyframes appleToolbarIn {
+  0%   { opacity: 0; transform: translateY(-12px); filter: blur(6px); }
+  100% { opacity: 1; transform: translateY(0);     filter: blur(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .view.active,
+  .view.active > *,
+  .view.active tbody tr,
+  .view.active .match-card,
+  .view.active .card,
+  .view.active .stat-card,
+  .view.active .kpi-card,
+  .view.active .topbar,
+  .view.active .toolbar,
+  .view.active .filters,
+  .view.active .view-header {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
+/* Nav item — gladde hover en actieve indicator */
+.nav-item { position: relative; transition: background .25s cubic-bezier(.16,1,.3,1), color .25s, transform .15s cubic-bezier(.16,1,.3,1); }
+.nav-item:active { transform: scale(.985); }
 .nav-item.active::before {
   content: '';
-  position: absolute; left: 0; top: 10%; bottom: 10%;
+  position: absolute; left: 0; top: 12%; bottom: 12%;
   width: 3px; border-radius: 0 3px 3px 0;
   background: var(--primary);
-  animation: navIndicatorIn .35s cubic-bezier(.2,.9,.25,1.1);
+  animation: appleIndicator .55s cubic-bezier(.16,1,.3,1) both;
 }
-@keyframes navIndicatorIn {
+@keyframes appleIndicator {
   0%   { transform: scaleY(0); opacity: 0; }
   100% { transform: scaleY(1); opacity: 1; }
 }
 
-/* Buttons: subtiele klik-feedback */
-.btn { transition: all .15s, transform .08s; }
-.btn:active { transform: scale(.96); }
+/* Buttons — Apple-style press feedback */
+.btn { transition: background .25s cubic-bezier(.16,1,.3,1), border-color .25s, transform .15s cubic-bezier(.16,1,.3,1); }
+.btn:active { transform: scale(.97); }
+.login-btn { transition: background .25s cubic-bezier(.16,1,.3,1), transform .15s cubic-bezier(.16,1,.3,1); }
+.login-btn:active { transform: scale(.98); }
+
+/* Respecteer reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
 
 /* Dashboard */
 .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
@@ -1890,7 +1998,7 @@ tbody tr:last-child td { border-bottom: none; }
         <circle cx="40" cy="13" r="2.8" fill="#f5c518"/>
       </svg>
     </div>
-    <h1 class="login-hero-title">Scouting<br>Platform</h1>
+    <h1 class="login-hero-title"><span class="word">Scouting</span><br><span class="word">Platform</span></h1>
     <div class="login-hero-tag">Professional<span>•</span>Edition</div>
   </div>
   <div class="login-card">

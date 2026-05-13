@@ -2101,10 +2101,16 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="page-title">Wedstrijden</div>
             <div class="page-sub" id="matches-count">0 wedstrijden</div>
           </div>
-          <button class="btn btn-primary" id="match-report-new-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Wedstrijd rapporteren
-          </button>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-secondary" id="match-report-import-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Importeren
+            </button>
+            <button class="btn btn-primary" id="match-report-new-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Wedstrijd rapporteren
+            </button>
+          </div>
         </div>
 
         <div class="filters">
@@ -2743,6 +2749,40 @@ tbody tr:last-child td { border-bottom: none; }
       <div class="form-actions" style="margin-top:16px;">
         <button type="button" class="btn" id="import-cancel">Annuleren</button>
         <button type="button" class="btn btn-primary" id="import-go">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Importeren
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- =================== MATCH-REPORT IMPORT MODAL =================== -->
+<div class="modal-backdrop" id="mreport-import-backdrop">
+  <div class="modal" id="mreport-import-modal">
+    <div class="modal-header">
+      <div class="modal-title">Wedstrijdrapporten importeren</div>
+      <button class="modal-close" id="mreport-import-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.5;">
+        Plak hieronder het wedstrijd-blokje dat Copilot voor je heeft gemaakt en klik op <strong>Importeren</strong>.
+        Je kunt één wedstrijd of meerdere wedstrijden tegelijk plakken — ook één rapport per regel werkt.
+      </div>
+      <textarea id="mreport-import-text" style="width:100%; min-height:200px; background:var(--bg-3); border:1px solid var(--border-2); color:var(--text); padding:12px; border-radius:7px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; outline:none; resize:vertical;" placeholder='Plak hier het wedstrijd-blokje, of upload een .txt/.json bestand hieronder...'></textarea>
+      <div style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <input type="file" id="mreport-import-file" accept=".txt,.json,.jsonl,text/plain,application/json" style="display:none;">
+        <button type="button" class="btn" id="mreport-import-file-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Bestand kiezen…
+        </button>
+        <span id="mreport-import-file-name" style="font-size:12px; color:var(--text-2);"></span>
+      </div>
+      <div id="mreport-import-status" style="margin-top:10px; font-size:12px; min-height:18px;"></div>
+      <div class="form-actions" style="margin-top:16px;">
+        <button type="button" class="btn" id="mreport-import-cancel">Annuleren</button>
+        <button type="button" class="btn btn-primary" id="mreport-import-go">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           Importeren
         </button>
@@ -6087,6 +6127,99 @@ async function runImport(){
   }
 }
 
+/* =============== MATCH-REPORT IMPORT =============== */
+function openMatchReportImportModal(){
+  $('#mreport-import-text').value = '';
+  $('#mreport-import-status').textContent = '';
+  $('#mreport-import-status').style.color = '';
+  const fileEl = $('#mreport-import-file');
+  if(fileEl) fileEl.value = '';
+  const nameEl = $('#mreport-import-file-name');
+  if(nameEl) nameEl.textContent = '';
+  $('#mreport-import-backdrop').classList.add('open');
+  setTimeout(()=> $('#mreport-import-text').focus(), 50);
+}
+function closeMatchReportImportModal(){
+  $('#mreport-import-backdrop').classList.remove('open');
+}
+async function runMatchReportImport(){
+  const status = $('#mreport-import-status');
+  const raw = $('#mreport-import-text').value.trim();
+  if(!raw){
+    status.style.color = 'var(--red)';
+    status.textContent = 'Plak eerst een wedstrijd-blokje in het veld.';
+    return;
+  }
+  let list = null;
+  try {
+    const data = JSON.parse(raw);
+    list = Array.isArray(data) ? data : [data];
+  } catch(e) {
+    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if(lines.length > 1){
+      const parsed = [];
+      let allOk = true;
+      for(const line of lines){
+        try { parsed.push(JSON.parse(line)); }
+        catch(_) { allOk = false; break; }
+      }
+      if(allOk && parsed.length) list = parsed;
+    }
+    if(!list){
+      try {
+        const wrapped = JSON.parse('[' + raw.replace(/}\s*[\r\n]+\s*{/g, '},{') + ']');
+        if(Array.isArray(wrapped) && wrapped.length) list = wrapped;
+      } catch(_) {}
+    }
+  }
+  if(!list){
+    status.style.color = 'var(--red)';
+    status.textContent = 'Het geplakte tekstblok kan niet gelezen worden. Controleer of je het hele blokje hebt gekopieerd.';
+    return;
+  }
+  if(!list.length){
+    status.style.color = 'var(--red)';
+    status.textContent = 'Geen wedstrijden gevonden in het blokje.';
+    return;
+  }
+  const existingIds = new Set(loadMatchReports().map(r => r.id));
+  let ok = 0, fail = 0;
+  status.style.color = 'var(--text-2)';
+  status.textContent = `Bezig met importeren van ${list.length} wedstrijd${list.length===1?'':'en'}...`;
+  for(const entry of list){
+    if(!entry || typeof entry !== 'object'){ fail++; continue; }
+    if(!entry.thuis && !entry.uit && !entry.opmerking){ fail++; continue; }
+    const report = {
+      id: entry.id || uid(),
+      datum: entry.datum || todayISO(),
+      leeftijd: entry.leeftijd || '',
+      thuis: entry.thuis || '',
+      uit: entry.uit || '',
+      opmerking: entry.opmerking || ''
+    };
+    if(existingIds.has(report.id)) report.id = uid();
+    existingIds.add(report.id);
+    try {
+      await saveMatchReport(report);
+      ok++;
+    } catch(e){
+      fail++;
+    }
+  }
+  if(ok > 0){
+    status.style.color = 'var(--green)';
+    status.textContent = `${ok} wedstrijd${ok===1?'':'en'} geïmporteerd${fail?` · ${fail} mislukt`:''}.`;
+    toast(`${ok} wedstrijd${ok===1?'':'en'} toegevoegd`);
+    setTimeout(()=>{
+      closeMatchReportImportModal();
+      if(typeof renderMatches === 'function') renderMatches();
+    }, 900);
+  } else {
+    status.style.color = 'var(--red)';
+    status.textContent = `Importeren mislukt. Controleer het blokje.`;
+  }
+}
+
 /* =============== INIT =============== */
 function initApp(){
   if(appInitialized) return;
@@ -6198,6 +6331,32 @@ function initApp(){
     if(e.target.id === 'import-backdrop') closeImportModal();
   });
 
+  // Match-report import
+  $('#match-report-import-btn')?.addEventListener('click', openMatchReportImportModal);
+  $('#mreport-import-close')?.addEventListener('click', closeMatchReportImportModal);
+  $('#mreport-import-cancel')?.addEventListener('click', closeMatchReportImportModal);
+  $('#mreport-import-go')?.addEventListener('click', runMatchReportImport);
+  $('#mreport-import-file-btn')?.addEventListener('click', ()=> $('#mreport-import-file').click());
+  $('#mreport-import-file')?.addEventListener('change', async (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    $('#mreport-import-file-name').textContent = file.name;
+    try {
+      const text = await file.text();
+      $('#mreport-import-text').value = text;
+      const status = $('#mreport-import-status');
+      status.style.color = 'var(--text-2)';
+      status.textContent = `Bestand geladen (${file.name}). Klik op Importeren.`;
+    } catch(err) {
+      const status = $('#mreport-import-status');
+      status.style.color = '#ef4444';
+      status.textContent = 'Bestand kon niet gelezen worden.';
+    }
+  });
+  $('#mreport-import-backdrop')?.addEventListener('click', e=>{
+    if(e.target.id === 'mreport-import-backdrop') closeMatchReportImportModal();
+  });
+
   $('#modal-close').addEventListener('click', closeDetail);
   $('#modal-backdrop').addEventListener('click', e=>{
     if(e.target.id === 'modal-backdrop') closeDetail();
@@ -6206,6 +6365,7 @@ function initApp(){
     if(e.key==='Escape'){
       closeDetail();
       closeImportModal();
+      closeMatchReportImportModal();
       closePlayerPicker();
     }
   });

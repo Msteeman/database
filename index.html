@@ -1017,7 +1017,19 @@ tbody tr:last-child td { border-bottom: none; }
 .subcriteria-note {
   width: 100%;
   resize: vertical;
+  background: var(--bg-3);
+  border: 1px solid var(--border-2);
+  padding: 10px 12px;
+  border-radius: 7px;
+  color: var(--text);
+  outline: none;
+  font-family: inherit;
+  font-size: inherit;
+  min-height: 60px;
+  transition: border-color .15s;
 }
+.subcriteria-note:focus { border-color: var(--primary); }
+.subcriteria-note::placeholder { color: var(--text-2); opacity: .7; }
 .dual-grade { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .dual-grade .field label { margin-bottom: 4px; }
 .dual-label {

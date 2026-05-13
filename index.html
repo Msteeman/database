@@ -7674,6 +7674,12 @@ function escapeHtml(s){
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[c]));
 }
+function escapeAttr(s){
+  if(s==null) return '';
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
 /* Afleiden van elftal (bv. "O.15-1") uit wedstrijdgegevens.
    Zoekt naar O.X-Y patroon in thuis of uit; geeft voorkeur aan de teamnaam
    waarvan de clubnaam overeenkomt met p.club. */

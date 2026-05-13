@@ -4808,7 +4808,7 @@ function applyFilters(){
             </td>
             <td>${escapeHtml(positionLabel(p.positie))}</td>
             <td>${escapeHtml(p.club||'—')}</td>
-            <td>${escapeHtml(p.elftal || deriveElftalFromReport(p) || p.leeftijd || '—')}</td>
+            <td>${escapeHtml(p.elftal || deriveElftalFromReport(p) || '—')}</td>
             <td><span class="grade ${p.huidig_niveau||'D'}">${p.huidig_niveau||'-'}</span></td>
             <td><span class="grade outline ${p.potentieel_niveau||'D'}">${p.potentieel_niveau||'-'}</span></td>
             <td>${adviesLabel(p.advies)||'—'}</td>

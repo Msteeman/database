@@ -2110,6 +2110,10 @@ tbody tr:last-child td { border-bottom: none; }
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               Importeren
             </button>
+            <button class="btn btn-ghost" id="match-report-bulk-delete-btn" title="Verwijder geïmporteerde wedstrijdrapporten door dezelfde JSON nogmaals te plakken">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+              Import ongedaan maken
+            </button>
             <button class="btn btn-primary" id="match-report-new-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Wedstrijd rapporteren
@@ -2171,7 +2175,11 @@ tbody tr:last-child td { border-bottom: none; }
                 <input id="f-plaats" type="text" placeholder="Automatisch ingevuld vanuit club" />
               </div>
             </div>
-            <div class="field-row">
+            <div class="field-row three">
+              <div class="field">
+                <label>Elftal</label>
+                <input id="f-elftal" type="text" placeholder="Bijv. O.15-1" />
+              </div>
               <div class="field">
                 <label>Rugnummer</label>
                 <input id="f-rugnummer" type="text" />
@@ -2917,6 +2925,40 @@ tbody tr:last-child td { border-bottom: none; }
         <button type="button" class="btn btn-primary" id="mreport-import-go">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
           Importeren
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- =================== MATCH-REPORT BULK-DELETE MODAL =================== -->
+<div class="modal-backdrop" id="mreport-bulkdel-backdrop">
+  <div class="modal" id="mreport-bulkdel-modal">
+    <div class="modal-header">
+      <div class="modal-title">Wedstrijdrapporten verwijderen (via import-bestand)</div>
+      <button class="modal-close" id="mreport-bulkdel-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.5;">
+        Plak hieronder hetzelfde JSON-blok dat je eerder hebt geïmporteerd (bijv. <code>wedstrijdrapporten-word-import.json</code>).
+        De app zoekt rapporten met dezelfde <strong>datum + thuis + uit</strong> en verwijdert die. Handmatig aangemaakte rapporten blijven staan.
+      </div>
+      <textarea id="mreport-bulkdel-text" style="width:100%; min-height:200px; background:var(--bg-3); border:1px solid var(--border-2); color:var(--text); padding:12px; border-radius:7px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; outline:none; resize:vertical;" placeholder='Plak hier het JSON-blokje, of upload het bestand hieronder...'></textarea>
+      <div style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <input type="file" id="mreport-bulkdel-file" accept=".txt,.json,.jsonl,text/plain,application/json" style="display:none;">
+        <button type="button" class="btn" id="mreport-bulkdel-file-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Bestand kiezen…
+        </button>
+        <span id="mreport-bulkdel-file-name" style="font-size:12px; color:var(--text-2);"></span>
+      </div>
+      <div id="mreport-bulkdel-status" style="margin-top:10px; font-size:12px; min-height:18px;"></div>
+      <div class="form-actions" style="margin-top:16px;">
+        <button type="button" class="btn" id="mreport-bulkdel-cancel">Annuleren</button>
+        <button type="button" class="btn" id="mreport-bulkdel-go" style="background:var(--red); color:#fff; border-color:var(--red);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          Verwijderen
         </button>
       </div>
     </div>
@@ -4717,7 +4759,7 @@ function applyFilters(){
       if(new Date(p.datum).getTime() < perCutoff) return false;
     }
     if(q){
-      const hay = `${p.naam||''} ${p.club||''} ${positionLabel(p.positie)}`.toLowerCase();
+      const hay = `${p.naam||''} ${p.club||''} ${p.elftal||''} ${positionLabel(p.positie)}`.toLowerCase();
       if(!hay.includes(q)) return false;
     }
     return true;
@@ -4745,6 +4787,7 @@ function applyFilters(){
           <th data-sort="naam">Speler</th>
           <th data-sort="positie">Positie</th>
           <th data-sort="club">Club</th>
+          <th data-sort="elftal">Elftal</th>
           <th data-sort="huidig_niveau">Huidig</th>
           <th data-sort="potentieel_niveau">Potentieel</th>
           <th data-sort="advies">Advies</th>
@@ -4765,6 +4808,7 @@ function applyFilters(){
             </td>
             <td>${escapeHtml(positionLabel(p.positie))}</td>
             <td>${escapeHtml(p.club||'—')}</td>
+            <td>${escapeHtml(p.elftal||'—')}</td>
             <td><span class="grade ${p.huidig_niveau||'D'}">${p.huidig_niveau||'-'}</span></td>
             <td><span class="grade outline ${p.potentieel_niveau||'D'}">${p.potentieel_niveau||'-'}</span></td>
             <td>${adviesLabel(p.advies)||'—'}</td>
@@ -5020,6 +5064,7 @@ function loadIntoForm(p){
   $('#f-club').value = p.club || '';
   $('#f-plaats').value = p.plaats || '';
   $('#f-rugnummer').value = p.rugnummer || '';
+  $('#f-elftal').value = p.elftal || '';
   $('#f-been').value = p.been || '';
   $('#f-tweebenig').value = p.tweebenig || '';
   $('#f-linie').value = p.linie || '';
@@ -5096,6 +5141,7 @@ async function submitReport(e){
     club: $('#f-club').value.trim(),
     plaats: $('#f-plaats').value.trim(),
     rugnummer: $('#f-rugnummer').value.trim(),
+    elftal: $('#f-elftal').value.trim(),
     been: $('#f-been').value,
     tweebenig: $('#f-tweebenig').value.trim(),
     linie: $('#f-linie').value,
@@ -6574,6 +6620,102 @@ async function runMatchReportImport(){
   }
 }
 
+/* =============== MATCH-REPORT BULK DELETE (via import-bestand) =============== */
+function openMatchReportBulkDeleteModal(){
+  $('#mreport-bulkdel-text').value = '';
+  $('#mreport-bulkdel-status').textContent = '';
+  $('#mreport-bulkdel-status').style.color = '';
+  const fileEl = $('#mreport-bulkdel-file');
+  if(fileEl) fileEl.value = '';
+  const nameEl = $('#mreport-bulkdel-file-name');
+  if(nameEl) nameEl.textContent = '';
+  $('#mreport-bulkdel-backdrop').classList.add('open');
+  setTimeout(()=> $('#mreport-bulkdel-text').focus(), 50);
+}
+function closeMatchReportBulkDeleteModal(){
+  $('#mreport-bulkdel-backdrop').classList.remove('open');
+}
+function _parseImportListRaw(raw){
+  let list = null;
+  try {
+    const data = JSON.parse(raw);
+    list = Array.isArray(data) ? data : [data];
+  } catch(_) {
+    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+    if(lines.length > 1){
+      const parsed = [];
+      let allOk = true;
+      for(const line of lines){
+        try { parsed.push(JSON.parse(line)); } catch(__) { allOk = false; break; }
+      }
+      if(allOk && parsed.length) list = parsed;
+    }
+    if(!list){
+      try {
+        const wrapped = JSON.parse('[' + raw.replace(/}\s*[\r\n]+\s*{/g, '},{') + ']');
+        if(Array.isArray(wrapped) && wrapped.length) list = wrapped;
+      } catch(__) {}
+    }
+  }
+  return list;
+}
+async function runMatchReportBulkDelete(){
+  const status = $('#mreport-bulkdel-status');
+  const raw = $('#mreport-bulkdel-text').value.trim();
+  if(!raw){
+    status.style.color = 'var(--red)';
+    status.textContent = 'Plak eerst het JSON-blok dat je wilt verwijderen.';
+    return;
+  }
+  const list = _parseImportListRaw(raw);
+  if(!list || !list.length){
+    status.style.color = 'var(--red)';
+    status.textContent = 'Het geplakte tekstblok kan niet gelezen worden.';
+    return;
+  }
+  const existing = loadMatchReports();
+  const norm = (s) => (s||'').toString().trim().toLowerCase();
+  const wanted = list.map(e => ({
+    datum: norm(e.datum),
+    thuis: norm(e.thuis),
+    uit: norm(e.uit)
+  }));
+  const toDelete = existing.filter(r =>
+    wanted.some(w =>
+      w.datum === norm(r.datum) &&
+      w.thuis === norm(r.thuis) &&
+      w.uit === norm(r.uit)
+    )
+  );
+  if(!toDelete.length){
+    status.style.color = 'var(--text-2)';
+    status.textContent = `Geen overeenkomende rapporten gevonden (${list.length} in blokje).`;
+    return;
+  }
+  if(!confirm(`${toDelete.length} wedstrijdrapport${toDelete.length===1?'':'en'} verwijderen?\n\nDit kan niet ongedaan worden gemaakt.`)){
+    return;
+  }
+  status.style.color = 'var(--text-2)';
+  status.textContent = `Bezig met verwijderen van ${toDelete.length} rapport${toDelete.length===1?'':'en'}...`;
+  let ok = 0, fail = 0;
+  for(const r of toDelete){
+    try { await deleteMatchReport(r.id); ok++; }
+    catch(e){ fail++; }
+  }
+  if(ok > 0){
+    status.style.color = 'var(--green)';
+    status.textContent = `${ok} rapport${ok===1?'':'en'} verwijderd${fail?` · ${fail} mislukt`:''}.`;
+    toast(`${ok} rapport${ok===1?'':'en'} verwijderd`);
+    setTimeout(()=>{
+      closeMatchReportBulkDeleteModal();
+      if(typeof renderMatches === 'function') renderMatches();
+    }, 900);
+  } else {
+    status.style.color = 'var(--red)';
+    status.textContent = `Verwijderen mislukt.`;
+  }
+}
+
 /* =============== INIT =============== */
 function initApp(){
   if(appInitialized) return;
@@ -6711,6 +6853,32 @@ function initApp(){
     if(e.target.id === 'mreport-import-backdrop') closeMatchReportImportModal();
   });
 
+  // Match-report bulk delete (via import-JSON)
+  $('#match-report-bulk-delete-btn')?.addEventListener('click', openMatchReportBulkDeleteModal);
+  $('#mreport-bulkdel-close')?.addEventListener('click', closeMatchReportBulkDeleteModal);
+  $('#mreport-bulkdel-cancel')?.addEventListener('click', closeMatchReportBulkDeleteModal);
+  $('#mreport-bulkdel-go')?.addEventListener('click', runMatchReportBulkDelete);
+  $('#mreport-bulkdel-file-btn')?.addEventListener('click', ()=> $('#mreport-bulkdel-file').click());
+  $('#mreport-bulkdel-file')?.addEventListener('change', async (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    $('#mreport-bulkdel-file-name').textContent = file.name;
+    try {
+      const text = await file.text();
+      $('#mreport-bulkdel-text').value = text;
+      const status = $('#mreport-bulkdel-status');
+      status.style.color = 'var(--text-2)';
+      status.textContent = `Bestand geladen (${file.name}). Klik op Verwijderen.`;
+    } catch(err) {
+      const status = $('#mreport-bulkdel-status');
+      status.style.color = '#ef4444';
+      status.textContent = 'Bestand kon niet gelezen worden.';
+    }
+  });
+  $('#mreport-bulkdel-backdrop')?.addEventListener('click', e=>{
+    if(e.target.id === 'mreport-bulkdel-backdrop') closeMatchReportBulkDeleteModal();
+  });
+
   $('#modal-close').addEventListener('click', closeDetail);
   $('#modal-backdrop').addEventListener('click', e=>{
     if(e.target.id === 'modal-backdrop') closeDetail();
@@ -6720,6 +6888,7 @@ function initApp(){
       closeDetail();
       closeImportModal();
       closeMatchReportImportModal();
+      closeMatchReportBulkDeleteModal();
       closePlayerPicker();
       closeContactModal();
       closeMatchReportModal();

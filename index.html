@@ -4759,7 +4759,7 @@ function applyFilters(){
       if(new Date(p.datum).getTime() < perCutoff) return false;
     }
     if(q){
-      const hay = `${p.naam||''} ${p.club||''} ${p.elftal||''} ${positionLabel(p.positie)}`.toLowerCase();
+      const hay = `${p.naam||''} ${p.club||''} ${p.elftal||deriveElftalFromReport(p)||''} ${positionLabel(p.positie)}`.toLowerCase();
       if(!hay.includes(q)) return false;
     }
     return true;
@@ -4808,7 +4808,7 @@ function applyFilters(){
             </td>
             <td>${escapeHtml(positionLabel(p.positie))}</td>
             <td>${escapeHtml(p.club||'—')}</td>
-            <td>${escapeHtml(p.elftal||'—')}</td>
+            <td>${escapeHtml(p.elftal || deriveElftalFromReport(p) || p.leeftijd || '—')}</td>
             <td><span class="grade ${p.huidig_niveau||'D'}">${p.huidig_niveau||'-'}</span></td>
             <td><span class="grade outline ${p.potentieel_niveau||'D'}">${p.potentieel_niveau||'-'}</span></td>
             <td>${adviesLabel(p.advies)||'—'}</td>
@@ -5141,7 +5141,13 @@ async function submitReport(e){
     club: $('#f-club').value.trim(),
     plaats: $('#f-plaats').value.trim(),
     rugnummer: $('#f-rugnummer').value.trim(),
-    elftal: $('#f-elftal').value.trim(),
+    elftal: $('#f-elftal').value.trim() || deriveElftalFromReport({
+      club: $('#f-club').value.trim(),
+      wedstrijd: {
+        thuis: $('#f-w-thuis').value.trim(),
+        uit: $('#f-w-uit').value.trim()
+      }
+    }),
     been: $('#f-been').value,
     tweebenig: $('#f-tweebenig').value.trim(),
     linie: $('#f-linie').value,
@@ -5906,6 +5912,33 @@ function escapeHtml(s){
   return String(s).replace(/[&<>"']/g, c => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
   }[c]));
+}
+/* Afleiden van elftal (bv. "O.15-1") uit wedstrijdgegevens.
+   Zoekt naar O.X-Y patroon in thuis of uit; geeft voorkeur aan de teamnaam
+   waarvan de clubnaam overeenkomt met p.club. */
+function deriveElftalFromReport(p){
+  if(!p) return '';
+  const re = /O\.?\s*(\d{1,2})\s*-\s*(\d+)/i;
+  const teams = [
+    p.wedstrijd?.thuis || '',
+    p.wedstrijd?.uit || ''
+  ].filter(Boolean);
+  const club = (p.club || '').toLowerCase().trim();
+  // Voorkeur: team waar clubnaam in voorkomt
+  if(club){
+    for(const t of teams){
+      if(t.toLowerCase().includes(club)){
+        const m = t.match(re);
+        if(m) return `O.${m[1]}-${m[2]}`;
+      }
+    }
+  }
+  // Fallback: eerste team met O.X-Y
+  for(const t of teams){
+    const m = t.match(re);
+    if(m) return `O.${m[1]}-${m[2]}`;
+  }
+  return '';
 }
 function exportJSON(){
   const data = {

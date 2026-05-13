@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /input/
+Disallow: /working/
+
+Sitemap: https://www.scoutinghub.nl/sitemap.xml

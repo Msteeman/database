@@ -6,8 +6,8 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait-primary",
-  "background_color": "#0b0f15",
-  "theme_color": "#0b0f15",
+  "background_color": "#06080d",
+  "theme_color": "#06080d",
   "lang": "nl",
   "categories": ["sports", "productivity"],
   "icons": [

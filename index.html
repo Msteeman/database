@@ -3,8 +3,50 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>ScoutingHub — Marcel Steeman</title>
-<meta name="description" content="Professioneel scoutingsplatform voor jeugdvoetbal" />
+<title>Scouting Hub — Professional Youth Football Scouting Platform (Netherlands)</title>
+<meta name="description" content="Scouting Hub is a professional database and scouting platform for youth football in the Netherlands. Built for clubs, scouts and coaches to evaluate, compare and develop young players (U10–U17) with rich profiles, GRIT scoring, radar comparisons and match reports." />
+<meta name="keywords" content="scouting hub, scoutinghub, jeugdvoetbal, jeugdscouting, youth football scouting, youth football database, voetbalscouting nederland, scouting platform, spelersdatabase, U12, U13, U14, U15, U16, jeugdvoetbal Nederland, voetbal scouting app, scout database, FC Twente, Heracles, jeugdopleiding, talent scouting" />
+<meta name="author" content="Marcel Steeman" />
+<meta name="robots" content="index, follow" />
+<meta name="googlebot" content="index, follow" />
+<link rel="canonical" href="https://www.scoutinghub.nl/" />
+
+<!-- Open Graph -->
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Scouting Hub" />
+<meta property="og:title" content="Scouting Hub — Professional Youth Football Scouting Platform" />
+<meta property="og:description" content="A professional database for youth football scouting in the Netherlands. Player profiles, GRIT scoring, radar comparisons and match reports — built for scouts who want to win." />
+<meta property="og:url" content="https://www.scoutinghub.nl/" />
+<meta property="og:image" content="https://www.scoutinghub.nl/icon-512.png" />
+<meta property="og:image:width" content="512" />
+<meta property="og:image:height" content="512" />
+<meta property="og:locale" content="en_GB" />
+<meta property="og:locale:alternate" content="nl_NL" />
+
+<!-- Twitter -->
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Scouting Hub — Professional Youth Football Scouting" />
+<meta name="twitter:description" content="A professional database for youth football scouting in the Netherlands." />
+<meta name="twitter:image" content="https://www.scoutinghub.nl/icon-512.png" />
+
+<!-- JSON-LD structured data -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Scouting Hub",
+  "alternateName": "ScoutingHub",
+  "url": "https://www.scoutinghub.nl/",
+  "description": "Professional database and scouting platform for youth football in the Netherlands. Player profiles, GRIT scoring, radar comparisons, match reports.",
+  "applicationCategory": "SportsApplication",
+  "operatingSystem": "Web, iOS, Android",
+  "inLanguage": ["en", "nl"],
+  "image": "https://www.scoutinghub.nl/icon-512.png",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "EUR" },
+  "creator": { "@type": "Person", "name": "Marcel Steeman" },
+  "areaServed": { "@type": "Country", "name": "Netherlands" }
+}
+</script>
 
 <!-- PWA -->
 <link rel="manifest" href="manifest.webmanifest" />
@@ -51,6 +93,12 @@
   --grade-c: #f59e0b;
   --grade-d: #ef4444;
   --shadow: 0 10px 30px rgba(0,0,0,.35);
+  /* Film palette — same DNA as the intro */
+  --film-grad: linear-gradient(135deg, #ff8189 0%, #e30613 45%, #f5c518 100%);
+  --film-grad-soft: linear-gradient(135deg, rgba(255,129,137,0.18) 0%, rgba(227,6,19,0.16) 45%, rgba(245,197,24,0.18) 100%);
+  --film-glow: 0 18px 50px rgba(227,6,19,0.42), 0 0 30px rgba(78,161,255,0.12);
+  --film-bg-1: #06080d;
+  --film-bg-2: #0c1119;
   --radius: 10px;
   --radius-sm: 6px;
 }
@@ -69,10 +117,10 @@ html, body {
 }
 body {
   background:
-    radial-gradient(900px 650px at 85% 15%, rgba(227,6,19,.13), transparent 62%),
-    radial-gradient(800px 500px at 15% 110%, rgba(245,197,24,.06), transparent 60%),
-    radial-gradient(1000px 600px at 50% -10%, rgba(227,6,19,.10), transparent 60%),
-    linear-gradient(180deg, #0d1320 0%, #060911 100%);
+    radial-gradient(900px 650px at 85% 15%, rgba(227,6,19,.16), transparent 62%),
+    radial-gradient(800px 500px at 15% 110%, rgba(245,197,24,.08), transparent 60%),
+    radial-gradient(1000px 600px at 50% -10%, rgba(255,129,137,0.10), transparent 60%),
+    linear-gradient(180deg, var(--film-bg-2) 0%, var(--film-bg-1) 100%);
   background-attachment: fixed;
 }
 #app {
@@ -83,7 +131,7 @@ body {
   position: fixed;
   right: -120px; bottom: -120px;
   width: 620px; height: 620px;
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23ff2a3a'/><stop offset='100%25' stop-color='%238a0410'/></linearGradient></defs><path d='M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z' fill='url(%23g)' stroke='rgba(255,255,255,0.9)' stroke-width='1.5'/><text x='40' y='51' text-anchor='middle' font-family='Arial,sans-serif' font-size='26' font-weight='900' fill='white' letter-spacing='-1.5'>SH</text><circle cx='40' cy='13' r='2.8' fill='%23f5c518'/></svg>");
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'><defs><linearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'><stop offset='0%25' stop-color='%23ff8189'/><stop offset='55%25' stop-color='%23e30613'/><stop offset='100%25' stop-color='%23f5c518'/></linearGradient></defs><path d='M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z' fill='url(%23g)' stroke='rgba(255,255,255,0.9)' stroke-width='1.5'/><text x='40' y='51' text-anchor='middle' font-family='Arial,sans-serif' font-size='26' font-weight='900' fill='white' letter-spacing='-1.5'>SH</text><circle cx='40' cy='13' r='2.8' fill='%23f5c518'/></svg>");
   background-repeat: no-repeat;
   background-size: contain;
   opacity: .14;
@@ -111,10 +159,10 @@ a { color: var(--accent); text-decoration: none; }
 #login-overlay {
   position: fixed; inset: 0;
   background:
-    radial-gradient(800px 600px at 50% 50%, rgba(227,6,19,.14), transparent 65%),
-    radial-gradient(900px 500px at 50% -10%, rgba(227,6,19,.12), transparent 60%),
-    radial-gradient(700px 400px at 50% 110%, rgba(245,197,24,.06), transparent 60%),
-    linear-gradient(180deg, #0d1320 0%, #060911 100%);
+    radial-gradient(800px 600px at 50% 50%, rgba(227,6,19,.18), transparent 65%),
+    radial-gradient(900px 500px at 50% -10%, rgba(255,129,137,0.12), transparent 60%),
+    radial-gradient(700px 400px at 50% 110%, rgba(245,197,24,.10), transparent 60%),
+    linear-gradient(180deg, var(--film-bg-2) 0%, var(--film-bg-1) 100%);
   display: flex; align-items: center; justify-content: center;
   z-index: 1000;
   overflow: hidden;
@@ -361,9 +409,17 @@ a { color: var(--accent); text-decoration: none; }
 .login-logo-mark {
   width: 72px; height: 72px;
   display: flex; align-items: center; justify-content: center;
-  filter: drop-shadow(0 6px 20px rgba(227,6,19,.45));
+  filter: drop-shadow(0 18px 50px rgba(227,6,19,0.45)) drop-shadow(0 0 30px rgba(78,161,255,0.18));
 }
 .login-logo-mark svg { width: 100%; height: 100%; display: block; }
+/* Film-gradient text utility — same DNA as the intro wordmark */
+.film-text {
+  background: var(--film-grad);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+}
 .login-title {
   font-size: 22px; font-weight: 700; letter-spacing: .5px;
   text-align: center;
@@ -395,7 +451,10 @@ a { color: var(--accent); text-decoration: none; }
   font-weight: 600; letter-spacing: .3px;
   transition: background .15s;
 }
-.login-btn:hover { background: var(--primary-2); }
+.login-btn:hover {
+  background: var(--film-grad);
+  box-shadow: 0 12px 32px rgba(227,6,19,0.45), 0 0 22px rgba(78,161,255,0.12);
+}
 .login-btn:disabled { opacity: .5; cursor: not-allowed; }
 .login-error {
   color: var(--red); font-size: 12px; min-height: 16px; margin-top: 10px; text-align: center;
@@ -525,8 +584,18 @@ a { color: var(--accent); text-decoration: none; }
   transition: all .15s; font-weight: 500;
 }
 .btn:hover { border-color: var(--primary); }
-.btn-primary { background: var(--primary); border-color: var(--primary); color: white; }
-.btn-primary:hover { background: var(--primary-2); border-color: var(--primary-2); }
+.btn-primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: white;
+  transition: background 0.25s, border-color 0.25s, box-shadow 0.25s, transform 0.15s;
+}
+.btn-primary:hover {
+  background: var(--film-grad);
+  border-color: transparent;
+  box-shadow: 0 10px 28px rgba(227,6,19,0.42), 0 0 20px rgba(78,161,255,0.10);
+  transform: translateY(-1px);
+}
 .btn-ghost { background: transparent; }
 .btn-sm { padding: 6px 10px; font-size: 12px; }
 .btn-danger { color: var(--red); border-color: rgba(239,68,68,.3); }
@@ -2290,9 +2359,451 @@ tbody tr:last-child td { border-bottom: none; }
   .main { padding: 0; }
 }
 
+
+/* =================== CINEMATIC INTRO OVERLAY =================== */
+#intro-overlay {
+  position: fixed; inset: 0; z-index: 10000;
+  background: #06080d;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  opacity: 1;
+  transition: opacity 1.1s cubic-bezier(.4,0,.2,1), transform 1.1s cubic-bezier(.4,0,.2,1);
+}
+#intro-overlay::before {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 50%, rgba(78,161,255,0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 50% 30%, rgba(255,255,255,0.06) 0%, transparent 60%),
+    radial-gradient(circle at 50% 50%, transparent 35%, rgba(0,0,0,0.55) 100%);
+  pointer-events: none;
+  animation: introAmbient 7s ease-in-out infinite;
+}
+@keyframes introAmbient {
+  0%,100% { opacity: 0.9; transform: scale(1); }
+  50%     { opacity: 1;   transform: scale(1.04); }
+}
+#intro-overlay.intro-hide { opacity: 0; pointer-events: none; }
+#intro-overlay.intro-zoom { transform: scale(1.15); }
+#intro-overlay.intro-gone { display: none; }
+
+/* Cinematic light beam */
+.intro-beam {
+  position: absolute; left: 50%; top: -10%; width: 1px; height: 120%;
+  background: linear-gradient(180deg, transparent 0%, rgba(255,255,255,0.32) 30%, rgba(227,6,19,0.55) 50%, rgba(255,255,255,0.32) 70%, transparent 100%);
+  transform: translateX(-50%) scaleY(0);
+  transform-origin: center top;
+  animation: introBeam 1.3s cubic-bezier(.2,.8,.2,1) 0.15s forwards;
+  filter: blur(0.5px);
+}
+@keyframes introBeam {
+  0%   { transform: translateX(-50%) scaleY(0);   opacity: 0; }
+  20%  { opacity: 1; }
+  100% { transform: translateX(-50%) scaleY(1);   opacity: 0.6; }
+}
+
+/* Subtle ambient dust (no rainbow — premium feel) */
+.intro-particles { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.intro-particles span {
+  position: absolute; bottom: -20px; width: 2px; height: 2px; border-radius: 50%;
+  background: rgba(255,255,255,0.55);
+  box-shadow: 0 0 6px rgba(255,255,255,0.5);
+  animation: introDust linear infinite;
+  opacity: 0;
+}
+.intro-particles span:nth-child(1){ left: 12%; animation-duration: 16s; animation-delay: 0s;   }
+.intro-particles span:nth-child(2){ left: 28%; animation-duration: 19s; animation-delay: 2.0s; }
+.intro-particles span:nth-child(3){ left: 42%; animation-duration: 14s; animation-delay: 4.5s; }
+.intro-particles span:nth-child(4){ left: 58%; animation-duration: 18s; animation-delay: 1.2s; }
+.intro-particles span:nth-child(5){ left: 72%; animation-duration: 21s; animation-delay: 3.8s; }
+.intro-particles span:nth-child(6){ left: 88%; animation-duration: 15s; animation-delay: 0.6s; }
+@keyframes introDust {
+  0%   { transform: translateY(0)     scale(0.6); opacity: 0; }
+  15%  { opacity: 0.7; }
+  85%  { opacity: 0.5; }
+  100% { transform: translateY(-115vh) scale(1.4); opacity: 0; }
+}
+
+.intro-stage {
+  position: relative; z-index: 3;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center;
+  padding: 28px;
+  max-width: 92vw;
+  transform: scale(1);
+  transition: transform 1.0s cubic-bezier(.4,0,.2,1), opacity 0.9s ease-out;
+}
+#intro-overlay.intro-out .intro-stage {
+  transform: scale(1.18);
+  opacity: 0;
+}
+
+.intro-logo {
+  position: relative;
+  width: 152px; height: 152px;
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 32px;
+  opacity: 0;
+  transform: translateY(28px) scale(0.82);
+  animation: introLogoIn 1.3s cubic-bezier(.2,.8,.2,1) 0.45s forwards,
+             introLogoBreath 5s ease-in-out 2.0s infinite;
+}
+@keyframes introLogoIn {
+  0%   { opacity: 0; transform: translateY(28px) scale(0.82); filter: drop-shadow(0 0 0 rgba(227,6,19,0)); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0)    scale(1);    filter: drop-shadow(0 20px 60px rgba(227,6,19,0.55)) drop-shadow(0 0 40px rgba(78,161,255,0.18)); }
+}
+@keyframes introLogoBreath {
+  0%,100% { transform: translateY(0) scale(1);    filter: drop-shadow(0 20px 60px rgba(227,6,19,0.55)) drop-shadow(0 0 40px rgba(78,161,255,0.18)); }
+  50%     { transform: translateY(-3px) scale(1.025); filter: drop-shadow(0 26px 80px rgba(227,6,19,0.7))  drop-shadow(0 0 55px rgba(78,161,255,0.28)); }
+}
+.intro-logo svg { width: 100%; height: 100%; position: relative; z-index: 2; }
+.intro-logo::after {
+  content: '';
+  position: absolute; left: 50%; top: 50%; width: 220px; height: 220px;
+  transform: translate(-50%,-50%);
+  background: radial-gradient(circle, rgba(227,6,19,0.35) 0%, rgba(227,6,19,0.10) 35%, transparent 70%);
+  pointer-events: none;
+  opacity: 0;
+  animation: introLogoGlow 1.4s ease-out 0.7s forwards;
+  z-index: 1;
+}
+@keyframes introLogoGlow {
+  0%   { opacity: 0; transform: translate(-50%,-50%) scale(0.5); }
+  100% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
+}
+
+/* Wordmark — single elegant line */
+.intro-title {
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: clamp(34px, 6vw, 64px);
+  font-weight: 800;
+  letter-spacing: -0.015em;
+  margin: 0;
+  line-height: 1;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: baseline;
+}
+.intro-title .letter {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(24px);
+  filter: blur(8px);
+  color: #ffffff;
+  animation: introLetter 0.7s cubic-bezier(.2,.8,.2,1) forwards;
+}
+.intro-title .letter.accent {
+  background: linear-gradient(135deg, #ff8189 0%, #e30613 45%, #f5c518 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+@keyframes introLetter {
+  0%   { opacity: 0; transform: translateY(24px); filter: blur(8px); }
+  100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
+}
+
+.intro-rule {
+  height: 1px; width: 0;
+  margin: 22px auto 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.85) 50%, transparent 100%);
+  animation: introRule 0.9s cubic-bezier(.4,0,.2,1) 2.55s forwards;
+}
+@keyframes introRule {
+  0%   { width: 0;     opacity: 0; }
+  100% { width: 240px; opacity: 1; }
+}
+
+.intro-tagline {
+  margin-top: 20px;
+  font-size: clamp(11px, 1.3vw, 14px);
+  font-weight: 500;
+  letter-spacing: 0.46em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.78);
+  opacity: 0;
+  animation: introFadeUp 0.9s ease-out 3.10s forwards;
+}
+.intro-tagline em {
+  font-style: normal;
+  color: #e30613;
+  font-weight: 700;
+}
+@keyframes introFadeUp {
+  0%   { opacity: 0; transform: translateY(14px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.intro-meta {
+  margin-top: 14px;
+  display: flex; gap: 22px; align-items: center; justify-content: center;
+  font-size: clamp(9px, 0.9vw, 11px);
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.40);
+  opacity: 0;
+  animation: introFadeUp 0.9s ease-out 3.55s forwards;
+}
+.intro-meta span { display: inline-flex; align-items: center; gap: 8px; }
+.intro-meta b { color: rgba(255,255,255,0.7); font-weight: 600; }
+.intro-meta i {
+  font-style: normal;
+  width: 4px; height: 4px; border-radius: 50%;
+  background: rgba(255,255,255,0.4);
+  display: inline-block;
+}
+
+.intro-corner {
+  position: absolute;
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.32em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.32);
+  opacity: 0;
+  animation: introFadeUp 0.9s ease-out 0.6s forwards;
+}
+.intro-corner.tl { top: 22px;    left: 26px;   }
+.intro-corner.tr { top: 22px;    right: 26px;  text-align: right; }
+.intro-corner.bl { bottom: 22px; left: 26px;   }
+.intro-corner.br { bottom: 22px; right: 26px;  text-align: right; }
+.intro-corner b { color: rgba(255,255,255,0.55); font-weight: 700; }
+
+.intro-skip {
+  position: absolute; top: 22px; right: 26px;
+  padding: 8px 16px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.16);
+  color: rgba(255,255,255,0.7);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  cursor: pointer;
+  z-index: 5;
+  opacity: 0;
+  animation: introFadeUp 0.7s ease-out 1.8s forwards;
+  transition: background 0.2s, color 0.2s, border-color 0.2s;
+}
+.intro-skip:hover {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  border-color: rgba(255,255,255,0.32);
+}
+
+/* Final light-bloom that sweeps the screen and reveals login */
+.intro-bloom {
+  position: absolute; left: 50%; top: 50%;
+  width: 10px; height: 10px;
+  background: radial-gradient(circle, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.18) 40%, rgba(255,255,255,0) 75%);
+  transform: translate(-50%,-50%) scale(0);
+  pointer-events: none;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+}
+#intro-overlay.intro-out .intro-bloom {
+  animation: introBloom 1.4s cubic-bezier(.4,0,.2,1) forwards;
+}
+@keyframes introBloom {
+  0%   { transform: translate(-50%,-50%) scale(0);    opacity: 0; }
+  40%  { opacity: 0.55; }
+  100% { transform: translate(-50%,-50%) scale(280);  opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #intro-overlay, #intro-overlay::before, .intro-beam, .intro-particles span,
+  .intro-logo, .intro-logo::after, .intro-title .letter, .intro-rule,
+  .intro-tagline, .intro-meta, .intro-corner, .intro-skip, .intro-bloom {
+    animation: none !important;
+  }
+  .intro-logo, .intro-title .letter, .intro-tagline, .intro-meta,
+  .intro-corner, .intro-skip { opacity: 1 !important; transform: none !important; filter: none !important; }
+  .intro-rule { width: 240px !important; opacity: 1 !important; }
+}
+
+/* =================== LOGIN ENTRANCE TRANSITION =================== */
+#login-overlay.login-enter {
+  animation: loginEnter 1.1s cubic-bezier(.2,.8,.2,1) forwards;
+}
+@keyframes loginEnter {
+  0%   { opacity: 0; transform: translateY(60px) scale(0.96); filter: blur(10px); }
+  60%  { opacity: 1; filter: blur(0); }
+  100% { opacity: 1; transform: translateY(0)    scale(1);    filter: blur(0); }
+}
+#login-overlay.login-enter .login-hero,
+#login-overlay.login-enter .login-form,
+#login-overlay.login-enter .login-card,
+#login-overlay.login-enter .login-panel {
+  animation: loginItemRise 0.9s cubic-bezier(.2,.8,.2,1) 0.35s backwards;
+}
+@keyframes loginItemRise {
+  0%   { opacity: 0; transform: translateY(28px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #login-overlay.login-enter,
+  #login-overlay.login-enter .login-hero,
+  #login-overlay.login-enter .login-form,
+  #login-overlay.login-enter .login-card,
+  #login-overlay.login-enter .login-panel {
+    animation: none !important;
+    opacity: 1 !important; transform: none !important; filter: none !important;
+  }
+}
+
+/* =================== COMPARE AUTOCOMPLETE =================== */
+.compare-search-wrap { position: relative; flex: 1; min-width: 220px; }
+.compare-search-wrap .compare-search { width: 100%; }
+.compare-suggest {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+  background: var(--card, #141a24);
+  border: 1px solid var(--border, rgba(255,255,255,0.10));
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(0,0,0,0.45);
+  max-height: 320px;
+  overflow-y: auto;
+  z-index: 60;
+  padding: 6px;
+  display: none;
+}
+.compare-suggest.open { display: block; }
+.compare-suggest-item {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; text-align: left;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: transparent;
+  border: 0;
+  color: var(--text-1, #fff);
+  cursor: pointer;
+  font: inherit;
+  transition: background 0.12s;
+}
+.compare-suggest-item:hover,
+.compare-suggest-item.active { background: rgba(255,255,255,0.06); }
+.compare-suggest-item.selected { opacity: 0.5; }
+.compare-suggest-avatar {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: linear-gradient(135deg, #e30613 0%, #4ea1ff 100%);
+  color: #fff; font-weight: 700; font-size: 11px;
+  display: flex; align-items: center; justify-content: center;
+  flex: 0 0 28px;
+}
+.compare-suggest-body { flex: 1; min-width: 0; }
+.compare-suggest-name {
+  font-size: 13px; font-weight: 600; color: var(--text-1, #fff);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.compare-suggest-meta {
+  font-size: 11px; color: var(--text-3, rgba(255,255,255,0.55));
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.compare-suggest-grade {
+  font-size: 10px; font-weight: 700;
+  padding: 3px 7px; border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: var(--text-2, rgba(255,255,255,0.8));
+}
+.compare-suggest-empty {
+  padding: 14px; text-align: center;
+  color: var(--text-3, rgba(255,255,255,0.55));
+  font-size: 12px;
+}
+
+/* =================== DATABASE MULTI-SELECT =================== */
+.db-check { width: 16px; height: 16px; cursor: pointer; accent-color: #e30613; }
+.db-check-col { width: 36px; text-align: center; }
+.db-row-checked { background: rgba(227,6,19,0.07) !important; }
+.db-row-checked td { border-color: rgba(227,6,19,0.18) !important; }
+.db-compare-bar {
+  position: sticky; bottom: 12px;
+  margin-top: 14px;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(227,6,19,0.95) 0%, rgba(180,5,15,0.95) 100%);
+  border-radius: 14px;
+  color: #fff;
+  box-shadow: 0 14px 40px rgba(227,6,19,0.35);
+  z-index: 20;
+  backdrop-filter: blur(8px);
+  animation: dbBarIn 0.25s ease-out;
+}
+@keyframes dbBarIn {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+.db-compare-bar-text { flex: 1; font-weight: 600; font-size: 14px; }
+.db-compare-bar-text small { display:block; font-weight: 400; opacity: 0.8; font-size: 11px; margin-top: 2px; }
+.db-compare-bar-btn {
+  padding: 9px 16px;
+  border-radius: 999px;
+  border: 0;
+  font-weight: 700;
+  font-size: 13px;
+  cursor: pointer;
+  transition: transform 0.15s, background 0.15s;
+}
+.db-compare-bar-btn.primary { background: #fff; color: #e30613; }
+.db-compare-bar-btn.primary:hover { transform: translateY(-1px); background: #fffbe0; }
+.db-compare-bar-btn.ghost { background: rgba(255,255,255,0.18); color: #fff; }
+.db-compare-bar-btn.ghost:hover { background: rgba(255,255,255,0.28); }
+.db-check-all { cursor: pointer; accent-color: #e30613; }
+
+
 </style>
 </head>
 <body>
+
+<!-- =================== CINEMATIC INTRO =================== -->
+<div id="intro-overlay">
+  <div class="intro-beam"></div>
+  <div class="intro-particles"><span></span><span></span><span></span><span></span><span></span><span></span></div>
+  <div class="intro-corner tl"><b>SH</b> &middot; Scouting Hub</div>
+  <div class="intro-corner tr">Reel 01 &middot; <b>2026</b></div>
+  <div class="intro-corner bl">Confidential &middot; Pre-release</div>
+  <div class="intro-corner br">Marcel Steeman &middot; <b>NLD</b></div>
+  <button class="intro-skip" type="button" id="intro-skip">Skip</button>
+  <div class="intro-stage">
+    <div class="intro-logo">
+      <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="introShield" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%"  stop-color="#e30613"/>
+            <stop offset="55%" stop-color="#ff5d6a"/>
+            <stop offset="100%" stop-color="#f5c518"/>
+          </linearGradient>
+          <linearGradient id="introShine" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%"  stop-color="#ffffff" stop-opacity="0.55"/>
+            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path d="M80 8 L142 30 L142 78 C142 116 116 144 80 154 C44 144 18 116 18 78 L18 30 Z"
+              fill="url(#introShield)" stroke="rgba(255,255,255,0.5)" stroke-width="1.4"/>
+        <path d="M80 8 L142 30 L142 60 C120 64 100 60 80 56 C60 60 40 64 18 60 L18 30 Z"
+              fill="url(#introShine)"/>
+        <text x="80" y="100" text-anchor="middle" font-family="Inter, system-ui, sans-serif"
+              font-weight="900" font-size="58" fill="#ffffff" letter-spacing="-2">SH</text>
+      </svg>
+    </div>
+    <h1 class="intro-title" aria-label="ScoutingHub">
+      <span class="letter" style="animation-delay:1.30s">S</span><span class="letter" style="animation-delay:1.38s">c</span><span class="letter" style="animation-delay:1.46s">o</span><span class="letter" style="animation-delay:1.54s">u</span><span class="letter" style="animation-delay:1.62s">t</span><span class="letter" style="animation-delay:1.70s">i</span><span class="letter" style="animation-delay:1.78s">n</span><span class="letter" style="animation-delay:1.86s">g</span><span class="letter accent" style="animation-delay:2.00s">H</span><span class="letter accent" style="animation-delay:2.08s">u</span><span class="letter accent" style="animation-delay:2.16s">b</span>
+    </h1>
+    <div class="intro-rule"></div>
+    <div class="intro-tagline">Professional <em>&middot;</em> Youth Football Scouting</div>
+    <div class="intro-meta">
+      <span><b>Netherlands</b></span>
+      <i></i>
+      <span>Youth Academy</span>
+      <i></i>
+      <span>Est. <b>2026</b></span>
+    </div>
+  </div>
+  <div class="intro-bloom"></div>
+</div>
+
 
 <!-- =================== LOADER =================== -->
 <div id="loader">
@@ -2323,7 +2834,7 @@ tbody tr:last-child td { border-bottom: none; }
         <circle cx="40" cy="13" r="2.8" fill="#f5c518"/>
       </svg>
     </div>
-    <h1 class="login-hero-title"><span class="word">Scouting</span><br><span class="word">Platform</span></h1>
+    <h1 class="login-hero-title"><span class="word film-text">Scouting</span><br><span class="word">Platform</span></h1>
     <div class="login-hero-tag">Professional<span>•</span>Edition</div>
   </div>
   <div class="login-card">
@@ -2332,8 +2843,9 @@ tbody tr:last-child td { border-bottom: none; }
         <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#ff2a3a"/>
-              <stop offset="100%" stop-color="#8a0410"/>
+              <stop offset="0%" stop-color="#ff8189"/>
+              <stop offset="55%" stop-color="#e30613"/>
+              <stop offset="100%" stop-color="#f5c518"/>
             </linearGradient>
           </defs>
           <path d="M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z"
@@ -2344,7 +2856,7 @@ tbody tr:last-child td { border-bottom: none; }
         </svg>
       </div>
       <div>
-        <div class="login-title">ScoutingHub</div>
+        <div class="login-title"><span class="film-text">Scouting</span><span style="color:#fff;">Hub</span></div>
         <div class="login-sub">Professional Edition</div>
       </div>
     </div>
@@ -2656,7 +3168,7 @@ tbody tr:last-child td { border-bottom: none; }
           <div class="compare-picker">
             <div class="compare-picker-head">
               <div class="compare-picker-title">Speler toevoegen</div>
-              <input type="search" id="cmp-search" placeholder="Zoek op naam, club, positie..." class="compare-search" />
+              <div class="compare-search-wrap"><input type="search" id="cmp-search" placeholder="Zoek op naam, club, positie..." class="compare-search" autocomplete="off" /><div class="compare-suggest" id="cmp-suggest"></div></div>
             </div>
             <div class="compare-picker-list" id="cmp-picker-list"></div>
           </div>
@@ -5437,10 +5949,14 @@ function applyFilters(){
     wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">○</div><div>Geen spelers gevonden.</div></div>';
     return;
   }
+  const filteredIds = filtered.map(p => p.id);
+  dbCheckedIds = dbCheckedIds.filter(id => filteredIds.includes(id));
+  const allChecked = filteredIds.length > 0 && filteredIds.every(id => dbCheckedIds.includes(id));
   wrap.innerHTML = `
     <table>
       <thead>
         <tr>
+          <th class="db-check-col"><input type="checkbox" class="db-check-all" id="db-check-all" ${allChecked?'checked':''} aria-label="Selecteer alles"/></th>
           <th data-sort="naam">Speler</th>
           <th data-sort="positie">Positie</th>
           <th data-sort="club">Club</th>
@@ -5453,7 +5969,8 @@ function applyFilters(){
       </thead>
       <tbody>
         ${filtered.map(p=>`
-          <tr data-id="${p.id}">
+          <tr data-id="${p.id}" class="${dbCheckedIds.includes(p.id)?'db-row-checked':''}">
+            <td class="db-check-col"><input type="checkbox" class="db-check" data-id="${escapeAttr(p.id)}" ${dbCheckedIds.includes(p.id)?'checked':''} aria-label="Selecteer ${escapeAttr(p.naam||'speler')}"/></td>
             <td>
               <div style="display:flex; align-items:center; gap:10px;">
                 <div class="recent-avatar" style="width:30px;height:30px;font-size:11px;">${initials(p.naam)}</div>
@@ -5474,11 +5991,44 @@ function applyFilters(){
         `).join('')}
       </tbody>
     </table>
+    <div id="db-compare-bar-host"></div>
   `;
+  // Row click → detail (but ignore clicks on the checkbox column)
   $$('tbody tr', wrap).forEach(tr=>{
-    tr.addEventListener('click', ()=> openDetail(tr.dataset.id));
+    tr.addEventListener('click', (ev)=>{
+      if(ev.target.closest('.db-check-col')) return;
+      openDetail(tr.dataset.id);
+    });
   });
-  $$('thead th', wrap).forEach(th=>{
+  // Per-row checkbox
+  $$('.db-check', wrap).forEach(cb => {
+    cb.addEventListener('click', (ev) => ev.stopPropagation());
+    cb.addEventListener('change', (ev) => {
+      ev.stopPropagation();
+      const id = cb.dataset.id;
+      if(cb.checked){
+        if(!dbCheckedIds.includes(id)) dbCheckedIds.push(id);
+      } else {
+        dbCheckedIds = dbCheckedIds.filter(x => x !== id);
+      }
+      applyFilters();
+    });
+  });
+  // Select-all checkbox
+  const allCb = $('#db-check-all', wrap);
+  if(allCb){
+    allCb.addEventListener('click', (ev) => ev.stopPropagation());
+    allCb.addEventListener('change', () => {
+      if(allCb.checked){
+        filteredIds.forEach(id => { if(!dbCheckedIds.includes(id)) dbCheckedIds.push(id); });
+      } else {
+        dbCheckedIds = dbCheckedIds.filter(id => !filteredIds.includes(id));
+      }
+      applyFilters();
+    });
+  }
+  // Sortable headers (skip checkbox col)
+  $$('thead th[data-sort]', wrap).forEach(th=>{
     th.addEventListener('click', ()=>{
       const k = th.dataset.sort;
       if(sortKey === k) sortAsc = !sortAsc;
@@ -5486,6 +6036,41 @@ function applyFilters(){
       applyFilters();
     });
   });
+  renderDbCompareBar();
+}
+
+function renderDbCompareBar(){
+  const host = document.getElementById('db-compare-bar-host');
+  if(!host) return;
+  const n = dbCheckedIds.length;
+  if(n === 0){ host.innerHTML = ''; return; }
+  const max = (typeof CMP_MAX === 'number') ? CMP_MAX : 6;
+  const overflow = n > max;
+  host.innerHTML = `
+    <div class="db-compare-bar">
+      <div class="db-compare-bar-text">
+        ${n} speler${n===1?'':'s'} geselecteerd
+        ${overflow ? `<small>Alleen de eerste ${max} worden vergeleken</small>` : (n < 2 ? '<small>Selecteer minimaal 2 om te vergelijken</small>' : '<small>Klaar om te vergelijken</small>')}
+      </div>
+      <button type="button" class="db-compare-bar-btn ghost" id="db-compare-clear">Wis</button>
+      <button type="button" class="db-compare-bar-btn primary" id="db-compare-go" ${n<2?'disabled':''}>Vergelijken &rarr;</button>
+    </div>
+  `;
+  const clearBtn = document.getElementById('db-compare-clear');
+  if(clearBtn){
+    clearBtn.addEventListener('click', () => {
+      dbCheckedIds = [];
+      applyFilters();
+    });
+  }
+  const goBtn = document.getElementById('db-compare-go');
+  if(goBtn && !goBtn.disabled){
+    goBtn.addEventListener('click', () => {
+      cmpSelectedIds = dbCheckedIds.slice(0, max);
+      dbCheckedIds = [];
+      go('compare');
+    });
+  }
 }
 
 /* =============== COMPARE VIEW =============== */
@@ -5511,6 +6096,7 @@ const CMP_GRADE_VAL = { A:4, B:3, C:2, D:1 };
 
 let cmpSelectedIds = [];
 let cmpSearchQuery = '';
+let dbCheckedIds = [];
 
 function cmpPlayerById(id){ return loadPlayers().find(p => p.id === id) || null; }
 function cmpGradeNum(g){ return CMP_GRADE_VAL[g] || 0; }
@@ -5545,6 +6131,25 @@ function renderCompare(){
       search.addEventListener('input', (e) => {
         cmpSearchQuery = (e.target.value || '').toLowerCase().trim();
         renderComparePicker();
+        renderCompareSuggest(cmpSearchQuery);
+      });
+      search.addEventListener('focus', () => {
+        if(cmpSearchQuery) renderCompareSuggest(cmpSearchQuery);
+      });
+      search.addEventListener('keydown', (e) => {
+        if(e.key === 'Escape'){
+          const box = $('#cmp-suggest');
+          if(box){ box.classList.remove('open'); }
+          search.value = '';
+          cmpSearchQuery = '';
+          renderComparePicker();
+        }
+      });
+      document.addEventListener('click', (ev) => {
+        const box = $('#cmp-suggest');
+        if(!box) return;
+        if(box.contains(ev.target) || ev.target === search) return;
+        box.classList.remove('open');
       });
     }
     const clearBtn = $('#cmp-clear');
@@ -5555,6 +6160,62 @@ function renderCompare(){
       });
     }
   }
+}
+
+
+function renderCompareSuggest(query){
+  const box = $('#cmp-suggest');
+  if(!box) return;
+  const q = (query||'').toLowerCase().trim();
+  if(!q){ box.classList.remove('open'); box.innerHTML = ''; return; }
+  const players = loadPlayers();
+  const matches = players
+    .filter(p => {
+      const hay = `${p.naam||''} ${p.club||''} ${positionLabel(p.positie)||''} ${p.elftal||''}`.toLowerCase();
+      return hay.includes(q);
+    })
+    .sort((a,b) => (a.naam||'').localeCompare(b.naam||'', 'nl'))
+    .slice(0, 10);
+  if(!matches.length){
+    box.innerHTML = `<div class="compare-suggest-empty">Geen spelers gevonden voor "${escapeHtml(q)}"</div>`;
+    box.classList.add('open');
+    return;
+  }
+  box.innerHTML = matches.map(p => {
+    const initialsStr = ((p.naam||'').split(/\s+/).map(s => s[0]||'').slice(0,2).join('') || '?').toUpperCase();
+    const meta = [positionLabel(p.positie), p.club].filter(Boolean).join(' · ');
+    const grade = p.huidig_niveau || '-';
+    const isSel = cmpSelectedIds.includes(p.id);
+    return `
+      <button type="button" class="compare-suggest-item ${isSel?'selected':''}" data-id="${escapeAttr(p.id)}">
+        <div class="compare-suggest-avatar">${escapeHtml(initialsStr)}</div>
+        <div class="compare-suggest-body">
+          <div class="compare-suggest-name">${escapeHtml(p.naam||'?')}${isSel?' &check;':''}</div>
+          <div class="compare-suggest-meta">${escapeHtml(meta||'—')}</div>
+        </div>
+        <div class="compare-suggest-grade">${escapeHtml(grade)}</div>
+      </button>`;
+  }).join('');
+  box.classList.add('open');
+  box.querySelectorAll('.compare-suggest-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const idx = cmpSelectedIds.indexOf(id);
+      if(idx >= 0){
+        cmpSelectedIds.splice(idx, 1);
+      } else {
+        if(cmpSelectedIds.length >= CMP_MAX){
+          toast(`Maximaal ${CMP_MAX} spelers tegelijk`);
+          return;
+        }
+        cmpSelectedIds.push(id);
+      }
+      renderComparePicker();
+      renderCompareSelected();
+      renderCompareResults();
+      renderCompareSuggest($('#cmp-search').value || '');
+    });
+  });
 }
 
 function renderComparePicker(){
@@ -8289,6 +8950,52 @@ function initAuthForms(){
   $('#login-pw').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
   $('#login-email').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#login-pw').focus(); });
 }
+
+
+/* =============== CINEMATIC INTRO =============== */
+(function setupIntro(){
+  const overlay = document.getElementById('intro-overlay');
+  if(!overlay) return;
+  try {
+    if(sessionStorage.getItem('sh_intro_done') === '1'){
+      overlay.classList.add('intro-hide','intro-gone');
+      return;
+    }
+  } catch(e){}
+  const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const holdMs = prefersReduced ? 800 : 5400;
+  const outMs  = prefersReduced ? 200 : 1100;
+  let dismissed = false;
+  function triggerLoginEnter(){
+    // Add a one-shot entrance class on the login overlay as soon as it appears
+    const login = document.getElementById('login-overlay');
+    if(!login) return;
+    login.classList.add('login-enter');
+    setTimeout(() => login.classList.remove('login-enter'), 1400);
+  }
+  function dismiss(){
+    if(dismissed) return;
+    dismissed = true;
+    overlay.classList.add('intro-out');           // zoom stage + bloom
+    setTimeout(() => {
+      overlay.classList.add('intro-hide');
+      triggerLoginEnter();
+    }, Math.max(0, outMs - 250));                  // start login slide while bloom is at peak
+    setTimeout(() => {
+      overlay.classList.add('intro-gone');
+      try { sessionStorage.setItem('sh_intro_done', '1'); } catch(e){}
+    }, outMs + 600);
+  }
+  const skip = document.getElementById('intro-skip');
+  if(skip){ skip.addEventListener('click', dismiss); }
+  document.addEventListener('keydown', function onKey(e){
+    if(e.key === 'Escape' || e.key === 'Enter' || e.key === ' '){
+      dismiss();
+      document.removeEventListener('keydown', onKey);
+    }
+  });
+  setTimeout(dismiss, holdMs);
+})();
 
 /* =============== BOOT =============== */
 initAuthForms();

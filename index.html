@@ -3261,6 +3261,7 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
 
         <div id="matches-list" class="matches-list"></div>
+        <div id="match-compare-bar-host"></div>
         <div id="matches-empty" style="display:none; text-align:center; padding:60px 20px; color:var(--text-3);">
           <div style="font-size:14px; margin-bottom:10px;">Nog geen wedstrijden bekend.</div>
           <div style="font-size:12px;">Wedstrijden verschijnen automatisch zodra je rapporten opslaat met een thuis- en uitspelende ploeg, of klik op <strong>Wedstrijd rapporteren</strong>.</div>
@@ -6053,6 +6054,7 @@ function renderDbCompareBar(){
         ${overflow ? `<small>Alleen de eerste ${max} worden vergeleken</small>` : (n < 2 ? '<small>Selecteer minimaal 2 om te vergelijken</small>' : '<small>Klaar om te vergelijken</small>')}
       </div>
       <button type="button" class="db-compare-bar-btn ghost" id="db-compare-clear">Wis</button>
+      <button type="button" class="db-compare-bar-btn" id="db-bulk-delete" style="color:#ef4444;border-color:#ef4444;">Verwijder ${n}</button>
       <button type="button" class="db-compare-bar-btn primary" id="db-compare-go" ${n<2?'disabled':''}>Vergelijken &rarr;</button>
     </div>
   `;
@@ -6061,6 +6063,25 @@ function renderDbCompareBar(){
     clearBtn.addEventListener('click', () => {
       dbCheckedIds = [];
       applyFilters();
+    });
+  }
+  const delBtn = document.getElementById('db-bulk-delete');
+  if(delBtn){
+    delBtn.addEventListener('click', async () => {
+      const count = dbCheckedIds.length;
+      if(count === 0) return;
+      if(!confirm(`${count} speler${count===1?'':'s'} definitief verwijderen?\n\nDit kan niet ongedaan worden gemaakt.`)) return;
+      delBtn.disabled = true;
+      delBtn.textContent = 'Bezig...';
+      const ids = dbCheckedIds.slice();
+      let ok = 0, fail = 0;
+      for(const id of ids){
+        try { await deletePlayer(id); ok++; }
+        catch(e){ console.error('delete failed', id, e); fail++; }
+      }
+      dbCheckedIds = [];
+      applyFilters();
+      if(fail > 0) alert(`${ok} verwijderd, ${fail} mislukt. Zie console voor details.`);
     });
   }
   const goBtn = document.getElementById('db-compare-go');
@@ -6097,6 +6118,7 @@ const CMP_GRADE_VAL = { A:4, B:3, C:2, D:1 };
 let cmpSelectedIds = [];
 let cmpSearchQuery = '';
 let dbCheckedIds = [];
+let matchCheckedIds = [];
 
 function cmpPlayerById(id){ return loadPlayers().find(p => p.id === id) || null; }
 function cmpGradeNum(g){ return CMP_GRADE_VAL[g] || 0; }
@@ -7114,6 +7136,7 @@ function renderMatches(){
       const ageBadgeR = m.age
         ? `<span class="match-age-badge">${escapeHtml(m.age)}</span>`
         : '';
+      const checked = matchCheckedIds.includes(m.id) ? 'checked' : '';
       html += `
         <div class="match-card match-report-card" data-report-id="${escapeHtml(m.id)}">
           <div class="match-date">
@@ -7123,6 +7146,9 @@ function renderMatches(){
           </div>
           <div class="match-teams">
             <div class="match-teams-row">
+              <label style="display:inline-flex;align-items:center;margin-right:8px;cursor:pointer;" onclick="event.stopPropagation()">
+                <input type="checkbox" class="match-report-check" data-id="${escapeHtml(m.id)}" ${checked} style="width:18px;height:18px;cursor:pointer;">
+              </label>
               <span class="match-team-home">${thuisClean}</span>
               <span class="match-vs">vs</span>
               <span class="match-team-away">${uitClean}</span>
@@ -7260,6 +7286,59 @@ function renderMatches(){
       try { await deleteMatchReport(btn.dataset.reportId); toast('Verwijderd'); } catch(_){}
     });
   });
+
+  list.querySelectorAll('.match-report-check').forEach(cb => {
+    cb.addEventListener('change', (ev) => {
+      ev.stopPropagation();
+      const id = cb.dataset.id;
+      if(cb.checked){ if(!matchCheckedIds.includes(id)) matchCheckedIds.push(id); }
+      else { matchCheckedIds = matchCheckedIds.filter(x => x !== id); }
+      renderMatchCompareBar();
+    });
+  });
+
+  renderMatchCompareBar();
+}
+
+function renderMatchCompareBar(){
+  const host = document.getElementById('match-compare-bar-host');
+  if(!host) return;
+  const n = matchCheckedIds.length;
+  if(n === 0){ host.innerHTML = ''; return; }
+  host.innerHTML = `
+    <div class="db-compare-bar">
+      <div class="db-compare-bar-text">${n} rapport${n===1?'':'en'} geselecteerd</div>
+      <button type="button" class="db-compare-bar-btn ghost" id="match-compare-clear">Wis</button>
+      <button type="button" class="db-compare-bar-btn" id="match-bulk-delete" style="color:#ef4444;border-color:#ef4444;">Verwijder ${n}</button>
+    </div>
+  `;
+  const clearBtn = document.getElementById('match-compare-clear');
+  if(clearBtn){
+    clearBtn.addEventListener('click', () => {
+      matchCheckedIds = [];
+      renderMatches();
+    });
+  }
+  const delBtn = document.getElementById('match-bulk-delete');
+  if(delBtn){
+    delBtn.addEventListener('click', async () => {
+      const count = matchCheckedIds.length;
+      if(count === 0) return;
+      if(!confirm(`${count} wedstrijdrapport${count===1?'':'en'} definitief verwijderen?\n\nDit kan niet ongedaan worden gemaakt.`)) return;
+      delBtn.disabled = true;
+      delBtn.textContent = 'Bezig...';
+      const ids = matchCheckedIds.slice();
+      let ok = 0, fail = 0;
+      for(const id of ids){
+        try { await deleteMatchReport(id); ok++; }
+        catch(e){ console.error('delete report failed', id, e); fail++; }
+      }
+      matchCheckedIds = [];
+      renderMatches();
+      if(fail > 0) alert(`${ok} verwijderd, ${fail} mislukt. Zie console voor details.`);
+      else toast(`${ok} rapport${ok===1?'':'en'} verwijderd`);
+    });
+  }
 }
 
 function renderPitch(){

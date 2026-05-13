@@ -135,30 +135,114 @@ a { color: var(--accent); text-decoration: none; }
 .login-hero-mark {
   width: 340px; height: 340px;
   filter: drop-shadow(0 24px 60px rgba(227,6,19,.45));
-  animation: appleHeroIn 1.6s cubic-bezier(.16,1,.3,1) both, appleFloat 7s ease-in-out 2s infinite;
+  animation: appleHeroIn 1.8s cubic-bezier(.16,1,.3,1) both, appleFloat 7s ease-in-out 2.4s infinite;
   position: relative;
   will-change: transform, opacity, filter;
 }
+/* Achtergrond glow-puls */
 .login-hero-mark::before {
   content: '';
-  position: absolute; inset: -40px;
-  background: radial-gradient(circle at center, rgba(227,6,19,.28), transparent 60%);
-  filter: blur(30px);
-  z-index: -1;
-  animation: appleGlow 6s ease-in-out 1.5s infinite both;
+  position: absolute; inset: -60px;
+  background: radial-gradient(circle at center, rgba(227,6,19,.38), transparent 60%);
+  filter: blur(36px);
+  z-index: -2;
+  animation: appleGlow 5s ease-in-out 1.5s infinite both;
   opacity: 0;
 }
-.login-hero-mark svg { width: 100%; height: 100%; display: block; }
+/* Draaiende gradient ring rond logo */
+.login-hero-mark::after {
+  content: '';
+  position: absolute;
+  inset: -22px;
+  border-radius: 50%;
+  padding: 2px;
+  background: conic-gradient(
+    from 0deg,
+    rgba(227,6,19,.0) 0deg,
+    rgba(227,6,19,.0) 40deg,
+    rgba(255,42,58,.85) 90deg,
+    rgba(245,197,24,.7) 150deg,
+    rgba(255,42,58,.85) 210deg,
+    rgba(227,6,19,.0) 280deg,
+    rgba(227,6,19,.0) 360deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  filter: blur(.4px);
+  opacity: 0;
+  z-index: -1;
+  animation: appleRingFade 1.6s cubic-bezier(.16,1,.3,1) 1.0s forwards, appleRingSpin 9s linear 1.2s infinite;
+}
+.login-hero-mark svg { width: 100%; height: 100%; display: block; position: relative; z-index: 1; }
+
+/* Cinematic particles laag — kleine lichtpuntjes die opstijgen */
+.login-hero-particles {
+  position: absolute;
+  inset: -60px;
+  pointer-events: none;
+  z-index: -1;
+  overflow: hidden;
+}
+.login-hero-particles span {
+  position: absolute;
+  width: 4px; height: 4px;
+  background: radial-gradient(circle, rgba(255,210,210,.95) 0%, rgba(255,42,58,.4) 50%, transparent 70%);
+  border-radius: 50%;
+  bottom: -10px;
+  opacity: 0;
+  filter: blur(.5px);
+  animation: appleParticle 5s cubic-bezier(.16,1,.3,1) infinite;
+}
+.login-hero-particles span:nth-child(1)  { left: 12%; animation-delay: 1.2s; animation-duration: 5.5s; }
+.login-hero-particles span:nth-child(2)  { left: 24%; animation-delay: 2.4s; animation-duration: 6.0s; width: 3px; height: 3px; }
+.login-hero-particles span:nth-child(3)  { left: 38%; animation-delay: 0.8s; animation-duration: 4.8s; }
+.login-hero-particles span:nth-child(4)  { left: 52%; animation-delay: 3.2s; animation-duration: 5.2s; width: 5px; height: 5px; }
+.login-hero-particles span:nth-child(5)  { left: 66%; animation-delay: 1.8s; animation-duration: 6.4s; }
+.login-hero-particles span:nth-child(6)  { left: 78%; animation-delay: 0.4s; animation-duration: 5.0s; width: 3px; height: 3px; }
+.login-hero-particles span:nth-child(7)  { left: 88%; animation-delay: 2.8s; animation-duration: 5.8s; }
+.login-hero-particles span:nth-child(8)  { left: 18%; animation-delay: 4.0s; animation-duration: 5.4s; width: 3px; height: 3px; }
+.login-hero-particles span:nth-child(9)  { left: 60%; animation-delay: 3.6s; animation-duration: 4.6s; }
+.login-hero-particles span:nth-child(10) { left: 30%; animation-delay: 5.2s; animation-duration: 6.0s; }
+
+/* Lichtstreep die over het logo veegt — als een filmische reveal */
+.login-hero-beam {
+  position: absolute;
+  top: -10%; left: -30%;
+  width: 50%; height: 120%;
+  background: linear-gradient(115deg,
+    transparent 0%,
+    rgba(255,255,255,.0) 35%,
+    rgba(255,255,255,.18) 50%,
+    rgba(255,255,255,.0) 65%,
+    transparent 100%);
+  filter: blur(8px);
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0;
+  animation: appleBeamSweep 2.4s cubic-bezier(.16,1,.3,1) 1.6s both;
+}
 .login-hero-title {
   font-size: 56px; font-weight: 700; letter-spacing: -1.5px;
   text-align: center;
-  background: linear-gradient(180deg, #ffffff 0%, #c8cdd6 100%);
+  background: linear-gradient(110deg,
+    #ffffff 0%,
+    #ffffff 25%,
+    #ffdcdc 45%,
+    #ff5d6c 55%,
+    #ffffff 70%,
+    #c8cdd6 100%);
+  background-size: 220% 100%;
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
   margin: 0;
   line-height: .98;
-  will-change: transform, opacity, filter;
+  will-change: transform, opacity, filter, background-position;
+  animation: appleTitleSweep 6s ease-in-out 2.2s infinite;
+}
+@keyframes appleTitleSweep {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -100% 0; }
 }
 .login-hero-title .word {
   display: inline-block;
@@ -187,7 +271,8 @@ a { color: var(--accent); text-decoration: none; }
 }
 
 @keyframes appleHeroIn {
-  0%   { opacity: 0; transform: translateY(40px) scale(.94); filter: blur(14px) drop-shadow(0 0 0 rgba(227,6,19,0)); }
+  0%   { opacity: 0; transform: translateY(40px) scale(.88); filter: blur(18px) drop-shadow(0 0 0 rgba(227,6,19,0)); }
+  55%  { opacity: 1; transform: translateY(-4px) scale(1.04); filter: blur(0)  drop-shadow(0 30px 80px rgba(227,6,19,.65)); }
   100% { opacity: 1; transform: translateY(0)    scale(1);   filter: blur(0)  drop-shadow(0 24px 60px rgba(227,6,19,.45)); }
 }
 @keyframes appleWordIn {
@@ -204,7 +289,27 @@ a { color: var(--accent); text-decoration: none; }
 }
 @keyframes appleGlow {
   0%, 100% { opacity: .55; transform: scale(1); }
-  50%      { opacity: .85; transform: scale(1.08); }
+  50%      { opacity: .95; transform: scale(1.12); }
+}
+@keyframes appleRingFade {
+  0%   { opacity: 0; transform: scale(.85); }
+  100% { opacity: .9; transform: scale(1); }
+}
+@keyframes appleRingSpin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes appleBeamSweep {
+  0%   { left: -30%; opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { left: 130%; opacity: 0; }
+}
+@keyframes appleParticle {
+  0%   { transform: translateY(0) scale(.6); opacity: 0; }
+  15%  { opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateY(-260px) scale(1.1); opacity: 0; }
 }
 @media (max-width: 1100px) {
   .login-hero-mark { width: 280px; height: 280px; }
@@ -451,71 +556,125 @@ a { color: var(--accent); text-decoration: none; }
   100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
 }
 
-/* Tabellen — rij-voor-rij cascade-in zodat de database echt opbouwt */
+/* Tabellen — rij-voor-rij cascade-in (trager, dramatischer) */
 .view.active tbody tr {
   opacity: 0;
-  animation: appleRowIn .65s cubic-bezier(.16,1,.3,1) both;
+  animation: appleRowIn .85s cubic-bezier(.16,1,.3,1) both;
 }
-.view.active tbody tr:nth-child(1)  { animation-delay: .45s; }
-.view.active tbody tr:nth-child(2)  { animation-delay: .49s; }
-.view.active tbody tr:nth-child(3)  { animation-delay: .53s; }
-.view.active tbody tr:nth-child(4)  { animation-delay: .57s; }
-.view.active tbody tr:nth-child(5)  { animation-delay: .61s; }
-.view.active tbody tr:nth-child(6)  { animation-delay: .65s; }
-.view.active tbody tr:nth-child(7)  { animation-delay: .69s; }
-.view.active tbody tr:nth-child(8)  { animation-delay: .73s; }
-.view.active tbody tr:nth-child(9)  { animation-delay: .77s; }
-.view.active tbody tr:nth-child(10) { animation-delay: .81s; }
-.view.active tbody tr:nth-child(11) { animation-delay: .85s; }
-.view.active tbody tr:nth-child(12) { animation-delay: .89s; }
-.view.active tbody tr:nth-child(13) { animation-delay: .92s; }
-.view.active tbody tr:nth-child(14) { animation-delay: .95s; }
-.view.active tbody tr:nth-child(15) { animation-delay: .98s; }
-.view.active tbody tr:nth-child(n+16) { animation-delay: 1.00s; }
+.view.active tbody tr:nth-child(1)  { animation-delay: .55s; }
+.view.active tbody tr:nth-child(2)  { animation-delay: .65s; }
+.view.active tbody tr:nth-child(3)  { animation-delay: .75s; }
+.view.active tbody tr:nth-child(4)  { animation-delay: .85s; }
+.view.active tbody tr:nth-child(5)  { animation-delay: .95s; }
+.view.active tbody tr:nth-child(6)  { animation-delay: 1.05s; }
+.view.active tbody tr:nth-child(7)  { animation-delay: 1.15s; }
+.view.active tbody tr:nth-child(8)  { animation-delay: 1.23s; }
+.view.active tbody tr:nth-child(9)  { animation-delay: 1.31s; }
+.view.active tbody tr:nth-child(10) { animation-delay: 1.38s; }
+.view.active tbody tr:nth-child(11) { animation-delay: 1.44s; }
+.view.active tbody tr:nth-child(12) { animation-delay: 1.50s; }
+.view.active tbody tr:nth-child(13) { animation-delay: 1.55s; }
+.view.active tbody tr:nth-child(14) { animation-delay: 1.60s; }
+.view.active tbody tr:nth-child(15) { animation-delay: 1.65s; }
+.view.active tbody tr:nth-child(16) { animation-delay: 1.70s; }
+.view.active tbody tr:nth-child(17) { animation-delay: 1.74s; }
+.view.active tbody tr:nth-child(18) { animation-delay: 1.78s; }
+.view.active tbody tr:nth-child(19) { animation-delay: 1.82s; }
+.view.active tbody tr:nth-child(20) { animation-delay: 1.86s; }
+.view.active tbody tr:nth-child(n+21) { animation-delay: 1.90s; }
 @keyframes appleRowIn {
-  0%   { opacity: 0; transform: translateY(14px); filter: blur(4px); }
-  100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
+  0%   { opacity: 0; transform: translateX(-18px) translateY(10px); filter: blur(6px); }
+  60%  { opacity: 1; }
+  100% { opacity: 1; transform: translateX(0) translateY(0);        filter: blur(0); }
 }
 
-/* Wedstrijdkaarten / dashboard cards — cascade-in */
+/* Wedstrijdkaarten / dashboard cards — cascade-in (trager) */
 .view.active .match-card,
 .view.active .card,
 .view.active .stat-card,
 .view.active .kpi-card {
   opacity: 0;
-  animation: appleCardCascade .75s cubic-bezier(.16,1,.3,1) both;
+  animation: appleCardCascade .95s cubic-bezier(.16,1,.3,1) both;
 }
 .view.active .match-card:nth-child(1),
 .view.active .card:nth-child(1),
 .view.active .stat-card:nth-child(1),
-.view.active .kpi-card:nth-child(1) { animation-delay: .40s; }
+.view.active .kpi-card:nth-child(1) { animation-delay: .50s; }
 .view.active .match-card:nth-child(2),
 .view.active .card:nth-child(2),
 .view.active .stat-card:nth-child(2),
-.view.active .kpi-card:nth-child(2) { animation-delay: .48s; }
+.view.active .kpi-card:nth-child(2) { animation-delay: .65s; }
 .view.active .match-card:nth-child(3),
 .view.active .card:nth-child(3),
 .view.active .stat-card:nth-child(3),
-.view.active .kpi-card:nth-child(3) { animation-delay: .56s; }
+.view.active .kpi-card:nth-child(3) { animation-delay: .80s; }
 .view.active .match-card:nth-child(4),
 .view.active .card:nth-child(4),
 .view.active .stat-card:nth-child(4),
-.view.active .kpi-card:nth-child(4) { animation-delay: .64s; }
+.view.active .kpi-card:nth-child(4) { animation-delay: .95s; }
 .view.active .match-card:nth-child(5),
 .view.active .card:nth-child(5),
 .view.active .stat-card:nth-child(5),
-.view.active .kpi-card:nth-child(5) { animation-delay: .72s; }
+.view.active .kpi-card:nth-child(5) { animation-delay: 1.10s; }
 .view.active .match-card:nth-child(6),
 .view.active .card:nth-child(6),
 .view.active .stat-card:nth-child(6),
-.view.active .kpi-card:nth-child(6) { animation-delay: .80s; }
-.view.active .match-card:nth-child(n+7),
-.view.active .card:nth-child(n+7),
-.view.active .stat-card:nth-child(n+7),
-.view.active .kpi-card:nth-child(n+7) { animation-delay: .88s; }
+.view.active .kpi-card:nth-child(6) { animation-delay: 1.22s; }
+.view.active .match-card:nth-child(7),
+.view.active .card:nth-child(7),
+.view.active .stat-card:nth-child(7),
+.view.active .kpi-card:nth-child(7) { animation-delay: 1.32s; }
+.view.active .match-card:nth-child(8),
+.view.active .card:nth-child(8),
+.view.active .stat-card:nth-child(8),
+.view.active .kpi-card:nth-child(8) { animation-delay: 1.42s; }
+.view.active .match-card:nth-child(n+9),
+.view.active .card:nth-child(n+9),
+.view.active .stat-card:nth-child(n+9),
+.view.active .kpi-card:nth-child(n+9) { animation-delay: 1.50s; }
 @keyframes appleCardCascade {
-  0%   { opacity: 0; transform: translateY(22px) scale(.97); filter: blur(6px); }
+  0%   { opacity: 0; transform: translateY(34px) scale(.94); filter: blur(10px); }
+  60%  { opacity: 1; }
   100% { opacity: 1; transform: translateY(0)    scale(1);   filter: blur(0); }
+}
+
+/* Shimmer-band over view bij activatie — geeft een 'video'-gevoel */
+.view.active::before {
+  content: '';
+  position: absolute;
+  top: 0; left: -30%;
+  width: 30%; height: 100%;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(227,6,19,.06) 30%,
+    rgba(255,42,58,.10) 50%,
+    rgba(227,6,19,.06) 70%,
+    transparent 100%);
+  filter: blur(20px);
+  pointer-events: none;
+  z-index: 0;
+  animation: appleShimmerSweep 1.4s cubic-bezier(.16,1,.3,1) both;
+}
+.view { position: relative; }
+.view.active > * { position: relative; z-index: 1; }
+@keyframes appleShimmerSweep {
+  0%   { left: -30%; opacity: 0; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { left: 130%; opacity: 0; }
+}
+
+/* Glow accent op de eerste kaart/rij voor visuele focus */
+.view.active tbody tr:nth-child(1),
+.view.active .match-card:nth-child(1),
+.view.active .card:nth-child(1),
+.view.active .stat-card:nth-child(1) {
+  animation: appleRowIn .85s cubic-bezier(.16,1,.3,1) .55s both, appleAccentGlow 2.2s cubic-bezier(.16,1,.3,1) .8s both;
+}
+@keyframes appleAccentGlow {
+  0%   { box-shadow: 0 0 0 rgba(227,6,19,0); }
+  30%  { box-shadow: 0 0 32px rgba(227,6,19,.25); }
+  100% { box-shadow: 0 0 0 rgba(227,6,19,0); }
 }
 
 /* Topbar / toolbar / filters in elke view — apart laten invliegen voor extra feel */
@@ -1984,6 +2143,11 @@ tbody tr:last-child td { border-bottom: none; }
 <div id="login-overlay" style="display:none;">
   <div class="login-hero">
     <div class="login-hero-mark">
+      <div class="login-hero-particles" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span>
+        <span></span><span></span><span></span><span></span><span></span>
+      </div>
+      <div class="login-hero-beam" aria-hidden="true"></div>
       <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
         <defs>
           <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">

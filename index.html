@@ -2421,6 +2421,10 @@ tbody tr:last-child td { border-bottom: none; }
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               Rapport importeren
             </button>
+            <button class="btn btn-ghost" id="player-bulk-delete-btn" title="Verwijder geïmporteerde spelers door hetzelfde JSON-blok nogmaals te plakken">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              Import ongedaan maken
+            </button>
             <button class="btn" id="export-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Export
@@ -3330,6 +3334,40 @@ tbody tr:last-child td { border-bottom: none; }
       <div class="form-actions" style="margin-top:16px;">
         <button type="button" class="btn" id="mreport-bulkdel-cancel">Annuleren</button>
         <button type="button" class="btn" id="mreport-bulkdel-go" style="background:var(--red); color:#fff; border-color:var(--red);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+          Verwijderen
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- =================== PLAYER BULK-DELETE MODAL =================== -->
+<div class="modal-backdrop" id="player-bulkdel-backdrop">
+  <div class="modal" id="player-bulkdel-modal">
+    <div class="modal-header">
+      <div class="modal-title">Spelers verwijderen (via import-bestand)</div>
+      <button class="modal-close" id="player-bulkdel-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.5;">
+        Plak hieronder hetzelfde JSON-blok dat je eerder hebt geïmporteerd (bijv. <code>spelers-word-import.json</code>).
+        De app zoekt spelers met dezelfde <strong>naam + club + team</strong> en verwijdert die. Handmatig aangemaakte spelers blijven staan.
+      </div>
+      <textarea id="player-bulkdel-text" style="width:100%; min-height:200px; background:var(--bg-3); border:1px solid var(--border-2); color:var(--text); padding:12px; border-radius:7px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; outline:none; resize:vertical;" placeholder='Plak hier het JSON-blokje, of upload het bestand hieronder...'></textarea>
+      <div style="margin-top:10px; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+        <input type="file" id="player-bulkdel-file" accept=".txt,.json,.jsonl,text/plain,application/json" style="display:none;">
+        <button type="button" class="btn" id="player-bulkdel-file-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Bestand kiezen…
+        </button>
+        <span id="player-bulkdel-file-name" style="font-size:12px; color:var(--text-2);"></span>
+      </div>
+      <div id="player-bulkdel-status" style="margin-top:10px; font-size:12px; min-height:18px;"></div>
+      <div class="form-actions" style="margin-top:16px;">
+        <button type="button" class="btn" id="player-bulkdel-cancel">Annuleren</button>
+        <button type="button" class="btn" id="player-bulkdel-go" style="background:var(--red); color:#fff; border-color:var(--red);">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
           Verwijderen
         </button>
@@ -6864,31 +6902,7 @@ async function runImport(){
     status.textContent = 'Plak eerst een rapport-blokje in het veld.';
     return;
   }
-  let list = null;
-  // 1) probeer als enkel JSON-object of JSON-array
-  try {
-    const data = JSON.parse(raw);
-    list = Array.isArray(data) ? data : [data];
-  } catch(e) {
-    // 2) probeer als JSONL (één rapport per regel)
-    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-    if(lines.length > 1){
-      const parsed = [];
-      let allOk = true;
-      for(const line of lines){
-        try { parsed.push(JSON.parse(line)); }
-        catch(_) { allOk = false; break; }
-      }
-      if(allOk && parsed.length) list = parsed;
-    }
-    // 3) probeer als JSON-objecten gescheiden door komma's (zonder omsluitende [])
-    if(!list){
-      try {
-        const wrapped = JSON.parse('[' + raw.replace(/}\s*[\r\n]+\s*{/g, '},{') + ']');
-        if(Array.isArray(wrapped) && wrapped.length) list = wrapped;
-      } catch(_) {}
-    }
-  }
+  const list = _parseImportListRaw(raw);
   if(!list){
     status.style.color = 'var(--red)';
     status.textContent = 'Het geplakte tekstblok kan niet gelezen worden. Controleer of je het hele blokje hebt gekopieerd.';
@@ -6899,15 +6913,18 @@ async function runImport(){
     status.textContent = 'Geen rapporten gevonden in het blokje.';
     return;
   }
+  if(!currentUser){
+    status.style.color = 'var(--red)';
+    status.textContent = 'Niet ingelogd. Log opnieuw in en probeer het nogmaals.';
+    return;
+  }
   const existingIds = new Set(loadPlayers().map(p => p.id));
-  let ok = 0, fail = 0;
+  let ok = 0, fail = 0, missingNaam = 0, firstErr = '';
   status.style.color = 'var(--text-2)';
   status.textContent = `Bezig met importeren van ${list.length} rapport${list.length===1?'':'en'}...`;
   for(const entry of list){
-    if(!entry || typeof entry !== 'object' || !entry.naam){
-      fail++;
-      continue;
-    }
+    if(!entry || typeof entry !== 'object'){ fail++; continue; }
+    if(!entry.naam){ missingNaam++; fail++; continue; }
     const player = {...entry};
     if(!player.id || existingIds.has(player.id)) player.id = uid();
     existingIds.add(player.id);
@@ -6917,6 +6934,7 @@ async function runImport(){
       ok++;
     } catch(e){
       fail++;
+      if(!firstErr) firstErr = (e && (e.message || e.code)) || 'onbekende fout';
     }
   }
   if(ok > 0){
@@ -6929,7 +6947,13 @@ async function runImport(){
     }, 900);
   } else {
     status.style.color = 'var(--red)';
-    status.textContent = `Importeren mislukt. Controleer het blokje.`;
+    if(missingNaam === list.length){
+      status.textContent = `Dit lijkt geen spelers-bestand. Geen "naam"-veld gevonden — gebruik het knopje "Wedstrijden importeren" op de Wedstrijden-pagina.`;
+    } else if(firstErr){
+      status.textContent = `Importeren mislukt — ${firstErr}`;
+    } else {
+      status.textContent = `Importeren mislukt. Controleer het blokje.`;
+    }
   }
 }
 
@@ -6956,28 +6980,7 @@ async function runMatchReportImport(){
     status.textContent = 'Plak eerst een wedstrijd-blokje in het veld.';
     return;
   }
-  let list = null;
-  try {
-    const data = JSON.parse(raw);
-    list = Array.isArray(data) ? data : [data];
-  } catch(e) {
-    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
-    if(lines.length > 1){
-      const parsed = [];
-      let allOk = true;
-      for(const line of lines){
-        try { parsed.push(JSON.parse(line)); }
-        catch(_) { allOk = false; break; }
-      }
-      if(allOk && parsed.length) list = parsed;
-    }
-    if(!list){
-      try {
-        const wrapped = JSON.parse('[' + raw.replace(/}\s*[\r\n]+\s*{/g, '},{') + ']');
-        if(Array.isArray(wrapped) && wrapped.length) list = wrapped;
-      } catch(_) {}
-    }
-  }
+  const list = _parseImportListRaw(raw);
   if(!list){
     status.style.color = 'var(--red)';
     status.textContent = 'Het geplakte tekstblok kan niet gelezen worden. Controleer of je het hele blokje hebt gekopieerd.';
@@ -6988,8 +6991,13 @@ async function runMatchReportImport(){
     status.textContent = 'Geen wedstrijden gevonden in het blokje.';
     return;
   }
+  if(!currentUser){
+    status.style.color = 'var(--red)';
+    status.textContent = 'Niet ingelogd. Log opnieuw in en probeer het nogmaals.';
+    return;
+  }
   const existingIds = new Set(loadMatchReports().map(r => r.id));
-  let ok = 0, fail = 0;
+  let ok = 0, fail = 0, firstErr = '';
   status.style.color = 'var(--text-2)';
   status.textContent = `Bezig met importeren van ${list.length} wedstrijd${list.length===1?'':'en'}...`;
   for(const entry of list){
@@ -7010,6 +7018,7 @@ async function runMatchReportImport(){
       ok++;
     } catch(e){
       fail++;
+      if(!firstErr) firstErr = (e && (e.message || e.code)) || 'onbekende fout';
     }
   }
   if(ok > 0){
@@ -7022,7 +7031,11 @@ async function runMatchReportImport(){
     }, 900);
   } else {
     status.style.color = 'var(--red)';
-    status.textContent = `Importeren mislukt. Controleer het blokje.`;
+    if(firstErr){
+      status.textContent = `Importeren mislukt — ${firstErr}`;
+    } else {
+      status.textContent = `Importeren mislukt. Controleer het blokje.`;
+    }
   }
 }
 
@@ -7041,29 +7054,100 @@ function openMatchReportBulkDeleteModal(){
 function closeMatchReportBulkDeleteModal(){
   $('#mreport-bulkdel-backdrop').classList.remove('open');
 }
+/* Maak rauwe import-tekst leesbaar voor JSON.parse */
+function _sanitizeImportRaw(raw){
+  if(!raw) return '';
+  let s = String(raw);
+  s = s.replace(/^﻿/, '');                            // BOM
+  s = s.replace(/ /g, ' ').replace(/[​-‍﻿]/g, '');  // non-breaking + zero-width
+  s = s.replace(/```(?:json)?\s*/gi, '').replace(/```/g, ''); // code fences
+  s = s.replace(/,\s*(\}|\])/g, '$1');                 // trailing commas
+  return s.trim();
+}
+/* Probeer een tweede sanitatie waarbij smart-quotes worden vervangen — alleen
+   gebruiken als directe parse faalt, want valid JSON kan deze chars in strings hebben */
+function _sanitizeQuotesAggressive(s){
+  return s
+    .replace(/[“”„‟″‶]/g, '"')
+    .replace(/[‘’‚‛′‵]/g, "'");
+}
+/* Pak het eerste complete JSON-fragment uit een tekst (object of array) */
+function _extractJsonFragment(s){
+  if(!s) return null;
+  const fA = s.indexOf('['), fO = s.indexOf('{');
+  let start = -1, openCh = '', closeCh = '';
+  if(fA === -1 && fO === -1) return null;
+  if(fA === -1)            { start = fO; openCh = '{'; closeCh = '}'; }
+  else if(fO === -1)       { start = fA; openCh = '['; closeCh = ']'; }
+  else if(fA < fO)         { start = fA; openCh = '['; closeCh = ']'; }
+  else                     { start = fO; openCh = '{'; closeCh = '}'; }
+  let depth = 0, inStr = false, esc = false;
+  for(let i = start; i < s.length; i++){
+    const c = s[i];
+    if(inStr){
+      if(esc) esc = false;
+      else if(c === '\\') esc = true;
+      else if(c === '"') inStr = false;
+      continue;
+    }
+    if(c === '"'){ inStr = true; continue; }
+    if(c === openCh) depth++;
+    else if(c === closeCh){
+      depth--;
+      if(depth === 0) return s.slice(start, i + 1);
+    }
+  }
+  return null;
+}
 function _parseImportListRaw(raw){
-  let list = null;
-  try {
-    const data = JSON.parse(raw);
-    list = Array.isArray(data) ? data : [data];
-  } catch(_) {
-    const lines = raw.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
+  const cleaned = _sanitizeImportRaw(raw);
+  if(!cleaned) return null;
+  const attempts = [cleaned, _sanitizeQuotesAggressive(cleaned)];
+  for(const src of attempts){
+    // 1) directe parse
+    try {
+      const data = JSON.parse(src);
+      return Array.isArray(data) ? data : [data];
+    } catch(_) {}
+    // 2) JSONL
+    const lines = src.split(/\r?\n/).map(l => l.trim()).filter(l => l.length > 0);
     if(lines.length > 1){
       const parsed = [];
       let allOk = true;
       for(const line of lines){
         try { parsed.push(JSON.parse(line)); } catch(__) { allOk = false; break; }
       }
-      if(allOk && parsed.length) list = parsed;
+      if(allOk && parsed.length) return parsed;
     }
-    if(!list){
+    // 3) komma-loze objecten op losse regels
+    try {
+      const wrapped = JSON.parse('[' + src.replace(/}\s*[\r\n]+\s*{/g, '},{') + ']');
+      if(Array.isArray(wrapped) && wrapped.length) return wrapped;
+    } catch(__) {}
+    // 4) eerste compleet JSON-fragment uit prose
+    const frag = _extractJsonFragment(src);
+    if(frag){
       try {
-        const wrapped = JSON.parse('[' + raw.replace(/}\s*[\r\n]+\s*{/g, '},{') + ']');
-        if(Array.isArray(wrapped) && wrapped.length) list = wrapped;
+        const data = JSON.parse(frag);
+        return Array.isArray(data) ? data : [data];
       } catch(__) {}
     }
+    // 5) meerdere losse fragmenten in de tekst
+    const objs = [];
+    let rest = src, guard = 0;
+    while(rest && guard++ < 500){
+      const f = _extractJsonFragment(rest);
+      if(!f) break;
+      try {
+        const data = JSON.parse(f);
+        if(Array.isArray(data)) objs.push(...data); else objs.push(data);
+      } catch(__) { break; }
+      const idx = rest.indexOf(f);
+      rest = rest.slice(idx + f.length);
+    }
+    if(objs.length) return objs;
   }
-  return list;
+  return null;
 }
 async function runMatchReportBulkDelete(){
   const status = $('#mreport-bulkdel-status');
@@ -7115,6 +7199,76 @@ async function runMatchReportBulkDelete(){
     setTimeout(()=>{
       closeMatchReportBulkDeleteModal();
       if(typeof renderMatches === 'function') renderMatches();
+    }, 900);
+  } else {
+    status.style.color = 'var(--red)';
+    status.textContent = `Verwijderen mislukt.`;
+  }
+}
+
+/* =============== PLAYER BULK DELETE (via import-bestand) =============== */
+function openPlayerBulkDeleteModal(){
+  $('#player-bulkdel-backdrop').classList.add('active');
+  $('#player-bulkdel-text').value = '';
+  $('#player-bulkdel-file').value = '';
+  $('#player-bulkdel-file-name').textContent = '';
+  const st = $('#player-bulkdel-status');
+  st.textContent = ''; st.style.color = 'var(--text-2)';
+  setTimeout(()=> $('#player-bulkdel-text').focus(), 80);
+}
+function closePlayerBulkDeleteModal(){
+  $('#player-bulkdel-backdrop').classList.remove('active');
+}
+async function runPlayerBulkDelete(){
+  const status = $('#player-bulkdel-status');
+  const raw = $('#player-bulkdel-text').value.trim();
+  if(!raw){
+    status.style.color = 'var(--red)';
+    status.textContent = 'Plak eerst het JSON-blok dat je wilt verwijderen.';
+    return;
+  }
+  const list = _parseImportListRaw(raw);
+  if(!list || !list.length){
+    status.style.color = 'var(--red)';
+    status.textContent = 'Het geplakte tekstblok kan niet gelezen worden.';
+    return;
+  }
+  const existing = loadPlayers();
+  const norm = (s) => (s||'').toString().trim().toLowerCase();
+  const wanted = list.map(e => ({
+    naam: norm(e.naam || ((e.voornaam||'') + ' ' + (e.achternaam||'')).trim()),
+    club: norm(e.club),
+    team: norm(e.team)
+  })).filter(w => w.naam);
+  const toDelete = existing.filter(p =>
+    wanted.some(w =>
+      w.naam === norm(p.naam) &&
+      (!w.club || w.club === norm(p.club)) &&
+      (!w.team || w.team === norm(p.team))
+    )
+  );
+  if(!toDelete.length){
+    status.style.color = 'var(--text-2)';
+    status.textContent = `Geen overeenkomende spelers gevonden (${wanted.length} in blokje).`;
+    return;
+  }
+  if(!confirm(`${toDelete.length} speler${toDelete.length===1?'':'s'} verwijderen?\n\nDit kan niet ongedaan worden gemaakt.`)){
+    return;
+  }
+  status.style.color = 'var(--text-2)';
+  status.textContent = `Bezig met verwijderen van ${toDelete.length} speler${toDelete.length===1?'':'s'}...`;
+  let ok = 0, fail = 0;
+  for(const p of toDelete){
+    try { await deletePlayer(p.id); ok++; }
+    catch(e){ fail++; }
+  }
+  if(ok > 0){
+    status.style.color = 'var(--green)';
+    status.textContent = `${ok} speler${ok===1?'':'s'} verwijderd${fail?` · ${fail} mislukt`:''}.`;
+    toast(`${ok} speler${ok===1?'':'s'} verwijderd`);
+    setTimeout(()=>{
+      closePlayerBulkDeleteModal();
+      if(typeof renderDB === 'function') renderDB();
     }, 900);
   } else {
     status.style.color = 'var(--red)';
@@ -7285,6 +7439,32 @@ function initApp(){
     if(e.target.id === 'mreport-bulkdel-backdrop') closeMatchReportBulkDeleteModal();
   });
 
+  // Player bulk delete (via import-JSON)
+  $('#player-bulk-delete-btn')?.addEventListener('click', openPlayerBulkDeleteModal);
+  $('#player-bulkdel-close')?.addEventListener('click', closePlayerBulkDeleteModal);
+  $('#player-bulkdel-cancel')?.addEventListener('click', closePlayerBulkDeleteModal);
+  $('#player-bulkdel-go')?.addEventListener('click', runPlayerBulkDelete);
+  $('#player-bulkdel-file-btn')?.addEventListener('click', ()=> $('#player-bulkdel-file').click());
+  $('#player-bulkdel-file')?.addEventListener('change', async (e)=>{
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    $('#player-bulkdel-file-name').textContent = file.name;
+    try {
+      const text = await file.text();
+      $('#player-bulkdel-text').value = text;
+      const status = $('#player-bulkdel-status');
+      status.style.color = 'var(--text-2)';
+      status.textContent = `Bestand geladen (${file.name}). Klik op Verwijderen.`;
+    } catch(err) {
+      const status = $('#player-bulkdel-status');
+      status.style.color = '#ef4444';
+      status.textContent = 'Bestand kon niet gelezen worden.';
+    }
+  });
+  $('#player-bulkdel-backdrop')?.addEventListener('click', e=>{
+    if(e.target.id === 'player-bulkdel-backdrop') closePlayerBulkDeleteModal();
+  });
+
   $('#modal-close').addEventListener('click', closeDetail);
   $('#modal-backdrop').addEventListener('click', e=>{
     if(e.target.id === 'modal-backdrop') closeDetail();
@@ -7295,6 +7475,7 @@ function initApp(){
       closeImportModal();
       closeMatchReportImportModal();
       closeMatchReportBulkDeleteModal();
+      closePlayerBulkDeleteModal();
       closePlayerPicker();
       closeContactModal();
       closeMatchReportModal();

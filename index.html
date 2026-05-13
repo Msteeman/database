@@ -7208,16 +7208,18 @@ async function runMatchReportBulkDelete(){
 
 /* =============== PLAYER BULK DELETE (via import-bestand) =============== */
 function openPlayerBulkDeleteModal(){
-  $('#player-bulkdel-backdrop').classList.add('active');
   $('#player-bulkdel-text').value = '';
-  $('#player-bulkdel-file').value = '';
-  $('#player-bulkdel-file-name').textContent = '';
-  const st = $('#player-bulkdel-status');
-  st.textContent = ''; st.style.color = 'var(--text-2)';
-  setTimeout(()=> $('#player-bulkdel-text').focus(), 80);
+  $('#player-bulkdel-status').textContent = '';
+  $('#player-bulkdel-status').style.color = '';
+  const fileEl = $('#player-bulkdel-file');
+  if(fileEl) fileEl.value = '';
+  const nameEl = $('#player-bulkdel-file-name');
+  if(nameEl) nameEl.textContent = '';
+  $('#player-bulkdel-backdrop').classList.add('open');
+  setTimeout(()=> $('#player-bulkdel-text').focus(), 50);
 }
 function closePlayerBulkDeleteModal(){
-  $('#player-bulkdel-backdrop').classList.remove('active');
+  $('#player-bulkdel-backdrop').classList.remove('open');
 }
 async function runPlayerBulkDelete(){
   const status = $('#player-bulkdel-status');

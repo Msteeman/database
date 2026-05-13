@@ -1598,6 +1598,155 @@ tbody tr:last-child td { border-bottom: none; }
   margin-top: 18px;
 }
 
+/* ===== COMPARE VIEW ===== */
+.compare-shell { display: flex; flex-direction: column; gap: 16px; }
+.compare-picker {
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 14px; box-shadow: var(--shadow);
+}
+.compare-picker-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.compare-picker-title { font-weight: 700; font-size: 14px; letter-spacing: .2px; }
+.compare-search {
+  flex: 1; max-width: 360px;
+  background: var(--bg-2); color: var(--text);
+  border: 1px solid var(--border-2); border-radius: 8px;
+  padding: 8px 12px; font-size: 13px;
+}
+.compare-search:focus { outline: none; border-color: var(--primary-2); }
+.compare-picker-list {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 8px; max-height: 220px; overflow-y: auto; padding-right: 4px;
+}
+.compare-pick {
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 8px; padding: 8px 10px;
+  cursor: pointer; transition: all .18s; text-align: left;
+}
+.compare-pick:hover { border-color: var(--primary-2); transform: translateY(-1px); }
+.compare-pick.selected { background: linear-gradient(180deg, rgba(227,6,19,.18), rgba(227,6,19,.06)); border-color: var(--primary-2); }
+.compare-pick-avatar {
+  width: 28px; height: 28px; flex-shrink: 0;
+  border-radius: 50%; background: var(--bg-3);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 11px; color: var(--text-2);
+  border: 1px solid var(--border-2);
+}
+.compare-pick-body { flex: 1; min-width: 0; }
+.compare-pick-name { font-weight: 600; font-size: 13px; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compare-pick-meta { font-size: 11px; color: var(--text-3); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compare-pick-grade {
+  font-size: 10px; font-weight: 700; color: white;
+  padding: 2px 6px; border-radius: 4px; flex-shrink: 0;
+  background: var(--grade-c);
+}
+.compare-pick-grade.A { background: var(--grade-a); }
+.compare-pick-grade.B { background: var(--grade-b); }
+.compare-pick-grade.C { background: var(--grade-c); }
+.compare-pick-grade.D { background: var(--grade-d); }
+
+.compare-selected { display: flex; flex-wrap: wrap; gap: 8px; }
+.compare-chip {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 8px 6px 4px; border-radius: 999px;
+  background: var(--panel);
+  border: 1.5px solid var(--player-color, var(--border-2));
+  font-size: 12px; font-weight: 600;
+}
+.compare-chip .dot { width: 18px; height: 18px; border-radius: 50%; background: var(--player-color, var(--text-3)); flex-shrink: 0; }
+.compare-chip .x { background: transparent; border: none; color: var(--text-2); cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; margin-left: 2px; }
+.compare-chip .x:hover { color: var(--primary-2); }
+
+.compare-empty {
+  background: var(--panel); border: 1px dashed var(--border-2);
+  border-radius: var(--radius); padding: 56px 24px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.compare-empty-icon { color: var(--text-3); opacity: .6; }
+.compare-empty-title { font-weight: 700; font-size: 16px; }
+.compare-empty-sub { font-size: 13px; color: var(--text-2); max-width: 360px; }
+
+.compare-results { display: flex; flex-direction: column; gap: 16px; }
+.compare-card {
+  background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 16px; box-shadow: var(--shadow);
+}
+.compare-card-title {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 12px; margin-bottom: 14px;
+  font-weight: 700; font-size: 14px; letter-spacing: .2px;
+}
+.compare-card-sub { font-size: 11px; color: var(--text-3); font-weight: 500; }
+.compare-twocol { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+.compare-gauges { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.compare-gauge {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  transition: transform .2s, border-color .2s; cursor: pointer;
+}
+.compare-gauge:hover { transform: translateY(-2px); border-color: var(--player-color, var(--border-2)); }
+.compare-gauge-name { font-weight: 700; font-size: 13px; text-align: center; width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compare-gauge-meta { font-size: 10.5px; color: var(--text-3); text-align: center; }
+.compare-gauge-ring { position: relative; width: 110px; height: 110px; }
+.compare-gauge-ring svg { transform: rotate(-90deg); }
+.compare-gauge-ring-bg { stroke: var(--bg-3); }
+.compare-gauge-ring-fg { stroke: var(--player-color, var(--primary)); transition: stroke-dashoffset .8s cubic-bezier(.4,0,.2,1); }
+.compare-gauge-ring-pot { stroke: var(--secondary); opacity: .65; }
+.compare-gauge-center {
+  position: absolute; inset: 0; pointer-events: none;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+}
+.compare-gauge-grade { font-size: 28px; font-weight: 900; letter-spacing: -1px; color: var(--player-color, var(--text)); line-height: 1; }
+.compare-gauge-score { font-size: 10px; color: var(--text-3); margin-top: 2px; letter-spacing: .5px; }
+.compare-gauge-dual { display: flex; gap: 12px; font-size: 10px; color: var(--text-3); width: 100%; justify-content: space-around; border-top: 1px solid var(--border); padding-top: 8px; }
+.compare-gauge-dual b { display: block; font-size: 13px; color: var(--text); font-weight: 700; margin-top: 2px; }
+
+.compare-radar-wrap { display: flex; align-items: center; justify-content: center; padding: 8px 0; }
+.compare-radar-wrap canvas { max-width: 100%; height: auto; display: block; }
+.compare-legend { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin-top: 8px; font-size: 12px; }
+.compare-legend-item { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; background: var(--bg-2); border: 1px solid var(--border); }
+.compare-legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+.compare-bars { display: flex; flex-direction: column; gap: 14px; }
+.compare-bar-group-title { font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; display: flex; justify-content: space-between; }
+.compare-bar-group-title em { font-style: normal; color: var(--text-3); font-size: 10.5px; font-weight: 500; }
+.compare-bar-rows { display: flex; flex-direction: column; gap: 4px; }
+.compare-bar-row { display: grid; grid-template-columns: 90px 1fr 30px; align-items: center; gap: 8px; font-size: 11.5px; }
+.compare-bar-name { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.compare-bar-track { height: 14px; background: var(--bg-3); border-radius: 7px; overflow: hidden; border: 1px solid var(--border); }
+.compare-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--player-color, var(--primary)) 0%, var(--player-color-2, var(--primary-2)) 100%);
+  border-radius: 6px; transition: width .9s cubic-bezier(.4,0,.2,1);
+}
+.compare-bar-grade { font-weight: 700; font-size: 11px; color: var(--text-2); text-align: right; }
+
+.compare-table-wrap { overflow-x: auto; margin: 0 -4px; }
+.compare-table { width: 100%; border-collapse: collapse; font-size: 12.5px; min-width: 480px; }
+.compare-table th, .compare-table td { padding: 9px 10px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.compare-table thead th { background: var(--bg-2); position: sticky; top: 0; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; color: var(--text-2); }
+.compare-table tbody th { font-weight: 600; color: var(--text-2); background: var(--bg-2); font-size: 11.5px; }
+.compare-table td { color: var(--text); }
+.compare-table .cmp-cell-grade { display: inline-block; min-width: 22px; padding: 2px 7px; border-radius: 5px; font-weight: 700; font-size: 11px; color: white; text-align: center; }
+.compare-table .cmp-cell-grade.A { background: var(--grade-a); }
+.compare-table .cmp-cell-grade.B { background: var(--grade-b); }
+.compare-table .cmp-cell-grade.C { background: var(--grade-c); }
+.compare-table .cmp-cell-grade.D { background: var(--grade-d); }
+.compare-table .cmp-best { box-shadow: 0 0 0 2px var(--grade-a) inset; }
+.compare-table .cmp-name-link { font-weight: 700; color: var(--text); cursor: pointer; border-bottom: 1px dotted var(--text-3); }
+.compare-table .cmp-name-link:hover { color: var(--primary-2); border-bottom-color: var(--primary-2); }
+.compare-table-header-cell { display: flex; align-items: center; gap: 6px; }
+.compare-table-header-cell .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+@media (max-width: 900px) {
+  .compare-twocol { grid-template-columns: 1fr; }
+  .compare-bar-row { grid-template-columns: 80px 1fr 28px; }
+}
+
 /* Responsive */
 @media (max-width: 900px) {
   body { -webkit-text-size-adjust: 100%; }
@@ -2284,6 +2433,10 @@ tbody tr:last-child td { border-bottom: none; }
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 11v6c0 1.7 4 3 9 3s9-1.3 9-3v-6"/></svg>
           Database
         </button>
+        <button class="nav-item" data-view="compare">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/><path d="M12 8v8"/></svg>
+          Vergelijken
+        </button>
         <button class="nav-item" data-view="matches">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="1"/><line x1="12" y1="6" x2="12" y2="19"/><circle cx="12" cy="12.5" r="2"/><path d="M3 10.5 H6 V14.5 H3"/><path d="M21 10.5 H18 V14.5 H21"/></svg>
           Wedstrijden
@@ -2485,6 +2638,82 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
 
         <div class="table-wrap" id="db-table-wrap"></div>
+      </section>
+
+      <!-- ====== VERGELIJKEN ====== -->
+      <section class="view" id="view-compare">
+        <div class="topbar">
+          <div>
+            <div class="page-title">Spelers vergelijken</div>
+            <div class="page-sub">Selecteer 2 tot 6 spelers en zie ze naast elkaar — radar, balken, gauges en details.</div>
+          </div>
+          <div class="topbar-actions">
+            <button class="btn btn-sm" id="cmp-clear">Wissen</button>
+          </div>
+        </div>
+
+        <div class="compare-shell">
+          <div class="compare-picker">
+            <div class="compare-picker-head">
+              <div class="compare-picker-title">Speler toevoegen</div>
+              <input type="search" id="cmp-search" placeholder="Zoek op naam, club, positie..." class="compare-search" />
+            </div>
+            <div class="compare-picker-list" id="cmp-picker-list"></div>
+          </div>
+
+          <div class="compare-selected" id="cmp-selected"></div>
+
+          <div id="cmp-empty" class="compare-empty">
+            <div class="compare-empty-icon">
+              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/><path d="M12 8v8"/></svg>
+            </div>
+            <div class="compare-empty-title">Selecteer minstens 2 spelers</div>
+            <div class="compare-empty-sub">Tik op spelers in de lijst hierboven om ze toe te voegen aan de vergelijking.</div>
+          </div>
+
+          <div id="cmp-results" class="compare-results" style="display:none;">
+
+            <div class="card compare-card">
+              <div class="compare-card-title">
+                <span>Totaalindruk</span>
+                <span class="compare-card-sub">Huidig &amp; potentieel niveau</span>
+              </div>
+              <div class="compare-gauges" id="cmp-gauges"></div>
+            </div>
+
+            <div class="compare-twocol">
+              <div class="card compare-card">
+                <div class="compare-card-title">
+                  <span>Radar — 7 criteria</span>
+                  <span class="compare-card-sub">Hoe groter de vorm, hoe completer de speler</span>
+                </div>
+                <div class="compare-radar-wrap">
+                  <canvas id="cmp-radar" width="520" height="520"></canvas>
+                </div>
+                <div class="compare-legend" id="cmp-radar-legend"></div>
+              </div>
+
+              <div class="card compare-card">
+                <div class="compare-card-title">
+                  <span>Criterium-balken</span>
+                  <span class="compare-card-sub">Zij-aan-zij per criterium</span>
+                </div>
+                <div class="compare-bars" id="cmp-bars"></div>
+              </div>
+            </div>
+
+            <div class="card compare-card">
+              <div class="compare-card-title">
+                <span>Detail-vergelijking</span>
+                <span class="compare-card-sub">Klik op een speler om het volledige rapport te openen</span>
+              </div>
+              <div class="compare-table-wrap">
+                <table class="compare-table" id="cmp-table"></table>
+              </div>
+            </div>
+
+          </div>
+        </div>
       </section>
 
       <!-- ====== WEDSTRIJDEN ====== -->
@@ -3013,6 +3242,10 @@ tbody tr:last-child td { border-bottom: none; }
     <button class="bn-item" data-view="database" aria-label="Database">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 11v6c0 1.7 4 3 9 3s9-1.3 9-3v-6"/></svg>
       <span class="bn-label">Spelers</span>
+    </button>
+    <button class="bn-item" data-view="compare" aria-label="Vergelijken">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/><path d="M12 8v8"/></svg>
+      <span class="bn-label">Vergelijk</span>
     </button>
     <button class="bn-item" data-view="report" aria-label="Nieuw rapport">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
@@ -4551,6 +4784,7 @@ function go(view){
   $$('#bottom-nav .bn-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
   if(view === 'dashboard') renderDashboard();
   if(view === 'database')  renderDatabase();
+  if(view === 'compare')   renderCompare();
   if(view === 'matches')   renderMatches();
   if(view === 'pitch')     renderPitch();
   if(view === 'report')    resetReportForm();
@@ -5251,6 +5485,449 @@ function applyFilters(){
       else { sortKey = k; sortAsc = true; }
       applyFilters();
     });
+  });
+}
+
+/* =============== COMPARE VIEW =============== */
+const CMP_COLORS = [
+  { c: '#e30613', c2: '#ff5d6a' }, // FC Twente rood
+  { c: '#4ea1ff', c2: '#7fc0ff' }, // Blauw
+  { c: '#22c55e', c2: '#65e090' }, // Groen
+  { c: '#f5c518', c2: '#ffe080' }, // Heracles geel
+  { c: '#a855f7', c2: '#cf95ff' }, // Paars
+  { c: '#fb7185', c2: '#ffadbb' }, // Roze
+];
+const CMP_MAX = 6;
+const CMP_CRITERIA = [
+  { key: 'techniek_huidig',    label: 'Techniek',    short: 'Techn.' },
+  { key: 'inzicht_huidig',     label: 'Inzicht',     short: 'Inzicht' },
+  { key: 'grit_huidig',        label: 'GRIT',        short: 'GRIT' },
+  { key: 'explosiviteit_huidig', label: 'Explosief',   short: 'Explos.' },
+  { key: 'sprinten_huidig',    label: 'Sprinten',    short: 'Sprint' },
+  { key: 'duelleren_huidig',   label: 'Duelleren',   short: 'Duel' },
+  { key: 'wendbaarheid_huidig',label: 'Wendbaarh.',  short: 'Wendb.' },
+];
+const CMP_GRADE_VAL = { A:4, B:3, C:2, D:1 };
+
+let cmpSelectedIds = [];
+let cmpSearchQuery = '';
+
+function cmpPlayerById(id){ return loadPlayers().find(p => p.id === id) || null; }
+function cmpGradeNum(g){ return CMP_GRADE_VAL[g] || 0; }
+function cmpGradeFromNum(n){
+  if(n >= 3.5) return 'A';
+  if(n >= 2.5) return 'B';
+  if(n >= 1.5) return 'C';
+  if(n >= 0.5) return 'D';
+  return '-';
+}
+function cmpOverallScore(p){
+  const b = p.beoordelingen || {};
+  let vals = CMP_CRITERIA.map(c => cmpGradeNum(b[c.key] === 'A' && c.key === 'grit_huidig' && !b[c.key] ? b.drit_huidig : b[c.key])).filter(v => v>0);
+  // include final huidig_niveau as a heavier weight signal
+  const hn = cmpGradeNum(p.huidig_niveau);
+  if(hn) vals.push(hn, hn);
+  if(!vals.length) return 0;
+  return vals.reduce((a,b)=>a+b,0) / vals.length;
+}
+function cmpColorFor(idx){ return CMP_COLORS[idx % CMP_COLORS.length]; }
+
+function renderCompare(){
+  // Default selection: if nothing chosen yet but there is something pending, keep it
+  renderComparePicker();
+  renderCompareSelected();
+  renderCompareResults();
+  // Wire events once
+  if(!renderCompare._wired){
+    renderCompare._wired = true;
+    const search = $('#cmp-search');
+    if(search){
+      search.addEventListener('input', (e) => {
+        cmpSearchQuery = (e.target.value || '').toLowerCase().trim();
+        renderComparePicker();
+      });
+    }
+    const clearBtn = $('#cmp-clear');
+    if(clearBtn){
+      clearBtn.addEventListener('click', () => {
+        cmpSelectedIds = [];
+        renderCompare();
+      });
+    }
+  }
+}
+
+function renderComparePicker(){
+  const wrap = $('#cmp-picker-list');
+  if(!wrap) return;
+  const players = loadPlayers();
+  if(!players.length){
+    wrap.innerHTML = `<div style="grid-column:1/-1;padding:24px;text-align:center;color:var(--text-3);font-size:13px;">Nog geen spelers in de database.</div>`;
+    return;
+  }
+  const q = cmpSearchQuery;
+  const filtered = players
+    .filter(p => {
+      if(!q) return true;
+      const hay = `${p.naam||''} ${p.club||''} ${positionLabel(p.positie)||''} ${p.elftal||''}`.toLowerCase();
+      return hay.includes(q);
+    })
+    .sort((a,b) => (a.naam||'').localeCompare(b.naam||'', 'nl'));
+  if(!filtered.length){
+    wrap.innerHTML = `<div style="grid-column:1/-1;padding:18px;text-align:center;color:var(--text-3);font-size:13px;">Geen spelers gevonden voor "${escapeHtml(q)}".</div>`;
+    return;
+  }
+  wrap.innerHTML = filtered.slice(0, 60).map(p => {
+    const isSel = cmpSelectedIds.includes(p.id);
+    const initials = ((p.naam||'').split(/\s+/).map(s => s[0]||'').slice(0,2).join('') || '?').toUpperCase();
+    const grade = p.huidig_niveau || '-';
+    const meta = [positionLabel(p.positie), p.club].filter(Boolean).join(' · ');
+    return `
+      <button class="compare-pick ${isSel?'selected':''}" data-id="${escapeAttr(p.id)}" type="button">
+        <div class="compare-pick-avatar">${escapeHtml(initials)}</div>
+        <div class="compare-pick-body">
+          <div class="compare-pick-name">${escapeHtml(p.naam||'?')}</div>
+          <div class="compare-pick-meta">${escapeHtml(meta||'—')}</div>
+        </div>
+        <div class="compare-pick-grade ${grade}">${escapeHtml(grade)}</div>
+      </button>`;
+  }).join('');
+  wrap.querySelectorAll('.compare-pick').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      const idx = cmpSelectedIds.indexOf(id);
+      if(idx >= 0){
+        cmpSelectedIds.splice(idx, 1);
+      } else {
+        if(cmpSelectedIds.length >= CMP_MAX){
+          toast(`Maximaal ${CMP_MAX} spelers tegelijk`);
+          return;
+        }
+        cmpSelectedIds.push(id);
+      }
+      renderComparePicker();
+      renderCompareSelected();
+      renderCompareResults();
+    });
+  });
+}
+
+function renderCompareSelected(){
+  const wrap = $('#cmp-selected');
+  if(!wrap) return;
+  if(!cmpSelectedIds.length){ wrap.innerHTML = ''; return; }
+  wrap.innerHTML = cmpSelectedIds.map((id, i) => {
+    const p = cmpPlayerById(id);
+    if(!p) return '';
+    const col = cmpColorFor(i);
+    return `
+      <span class="compare-chip" style="--player-color:${col.c}">
+        <span class="dot"></span>
+        <span>${escapeHtml(p.naam||'?')}</span>
+        <button class="x" data-id="${escapeAttr(id)}" aria-label="Verwijderen">×</button>
+      </span>`;
+  }).join('');
+  wrap.querySelectorAll('.x').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.dataset.id;
+      cmpSelectedIds = cmpSelectedIds.filter(x => x !== id);
+      renderCompare();
+    });
+  });
+}
+
+function renderCompareResults(){
+  const empty = $('#cmp-empty');
+  const results = $('#cmp-results');
+  if(!empty || !results) return;
+  if(cmpSelectedIds.length < 2){
+    empty.style.display = '';
+    results.style.display = 'none';
+    return;
+  }
+  empty.style.display = 'none';
+  results.style.display = '';
+  const players = cmpSelectedIds.map(cmpPlayerById).filter(Boolean);
+  renderCompareGauges(players);
+  renderCompareRadar(players);
+  renderCompareBars(players);
+  renderCompareTable(players);
+}
+
+function renderCompareGauges(players){
+  const wrap = $('#cmp-gauges');
+  if(!wrap) return;
+  const html = players.map((p, i) => {
+    const col = cmpColorFor(i);
+    const score = cmpOverallScore(p);
+    const grade = cmpGradeFromNum(score);
+    const pct = Math.max(0, Math.min(1, score / 4));
+    const R = 46, C = 2 * Math.PI * R;
+    const off = C * (1 - pct);
+    // Potentieel ring
+    const potVal = cmpGradeNum(p.potentieel_niveau);
+    const potPct = potVal ? potVal/4 : 0;
+    const potOff = C * (1 - potPct);
+    const meta = [positionLabel(p.positie), p.club].filter(Boolean).join(' · ');
+    return `
+      <div class="compare-gauge" data-id="${escapeAttr(p.id)}" style="--player-color:${col.c}">
+        <div class="compare-gauge-name">${escapeHtml(p.naam||'?')}</div>
+        <div class="compare-gauge-meta">${escapeHtml(meta||'—')}</div>
+        <div class="compare-gauge-ring">
+          <svg width="110" height="110" viewBox="0 0 110 110">
+            <circle class="compare-gauge-ring-bg" cx="55" cy="55" r="${R}" fill="none" stroke-width="8"/>
+            <circle class="compare-gauge-ring-pot" cx="55" cy="55" r="${R}" fill="none" stroke-width="3"
+                    stroke-dasharray="${C}" stroke-dashoffset="${potOff}" stroke-linecap="round"/>
+            <circle class="compare-gauge-ring-fg" cx="55" cy="55" r="${R}" fill="none" stroke-width="8"
+                    stroke-dasharray="${C}" stroke-dashoffset="${off}" stroke-linecap="round"/>
+          </svg>
+          <div class="compare-gauge-center">
+            <div class="compare-gauge-grade">${escapeHtml(grade)}</div>
+            <div class="compare-gauge-score">${score ? score.toFixed(2) : '–'} / 4</div>
+          </div>
+        </div>
+        <div class="compare-gauge-dual">
+          <div>Huidig<b>${escapeHtml(p.huidig_niveau||'–')}</b></div>
+          <div>Potentieel<b>${escapeHtml(p.potentieel_niveau||'–')}</b></div>
+        </div>
+      </div>`;
+  }).join('');
+  wrap.innerHTML = html;
+  wrap.querySelectorAll('.compare-gauge').forEach(el => {
+    el.addEventListener('click', () => { if(typeof openDetail === 'function') openDetail(el.dataset.id); });
+  });
+}
+
+function renderCompareRadar(players){
+  const canvas = $('#cmp-radar');
+  const legend = $('#cmp-radar-legend');
+  if(!canvas || !legend) return;
+  const dpr = window.devicePixelRatio || 1;
+  const W = 520, H = 520;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,W,H);
+  const cx = W/2, cy = H/2 + 8, R = 180;
+  const N = CMP_CRITERIA.length;
+  const angle = (i) => -Math.PI/2 + (i * 2*Math.PI / N);
+
+  // Background rings (4 levels)
+  for(let lvl=1; lvl<=4; lvl++){
+    ctx.beginPath();
+    for(let i=0;i<N;i++){
+      const a = angle(i);
+      const r = R * (lvl/4);
+      const x = cx + Math.cos(a)*r;
+      const y = cy + Math.sin(a)*r;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.closePath();
+    ctx.strokeStyle = lvl===4 ? 'rgba(255,255,255,.18)' : 'rgba(255,255,255,.08)';
+    ctx.lineWidth = lvl===4 ? 1.2 : 1;
+    ctx.stroke();
+    if(lvl<4){
+      ctx.fillStyle = 'rgba(255,255,255,.02)';
+      ctx.fill();
+    }
+  }
+  // Spokes + grade labels at outer ring
+  for(let i=0;i<N;i++){
+    const a = angle(i);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a)*R, cy + Math.sin(a)*R);
+    ctx.strokeStyle = 'rgba(255,255,255,.06)';
+    ctx.stroke();
+  }
+  // Grade markers on top spoke
+  ctx.fillStyle = 'rgba(255,255,255,.35)';
+  ctx.font = '10px -apple-system, Segoe UI, sans-serif';
+  ctx.textAlign = 'center';
+  ['D','C','B','A'].forEach((g, i) => {
+    const r = R * ((i+1)/4);
+    ctx.fillText(g, cx + 8, cy - r + 3);
+  });
+
+  // Axis labels
+  ctx.fillStyle = 'rgba(232,237,245,.9)';
+  ctx.font = '600 12.5px -apple-system, Segoe UI, sans-serif';
+  for(let i=0;i<N;i++){
+    const a = angle(i);
+    const lx = cx + Math.cos(a)*(R+24);
+    const ly = cy + Math.sin(a)*(R+24);
+    ctx.textAlign = Math.abs(Math.cos(a)) < 0.2 ? 'center' : (Math.cos(a) > 0 ? 'left' : 'right');
+    ctx.textBaseline = Math.abs(Math.sin(a)) < 0.2 ? 'middle' : (Math.sin(a) > 0 ? 'top' : 'bottom');
+    ctx.fillText(CMP_CRITERIA[i].label, lx, ly);
+  }
+
+  // Player shapes
+  players.forEach((p, idx) => {
+    const col = cmpColorFor(idx);
+    const b = p.beoordelingen || {};
+    const points = CMP_CRITERIA.map((c, i) => {
+      let v = cmpGradeNum(b[c.key]);
+      if(!v && c.key === 'grit_huidig') v = cmpGradeNum(b.drit_huidig); // fallback
+      const r = R * (v / 4);
+      const a = angle(i);
+      return { x: cx + Math.cos(a)*r, y: cy + Math.sin(a)*r, v };
+    });
+    // Filled shape
+    ctx.beginPath();
+    points.forEach((pt, i) => { if(i===0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y); });
+    ctx.closePath();
+    ctx.fillStyle = hexA(col.c, 0.18);
+    ctx.fill();
+    ctx.strokeStyle = col.c;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    // Point dots
+    points.forEach(pt => {
+      if(pt.v <= 0) return;
+      ctx.beginPath();
+      ctx.arc(pt.x, pt.y, 3.5, 0, Math.PI*2);
+      ctx.fillStyle = col.c;
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(11,15,21,.9)';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    });
+  });
+
+  // Center dot
+  ctx.beginPath();
+  ctx.arc(cx, cy, 2.5, 0, Math.PI*2);
+  ctx.fillStyle = 'rgba(255,255,255,.4)';
+  ctx.fill();
+
+  // Legend
+  legend.innerHTML = players.map((p, i) => {
+    const col = cmpColorFor(i);
+    return `<span class="compare-legend-item"><span class="compare-legend-dot" style="background:${col.c}"></span>${escapeHtml(p.naam||'?')}</span>`;
+  }).join('');
+}
+
+function hexA(hex, alpha){
+  const h = hex.replace('#','');
+  const r = parseInt(h.substring(0,2),16);
+  const g = parseInt(h.substring(2,4),16);
+  const b = parseInt(h.substring(4,6),16);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function renderCompareBars(players){
+  const wrap = $('#cmp-bars');
+  if(!wrap) return;
+  // For each criterium, show one row per selected player
+  const html = CMP_CRITERIA.map(c => {
+    const rows = players.map((p, i) => {
+      const col = cmpColorFor(i);
+      const b = p.beoordelingen || {};
+      let g = b[c.key];
+      if(!g && c.key === 'grit_huidig') g = b.drit_huidig;
+      const v = cmpGradeNum(g);
+      const pct = v ? (v/4)*100 : 0;
+      const display = g || '–';
+      const firstName = (p.naam||'?').split(/\s+/)[0] || '?';
+      return `
+        <div class="compare-bar-row">
+          <div class="compare-bar-name" title="${escapeAttr(p.naam||'')}">${escapeHtml(firstName)}</div>
+          <div class="compare-bar-track">
+            <div class="compare-bar-fill" style="width:${pct}%;--player-color:${col.c};--player-color-2:${col.c2}"></div>
+          </div>
+          <div class="compare-bar-grade">${escapeHtml(display)}</div>
+        </div>`;
+    }).join('');
+    // best grade among selected
+    const best = players.reduce((acc, p) => {
+      const b = p.beoordelingen || {};
+      let g = b[c.key]; if(!g && c.key==='grit_huidig') g = b.drit_huidig;
+      const v = cmpGradeNum(g);
+      return v > acc ? v : acc;
+    }, 0);
+    return `
+      <div class="compare-bar-group">
+        <div class="compare-bar-group-title">
+          <span>${escapeHtml(c.label)}</span>
+          <em>${best ? 'beste: ' + cmpGradeFromNum(best) : '—'}</em>
+        </div>
+        <div class="compare-bar-rows">${rows}</div>
+      </div>`;
+  }).join('');
+  wrap.innerHTML = html;
+}
+
+function renderCompareTable(players){
+  const tbl = $('#cmp-table');
+  if(!tbl) return;
+  // Header: empty + one column per player
+  const headerCells = players.map((p, i) => {
+    const col = cmpColorFor(i);
+    return `<th><div class="compare-table-header-cell"><span class="dot" style="background:${col.c}"></span><a class="cmp-name-link" data-id="${escapeAttr(p.id)}">${escapeHtml(p.naam||'?')}</a></div></th>`;
+  }).join('');
+
+  const rows = [];
+  function row(label, getter){
+    const cells = players.map(p => `<td>${getter(p) ?? '<span style="color:var(--text-3)">–</span>'}</td>`).join('');
+    rows.push(`<tr><th>${escapeHtml(label)}</th>${cells}</tr>`);
+  }
+  function rowGrade(label, key){
+    // determine winner(s)
+    const vals = players.map(p => {
+      const b = p.beoordelingen || {};
+      let g = b[key]; if(!g && key==='grit_huidig') g = b.drit_huidig;
+      return cmpGradeNum(g);
+    });
+    const max = Math.max(...vals);
+    const cells = players.map((p, i) => {
+      const b = p.beoordelingen || {};
+      let g = b[key]; if(!g && key==='grit_huidig') g = b.drit_huidig;
+      if(!g) return `<td><span style="color:var(--text-3)">–</span></td>`;
+      const winnerCls = (vals[i] === max && max > 0) ? ' cmp-best' : '';
+      return `<td><span class="cmp-cell-grade ${g}${winnerCls}">${escapeHtml(g)}</span></td>`;
+    }).join('');
+    rows.push(`<tr><th>${escapeHtml(label)}</th>${cells}</tr>`);
+  }
+  function rowFinalGrade(label, key){
+    const vals = players.map(p => cmpGradeNum(p[key]));
+    const max = Math.max(...vals);
+    const cells = players.map((p, i) => {
+      const g = p[key];
+      if(!g) return `<td><span style="color:var(--text-3)">–</span></td>`;
+      const winnerCls = (vals[i] === max && max > 0) ? ' cmp-best' : '';
+      return `<td><span class="cmp-cell-grade ${g}${winnerCls}">${escapeHtml(g)}</span></td>`;
+    }).join('');
+    rows.push(`<tr><th>${escapeHtml(label)}</th>${cells}</tr>`);
+  }
+
+  row('Positie',     p => escapeHtml(positionLabel(p.positie) || ''));
+  row('Club',        p => escapeHtml(p.club || ''));
+  row('Elftal',      p => escapeHtml(p.elftal || ''));
+  row('Geboortejaar',p => escapeHtml(p.geboortejaar || ''));
+  row('Voorkeursbeen', p => escapeHtml(p.voorkeursbeen || ''));
+  row('Lengte',      p => escapeHtml(p.lengte || ''));
+  row('Lichaamsbouw',p => escapeHtml(p.bouw || ''));
+  row('Motoriek',    p => escapeHtml(p.motoriek || ''));
+  row('Rijping',     p => escapeHtml(p.rijping || ''));
+  rowFinalGrade('Huidig niveau', 'huidig_niveau');
+  rowFinalGrade('Potentieel', 'potentieel_niveau');
+  rowGrade('Techniek', 'techniek_huidig');
+  rowGrade('Spelinzicht', 'inzicht_huidig');
+  rowGrade('GRIT/Mentaal', 'grit_huidig');
+  rowGrade('Explosiviteit', 'explosiviteit_huidig');
+  rowGrade('Sprinten', 'sprinten_huidig');
+  rowGrade('Duelleren', 'duelleren_huidig');
+  rowGrade('Wendbaarheid', 'wendbaarheid_huidig');
+  row('Persoonlijk wapen', p => escapeHtml(p.wapen || ''));
+  row('Laatst gescout', p => escapeHtml(formatDate(p.datum) || ''));
+
+  tbl.innerHTML = `
+    <thead><tr><th></th>${headerCells}</tr></thead>
+    <tbody>${rows.join('')}</tbody>`;
+
+  tbl.querySelectorAll('.cmp-name-link').forEach(a => {
+    a.addEventListener('click', () => { if(typeof openDetail === 'function') openDetail(a.dataset.id); });
   });
 }
 

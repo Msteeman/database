@@ -1497,6 +1497,30 @@ tbody tr:last-child td { border-bottom: none; }
   }
 }
 
+/* v70h-s15: bulletproof desktop reset — overschrijft ALLE eerdere
+   position:fixed/full-width regels zodat balk gewoon in flow staat
+   onder het formulier, naast de zijbalk (niet eroverheen). */
+@media (min-width: 1025px) {
+  .form-actions-sticky {
+    position: static !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    background: transparent !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    padding: 16px 0 12px 0 !important;
+    margin: 18px 0 0 0 !important;
+    z-index: auto !important;
+  }
+  .form-actions-sticky .autosave-status .text {
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+  }
+}
+
 /* Draft restored banner (bovenaan rapport-formulier) */
 .db-draft-card {
   display: flex; align-items: center; gap: 14px;

@@ -4391,11 +4391,11 @@ body.view-active-report #view-report {
               </div>
               <div class="field">
                 <label>Thuisspelende ploeg</label>
-                <input id="f-w-thuis" type="text" placeholder="Bijv. FC Twente O15" />
+                <input id="f-w-thuis" type="text" placeholder="Bijv. FC Twente O15" list="club-suggestions" autocomplete="off" data-picker="club" />
               </div>
               <div class="field">
                 <label>Uitspelende ploeg</label>
-                <input id="f-w-uit" type="text" placeholder="Bijv. Sparta Rotterdam O15" />
+                <input id="f-w-uit" type="text" placeholder="Bijv. Sparta Rotterdam O15" list="club-suggestions" autocomplete="off" data-picker="club" />
               </div>
             </div>
             <div class="field-row">
@@ -13248,12 +13248,83 @@ onAuthStateChanged(auth, async (user)=>{
 }
 .sh-picker-opt:hover { background: var(--primary, #e30613); border-color: var(--primary, #e30613); color: #fff; }
 .sh-picker-opt:active { transform: scale(.96); }
+.sh-picker-add {
+  display: flex; align-items: center; justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 9px;
+  background: rgba(227,6,19,.12);
+  border: 1.5px dashed var(--primary, #e30613);
+  color: var(--primary, #e30613);
+  font-weight: 700; font-size: 14px;
+  cursor: pointer;
+  margin-top: 6px;
+  min-height: 48px;
+  transition: background .15s, transform .08s;
+}
+.sh-picker-add:hover { background: rgba(227,6,19,.22); }
+.sh-picker-add:active { transform: scale(.97); }
+.sh-picker-add .plus { font-size: 18px; font-weight: 800; }
 .sh-picker-empty {
   color: var(--muted, #7b8294); text-align: center;
   padding: 24px; grid-column: 1/-1; font-size: 14px;
 }
-input[data-picker] { cursor: pointer; caret-color: transparent; }
-input[data-picker]:focus { caret-color: transparent; }
+/* v70d: Inline autocomplete (vervangt modale picker) */
+.sh-ac-dropdown {
+  position: absolute;
+  z-index: 9600;
+  background: var(--bg-2, #11151c);
+  border: 1px solid var(--border, #2a2f3a);
+  border-radius: 10px;
+  box-shadow: 0 14px 36px rgba(0,0,0,.55);
+  max-height: 280px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 6px;
+  display: none;
+}
+.sh-ac-dropdown.show { display: block; }
+.sh-ac-opt, .sh-ac-add {
+  display: flex; align-items: center;
+  width: 100%; text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text, #e7eaf0);
+  padding: 11px 12px;
+  border-radius: 7px;
+  font-size: 14px; font-weight: 500;
+  cursor: pointer;
+  min-height: 42px;
+  font-family: inherit;
+}
+.sh-ac-opt:hover, .sh-ac-opt.hover {
+  background: rgba(227,6,19,.16);
+  color: var(--text, #e7eaf0);
+}
+.sh-ac-opt .recent-mark {
+  font-size: 10px; font-weight: 700;
+  color: var(--primary, #e30613);
+  background: rgba(227,6,19,.16);
+  padding: 2px 7px; border-radius: 999px;
+  margin-left: auto;
+  letter-spacing: .4px;
+}
+.sh-ac-add {
+  color: var(--primary, #e30613);
+  font-weight: 700;
+  border-top: 1px dashed var(--border, #2a2f3a);
+  margin-top: 4px;
+  padding-top: 12px;
+}
+.sh-ac-add:hover { background: rgba(227,6,19,.18); }
+.sh-ac-add .plus { font-size: 16px; font-weight: 900; margin-right: 8px; }
+.sh-ac-empty {
+  color: var(--muted, #7b8294);
+  padding: 14px 12px;
+  font-size: 13px;
+  text-align: center;
+}
 </style>
 
 <div class="sh-picker-backdrop" id="sh-picker" role="dialog" aria-modal="true">
@@ -13271,8 +13342,10 @@ input[data-picker]:focus { caret-color: transparent; }
 
 <script>
 (function(){
+  // v70d: Inline autocomplete (geen modaal popup meer)
   const RECENTS_KEY_PREFIX = 'sh_picker_recents_';
-  const MAX_RECENTS = 6;
+  const MAX_RECENTS = 8;
+  const MAX_VISIBLE = 40;
 
   function getRecents(type){
     try { return JSON.parse(localStorage.getItem(RECENTS_KEY_PREFIX + type) || '[]') || []; }
@@ -13286,6 +13359,7 @@ input[data-picker]:focus { caret-color: transparent; }
     try { localStorage.setItem(RECENTS_KEY_PREFIX + type, JSON.stringify(arr)); } catch(_){}
   }
 
+  // Opties uit alle relevante bronnen — CLUB_ADRESSEN + alle clubs uit bestaande rapporten
   function getOptions(type){
     if(type === 'elftal'){
       const out = [];
@@ -13297,156 +13371,210 @@ input[data-picker]:focus { caret-color: transparent; }
       return out;
     }
     if(type === 'club'){
-      if(typeof CLUB_ADRESSEN === 'undefined') return [];
       const names = new Set();
-      Object.values(CLUB_ADRESSEN).forEach(c => { if(c && c.naam) names.add(c.naam); });
+      if(typeof CLUB_ADRESSEN !== 'undefined' && CLUB_ADRESSEN){
+        Object.values(CLUB_ADRESSEN).forEach(c => { if(c && c.naam) names.add(c.naam); });
+      }
+      // Clubs uit eerder ingevulde rapporten meenemen (zo komen handmatig-toegevoegde clubs terug)
+      try {
+        if(typeof playersCache !== 'undefined' && Array.isArray(playersCache)){
+          playersCache.forEach(p => {
+            if(p && p.club) names.add(p.club);
+            if(p && p.wedstrijd){
+              if(p.wedstrijd.thuis) names.add(p.wedstrijd.thuis);
+              if(p.wedstrijd.uit) names.add(p.wedstrijd.uit);
+            }
+          });
+        }
+      } catch(_){}
+      // Ook de recents toevoegen — wat je eerder hebt getypt blijft hangen
+      try { getRecents('club').forEach(n => names.add(n)); } catch(_){}
       return Array.from(names).sort((a,b) => a.localeCompare(b, 'nl'));
     }
     return [];
   }
 
-  const backdrop = document.getElementById('sh-picker');
-  const titleEl = document.getElementById('sh-picker-title');
-  const searchEl = document.getElementById('sh-picker-search');
-  const recentsEl = document.getElementById('sh-picker-recents');
-  const recentsLbl = document.getElementById('sh-picker-recents-label');
-  const listEl = document.getElementById('sh-picker-list');
-  const closeEl = document.getElementById('sh-picker-close');
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  // Eén shared dropdown — appended to body, repositioned per actief input
+  const dd = document.createElement('div');
+  dd.className = 'sh-ac-dropdown';
+  dd.setAttribute('role', 'listbox');
+  document.body.appendChild(dd);
 
   let activeInput = null;
   let activeType = null;
-  let activeOptions = [];
+  let activeIdx = -1;
+  let suppressBlurClose = false;
 
-  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-
-  function render(filter){
-    const f = (filter || '').trim().toLowerCase();
-    const filtered = f ? activeOptions.filter(o => o.toLowerCase().includes(f)) : activeOptions;
-    if(filtered.length === 0){
-      listEl.innerHTML = '<div class="sh-picker-empty">Geen resultaten</div>';
-      return;
+  function position(){
+    if(!activeInput) return;
+    const r = activeInput.getBoundingClientRect();
+    dd.style.left = (r.left + window.scrollX) + 'px';
+    dd.style.top  = (r.bottom + window.scrollY + 4) + 'px';
+    dd.style.width = r.width + 'px';
+    // Als er onvoldoende ruimte onder is, draai boven het input
+    const ddH = Math.min(280, dd.scrollHeight);
+    const spaceBelow = window.innerHeight - r.bottom;
+    if(spaceBelow < ddH + 12 && r.top > ddH + 12){
+      dd.style.top = (r.top + window.scrollY - ddH - 4) + 'px';
     }
-    listEl.innerHTML = filtered.map(opt =>
-      '<button type="button" class="sh-picker-opt" data-val="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</button>'
-    ).join('');
   }
 
-  function renderRecents(){
-    const r = getRecents(activeType);
-    if(r.length === 0){
-      recentsEl.innerHTML = '';
-      recentsLbl.classList.add('hidden');
-      return;
+  function render(){
+    if(!activeInput) return;
+    const raw = activeInput.value || '';
+    const f = raw.trim().toLowerCase();
+    const opts = getOptions(activeType);
+    const recents = getRecents(activeType);
+
+    let items;
+    if(!f){
+      // Geen invoer — toon recents bovenaan, dan rest
+      const recentSet = new Set(recents);
+      const ordered = recents.concat(opts.filter(o => !recentSet.has(o)));
+      items = ordered.slice(0, MAX_VISIBLE).map(o => ({ val: o, recent: recentSet.has(o) }));
+    } else {
+      // Filter — eerst die starten met de zoekterm, dan rest
+      const startsWith = [];
+      const contains = [];
+      opts.forEach(o => {
+        const lo = o.toLowerCase();
+        if(lo.startsWith(f)) startsWith.push(o);
+        else if(lo.includes(f)) contains.push(o);
+      });
+      const recentSet = new Set(recents);
+      items = startsWith.concat(contains).slice(0, MAX_VISIBLE).map(o => ({ val: o, recent: recentSet.has(o) }));
     }
-    recentsLbl.classList.remove('hidden');
-    recentsEl.innerHTML = r.map(opt =>
-      '<button type="button" class="sh-picker-recent-chip" data-val="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</button>'
-    ).join('');
+
+    const exact = items.some(it => it.val.toLowerCase() === f);
+    let html = '';
+    if(items.length === 0 && !f){
+      html = '<div class="sh-ac-empty">Geen suggesties</div>';
+    } else {
+      html = items.map((it, i) =>
+        '<button type="button" class="sh-ac-opt" data-val="' + escapeHtml(it.val) + '" data-i="' + i + '">' +
+        '<span>' + escapeHtml(it.val) + '</span>' +
+        (it.recent ? '<span class="recent-mark">recent</span>' : '') +
+        '</button>'
+      ).join('');
+    }
+    if(f && !exact){
+      html += '<button type="button" class="sh-ac-add" data-add="' + escapeHtml(raw.trim()) + '">' +
+              '<span class="plus">+</span>Voeg toe: "' + escapeHtml(raw.trim()) + '"</button>';
+    }
+    dd.innerHTML = html || '<div class="sh-ac-empty">Geen suggesties</div>';
+    activeIdx = -1;
+    position();
   }
 
-  function open(input){
+  function openFor(input){
     activeInput = input;
     activeType = input.dataset.picker;
-    activeOptions = getOptions(activeType);
-    listEl.className = 'sh-picker-list';
-    if(activeType === 'club') listEl.classList.add('cols-1');
-    titleEl.textContent = activeType === 'elftal' ? 'Kies elftal' : (activeType === 'club' ? 'Kies club' : 'Kies');
-    searchEl.value = '';
-    searchEl.placeholder = activeType === 'elftal' ? 'Zoek (bijv. 15)' : 'Zoek club...';
-    renderRecents();
-    render('');
-    backdrop.classList.add('show');
-    // Focus search alleen op desktop — voorkomt keyboard pop op mobiel
-    if(window.innerWidth > 720){
-      setTimeout(() => searchEl.focus(), 80);
-    }
+    dd.classList.add('show');
+    render();
   }
 
   function close(){
-    backdrop.classList.remove('show');
+    dd.classList.remove('show');
     activeInput = null;
+    activeIdx = -1;
   }
 
   function pick(val){
     if(!activeInput) return close();
     activeInput.value = val;
-    activeInput.dispatchEvent(new Event('input', {bubbles: true}));
-    activeInput.dispatchEvent(new Event('change', {bubbles: true}));
+    activeInput.dispatchEvent(new Event('input', { bubbles: true }));
+    activeInput.dispatchEvent(new Event('change', { bubbles: true }));
     pushRecent(activeType, val);
     close();
   }
 
-  // v70a: per-input directe wiring (robuuster op iOS PWA + Android WebView)
-  function wireOne(input){
-    if(input.__shPickerWired) return;
-    input.__shPickerWired = true;
-    // Voorkom dat het toetsenbord opent — readonly is al gezet, maar dit is extra zekerheid.
-    input.setAttribute('readonly', 'readonly');
-    input.setAttribute('inputmode', 'none');
-    input.style.cursor = 'pointer';
-    input.style.caretColor = 'transparent';
-    const handler = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      open(input);
-    };
-    input.addEventListener('click', handler);
-    input.addEventListener('pointerdown', handler);
-    input.addEventListener('touchstart', handler, { passive: false });
-    input.addEventListener('focus', () => {
-      input.blur();
-      open(input);
-    });
-    // Voor de labels die mogelijk om het input staan
-    const label = input.closest('label');
-    if(label && !label.__shPickerLblWired){
-      label.__shPickerLblWired = true;
-      label.addEventListener('click', (e) => {
-        if(e.target === input) return; // handler op input zelf vangt 'm al
-        e.preventDefault();
-        open(input);
-      });
-    }
+  // mousedown beats blur — voorkomt dat dropdown sluit voordat keuze is gepakt
+  dd.addEventListener('mousedown', (e) => {
+    suppressBlurClose = true;
+    setTimeout(() => { suppressBlurClose = false; }, 0);
+  });
+  dd.addEventListener('click', (e) => {
+    const add = e.target.closest('.sh-ac-add');
+    if(add){ pick(add.dataset.add); return; }
+    const opt = e.target.closest('.sh-ac-opt');
+    if(opt) pick(opt.dataset.val);
+  });
+  // Touch op mobiel — touchstart geeft direct response
+  dd.addEventListener('touchstart', (e) => {
+    suppressBlurClose = true;
+  }, { passive: true });
+
+  function highlight(delta){
+    const opts = dd.querySelectorAll('.sh-ac-opt, .sh-ac-add');
+    if(!opts.length) return;
+    activeIdx = (activeIdx + delta + opts.length) % opts.length;
+    opts.forEach((o, i) => o.classList.toggle('hover', i === activeIdx));
+    const el = opts[activeIdx];
+    if(el && el.scrollIntoView) el.scrollIntoView({ block: 'nearest' });
   }
+
+  function wireOne(input){
+    if(input.__shAcWired) return;
+    input.__shAcWired = true;
+    // Verwijder eventuele oude restrictie-attribuut: input mag normaal typen
+    input.removeAttribute('readonly');
+    input.removeAttribute('inputmode');
+    input.style.cursor = '';
+    input.style.caretColor = '';
+
+    input.addEventListener('focus', () => openFor(input));
+    input.addEventListener('input', () => { if(activeInput === input) render(); else openFor(input); });
+    input.addEventListener('click', () => { if(!dd.classList.contains('show')) openFor(input); });
+    input.addEventListener('blur', () => {
+      if(suppressBlurClose) return; // klik op dropdown — handler vult al in
+      setTimeout(() => {
+        // Sluit alleen als focus elders ligt (dus niet op een dd-button)
+        if(activeInput === input) close();
+      }, 120);
+    });
+    input.addEventListener('keydown', (e) => {
+      if(!dd.classList.contains('show')){
+        if(e.key === 'ArrowDown') openFor(input);
+        return;
+      }
+      if(e.key === 'ArrowDown'){ e.preventDefault(); highlight(1); }
+      else if(e.key === 'ArrowUp'){ e.preventDefault(); highlight(-1); }
+      else if(e.key === 'Enter'){
+        const opts = dd.querySelectorAll('.sh-ac-opt, .sh-ac-add');
+        if(activeIdx >= 0 && opts[activeIdx]){
+          e.preventDefault();
+          const el = opts[activeIdx];
+          if(el.classList.contains('sh-ac-add')) pick(el.dataset.add);
+          else pick(el.dataset.val);
+        }
+        // anders: laat default Enter doorgaan (form submit), maar sluit dropdown
+        close();
+      }
+      else if(e.key === 'Escape'){ close(); }
+    });
+  }
+
   function wireAll(){
     document.querySelectorAll('input[data-picker]').forEach(wireOne);
   }
   wireAll();
-  // Inputs die later in de DOM komen (modals, edit-mode) ook opvangen
-  const pickerObs = new MutationObserver(wireAll);
-  pickerObs.observe(document.body, { childList: true, subtree: true });
-  // Fallback delegated handlers (capture) — voor edge cases
-  document.addEventListener('click', (e) => {
-    const t = e.target;
-    if(t && t.matches && t.matches('input[data-picker]') && !t.__shPickerWired){
-      e.preventDefault();
-      open(t);
-    }
-  }, true);
-  document.addEventListener('focusin', (e) => {
-    const t = e.target;
-    if(t && t.matches && t.matches('input[data-picker]')){
-      t.blur();
-      if(!backdrop.classList.contains('show')) open(t);
-    }
-  });
+  const acObs = new MutationObserver(wireAll);
+  acObs.observe(document.body, { childList: true, subtree: true });
 
-  searchEl.addEventListener('input', () => render(searchEl.value));
-  listEl.addEventListener('click', (e) => {
-    const b = e.target.closest('.sh-picker-opt');
-    if(b) pick(b.dataset.val);
-  });
-  recentsEl.addEventListener('click', (e) => {
-    const b = e.target.closest('.sh-picker-recent-chip');
-    if(b) pick(b.dataset.val);
-  });
-  closeEl.addEventListener('click', close);
-  backdrop.addEventListener('click', (e) => {
-    if(e.target === backdrop) close();
-  });
-  document.addEventListener('keydown', (e) => {
-    if(e.key === 'Escape' && backdrop.classList.contains('show')) close();
-  });
+  // Sluit als ergens anders geklikt wordt
+  document.addEventListener('mousedown', (e) => {
+    if(!dd.classList.contains('show')) return;
+    if(dd.contains(e.target)) return;
+    if(activeInput && activeInput.contains(e.target)) return;
+    if(e.target === activeInput) return;
+    close();
+  }, true);
+
+  // Reposition bij scroll/resize
+  window.addEventListener('scroll', () => { if(dd.classList.contains('show')) position(); }, true);
+  window.addEventListener('resize', () => { if(dd.classList.contains('show')) position(); });
 })();
 
 

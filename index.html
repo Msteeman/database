@@ -4096,7 +4096,7 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="field-row three">
               <div class="field">
                 <label>Elftal</label>
-                <input id="f-elftal" type="text" placeholder="Bijv. O.15-1" />
+                <input id="f-elftal" type="text" placeholder="Bijv. O.15-1" list="elftal-suggestions" autocomplete="off" />
               </div>
               <div class="field">
                 <label>Rugnummer</label>
@@ -4630,14 +4630,8 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
-            <label>Leeftijd</label>
-            <select id="pm-leeftijd">
-              <option value="">Kies leeftijd</option>
-              <option>JO8</option><option>JO9</option><option>JO10</option><option>JO11</option>
-              <option>JO12</option><option>JO13</option><option>JO14</option><option>JO15</option>
-              <option>JO16</option><option>JO17</option><option>JO18</option><option>JO19</option>
-              <option>JO21</option><option>Senioren</option><option>Eigen leeftijd</option>
-            </select>
+            <label>Elftal</label>
+            <input id="pm-leeftijd" type="text" placeholder="Bijv. O.15-1" list="elftal-suggestions" autocomplete="off" />
           </div>
           <div class="field">
             <label>Scoutingmethode</label>
@@ -12620,5 +12614,168 @@ onAuthStateChanged(auth, async (user)=>{
 
 <!-- Adresboek-autocomplete: gevuld door fillClubDatalist() -->
 <datalist id="club-suggestions"></datalist>
+<!-- Elftal-autocomplete: O.8-1 t/m O.23-10 -->
+<datalist id="elftal-suggestions">
+    <option value="O.8-1">
+    <option value="O.8-2">
+    <option value="O.8-3">
+    <option value="O.8-4">
+    <option value="O.8-5">
+    <option value="O.8-6">
+    <option value="O.8-7">
+    <option value="O.8-8">
+    <option value="O.8-9">
+    <option value="O.8-10">
+    <option value="O.9-1">
+    <option value="O.9-2">
+    <option value="O.9-3">
+    <option value="O.9-4">
+    <option value="O.9-5">
+    <option value="O.9-6">
+    <option value="O.9-7">
+    <option value="O.9-8">
+    <option value="O.9-9">
+    <option value="O.9-10">
+    <option value="O.10-1">
+    <option value="O.10-2">
+    <option value="O.10-3">
+    <option value="O.10-4">
+    <option value="O.10-5">
+    <option value="O.10-6">
+    <option value="O.10-7">
+    <option value="O.10-8">
+    <option value="O.10-9">
+    <option value="O.10-10">
+    <option value="O.11-1">
+    <option value="O.11-2">
+    <option value="O.11-3">
+    <option value="O.11-4">
+    <option value="O.11-5">
+    <option value="O.11-6">
+    <option value="O.11-7">
+    <option value="O.11-8">
+    <option value="O.11-9">
+    <option value="O.11-10">
+    <option value="O.12-1">
+    <option value="O.12-2">
+    <option value="O.12-3">
+    <option value="O.12-4">
+    <option value="O.12-5">
+    <option value="O.12-6">
+    <option value="O.12-7">
+    <option value="O.12-8">
+    <option value="O.12-9">
+    <option value="O.12-10">
+    <option value="O.13-1">
+    <option value="O.13-2">
+    <option value="O.13-3">
+    <option value="O.13-4">
+    <option value="O.13-5">
+    <option value="O.13-6">
+    <option value="O.13-7">
+    <option value="O.13-8">
+    <option value="O.13-9">
+    <option value="O.13-10">
+    <option value="O.14-1">
+    <option value="O.14-2">
+    <option value="O.14-3">
+    <option value="O.14-4">
+    <option value="O.14-5">
+    <option value="O.14-6">
+    <option value="O.14-7">
+    <option value="O.14-8">
+    <option value="O.14-9">
+    <option value="O.14-10">
+    <option value="O.15-1">
+    <option value="O.15-2">
+    <option value="O.15-3">
+    <option value="O.15-4">
+    <option value="O.15-5">
+    <option value="O.15-6">
+    <option value="O.15-7">
+    <option value="O.15-8">
+    <option value="O.15-9">
+    <option value="O.15-10">
+    <option value="O.16-1">
+    <option value="O.16-2">
+    <option value="O.16-3">
+    <option value="O.16-4">
+    <option value="O.16-5">
+    <option value="O.16-6">
+    <option value="O.16-7">
+    <option value="O.16-8">
+    <option value="O.16-9">
+    <option value="O.16-10">
+    <option value="O.17-1">
+    <option value="O.17-2">
+    <option value="O.17-3">
+    <option value="O.17-4">
+    <option value="O.17-5">
+    <option value="O.17-6">
+    <option value="O.17-7">
+    <option value="O.17-8">
+    <option value="O.17-9">
+    <option value="O.17-10">
+    <option value="O.18-1">
+    <option value="O.18-2">
+    <option value="O.18-3">
+    <option value="O.18-4">
+    <option value="O.18-5">
+    <option value="O.18-6">
+    <option value="O.18-7">
+    <option value="O.18-8">
+    <option value="O.18-9">
+    <option value="O.18-10">
+    <option value="O.19-1">
+    <option value="O.19-2">
+    <option value="O.19-3">
+    <option value="O.19-4">
+    <option value="O.19-5">
+    <option value="O.19-6">
+    <option value="O.19-7">
+    <option value="O.19-8">
+    <option value="O.19-9">
+    <option value="O.19-10">
+    <option value="O.20-1">
+    <option value="O.20-2">
+    <option value="O.20-3">
+    <option value="O.20-4">
+    <option value="O.20-5">
+    <option value="O.20-6">
+    <option value="O.20-7">
+    <option value="O.20-8">
+    <option value="O.20-9">
+    <option value="O.20-10">
+    <option value="O.21-1">
+    <option value="O.21-2">
+    <option value="O.21-3">
+    <option value="O.21-4">
+    <option value="O.21-5">
+    <option value="O.21-6">
+    <option value="O.21-7">
+    <option value="O.21-8">
+    <option value="O.21-9">
+    <option value="O.21-10">
+    <option value="O.22-1">
+    <option value="O.22-2">
+    <option value="O.22-3">
+    <option value="O.22-4">
+    <option value="O.22-5">
+    <option value="O.22-6">
+    <option value="O.22-7">
+    <option value="O.22-8">
+    <option value="O.22-9">
+    <option value="O.22-10">
+    <option value="O.23-1">
+    <option value="O.23-2">
+    <option value="O.23-3">
+    <option value="O.23-4">
+    <option value="O.23-5">
+    <option value="O.23-6">
+    <option value="O.23-7">
+    <option value="O.23-8">
+    <option value="O.23-9">
+    <option value="O.23-10">
+</datalist>
 </body>
 </html>

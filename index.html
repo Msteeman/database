@@ -426,7 +426,144 @@ a { color: var(--accent); text-decoration: none; }
   display: flex; align-items: center; justify-content: center;
   filter: drop-shadow(0 18px 50px rgba(227,6,19,0.45)) drop-shadow(0 0 30px rgba(78,161,255,0.18));
 }
-.login-logo-mark svg { width: 100%; height: 100%; display: block; }
+.login-logo-mark svg { width: 100%; height: 100%; display: block; position: relative; z-index: 1; }
+
+/* === Login-logo extras: gele orbit-punt + zwevende rode stippen === */
+.login-logo-mark.login-logo-mark-anim { position: relative; overflow: visible; }
+.login-logo-orbit {
+  position: absolute;
+  inset: -10px;
+  pointer-events: none;
+  z-index: 3;
+  animation: shOrbitSpin 6.5s linear infinite;
+}
+.login-logo-orbit-dot {
+  position: absolute;
+  top: -4px;
+  left: 50%;
+  width: 9px; height: 9px;
+  margin-left: -4.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff7d0 0%, #f5c518 45%, #b88a08 100%);
+  box-shadow:
+    0 0 8px rgba(245,197,24,.95),
+    0 0 18px rgba(245,197,24,.55),
+    0 0 32px rgba(245,197,24,.28);
+}
+@keyframes shOrbitSpin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.login-logo-dots {
+  position: absolute;
+  inset: -30px;
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+.login-logo-dots span {
+  position: absolute;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,200,205,.95) 0%, rgba(227,6,19,.7) 50%, rgba(227,6,19,0) 75%);
+  filter: blur(.4px);
+  opacity: 0;
+  animation: shFloatDot 5.2s ease-in-out infinite;
+}
+.login-logo-dots span:nth-child(1) { top: 80%; left: 10%; animation-delay: 0.0s; }
+.login-logo-dots span:nth-child(2) { top: 90%; left: 35%; animation-delay: 0.9s; width: 4px; height: 4px; }
+.login-logo-dots span:nth-child(3) { top: 85%; left: 60%; animation-delay: 1.7s; }
+.login-logo-dots span:nth-child(4) { top: 92%; left: 82%; animation-delay: 2.4s; width: 4px; height: 4px; }
+.login-logo-dots span:nth-child(5) { top: 75%; left: 22%; animation-delay: 3.1s; width: 3px; height: 3px; }
+.login-logo-dots span:nth-child(6) { top: 88%; left: 70%; animation-delay: 3.9s; width: 3px; height: 3px; }
+@keyframes shFloatDot {
+  0%   { transform: translateY(0) scale(.6); opacity: 0; }
+  15%  { opacity: .9; }
+  60%  { opacity: .7; }
+  100% { transform: translateY(-160px) scale(1); opacity: 0; }
+}
+
+/* === Wedstrijden-vandaag widget === */
+.today-matches {
+  background: linear-gradient(135deg, rgba(227,6,19,.08), rgba(245,197,24,.05));
+  border: 1px solid rgba(227,6,19,.35);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 6px 24px rgba(227,6,19,.10);
+}
+.today-matches-head {
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom: 12px;
+}
+.today-matches-title {
+  font-size: 14px; font-weight: 700; letter-spacing: .4px;
+  text-transform: uppercase; color: var(--primary);
+  display:flex; align-items:center; gap:8px;
+}
+.today-matches-title::before {
+  content:""; width:8px; height:8px; border-radius:50%;
+  background: var(--primary); box-shadow: 0 0 10px var(--primary);
+  animation: shTodayPulse 1.6s ease-in-out infinite;
+}
+@keyframes shTodayPulse {
+  0%,100% { opacity:1; transform: scale(1); }
+  50%     { opacity:.55; transform: scale(.8); }
+}
+.today-matches-count { font-size:12px; color: var(--text-3); }
+.today-match-card {
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+  cursor: pointer;
+  transition: transform .15s ease, border-color .15s ease;
+}
+.today-match-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+.today-match-card:last-child { margin-bottom: 0; }
+.today-match-row1 {
+  display:flex; justify-content:space-between; align-items:baseline;
+  gap:10px; margin-bottom: 6px;
+}
+.today-match-teams { font-weight: 700; font-size: 15px; }
+.today-match-time { color: var(--primary); font-weight: 600; font-size: 13px; }
+.today-match-meta {
+  font-size: 12px; color: var(--text-3);
+  display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+  margin-bottom: 8px;
+}
+.today-match-meta a {
+  color: var(--primary); text-decoration:none; font-weight:600;
+}
+.today-match-meta a:hover { text-decoration: underline; }
+.today-match-countdown {
+  display:inline-block; padding: 2px 8px;
+  background: rgba(245,197,24,.18); color: #f5c518;
+  border-radius: 999px; font-weight: 600; font-size: 11px;
+  letter-spacing:.4px;
+}
+.today-match-countdown.live {
+  background: rgba(227,6,19,.22); color: #ff5d6c;
+}
+.today-match-players {
+  display:flex; flex-wrap:wrap; gap:6px; margin-top: 6px;
+}
+.today-player-chip {
+  display:inline-flex; align-items:center; gap:5px;
+  padding: 4px 10px; border-radius: 999px;
+  background: rgba(78,161,255,.15);
+  border: 1px solid rgba(78,161,255,.35);
+  font-size: 11px; font-weight: 600; color: #cfe4ff;
+  cursor: pointer;
+}
+.today-player-chip:hover { background: rgba(78,161,255,.28); }
+.today-player-chip[data-no-id="1"] {
+  background: rgba(255,255,255,.05); color: var(--text-3);
+  border-color: var(--border-2); cursor: default;
+}
 /* Film-gradient text utility — same DNA as the intro wordmark */
 .film-text {
   background: var(--film-grad);
@@ -3161,7 +3298,13 @@ tbody tr:last-child td { border-bottom: none; }
   </div>
   <div class="login-card">
     <div class="login-logo">
-      <div class="login-logo-mark">
+      <div class="login-logo-mark login-logo-mark-anim">
+        <div class="login-logo-orbit" aria-hidden="true">
+          <span class="login-logo-orbit-dot"></span>
+        </div>
+        <div class="login-logo-dots" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span><span></span>
+        </div>
         <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
           <defs>
             <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -3286,7 +3429,7 @@ tbody tr:last-child td { border-bottom: none; }
           Vergelijken
         </button>
         <button class="nav-item" data-view="programma">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="8" cy="15" r="1.4" fill="currentColor"/><circle cx="12" cy="15" r="1.4" fill="currentColor"/><circle cx="16" cy="15" r="1.4" fill="currentColor"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/><line x1="7" y1="13" x2="9" y2="13"/><line x1="11" y1="13" x2="13" y2="13"/><line x1="15" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="9" y2="17"/><line x1="11" y1="17" x2="13" y2="17"/></svg>
           <span>Programma</span>
         </button>
         <button class="nav-item" data-view="matches">
@@ -3343,6 +3486,7 @@ tbody tr:last-child td { border-bottom: none; }
           </button>
         </div>
 
+        <div id="today-matches-wrap" style="display:none; margin-bottom:18px;"></div>
         <div class="kpi-grid" id="kpi-grid"></div>
 
         <div id="dash-empty" style="display:none;"></div>
@@ -3473,10 +3617,10 @@ tbody tr:last-child td { border-bottom: none; }
           </select>
           <select id="filter-advies" class="filter-select">
             <option value="">Advies: alle</option>
-            <option value="4">Direct aannemen</option>
-            <option value="3">Stage</option>
-            <option value="2">Blijven volgen</option>
-            <option value="1">Niet aannemen</option>
+            <option value="4">Direct contracteren</option>
+            <option value="3">Op proef uitnodigen</option>
+            <option value="2">Periodiek monitoren</option>
+            <option value="1">Geen vervolgstap</option>
           </select>
           <select id="filter-period" class="filter-select">
             <option value="">Periode: alle</option>
@@ -3680,7 +3824,7 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="field-row">
               <div class="field">
                 <label>Club</label>
-                <input id="f-club" type="text" />
+                <input id="f-club" type="text" list="club-suggestions" autocomplete="off" />
               </div>
               <div class="field">
                 <label>Plaats</label>
@@ -3864,9 +4008,9 @@ tbody tr:last-child td { border-bottom: none; }
                   <label>Lichaamsbouw</label>
                   <select id="f-bouw">
                     <option value="">— Kies of laat leeg —</option>
-                    <option>Atletisch — sterk gespierd, goed afgetrainde bouw</option>
-                    <option>Breed — stevig, fors gebouwd, niet per definitie dik</option>
-                    <option>Slank — dun maar niet mager, fijn gebouwd</option>
+                    <option>Krachtig postuur — gespierd, goed getraind lichaam</option>
+                    <option>Stevig postuur — fors gebouwd, robuust, niet dik</option>
+                    <option>Rank postuur — dun en fijn gebouwd, niet mager</option>
                   </select>
                 </div>
                 <div class="field">
@@ -3880,6 +4024,7 @@ tbody tr:last-child td { border-bottom: none; }
                 </div>
               </div>
 
+              <div class="criteria-block-help" style="margin-top:14px;"><strong>Rijping</strong> = de mate waarin een speler vroeg of laat zijn volwassen lichaamsbouw bereikt. Een laat-rijper kan fysiek nog flink groeien; een vroeg-rijper is fysiek vaak al volwassen voor zijn leeftijd.</div>
               <div class="field-row" style="margin-top:14px;">
                 <div class="field">
                   <label>Motoriek</label>
@@ -3896,9 +4041,9 @@ tbody tr:last-child td { border-bottom: none; }
                   <label>Rijping</label>
                   <select id="f-rijping">
                     <option value="">— Kies of laat leeg —</option>
-                    <option>Conform leeftijd — geen bijzonderheden</option>
-                    <option>Late matureerder — laat matuur</option>
-                    <option>Vroege matureerder — vroeg matuur</option>
+                    <option>Ontwikkelt zich op leeftijd — geen bijzonderheden</option>
+                    <option>Lichamelijk nog jong — ontwikkelt zich relatief laat</option>
+                    <option>Lichamelijk al ver — ontwikkelt zich relatief vroeg</option>
                   </select>
                 </div>
               </div>
@@ -3948,10 +4093,10 @@ tbody tr:last-child td { border-bottom: none; }
                 <label>Advies *</label>
                 <select id="f-advies" required>
                   <option value="">Kies...</option>
-                  <option value="4">Direct aannemen</option>
-                  <option value="3">Stage</option>
-                  <option value="2">Blijven volgen</option>
-                  <option value="1">Niet aannemen</option>
+                  <option value="4">Direct contracteren</option>
+                  <option value="3">Op proef uitnodigen</option>
+                  <option value="2">Periodiek monitoren</option>
+                  <option value="1">Geen vervolgstap</option>
                 </select>
               </div>
               <div class="field">
@@ -4191,7 +4336,7 @@ tbody tr:last-child td { border-bottom: none; }
       <span class="bn-label">Rapport</span>
     </button>
     <button class="bn-item" data-view="programma" aria-label="Programma">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><circle cx="8" cy="15" r="1.4" fill="currentColor"/><circle cx="12" cy="15" r="1.4" fill="currentColor"/><circle cx="16" cy="15" r="1.4" fill="currentColor"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/><line x1="7" y1="13" x2="9" y2="13"/><line x1="11" y1="13" x2="13" y2="13"/><line x1="15" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="9" y2="17"/><line x1="11" y1="17" x2="13" y2="17"/></svg>
       <span class="bn-label">Programma</span>
     </button>
     <button class="bn-item" data-view="matches" aria-label="Wedstrijden">
@@ -4251,11 +4396,11 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Thuisclub *</label>
-            <input id="pm-thuis" type="text" required placeholder="Bijv. AFC" />
+            <input id="pm-thuis" type="text" required placeholder="Bijv. AFC" list="club-suggestions" autocomplete="off" />
           </div>
           <div class="field">
             <label>Uitclub *</label>
-            <input id="pm-uit" type="text" required placeholder="Bijv. Ajax" />
+            <input id="pm-uit" type="text" required placeholder="Bijv. Ajax" list="club-suggestions" autocomplete="off" />
           </div>
         </div>
         <div class="field" style="margin-top:12px;">
@@ -4302,7 +4447,7 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Club</label>
-            <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" />
+            <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" list="club-suggestions" autocomplete="off" />
           </div>
           <div class="field">
             <label>Positie</label>
@@ -4880,15 +5025,15 @@ const CLUB_ADRESSEN = {
   "buitenboys": { naam: "SV Buitenboys", sportpark: "Sportpark De Polderkwartier", adres: "Beneluxbaan 950, 1363 BJ Almere", plaats: "Almere", lat: 52.342, lon: 5.213 },
   "csv'28": { naam: "CSV '28", sportpark: "Sportpark De Verbinding", adres: "Sportlaan 4, 8044 PG Zwolle", plaats: "Zwolle", lat: 52.541, lon: 6.06 },
   "csv’28": { naam: "CSV '28", sportpark: "Sportpark De Verbinding", adres: "Sportlaan 4, 8044 PG Zwolle", plaats: "Zwolle", lat: 52.541, lon: 6.06 },
-  "de graafschap (rugnummer 10)": { naam: "BV De Graafschap", sportpark: "Stadion De Vijverberg", adres: "Lijsterbeslaan 101, 7004 AT Doetinchem", plaats: "Doetinchem", lat: 51.971, lon: 6.292 },
-  "de graafschap": { naam: "BV De Graafschap", sportpark: "Stadion De Vijverberg", adres: "Lijsterbeslaan 101, 7004 AT Doetinchem", plaats: "Doetinchem", lat: 51.971, lon: 6.292 },
+  "de graafschap (rugnummer 10)": { naam: "BV De Graafschap", sportpark: "Sportpark De Bezelhorst (jeugdopleiding)", adres: "Lijsterbeslaan 101, 7004 GA Doetinchem", plaats: "Doetinchem", lat: 51.97833, lon: 6.30361 },
+  "de graafschap": { naam: "BV De Graafschap", sportpark: "Sportpark De Bezelhorst (jeugdopleiding)", adres: "Lijsterbeslaan 101, 7004 GA Doetinchem", plaats: "Doetinchem", lat: 51.97833, lon: 6.30361 },
   "dvs '33 ermelo": { naam: "DVS '33 Ermelo", sportpark: "Sportpark Zuid", adres: "Sportlaan 25-27, 3853 LK Ermelo", plaats: "Ermelo", lat: 52.298, lon: 5.628 },
-  "excelsior": { naam: "SBV Excelsior", sportpark: "Stadion Woudestein", adres: "Honingerdijk 110, 3062 NX Rotterdam", plaats: "Rotterdam", lat: 51.91, lon: 4.52 },
-  "fc twente/heracles": { naam: "FC Twente / Heracles Academie", sportpark: "Trainingscentrum FC Twente (Hengelo)", adres: "Kuipersdijk 40, 7552 BJ Hengelo", plaats: "Hengelo / Enschede", lat: 52.252, lon: 6.792 },
-  "twente": { naam: "FC Twente / Heracles Academie", sportpark: "Trainingscentrum FC Twente (Hengelo)", adres: "Kuipersdijk 40, 7552 BJ Hengelo", plaats: "Hengelo / Enschede", lat: 52.252, lon: 6.792 },
-  "twente/heracles": { naam: "FC Twente / Heracles Academie", sportpark: "Trainingscentrum FC Twente (Hengelo)", adres: "Kuipersdijk 40, 7552 BJ Hengelo", plaats: "Hengelo / Enschede", lat: 52.252, lon: 6.792 },
-  "fc utrecht": { naam: "FC Utrecht", sportpark: "Stadion Galgenwaard (hoofdteam) / Sportcomplex Zoudenbalch (jeugd)", adres: "Herculesplein 341, 3584 AA Utrecht (jeugd: Koningsweg 320, 3585 LE Utrecht)", plaats: "Utrecht", lat: 52.082, lon: 5.143 },
-  "fc volendam": { naam: "FC Volendam", sportpark: "Kras Stadion", adres: "Sportlaan 10, 1131 BK Volendam", plaats: "Volendam", lat: 52.491, lon: 5.063 },
+  "excelsior": { naam: "SBV Excelsior", sportpark: "Stadion Woudestein", adres: "Honingerdijk 110, 3062 NX Rotterdam", plaats: "Rotterdam", lat: 51.91694, lon: 4.52056 },
+  "fc twente/heracles": { naam: "FC Twente / Heracles Academie", sportpark: "FC Twente Trainingscentrum Veldwijk (jeugdacademie)", adres: "Veldwijk 21, 7552 AA Hengelo", plaats: "Hengelo / Enschede", lat: 52.25306, lon: 6.80861 },
+  "twente": { naam: "FC Twente / Heracles Academie", sportpark: "FC Twente Trainingscentrum Veldwijk (jeugdacademie)", adres: "Veldwijk 21, 7552 AA Hengelo", plaats: "Hengelo / Enschede", lat: 52.25306, lon: 6.80861 },
+  "twente/heracles": { naam: "FC Twente / Heracles Academie", sportpark: "FC Twente Trainingscentrum Veldwijk (jeugdacademie)", adres: "Veldwijk 21, 7552 AA Hengelo", plaats: "Hengelo / Enschede", lat: 52.25306, lon: 6.80861 },
+  "fc utrecht": { naam: "FC Utrecht", sportpark: "Sportcomplex Zoudenbalch (jeugdopleiding)", adres: "Zoudenbalch 30, 3585 LD Utrecht", plaats: "Utrecht", lat: 52.087, lon: 5.151 },
+  "fc volendam": { naam: "FC Volendam", sportpark: "Kras Stadion", adres: "Sportlaan 10, 1131 BK Volendam", plaats: "Volendam", lat: 52.49444, lon: 5.06639 },
   "fortius/dta": { naam: "asv DTA Fortius", sportpark: "Sportpark Middenmeer", adres: "Radioweg 77, 1098 NG Amsterdam", plaats: "Amsterdam", lat: 52.349, lon: 4.946 },
   "fortius": { naam: "asv DTA Fortius", sportpark: "Sportpark Middenmeer", adres: "Radioweg 77, 1098 NG Amsterdam", plaats: "Amsterdam", lat: 52.349, lon: 4.946 },
   "dta": { naam: "asv DTA Fortius", sportpark: "Sportpark Middenmeer", adres: "Radioweg 77, 1098 NG Amsterdam", plaats: "Amsterdam", lat: 52.349, lon: 4.946 },
@@ -4906,23 +5051,23 @@ const CLUB_ADRESSEN = {
   "koninklijke hfc": { naam: "Koninklijke HFC", sportpark: "Sportpark Spanjaardslaan", adres: "Emauslaan 2, 2012 PH Haarlem", plaats: "Haarlem", lat: 52.394, lon: 4.64 },
   "kfc turnhout": { naam: "KFC Turnhout", sportpark: "Stadsparkstadion (Stabco Stadion)", adres: "Parklaan 50, 2300 Turnhout, België", plaats: "Turnhout (BE)", lat: 51.323, lon: 4.945 },
   "lelystad '67": { naam: "SV Lelystad '67", sportpark: "Sportpark Langezand", adres: "Sportparkweg 5, 8223 PB Lelystad", plaats: "Lelystad", lat: 52.512, lon: 5.456 },
-  "malmö ff": { naam: "Malmö FF", sportpark: "Eleda Stadion", adres: "Eric Perssons väg 31, 217 62 Malmö, Zweden", plaats: "Malmö (SE)", lat: 55.581, lon: 12.991 },
-  "malmo ff": { naam: "Malmö FF", sportpark: "Eleda Stadion", adres: "Eric Perssons väg 31, 217 62 Malmö, Zweden", plaats: "Malmö (SE)", lat: 55.581, lon: 12.991 },
-  "nac breda": { naam: "NAC Breda", sportpark: "Rat Verlegh Stadion (hoofdteam) / Sportpark Heksenwiel (jeugd)", adres: "Stadionstraat 23, 4815 NC Breda (jeugd: Heksendans 4, 4823 NX Breda)", plaats: "Breda", lat: 51.587, lon: 4.755 },
-  "nec nijmegen": { naam: "NEC Nijmegen", sportpark: "Goffertstadion", adres: "Stadionplein 1, 6532 AJ Nijmegen", plaats: "Nijmegen", lat: 51.821, lon: 5.847 },
-  "pec zwolle": { naam: "PEC Zwolle", sportpark: "MAC³PARK Stadion (hoofdteam) / Sportpark Be Quick '28 (jeugd)", adres: "Stadionplein 1, 8025 CP Zwolle (jeugd: Marsweg 39, 8013 PD Zwolle)", plaats: "Zwolle", lat: 52.515, lon: 6.105 },
-  "psv eindhoven": { naam: "PSV Eindhoven", sportpark: "Philips Stadion (hoofdteam) / De Herdgang (jeugd)", adres: "Frederiklaan 10a, 5616 NH Eindhoven (jeugd: Oirschotsedijk 12a, 5651 GC Eindhoven)", plaats: "Eindhoven", lat: 51.442, lon: 5.466 },
-  "psv": { naam: "PSV Eindhoven", sportpark: "Philips Stadion (hoofdteam) / De Herdgang (jeugd)", adres: "Frederiklaan 10a, 5616 NH Eindhoven (jeugd: Oirschotsedijk 12a, 5651 GC Eindhoven)", plaats: "Eindhoven", lat: 51.442, lon: 5.466 },
+  "malmö ff": { naam: "Malmö FF", sportpark: "Eleda Stadion", adres: "Eric Perssons väg 31, 217 62 Malmö, Zweden", plaats: "Malmö (SE)", lat: 55.58361, lon: 12.98778 },
+  "malmo ff": { naam: "Malmö FF", sportpark: "Eleda Stadion", adres: "Eric Perssons väg 31, 217 62 Malmö, Zweden", plaats: "Malmö (SE)", lat: 55.58361, lon: 12.98778 },
+  "nac breda": { naam: "NAC Breda", sportpark: "Sportpark Heksenwiel (jeugdopleiding)", adres: "Heksenwiellaan 3, 4823 JX Breda", plaats: "Breda", lat: 51.62478, lon: 4.74519 },
+  "nec nijmegen": { naam: "NEC Nijmegen", sportpark: "Sportpark De Eendracht (jeugdopleiding)", adres: "Energieweg 32, 6541 CW Nijmegen", plaats: "Nijmegen", lat: 51.82139, lon: 5.83861 },
+  "pec zwolle": { naam: "PEC Zwolle", sportpark: "Sportpark Be Quick '28 (jeugdopleiding)", adres: "Ceintuurbaan 18, 8024 AA Zwolle", plaats: "Zwolle", lat: 52.51861, lon: 6.12333 },
+  "psv eindhoven": { naam: "PSV Eindhoven", sportpark: "De Herdgang (jeugdacademie)", adres: "Oirschotsedijk 12a, 5651 GC Eindhoven", plaats: "Eindhoven", lat: 51.46083, lon: 5.43889 },
+  "psv": { naam: "PSV Eindhoven", sportpark: "De Herdgang (jeugdacademie)", adres: "Oirschotsedijk 12a, 5651 GC Eindhoven", plaats: "Eindhoven", lat: 51.46083, lon: 5.43889 },
   "pvcv": { naam: "PVCV (Vleuten)", sportpark: "Sportpark Fletiomare-Oost", adres: "Europaweg 52, 3451 HG Vleuten", plaats: "Vleuten", lat: 52.107, lon: 5.026 },
   "roda '46": { naam: "VV Roda '46", sportpark: "Sportpark Burgemeester Buiningpark", adres: "Bavoortseweg 2, 3833 BM Leusden", plaats: "Leusden", lat: 52.135, lon: 5.434 },
   "sc buitenveldert": { naam: "sc Buitenveldert", sportpark: "Sportpark Buitenveldert", adres: "Gustav Mahlerlaan 2009, 1081 LB Amsterdam", plaats: "Amsterdam", lat: 52.337, lon: 4.879 },
   "buitenveldert": { naam: "sc Buitenveldert", sportpark: "Sportpark Buitenveldert", adres: "Gustav Mahlerlaan 2009, 1081 LB Amsterdam", plaats: "Amsterdam", lat: 52.337, lon: 4.879 },
-  "sc heerenveen": { naam: "SC Heerenveen", sportpark: "Abe Lenstra Stadion (hoofdteam) / Sportpark Skoatterwâld (jeugd)", adres: "Abe Lenstra Boulevard 19, 8448 JA Heerenveen (jeugd: Domela Nieuwenhuisweg 8, 8444 DD Heerenveen)", plaats: "Heerenveen", lat: 52.961, lon: 5.939 },
-  "heerenveen": { naam: "SC Heerenveen", sportpark: "Abe Lenstra Stadion (hoofdteam) / Sportpark Skoatterwâld (jeugd)", adres: "Abe Lenstra Boulevard 19, 8448 JA Heerenveen (jeugd: Domela Nieuwenhuisweg 8, 8444 DD Heerenveen)", plaats: "Heerenveen", lat: 52.961, lon: 5.939 },
+  "sc heerenveen": { naam: "SC Heerenveen", sportpark: "Sportpark Skoatterwâld (jeugdopleiding)", adres: "Oranje Nassaulaan 21, 8448 MT Heerenveen", plaats: "Heerenveen", lat: 52.95583, lon: 5.94417 },
+  "heerenveen": { naam: "SC Heerenveen", sportpark: "Sportpark Skoatterwâld (jeugdopleiding)", adres: "Oranje Nassaulaan 21, 8448 MT Heerenveen", plaats: "Heerenveen", lat: 52.95583, lon: 5.94417 },
   "sdz": { naam: "AVV SDZ (Sport Door Zelfwerkzaamheid)", sportpark: "Sportpark Transformatorweg", adres: "Transformatorweg 10, 1014 AK Amsterdam", plaats: "Amsterdam", lat: 52.391, lon: 4.853 },
   "sdz (rugnummer 15)": { naam: "AVV SDZ (Sport Door Zelfwerkzaamheid)", sportpark: "Sportpark Transformatorweg", adres: "Transformatorweg 10, 1014 AK Amsterdam", plaats: "Amsterdam", lat: 52.391, lon: 4.853 },
-  "sparta rotterdam": { naam: "Sparta Rotterdam", sportpark: "Sparta Stadion (Het Kasteel)", adres: "Spartastraat 7, 3027 ER Rotterdam (postadres: Spartapark Noord 1, 3027 VW Rotterdam)", plaats: "Rotterdam", lat: 51.911, lon: 4.439 },
-  "stichting sparta rotterdam": { naam: "Sparta Rotterdam", sportpark: "Sparta Stadion (Het Kasteel)", adres: "Spartastraat 7, 3027 ER Rotterdam (postadres: Spartapark Noord 1, 3027 VW Rotterdam)", plaats: "Rotterdam", lat: 51.911, lon: 4.439 },
+  "sparta rotterdam": { naam: "Sparta Rotterdam", sportpark: "Sportcomplex Nieuw Terbregge (jeugdopleiding)", adres: "Bovendijk 2, 3045 PB Rotterdam", plaats: "Rotterdam", lat: 51.965, lon: 4.51 },
+  "stichting sparta rotterdam": { naam: "Sparta Rotterdam", sportpark: "Sportcomplex Nieuw Terbregge (jeugdopleiding)", adres: "Bovendijk 2, 3045 PB Rotterdam", plaats: "Rotterdam", lat: 51.965, lon: 4.51 },
   "sportlust '46": { naam: "VV Sportlust '46", sportpark: "Sportpark Cromwijck", adres: "Waardsedijk 31, 3448 HV Woerden", plaats: "Woerden", lat: 52.085, lon: 4.892 },
   "sv houten": { naam: "SV Houten", sportpark: "Sportpark Oud Wulven", adres: "Oud Wulfseweg 2, 3992 LT Houten", plaats: "Houten", lat: 52.04, lon: 5.155 },
   "udi'19": { naam: "UDI '19 / Swiss Sense", sportpark: "Gemeentelijk Sportpark Parkzicht", adres: "Parklaan 4, 5404 NH Uden", plaats: "Uden", lat: 51.65, lon: 5.631 },
@@ -4934,6 +5079,17 @@ const CLUB_ADRESSEN = {
   "asc waterwijk": { naam: "ASC Waterwijk", sportpark: "Sportpark Rie Mastenbroek", adres: "Rie Mastenbroeksportpark 4, 1314 AZ Almere", plaats: "Almere", lat: 52.386, lon: 5.211 },
   "sv waterwijk": { naam: "ASC Waterwijk", sportpark: "Sportpark Rie Mastenbroek", adres: "Rie Mastenbroeksportpark 4, 1314 AZ Almere", plaats: "Almere", lat: 52.386, lon: 5.211 },
 };
+
+function fillClubDatalist(){
+  const dl = document.getElementById('club-suggestions');
+  if(!dl) return;
+  const names = new Set();
+  Object.values(CLUB_ADRESSEN).forEach(c => { if(c && c.naam) names.add(c.naam); });
+  const sorted = Array.from(names).sort((a,b) => a.localeCompare(b, 'nl'));
+  dl.innerHTML = sorted.map(n => `<option value="${n.replace(/"/g,'&quot;')}"></option>`).join('');
+}
+if(document.readyState !== 'loading') fillClubDatalist();
+else document.addEventListener('DOMContentLoaded', fillClubDatalist);
 
 const CLUB_CACHE_KEY = 'scout_club_city_cache_v1';
 let _clubCache = (()=>{
@@ -6347,7 +6503,111 @@ function go(view){
 }
 
 /* =============== DASHBOARD =============== */
+function renderTodayMatches(){
+  const wrap = document.getElementById('today-matches-wrap');
+  if(!wrap) return;
+  if(typeof programmaCache === 'undefined' || !Array.isArray(programmaCache) || programmaCache.length === 0){
+    wrap.style.display = 'none'; wrap.innerHTML = ''; return;
+  }
+  const now = new Date();
+  const yyyy = now.getFullYear();
+  const mm = String(now.getMonth()+1).padStart(2,'0');
+  const dd = String(now.getDate()).padStart(2,'0');
+  const today = `${yyyy}-${mm}-${dd}`;
+  const items = programmaCache.filter(p => p && p.datum === today);
+  if(items.length === 0){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  items.sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
+  const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+  const cards = items.map(it => {
+    const teams = `${escapeHtml(it.thuis||'?')} — ${escapeHtml(it.uit||'?')}`;
+    const tijd = it.tijd || '—';
+    // Countdown
+    let cdHtml = '';
+    if(it.tijd){
+      const [h,m] = it.tijd.split(':').map(n=>parseInt(n,10));
+      if(!isNaN(h) && !isNaN(m)){
+        const kick = new Date(); kick.setHours(h,m,0,0);
+        const diffMin = Math.round((kick - now) / 60000);
+        if(diffMin > 0){
+          const hh = Math.floor(diffMin/60), mm2 = diffMin%60;
+          cdHtml = `<span class="today-match-countdown">over ${hh? hh+'u ' : ''}${mm2}m</span>`;
+        } else if(diffMin > -120){
+          cdHtml = `<span class="today-match-countdown live">● bezig / net geweest</span>`;
+        } else {
+          cdHtml = `<span class="today-match-countdown">afgelopen</span>`;
+        }
+      }
+    }
+    // Locatie + maps-link
+    let mapsHtml = '';
+    let locHtml = '';
+    const club = (typeof CLUB_ADRESSEN !== 'undefined' && it.thuis)
+      ? CLUB_ADRESSEN[it.thuis.toLowerCase().trim()]
+      : null;
+    if(it.locatie){ locHtml = `<span>📍 ${escapeHtml(it.locatie)}</span>`; }
+    else if(club && club.sportpark){ locHtml = `<span>📍 ${escapeHtml(club.sportpark)}</span>`; }
+    if(club && club.lat && club.lon){
+      mapsHtml = `<a href="https://www.google.com/maps/dir/?api=1&destination=${club.lat},${club.lon}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Route ›</a>`;
+    } else if(club && club.adres){
+      mapsHtml = `<a href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(club.adres)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Route ›</a>`;
+    }
+    // Spelerchips
+    const spelers = it.spelers || [];
+    const chips = spelers.map(sp => {
+      const pid = sp.spelerId || sp.id;
+      const naam = sp.naam || '?';
+      const inDB = pid && players.find(p => p.id === pid);
+      return inDB
+        ? `<span class="today-player-chip" data-player-id="${pid}">${escapeHtml(naam)}</span>`
+        : `<span class="today-player-chip" data-no-id="1">${escapeHtml(naam)}</span>`;
+    }).join('');
+    return `
+      <div class="today-match-card" data-prog-id="${it.id}">
+        <div class="today-match-row1">
+          <div class="today-match-teams">${teams}</div>
+          <div class="today-match-time">${escapeHtml(tijd)}</div>
+        </div>
+        <div class="today-match-meta">
+          ${cdHtml}
+          ${locHtml}
+          ${mapsHtml}
+          ${it.leeftijd ? `<span>${escapeHtml(it.leeftijd)}</span>` : ''}
+        </div>
+        ${chips ? `<div class="today-match-players">${chips}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+  wrap.innerHTML = `
+    <div class="today-matches">
+      <div class="today-matches-head">
+        <div class="today-matches-title">Wedstrijden vandaag</div>
+        <div class="today-matches-count">${items.length} ingepland</div>
+      </div>
+      ${cards}
+    </div>
+  `;
+  wrap.style.display = 'block';
+  // Click-handlers
+  wrap.querySelectorAll('.today-match-card').forEach(card => {
+    card.addEventListener('click', e => {
+      if(e.target.closest('.today-player-chip') || e.target.tagName === 'A') return;
+      const pid = card.dataset.progId;
+      if(!pid) return;
+      if(typeof go === 'function') go('programma');
+      setTimeout(() => { if(typeof openProgDetail === 'function') openProgDetail(pid); }, 80);
+    });
+  });
+  wrap.querySelectorAll('.today-player-chip[data-player-id]').forEach(chip => {
+    chip.addEventListener('click', e => {
+      e.stopPropagation();
+      const pid = chip.dataset.playerId;
+      if(pid && typeof openDetail === 'function') openDetail(pid);
+    });
+  });
+}
+
 function renderDashboard(){
+  renderTodayMatches();
   const players = loadPlayers();
   $('#dashboard-date').textContent =
     new Date().toLocaleDateString('nl-NL',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
@@ -6373,8 +6633,8 @@ function renderDashboard(){
       <div class="kpi-value">${topPotential}</div>
       <div class="kpi-sub">kan doorgroeien naar top</div>
     </div>
-    <div class="kpi-card yellow" data-kpi="admit" title="Toon spelers met advies Direct aannemen">
-      <div class="kpi-label">Direct aannemen</div>
+    <div class="kpi-card yellow" data-kpi="admit" title="Toon spelers met advies Direct contracteren">
+      <div class="kpi-label">Direct contracteren</div>
       <div class="kpi-value">${advice1}</div>
       <div class="kpi-sub">hoogste advies</div>
     </div>
@@ -6512,7 +6772,7 @@ function renderDashGaps(){
   });
 }
 function renderDashAdvies(players){
-  const labels = {'4':'Direct aannemen','3':'Stage','2':'Blijven volgen','1':'Niet aannemen'};
+  const labels = {'4':'Direct contracteren','3':'Op proef uitnodigen','2':'Periodiek monitoren','1':'Geen vervolgstap'};
   const colors = {'4':'var(--grade-a)','3':'var(--grade-b)','2':'var(--grade-c)','1':'var(--grade-d)'};
   const counts = {'4':0,'3':0,'2':0,'1':0};
   players.forEach(p=>{ if(counts[p.advies] !== undefined) counts[p.advies]++; });
@@ -6753,8 +7013,12 @@ async function renderGeoMap(){
     return;
   }
 
-  /* Plaats markers, geocode onbekende steden in achtergrond */
+  /* Plaats markers, geocode onbekende steden in achtergrond.
+     Buitenlandse clubs (Malmö (SE), Turnhout (BE)) blijven buiten de regiokaart
+     omdat REGION_BOUNDS Utrecht + Veluwe afdekt. */
+  const SKIP_CITIES = new Set(['Malmö (SE)','Malmo (SE)','Turnhout (BE)','Malmö','Malmo']);
   cities.forEach(city=>{
+    if(SKIP_CITIES.has(city)) return;
     const coords = coordsForCity(city);
     if(!coords){
       lookupCityCoords(city).then(c=>{ if(c) scheduleGeoRerender(); });
@@ -6770,8 +7034,9 @@ async function renderGeoMap(){
   });
   map.fitBounds(REGION_BOUNDS, { padding: [20, 20] });
 
-  $('#geo-list-title').textContent = `Steden (${cities.length})`;
-  $('#geo-list-items').innerHTML = cities.map(city=>{
+  const visibleCities = cities.filter(c => !SKIP_CITIES.has(c));
+  $('#geo-list-title').textContent = `Steden (${visibleCities.length})`;
+  $('#geo-list-items').innerHTML = visibleCities.map(city=>{
     const n = byCity[city].length;
     return `
       <div class="geo-list-item" data-city="${escapeHtml(city)}">
@@ -8247,7 +8512,7 @@ function gradeForAdvies(a){
   return 'D';
 }
 function adviesLabel(v){
-  const map = {'4':'Direct aannemen','3':'Stage','2':'Blijven volgen','1':'Niet aannemen'};
+  const map = {'4':'Direct contracteren','3':'Op proef uitnodigen','2':'Periodiek monitoren','1':'Geen vervolgstap'};
   return map[String(v)] || '';
 }
 function closeDetail(){ $('#modal-backdrop').classList.remove('open'); }
@@ -11881,5 +12146,8 @@ onAuthStateChanged(auth, async (user)=>{
   });
 })();
 </script>
+
+<!-- Adresboek-autocomplete: gevuld door fillClubDatalist() -->
+<datalist id="club-suggestions"></datalist>
 </body>
 </html>

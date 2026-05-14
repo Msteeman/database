@@ -822,7 +822,10 @@ a { color: var(--accent); text-decoration: none; }
   position: sticky; top: 0; height: 100vh;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE */
 }
+.sidebar::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .brand {
   display: flex; flex-direction: column; align-items: center; gap: 10px;
   padding: 8px 6px 20px 6px;
@@ -1380,23 +1383,169 @@ tbody tr:last-child td { border-bottom: none; }
 .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--primary); }
 .field textarea { min-height: 70px; resize: vertical; font-family: inherit; }
 
-/* Grade picker */
+/* Grade picker — v70: groter, duidelijker, sideline-vriendelijk */
 .grade-picker { display: flex; gap: 6px; }
 .grade-pick {
-  flex: 1; padding: 9px 0; border-radius: 7px;
+  flex: 1; padding: 16px 0; border-radius: 9px;
   background: var(--bg-3); border: 2px solid var(--border-2); color: var(--text-2);
-  font-weight: 700; transition: all .12s;
+  font-weight: 800; font-size: 20px;
+  letter-spacing: .5px;
+  transition: background .15s, color .15s, transform .08s, border-color .15s, box-shadow .15s;
   text-align: center;
+  min-height: 56px;
+  cursor: pointer;
 }
 .grade-pick:hover { color: var(--text); }
-.grade-pick.selected[data-grade="A"] { background: var(--grade-a); border-color: var(--grade-a); color: #062b12; }
-.grade-pick.selected[data-grade="B"] { background: var(--grade-b); border-color: var(--grade-b); color: #1a2806; }
-.grade-pick.selected[data-grade="C"] { background: var(--grade-c); border-color: var(--grade-c); color: #2a1a04; }
-.grade-pick.selected[data-grade="D"] { background: var(--grade-d); border-color: var(--grade-d); color: #2a0606; }
+.grade-pick:active { transform: scale(.94); }
+.grade-pick.selected[data-grade="A"] { background: var(--grade-a); border-color: var(--grade-a); color: #062b12; box-shadow: 0 4px 14px rgba(34,197,94,.35); }
+.grade-pick.selected[data-grade="B"] { background: var(--grade-b); border-color: var(--grade-b); color: #1a2806; box-shadow: 0 4px 14px rgba(132,204,22,.35); }
+.grade-pick.selected[data-grade="C"] { background: var(--grade-c); border-color: var(--grade-c); color: #2a1a04; box-shadow: 0 4px 14px rgba(245,158,11,.35); }
+.grade-pick.selected[data-grade="D"] { background: var(--grade-d); border-color: var(--grade-d); color: #2a0606; box-shadow: 0 4px 14px rgba(239,68,68,.35); }
 .grade-pick-pot.selected[data-grade="A"] { background: transparent; border-color: var(--grade-a); color: var(--grade-a); }
 .grade-pick-pot.selected[data-grade="B"] { background: transparent; border-color: var(--grade-b); color: var(--grade-b); }
 .grade-pick-pot.selected[data-grade="C"] { background: transparent; border-color: var(--grade-c); color: var(--grade-c); }
 .grade-pick-pot.selected[data-grade="D"] { background: transparent; border-color: var(--grade-d); color: var(--grade-d); }
+/* Sub-criteria (atletisch) pickers blijven compacter */
+.subcriteria-row .grade-pick { padding: 11px 0; font-size: 16px; min-height: 44px; }
+
+/* === v70: Sticky form-actions + autosave + draft restore === */
+.form-actions-sticky {
+  position: sticky;
+  bottom: 0;
+  left: 0; right: 0;
+  background: rgba(17,21,28,.96);
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+  border-top: 1px solid var(--border);
+  margin: 22px -16px 0 -16px;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom)) 16px;
+  display: flex; gap: 10px; align-items: center;
+  box-shadow: 0 -8px 24px rgba(0,0,0,.4);
+  z-index: 60;
+}
+.form-actions-sticky .autosave-status {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--muted, #7b8294);
+  display: flex; align-items: center; gap: 8px;
+  min-width: 0;
+}
+.form-actions-sticky .autosave-status .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--success, #16a34a);
+  flex-shrink: 0;
+}
+.form-actions-sticky .autosave-status .text {
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.form-actions-sticky .autosave-status.saving { color: var(--warn, #f5c518); }
+.form-actions-sticky .autosave-status.saving .dot { background: var(--warn, #f5c518); animation: shAutoPulse 1s ease-in-out infinite; }
+.form-actions-sticky .autosave-status.saved { color: var(--success, #16a34a); }
+.form-actions-sticky .autosave-status.saved .dot { background: var(--success, #16a34a); }
+@keyframes shAutoPulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+.form-actions-sticky #report-save-btn {
+  min-height: 46px;
+  padding: 11px 22px;
+  font-weight: 800;
+}
+@media (max-width: 640px) {
+  .form-actions-sticky .autosave-status .text {
+    max-width: 110px;
+  }
+}
+
+/* Draft restored banner (bovenaan rapport-formulier) */
+.draft-restored-banner {
+  background: linear-gradient(135deg, rgba(245,197,24,.18), rgba(245,197,24,.08));
+  border: 1px solid rgba(245,197,24,.4);
+  border-radius: 10px;
+  padding: 12px 14px; margin: 0 0 16px 0;
+  display: flex; gap: 12px; align-items: center;
+}
+.draft-restored-banner.hidden { display: none; }
+.draft-restored-banner .icon { font-size: 22px; flex-shrink: 0; }
+.draft-restored-banner .text { flex: 1; font-size: 13.5px; line-height: 1.4; }
+.draft-restored-banner .text strong { color: var(--warn, #f5c518); }
+.draft-restored-banner .actions { display: flex; gap: 6px; flex-shrink: 0; }
+.draft-restored-banner button {
+  background: transparent; color: var(--text);
+  border: 1px solid var(--border);
+  padding: 8px 14px; border-radius: 7px;
+  cursor: pointer; font-size: 12.5px; font-weight: 600;
+}
+.draft-restored-banner button.primary {
+  background: var(--warn, #f5c518); color: #1a1500;
+  border-color: var(--warn, #f5c518);
+}
+
+/* Copy-last-report knop */
+.btn-copy-last {
+  display: inline-flex; align-items: center; gap: 8px;
+  background: var(--bg-3); color: var(--text);
+  border: 1px solid var(--border);
+  padding: 11px 16px; border-radius: 9px;
+  font-size: 13.5px; font-weight: 600;
+  cursor: pointer;
+  min-height: 44px;
+}
+.btn-copy-last:hover { border-color: var(--primary); background: rgba(227,6,19,.1); }
+.btn-copy-last .icon { font-size: 16px; }
+.btn-copy-last.done { border-color: var(--success, #16a34a); color: var(--success, #16a34a); }
+.copy-last-row {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 14px 0;
+}
+.copy-last-row .last-meta { font-size: 11.5px; color: var(--muted, #7b8294); }
+
+/* Copy-confirm modal */
+.copy-confirm-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.7);
+  z-index: 9200;
+  display: none; align-items: center; justify-content: center;
+  padding: 20px;
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+.copy-confirm-backdrop.show { display: flex; }
+.copy-confirm {
+  background: var(--bg-2, #11151c);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 22px;
+  max-width: 440px; width: 100%;
+  max-height: 86vh; overflow-y: auto;
+  box-shadow: 0 24px 60px rgba(0,0,0,.5);
+}
+.copy-confirm h3 { margin: 0 0 6px 0; font-size: 17px; }
+.copy-confirm .sub { color: var(--muted, #7b8294); font-size: 13px; margin-bottom: 14px; }
+.copy-confirm ul {
+  list-style: none; padding: 0; margin: 0 0 16px 0;
+  background: var(--bg, #0a0d13); border: 1px solid var(--border);
+  border-radius: 8px; overflow: hidden;
+}
+.copy-confirm ul li {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13.5px; gap: 12px;
+}
+.copy-confirm ul li:last-child { border-bottom: none; }
+.copy-confirm ul li .val { color: var(--muted, #7b8294); font-weight: 600; text-align: right; }
+.copy-confirm ul li.skip { opacity: .55; }
+.copy-confirm ul li.skip .val { font-style: italic; font-weight: 500; }
+.copy-confirm-actions { display: flex; gap: 8px; }
+.copy-confirm-actions button {
+  flex: 1; padding: 12px; border-radius: 9px;
+  font-weight: 700; font-size: 14px; cursor: pointer;
+  border: 1px solid var(--border);
+  min-height: 46px;
+}
+.copy-confirm-actions .cancel { background: transparent; color: var(--text); }
+.copy-confirm-actions .confirm {
+  background: var(--primary); color: #fff;
+  border-color: var(--primary);
+}
+
 
 .criteria-block {
   background: var(--bg-3); padding: 14px 16px; border-radius: 8px;
@@ -4139,6 +4288,24 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
 
         <form id="report-form" class="form-grid" autocomplete="off">
+          <div class="draft-restored-banner hidden" id="report-draft-banner">
+            <div class="icon">📋</div>
+            <div class="text">
+              <strong>Concept hersteld</strong>
+              <div id="report-draft-meta" style="font-size:12.5px; color: var(--muted, #7b8294); margin-top:2px;">—</div>
+            </div>
+            <div class="actions">
+              <button type="button" id="report-draft-discard">Wissen</button>
+              <button type="button" class="primary" id="report-draft-load">Verder</button>
+            </div>
+          </div>
+          <div class="copy-last-row" id="report-copy-row" style="display:none;">
+            <button type="button" class="btn-copy-last" id="report-copy-last">
+              <span class="icon">📋</span>
+              Vorig rapport kopiëren
+            </button>
+            <div class="last-meta" id="report-copy-last-meta"></div>
+          </div>
           <input type="hidden" id="f-id" />
 
           <!-- Speler info -->
@@ -4157,7 +4324,7 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="field-row">
               <div class="field">
                 <label>Club</label>
-                <input id="f-club" type="text" list="club-suggestions" autocomplete="off" />
+                <input id="f-club" type="text" list="club-suggestions" autocomplete="off" data-picker="club" readonly />
               </div>
               <div class="field">
                 <label>Plaats</label>
@@ -4171,7 +4338,7 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="field-row three">
               <div class="field">
                 <label>Elftal</label>
-                <input id="f-elftal" type="text" placeholder="Bijv. O.15-1" list="elftal-suggestions" autocomplete="off" />
+                <input id="f-elftal" type="text" placeholder="Bijv. O.15-1" list="elftal-suggestions" autocomplete="off" data-picker="elftal" readonly />
               </div>
               <div class="field">
                 <label>Rugnummer</label>
@@ -4443,9 +4610,13 @@ tbody tr:last-child td { border-bottom: none; }
             </div>
           </div>
 
-          <div class="form-actions">
+          <div class="form-actions form-actions-sticky" id="report-form-actions">
+            <div class="autosave-status" id="report-autosave-status">
+              <span class="dot"></span>
+              <span class="text" id="report-autosave-text">Concept opgeslagen</span>
+            </div>
             <button type="button" class="btn" id="report-clear">Wissen</button>
-            <button type="submit" class="btn btn-primary">
+            <button type="submit" class="btn btn-primary" id="report-save-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               Rapport opslaan
             </button>
@@ -4706,7 +4877,7 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Elftal</label>
-            <input id="pm-leeftijd" type="text" placeholder="Bijv. O.15-1" list="elftal-suggestions" autocomplete="off" />
+            <input id="pm-leeftijd" type="text" placeholder="Bijv. O.15-1" list="elftal-suggestions" autocomplete="off" data-picker="elftal" readonly />
           </div>
           <div class="field">
             <label>Scoutingmethode</label>
@@ -4728,11 +4899,11 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Thuisclub *</label>
-            <input id="pm-thuis" type="text" required placeholder="Bijv. AFC" list="club-suggestions" autocomplete="off" />
+            <input id="pm-thuis" type="text" required placeholder="Bijv. AFC" list="club-suggestions" autocomplete="off" data-picker="club" readonly />
           </div>
           <div class="field">
             <label>Uitclub *</label>
-            <input id="pm-uit" type="text" required placeholder="Bijv. Ajax" list="club-suggestions" autocomplete="off" />
+            <input id="pm-uit" type="text" required placeholder="Bijv. Ajax" list="club-suggestions" autocomplete="off" data-picker="club" readonly />
           </div>
         </div>
         <div class="field" style="margin-top:12px;">
@@ -4779,7 +4950,7 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Club</label>
-            <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" list="club-suggestions" autocomplete="off" />
+            <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" list="club-suggestions" autocomplete="off" data-picker="club" readonly />
           </div>
           <div class="field">
             <label>Positie</label>
@@ -4882,7 +5053,7 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="field-row">
           <div class="field">
             <label>Telefoonnummer</label>
-            <input id="c-tel" type="tel" placeholder="06-12345678" />
+            <input id="c-tel" type="tel" inputmode="tel" placeholder="(+316) 12 34 56 78" />
           </div>
           <div class="field">
             <label>E-mailadres</label>
@@ -6064,6 +6235,20 @@ async function deleteProgrammaItem(id){
 }
 
 /* =============== CONTACTS RENDERING =============== */
+function formatNLPhone(val){
+  let digits = String(val||'').replace(/\D/g, '');
+  if(digits.startsWith('0031')) digits = digits.slice(4);
+  else if(digits.startsWith('31')) digits = digits.slice(2);
+  if(digits.startsWith('06')) digits = '6' + digits.slice(2);
+  else if(digits.startsWith('0')) digits = digits.slice(1);
+  if(!digits.startsWith('6')) digits = '6' + digits;
+  digits = digits.slice(1, 9);
+  const pairs = digits.match(/.{1,2}/g) || [];
+  return '(+316)' + (pairs.length ? ' ' + pairs.join(' ') : '');
+}
+function nlPhoneToTelHref(val){
+  return '+316' + String(val||'').replace(/\D/g, '').replace(/^0031/, '').replace(/^31/, '').replace(/^06/, '6').replace(/^0/, '').replace(/^6/, '').slice(0,8);
+}
 function contactInitials(naam){
   const parts = (naam || '').trim().split(/\s+/).filter(Boolean);
   if(!parts.length) return '?';
@@ -6359,7 +6544,7 @@ function openContactModal(id){
 
   $('#c-id').value      = c ? c.id : '';
   $('#c-naam').value    = c ? (c.naam || '')    : '';
-  $('#c-tel').value     = c ? (c.tel || '')     : '';
+  $('#c-tel').value     = c ? formatNLPhone(c.tel || '') : '(+316) ';
   $('#c-email').value   = c ? (c.email || '')   : '';
   $('#c-club').value    = c ? (c.club || '')    : '';
   $('#c-functie').value = c ? (c.functie || '') : '';
@@ -12518,6 +12703,16 @@ function initApp(){
     if(e.target.id === 'contact-backdrop') closeContactModal();
   });
   $('#contact-form')?.addEventListener('submit', submitContactForm);
+  // Auto-format NL telefoonnummer: "(+316) XX XX XX XX"
+  $('#c-tel')?.addEventListener('input', e => {
+    const el = e.target;
+    el.value = formatNLPhone(el.value);
+    requestAnimationFrame(() => { try { el.setSelectionRange(el.value.length, el.value.length); } catch(_){} });
+  });
+  $('#c-tel')?.addEventListener('focus', e => {
+    if(!e.target.value || e.target.value.replace(/\D/g,'') === '') e.target.value = '(+316) ';
+    requestAnimationFrame(() => { try { e.target.setSelectionRange(e.target.value.length, e.target.value.length); } catch(_){} });
+  });
   $('#contact-delete')?.addEventListener('click', async ()=>{
     const id = $('#c-id').value;
     if(!id) return;
@@ -12933,5 +13128,628 @@ onAuthStateChanged(auth, async (user)=>{
     <option value="O.23-9">
     <option value="O.23-10">
 </datalist>
+
+<!-- ===== Universele mobiel-vriendelijke picker (elftal + club) ===== -->
+<style>
+.sh-picker-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.72);
+  z-index: 9500;
+  display: none;
+  align-items: flex-end;
+  justify-content: center;
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+}
+.sh-picker-backdrop.show { display: flex; }
+.sh-picker-sheet {
+  background: var(--bg-2, #11151c);
+  border-top-left-radius: 18px;
+  border-top-right-radius: 18px;
+  width: 100%;
+  max-width: 600px;
+  max-height: 82vh;
+  display: flex; flex-direction: column;
+  padding: 14px 14px 20px 14px;
+  box-shadow: 0 -16px 50px rgba(0,0,0,.5);
+  animation: shPickerSlide .22s ease-out;
+}
+@keyframes shPickerSlide {
+  from { transform: translateY(40px); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+@media (min-width: 720px) {
+  .sh-picker-backdrop { align-items: center; }
+  .sh-picker-sheet { border-radius: 14px; max-height: 72vh; }
+}
+.sh-picker-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 4px;
+}
+.sh-picker-title { font-weight: 700; font-size: 16px; color: var(--text, #e7eaf0); }
+.sh-picker-close {
+  background: transparent; border: none;
+  color: var(--text, #e7eaf0);
+  font-size: 26px; line-height: 1;
+  cursor: pointer; padding: 4px 10px;
+}
+.sh-picker-search {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 15px;
+  border-radius: 10px;
+  border: 1px solid var(--border, #2a2f3a);
+  background: var(--bg, #0a0d13);
+  color: var(--text, #e7eaf0);
+  margin: 8px 0;
+  outline: none;
+}
+.sh-picker-search:focus { border-color: var(--primary, #e30613); }
+.sh-picker-recents-label {
+  font-size: 11px;
+  color: var(--muted, #7b8294);
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  margin: 6px 2px 4px 2px;
+}
+.sh-picker-recents-label.hidden { display: none; }
+.sh-picker-recents {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 8px;
+}
+.sh-picker-recents:empty { display: none; }
+.sh-picker-recent-chip {
+  background: rgba(227,6,19,.16);
+  border: 1px solid rgba(227,6,19,.5);
+  color: var(--text, #e7eaf0);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  min-height: 36px;
+}
+.sh-picker-recent-chip:hover { background: rgba(227,6,19,.28); }
+.sh-picker-list {
+  flex: 1;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(86px, 1fr));
+  gap: 6px;
+  padding: 4px 2px 2px 2px;
+  -webkit-overflow-scrolling: touch;
+}
+.sh-picker-list.cols-1 { grid-template-columns: 1fr; }
+.sh-picker-opt {
+  background: var(--bg, #0a0d13);
+  border: 1px solid var(--border, #2a2f3a);
+  color: var(--text, #e7eaf0);
+  padding: 12px 8px;
+  border-radius: 9px;
+  font-size: 14px; font-weight: 600;
+  cursor: pointer; text-align: center;
+  min-height: 46px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .12s, border-color .12s, transform .08s;
+}
+.sh-picker-opt:hover { background: var(--primary, #e30613); border-color: var(--primary, #e30613); color: #fff; }
+.sh-picker-opt:active { transform: scale(.96); }
+.sh-picker-empty {
+  color: var(--muted, #7b8294); text-align: center;
+  padding: 24px; grid-column: 1/-1; font-size: 14px;
+}
+input[data-picker] { cursor: pointer; caret-color: transparent; }
+input[data-picker]:focus { caret-color: transparent; }
+</style>
+
+<div class="sh-picker-backdrop" id="sh-picker" role="dialog" aria-modal="true">
+  <div class="sh-picker-sheet">
+    <div class="sh-picker-header">
+      <div class="sh-picker-title" id="sh-picker-title">Kies</div>
+      <button class="sh-picker-close" id="sh-picker-close" type="button" aria-label="Sluiten">&times;</button>
+    </div>
+    <input class="sh-picker-search" id="sh-picker-search" type="search" placeholder="Zoeken..." autocomplete="off" />
+    <div class="sh-picker-recents-label" id="sh-picker-recents-label">Recent</div>
+    <div class="sh-picker-recents" id="sh-picker-recents"></div>
+    <div class="sh-picker-list" id="sh-picker-list"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const RECENTS_KEY_PREFIX = 'sh_picker_recents_';
+  const MAX_RECENTS = 6;
+
+  function getRecents(type){
+    try { return JSON.parse(localStorage.getItem(RECENTS_KEY_PREFIX + type) || '[]') || []; }
+    catch(_) { return []; }
+  }
+  function pushRecent(type, val){
+    if(!val) return;
+    let arr = getRecents(type).filter(x => x !== val);
+    arr.unshift(val);
+    arr = arr.slice(0, MAX_RECENTS);
+    try { localStorage.setItem(RECENTS_KEY_PREFIX + type, JSON.stringify(arr)); } catch(_){}
+  }
+
+  function getOptions(type){
+    if(type === 'elftal'){
+      const out = [];
+      for(let age = 8; age <= 23; age++){
+        for(let team = 1; team <= 10; team++){
+          out.push('O.' + age + '-' + team);
+        }
+      }
+      return out;
+    }
+    if(type === 'club'){
+      if(typeof CLUB_ADRESSEN === 'undefined') return [];
+      const names = new Set();
+      Object.values(CLUB_ADRESSEN).forEach(c => { if(c && c.naam) names.add(c.naam); });
+      return Array.from(names).sort((a,b) => a.localeCompare(b, 'nl'));
+    }
+    return [];
+  }
+
+  const backdrop = document.getElementById('sh-picker');
+  const titleEl = document.getElementById('sh-picker-title');
+  const searchEl = document.getElementById('sh-picker-search');
+  const recentsEl = document.getElementById('sh-picker-recents');
+  const recentsLbl = document.getElementById('sh-picker-recents-label');
+  const listEl = document.getElementById('sh-picker-list');
+  const closeEl = document.getElementById('sh-picker-close');
+
+  let activeInput = null;
+  let activeType = null;
+  let activeOptions = [];
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  function render(filter){
+    const f = (filter || '').trim().toLowerCase();
+    const filtered = f ? activeOptions.filter(o => o.toLowerCase().includes(f)) : activeOptions;
+    if(filtered.length === 0){
+      listEl.innerHTML = '<div class="sh-picker-empty">Geen resultaten</div>';
+      return;
+    }
+    listEl.innerHTML = filtered.map(opt =>
+      '<button type="button" class="sh-picker-opt" data-val="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</button>'
+    ).join('');
+  }
+
+  function renderRecents(){
+    const r = getRecents(activeType);
+    if(r.length === 0){
+      recentsEl.innerHTML = '';
+      recentsLbl.classList.add('hidden');
+      return;
+    }
+    recentsLbl.classList.remove('hidden');
+    recentsEl.innerHTML = r.map(opt =>
+      '<button type="button" class="sh-picker-recent-chip" data-val="' + escapeHtml(opt) + '">' + escapeHtml(opt) + '</button>'
+    ).join('');
+  }
+
+  function open(input){
+    activeInput = input;
+    activeType = input.dataset.picker;
+    activeOptions = getOptions(activeType);
+    listEl.className = 'sh-picker-list';
+    if(activeType === 'club') listEl.classList.add('cols-1');
+    titleEl.textContent = activeType === 'elftal' ? 'Kies elftal' : (activeType === 'club' ? 'Kies club' : 'Kies');
+    searchEl.value = '';
+    searchEl.placeholder = activeType === 'elftal' ? 'Zoek (bijv. 15)' : 'Zoek club...';
+    renderRecents();
+    render('');
+    backdrop.classList.add('show');
+    // Focus search alleen op desktop — voorkomt keyboard pop op mobiel
+    if(window.innerWidth > 720){
+      setTimeout(() => searchEl.focus(), 80);
+    }
+  }
+
+  function close(){
+    backdrop.classList.remove('show');
+    activeInput = null;
+  }
+
+  function pick(val){
+    if(!activeInput) return close();
+    activeInput.value = val;
+    activeInput.dispatchEvent(new Event('input', {bubbles: true}));
+    activeInput.dispatchEvent(new Event('change', {bubbles: true}));
+    pushRecent(activeType, val);
+    close();
+  }
+
+  // Open on touch/click of any [data-picker] input
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if(t && t.matches && t.matches('input[data-picker]')){
+      e.preventDefault();
+      open(t);
+    }
+  });
+  document.addEventListener('focus', (e) => {
+    const t = e.target;
+    if(t && t.matches && t.matches('input[data-picker]')){
+      t.blur(); // voorkom toetsenbord
+      open(t);
+    }
+  }, true);
+
+  searchEl.addEventListener('input', () => render(searchEl.value));
+  listEl.addEventListener('click', (e) => {
+    const b = e.target.closest('.sh-picker-opt');
+    if(b) pick(b.dataset.val);
+  });
+  recentsEl.addEventListener('click', (e) => {
+    const b = e.target.closest('.sh-picker-recent-chip');
+    if(b) pick(b.dataset.val);
+  });
+  closeEl.addEventListener('click', close);
+  backdrop.addEventListener('click', (e) => {
+    if(e.target === backdrop) close();
+  });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && backdrop.classList.contains('show')) close();
+  });
+})();
+
+
+/* ===== v70a: Autosave + Draft Restore + Copy Last Report ===== */
+(function(){
+  const DRAFT_KEY = 'sh_report_draft_v1';
+  const DRAFT_DEBOUNCE_MS = 800;
+  const DRAFT_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 14; // 14 dagen
+
+  const form = document.getElementById('report-form');
+  const statusEl = document.getElementById('report-autosave-status');
+  const statusTxt = document.getElementById('report-autosave-text');
+  const banner = document.getElementById('report-draft-banner');
+  const bannerMeta = document.getElementById('report-draft-meta');
+  const btnLoad = document.getElementById('report-draft-load');
+  const btnDiscard = document.getElementById('report-draft-discard');
+  const copyRow = document.getElementById('report-copy-row');
+  const copyBtn = document.getElementById('report-copy-last');
+  const copyMeta = document.getElementById('report-copy-last-meta');
+  const copyModal = document.getElementById('report-copy-confirm');
+  const copyList = document.getElementById('report-copy-confirm-list');
+  const copySource = document.getElementById('report-copy-confirm-source');
+  const copyCancel = document.getElementById('report-copy-confirm-cancel');
+  const copyOk = document.getElementById('report-copy-confirm-ok');
+  if(!form) return;
+
+  // ---- helpers ----
+  function $id(id){ return document.getElementById(id); }
+  function setStatus(state, txt){
+    if(!statusEl) return;
+    statusEl.classList.remove('saving','saved');
+    statusEl.classList.add(state);
+    if(statusTxt) statusTxt.textContent = txt;
+  }
+  function nowStr(){
+    try { return new Date().toLocaleTimeString('nl-NL').slice(0,5); }
+    catch(_){ return ''; }
+  }
+  function ago(ts){
+    const sec = Math.max(1, Math.round((Date.now() - ts) / 1000));
+    if(sec < 60) return sec + ' sec geleden';
+    const min = Math.round(sec/60);
+    if(min < 60) return min + ' min geleden';
+    const hr = Math.round(min/60);
+    if(hr < 24) return hr + ' uur geleden';
+    const d = Math.round(hr/24);
+    return d + ' dag' + (d===1?'':'en') + ' geleden';
+  }
+
+  function gatherFormSnapshot(){
+    // Verzamel alle form-veld waarden + grade-picker waarden
+    const data = {};
+    form.querySelectorAll('input, textarea, select').forEach(el => {
+      if(!el.id) return;
+      if(el.type === 'checkbox') data[el.id] = el.checked;
+      else data[el.id] = el.value;
+    });
+    data._grades = {};
+    form.querySelectorAll('.grade-picker').forEach(p => {
+      if(p.dataset.key) data._grades[p.dataset.key] = p.dataset.value || '';
+    });
+    return data;
+  }
+  function applyFormSnapshot(data, opts){
+    opts = opts || {};
+    const skip = new Set(opts.skip || []);
+    Object.keys(data || {}).forEach(k => {
+      if(k === '_grades' || k === '_meta') return;
+      if(skip.has(k)) return;
+      const el = document.getElementById(k);
+      if(!el) return;
+      if(el.type === 'checkbox') el.checked = !!data[k];
+      else el.value = data[k] || '';
+    });
+    if(data._grades && !opts.skipGrades){
+      Object.keys(data._grades).forEach(key => {
+        if(typeof setPickerValue === 'function'){
+          setPickerValue(key, data._grades[key]);
+        }
+      });
+    }
+  }
+
+  function hasMeaningfulContent(snap){
+    if(!snap) return false;
+    // Naam, club, wedstrijd-thuis, of een beoordeling = "echt iets"
+    if((snap['f-naam'] || '').trim()) return true;
+    if((snap['f-club'] || '').trim()) return true;
+    if((snap['f-w-thuis'] || '').trim()) return true;
+    if(snap._grades){
+      for(const k in snap._grades){ if(snap._grades[k]) return true; }
+    }
+    return false;
+  }
+
+  // ---- autosave ----
+  let saveTimer = null;
+  let suspended = false; // true tijdens load/reset om feedback-loops te voorkomen
+
+  function scheduleSave(){
+    if(suspended) return;
+    setStatus('saving', 'Concept opslaan...');
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(doSave, DRAFT_DEBOUNCE_MS);
+  }
+  function doSave(){
+    if(suspended) return;
+    const snap = gatherFormSnapshot();
+    snap._meta = { ts: Date.now() };
+    // Sla niet op als er nog niks zinnigs is ingevuld + geen edit-mode
+    if(!hasMeaningfulContent(snap) && !( $id('f-id') && $id('f-id').value )){
+      setStatus('saved', 'Concept opgeslagen');
+      return;
+    }
+    try {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(snap));
+      setStatus('saved', 'Opgeslagen ' + nowStr());
+    } catch(_){
+      setStatus('saved', 'Concept opgeslagen');
+    }
+  }
+
+  form.addEventListener('input', scheduleSave);
+  form.addEventListener('change', scheduleSave);
+  // grade-pickers gebruiken click — vang die ook:
+  form.addEventListener('click', (e) => {
+    if(e.target && e.target.classList && e.target.classList.contains('grade-pick')){
+      scheduleSave();
+    }
+  });
+
+  // ---- on submit success / clear: drop draft ----
+  function dropDraft(){
+    try { localStorage.removeItem(DRAFT_KEY); } catch(_){}
+    setStatus('saved', 'Concept opgeslagen');
+  }
+  form.addEventListener('submit', () => {
+    // Na geslaagde submit (savePlayer wist form en navigeert), draft is niet meer relevant
+    setTimeout(dropDraft, 200);
+  });
+  const clearBtn = document.getElementById('report-clear');
+  if(clearBtn){
+    clearBtn.addEventListener('click', () => {
+      setTimeout(dropDraft, 50);
+    });
+  }
+
+  // ---- draft restore on load ----
+  function tryRestore(){
+    let raw;
+    try { raw = localStorage.getItem(DRAFT_KEY); } catch(_){ return; }
+    if(!raw) return;
+    let snap;
+    try { snap = JSON.parse(raw); } catch(_){ return dropDraft(); }
+    if(!snap || !snap._meta) return dropDraft();
+    if(Date.now() - snap._meta.ts > DRAFT_MAX_AGE_MS) return dropDraft();
+    if(!hasMeaningfulContent(snap)) return dropDraft();
+    // Toon banner
+    if(banner && bannerMeta){
+      const naam = (snap['f-naam'] || '').trim() || 'Onbenoemd';
+      bannerMeta.textContent = 'Rapport voor ' + naam + ' (' + ago(snap._meta.ts) + ', niet ingediend)';
+      banner.classList.remove('hidden');
+    }
+    window.__shDraftSnap = snap;
+  }
+
+  if(btnLoad){
+    btnLoad.addEventListener('click', () => {
+      if(window.__shDraftSnap){
+        suspended = true;
+        try {
+          applyFormSnapshot(window.__shDraftSnap);
+          // refresh positie-dropdowns als linie geladen werd
+          if(typeof refreshPositionDropdowns === 'function'){
+            try { refreshPositionDropdowns(); } catch(_){}
+          }
+          // Zet positie/beoogd opnieuw nu de dropdowns ingevuld zijn
+          const pos = window.__shDraftSnap['f-positie'];
+          const beoogd = window.__shDraftSnap['f-beoogd'];
+          if(pos && $id('f-positie')) $id('f-positie').value = pos;
+          if(beoogd && $id('f-beoogd')) $id('f-beoogd').value = beoogd;
+        } finally {
+          suspended = false;
+        }
+      }
+      banner.classList.add('hidden');
+      setStatus('saved', 'Concept geladen');
+    });
+  }
+  if(btnDiscard){
+    btnDiscard.addEventListener('click', () => {
+      if(confirm('Concept echt wissen?')){
+        dropDraft();
+        banner.classList.add('hidden');
+      }
+    });
+  }
+
+  // ---- Copy last report ----
+  // "Laatste rapport" = meest recent ingevoerde speler (window.spelers of equivalent)
+  function getLastReport(){
+    // Probeer meerdere globals — afhankelijk van hoe data heet in deze app
+    const candidates = [window.players, window.spelers, window.STATE && window.STATE.players, window.STATE && window.STATE.spelers];
+    for(const arr of candidates){
+      if(Array.isArray(arr) && arr.length){
+        // Sorteer op invoer/created/datum — pak meest recent
+        const copy = arr.slice();
+        copy.sort((a,b) => {
+          const tb = new Date(b.invoer_datum || b.created || b.updated || b.wedstrijd?.datum || 0).getTime() || 0;
+          const ta = new Date(a.invoer_datum || a.created || a.updated || a.wedstrijd?.datum || 0).getTime() || 0;
+          return tb - ta;
+        });
+        return copy[0];
+      }
+    }
+    return null;
+  }
+
+  function fmtDate(s){
+    if(!s) return '—';
+    // verwacht YYYY-MM-DD of DD-MM-YYYY
+    if(/^\d{4}-\d{2}-\d{2}/.test(s)){
+      const [y,m,d] = s.slice(0,10).split('-');
+      return `${d}-${m}-${y}`;
+    }
+    return s;
+  }
+  function todayISO(){
+    const d = new Date();
+    return d.toISOString().slice(0,10);
+  }
+  function todayFmt(){
+    return fmtDate(todayISO());
+  }
+
+  function refreshCopyRow(){
+    if(!copyRow || !copyBtn) return;
+    // Alleen tonen op een leeg/nieuw rapport (geen f-id)
+    const isEdit = $id('f-id') && $id('f-id').value;
+    if(isEdit){ copyRow.style.display = 'none'; return; }
+    const last = getLastReport();
+    if(!last){ copyRow.style.display = 'none'; return; }
+    copyRow.style.display = 'flex';
+    const naam = last.naam || 'Onbenoemd';
+    const elftal = last.elftal || '';
+    const w = last.wedstrijd || {};
+    const meta = [naam];
+    if(elftal) meta.push(elftal);
+    if(w.thuis && w.uit) meta.push(w.thuis + ' – ' + w.uit);
+    if(w.datum) meta.push(fmtDate(w.datum));
+    copyMeta.textContent = 'Laatste: ' + meta.join(' · ');
+  }
+
+  function buildCopyList(last){
+    // Welke velden worden overgenomen?
+    const fields = [];
+    const w = last.wedstrijd || {};
+    fields.push({ label: 'Elftal', val: last.elftal || '—', target: 'f-elftal' });
+    fields.push({ label: 'Thuisclub', val: w.thuis || '—', target: 'f-w-thuis' });
+    fields.push({ label: 'Uitclub', val: w.uit || '—', target: 'f-w-uit' });
+    fields.push({ label: 'Datum', val: todayFmt() + ' (vandaag)', target: 'f-w-datum', valOverride: todayISO() });
+    if(w.opstelling) fields.push({ label: 'Opstelling', val: w.opstelling, target: 'f-w-opstelling' });
+    if(w.context) fields.push({ label: 'Context', val: w.context, target: 'f-w-context' });
+    if(w.toernooi){
+      fields.push({ label: 'Toernooi', val: w.toernooi_naam || 'Ja', target: '__toernooi' });
+    }
+    if(last.methode) fields.push({ label: 'Methode', val: last.methode, target: 'f-methode' });
+    return fields;
+  }
+
+  function openCopyModal(){
+    const last = getLastReport();
+    if(!last) return;
+    copySource.textContent = (last.naam || 'Onbenoemd') + (last.wedstrijd && last.wedstrijd.datum ? ' (' + fmtDate(last.wedstrijd.datum) + ')' : '');
+    const fields = buildCopyList(last);
+    const html = fields.map(f =>
+      `<li><span>${f.label}</span><span class="val">${(f.val||'—').toString().replace(/</g,'&lt;')}</span></li>`
+    ).join('') +
+    `<li class="skip"><span>Speler</span><span class="val">blijft leeg</span></li>` +
+    `<li class="skip"><span>Beoordelingen</span><span class="val">blijven leeg</span></li>`;
+    copyList.innerHTML = html;
+    copyModal.classList.add('show');
+    window.__shCopyLast = { last, fields };
+  }
+
+  function applyCopy(){
+    const data = window.__shCopyLast;
+    if(!data) return;
+    suspended = true;
+    try {
+      data.fields.forEach(f => {
+        if(f.target === '__toernooi'){
+          const cb = $id('f-w-toernooi');
+          const naam = $id('f-w-toernooi-naam');
+          if(cb){ cb.checked = true; cb.dispatchEvent(new Event('change', {bubbles:true})); }
+          if(naam && data.last.wedstrijd) naam.value = data.last.wedstrijd.toernooi_naam || '';
+          return;
+        }
+        const el = $id(f.target);
+        if(!el) return;
+        el.value = f.valOverride != null ? f.valOverride : (f.val === '—' ? '' : f.val);
+        el.dispatchEvent(new Event('input', {bubbles:true}));
+        el.dispatchEvent(new Event('change', {bubbles:true}));
+      });
+    } finally {
+      suspended = false;
+    }
+    copyModal.classList.remove('show');
+    if(copyBtn){
+      copyBtn.classList.add('done');
+      copyBtn.innerHTML = '<span class="icon">✓</span>Gekopieerd!';
+      setTimeout(() => {
+        copyBtn.classList.remove('done');
+        copyBtn.innerHTML = '<span class="icon">📋</span>Vorig rapport kopiëren';
+      }, 2200);
+    }
+    scheduleSave();
+  }
+
+  if(copyBtn) copyBtn.addEventListener('click', openCopyModal);
+  if(copyCancel) copyCancel.addEventListener('click', () => copyModal.classList.remove('show'));
+  if(copyOk) copyOk.addEventListener('click', applyCopy);
+  if(copyModal) copyModal.addEventListener('click', (e) => {
+    if(e.target === copyModal) copyModal.classList.remove('show');
+  });
+
+  // ---- View-switch hook — copy-row refreshen wanneer report view geopend wordt ----
+  // We luisteren naar nav-clicks die naar "report" gaan.
+  document.addEventListener('click', (e) => {
+    const t = e.target.closest && e.target.closest('[data-view="report"], [data-go="report"]');
+    if(t) setTimeout(refreshCopyRow, 120);
+  });
+
+  // ---- Init ----
+  setStatus('saved', 'Concept opgeslagen');
+  // Wacht heel even tot data geladen is — dan banner + copy-row evalueren
+  setTimeout(() => {
+    tryRestore();
+    refreshCopyRow();
+  }, 800);
+})();
+/* ===== /v70a ===== */
+</script>
+<!-- ===== /Universele picker ===== -->
+
+
+<!-- v70: Copy-last-report confirm modal -->
+<div class="copy-confirm-backdrop" id="report-copy-confirm">
+  <div class="copy-confirm" role="dialog" aria-modal="true">
+    <h3>Vorig rapport kopiëren</h3>
+    <p class="sub">De volgende velden worden overgenomen uit <strong id="report-copy-confirm-source">—</strong>:</p>
+    <ul id="report-copy-confirm-list"></ul>
+    <div class="copy-confirm-actions">
+      <button type="button" class="cancel" id="report-copy-confirm-cancel">Annuleren</button>
+      <button type="button" class="confirm" id="report-copy-confirm-ok">Kopieer velden</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

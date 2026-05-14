@@ -3991,10 +3991,6 @@ body.view-active-report #view-report {
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 11v6c0 1.7 4 3 9 3s9-1.3 9-3v-6"/></svg>
           Database
         </button>
-        <button class="nav-item" data-view="compare">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/><path d="M12 8v8"/></svg>
-          Vergelijken
-        </button>
         <button class="nav-item" data-view="programma">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/><line x1="7" y1="13" x2="9" y2="13"/><line x1="11" y1="13" x2="13" y2="13"/><line x1="15" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="9" y2="17"/><line x1="11" y1="17" x2="13" y2="17"/></svg>
           <span>Programma</span>
@@ -4003,21 +3999,26 @@ body.view-active-report #view-report {
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="1"/><line x1="12" y1="6" x2="12" y2="19"/><circle cx="12" cy="12.5" r="2"/><path d="M3 10.5 H6 V14.5 H3"/><path d="M21 10.5 H18 V14.5 H21"/></svg>
           Wedstrijden
         </button>
-        <button class="nav-item" data-view="report">
+        <button class="nav-item" data-view="compare">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/><path d="M12 8v8"/></svg>
+          Vergelijken
+        </button>
+        <button class="nav-item" id="nav-new-report-btn" type="button">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
           Nieuw rapport
+          <span class="nav-chev">▾</span>
         </button>
         <button class="nav-item" data-view="pitch">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/><line x1="12" y1="5" x2="12" y2="19"/><circle cx="12" cy="12" r="2"/></svg>
           Elftal analyse
         </button>
-        <button class="nav-item" data-view="contacts">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Contacten
-        </button>
         <button class="nav-item" data-view="adresboek">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           Adresboek
+        </button>
+        <button class="nav-item" data-view="contacts">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Contacten
         </button>
         <button class="nav-item" data-view="tips">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>
@@ -4033,6 +4034,10 @@ body.view-active-report #view-report {
           <span class="sync-dot" id="sync-dot"></span>
           <span id="sync-text">Cloud gesynchroniseerd</span>
         </div>
+        <button type="button" class="sidebar-settings-btn" id="sidebar-settings-btn" title="Instellingen">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Instellingen</span>
+        </button>
         <button class="logout-btn" id="logout-btn">Uitloggen</button>
       </div>
     </aside>
@@ -4047,9 +4052,10 @@ body.view-active-report #view-report {
             <div class="page-title">Dashboard</div>
             <div class="page-sub" id="dashboard-date">—</div>
           </div>
-          <button class="btn btn-primary" data-go="report">
+          <button class="btn btn-primary" id="dash-new-report-btn" type="button">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Nieuw rapport
+            <span style="font-size:11px; margin-left:2px;">▾</span>
           </button>
         </div>
 
@@ -4338,7 +4344,7 @@ body.view-active-report #view-report {
             </button>
             <button class="btn btn-primary" id="programma-new-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Wedstrijd inplannen
+              Nieuw wedstrijdrapport
             </button>
           </div>
         </div>
@@ -4357,7 +4363,7 @@ body.view-active-report #view-report {
 
         <div id="programma-empty" style="display:none; text-align:center; padding:40px 20px; color:var(--text-3);">
           <div style="font-size:14px; margin-bottom:8px;">Geen wedstrijden ingepland deze week.</div>
-          <div style="font-size:12px;">Klik op een dag of op <strong>Wedstrijd inplannen</strong> om te starten.</div>
+          <div style="font-size:12px;">Klik op een dag of op <strong>Nieuw wedstrijdrapport</strong> om te starten.</div>
         </div>
       </section>
 
@@ -4410,7 +4416,7 @@ body.view-active-report #view-report {
             <div class="field-row">
               <div class="field">
                 <label>Club</label>
-                <input id="f-club" type="text" list="club-suggestions" autocomplete="off" data-picker="club" />
+                <input id="f-club" type="text" autocomplete="off" data-picker="club" />
               </div>
               <div class="field">
                 <label>Plaats</label>
@@ -4424,7 +4430,7 @@ body.view-active-report #view-report {
             <div class="field-row three">
               <div class="field">
                 <label>Elftal</label>
-                <input id="f-elftal" type="text" placeholder="Bijv. O.15-1" list="elftal-suggestions" autocomplete="off" data-picker="elftal" />
+                <input id="f-elftal" type="text" placeholder="Bijv. O.15-1" autocomplete="off" data-picker="elftal" />
               </div>
               <div class="field">
                 <label>Rugnummer</label>
@@ -4454,11 +4460,11 @@ body.view-active-report #view-report {
               </div>
               <div class="field">
                 <label>Thuisspelende ploeg</label>
-                <input id="f-w-thuis" type="text" placeholder="Bijv. FC Twente O15" list="club-suggestions" autocomplete="off" data-picker="club" />
+                <input id="f-w-thuis" type="text" placeholder="Bijv. FC Twente O15" autocomplete="off" data-picker="club" />
               </div>
               <div class="field">
                 <label>Uitspelende ploeg</label>
-                <input id="f-w-uit" type="text" placeholder="Bijv. Sparta Rotterdam O15" list="club-suggestions" autocomplete="off" data-picker="club" />
+                <input id="f-w-uit" type="text" placeholder="Bijv. Sparta Rotterdam O15" autocomplete="off" data-picker="club" />
               </div>
             </div>
             <div class="field-row">
@@ -4941,7 +4947,7 @@ body.view-active-report #view-report {
 <div class="modal-backdrop" id="prog-match-backdrop">
   <div class="modal" id="prog-match-modal">
     <div class="modal-header">
-      <div class="modal-title" id="prog-match-title">Wedstrijd inplannen</div>
+      <div class="modal-title" id="prog-match-title">Nieuw wedstrijdrapport</div>
       <button class="modal-close" id="prog-match-close">×</button>
     </div>
     <div class="modal-body">
@@ -4960,7 +4966,7 @@ body.view-active-report #view-report {
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Elftal</label>
-            <input id="pm-leeftijd" type="text" placeholder="Bijv. O.15-1" list="elftal-suggestions" autocomplete="off" data-picker="elftal" />
+            <input id="pm-leeftijd" type="text" placeholder="Bijv. O.15-1" autocomplete="off" data-picker="elftal" />
           </div>
           <div class="field">
             <label>Scoutingmethode</label>
@@ -4982,11 +4988,11 @@ body.view-active-report #view-report {
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Thuisclub *</label>
-            <input id="pm-thuis" type="text" required placeholder="Bijv. AFC" list="club-suggestions" autocomplete="off" data-picker="club" />
+            <input id="pm-thuis" type="text" required placeholder="Bijv. AFC" autocomplete="off" data-picker="club" />
           </div>
           <div class="field">
             <label>Uitclub *</label>
-            <input id="pm-uit" type="text" required placeholder="Bijv. Ajax" list="club-suggestions" autocomplete="off" data-picker="club" />
+            <input id="pm-uit" type="text" required placeholder="Bijv. Ajax" autocomplete="off" data-picker="club" />
           </div>
         </div>
         <div class="field" style="margin-top:12px;">
@@ -5033,7 +5039,7 @@ body.view-active-report #view-report {
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Club</label>
-            <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" list="club-suggestions" autocomplete="off" data-picker="club" />
+            <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" data-picker="club" />
           </div>
           <div class="field">
             <label>Positie</label>
@@ -7300,7 +7306,17 @@ function renderUpcomingMatches(){
   const wrap = document.getElementById('upcoming-matches-wrap');
   if(!wrap) return;
   if(typeof programmaCache === 'undefined' || !Array.isArray(programmaCache) || programmaCache.length === 0){
-    wrap.style.display = 'none'; wrap.innerHTML = ''; return;
+    // v70g: altijd tonen, ook bij lege cache
+    wrap.style.display = 'block';
+    wrap.innerHTML = `
+      <div class="upcoming-matches">
+        <div class="upcoming-matches-head">
+          <div class="upcoming-matches-title">Aankomende wedstrijden</div>
+          <div class="upcoming-matches-count">geen ingepland</div>
+        </div>
+        <div class="up-empty">Plan een wedstrijd in via Programma of via "+ Nieuw rapport".</div>
+      </div>`;
+    return;
   }
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -7310,7 +7326,19 @@ function renderUpcomingMatches(){
     const d = new Date(p.datum + 'T00:00:00');
     return d > today && d < horizon;
   });
-  if(items.length === 0){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  if(items.length === 0){
+    // v70g: altijd tonen, ook zonder wedstrijden in de komende 3 dagen
+    wrap.style.display = 'block';
+    wrap.innerHTML = `
+      <div class="upcoming-matches">
+        <div class="upcoming-matches-head">
+          <div class="upcoming-matches-title">Aankomende wedstrijden</div>
+          <div class="upcoming-matches-count">geen in de komende 3 dagen</div>
+        </div>
+        <div class="up-empty">Geen wedstrijden ingepland voor de komende 3 dagen.</div>
+      </div>`;
+    return;
+  }
   items.sort((a,b) => {
     const ka = (a.datum||'') + ' ' + (a.tijd||'99:99');
     const kb = (b.datum||'') + ' ' + (b.tijd||'99:99');
@@ -11649,7 +11677,7 @@ function openProgDetail(id){
 /* ------------- Plan match modal ------------- */
 function openProgMatchModal(progId, defaultDate){
   const it = progId ? programmaCache.find(p => p.id === progId) : null;
-  $('#prog-match-title').textContent = it ? 'Wedstrijd bewerken' : 'Wedstrijd inplannen';
+  $('#prog-match-title').textContent = it ? 'Wedstrijdrapport bewerken' : 'Nieuw wedstrijdrapport';
   $('#pm-id').value = it ? it.id : '';
   $('#pm-datum').value = it ? (it.datum||'') : (defaultDate || isoDateStr(new Date()));
   $('#pm-tijd').value = it ? (it.tijd||'') : '';
@@ -13443,6 +13471,110 @@ onAuthStateChanged(auth, async (user)=>{
   font-size: 13px;
   text-align: center;
 }
+/* v70g: "+ Nieuw rapport" dropdown menu */
+.sh-newreport-menu {
+  position: absolute;
+  z-index: 9700;
+  min-width: 220px;
+  background: var(--bg-2, #11151c);
+  border: 1px solid var(--border, #2a2f3a);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.55);
+  padding: 8px;
+  display: none;
+}
+.sh-newreport-menu.show { display: block; }
+.sh-newreport-menu button {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%; text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text, #e7eaf0);
+  padding: 11px 13px;
+  border-radius: 8px;
+  font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+}
+.sh-newreport-menu button:hover {
+  background: rgba(227,6,19,.16);
+}
+.sh-newreport-menu .ic {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  background: rgba(227,6,19,.18);
+  color: var(--primary, #e30613);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 14px;
+  flex-shrink: 0;
+}
+.sh-newreport-menu .sub {
+  font-size: 11.5px; font-weight: 500;
+  color: var(--muted, #7b8294);
+  margin-top: 1px;
+}
+.sh-newreport-menu .label-wrap { display:flex; flex-direction:column; min-width:0; }
+.nav-chev { margin-left: auto; font-size: 11px; opacity: .7; }
+
+/* v70g: opslaan-knop NIET sticky */
+.form-actions-sticky {
+  position: static !important;
+  bottom: auto !important;
+  left: auto !important; right: auto !important;
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
+  border-top: 1px solid var(--border, #2a2f3a) !important;
+  box-shadow: none !important;
+  padding: 16px 0 !important;
+  margin-top: 18px !important;
+  z-index: auto !important;
+}
+@media (max-width: 1024px) {
+  .form-actions-sticky { padding: 16px 0 !important; bottom: auto !important; }
+}
+body.view-active-report #view-report,
+body:not(.view-active-report) #view-report {
+  padding-bottom: 40px !important;
+}
+@media (max-width: 1024px) {
+  body.view-active-report #view-report,
+  body:not(.view-active-report) #view-report {
+    padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+  }
+}
+/* v70g: uniforme select-breedte */
+.field select { width: 100%; box-sizing: border-box; }
+.field-row select { width: 100%; box-sizing: border-box; }
+
+/* v70g: Aankomende wedstrijden — leeg-state */
+.up-row { cursor: pointer; transition: background .12s; }
+.up-row:hover { background: rgba(227,6,19,.06); }
+.up-empty {
+  padding: 14px 16px;
+  text-align: center;
+  color: var(--muted, #7b8294);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* v70g: Instellingen-knop in sidebar */
+.sidebar-settings-btn {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+  padding: 11px 14px;
+  background: transparent;
+  border: 1px solid var(--border, #2a2f3a);
+  border-radius: 10px;
+  color: var(--text, #e7eaf0);
+  font-size: 14px; font-weight: 600;
+  cursor: pointer;
+  margin-top: 12px;
+  font-family: inherit;
+  transition: background .12s;
+}
+.sidebar-settings-btn:hover { background: var(--bg-2, #11151c); }
+.sidebar-settings-btn svg { flex-shrink: 0; }
+
 </style>
 
 <div class="sh-picker-backdrop" id="sh-picker" role="dialog" aria-modal="true">
@@ -13679,6 +13811,9 @@ onAuthStateChanged(auth, async (user)=>{
   function wireAll(){
     document.querySelectorAll('input[data-picker]').forEach(wireOne);
   }
+  // v70g: globaal beschikbaar zodat go() en modal-open dit opnieuw kunnen aanroepen
+  window.__shWireAcAll = wireAll;
+  window.__shOpenAc = openFor;
   wireAll();
   const acObs = new MutationObserver(wireAll);
   acObs.observe(document.body, { childList: true, subtree: true });
@@ -14084,6 +14219,167 @@ onAuthStateChanged(auth, async (user)=>{
     </div>
   </div>
 </div>
+
+
+<script>
+/* v70g: "+ Nieuw rapport" dropdown logic */
+(function(){
+  const menu = document.createElement('div');
+  menu.className = 'sh-newreport-menu';
+  menu.innerHTML = `
+    <button type="button" data-kind="speler">
+      <span class="ic">S</span>
+      <span class="label-wrap">
+        <span>Spelersrapport</span>
+        <span class="sub">Beoordeling van een speler</span>
+      </span>
+    </button>
+    <button type="button" data-kind="wedstrijd">
+      <span class="ic">W</span>
+      <span class="label-wrap">
+        <span>Wedstrijdrapport</span>
+        <span class="sub">Inplannen of bewerken van een wedstrijd</span>
+      </span>
+    </button>
+  `;
+  document.body.appendChild(menu);
+
+  let anchor = null;
+
+  function position(){
+    if(!anchor) return;
+    const r = anchor.getBoundingClientRect();
+    menu.style.left = (r.right + window.scrollX - menu.offsetWidth) + 'px';
+    menu.style.top  = (r.bottom + window.scrollY + 6) + 'px';
+    if(r.right - menu.offsetWidth < 8){
+      menu.style.left = (r.left + window.scrollX) + 'px';
+    }
+  }
+
+  function open(btn){
+    anchor = btn;
+    menu.classList.add('show');
+    setTimeout(position, 0);
+  }
+  function close(){
+    menu.classList.remove('show');
+    anchor = null;
+  }
+
+  menu.addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-kind]');
+    if(!b) return;
+    const kind = b.dataset.kind;
+    close();
+    if(kind === 'speler'){
+      if(typeof go === 'function') go('report');
+    } else if(kind === 'wedstrijd'){
+      if(typeof go === 'function') go('programma');
+      setTimeout(() => {
+        if(typeof openProgMatchModal === 'function') openProgMatchModal(null);
+      }, 120);
+    }
+  });
+
+  function wireBtn(id){
+    const btn = document.getElementById(id);
+    if(!btn || btn.__shWired) return;
+    btn.__shWired = true;
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if(menu.classList.contains('show') && anchor === btn) close();
+      else open(btn);
+    });
+  }
+  function wireAll(){
+    wireBtn('nav-new-report-btn');
+    wireBtn('dash-new-report-btn');
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', wireAll);
+  } else {
+    wireAll();
+  }
+  new MutationObserver(wireAll).observe(document.body, { childList: true, subtree: true });
+
+  document.addEventListener('mousedown', (e) => {
+    if(!menu.classList.contains('show')) return;
+    if(menu.contains(e.target)) return;
+    if(anchor && anchor.contains(e.target)) return;
+    close();
+  }, true);
+  window.addEventListener('scroll', () => { if(menu.classList.contains('show')) position(); }, true);
+  window.addEventListener('resize', () => { if(menu.classList.contains('show')) position(); });
+  document.addEventListener('keydown', (e) => {
+    if(e.key === 'Escape' && menu.classList.contains('show')) close();
+  });
+})();
+
+/* v70g: RODA-FIX - force rewire data-picker inputs na elke view-switch */
+(function(){
+  function patchGo(){
+    if(typeof window.go !== 'function'){
+      setTimeout(patchGo, 100);
+      return;
+    }
+    if(window.__shGoPatched) return;
+    window.__shGoPatched = true;
+    const origGo = window.go;
+    window.go = function(view){
+      const r = origGo.apply(this, arguments);
+      setTimeout(() => {
+        if(typeof window.__shWireAcAll === 'function'){
+          window.__shWireAcAll();
+        }
+      }, 30);
+      return r;
+    };
+  }
+  patchGo();
+
+  function patchProgModal(){
+    if(typeof window.openProgMatchModal !== 'function'){
+      setTimeout(patchProgModal, 100);
+      return;
+    }
+    if(window.__shPmPatched) return;
+    window.__shPmPatched = true;
+    const orig = window.openProgMatchModal;
+    window.openProgMatchModal = function(){
+      const r = orig.apply(this, arguments);
+      setTimeout(() => {
+        if(typeof window.__shWireAcAll === 'function') window.__shWireAcAll();
+      }, 80);
+      return r;
+    };
+  }
+  patchProgModal();
+})();
+
+/* v70g: Instellingen-knop - stub */
+(function(){
+  function showSettings(){
+    if(typeof go === 'function') go('settings');
+    const v = document.getElementById('view-settings');
+    if(!v){
+      alert('Instellingen-pagina komt in de volgende update (v70h).\n\nDaar vind je:\n- Profielfoto wijzigen\n- Persoonsgegevens (telefoon, adres)\n- Import/export rapporten en wedstrijden\n- App-instellingen');
+    }
+  }
+  function wireSettingsBtn(){
+    const btn = document.getElementById('sidebar-settings-btn');
+    if(!btn || btn.__shWired) return;
+    btn.__shWired = true;
+    btn.addEventListener('click', showSettings);
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', wireSettingsBtn);
+  } else {
+    wireSettingsBtn();
+  }
+  new MutationObserver(wireSettingsBtn).observe(document.body, { childList: true, subtree: true });
+})();
+</script>
 
 </body>
 </html>

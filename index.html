@@ -2906,6 +2906,68 @@ tbody tr:last-child td { border-bottom: none; }
   100% { opacity: 1; transform: translate(-50%,-50%) scale(1); }
 }
 
+/* === Intro-logo: filmische orbit + zwevende stippen === */
+.intro-logo-orbit {
+  position: absolute;
+  inset: -14px;
+  pointer-events: none;
+  z-index: 4;
+  opacity: 0;
+  animation: introOrbitFadeIn 1.2s ease-out 1.4s forwards,
+             introOrbitSpin 9s linear 1.4s infinite;
+}
+@keyframes introOrbitFadeIn {
+  0%   { opacity: 0; }
+  100% { opacity: 1; }
+}
+@keyframes introOrbitSpin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+.intro-logo-orbit-dot {
+  position: absolute;
+  top: -6px;
+  left: 50%;
+  width: 13px; height: 13px;
+  margin-left: -6.5px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff7d0 0%, #f5c518 45%, #b88a08 100%);
+  box-shadow:
+    0 0 14px rgba(245,197,24,.95),
+    0 0 32px rgba(245,197,24,.55),
+    0 0 60px rgba(245,197,24,.28);
+}
+.intro-logo-dots {
+  position: absolute;
+  inset: -60px -40px -30px -40px;
+  pointer-events: none;
+  z-index: 0;
+  overflow: visible;
+}
+.intro-logo-dots span {
+  position: absolute;
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,200,205,.95) 0%, rgba(227,6,19,.7) 50%, rgba(227,6,19,0) 75%);
+  filter: blur(.5px);
+  opacity: 0;
+  animation: introFloatDot 6.5s ease-in-out infinite;
+}
+.intro-logo-dots span:nth-child(1) { top: 88%; left:  8%; animation-delay: 1.6s; }
+.intro-logo-dots span:nth-child(2) { top: 92%; left: 24%; animation-delay: 2.3s; width: 5px; height: 5px; }
+.intro-logo-dots span:nth-child(3) { top: 86%; left: 40%; animation-delay: 3.1s; }
+.intro-logo-dots span:nth-child(4) { top: 90%; left: 58%; animation-delay: 3.9s; width: 5px; height: 5px; }
+.intro-logo-dots span:nth-child(5) { top: 84%; left: 74%; animation-delay: 4.7s; }
+.intro-logo-dots span:nth-child(6) { top: 92%; left: 90%; animation-delay: 5.4s; width: 4px; height: 4px; }
+.intro-logo-dots span:nth-child(7) { top: 78%; left: 18%; animation-delay: 2.8s; width: 4px; height: 4px; }
+.intro-logo-dots span:nth-child(8) { top: 80%; left: 66%; animation-delay: 4.2s; width: 4px; height: 4px; }
+@keyframes introFloatDot {
+  0%   { transform: translateY(0) scale(.5); opacity: 0; }
+  15%  { opacity: .95; }
+  60%  { opacity: .7; }
+  100% { transform: translateY(-220px) scale(1); opacity: 0; }
+}
+
 /* Wordmark — single elegant line */
 .intro-title {
   font-family: 'Inter', system-ui, sans-serif;
@@ -3201,6 +3263,12 @@ tbody tr:last-child td { border-bottom: none; }
   <div class="intro-corner br intro-corner-small">&copy; Marcel Steeman</div>
   <div class="intro-stage">
     <div class="intro-logo">
+      <div class="intro-logo-orbit" aria-hidden="true">
+        <span class="intro-logo-orbit-dot"></span>
+      </div>
+      <div class="intro-logo-dots" aria-hidden="true">
+        <span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span>
+      </div>
       <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
         <defs>
           <linearGradient id="introShield" x1="0%" y1="0%" x2="100%" y2="100%">

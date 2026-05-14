@@ -4005,7 +4005,7 @@ body.view-active-report #view-report {
         </button>
         <button class="nav-item" id="nav-new-report-btn" type="button">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-          Nieuw rapport
+          Nieuw
           <span class="nav-chev">▾</span>
         </button>
         <button class="nav-item" data-view="pitch">
@@ -4054,7 +4054,7 @@ body.view-active-report #view-report {
           </div>
           <button class="btn btn-primary" id="dash-new-report-btn" type="button">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nieuw rapport
+            Nieuw
             <span style="font-size:11px; margin-left:2px;">▾</span>
           </button>
         </div>
@@ -4168,7 +4168,7 @@ body.view-active-report #view-report {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Export
             </button>
-            <button class="btn btn-primary" data-go="report">+ Nieuw rapport</button>
+            <button class="btn btn-primary" id="db-new-report-btn" type="button">+ Nieuw <span style="font-size:11px; margin-left:2px;">▾</span></button>
           </div>
         </div>
 
@@ -4924,9 +4924,9 @@ body.view-active-report #view-report {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 11v6c0 1.7 4 3 9 3s9-1.3 9-3v-6"/></svg>
       <span class="bn-label">Spelers</span>
     </button>
-    <button class="bn-item" data-view="report" aria-label="Nieuw rapport">
+    <button class="bn-item" data-view="report" aria-label="Nieuw spelersrapport">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-      <span class="bn-label">Rapport</span>
+      <span class="bn-label">Nieuw</span>
     </button>
     <button class="bn-item" data-view="programma" aria-label="Programma">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/><line x1="7" y1="13" x2="9" y2="13"/><line x1="11" y1="13" x2="13" y2="13"/><line x1="15" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="9" y2="17"/><line x1="11" y1="17" x2="13" y2="17"/></svg>
@@ -5710,6 +5710,40 @@ function saveClubAddrCache(){
 
 // Pre-fill cache zodra app laadt — geen netwerk nodig voor bekende clubs.
 // PREFILL_CLUB_ADRESSEN_DONE
+
+// v70h: omgekeerde index (naam.toLowerCase() -> entry) zodat lookups ook werken
+// wanneer een gebruiker de volledige clubnaam typt/kiest i.p.v. de slug.
+const CLUB_ADRESSEN_BY_NAAM = (function(){
+  const out = {};
+  try {
+    for(const k in CLUB_ADRESSEN){
+      const e = CLUB_ADRESSEN[k];
+      if(e && e.naam){
+        const nk = String(e.naam).trim().toLowerCase();
+        if(!out[nk]) out[nk] = e;
+      }
+    }
+  } catch(_){}
+  return out;
+})();
+
+// v70h: één centrale lookup — probeer eerst slug, dan naam, dan startsWith fallback.
+window.findClubInfo = function(value){
+  if(!value || typeof CLUB_ADRESSEN === 'undefined') return null;
+  const v = String(value).trim().toLowerCase();
+  if(!v) return null;
+  if(CLUB_ADRESSEN[v]) return CLUB_ADRESSEN[v];
+  if(CLUB_ADRESSEN_BY_NAAM[v]) return CLUB_ADRESSEN_BY_NAAM[v];
+  // Startswith / contains-fallback: probeer slug-keys
+  for(const k in CLUB_ADRESSEN){
+    if(v.startsWith(k) || v.endsWith(k)) return CLUB_ADRESSEN[k];
+  }
+  // Probeer naam-keys met contains-match
+  for(const nk in CLUB_ADRESSEN_BY_NAAM){
+    if(v.includes(nk) || nk.includes(v)) return CLUB_ADRESSEN_BY_NAAM[nk];
+  }
+  return null;
+};
 (function prefillClubCaches(){
   try {
     let dirty = false;
@@ -11706,14 +11740,12 @@ function openProgMatchModal(progId, defaultDate){
     const loc = $('#pm-locatie');
     if(!thuis || !loc) return;
     function tryFill(){
-      if(typeof CLUB_ADRESSEN === 'undefined') return;
-      const v = thuis.value.trim().toLowerCase();
-      if(!v) return;
-      const ci = CLUB_ADRESSEN[v];
+      // v70h: gebruik centrale lookup die ook naam-keys + fuzzy match accepteert
+      if(typeof window.findClubInfo !== 'function') return;
+      const ci = window.findClubInfo(thuis.value);
       if(!ci) return;
       const sp = ci.sportpark || '';
       if(!sp) return;
-      // Vul alleen als veld leeg is of nog op een eerdere auto-fill staat.
       const cur = loc.value.trim();
       if(!cur || loc.dataset.autofill === '1'){
         loc.value = sp;
@@ -11741,10 +11773,9 @@ async function saveProgMatchFromForm(e){
   const datum = $('#pm-datum').value;
   let locatie = $('#pm-locatie').value.trim();
 
-  // Auto-vul locatie uit CLUB_ADRESSEN als leeg
-  if(!locatie && thuis && typeof CLUB_ADRESSEN !== 'undefined'){
-    const k = thuis.toLowerCase();
-    const ci = CLUB_ADRESSEN[k];
+  // v70h: Auto-vul locatie via robuuste findClubInfo (slug + naam + fuzzy)
+  if(!locatie && thuis && typeof window.findClubInfo === 'function'){
+    const ci = window.findClubInfo(thuis);
     if(ci) locatie = ci.sportpark || ci.naam || '';
   }
 
@@ -13516,10 +13547,13 @@ onAuthStateChanged(auth, async (user)=>{
 .sh-newreport-menu .label-wrap { display:flex; flex-direction:column; min-width:0; }
 .nav-chev { margin-left: auto; font-size: 11px; opacity: .7; }
 
-/* v70g: opslaan-knop NIET sticky */
-.form-actions-sticky {
+/* v70g+v70h: opslaan-knop NIET sticky — extra hardlock via ID-selector */
+#report-form-actions.form-actions-sticky,
+.form-actions-sticky,
+#report-form-actions {
   position: static !important;
   bottom: auto !important;
+  top: auto !important;
   left: auto !important; right: auto !important;
   background: transparent !important;
   -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
@@ -13528,7 +13562,10 @@ onAuthStateChanged(auth, async (user)=>{
   padding: 16px 0 !important;
   margin-top: 18px !important;
   z-index: auto !important;
+  display: flex !important;
 }
+/* v70h: forceer display ook als view-active-report niet gezet is */
+body #report-form-actions.form-actions-sticky { display: flex !important; }
 @media (max-width: 1024px) {
   .form-actions-sticky { padding: 16px 0 !important; bottom: auto !important; }
 }
@@ -14238,7 +14275,14 @@ body:not(.view-active-report) #view-report {
       <span class="ic">W</span>
       <span class="label-wrap">
         <span>Wedstrijdrapport</span>
-        <span class="sub">Inplannen of bewerken van een wedstrijd</span>
+        <span class="sub">Direct een wedstrijdrapport invullen</span>
+      </span>
+    </button>
+    <button type="button" data-kind="inplannen">
+      <span class="ic">I</span>
+      <span class="label-wrap">
+        <span>Wedstrijd inplannen</span>
+        <span class="sub">Programma openen op vandaag</span>
       </span>
     </button>
   `;
@@ -14274,10 +14318,18 @@ body:not(.view-active-report) #view-report {
     if(kind === 'speler'){
       if(typeof go === 'function') go('report');
     } else if(kind === 'wedstrijd'){
+      // Direct het wedstrijdrapport-modal openen op de programma-view, vandaag.
       if(typeof go === 'function') go('programma');
       setTimeout(() => {
-        if(typeof openProgMatchModal === 'function') openProgMatchModal(null);
+        if(typeof openProgMatchModal === 'function'){
+          const today = (typeof isoDateStr === 'function') ? isoDateStr(new Date())
+            : new Date().toISOString().slice(0,10);
+          openProgMatchModal(null, today);
+        }
       }, 120);
+    } else if(kind === 'inplannen'){
+      // Alleen programma openen — gebruiker kiest zelf dag, annuleer = blijft op programma.
+      if(typeof go === 'function') go('programma');
     }
   });
 
@@ -14295,6 +14347,7 @@ body:not(.view-active-report) #view-report {
   function wireAll(){
     wireBtn('nav-new-report-btn');
     wireBtn('dash-new-report-btn');
+    wireBtn('db-new-report-btn');
   }
   if(document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', wireAll);

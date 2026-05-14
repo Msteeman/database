@@ -1,7 +1,7 @@
 {
-  "name": "ScoutingHub — Marcel Steeman",
+  "name": "ScoutingHub — Professional Scouting Platform",
   "short_name": "ScoutingHub",
-  "description": "Professioneel scoutingsplatform voor jeugdvoetbal",
+  "description": "Professional youth football scouting platform",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

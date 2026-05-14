@@ -2378,41 +2378,28 @@ tbody tr:last-child td { border-bottom: none; }
   opacity: 1;
 }
 
-/* v70h-s26: Install PWA button — discreet in sidebar */
+/* v70h-s28: Install PWA button — ALTIJD zichtbaar in sidebar */
 .install-btn {
   position: relative;
   width: 100%;
   margin-top: 8px;
-  padding: 9px 32px 9px 12px;
+  padding: 9px 12px;
   background: linear-gradient(135deg, rgba(229,57,53,.14), rgba(229,57,53,.06));
   color: var(--text);
   border: 1px solid rgba(229,57,53,.35);
   border-radius: 8px;
   font-size: 12px; font-weight: 600;
   cursor: pointer;
-  display: none;
+  display: inline-flex;          /* default zichtbaar — geen JS nodig */
   align-items: center;
+  justify-content: center;
   gap: 8px;
   font-family: inherit;
   transition: background .15s, border-color .15s;
 }
-.install-btn.show { display: inline-flex; }
+.install-btn--hidden { display: none !important; }   /* alleen wanneer al geïnstalleerd */
 .install-btn:hover { background: rgba(229,57,53,.22); border-color: rgba(229,57,53,.55); }
 .install-btn svg.icon-down { width: 14px; height: 14px; flex-shrink: 0; }
-.install-btn-close {
-  position: absolute;
-  top: 50%; right: 6px;
-  transform: translateY(-50%);
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  background: rgba(255,255,255,.08);
-  border: none; color: var(--text-2);
-  font-size: 13px; line-height: 1;
-  cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  padding: 0;
-}
-.install-btn-close:hover { background: rgba(255,255,255,.18); color: var(--text); }
 /* Instructie-modal voor handmatig installeren */
 .install-modal-backdrop {
   position: fixed; inset: 0;
@@ -2965,7 +2952,8 @@ tbody tr:last-child td { border-bottom: none; }
 @media (display-mode: standalone) {
   /* overscroll-behavior-y: none verwijderd — blokkeerde wheel-scroll op desktop-PWA */
   html, body { overscroll-behavior-y: auto; overflow-y: auto; }
-  .install-btn { display: none !important; }
+  /* v70h-s28: install-btn verbergen wordt via JS-klasse afgehandeld
+     (.install-btn--hidden) zodat oude browser-cache CSS niet conflicteert. */
 }
 
 /* ---------- GEO MAP WIDGET ---------- */
@@ -4172,7 +4160,7 @@ tbody tr:last-child td { border-bottom: none; }
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           <span>Instellingen</span>
         </button>
-        <!-- v70h-s26: install-knop in sidebar i.p.v. floating -->
+        <!-- v70h-s28: install-knop altijd in sidebar, geen kruisje meer -->
         <button class="install-btn" id="install-btn" type="button" aria-label="App installeren">
           <svg class="icon-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 3v12"/>
@@ -4180,7 +4168,6 @@ tbody tr:last-child td { border-bottom: none; }
             <path d="M5 21h14"/>
           </svg>
           Installeer app
-          <span class="install-btn-close" id="install-btn-close" role="button" aria-label="Sluiten">×</span>
         </button>
         <button class="logout-btn" id="logout-btn">Uitloggen</button>
       </div>
@@ -13446,18 +13433,18 @@ onAuthStateChanged(auth, async (user)=>{
     });
   }
 
-  // Install prompt — push knop eerste keer (zelfs zonder beforeinstallprompt)
+  // v70h-s28: Install prompt — knop ALTIJD zichtbaar tenzij al geïnstalleerd
   let deferredPrompt = null;
   const installBtn = document.getElementById('install-btn');
-  const installClose = document.getElementById('install-btn-close');
   const installModal = document.getElementById('install-modal-backdrop');
   const installModalSteps = document.getElementById('install-modal-steps');
   const installModalClose = document.getElementById('install-modal-close');
 
-  const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches
+  const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
     || window.navigator.standalone === true;
-  const DISMISS_KEY = 'sh_install_dismissed';
-  const dismissed = localStorage.getItem(DISMISS_KEY) === '1';
+
+  // v70h-s28: reset oude dismiss-vlag — knop moet terugkomen voor bestaande gebruikers
+  try { localStorage.removeItem('sh_install_dismissed'); } catch(_){}
 
   function detectPlatform(){
     const ua = navigator.userAgent;
@@ -13486,39 +13473,28 @@ onAuthStateChanged(auth, async (user)=>{
     installModal.classList.add('show');
   }
 
-  function dismissInstall(remember){
-    if(installBtn) installBtn.classList.remove('show');
-    if(remember) localStorage.setItem(DISMISS_KEY, '1');
-  }
-
-  // Push de knop bij eerste bezoek (niet in standalone, niet als al eerder gesloten)
-  if(installBtn && !isStandalone && !dismissed){
-    setTimeout(() => installBtn.classList.add('show'), 1200);
+  // Verberg knop alléén wanneer app al draait als geïnstalleerde PWA
+  if(installBtn && isStandalone){
+    installBtn.classList.add('install-btn--hidden');
   }
 
   window.addEventListener('beforeinstallprompt', (e)=>{
     e.preventDefault();
     deferredPrompt = e;
-    if(installBtn && !isStandalone && !dismissed) installBtn.classList.add('show');
   });
 
   if(installBtn){
-    installBtn.addEventListener('click', async (ev)=>{
-      if(ev.target && ev.target.id === 'install-btn-close') return;
+    installBtn.addEventListener('click', async ()=>{
       if(deferredPrompt){
-        installBtn.classList.remove('show');
-        deferredPrompt.prompt();
-        try { await deferredPrompt.userChoice; } catch(_){}
+        try {
+          deferredPrompt.prompt();
+          await deferredPrompt.userChoice;
+        } catch(_){}
         deferredPrompt = null;
       } else {
+        // Geen native prompt beschikbaar → toon platform-specifieke instructies
         showInstructions();
       }
-    });
-  }
-  if(installClose){
-    installClose.addEventListener('click', (ev)=>{
-      ev.stopPropagation();
-      dismissInstall(true);
     });
   }
   if(installModalClose){
@@ -13531,7 +13507,7 @@ onAuthStateChanged(auth, async (user)=>{
   }
   window.addEventListener('appinstalled', ()=>{
     deferredPrompt = null;
-    dismissInstall(true);
+    if(installBtn) installBtn.classList.add('install-btn--hidden');
   });
 })();
 </script>

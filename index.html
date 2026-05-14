@@ -3853,6 +3853,34 @@ tbody tr:last-child td { border-bottom: none; }
 .db-compare-bar-btn.ghost:hover { background: rgba(255,255,255,0.28); }
 .db-check-all { cursor: pointer; accent-color: #e30613; }
 
+/* v70h-s27: linker Vergelijken-knop bij filters */
+.db-compare-filter-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: #fff;
+  border: none; border-radius: 8px;
+  font-weight: 700; font-size: 13px;
+  cursor: pointer;
+  transition: opacity .15s, transform .15s, filter .15s;
+  white-space: nowrap;
+}
+.db-compare-filter-btn:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+.db-compare-filter-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--bg-3);
+  color: var(--text-2);
+}
+.db-compare-filter-btn .cmp-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 20px; height: 20px; padding: 0 6px;
+  background: rgba(255,255,255,.22);
+  border-radius: 999px;
+  font-size: 11px; font-weight: 700;
+}
+.db-compare-filter-btn:disabled .cmp-count { background: rgba(0,0,0,.15); }
+
 
 </style>
 </head>
@@ -4318,6 +4346,10 @@ tbody tr:last-child td { border-bottom: none; }
             <option value="30">Laatste 30 dagen</option>
             <option value="90">Laatste 90 dagen</option>
           </select>
+          <!-- v70h-s27: directe compare-knop bij filters -->
+          <button type="button" class="db-compare-filter-btn" id="db-compare-filter-btn" disabled title="Selecteer minimaal 2 spelers om te vergelijken">
+            Vergelijken <span class="cmp-count" id="db-compare-filter-count">0</span>
+          </button>
         </div>
 
         <div class="legend">
@@ -8523,21 +8555,39 @@ function applyFilters(){
   renderDbCompareBar();
 }
 
+/* v70h-s27: sync linker Vergelijken-knop met selectie-staat. */
+function updateDbCompareFilterBtn(){
+  const btn = document.getElementById('db-compare-filter-btn');
+  const cnt = document.getElementById('db-compare-filter-count');
+  if(!btn || !cnt) return;
+  const n = dbCheckedIds.length;
+  cnt.textContent = n;
+  if(n >= 2){
+    btn.disabled = false;
+    btn.title = `Vergelijk ${n} geselecteerde spelers`;
+  } else {
+    btn.disabled = true;
+    btn.title = 'Selecteer minimaal 2 spelers om te vergelijken';
+  }
+}
+
 function renderDbCompareBar(){
+  // v70h-s27: linker knop sync — altijd, ook als bar leeg is.
+  updateDbCompareFilterBtn();
   const host = document.getElementById('db-compare-bar-host');
   if(!host) return;
   const n = dbCheckedIds.length;
   if(n === 0){ host.innerHTML = ''; return; }
   const max = (typeof CMP_MAX === 'number') ? CMP_MAX : 6;
   const overflow = n > max;
+  // v70h-s27: Verwijder-knop weg — bulk delete bestaat niet meer.
   host.innerHTML = `
     <div class="db-compare-bar">
       <div class="db-compare-bar-text">
         ${n} speler${n===1?'':'s'} geselecteerd
         ${overflow ? `<small>Alleen de eerste ${max} worden vergeleken</small>` : (n < 2 ? '<small>Selecteer minimaal 2 om te vergelijken</small>' : '<small>Klaar om te vergelijken</small>')}
       </div>
-      <button type="button" class="db-compare-bar-btn ghost" id="db-compare-clear">Wis</button>
-      <button type="button" class="db-compare-bar-btn" id="db-bulk-delete" style="color:#ef4444;border-color:#ef4444;">Verwijder ${n}</button>
+      <button type="button" class="db-compare-bar-btn ghost" id="db-compare-clear">Wis selectie</button>
       <button type="button" class="db-compare-bar-btn primary" id="db-compare-go" ${n<2?'disabled':''}>Vergelijken &rarr;</button>
     </div>
   `;
@@ -8546,25 +8596,6 @@ function renderDbCompareBar(){
     clearBtn.addEventListener('click', () => {
       dbCheckedIds = [];
       applyFilters();
-    });
-  }
-  const delBtn = document.getElementById('db-bulk-delete');
-  if(delBtn){
-    delBtn.addEventListener('click', async () => {
-      const count = dbCheckedIds.length;
-      if(count === 0) return;
-      if(!confirm(`${count} speler${count===1?'':'s'} definitief verwijderen?\n\nDit kan niet ongedaan worden gemaakt.`)) return;
-      delBtn.disabled = true;
-      delBtn.textContent = 'Bezig...';
-      const ids = dbCheckedIds.slice();
-      let ok = 0, fail = 0;
-      for(const id of ids){
-        try { await deletePlayer(id); ok++; }
-        catch(e){ console.error('delete failed', id, e); fail++; }
-      }
-      dbCheckedIds = [];
-      applyFilters();
-      if(fail > 0) alert(`${ok} verwijderd, ${fail} mislukt. Zie console voor details.`);
     });
   }
   const goBtn = document.getElementById('db-compare-go');
@@ -9211,10 +9242,32 @@ function renderDetailOverview(p){
     loadIntoForm(p);
   });
   $('#dtl-del').addEventListener('click', async () => {
-    if(confirm('Dit rapport verwijderen?')){
+    // v70h-s27: harde dubbele bevestiging — eerst waarschuwing, dan naam typen.
+    const naam = (p.naam || '').trim() || 'onbekende speler';
+    const warn = [
+      'LET OP — dit verwijdert het rapport van:',
+      '',
+      `   ${naam}`,
+      '',
+      'Deze actie kan NIET ongedaan worden gemaakt.',
+      'Alle scout-data, beoordelingen en notities zijn permanent verloren.',
+      '',
+      'Doorgaan?'
+    ].join('\n');
+    if(!confirm(warn)) return;
+    const typed = prompt(`Typ de naam van de speler exact om te bevestigen:\n\n${naam}`);
+    if(typed === null) return; // geannuleerd
+    if((typed || '').trim().toLowerCase() !== naam.toLowerCase()){
+      alert('Naam komt niet overeen. Verwijderen geannuleerd — er is niets gewijzigd.');
+      return;
+    }
+    try {
       await deletePlayer(p.id);
       go(previousViewBeforePlayer || 'database');
-      toast('Rapport verwijderd');
+      toast('Rapport definitief verwijderd');
+    } catch(err){
+      console.error('delete failed', err);
+      alert('Verwijderen mislukt. Probeer het opnieuw of controleer je internetverbinding.');
     }
   });
   window.scrollTo({top:0});
@@ -13009,6 +13062,19 @@ function initApp(){
     $('#'+id).addEventListener('input', handler);
     $('#'+id).addEventListener('change', handler);
   });
+  // v70h-s27: linker Vergelijken-knop
+  const _cmpFilterBtn = document.getElementById('db-compare-filter-btn');
+  if(_cmpFilterBtn){
+    _cmpFilterBtn.addEventListener('click', () => {
+      if(_cmpFilterBtn.disabled) return;
+      const max = (typeof CMP_MAX === 'number') ? CMP_MAX : 6;
+      if(dbCheckedIds.length < 2) return;
+      cmpSelectedIds = dbCheckedIds.slice(0, max);
+      dbCheckedIds = [];
+      go('compare');
+    });
+  }
+  updateDbCompareFilterBtn();
 
   ['match-search','match-age','match-sort'].forEach(id=>{
     const el = $('#'+id);

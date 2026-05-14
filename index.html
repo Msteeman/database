@@ -13561,36 +13561,20 @@ onAuthStateChanged(auth, async (user)=>{
 .sh-newreport-menu .label-wrap { display:flex; flex-direction:column; min-width:0; }
 .nav-chev { margin-left: auto; font-size: 11px; opacity: .7; }
 
-/* v70g+v70h: opslaan-knop NIET sticky — extra hardlock via ID-selector */
-#report-form-actions.form-actions-sticky,
-.form-actions-sticky,
-#report-form-actions {
-  position: static !important;
-  bottom: auto !important;
-  top: auto !important;
-  left: auto !important; right: auto !important;
-  background: transparent !important;
-  -webkit-backdrop-filter: none !important; backdrop-filter: none !important;
-  border-top: 1px solid var(--border, #2a2f3a) !important;
-  box-shadow: none !important;
-  padding: 16px 0 !important;
-  margin-top: 18px !important;
-  z-index: auto !important;
+/* v70h-s11: opslaan-knop WEL sticky — continu zichtbaar tijdens scrollen.
+   Originele .form-actions-sticky CSS (regel 1424) doet het werk;
+   we forceren hier alleen de zichtbaarheid op alle subviews en zetten
+   genoeg padding-bottom op view-report zodat geen content onder de bar
+   verdwijnt. Op mobiel: boven de bottom-nav blijven. */
+.form-actions-sticky {
   display: flex !important;
 }
-/* v70h: forceer display ook als view-active-report niet gezet is */
-body #report-form-actions.form-actions-sticky { display: flex !important; }
-@media (max-width: 1024px) {
-  .form-actions-sticky { padding: 16px 0 !important; bottom: auto !important; }
-}
-body.view-active-report #view-report,
-body:not(.view-active-report) #view-report {
-  padding-bottom: 40px !important;
+body.view-active-report #view-report {
+  padding-bottom: 120px !important;
 }
 @media (max-width: 1024px) {
-  body.view-active-report #view-report,
-  body:not(.view-active-report) #view-report {
-    padding-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+  body.view-active-report #view-report {
+    padding-bottom: calc(170px + env(safe-area-inset-bottom)) !important;
   }
 }
 /* v70g: uniforme select-breedte */
@@ -14529,89 +14513,6 @@ body:not(.view-active-report) #view-report {
 
 
 
-<!-- v70h-s10: opslaan-knop debug paneel (DOM-based view check) -->
-<script>
-(function(){
-  function getActiveView(){
-    const v = document.querySelector('.view.active');
-    if(!v) return '?';
-    // id formaat: view-report, view-dashboard, etc.
-    return (v.id || '').replace(/^view-/, '') || '?';
-  }
-  function ensurePanel(){
-    let p = document.getElementById('__sh-save-dbg');
-    if(p) return p;
-    p = document.createElement('div');
-    p.id = '__sh-save-dbg';
-    p.style.cssText = 'position:fixed;top:8px;left:8px;max-width:340px;'+
-      'background:rgba(0,0,0,.88);color:#0f0;padding:8px 10px;border-radius:6px;'+
-      'font-family:monospace;font-size:11px;line-height:1.4;z-index:99999;'+
-      'pointer-events:none;white-space:pre-wrap;max-height:60vh;overflow:hidden;'+
-      'border:1px solid #0f0;';
-    document.body.appendChild(p);
-    return p;
-  }
-  function fmt(n){ return (n === undefined || n === null) ? '?' : Math.round(n); }
-  function render(){
-    const p = ensurePanel();
-    const t = new Date();
-    const stamp = String(t.getMinutes()).padStart(2,'0')+':'+String(t.getSeconds()).padStart(2,'0');
-    const view = getActiveView();
-    const el = document.getElementById('report-form-actions');
-    const btn = document.getElementById('report-save-btn');
-    let lines = ['[' + stamp + '] view=' + view];
-    if(view !== 'report'){
-      lines.push('(open een spelersrapport om te checken)');
-    }
-    if(!el){
-      lines.push('el #report-form-actions: NIET in DOM');
-    } else {
-      const cs = window.getComputedStyle(el);
-      const r = el.getBoundingClientRect();
-      const ah = el.classList.contains('form-actions-sticky');
-      lines.push('el: found  stickyClass=' + ah);
-      lines.push('pos=' + cs.position + '  bottom=' + cs.bottom);
-      lines.push('display=' + cs.display + '  z=' + cs.zIndex);
-      lines.push('BBox top=' + fmt(r.top) + ' h=' + fmt(r.height));
-      lines.push('scrollY=' + fmt(window.scrollY) + ' vpH=' + fmt(window.innerHeight));
-      const stuck = (cs.position === 'fixed' && cs.bottom !== 'auto');
-      lines.push(stuck ? '>> ZWEVEND: fixed onderaan'
-                       : '>> OK: scrollt mee met pagina');
-    }
-    if(btn){
-      const br = btn.getBoundingClientRect();
-      const bcs = window.getComputedStyle(btn);
-      lines.push('btn: pos=' + bcs.position + ' top=' + fmt(br.top));
-    }
-    p.textContent = lines.join('\n');
-  }
-  let __tick = 0;
-  function schedule(){
-    if(__tick) return;
-    __tick = requestAnimationFrame(() => {
-      __tick = 0;
-      try { render(); } catch(_){}
-    });
-  }
-  window.addEventListener('scroll', schedule, true);
-  window.addEventListener('resize', schedule);
-  // Update periodiek + bij elke view-switch (via MutationObserver op body class)
-  const mo = new MutationObserver(schedule);
-  mo.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-  // Ook observe .view nodes voor class wijzigingen
-  setTimeout(() => {
-    document.querySelectorAll('.view').forEach((v) => {
-      mo.observe(v, { attributes: true, attributeFilter: ['class'] });
-    });
-  }, 500);
-  // Periodiek refresh als safety net
-  setInterval(schedule, 1500);
-  // Eerste render
-  setTimeout(render, 400);
-  setTimeout(render, 1200);
-  setTimeout(render, 2500);
-})();
-</script>
 
 </body>
 </html>

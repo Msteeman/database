@@ -820,6 +820,8 @@ a { color: var(--accent); text-decoration: none; }
   padding: 22px 16px;
   display: flex; flex-direction: column;
   position: sticky; top: 0; height: 100vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .brand {
   display: flex; flex-direction: column; align-items: center; gap: 10px;
@@ -2097,6 +2099,22 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .prog-match-card:hover { transform: translateY(-1px); border-color: rgba(227,6,19,0.45); }
 .prog-match-card.verwerkt { opacity: 0.6; }
+.btn-route-prog {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--primary);
+  color: #fff !important;
+  border: 1px solid var(--primary);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: filter .15s, transform .15s;
+  box-shadow: 0 2px 8px rgba(227,6,19,.28);
+}
+.btn-route-prog:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.btn-route-prog:active { transform: translateY(0); }
 .prog-match-card.verwerkt::after {
   content: '✓ verwerkt';
   position: absolute; top: 6px; right: 8px;
@@ -2548,7 +2566,8 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* PWA standalone display tweaks */
 @media (display-mode: standalone) {
-  body { overscroll-behavior-y: none; }
+  /* overscroll-behavior-y: none verwijderd — blokkeerde wheel-scroll op desktop-PWA */
+  html, body { overscroll-behavior-y: auto; overflow-y: auto; }
   .install-btn { display: none !important; }
 }
 
@@ -11164,6 +11183,20 @@ function progDetailHTML(it){
   const isV = it.status === 'verwerkt';
   const spelers = it.spelers || [];
   const datum = it.datum ? formatNlDateFull(parseIsoDate(it.datum)) : '';
+  // Route via Google Maps — kies beste destination
+  const club = (typeof CLUB_ADRESSEN !== 'undefined' && it.thuis)
+    ? CLUB_ADRESSEN[it.thuis.toLowerCase().trim()] : null;
+  let mapsUrl = '';
+  if(club && club.lat && club.lon){
+    mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${club.lat},${club.lon}`;
+  } else if(club && club.adres){
+    mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(club.adres)}`;
+  } else if(it.locatie){
+    mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(it.locatie)}`;
+  }
+  const routeBtnHTML = mapsUrl
+    ? `<a class="btn btn-route-prog" href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Route</a>`
+    : '';
   return `
     <div class="prog-detail-card${isV?' verwerkt':''}" data-prog-detail-id="${it.id}">
       <div class="prog-detail-head">
@@ -11179,6 +11212,7 @@ function progDetailHTML(it){
           </div>
         </div>
         <div class="prog-detail-actions">
+          ${routeBtnHTML}
           ${isV ? '' : `<button class="btn btn-secondary" data-prog-edit>Bewerken</button>`}
           ${isV ? '' : `<button class="btn btn-primary" data-prog-verwerk title="Verwerk naar wedstrijden + spelers">Verwerken</button>`}
           <button class="btn" data-prog-collapse>Sluiten</button>

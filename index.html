@@ -1424,52 +1424,33 @@ tbody tr:last-child td { border-bottom: none; }
   .subcriteria-row .grade-pick { font-size: 13px; padding: 7px 0; min-height: 36px; }
 }
 
-/* === v70a: Fixed form-actions (altijd zichtbaar, ook zonder scroll) === */
+/* === v70h-s14: form-actions onderaan rapport ===
+   Desktop: gewoon in document flow onder het formulier (geen zweven).
+   Mobile (<=1024px): zwevend boven de bottom-nav.
+   Smal scherm (<=640px): 2-rij layout zodat status-tekst nooit afkapt. */
 .form-actions-sticky {
-  position: fixed;
-  bottom: 0;
-  left: 0; right: 0;
-  background: rgba(17,21,28,.96);
-  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
-  border-top: 1px solid var(--border);
-  margin: 0;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom)) 16px;
-  display: flex; gap: 10px; align-items: center;
-  box-shadow: 0 -8px 24px rgba(0,0,0,.4);
-  z-index: 95; /* lager dan bottom-nav (99) zodat die boven blijft */
-}
-/* Op mobiel: boven de bottom-nav (52px hoog + safe-area) */
-@media (max-width: 1024px) {
-  .form-actions-sticky {
-    bottom: calc(58px + env(safe-area-inset-bottom));
-    padding-bottom: 12px;
-  }
-}
-/* Alleen tonen als #view-report actief is */
-body:not(.view-active-report) .form-actions-sticky { display: none !important; }
-/* Padding aan de onderkant van het rapport zodat content niet onder de bar valt */
-body.view-active-report #view-report {
-  padding-bottom: 110px;
-}
-@media (max-width: 1024px) {
-  body.view-active-report #view-report {
-    padding-bottom: calc(150px + env(safe-area-inset-bottom));
-  }
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 18px;
+  padding: 16px 0 12px 0;
+  border-top: 1px solid var(--border, #2a2f3a);
+  background: transparent;
 }
 .form-actions-sticky .autosave-status {
   flex: 1;
-  font-size: 12.5px;
+  font-size: 13px;
   color: var(--muted, #7b8294);
   display: flex; align-items: center; gap: 8px;
   min-width: 0;
 }
 .form-actions-sticky .autosave-status .dot {
-  width: 8px; height: 8px; border-radius: 50%;
+  width: 9px; height: 9px; border-radius: 50%;
   background: var(--success, #16a34a);
   flex-shrink: 0;
 }
 .form-actions-sticky .autosave-status .text {
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  overflow: visible; text-overflow: clip; white-space: nowrap;
 }
 .form-actions-sticky .autosave-status.saving { color: var(--warn, #f5c518); }
 .form-actions-sticky .autosave-status.saving .dot { background: var(--warn, #f5c518); animation: shAutoPulse 1s ease-in-out infinite; }
@@ -1481,9 +1462,38 @@ body.view-active-report #view-report {
   padding: 11px 22px;
   font-weight: 800;
 }
+
+/* Mobile/tablet: zwevende balk boven bottom-nav (58px) */
+@media (max-width: 1024px) {
+  .form-actions-sticky {
+    position: fixed;
+    bottom: calc(58px + env(safe-area-inset-bottom));
+    left: 0; right: 0;
+    background: rgba(17,21,28,.96);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    padding: 12px 16px;
+    box-shadow: 0 -8px 24px rgba(0,0,0,.4);
+    z-index: 95;
+    margin: 0;
+  }
+  /* Alleen tonen als #view-report actief is (op mobile, balk staat in body) */
+  body:not(.view-active-report) .form-actions-sticky { display: none !important; }
+}
+
+/* Smal scherm: 2-rij — rij1 status (volle breedte), rij2 knoppen */
 @media (max-width: 640px) {
-  .form-actions-sticky .autosave-status .text {
-    max-width: 110px;
+  .form-actions-sticky {
+    flex-wrap: wrap;
+    row-gap: 6px;
+  }
+  .form-actions-sticky .autosave-status {
+    flex: 1 0 100%;
+  }
+  .form-actions-sticky #report-clear {
+    flex: 0 0 auto;
+  }
+  .form-actions-sticky #report-save-btn {
+    flex: 1 1 auto;
   }
 }
 
@@ -13565,17 +13575,10 @@ onAuthStateChanged(auth, async (user)=>{
 .sh-newreport-menu .label-wrap { display:flex; flex-direction:column; min-width:0; }
 .nav-chev { margin-left: auto; font-size: 11px; opacity: .7; }
 
-/* v70h-s11: opslaan-knop WEL sticky — continu zichtbaar tijdens scrollen.
-   Originele .form-actions-sticky CSS (regel 1424) doet het werk;
-   we forceren hier alleen de zichtbaarheid op alle subviews en zetten
-   genoeg padding-bottom op view-report zodat geen content onder de bar
-   verdwijnt. Op mobiel: boven de bottom-nav blijven. */
-.form-actions-sticky {
-  display: flex !important;
-}
-body.view-active-report #view-report {
-  padding-bottom: 120px !important;
-}
+/* v70h-s14: zwevende opslaan-balk is alleen mobile/tablet.
+   Op die viewports moet #view-report extra padding-bottom hebben zodat
+   content niet onder de zwevende balk valt. Desktop niet nodig — balk
+   staat in flow onder het formulier. */
 @media (max-width: 1024px) {
   body.view-active-report #view-report {
     padding-bottom: calc(170px + env(safe-area-inset-bottom)) !important;
@@ -14519,26 +14522,38 @@ body.view-active-report #view-report {
 
 
 
-<!-- v70h-s13: teleport opslaan-balk uit #view-report naar <body> direct,
-     zodat position:fixed echt t.o.v. viewport werkt en de balk continu
-     boven de bottom-nav blijft hangen, ongeacht containing-block issues
-     van .view.active (will-change/transform). -->
+<!-- v70h-s14: teleport opslaan-balk naar <body> ALLEEN op mobile/tablet
+     (<=1024px). Daar moet hij fixed boven de bottom-nav blijven en mag
+     geen ancestor met transform/will-change roet in het eten gooien.
+     Op desktop blijft de balk gewoon binnen <form id="report-form">. -->
 <script>
 (function(){
-  function teleport(){
-    var bar = document.getElementById('report-form-actions');
+  var BAR_ID = 'report-form-actions';
+  var FORM_ID = 'report-form';
+  var mq = window.matchMedia('(max-width: 1024px)');
+
+  function place(){
+    var bar = document.getElementById(BAR_ID);
     if(!bar) return;
-    if(bar.parentNode === document.body) return;
-    document.body.appendChild(bar);
+    var inBody = bar.parentNode === document.body;
+    if(mq.matches){
+      if(!inBody) document.body.appendChild(bar);
+    } else {
+      if(inBody){
+        var form = document.getElementById(FORM_ID);
+        if(form) form.appendChild(bar);
+      }
+    }
   }
   if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', teleport, { once: true });
+    document.addEventListener('DOMContentLoaded', place, { once: true });
   } else {
-    teleport();
+    place();
   }
-  // Safety net — als iets de balk later opnieuw plaatst, teleport opnieuw
-  setTimeout(teleport, 800);
-  setTimeout(teleport, 2500);
+  if(mq.addEventListener) mq.addEventListener('change', place);
+  else if(mq.addListener) mq.addListener(place);
+  setTimeout(place, 800);
+  setTimeout(place, 2500);
 })();
 </script>
 

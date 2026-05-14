@@ -7145,6 +7145,14 @@ function go(view){
   window.scrollTo({top:0});
 }
 
+// v70h-s8: expose module functies op window zodat gewone <script>-blokken
+// (zoals het dropdown-menu) ze kunnen aanroepen. Module-scope is anders
+// onbereikbaar voor andere script-tags.
+window.go = go;
+window.openMatchReportModal = openMatchReportModal;
+window.openProgMatchModal = openProgMatchModal;
+window.isoDateStr = isoDateStr;
+
 /* =============== DASHBOARD =============== */
 function renderTodayMatches(){
   const wrap = document.getElementById('today-matches-wrap');
@@ -14334,97 +14342,61 @@ body:not(.view-active-report) #view-report {
     anchor = null;
   }
 
-  // v70h-s7: DEBUG paneel rechtsboven — toont laatste 8 events
-  function __shDbg(msg){
-    try {
-      let p = document.getElementById('__sh-debug');
-      if(!p){
-        p = document.createElement('div');
-        p.id = '__sh-debug';
-        p.style.cssText = 'position:fixed;top:8px;right:8px;max-width:60vw;'+
-          'background:rgba(0,0,0,.85);color:#0f0;padding:8px 10px;border-radius:6px;'+
-          'font-family:monospace;font-size:11px;line-height:1.35;z-index:99999;'+
-          'pointer-events:none;white-space:pre-wrap;max-height:50vh;overflow:hidden;';
-        document.body.appendChild(p);
-      }
-      const t = new Date();
-      const stamp = String(t.getMinutes()).padStart(2,'0')+':'+String(t.getSeconds()).padStart(2,'0');
-      const line = '['+stamp+'] '+msg;
-      const lines = (p.textContent ? p.textContent.split('\n') : []);
-      lines.unshift(line);
-      while(lines.length > 8) lines.pop();
-      p.textContent = lines.join('\n');
-    } catch(e){}
-  }
-  window.__shDbg = __shDbg;
-
+  // v70h-s8: schone handler — gebruikt window.go die nu wel beschikbaar is
   function __shHandleKind(kind){
-    __shDbg('handle kind='+kind);
     close();
-    __shDbg('close() ok, menu.show='+menu.classList.contains('show'));
     try {
       if(kind === 'speler'){
-        __shDbg('go fn type='+typeof go+' window.go='+typeof window.go);
-        if(typeof go === 'function') go('report');
-        else if(typeof window.go === 'function') window.go('report');
-        else { __shDbg('!! go niet beschikbaar'); return; }
-        const cv = (typeof currentView !== 'undefined') ? currentView : (window.currentView || '?');
-        const activeView = document.querySelector('.view.active');
-        __shDbg('na go: currentView='+cv+' active='+(activeView?activeView.id:'GEEN'));
+        if(typeof window.go === 'function') window.go('report');
         setTimeout(() => {
           const el = document.getElementById('f-naam');
-          __shDbg('f-naam: '+(el?'gevonden':'NIET gevonden'));
           if(el && typeof el.focus === 'function'){
             try { el.focus({ preventScroll: false }); } catch(_) { el.focus(); }
             el.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }, 140);
       } else if(kind === 'wedstrijd'){
-        if(typeof go === 'function') go('matches');
-        else if(typeof window.go === 'function') window.go('matches');
-        const activeView = document.querySelector('.view.active');
-        __shDbg('na go(matches): active='+(activeView?activeView.id:'GEEN'));
+        if(typeof window.go === 'function') window.go('matches');
         setTimeout(() => {
-          __shDbg('openMatchReportModal type='+typeof openMatchReportModal);
-          if(typeof openMatchReportModal === 'function'){
-            openMatchReportModal();
+          if(typeof window.openMatchReportModal === 'function'){
+            window.openMatchReportModal();
           }
         }, 140);
       } else if(kind === 'inplannen'){
-        if(typeof go === 'function') go('programma');
-        else if(typeof window.go === 'function') window.go('programma');
-        const activeView = document.querySelector('.view.active');
-        __shDbg('na go(programma): active='+(activeView?activeView.id:'GEEN'));
+        if(typeof window.go === 'function') window.go('programma');
         setTimeout(() => {
-          __shDbg('openProgMatchModal type='+typeof openProgMatchModal);
-          if(typeof openProgMatchModal === 'function'){
-            const today = (typeof isoDateStr === 'function') ? isoDateStr(new Date())
+          if(typeof window.openProgMatchModal === 'function'){
+            const today = (typeof window.isoDateStr === 'function')
+              ? window.isoDateStr(new Date())
               : new Date().toISOString().slice(0,10);
-            openProgMatchModal(null, today);
+            window.openProgMatchModal(null, today);
           }
         }, 140);
       }
-    } catch(err){
-      __shDbg('ERR: '+(err && err.message ? err.message : err));
-    }
+    } catch(_){}
   }
 
-  // Per-knop directe listeners — alleen click + touchend (pointerup weggelaten)
+  // Per-knop click + touchend met dedupe (iOS PWA)
   let __shLastFire = 0;
   menu.querySelectorAll('button[data-kind]').forEach((b) => {
     const kind = b.dataset.kind;
     function fire(e){
-      __shDbg('fire ev='+e.type+' kind='+kind);
       e.preventDefault();
       e.stopPropagation();
       const now = Date.now();
-      if(now - __shLastFire < 350){ __shDbg('dedupe'); return; }
+      if(now - __shLastFire < 350) return;
       __shLastFire = now;
       __shHandleKind(kind);
     }
     b.addEventListener('click', fire);
     b.addEventListener('touchend', fire);
   });
+
+  // Verwijder eventueel oud debug-paneel uit s7
+  try {
+    const oldDbg = document.getElementById('__sh-debug');
+    if(oldDbg) oldDbg.remove();
+  } catch(_){}
 
   // v70h-s3: 3-laags wiring — direct attach + polling + delegation
   const TRIGGER_IDS = ['nav-new-report-btn', 'dash-new-report-btn', 'bn-new-report-btn'];

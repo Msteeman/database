@@ -867,11 +867,21 @@ a { color: var(--accent); text-decoration: none; }
 
 .scout-profile {
   margin-top: auto;
-  padding: 10px 10px;
+  padding: 14px 10px 10px 10px;            /* v70h-s30: extra top-lucht */
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
   flex-shrink: 0;
+  position: relative;
+}
+/* v70h-s30: subtiele scheidingslijn tussen nav-Tips en profielblok */
+.scout-profile::before {
+  content: '';
+  position: absolute;
+  top: -10px; left: 8px; right: 8px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-2), transparent);
+  pointer-events: none;
 }
 .scout-avatar {
   width: 36px; height: 36px; border-radius: 50%;
@@ -906,7 +916,7 @@ a { color: var(--accent); text-decoration: none; }
 }
 .scout-club-badge .club-sep { color: var(--primary); margin: 0 2px; }
 .scout-club-prev { font-size: 10px; color: var(--text-3); margin-top: 5px; }
-.scout-email { font-size: 10px; color: var(--text-3); margin-top: 6px; word-break: break-all; }
+/* v70h-s30: .scout-email verwijderd — adres staat nu in Instellingen-venster */
 .logout-btn {
   margin-top: 10px; width: 100%;
   background: transparent; color: var(--text-3); border: 1px solid var(--border-2);
@@ -2425,6 +2435,129 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--primary); color: #fff;
   border: none; padding: 10px 18px; border-radius: 8px;
   font-weight: 700; cursor: pointer; margin-top: 8px;
+}
+
+/* ===== v70h-s30: Instellingen-modal ===== */
+.settings-modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.65);
+  backdrop-filter: blur(2px);
+  z-index: 9100;
+  display: none; align-items: flex-start; justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+.settings-modal-backdrop.show { display: flex; }
+.settings-modal {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 100%; max-width: 560px;
+  color: var(--text);
+  box-shadow: 0 24px 60px rgba(0,0,0,.55);
+  margin: auto;
+  overflow: hidden;
+}
+.settings-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--panel), var(--bg-2));
+}
+.settings-modal-head h3 {
+  margin: 0; font-size: 17px; font-weight: 700;
+  display: flex; align-items: center; gap: 10px;
+}
+.settings-modal-head .settings-close-btn {
+  background: transparent; border: none; color: var(--text-2);
+  cursor: pointer; font-size: 22px; line-height: 1;
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s;
+}
+.settings-modal-head .settings-close-btn:hover { background: var(--panel-2); color: var(--text); }
+.settings-modal-body {
+  padding: 14px 20px 20px;
+  max-height: calc(100vh - 140px);
+  overflow-y: auto;
+}
+.settings-section {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+}
+.settings-section:last-child { border-bottom: none; }
+.settings-section-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px;
+}
+.settings-section-icon {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(229,57,53,.18), rgba(229,57,53,.06));
+  border: 1px solid rgba(229,57,53,.25);
+  color: var(--primary);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.settings-section-icon svg { width: 16px; height: 16px; }
+.settings-section-title { font-size: 14px; font-weight: 700; }
+.settings-section-sub { font-size: 12px; color: var(--text-2); }
+.settings-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  padding: 8px 10px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  margin-top: 8px;
+}
+.settings-row-label { font-size: 12px; color: var(--text-2); }
+.settings-row-value { font-size: 13px; font-weight: 600; color: var(--text); word-break: break-all; text-align: right; }
+.settings-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 14px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: #fff;
+  border: none; border-radius: 8px;
+  font-weight: 700; font-size: 13px;
+  cursor: pointer;
+  transition: filter .15s, transform .15s;
+}
+.settings-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.settings-btn.ghost {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border-2);
+}
+.settings-btn.ghost:hover { border-color: var(--primary); background: var(--panel-2); }
+.settings-btn.danger {
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+}
+.settings-soon-badge {
+  display: inline-block;
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--border-2);
+  color: var(--text-3);
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  text-transform: uppercase;
+}
+.settings-install-block .install-btn {
+  margin-top: 0;
+  padding: 10px 14px;
+  font-size: 13px;
+}
+.settings-meta {
+  font-size: 11px; color: var(--text-3);
+  text-align: center;
+  margin-top: 14px;
+}
+@media (max-width: 560px) {
+  .settings-modal-backdrop { padding: 12px 8px; }
+  .settings-modal-head { padding: 14px 16px; }
+  .settings-modal-body { padding: 10px 16px 16px; }
 }
 
 /* ===== Programma weekview ===== */
@@ -4204,6 +4337,117 @@ tbody tr:last-child td { border-bottom: none; }
     </div>
   </div>
 
+  <!-- v70h-s30: Instellingen-modal -->
+  <div class="settings-modal-backdrop" id="settings-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="settings-modal-title">
+    <div class="settings-modal">
+      <div class="settings-modal-head">
+        <h3 id="settings-modal-title">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          Instellingen
+        </h3>
+        <button type="button" class="settings-close-btn" id="settings-close-btn" aria-label="Sluiten">&times;</button>
+      </div>
+      <div class="settings-modal-body">
+
+        <!-- Account -->
+        <div class="settings-section">
+          <div class="settings-section-head">
+            <div class="settings-section-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            </div>
+            <div>
+              <div class="settings-section-title">Account</div>
+              <div class="settings-section-sub">Je inloggegevens</div>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label">E-mailadres</span>
+            <span class="settings-row-value" id="settings-email">&mdash;</span>
+          </div>
+        </div>
+
+        <!-- Installeer app -->
+        <div class="settings-section settings-install-block">
+          <div class="settings-section-head">
+            <div class="settings-section-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M5 21h14"/></svg>
+            </div>
+            <div>
+              <div class="settings-section-title">App installeren</div>
+              <div class="settings-section-sub">Voeg ScoutingHub toe aan je startscherm of bureaublad</div>
+            </div>
+          </div>
+          <button class="install-btn" id="install-btn" type="button" aria-label="App installeren">
+            <svg class="icon-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 3v12"/>
+              <path d="M7 10l5 5 5-5"/>
+              <path d="M5 21h14"/>
+            </svg>
+            Installeer app
+          </button>
+        </div>
+
+        <!-- Profielfoto -->
+        <div class="settings-section">
+          <div class="settings-section-head">
+            <div class="settings-section-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+            </div>
+            <div>
+              <div class="settings-section-title">Profielfoto wijzigen <span class="settings-soon-badge">Binnenkort</span></div>
+              <div class="settings-section-sub">Upload je eigen profielfoto</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Persoonsgegevens -->
+        <div class="settings-section">
+          <div class="settings-section-head">
+            <div class="settings-section-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            </div>
+            <div>
+              <div class="settings-section-title">Persoonsgegevens <span class="settings-soon-badge">Binnenkort</span></div>
+              <div class="settings-section-sub">Telefoonnummer, adres, voorkeuren</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Import / export -->
+        <div class="settings-section">
+          <div class="settings-section-head">
+            <div class="settings-section-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </div>
+            <div>
+              <div class="settings-section-title">Import / export <span class="settings-soon-badge">Binnenkort</span></div>
+              <div class="settings-section-sub">Rapporten en wedstrijden in/uit een bestand</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- App-instellingen -->
+        <div class="settings-section">
+          <div class="settings-section-head">
+            <div class="settings-section-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+            </div>
+            <div>
+              <div class="settings-section-title">App-instellingen</div>
+              <div class="settings-section-sub">Cache opnieuw laden bij problemen</div>
+            </div>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label">App-cache wissen en opnieuw laden</span>
+            <button type="button" class="settings-btn ghost" id="settings-clear-cache">Cache wissen</button>
+          </div>
+        </div>
+
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; v70h-s30</div>
+      </div>
+    </div>
+  </div>
+
   <div class="app-grid">
 
     <!-- ============ SIDEBAR ============ -->
@@ -4277,7 +4521,7 @@ tbody tr:last-child td { border-bottom: none; }
       <div class="scout-profile">
         <img class="scout-avatar-img" alt="Marcel Steeman" src="data:image/jpeg;base64,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" />
         <div class="scout-name">Marcel Steeman</div>
-        <div class="scout-email" id="user-email">—</div>
+        <!-- v70h-s30: scout-email weg uit sidebar, zit nu in Instellingen-modal -->
         <div class="sync-indicator">
           <span class="sync-dot" id="sync-dot"></span>
           <span id="sync-text">Cloud gesynchroniseerd</span>
@@ -4286,15 +4530,7 @@ tbody tr:last-child td { border-bottom: none; }
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           <span>Instellingen</span>
         </button>
-        <!-- v70h-s28: install-knop altijd in sidebar, geen kruisje meer -->
-        <button class="install-btn" id="install-btn" type="button" aria-label="App installeren">
-          <svg class="icon-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 3v12"/>
-            <path d="M7 10l5 5 5-5"/>
-            <path d="M5 21h14"/>
-          </svg>
-          Installeer app
-        </button>
+        <!-- v70h-s30: install-btn verplaatst naar Instellingen-modal -->
         <button class="logout-btn" id="logout-btn">Uitloggen</button>
       </div>
     </aside>
@@ -7439,7 +7675,9 @@ function showApp(){
   $('#loader').style.display = 'none';
   $('#login-overlay').style.display = 'none';
   $('#app').style.display = 'block';
-  $('#user-email').textContent = currentUser.email || '';
+  // v70h-s30: email nu in Instellingen-modal i.p.v. sidebar
+  const _se = document.getElementById('settings-email');
+  if(_se) _se.textContent = currentUser.email || '\u2014';
   resetInactivity();
   ['mousemove','keydown','click','scroll','touchstart'].forEach(ev=>{
     document.addEventListener(ev, resetInactivity, {passive:true});
@@ -15008,27 +15246,84 @@ onAuthStateChanged(auth, async (user)=>{
   patchProgModal();
 })();
 
-/* v70g: Instellingen-knop - stub */
+/* v70h-s30: Instellingen-modal — echte implementatie */
 (function(){
-  function showSettings(){
-    if(typeof go === 'function') go('settings');
-    const v = document.getElementById('view-settings');
-    if(!v){
-      alert('Instellingen-pagina komt in de volgende update (v70h).\n\nDaar vind je:\n- Profielfoto wijzigen\n- Persoonsgegevens (telefoon, adres)\n- Import/export rapporten en wedstrijden\n- App-instellingen');
+  function openSettings(){
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    if(!backdrop) return;
+    // Sync email-veld iedere keer dat modal opent
+    try {
+      const se = document.getElementById('settings-email');
+      if(se){
+        const u = (typeof currentUser !== 'undefined' && currentUser && currentUser.email)
+                  || (window.firebase && firebase.auth && firebase.auth().currentUser && firebase.auth().currentUser.email)
+                  || '';
+        se.textContent = u || '\u2014';
+      }
+    } catch(_){}
+    backdrop.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSettings(){
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    if(!backdrop) return;
+    backdrop.classList.remove('show');
+    document.body.style.overflow = '';
+  }
+  window.__shOpenSettings = openSettings;
+  window.__shCloseSettings = closeSettings;
+
+  function wireSettings(){
+    const openBtn = document.getElementById('sidebar-settings-btn');
+    if(openBtn && !openBtn.__shWired){
+      openBtn.__shWired = true;
+      openBtn.addEventListener('click', openSettings);
+    }
+    const closeBtn = document.getElementById('settings-close-btn');
+    if(closeBtn && !closeBtn.__shWired){
+      closeBtn.__shWired = true;
+      closeBtn.addEventListener('click', closeSettings);
+    }
+    const backdrop = document.getElementById('settings-modal-backdrop');
+    if(backdrop && !backdrop.__shWired){
+      backdrop.__shWired = true;
+      backdrop.addEventListener('click', (ev) => {
+        if(ev.target === backdrop) closeSettings();
+      });
+    }
+    const clearBtn = document.getElementById('settings-clear-cache');
+    if(clearBtn && !clearBtn.__shWired){
+      clearBtn.__shWired = true;
+      clearBtn.addEventListener('click', async () => {
+        if(!confirm('App-cache wissen en de pagina opnieuw laden?\n\nJe blijft ingelogd; alleen tijdelijke bestanden worden vernieuwd.')) return;
+        try {
+          if('caches' in window){
+            const keys = await caches.keys();
+            await Promise.all(keys.map(k => caches.delete(k)));
+          }
+          if('serviceWorker' in navigator){
+            const regs = await navigator.serviceWorker.getRegistrations();
+            await Promise.all(regs.map(r => r.unregister()));
+          }
+        } catch(err){ console.warn('cache clear failed', err); }
+        location.reload();
+      });
     }
   }
-  function wireSettingsBtn(){
-    const btn = document.getElementById('sidebar-settings-btn');
-    if(!btn || btn.__shWired) return;
-    btn.__shWired = true;
-    btn.addEventListener('click', showSettings);
-  }
+
+  document.addEventListener('keydown', (ev) => {
+    if(ev.key === 'Escape'){
+      const bd = document.getElementById('settings-modal-backdrop');
+      if(bd && bd.classList.contains('show')) closeSettings();
+    }
+  });
+
   if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', wireSettingsBtn);
+    document.addEventListener('DOMContentLoaded', wireSettings);
   } else {
-    wireSettingsBtn();
+    wireSettings();
   }
-  new MutationObserver(wireSettingsBtn).observe(document.body, { childList: true, subtree: true });
+  new MutationObserver(wireSettings).observe(document.body, { childList: true, subtree: true });
 })();
 </script>
 

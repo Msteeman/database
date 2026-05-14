@@ -1383,6 +1383,40 @@ a { color: var(--accent); text-decoration: none; }
   .province-chip { font-size: 11px; padding: 5px 9px; }
 }
 
+/* v70h-s25: spelersdatabase paginator */
+.db-paginator {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  padding: 10px 12px; margin: 8px 0;
+  background: var(--panel); border: 1px solid var(--border-2); border-radius: 7px;
+  font-size: 13px; color: var(--text-2);
+}
+.db-paginator .pg-info { flex: 1 1 auto; min-width: 0; }
+.db-paginator .pg-size {
+  display: flex; align-items: center; gap: 6px;
+}
+.db-paginator .pg-size select {
+  padding: 4px 8px; font-size: 13px;
+  background: var(--bg-2); color: var(--text);
+  border: 1px solid var(--border-2); border-radius: 5px; cursor: pointer;
+}
+.db-paginator .pg-nav { display: flex; align-items: center; gap: 4px; }
+.db-paginator .pg-btn {
+  min-width: 32px; padding: 6px 10px; font-size: 13px; font-weight: 600;
+  background: transparent; color: var(--text-2);
+  border: 1px solid var(--border-2); border-radius: 5px;
+  cursor: pointer; transition: background .12s, color .12s;
+}
+.db-paginator .pg-btn:hover:not(.disabled) { background: var(--bg-3); color: var(--text); }
+.db-paginator .pg-btn.active {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+}
+.db-paginator .pg-btn.disabled { opacity: 0.4; cursor: default; pointer-events: none; }
+.db-paginator .pg-ellipsis { padding: 0 4px; color: var(--text-3); }
+@media (max-width: 720px) {
+  .db-paginator { font-size: 12px; gap: 8px; padding: 8px; }
+  .db-paginator .pg-btn { min-width: 28px; padding: 5px 8px; font-size: 12px; }
+}
+
 .table-wrap {
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
   overflow: hidden;
@@ -8254,6 +8288,54 @@ function renderDatabase(){
 
   applyFilters();
 }
+/* v70h-s25: pagination state */
+let _dbPage = 1;
+let _dbPageSize = 25;
+function buildDbPaginator(totalItems, page, pageSize, position){
+  const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+  const startIdx = totalItems === 0 ? 0 : (page - 1) * pageSize + 1;
+  const endIdx = Math.min(totalItems, page * pageSize);
+  const info = totalItems === 0
+    ? 'Geen spelers'
+    : `${startIdx}–${endIdx} van ${totalItems}`;
+  // Page-number buttons (max ~7 zichtbaar, met ellipsis)
+  const pages = [];
+  if(totalPages <= 7){
+    for(let i = 1; i <= totalPages; i++) pages.push(i);
+  } else {
+    pages.push(1);
+    if(page > 4) pages.push('...');
+    const lo = Math.max(2, page - 1);
+    const hi = Math.min(totalPages - 1, page + 1);
+    for(let i = lo; i <= hi; i++) pages.push(i);
+    if(page < totalPages - 3) pages.push('...');
+    pages.push(totalPages);
+  }
+  const pageBtns = pages.map(p => {
+    if(p === '...') return `<span class="pg-ellipsis">…</span>`;
+    const active = p === page ? ' active' : '';
+    return `<button type="button" class="pg-btn${active}" data-pg-page="${p}">${p}</button>`;
+  }).join('');
+  const prevDisabled = page <= 1 ? ' disabled' : '';
+  const nextDisabled = page >= totalPages ? ' disabled' : '';
+  const sizeOpts = [25,50,75,100].map(n =>
+    `<option value="${n}"${n === pageSize ? ' selected' : ''}>${n}</option>`
+  ).join('');
+  return `
+    <div class="db-paginator" data-pg-pos="${position}">
+      <div class="pg-info">${info}</div>
+      <div class="pg-size">
+        <span>Toon</span>
+        <select class="pg-size-sel" data-pg-size>${sizeOpts}</select>
+        <span>per pagina</span>
+      </div>
+      <div class="pg-nav">
+        <button type="button" class="pg-btn${prevDisabled}" data-pg-prev aria-label="Vorige">‹</button>
+        ${pageBtns}
+        <button type="button" class="pg-btn${nextDisabled}" data-pg-next aria-label="Volgende">›</button>
+      </div>
+    </div>`;
+}
 function applyFilters(){
   const players = loadPlayers();
   $('#db-count').textContent = `${players.length} speler${players.length===1?'':'s'}`;
@@ -8328,7 +8410,15 @@ function applyFilters(){
   const filteredIds = filtered.map(p => p.id);
   dbCheckedIds = dbCheckedIds.filter(id => filteredIds.includes(id));
   const allChecked = filteredIds.length > 0 && filteredIds.every(id => dbCheckedIds.includes(id));
-  wrap.innerHTML = draftHtml + `
+  // v70h-s25: pagination — clamp page, slice
+  const _totalPages = Math.max(1, Math.ceil(filtered.length / _dbPageSize));
+  if(_dbPage > _totalPages) _dbPage = _totalPages;
+  if(_dbPage < 1) _dbPage = 1;
+  const _pageStart = (_dbPage - 1) * _dbPageSize;
+  const pageItems = filtered.slice(_pageStart, _pageStart + _dbPageSize);
+  const _paginatorTop = buildDbPaginator(filtered.length, _dbPage, _dbPageSize, 'top');
+  const _paginatorBot = buildDbPaginator(filtered.length, _dbPage, _dbPageSize, 'bot');
+  wrap.innerHTML = draftHtml + _paginatorTop + `
     <table>
       <thead>
         <tr>
@@ -8344,7 +8434,7 @@ function applyFilters(){
         </tr>
       </thead>
       <tbody>
-        ${filtered.map(p=>`
+        ${pageItems.map(p=>`
           <tr data-id="${p.id}" class="${dbCheckedIds.includes(p.id)?'db-row-checked':''}">
             <td class="db-check-col"><input type="checkbox" class="db-check" data-id="${escapeAttr(p.id)}" ${dbCheckedIds.includes(p.id)?'checked':''} aria-label="Selecteer ${escapeAttr(p.naam||'speler')}"/></td>
             <td>
@@ -8367,8 +8457,35 @@ function applyFilters(){
         `).join('')}
       </tbody>
     </table>
+    ${_paginatorBot}
     <div id="db-compare-bar-host"></div>
   `;
+  // v70h-s25: paginator click/change delegation
+  $$('.db-paginator', wrap).forEach(pg => {
+    pg.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('.pg-btn');
+      if(!btn || btn.classList.contains('disabled')) return;
+      if(btn.hasAttribute('data-pg-prev')) {
+        if(_dbPage > 1){ _dbPage--; applyFilters(); window.scrollTo({top:0, behavior:'smooth'}); }
+        return;
+      }
+      if(btn.hasAttribute('data-pg-next')) {
+        const tp = Math.max(1, Math.ceil(filtered.length / _dbPageSize));
+        if(_dbPage < tp){ _dbPage++; applyFilters(); window.scrollTo({top:0, behavior:'smooth'}); }
+        return;
+      }
+      const pNum = parseInt(btn.dataset.pgPage || '0', 10);
+      if(pNum > 0 && pNum !== _dbPage){ _dbPage = pNum; applyFilters(); window.scrollTo({top:0, behavior:'smooth'}); }
+    });
+    const sel = pg.querySelector('[data-pg-size]');
+    if(sel){
+      sel.addEventListener('change', () => {
+        _dbPageSize = parseInt(sel.value, 10) || 25;
+        _dbPage = 1;
+        applyFilters();
+      });
+    }
+  });
   wireDraftCard();
   // Row click → detail (but ignore clicks on the checkbox column)
   $$('tbody tr', wrap).forEach(tr=>{
@@ -8410,6 +8527,7 @@ function applyFilters(){
       const k = th.dataset.sort;
       if(sortKey === k) sortAsc = !sortAsc;
       else { sortKey = k; sortAsc = true; }
+      _dbPage = 1; // v70h-s25: reset bij sort
       applyFilters();
     });
   });
@@ -12898,8 +13016,9 @@ function initApp(){
   });
 
   ['filter-search','filter-position','filter-current','filter-potential','filter-advies','filter-period'].forEach(id=>{
-    $('#'+id).addEventListener('input', applyFilters);
-    $('#'+id).addEventListener('change', applyFilters);
+    const handler = () => { _dbPage = 1; applyFilters(); }; // v70h-s25: reset bij filter-change
+    $('#'+id).addEventListener('input', handler);
+    $('#'+id).addEventListener('change', handler);
   });
 
   ['match-search','match-age','match-sort'].forEach(id=>{

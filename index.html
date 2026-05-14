@@ -7111,6 +7111,8 @@ function confirmDiscard(){
 
 /* =============== NAVIGATION =============== */
 function go(view){
+  // v70h-s1.2: guard tegen falsy view (bv. nav-item zonder data-view)
+  if(!view || typeof view !== 'string') return;
   if(currentView === 'report' && view !== 'report'){
     if(!confirmDiscard()) return;
   }
@@ -14329,9 +14331,26 @@ body:not(.view-active-report) #view-report {
     const kind = b.dataset.kind;
     close();
     if(kind === 'speler'){
+      // v70h-s1.2: schiet door naar spelersrapport-formulier én focus eerste veld
       if(typeof go === 'function') go('report');
+      setTimeout(() => {
+        const el = document.getElementById('f-naam');
+        if(el && typeof el.focus === 'function'){
+          try { el.focus({ preventScroll: false }); } catch(_) { el.focus(); }
+          el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 140);
     } else if(kind === 'wedstrijd'){
-      // Direct het wedstrijdrapport-modal openen op de programma-view, vandaag.
+      // v70h-s1.2: open direct het wedstrijdrapport-modal (Wedstrijden-pagina)
+      // — dit is een vol wedstrijdrapport, NIET het programma-plan-modal.
+      if(typeof go === 'function') go('matches');
+      setTimeout(() => {
+        if(typeof openMatchReportModal === 'function'){
+          openMatchReportModal();
+        }
+      }, 140);
+    } else if(kind === 'inplannen'){
+      // v70h-s1.2: open programma + direct het inplan-modal op vandaag.
       if(typeof go === 'function') go('programma');
       setTimeout(() => {
         if(typeof openProgMatchModal === 'function'){
@@ -14339,10 +14358,7 @@ body:not(.view-active-report) #view-report {
             : new Date().toISOString().slice(0,10);
           openProgMatchModal(null, today);
         }
-      }, 120);
-    } else if(kind === 'inplannen'){
-      // Alleen programma openen — gebruiker kiest zelf dag, annuleer = blijft op programma.
-      if(typeof go === 'function') go('programma');
+      }, 140);
     }
   });
 

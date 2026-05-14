@@ -4365,7 +4365,7 @@ body.view-active-report #view-report {
       <section class="view" id="view-report">
         <div class="topbar">
           <div>
-            <div class="page-title" id="report-title">Nieuw scoutingsrapport</div>
+            <div class="page-title" id="report-title">Nieuw spelersrapport</div>
             <div class="page-sub">Snel invulbaar — gemiddeld &lt; 2 minuten</div>
           </div>
           <div style="display:flex; gap:8px; align-items:center;">
@@ -4410,7 +4410,7 @@ body.view-active-report #view-report {
             <div class="field-row">
               <div class="field">
                 <label>Club</label>
-                <input id="f-club" type="text" list="club-suggestions" autocomplete="off" data-picker="club" readonly />
+                <input id="f-club" type="text" list="club-suggestions" autocomplete="off" data-picker="club" />
               </div>
               <div class="field">
                 <label>Plaats</label>
@@ -4424,7 +4424,7 @@ body.view-active-report #view-report {
             <div class="field-row three">
               <div class="field">
                 <label>Elftal</label>
-                <input id="f-elftal" type="text" placeholder="Bijv. O.15-1" list="elftal-suggestions" autocomplete="off" data-picker="elftal" readonly />
+                <input id="f-elftal" type="text" placeholder="Bijv. O.15-1" list="elftal-suggestions" autocomplete="off" data-picker="elftal" />
               </div>
               <div class="field">
                 <label>Rugnummer</label>
@@ -4842,10 +4842,7 @@ body.view-active-report #view-report {
             <div class="page-title">Adresboek</div>
             <div class="page-sub" id="adresboek-sub">Alle clubs uit je rapporten — klik op een kaart voor route in Google Maps</div>
           </div>
-          <button class="btn btn-sm" id="adresboek-refresh" title="Adressen opnieuw zoeken via OpenStreetMap">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            Adressen vernieuwen
-          </button>
+          <!-- v70f: Adressen-vernieuwen knop verwijderd (gaat naar Instellingen in v70h) -->
         </div>
 
         <div class="filters" style="margin-bottom:14px;">
@@ -4963,7 +4960,7 @@ body.view-active-report #view-report {
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Elftal</label>
-            <input id="pm-leeftijd" type="text" placeholder="Bijv. O.15-1" list="elftal-suggestions" autocomplete="off" data-picker="elftal" readonly />
+            <input id="pm-leeftijd" type="text" placeholder="Bijv. O.15-1" list="elftal-suggestions" autocomplete="off" data-picker="elftal" />
           </div>
           <div class="field">
             <label>Scoutingmethode</label>
@@ -4985,11 +4982,11 @@ body.view-active-report #view-report {
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Thuisclub *</label>
-            <input id="pm-thuis" type="text" required placeholder="Bijv. AFC" list="club-suggestions" autocomplete="off" data-picker="club" readonly />
+            <input id="pm-thuis" type="text" required placeholder="Bijv. AFC" list="club-suggestions" autocomplete="off" data-picker="club" />
           </div>
           <div class="field">
             <label>Uitclub *</label>
-            <input id="pm-uit" type="text" required placeholder="Bijv. Ajax" list="club-suggestions" autocomplete="off" data-picker="club" readonly />
+            <input id="pm-uit" type="text" required placeholder="Bijv. Ajax" list="club-suggestions" autocomplete="off" data-picker="club" />
           </div>
         </div>
         <div class="field" style="margin-top:12px;">
@@ -5036,7 +5033,7 @@ body.view-active-report #view-report {
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Club</label>
-            <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" list="club-suggestions" autocomplete="off" data-picker="club" readonly />
+            <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" list="club-suggestions" autocomplete="off" data-picker="club" />
           </div>
           <div class="field">
             <label>Positie</label>
@@ -9385,7 +9382,7 @@ function refreshPositionDropdowns(){
   if(currentBeoogd) beoogdSel.value = currentBeoogd;
 }
 function resetReportForm(){
-  $('#report-title').textContent = 'Nieuw scoutingsrapport';
+  $('#report-title').textContent = 'Nieuw spelersrapport';
   $('#report-form').reset();
   $('#f-id').value = '';
   refreshPositionDropdowns();

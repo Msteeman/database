@@ -1335,6 +1335,31 @@ a { color: var(--accent); text-decoration: none; }
 .filter-input:focus, .filter-select:focus { border-color: var(--primary); }
 .filter-input { flex: 1; min-width: 220px; }
 
+/* v70h-s23: alfabetbalk voor adresboek */
+.alphabet-bar {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  margin-bottom: 16px; padding: 8px;
+  background: var(--panel); border: 1px solid var(--border-2); border-radius: 7px;
+}
+.alphabet-letter {
+  flex: 1 1 auto; min-width: 28px;
+  padding: 6px 8px; font-size: 13px; font-weight: 600;
+  background: transparent; color: var(--text-2);
+  border: 1px solid transparent; border-radius: 5px;
+  cursor: pointer; text-align: center;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.alphabet-letter:hover { background: var(--bg-3); color: var(--text); }
+.alphabet-letter.active {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+}
+.alphabet-letter.disabled {
+  opacity: 0.3; cursor: default; pointer-events: none;
+}
+@media (max-width: 720px) {
+  .alphabet-letter { flex: 1 1 calc(100%/13 - 4px); font-size: 12px; padding: 5px 4px; }
+}
+
 .table-wrap {
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
   overflow: hidden;
@@ -4897,8 +4922,12 @@ tbody tr:last-child td { border-bottom: none; }
           <select id="adresboek-sort" class="filter-select">
             <option value="naam">Op club (A–Z)</option>
             <option value="plaats">Op plaats</option>
+            <option value="provincie">Op provincie</option>
           </select>
         </div>
+
+        <!-- v70h-s23: alfabetbalk -->
+        <div id="adresboek-alphabet" class="alphabet-bar"></div>
 
         <div id="adresboek-list" class="contacts-list"></div>
         <div id="adresboek-empty" style="display:none; text-align:center; padding:60px 20px; color:var(--text-3);">
@@ -6485,19 +6514,59 @@ function renderContacts(){
 }
 
 /* ====== ADRESBOEK ====== */
-/* v70h-s20: Adresboek toont uitsluitend HV-clubs (661).
-   Handmatige CLUB_ADRESSEN blijft bestaan voor rapport-autofill,
-   maar verschijnt niet in deze view. */
-function renderAdresboek(){
-  const list  = $('#adresboek-list');
-  const empty = $('#adresboek-empty');
-  const sub   = $('#adresboek-sub');
-  if(!list) return;
+/* v70h-s23: alfabetbalk + provincie-filter. */
 
-  const search   = ($('#adresboek-search')?.value || '').toLowerCase().trim();
-  const sortMode = $('#adresboek-sort')?.value || 'naam';
+/* Postcode (PC4) → provincie. Benadering op basis van PostNL/CBS-ranges. */
+function pcToProvince(postcode){
+  if(!postcode) return null;
+  const m = String(postcode).match(/(\d{4})/);
+  if(!m) return null;
+  const pc = parseInt(m[1], 10);
+  if(pc < 1000) return null;
+  if(pc <= 1299) return 'Noord-Holland';
+  if(pc <= 1379) return 'Flevoland';
+  if(pc <= 1383) return 'Flevoland';        // Almere
+  if(pc <= 1424) return 'Noord-Holland';
+  if(pc <= 1429) return 'Utrecht';          // Vinkeveen/Wilnis
+  if(pc <= 2158) return 'Noord-Holland';
+  if(pc <= 2164) return 'Zuid-Holland';     // Hillegom/Lisse
+  if(pc <= 2182) return 'Noord-Holland';
+  if(pc <= 3299) return 'Zuid-Holland';
+  if(pc <= 3399) return 'Zuid-Holland';
+  if(pc <= 3799) return 'Utrecht';
+  if(pc <= 3899) return 'Utrecht';
+  if(pc <= 4199) return 'Gelderland';
+  if(pc <= 4299) return 'Zuid-Holland';
+  if(pc <= 4699) return 'Zeeland';
+  if(pc <= 5999) return 'Noord-Brabant';
+  if(pc <= 6499) return 'Limburg';
+  if(pc <= 7399) return 'Gelderland';
+  if(pc <= 7699) return 'Overijssel';
+  if(pc <= 7999) return 'Drenthe';
+  if(pc <= 8199) return 'Overijssel';
+  if(pc <= 8299) return 'Flevoland';
+  if(pc <= 8388) return 'Flevoland';
+  if(pc <= 9299) return 'Friesland';
+  if(pc <= 9499) return 'Drenthe';
+  if(pc <= 9999) return 'Groningen';
+  return null;
+}
 
-  // Bron: uitsluitend HV_CLUBS — dedup op clubnaam.
+/* Eerste letter (A-Z) van een naam — voor alfabet-filter. */
+function _alphaKey(s){
+  if(!s) return '';
+  const c = s.trim().charAt(0).toUpperCase();
+  if(c >= 'A' && c <= 'Z') return c;
+  // diacritics
+  const map = {'À':'A','Á':'A','Â':'A','Ä':'A','Å':'A','È':'E','É':'E','Ê':'E','Ë':'E','Ì':'I','Í':'I','Î':'I','Ï':'I','Ò':'O','Ó':'O','Ô':'O','Ö':'O','Ù':'U','Ú':'U','Û':'U','Ü':'U','Ñ':'N','Ç':'C'};
+  if(map[c]) return map[c];
+  return '#'; // overige (cijfers, apostrof, etc.)
+}
+
+/* Bouwt de complete club-lijst eenmalig en cachet hem. */
+let _adresboekClubsCache = null;
+function _getAdresboekClubs(){
+  if(_adresboekClubsCache) return _adresboekClubsCache;
   const dedupe = new Map();
   try {
     if(typeof HV_CLUBS !== 'undefined' && Array.isArray(HV_CLUBS)){
@@ -6510,33 +6579,74 @@ function renderAdresboek(){
             naam: c.naam,
             plaats: c.plaats || '',
             adres: adresFull,
-            sportpark: c.sportpark || ''
+            sportpark: c.sportpark || '',
+            postcode: c.postcode || '',
+            provincie: pcToProvince(c.postcode) || ''
           });
         }
       });
     }
   } catch(_){}
+  _adresboekClubsCache = Array.from(dedupe.values());
+  return _adresboekClubsCache;
+}
 
-  let items = Array.from(dedupe.values());
+/* Rendert de alfabetbalk en zet active-state. */
+let _adresboekLetter = 'A';
+function renderAdresboekAlphabet(){
+  const bar = document.getElementById('adresboek-alphabet');
+  if(!bar) return;
+  const clubs = _getAdresboekClubs();
+  // Welke letters hebben minstens 1 club?
+  const haveLetter = new Set(clubs.map(c => _alphaKey(c.naam)));
+  const letters = ['Alle','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
+  bar.innerHTML = letters.map(l => {
+    const active = (l === _adresboekLetter) ? ' active' : '';
+    const disabled = (l !== 'Alle' && !haveLetter.has(l)) ? ' disabled' : '';
+    return `<button type="button" class="alphabet-letter${active}${disabled}" data-letter="${l}">${l}</button>`;
+  }).join('');
+}
+
+function renderAdresboek(){
+  const list  = $('#adresboek-list');
+  const empty = $('#adresboek-empty');
+  const sub   = $('#adresboek-sub');
+  if(!list) return;
+
+  renderAdresboekAlphabet();
+
+  const search   = ($('#adresboek-search')?.value || '').toLowerCase().trim();
+  const sortMode = $('#adresboek-sort')?.value || 'naam';
+
+  let items = _getAdresboekClubs().slice();
   const total = items.length;
 
+  // Zoek filtert door alle letters heen; alfabet-filter alleen bij lege zoek.
   if(search){
     items = items.filter(c =>
       c.naam.toLowerCase().includes(search) ||
       (c.plaats    || '').toLowerCase().includes(search) ||
       (c.adres     || '').toLowerCase().includes(search) ||
-      (c.sportpark || '').toLowerCase().includes(search)
+      (c.sportpark || '').toLowerCase().includes(search) ||
+      (c.provincie || '').toLowerCase().includes(search)
     );
+  } else if(_adresboekLetter && _adresboekLetter !== 'Alle'){
+    items = items.filter(c => _alphaKey(c.naam) === _adresboekLetter);
   }
 
   const cmp = (a,b,k)=> (a[k]||'').toString().localeCompare((b[k]||'').toString(), 'nl', {sensitivity:'base'});
-  if(sortMode === 'naam')        items.sort((a,b)=> cmp(a,b,'naam'));
-  else if(sortMode === 'plaats') items.sort((a,b)=> cmp(a,b,'plaats') || cmp(a,b,'naam'));
+  if(sortMode === 'naam')         items.sort((a,b)=> cmp(a,b,'naam'));
+  else if(sortMode === 'plaats')  items.sort((a,b)=> cmp(a,b,'plaats')    || cmp(a,b,'naam'));
+  else if(sortMode === 'provincie') items.sort((a,b)=> cmp(a,b,'provincie') || cmp(a,b,'plaats') || cmp(a,b,'naam'));
 
   if(sub){
+    let scope;
+    if(search) scope = `· ${items.length} gevonden`;
+    else if(_adresboekLetter === 'Alle') scope = `· alle letters`;
+    else scope = `· letter ${_adresboekLetter}: ${items.length}`;
     sub.textContent = total === 0
       ? 'Geen clubs in databank.'
-      : `${total} clubs in databank${search ? ` \u00b7 ${items.length} gevonden` : ''} \u2014 klik op een kaart voor route in Google Maps`;
+      : `${total} clubs in databank ${scope} — klik op een kaart voor route in Google Maps`;
   }
 
   if(!items.length){
@@ -6545,7 +6655,8 @@ function renderAdresboek(){
       if(empty) empty.style.display = '';
     } else {
       if(empty) empty.style.display = 'none';
-      list.innerHTML = '<div style="grid-column:1/-1; padding:40px 20px; text-align:center; color:var(--text-2);">Geen resultaten voor je zoekopdracht.</div>';
+      const msg = search ? 'Geen resultaten voor je zoekopdracht.' : `Geen clubs met letter ${_adresboekLetter}.`;
+      list.innerHTML = `<div style="grid-column:1/-1; padding:40px 20px; text-align:center; color:var(--text-2);">${msg}</div>`;
     }
     return;
   }
@@ -6559,6 +6670,7 @@ function renderAdresboek(){
     const plaats    = c.plaats ? esc(c.plaats) : '';
     const adres     = c.adres ? esc(c.adres) : '(adres onbekend)';
     const sportpark = c.sportpark ? esc(c.sportpark) : '';
+    const provincie = c.provincie ? esc(c.provincie) : '';
     const query  = encodeURIComponent(c.adres ? c.adres : c.naam + (c.plaats ? ' ' + c.plaats : ''));
     const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${query}`;
     return `
@@ -6566,7 +6678,7 @@ function renderAdresboek(){
         <div class="contact-avatar">${pinSvg}</div>
         <div style="flex:1; min-width:0;">
           <div class="contact-name">${naam}</div>
-          ${plaats ? `<div class="contact-functie">${plaats}</div>` : ''}
+          ${plaats ? `<div class="contact-functie">${plaats}${provincie ? ` · ${provincie}` : ''}</div>` : ''}
           ${sportpark ? `<div style="margin-top:4px; font-size:11px; color:var(--text-3);">${sportpark}</div>` : ''}
           <div class="contact-row" style="margin-top:8px;">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -12923,6 +13035,15 @@ function initApp(){
   $('#adresboek-search')?.addEventListener('input', renderAdresboek);
   $('#adresboek-sort')?.addEventListener('change', renderAdresboek);
   $('#adresboek-refresh')?.addEventListener('click', refreshAllAdressen);
+  // v70h-s23: alfabetbalk event-delegation
+  document.getElementById('adresboek-alphabet')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.alphabet-letter');
+    if(!btn || btn.classList.contains('disabled')) return;
+    _adresboekLetter = btn.dataset.letter || 'A';
+    const searchEl = document.getElementById('adresboek-search');
+    if(searchEl) searchEl.value = '';
+    renderAdresboek();
+  });
 
   // Match-report modal
   $('#match-report-new-btn')?.addEventListener('click', ()=> openMatchReportModal());

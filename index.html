@@ -2973,9 +2973,221 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* keep legacy .compare-empty for any other callers, but hidden default */
 .compare-empty { display: none; }
+/* v70h-s31: oude spelerslijst onderaan compare-shell volledig verbergen.
+   Alle interactie loopt nu via de slot-modal (#cmp-add-modal-backdrop). */
+#view-compare .compare-picker { display: none !important; }
 
 @media (max-width: 1100px) {
   .compare-hero { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* ===== v70h-s31: Compare add-player modal ===== */
+.cmp-add-modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.72);
+  backdrop-filter: blur(3px);
+  z-index: 9200;
+  display: none; align-items: flex-start; justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+.cmp-add-modal-backdrop.show { display: flex; }
+.cmp-add-modal {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 100%; max-width: 880px;
+  color: var(--text);
+  box-shadow: 0 24px 60px rgba(0,0,0,.55);
+  margin: auto;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.cmp-add-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--panel), var(--bg-2));
+}
+.cmp-add-modal-head h3 {
+  margin: 0; font-size: 16px; font-weight: 700;
+  display: flex; align-items: center; gap: 10px;
+}
+.cmp-add-modal-head .cmp-add-counter {
+  font-size: 11px; font-weight: 700; color: var(--text-2);
+  background: var(--panel-2);
+  padding: 3px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--border-2);
+}
+.cmp-add-modal-head .cmp-add-close {
+  background: transparent; border: none; color: var(--text-2);
+  cursor: pointer; font-size: 22px; line-height: 1;
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s;
+}
+.cmp-add-modal-head .cmp-add-close:hover { background: var(--panel-2); color: var(--text); }
+.cmp-add-modal-search {
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.cmp-add-modal-search input {
+  width: 100%; padding: 10px 14px;
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  color: var(--text); font-size: 14px;
+  outline: none;
+  transition: border-color .15s;
+}
+.cmp-add-modal-search input:focus { border-color: var(--primary); }
+.cmp-add-modal-filters {
+  padding: 12px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  display: flex; flex-direction: column; gap: 10px;
+}
+.cmp-filter-row {
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap;
+}
+.cmp-filter-label {
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .5px;
+  color: var(--text-3);
+  min-width: 84px;
+}
+.cmp-filter-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px;
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: 999px;
+  font-size: 12px; font-weight: 600;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+  user-select: none;
+}
+.cmp-filter-chip:hover { border-color: var(--primary); color: var(--text); }
+.cmp-filter-chip.active {
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  border-color: var(--primary);
+  color: #fff;
+}
+.cmp-filter-chip .chip-mark {
+  font-size: 11px; opacity: .8;
+}
+.cmp-filter-chip.active .chip-mark { opacity: 1; }
+.cmp-filter-chip.grade-chip { min-width: 36px; justify-content: center; }
+.cmp-filter-chip.grade-chip.A.active { background: linear-gradient(135deg, var(--grade-a), #0a8f5e); border-color: var(--grade-a); }
+.cmp-filter-chip.grade-chip.B.active { background: linear-gradient(135deg, var(--grade-b), #0e7ab6); border-color: var(--grade-b); }
+.cmp-filter-chip.grade-chip.C.active { background: linear-gradient(135deg, var(--grade-c), #c47a00); border-color: var(--grade-c); }
+.cmp-filter-chip.grade-chip.D.active { background: linear-gradient(135deg, var(--grade-d), #a83232); border-color: var(--grade-d); }
+.cmp-filter-clear {
+  margin-left: auto;
+  background: transparent; border: none;
+  color: var(--text-3); font-size: 11px; font-weight: 600;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+  text-decoration: underline;
+}
+.cmp-filter-clear:hover { color: var(--primary); }
+
+.cmp-add-modal-body {
+  flex: 1; overflow-y: auto;
+  padding: 14px 20px 20px;
+  max-height: 56vh;
+}
+.cmp-add-results-meta {
+  font-size: 11px; color: var(--text-3);
+  margin-bottom: 10px;
+}
+.cmp-add-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+.cmp-add-card {
+  position: relative;
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: 10px;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color .15s, transform .12s, background .15s;
+}
+.cmp-add-card:hover {
+  border-color: var(--primary);
+  transform: translateY(-1px);
+}
+.cmp-add-card.selected {
+  border-color: var(--grade-a);
+  background: linear-gradient(135deg, rgba(11,196,132,.10), var(--panel));
+}
+.cmp-add-card.disabled {
+  opacity: .45; cursor: not-allowed;
+}
+.cmp-add-card.disabled:hover { transform: none; border-color: var(--border-2); }
+.cmp-add-avatar {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--bg-3), #1a2332);
+  border: 1.5px solid var(--border-2);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 12px; color: var(--text);
+  flex-shrink: 0;
+}
+.cmp-add-body {
+  flex: 1; min-width: 0;
+}
+.cmp-add-name {
+  font-weight: 700; font-size: 13px; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.cmp-add-meta {
+  font-size: 11px; color: var(--text-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.cmp-add-grade {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 24px; height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 11px; font-weight: 800; color: #fff;
+  background: var(--grade-c);
+  flex-shrink: 0;
+}
+.cmp-add-grade.A { background: var(--grade-a); }
+.cmp-add-grade.B { background: var(--grade-b); }
+.cmp-add-grade.C { background: var(--grade-c); }
+.cmp-add-grade.D { background: var(--grade-d); }
+.cmp-add-card.selected::after {
+  content: '\2713';
+  position: absolute; top: 6px; right: 8px;
+  font-size: 12px; font-weight: 900;
+  color: var(--grade-a);
+}
+.cmp-add-empty {
+  padding: 28px 12px;
+  text-align: center;
+  color: var(--text-3);
+  font-size: 13px;
+}
+
+@media (max-width: 560px) {
+  .cmp-add-modal-head { padding: 12px 14px; }
+  .cmp-add-modal-search { padding: 10px 14px; }
+  .cmp-add-modal-filters { padding: 10px 14px 12px; }
+  .cmp-add-modal-body { padding: 10px 14px 14px; max-height: 50vh; }
+  .cmp-filter-label { min-width: 64px; font-size: 10px; }
+  .cmp-add-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
 @media (max-width: 560px) {
   .compare-hero { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
@@ -4779,16 +4991,60 @@ tbody tr:last-child td { border-bottom: none; }
 
           </div>
 
-          <!-- v70h-s29: picker onderaan, klein -->
-          <div class="compare-picker" id="cmp-picker-card">
+          <!-- v70h-s31: oude picker verborgen via CSS, vervangen door modal hieronder.
+               Houden we in de DOM ivm bestaande renderComparePicker()-aanroepen
+               die anders kunnen falen. -->
+          <div class="compare-picker" id="cmp-picker-card" aria-hidden="true">
             <div class="compare-picker-head">
               <div class="compare-picker-title">Spelers toevoegen</div>
-              <div class="compare-search-wrap"><input type="search" id="cmp-search" placeholder="Zoek op naam, club, positie..." class="compare-search" autocomplete="off" /><div class="compare-suggest" id="cmp-suggest"></div></div>
+              <div class="compare-search-wrap"><input type="search" id="cmp-search" placeholder="Zoek..." class="compare-search" autocomplete="off" /><div class="compare-suggest" id="cmp-suggest"></div></div>
             </div>
             <div class="compare-picker-list" id="cmp-picker-list"></div>
           </div>
 
         </div>
+
+        <!-- v70h-s31: zoek-/filter-modal voor toevoegen van spelers aan een leeg slot -->
+        <div class="cmp-add-modal-backdrop" id="cmp-add-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="cmp-add-modal-title">
+          <div class="cmp-add-modal">
+            <div class="cmp-add-modal-head">
+              <h3 id="cmp-add-modal-title">
+                Speler toevoegen
+                <span class="cmp-add-counter" id="cmp-add-counter">0 / 6</span>
+              </h3>
+              <button type="button" class="cmp-add-close" id="cmp-add-modal-close" aria-label="Sluiten">&times;</button>
+            </div>
+            <div class="cmp-add-modal-search">
+              <input type="search" id="cmp-add-search" placeholder="Zoek op naam, club, positie, elftal..." autocomplete="off" />
+            </div>
+            <div class="cmp-add-modal-filters">
+              <div class="cmp-filter-row" id="cmp-filter-pos-row">
+                <span class="cmp-filter-label">Positie</span>
+                <!-- chips ingespoten via JS -->
+              </div>
+              <div class="cmp-filter-row">
+                <span class="cmp-filter-label">Huidig</span>
+                <button type="button" class="cmp-filter-chip grade-chip A" data-grade-cur="A">A</button>
+                <button type="button" class="cmp-filter-chip grade-chip B" data-grade-cur="B">B</button>
+                <button type="button" class="cmp-filter-chip grade-chip C" data-grade-cur="C">C</button>
+                <button type="button" class="cmp-filter-chip grade-chip D" data-grade-cur="D">D</button>
+              </div>
+              <div class="cmp-filter-row">
+                <span class="cmp-filter-label">Potentieel</span>
+                <button type="button" class="cmp-filter-chip grade-chip A" data-grade-pot="A">A</button>
+                <button type="button" class="cmp-filter-chip grade-chip B" data-grade-pot="B">B</button>
+                <button type="button" class="cmp-filter-chip grade-chip C" data-grade-pot="C">C</button>
+                <button type="button" class="cmp-filter-chip grade-chip D" data-grade-pot="D">D</button>
+                <button type="button" class="cmp-filter-clear" id="cmp-filter-clear">Filters wissen</button>
+              </div>
+            </div>
+            <div class="cmp-add-modal-body">
+              <div class="cmp-add-results-meta" id="cmp-add-results-meta"></div>
+              <div class="cmp-add-grid" id="cmp-add-grid"></div>
+            </div>
+          </div>
+        </div>
+
       </section>
 
       <!-- ====== WEDSTRIJDEN ====== -->
@@ -9177,6 +9433,210 @@ function renderComparePicker(){
   });
 }
 
+/* ===== v70h-s31: zoek-/filter-modal voor toevoegen van spelers ===== */
+let cmpAddModalState = {
+  query: '',
+  pos: new Set(),
+  cur: new Set(),
+  pot: new Set(),
+  wired: false
+};
+
+function openCmpAddModal(){
+  const max = (typeof CMP_MAX === 'number') ? CMP_MAX : 6;
+  if(cmpSelectedIds.length >= max){
+    if(typeof toast === 'function') toast(`Maximaal ${max} spelers tegelijk`);
+    else alert(`Maximaal ${max} spelers tegelijk`);
+    return;
+  }
+  const bd = document.getElementById('cmp-add-modal-backdrop');
+  if(!bd) return;
+  // chips voor positie eenmalig (of opnieuw bij dataset-wissel) renderen
+  renderCmpAddPositionChips();
+  wireCmpAddModal();
+  bd.classList.add('show');
+  document.body.style.overflow = 'hidden';
+  renderCmpAddResults();
+  setTimeout(() => {
+    const inp = document.getElementById('cmp-add-search');
+    if(inp){ inp.focus(); inp.select(); }
+  }, 30);
+}
+function closeCmpAddModal(){
+  const bd = document.getElementById('cmp-add-modal-backdrop');
+  if(!bd) return;
+  bd.classList.remove('show');
+  document.body.style.overflow = '';
+}
+window.openCmpAddModal = openCmpAddModal;
+window.closeCmpAddModal = closeCmpAddModal;
+
+function renderCmpAddPositionChips(){
+  const row = document.getElementById('cmp-filter-pos-row');
+  if(!row) return;
+  const players = loadPlayers();
+  // Unieke positie-codes verzamelen + sorteren op label
+  const seen = new Set();
+  const entries = [];
+  players.forEach(p => {
+    const code = (p.positie || '').trim();
+    if(!code || seen.has(code)) return;
+    seen.add(code);
+    entries.push({ code, label: positionLabel(code) || code });
+  });
+  entries.sort((a,b) => a.label.localeCompare(b.label, 'nl'));
+  // Verwijder oude chips, behoud label
+  row.querySelectorAll('.cmp-filter-chip[data-pos]').forEach(c => c.remove());
+  entries.forEach(e => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cmp-filter-chip';
+    btn.dataset.pos = e.code;
+    btn.textContent = e.label;
+    if(cmpAddModalState.pos.has(e.code)) btn.classList.add('active');
+    row.appendChild(btn);
+  });
+}
+
+function wireCmpAddModal(){
+  if(cmpAddModalState.wired) return;
+  cmpAddModalState.wired = true;
+
+  const bd = document.getElementById('cmp-add-modal-backdrop');
+  if(bd){
+    bd.addEventListener('click', (ev) => {
+      if(ev.target === bd) closeCmpAddModal();
+    });
+  }
+  const closeBtn = document.getElementById('cmp-add-modal-close');
+  if(closeBtn) closeBtn.addEventListener('click', closeCmpAddModal);
+
+  const search = document.getElementById('cmp-add-search');
+  if(search){
+    search.addEventListener('input', (e) => {
+      cmpAddModalState.query = (e.target.value || '').toLowerCase().trim();
+      renderCmpAddResults();
+    });
+    search.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape'){ closeCmpAddModal(); }
+    });
+  }
+
+  // Delegated chip-clicks
+  const filters = document.querySelector('.cmp-add-modal-filters');
+  if(filters){
+    filters.addEventListener('click', (ev) => {
+      const chip = ev.target.closest('.cmp-filter-chip');
+      if(chip){
+        if(chip.dataset.pos){
+          toggleSet(cmpAddModalState.pos, chip.dataset.pos);
+        } else if(chip.dataset.gradeCur){
+          toggleSet(cmpAddModalState.cur, chip.dataset.gradeCur);
+        } else if(chip.dataset.gradePot){
+          toggleSet(cmpAddModalState.pot, chip.dataset.gradePot);
+        } else { return; }
+        chip.classList.toggle('active');
+        renderCmpAddResults();
+        return;
+      }
+      if(ev.target.id === 'cmp-filter-clear'){
+        cmpAddModalState.pos.clear();
+        cmpAddModalState.cur.clear();
+        cmpAddModalState.pot.clear();
+        filters.querySelectorAll('.cmp-filter-chip').forEach(c => c.classList.remove('active'));
+        renderCmpAddResults();
+      }
+    });
+  }
+
+  // ESC sluit overal
+  document.addEventListener('keydown', (ev) => {
+    if(ev.key === 'Escape'){
+      const b = document.getElementById('cmp-add-modal-backdrop');
+      if(b && b.classList.contains('show')) closeCmpAddModal();
+    }
+  });
+}
+
+function toggleSet(set, value){
+  if(set.has(value)) set.delete(value); else set.add(value);
+}
+
+function renderCmpAddResults(){
+  const grid = document.getElementById('cmp-add-grid');
+  const meta = document.getElementById('cmp-add-results-meta');
+  const counter = document.getElementById('cmp-add-counter');
+  if(!grid) return;
+  const max = (typeof CMP_MAX === 'number') ? CMP_MAX : 6;
+  if(counter) counter.textContent = `${cmpSelectedIds.length} / ${max}`;
+
+  const q = cmpAddModalState.query;
+  const fpos = cmpAddModalState.pos;
+  const fcur = cmpAddModalState.cur;
+  const fpot = cmpAddModalState.pot;
+
+  let players = loadPlayers().slice();
+  if(q){
+    players = players.filter(p => {
+      const hay = `${p.naam||''} ${p.club||''} ${positionLabel(p.positie)||''} ${p.positie||''} ${p.elftal||''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }
+  if(fpos.size > 0) players = players.filter(p => fpos.has(p.positie || ''));
+  if(fcur.size > 0) players = players.filter(p => fcur.has((p.huidig_niveau || '').toUpperCase()));
+  if(fpot.size > 0) players = players.filter(p => fpot.has((p.potentieel_niveau || '').toUpperCase()));
+
+  players.sort((a,b) => (a.naam||'').localeCompare(b.naam||'', 'nl'));
+
+  if(meta){
+    meta.textContent = players.length === 0
+      ? 'Geen spelers gevonden met deze filters.'
+      : `${players.length} speler${players.length===1?'':'s'} gevonden`;
+  }
+
+  if(!players.length){
+    grid.innerHTML = `<div class="cmp-add-empty">Pas je zoekterm of filters aan om spelers te vinden.</div>`;
+    return;
+  }
+
+  const selectedSet = new Set(cmpSelectedIds);
+  const atMax = cmpSelectedIds.length >= max;
+  grid.innerHTML = players.map(p => {
+    const isSel = selectedSet.has(p.id);
+    const disabled = atMax && !isSel;
+    const initials = ((p.naam||'').split(/\s+/).map(s => s[0]||'').slice(0,2).join('') || '?').toUpperCase();
+    const grade = (p.huidig_niveau || '-').toUpperCase();
+    const meta2 = [positionLabel(p.positie), p.club].filter(Boolean).join(' \u00b7 ');
+    return `
+      <button type="button" class="cmp-add-card ${isSel?'selected':''} ${disabled?'disabled':''}" data-id="${escapeAttr(p.id)}" ${disabled?'disabled':''} title="${escapeAttr(p.naam||'')}">
+        <div class="cmp-add-avatar">${escapeHtml(initials)}</div>
+        <div class="cmp-add-body">
+          <div class="cmp-add-name">${escapeHtml(p.naam||'?')}</div>
+          <div class="cmp-add-meta">${escapeHtml(meta2||'\u2014')}</div>
+        </div>
+        <div class="cmp-add-grade ${grade}">${escapeHtml(grade)}</div>
+      </button>`;
+  }).join('');
+
+  grid.querySelectorAll('.cmp-add-card').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if(btn.classList.contains('disabled')) return;
+      const id = btn.dataset.id;
+      const idx = cmpSelectedIds.indexOf(id);
+      if(idx >= 0){
+        cmpSelectedIds.splice(idx, 1);
+      } else {
+        if(cmpSelectedIds.length >= max) return;
+        cmpSelectedIds.push(id);
+      }
+      // Update slots + results live, modal blijft open zodat je verder kunt
+      renderCompareSelected();
+      renderCompareResults();
+      renderCmpAddResults();
+    });
+  });
+}
+
 function renderCompareSelected(){
   const wrap = $('#cmp-selected');
   if(!wrap) return;
@@ -9231,15 +9691,10 @@ function renderCompareSelected(){
       renderCompare();
     });
   });
-  // Wire: lege slot → focus zoekveld + scroll naar picker
+  // v70h-s31: lege slot → open zoek-/filter-modal
   wrap.querySelectorAll('[data-slot-empty]').forEach(s => {
     s.addEventListener('click', () => {
-      const card = document.getElementById('cmp-picker-card');
-      if(card){ card.scrollIntoView({behavior:'smooth', block:'start'}); }
-      setTimeout(() => {
-        const inp = document.getElementById('cmp-search');
-        if(inp) inp.focus();
-      }, 320);
+      if(typeof openCmpAddModal === 'function') openCmpAddModal();
     });
   });
 }

@@ -13509,7 +13509,8 @@ onAuthStateChanged(auth, async (user)=>{
 }
 /* v70g: "+ Nieuw rapport" dropdown menu */
 .sh-newreport-menu {
-  position: absolute;
+  /* v70h-s4: fixed zodat positie klopt naast fixed sidebar, ook na scrollen */
+  position: fixed;
   z-index: 9700;
   min-width: 220px;
   background: var(--bg-2, #11151c);
@@ -14309,16 +14310,17 @@ body:not(.view-active-report) #view-report {
       menu.style.bottom = (navHeight + 8) + 'px';
       menu.style.top = 'auto';
     } else {
-      // Standaard dropdown: onder de trigger
+      // v70h-s4: viewport coords (position:fixed) — geen scroll-offset meer
       menu.style.right = 'auto';
       menu.style.bottom = 'auto';
       menu.style.maxWidth = '';
       menu.style.width = '';
-      menu.style.left = (r.right + window.scrollX - menu.offsetWidth) + 'px';
-      menu.style.top  = (r.bottom + window.scrollY + 6) + 'px';
-      if(r.right - menu.offsetWidth < 8){
-        menu.style.left = (r.left + window.scrollX) + 'px';
-      }
+      const mw = menu.offsetWidth || 220;
+      let left = r.right - mw;
+      if(left < 8) left = r.left;
+      if(left + mw > window.innerWidth - 8) left = window.innerWidth - mw - 8;
+      menu.style.left = Math.max(8, left) + 'px';
+      menu.style.top  = (r.bottom + 6) + 'px';
     }
   }
 

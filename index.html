@@ -2027,6 +2027,7 @@ tbody tr:last-child td { border-bottom: none; }
   border: none;
   border-radius: 999px;
   padding: 12px 20px;
+  padding-right: 38px;
   font-weight: 700;
   font-size: 13px;
   box-shadow: 0 10px 30px rgba(229,57,53,.45);
@@ -2034,10 +2035,55 @@ tbody tr:last-child td { border-bottom: none; }
   display: none;
   align-items: center;
   gap: 8px;
+  animation: installPulse 2.2s ease-in-out infinite;
 }
 .install-btn.show { display: inline-flex; }
-.install-btn:hover { transform: translateY(-1px); }
-.install-btn svg { width: 16px; height: 16px; }
+.install-btn:hover { transform: translateY(-1px); animation: none; }
+.install-btn svg.icon-down { width: 16px; height: 16px; }
+.install-btn-close {
+  position: absolute;
+  top: 50%; right: 10px;
+  transform: translateY(-50%);
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.25);
+  border: none; color: #fff;
+  font-size: 14px; line-height: 1;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0;
+}
+.install-btn-close:hover { background: rgba(0,0,0,.45); }
+@keyframes installPulse {
+  0%, 100% { box-shadow: 0 10px 30px rgba(229,57,53,.45); transform: scale(1); }
+  50%      { box-shadow: 0 14px 40px rgba(229,57,53,.75); transform: scale(1.04); }
+}
+/* Instructie-modal voor handmatig installeren */
+.install-modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.65);
+  z-index: 9000;
+  display: none; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.install-modal-backdrop.show { display: flex; }
+.install-modal {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 24px;
+  max-width: 460px; width: 100%;
+  color: var(--text);
+  box-shadow: 0 24px 60px rgba(0,0,0,.5);
+}
+.install-modal h3 { margin: 0 0 12px 0; font-size: 18px; }
+.install-modal p { margin: 6px 0; font-size: 13.5px; line-height: 1.5; }
+.install-modal ol { margin: 10px 0 14px 18px; padding: 0; font-size: 13.5px; line-height: 1.7; }
+.install-modal .install-modal-close {
+  background: var(--primary); color: #fff;
+  border: none; padding: 10px 18px; border-radius: 8px;
+  font-weight: 700; cursor: pointer; margin-top: 8px;
+}
 
 /* ===== Programma weekview ===== */
 .prog-weekbar {
@@ -3655,15 +3701,25 @@ tbody tr:last-child td { border-bottom: none; }
   <!-- Sidebar drawer overlay (mobile) -->
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
-  <!-- Install PWA floating button (mobile, when available) -->
+  <!-- Install PWA floating button -->
   <button class="install-btn" id="install-btn" type="button" aria-label="App installeren">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <svg class="icon-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
       <path d="M12 3v12"/>
       <path d="M7 10l5 5 5-5"/>
       <path d="M5 21h14"/>
     </svg>
     Installeer app
+    <span class="install-btn-close" id="install-btn-close" role="button" aria-label="Sluiten">×</span>
   </button>
+  <!-- Handmatige installatie-instructies modal -->
+  <div class="install-modal-backdrop" id="install-modal-backdrop">
+    <div class="install-modal" role="dialog" aria-labelledby="install-modal-title">
+      <h3 id="install-modal-title">ScoutingHub installeren</h3>
+      <p id="install-modal-body">Volg deze stappen om de app te installeren:</p>
+      <ol id="install-modal-steps"></ol>
+      <button class="install-modal-close" id="install-modal-close" type="button">Begrepen</button>
+    </div>
+  </div>
 
   <div class="app-grid">
 
@@ -12622,26 +12678,92 @@ onAuthStateChanged(auth, async (user)=>{
     });
   }
 
-  // Install prompt (Android/Chrome)
+  // Install prompt — push knop eerste keer (zelfs zonder beforeinstallprompt)
   let deferredPrompt = null;
   const installBtn = document.getElementById('install-btn');
+  const installClose = document.getElementById('install-btn-close');
+  const installModal = document.getElementById('install-modal-backdrop');
+  const installModalSteps = document.getElementById('install-modal-steps');
+  const installModalClose = document.getElementById('install-modal-close');
+
+  const isStandalone = window.matchMedia && window.matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+  const DISMISS_KEY = 'sh_install_dismissed';
+  const dismissed = localStorage.getItem(DISMISS_KEY) === '1';
+
+  function detectPlatform(){
+    const ua = navigator.userAgent;
+    if(/iPhone|iPad|iPod/i.test(ua)) return 'ios';
+    if(/Android/i.test(ua)) return 'android';
+    if(/Edg\//i.test(ua)) return 'edge';
+    if(/Chrome\//i.test(ua)) return 'chrome';
+    if(/Safari/i.test(ua)) return 'safari-desktop';
+    if(/Firefox/i.test(ua)) return 'firefox';
+    return 'other';
+  }
+
+  function showInstructions(){
+    if(!installModal || !installModalSteps) return;
+    const p = detectPlatform();
+    const steps = {
+      ios:     ['Tik op het deel-icoon (☐↑) onderaan Safari', 'Kies "Zet op beginscherm"', 'Bevestig met "Voeg toe"'],
+      android: ['Tik op de drie puntjes (⋮) rechtsboven', 'Kies "App installeren" of "Toevoegen aan startscherm"', 'Bevestig met "Installeren"'],
+      edge:    ['Klik op het ⊕-icoontje rechts in de adresbalk', 'Kies "Installeren"', 'Of: ⋯-menu → Apps → "Deze site installeren als app"'],
+      chrome:  ['Klik op het ⊕- of monitor-icoontje rechts in de adresbalk', 'Kies "Installeren"', 'Of: ⋮-menu → "App installeren"'],
+      'safari-desktop': ['Klik op Bestand → "Toevoegen aan Dock"', 'Of gebruik Chrome/Edge voor installatie'],
+      firefox: ['Firefox ondersteunt PWA-installatie niet', 'Gebruik Chrome of Edge om de app te installeren'],
+      other:   ['Open je browser-menu', 'Zoek naar "Installeren" of "Toevoegen aan startscherm"']
+    };
+    installModalSteps.innerHTML = (steps[p] || steps.other).map(s => `<li>${s}</li>`).join('');
+    installModal.classList.add('show');
+  }
+
+  function dismissInstall(remember){
+    if(installBtn) installBtn.classList.remove('show');
+    if(remember) localStorage.setItem(DISMISS_KEY, '1');
+  }
+
+  // Push de knop bij eerste bezoek (niet in standalone, niet als al eerder gesloten)
+  if(installBtn && !isStandalone && !dismissed){
+    setTimeout(() => installBtn.classList.add('show'), 1200);
+  }
+
   window.addEventListener('beforeinstallprompt', (e)=>{
     e.preventDefault();
     deferredPrompt = e;
-    if(installBtn) installBtn.classList.add('show');
+    if(installBtn && !isStandalone && !dismissed) installBtn.classList.add('show');
   });
+
   if(installBtn){
-    installBtn.addEventListener('click', async ()=>{
-      if(!deferredPrompt) return;
-      installBtn.classList.remove('show');
-      deferredPrompt.prompt();
-      try { await deferredPrompt.userChoice; } catch(_){}
-      deferredPrompt = null;
+    installBtn.addEventListener('click', async (ev)=>{
+      if(ev.target && ev.target.id === 'install-btn-close') return;
+      if(deferredPrompt){
+        installBtn.classList.remove('show');
+        deferredPrompt.prompt();
+        try { await deferredPrompt.userChoice; } catch(_){}
+        deferredPrompt = null;
+      } else {
+        showInstructions();
+      }
+    });
+  }
+  if(installClose){
+    installClose.addEventListener('click', (ev)=>{
+      ev.stopPropagation();
+      dismissInstall(true);
+    });
+  }
+  if(installModalClose){
+    installModalClose.addEventListener('click', ()=> installModal.classList.remove('show'));
+  }
+  if(installModal){
+    installModal.addEventListener('click', (ev)=>{
+      if(ev.target === installModal) installModal.classList.remove('show');
     });
   }
   window.addEventListener('appinstalled', ()=>{
     deferredPrompt = null;
-    if(installBtn) installBtn.classList.remove('show');
+    dismissInstall(true);
   });
 })();
 </script>

@@ -1360,6 +1360,29 @@ a { color: var(--accent); text-decoration: none; }
   .alphabet-letter { flex: 1 1 calc(100%/13 - 4px); font-size: 12px; padding: 5px 4px; }
 }
 
+/* v70h-s24: provincie-balk */
+.province-bar {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 16px; padding: 8px;
+  background: var(--panel); border: 1px solid var(--border-2); border-radius: 7px;
+}
+.province-chip {
+  padding: 6px 12px; font-size: 12px; font-weight: 600;
+  background: transparent; color: var(--text-2);
+  border: 1px solid var(--border-2); border-radius: 14px;
+  cursor: pointer; white-space: nowrap;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.province-chip:hover { background: var(--bg-3); color: var(--text); }
+.province-chip.active {
+  background: var(--primary); color: #fff; border-color: var(--primary);
+}
+.province-chip .count { opacity: 0.7; margin-left: 4px; font-weight: 400; }
+.province-chip.active .count { opacity: 0.9; }
+@media (max-width: 720px) {
+  .province-chip { font-size: 11px; padding: 5px 9px; }
+}
+
 .table-wrap {
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
   overflow: hidden;
@@ -4929,6 +4952,9 @@ tbody tr:last-child td { border-bottom: none; }
         <!-- v70h-s23: alfabetbalk -->
         <div id="adresboek-alphabet" class="alphabet-bar"></div>
 
+        <!-- v70h-s24: provincie-balk -->
+        <div id="adresboek-provincies" class="province-bar"></div>
+
         <div id="adresboek-list" class="contacts-list"></div>
         <div id="adresboek-empty" style="display:none; text-align:center; padding:60px 20px; color:var(--text-3);">
           <div style="font-size:14px; margin-bottom:10px;">Geen clubs in databank.</div>
@@ -6593,17 +6619,47 @@ function _getAdresboekClubs(){
 
 /* Rendert de alfabetbalk en zet active-state. */
 let _adresboekLetter = 'A';
+let _adresboekProvincie = ''; // v70h-s24: '' = Alle
 function renderAdresboekAlphabet(){
   const bar = document.getElementById('adresboek-alphabet');
   if(!bar) return;
   const clubs = _getAdresboekClubs();
-  // Welke letters hebben minstens 1 club?
-  const haveLetter = new Set(clubs.map(c => _alphaKey(c.naam)));
+  // Welke letters hebben minstens 1 club? (binnen huidige provincie-scope)
+  const scope = _adresboekProvincie
+    ? clubs.filter(c => c.provincie === _adresboekProvincie)
+    : clubs;
+  const haveLetter = new Set(scope.map(c => _alphaKey(c.naam)));
   const letters = ['Alle','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z'];
   bar.innerHTML = letters.map(l => {
     const active = (l === _adresboekLetter) ? ' active' : '';
     const disabled = (l !== 'Alle' && !haveLetter.has(l)) ? ' disabled' : '';
     return `<button type="button" class="alphabet-letter${active}${disabled}" data-letter="${l}">${l}</button>`;
+  }).join('');
+}
+
+/* v70h-s24: provincie-chips met aantal clubs per provincie. */
+const _NL_PROVINCIES = [
+  'Groningen','Friesland','Drenthe','Overijssel','Flevoland','Gelderland',
+  'Utrecht','Noord-Holland','Zuid-Holland','Zeeland','Noord-Brabant','Limburg'
+];
+function renderAdresboekProvincies(){
+  const bar = document.getElementById('adresboek-provincies');
+  if(!bar) return;
+  const clubs = _getAdresboekClubs();
+  const counts = {};
+  for(const c of clubs){
+    const p = c.provincie || '';
+    if(!p) continue;
+    counts[p] = (counts[p] || 0) + 1;
+  }
+  const chips = [{name:'', label:'Alle', count: clubs.length}];
+  for(const p of _NL_PROVINCIES){
+    chips.push({name: p, label: p, count: counts[p] || 0});
+  }
+  bar.innerHTML = chips.map(p => {
+    const active = (p.name === _adresboekProvincie) ? ' active' : '';
+    const disabled = (p.name && p.count === 0) ? ' disabled' : '';
+    return `<button type="button" class="province-chip${active}${disabled}" data-prov="${p.name}">${p.label}<span class="count">${p.count}</span></button>`;
   }).join('');
 }
 
@@ -6614,6 +6670,7 @@ function renderAdresboek(){
   if(!list) return;
 
   renderAdresboekAlphabet();
+  renderAdresboekProvincies();
 
   const search   = ($('#adresboek-search')?.value || '').toLowerCase().trim();
   const sortMode = $('#adresboek-sort')?.value || 'naam';
@@ -6621,7 +6678,7 @@ function renderAdresboek(){
   let items = _getAdresboekClubs().slice();
   const total = items.length;
 
-  // Zoek filtert door alle letters heen; alfabet-filter alleen bij lege zoek.
+  // Zoek filtert door alles heen; alfabet + provincie alleen bij lege zoek.
   if(search){
     items = items.filter(c =>
       c.naam.toLowerCase().includes(search) ||
@@ -6630,8 +6687,13 @@ function renderAdresboek(){
       (c.sportpark || '').toLowerCase().includes(search) ||
       (c.provincie || '').toLowerCase().includes(search)
     );
-  } else if(_adresboekLetter && _adresboekLetter !== 'Alle'){
-    items = items.filter(c => _alphaKey(c.naam) === _adresboekLetter);
+  } else {
+    if(_adresboekProvincie){
+      items = items.filter(c => c.provincie === _adresboekProvincie);
+    }
+    if(_adresboekLetter && _adresboekLetter !== 'Alle'){
+      items = items.filter(c => _alphaKey(c.naam) === _adresboekLetter);
+    }
   }
 
   const cmp = (a,b,k)=> (a[k]||'').toString().localeCompare((b[k]||'').toString(), 'nl', {sensitivity:'base'});
@@ -6640,10 +6702,15 @@ function renderAdresboek(){
   else if(sortMode === 'provincie') items.sort((a,b)=> cmp(a,b,'provincie') || cmp(a,b,'plaats') || cmp(a,b,'naam'));
 
   if(sub){
-    let scope;
-    if(search) scope = `· ${items.length} gevonden`;
-    else if(_adresboekLetter === 'Alle') scope = `· alle letters`;
-    else scope = `· letter ${_adresboekLetter}: ${items.length}`;
+    const parts = [];
+    if(search) parts.push(`${items.length} gevonden`);
+    else {
+      if(_adresboekProvincie) parts.push(_adresboekProvincie);
+      if(_adresboekLetter && _adresboekLetter !== 'Alle') parts.push(`letter ${_adresboekLetter}`);
+      else if(!_adresboekProvincie) parts.push('alle letters');
+      parts.push(`${items.length} clubs`);
+    }
+    const scope = parts.length ? `· ${parts.join(' · ')}` : '';
     sub.textContent = total === 0
       ? 'Geen clubs in databank.'
       : `${total} clubs in databank ${scope} — klik op een kaart voor route in Google Maps`;
@@ -6655,7 +6722,11 @@ function renderAdresboek(){
       if(empty) empty.style.display = '';
     } else {
       if(empty) empty.style.display = 'none';
-      const msg = search ? 'Geen resultaten voor je zoekopdracht.' : `Geen clubs met letter ${_adresboekLetter}.`;
+      let msg;
+      if(search) msg = 'Geen resultaten voor je zoekopdracht.';
+      else if(_adresboekProvincie && _adresboekLetter !== 'Alle') msg = `Geen clubs in ${_adresboekProvincie} met letter ${_adresboekLetter}.`;
+      else if(_adresboekProvincie) msg = `Geen clubs in ${_adresboekProvincie}.`;
+      else msg = `Geen clubs met letter ${_adresboekLetter}.`;
       list.innerHTML = `<div style="grid-column:1/-1; padding:40px 20px; text-align:center; color:var(--text-2);">${msg}</div>`;
     }
     return;
@@ -7236,7 +7307,14 @@ function go(view){
   }
   if(view === 'contacts')  renderContacts();
   if(view === 'programma') renderProgramma();
-  if(view === 'adresboek') renderAdresboek();
+  if(view === 'adresboek') {
+    // v70h-s24: reset filters bij elke navigatie naar adresboek
+    _adresboekLetter = 'A';
+    _adresboekProvincie = '';
+    const _sEl = document.getElementById('adresboek-search');
+    if(_sEl) _sEl.value = '';
+    renderAdresboek();
+  }
   if(view === 'tips')      renderTips();
   if(view === 'player')    renderPlayer();
   window.scrollTo({top:0});
@@ -13040,6 +13118,15 @@ function initApp(){
     const btn = e.target.closest('.alphabet-letter');
     if(!btn || btn.classList.contains('disabled')) return;
     _adresboekLetter = btn.dataset.letter || 'A';
+    const searchEl = document.getElementById('adresboek-search');
+    if(searchEl) searchEl.value = '';
+    renderAdresboek();
+  });
+  // v70h-s24: provincie-chips event-delegation
+  document.getElementById('adresboek-provincies')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.province-chip');
+    if(!btn || btn.classList.contains('disabled')) return;
+    _adresboekProvincie = btn.dataset.prov || '';
     const searchEl = document.getElementById('adresboek-search');
     if(searchEl) searchEl.value = '';
     renderAdresboek();

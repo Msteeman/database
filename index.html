@@ -4168,7 +4168,7 @@ body.view-active-report #view-report {
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
               Export
             </button>
-            <button class="btn btn-primary" id="db-new-report-btn" type="button">+ Nieuw <span style="font-size:11px; margin-left:2px;">▾</span></button>
+            <button class="btn btn-primary" data-go="report">+ Nieuw spelersrapport</button>
           </div>
         </div>
 
@@ -4308,7 +4308,7 @@ body.view-active-report #view-report {
             </button>
             <button class="btn btn-primary" id="match-report-new-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Wedstrijd rapporteren
+              Nieuw wedstrijdrapport
             </button>
           </div>
         </div>
@@ -4326,7 +4326,7 @@ body.view-active-report #view-report {
         <div id="match-compare-bar-host"></div>
         <div id="matches-empty" style="display:none; text-align:center; padding:60px 20px; color:var(--text-3);">
           <div style="font-size:14px; margin-bottom:10px;">Nog geen wedstrijden bekend.</div>
-          <div style="font-size:12px;">Wedstrijden verschijnen automatisch zodra je rapporten opslaat met een thuis- en uitspelende ploeg, of klik op <strong>Wedstrijd rapporteren</strong>.</div>
+          <div style="font-size:12px;">Wedstrijden verschijnen automatisch zodra je rapporten opslaat met een thuis- en uitspelende ploeg, of klik op <strong>Nieuw wedstrijdrapport</strong>.</div>
         </div>
       </section>
 
@@ -4341,10 +4341,6 @@ body.view-active-report #view-report {
             <button class="btn btn-secondary" id="programma-today-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               Vandaag
-            </button>
-            <button class="btn btn-primary" id="programma-new-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Nieuw wedstrijdrapport
             </button>
           </div>
         </div>
@@ -4363,7 +4359,7 @@ body.view-active-report #view-report {
 
         <div id="programma-empty" style="display:none; text-align:center; padding:40px 20px; color:var(--text-3);">
           <div style="font-size:14px; margin-bottom:8px;">Geen wedstrijden ingepland deze week.</div>
-          <div style="font-size:12px;">Klik op een dag of op <strong>Nieuw wedstrijdrapport</strong> om te starten.</div>
+          <div style="font-size:12px;">Klik op een dag om te starten.</div>
         </div>
       </section>
 
@@ -4924,7 +4920,7 @@ body.view-active-report #view-report {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.7 4 3 9 3s9-1.3 9-3V5"/><path d="M3 11v6c0 1.7 4 3 9 3s9-1.3 9-3v-6"/></svg>
       <span class="bn-label">Spelers</span>
     </button>
-    <button class="bn-item" data-view="report" aria-label="Nieuw spelersrapport">
+    <button class="bn-item" id="bn-new-report-btn" type="button" aria-label="Nieuw (opent menu)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
       <span class="bn-label">Nieuw</span>
     </button>
@@ -14293,10 +14289,27 @@ body:not(.view-active-report) #view-report {
   function position(){
     if(!anchor) return;
     const r = anchor.getBoundingClientRect();
-    menu.style.left = (r.right + window.scrollX - menu.offsetWidth) + 'px';
-    menu.style.top  = (r.bottom + window.scrollY + 6) + 'px';
-    if(r.right - menu.offsetWidth < 8){
-      menu.style.left = (r.left + window.scrollX) + 'px';
+    const isBottomNav = anchor.id === 'bn-new-report-btn';
+    if(isBottomNav){
+      // Bottom-sheet variant: full-width onderaan, opent omhoog vlak boven bottom-nav
+      const navHeight = anchor.closest('#bottom-nav')?.offsetHeight || 60;
+      menu.style.left = '8px';
+      menu.style.right = '8px';
+      menu.style.width = 'auto';
+      menu.style.maxWidth = 'none';
+      menu.style.bottom = (navHeight + 8) + 'px';
+      menu.style.top = 'auto';
+    } else {
+      // Standaard dropdown: onder de trigger
+      menu.style.right = 'auto';
+      menu.style.bottom = 'auto';
+      menu.style.maxWidth = '';
+      menu.style.width = '';
+      menu.style.left = (r.right + window.scrollX - menu.offsetWidth) + 'px';
+      menu.style.top  = (r.bottom + window.scrollY + 6) + 'px';
+      if(r.right - menu.offsetWidth < 8){
+        menu.style.left = (r.left + window.scrollX) + 'px';
+      }
     }
   }
 
@@ -14347,7 +14360,7 @@ body:not(.view-active-report) #view-report {
   function wireAll(){
     wireBtn('nav-new-report-btn');
     wireBtn('dash-new-report-btn');
-    wireBtn('db-new-report-btn');
+    wireBtn('bn-new-report-btn');
   }
   if(document.readyState === 'loading'){
     document.addEventListener('DOMContentLoaded', wireAll);

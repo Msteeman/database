@@ -2717,14 +2717,140 @@ tbody tr:last-child td { border-bottom: none; }
 .compare-chip .x { background: transparent; border: none; color: var(--text-2); cursor: pointer; font-size: 16px; line-height: 1; padding: 0 4px; margin-left: 2px; }
 .compare-chip .x:hover { color: var(--primary-2); }
 
-.compare-empty {
-  background: var(--panel); border: 1px dashed var(--border-2);
-  border-radius: var(--radius); padding: 56px 24px; text-align: center;
-  display: flex; flex-direction: column; align-items: center; gap: 8px;
+/* v70h-s29: hero-slots boven, inline empty-state */
+.compare-hero {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
 }
-.compare-empty-icon { color: var(--text-3); opacity: .6; }
-.compare-empty-title { font-weight: 700; font-size: 16px; }
-.compare-empty-sub { font-size: 13px; color: var(--text-2); max-width: 360px; }
+.compare-slot {
+  position: relative;
+  background: var(--panel);
+  border-radius: var(--radius);
+  padding: 16px 10px 14px;
+  min-height: 168px;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 6px;
+  text-align: center;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+  overflow: hidden;
+}
+.compare-slot.filled {
+  border: 1px solid var(--player-color, var(--border-2));
+  background:
+    linear-gradient(180deg, rgba(255,255,255,.04) 0%, var(--panel) 65%),
+    linear-gradient(180deg, var(--player-color, var(--panel)) 0%, var(--panel) 100%);
+  box-shadow: 0 6px 20px rgba(0,0,0,.18);
+}
+.compare-slot.filled::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, var(--player-color, transparent) 0%, transparent 50%);
+  opacity: .14; pointer-events: none;
+}
+.compare-slot.empty {
+  border: 1.5px dashed var(--border-2);
+  color: var(--text-3);
+  cursor: pointer;
+}
+.compare-slot.empty:hover {
+  border-color: var(--primary-2);
+  color: var(--text-2);
+  transform: translateY(-2px);
+}
+.compare-slot-avatar {
+  width: 54px; height: 54px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--player-color, var(--bg-3)) 0%, var(--player-color-2, var(--bg-3)) 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 800; font-size: 18px; color: #fff;
+  border: 2px solid rgba(255,255,255,.22);
+  box-shadow: 0 4px 14px rgba(0,0,0,.32);
+  position: relative; z-index: 1;
+}
+.compare-slot-name {
+  font-weight: 700; font-size: 13px; color: var(--text);
+  line-height: 1.25;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; text-overflow: ellipsis;
+  position: relative; z-index: 1;
+  max-width: 100%;
+}
+.compare-slot-meta {
+  font-size: 11px; color: var(--text-2);
+  line-height: 1.3;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; text-overflow: ellipsis;
+  position: relative; z-index: 1;
+  max-width: 100%;
+}
+.compare-slot-grade {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 26px; padding: 2px 9px;
+  border-radius: 999px;
+  font-size: 11px; font-weight: 800; color: #fff;
+  background: var(--grade-c);
+  margin-top: 2px;
+  position: relative; z-index: 1;
+}
+.compare-slot-grade.A { background: var(--grade-a); }
+.compare-slot-grade.B { background: var(--grade-b); }
+.compare-slot-grade.C { background: var(--grade-c); }
+.compare-slot-grade.D { background: var(--grade-d); }
+.compare-slot-remove {
+  position: absolute; top: 6px; right: 6px;
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.45); color: #fff;
+  border: none; cursor: pointer;
+  font-size: 15px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .15s, background .15s;
+  z-index: 2;
+}
+.compare-slot.filled:hover .compare-slot-remove,
+.compare-slot.filled:focus-within .compare-slot-remove { opacity: 1; }
+.compare-slot-remove:hover { background: rgba(229,57,53,.85); }
+.compare-slot-num {
+  position: absolute; top: 8px; left: 10px;
+  font-size: 10px; font-weight: 700; color: var(--text-3);
+  letter-spacing: .5px;
+}
+.compare-slot.filled .compare-slot-num { color: rgba(255,255,255,.55); }
+.compare-slot-add {
+  font-size: 34px; font-weight: 300; line-height: 1;
+  color: var(--text-3); opacity: .7;
+}
+.compare-slot-add-label {
+  font-size: 11px; font-weight: 600;
+  letter-spacing: .3px;
+  text-transform: uppercase;
+}
+
+.compare-empty-inline {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(229,57,53,.08), rgba(229,57,53,.02));
+  border: 1px solid rgba(229,57,53,.20);
+  border-radius: var(--radius);
+}
+.compare-empty-inline .compare-empty-text { flex: 1; min-width: 0; }
+.compare-empty-inline .compare-empty-title { font-weight: 700; font-size: 14px; color: var(--text); margin-bottom: 2px; }
+.compare-empty-inline .compare-empty-sub { font-size: 12px; color: var(--text-2); }
+.compare-empty-inline svg { flex-shrink: 0; color: var(--primary); opacity: .65; }
+
+/* keep legacy .compare-empty for any other callers, but hidden default */
+.compare-empty { display: none; }
+
+@media (max-width: 1100px) {
+  .compare-hero { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .compare-hero { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .compare-slot { min-height: 140px; padding: 12px 6px 10px; }
+  .compare-slot-avatar { width: 44px; height: 44px; font-size: 15px; }
+  .compare-empty-inline { padding: 12px 14px; gap: 10px; }
+  .compare-empty-inline svg { width: 28px; height: 28px; }
+}
 
 .compare-results { display: flex; flex-direction: column; gap: 16px; }
 .compare-card {
@@ -4362,22 +4488,16 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
 
         <div class="compare-shell">
-          <div class="compare-picker">
-            <div class="compare-picker-head">
-              <div class="compare-picker-title">Speler toevoegen</div>
-              <div class="compare-search-wrap"><input type="search" id="cmp-search" placeholder="Zoek op naam, club, positie..." class="compare-search" autocomplete="off" /><div class="compare-suggest" id="cmp-suggest"></div></div>
-            </div>
-            <div class="compare-picker-list" id="cmp-picker-list"></div>
-          </div>
+          <!-- v70h-s29: hero-slots bovenaan -->
+          <div id="cmp-selected" class="compare-hero-wrap"></div>
 
-          <div class="compare-selected" id="cmp-selected"></div>
-
-          <div id="cmp-empty" class="compare-empty">
-            <div class="compare-empty-icon">
-              <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/><path d="M12 8v8"/></svg>
+          <!-- inline prompt (alleen bij < 2 geselecteerd) -->
+          <div id="cmp-empty" class="compare-empty-inline" style="display:none;">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/><path d="M12 8v8"/></svg>
+            <div class="compare-empty-text">
+              <div class="compare-empty-title">Selecteer minstens 2 spelers</div>
+              <div class="compare-empty-sub">Klik op een lege plek hierboven of zoek hieronder een speler om toe te voegen.</div>
             </div>
-            <div class="compare-empty-title">Selecteer minstens 2 spelers</div>
-            <div class="compare-empty-sub">Tik op spelers in de lijst hierboven om ze toe te voegen aan de vergelijking.</div>
           </div>
 
           <div id="cmp-results" class="compare-results" style="display:none;">
@@ -4422,6 +4542,16 @@ tbody tr:last-child td { border-bottom: none; }
             </div>
 
           </div>
+
+          <!-- v70h-s29: picker onderaan, klein -->
+          <div class="compare-picker" id="cmp-picker-card">
+            <div class="compare-picker-head">
+              <div class="compare-picker-title">Spelers toevoegen</div>
+              <div class="compare-search-wrap"><input type="search" id="cmp-search" placeholder="Zoek op naam, club, positie..." class="compare-search" autocomplete="off" /><div class="compare-suggest" id="cmp-suggest"></div></div>
+            </div>
+            <div class="compare-picker-list" id="cmp-picker-list"></div>
+          </div>
+
         </div>
       </section>
 
@@ -8502,13 +8632,19 @@ function applyFilters(){
       openDetail(tr.dataset.id);
     });
   });
-  // Per-row checkbox
+  // Per-row checkbox — v70h-s29: hard cap op CMP_MAX (6)
   $$('.db-check', wrap).forEach(cb => {
     cb.addEventListener('click', (ev) => ev.stopPropagation());
     cb.addEventListener('change', (ev) => {
       ev.stopPropagation();
       const id = cb.dataset.id;
       if(cb.checked){
+        const max = (typeof CMP_MAX === 'number') ? CMP_MAX : 6;
+        if(dbCheckedIds.length >= max){
+          cb.checked = false;
+          alert('Let op: je kunt maximaal ' + max + ' spelers tegelijk vergelijken.\n\nVerwijder eerst iemand uit je selectie voor je een andere kiest.');
+          return;
+        }
         if(!dbCheckedIds.includes(id)) dbCheckedIds.push(id);
       } else {
         dbCheckedIds = dbCheckedIds.filter(x => x !== id);
@@ -8516,12 +8652,19 @@ function applyFilters(){
       applyFilters();
     });
   });
-  // Select-all checkbox
+  // Select-all checkbox — v70h-s29: hard cap op CMP_MAX (6)
   const allCb = $('#db-check-all', wrap);
   if(allCb){
     allCb.addEventListener('click', (ev) => ev.stopPropagation());
     allCb.addEventListener('change', () => {
       if(allCb.checked){
+        const max = (typeof CMP_MAX === 'number') ? CMP_MAX : 6;
+        const wouldBe = new Set([...dbCheckedIds, ...filteredIds]);
+        if(wouldBe.size > max){
+          allCb.checked = false;
+          alert('Let op: je kunt maximaal ' + max + ' spelers tegelijk vergelijken.\n\nGebruik filters om je lijst te verkleinen, of selecteer spelers \u00e9\u00e9n voor \u00e9\u00e9n.');
+          return;
+        }
         filteredIds.forEach(id => { if(!dbCheckedIds.includes(id)) dbCheckedIds.push(id); });
       } else {
         dbCheckedIds = dbCheckedIds.filter(id => !filteredIds.includes(id));
@@ -8799,23 +8942,66 @@ function renderComparePicker(){
 function renderCompareSelected(){
   const wrap = $('#cmp-selected');
   if(!wrap) return;
-  if(!cmpSelectedIds.length){ wrap.innerHTML = ''; return; }
-  wrap.innerHTML = cmpSelectedIds.map((id, i) => {
-    const p = cmpPlayerById(id);
-    if(!p) return '';
-    const col = cmpColorFor(i);
-    return `
-      <span class="compare-chip" style="--player-color:${col.c}">
-        <span class="dot"></span>
-        <span>${escapeHtml(p.naam||'?')}</span>
-        <button class="x" data-id="${escapeAttr(id)}" aria-label="Verwijderen">×</button>
-      </span>`;
-  }).join('');
-  wrap.querySelectorAll('.x').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.id;
+  const max = (typeof CMP_MAX === 'number') ? CMP_MAX : 6;
+  const slots = [];
+  for(let i = 0; i < max; i++){
+    const id = cmpSelectedIds[i];
+    if(id){
+      const p = cmpPlayerById(id);
+      if(!p){
+        slots.push(`<div class="compare-slot empty" data-slot-empty><div class="compare-slot-num">#${i+1}</div><div class="compare-slot-add">+</div><div class="compare-slot-add-label">Voeg speler toe</div></div>`);
+        continue;
+      }
+      const col = cmpColorFor(i);
+      const initialsStr = ((p.naam||'').split(/\s+/).map(s => s[0]||'').slice(0,2).join('') || '?').toUpperCase();
+      const meta = [positionLabel(p.positie), p.club].filter(Boolean).join(' \u00b7 ');
+      const grade = (p.huidig_niveau || '-').toUpperCase();
+      slots.push(`
+        <div class="compare-slot filled" style="--player-color:${col.c};--player-color-2:${col.c2}">
+          <div class="compare-slot-num">#${i+1}</div>
+          <button type="button" class="compare-slot-remove" data-remove-id="${escapeAttr(id)}" aria-label="Verwijderen">\u00d7</button>
+          <div class="compare-slot-avatar">${escapeHtml(initialsStr)}</div>
+          <div class="compare-slot-name">${escapeHtml(p.naam||'?')}</div>
+          <div class="compare-slot-meta">${escapeHtml(meta||'\u2014')}</div>
+          <div class="compare-slot-grade ${grade}">${escapeHtml(grade)}</div>
+        </div>`);
+    } else {
+      slots.push(`<div class="compare-slot empty" data-slot-empty><div class="compare-slot-num">#${i+1}</div><div class="compare-slot-add">+</div><div class="compare-slot-add-label">Voeg speler toe</div></div>`);
+    }
+  }
+  wrap.innerHTML = `<div class="compare-hero">${slots.join('')}</div>`;
+
+  // Subtitle in topbar dynamisch
+  const sub = document.querySelector('#view-compare .page-sub');
+  if(sub){
+    const n = cmpSelectedIds.length;
+    if(n === 0)      sub.textContent = `Kies 2 tot ${max} spelers en zie ze direct naast elkaar — radar, balken en details.`;
+    else if(n === 1) sub.textContent = `1 speler geselecteerd \u00b7 voeg er minstens \u00e9\u00e9n toe om te vergelijken.`;
+    else             sub.textContent = `${n} van ${max} spelers \u00b7 vergelijking actief.`;
+  }
+
+  // Empty-state inline tonen bij < 2
+  const empty = document.getElementById('cmp-empty');
+  if(empty) empty.style.display = (cmpSelectedIds.length < 2) ? 'flex' : 'none';
+
+  // Wire: verwijder-knop
+  wrap.querySelectorAll('[data-remove-id]').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const id = btn.dataset.removeId;
       cmpSelectedIds = cmpSelectedIds.filter(x => x !== id);
       renderCompare();
+    });
+  });
+  // Wire: lege slot → focus zoekveld + scroll naar picker
+  wrap.querySelectorAll('[data-slot-empty]').forEach(s => {
+    s.addEventListener('click', () => {
+      const card = document.getElementById('cmp-picker-card');
+      if(card){ card.scrollIntoView({behavior:'smooth', block:'start'}); }
+      setTimeout(() => {
+        const inp = document.getElementById('cmp-search');
+        if(inp) inp.focus();
+      }, 320);
     });
   });
 }

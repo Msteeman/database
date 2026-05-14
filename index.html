@@ -899,6 +899,40 @@ a { color: var(--accent); text-decoration: none; }
   margin-bottom: 6px;
   display: block;
 }
+/* v70h-s33: initialen-fallback voor avatar */
+.scout-avatar-wrap {
+  display: flex; justify-content: center;
+  margin-bottom: 6px;
+}
+.scout-avatar-initials {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  box-shadow: 0 2px 10px rgba(11, 196, 132, 0.25);
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: #fff;
+  font-weight: 800; font-size: 15px;
+  letter-spacing: .5px;
+  display: flex; align-items: center; justify-content: center;
+  user-select: none;
+}
+.settings-photo-wrap {
+  position: relative;
+  width: 64px; height: 64px;
+  flex-shrink: 0;
+}
+.settings-photo-initials {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--primary);
+  box-shadow: 0 4px 14px rgba(229,57,53,.20);
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: #fff;
+  font-weight: 800; font-size: 22px;
+  letter-spacing: 1px;
+  display: flex; align-items: center; justify-content: center;
+  user-select: none;
+}
 .scout-name { font-weight: 600; font-size: 13px; }
 .scout-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; line-height: 1.5; }
 .scout-meta span { color: var(--secondary); font-weight: 600; }
@@ -2553,6 +2587,224 @@ tbody tr:last-child td { border-bottom: none; }
   font-size: 11px; color: var(--text-3);
   text-align: center;
   margin-top: 14px;
+}
+/* v70h-s32: profielfoto upload */
+.settings-photo-row {
+  display: flex; align-items: center; gap: 14px;
+  margin-top: 10px;
+}
+.settings-photo-preview {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid var(--primary);
+  box-shadow: 0 4px 14px rgba(229,57,53,.20);
+  flex-shrink: 0;
+  background: linear-gradient(135deg, #2a3548, #1a2332);
+  display: block;
+}
+.settings-photo-actions {
+  display: flex; flex-direction: column; gap: 8px;
+  flex: 1; min-width: 0;
+}
+.settings-photo-hint {
+  font-size: 11px; color: var(--text-3);
+}
+/* v70h-s32: input-velden */
+.settings-field {
+  display: flex; flex-direction: column; gap: 4px;
+  margin-top: 10px;
+}
+.settings-field label {
+  font-size: 11px; font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .4px;
+}
+.settings-field input,
+.settings-field textarea {
+  width: 100%;
+  padding: 9px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color .15s;
+  box-sizing: border-box;
+}
+.settings-field input:focus,
+.settings-field textarea:focus { border-color: var(--primary); }
+.settings-field textarea { min-height: 64px; resize: vertical; }
+.settings-field-pair {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+@media (max-width: 480px) {
+  .settings-field-pair { grid-template-columns: 1fr; }
+}
+.settings-btn-row {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-top: 12px;
+}
+.settings-saved-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700;
+  color: var(--grade-a);
+  opacity: 0; transition: opacity .25s;
+}
+.settings-saved-pill.show { opacity: 1; }
+
+/* ===== v70h-s33: Slimme import / export modals ===== */
+.smart-modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,.72);
+  backdrop-filter: blur(3px);
+  z-index: 9300;
+  display: none; align-items: flex-start; justify-content: center;
+  padding: 24px 16px;
+  overflow-y: auto;
+}
+.smart-modal-backdrop.show { display: flex; }
+.smart-modal {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  width: 100%; max-width: 640px;
+  color: var(--text);
+  box-shadow: 0 24px 60px rgba(0,0,0,.55);
+  margin: auto;
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+.smart-modal-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, var(--panel), var(--bg-2));
+}
+.smart-modal-head h3 {
+  margin: 0; font-size: 16px; font-weight: 700;
+}
+.smart-modal-close {
+  background: transparent; border: none; color: var(--text-2);
+  cursor: pointer; font-size: 22px; line-height: 1;
+  width: 32px; height: 32px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+}
+.smart-modal-close:hover { background: var(--panel-2); color: var(--text); }
+.smart-modal-body {
+  padding: 16px 20px;
+  display: flex; flex-direction: column; gap: 12px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.smart-modal-body p { margin: 0; font-size: 13px; color: var(--text-2); line-height: 1.5; }
+.smart-modal-body textarea {
+  width: 100%;
+  min-height: 140px;
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  resize: vertical;
+  outline: none; box-sizing: border-box;
+}
+.smart-modal-body textarea:focus { border-color: var(--primary); }
+.smart-file-pick {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; color: var(--text-2);
+}
+.smart-classify {
+  padding: 10px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  font-size: 13px;
+  display: flex; flex-wrap: wrap; gap: 14px;
+  min-height: 18px;
+}
+.smart-classify .pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-weight: 700;
+}
+.smart-classify .pill .num {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 22px; height: 22px; padding: 0 7px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: #fff; font-size: 12px;
+}
+.smart-classify .pill.muted .num { background: var(--panel-2); color: var(--text-3); border:1px solid var(--border-2); }
+.smart-modal-foot {
+  padding: 12px 20px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 8px; justify-content: flex-end;
+  flex-wrap: wrap;
+  background: var(--bg);
+}
+.smart-status {
+  flex: 1; align-self: center;
+  font-size: 12px; color: var(--text-3);
+  min-height: 14px;
+}
+.smart-status.ok { color: var(--grade-a); }
+.smart-status.err { color: var(--red); }
+
+/* Export checkboxes */
+.smart-check-list {
+  display: flex; flex-direction: column; gap: 6px;
+}
+.smart-check-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px;
+  background: var(--panel);
+  border: 1px solid var(--border-2);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.smart-check-row:hover { border-color: var(--primary); }
+.smart-check-row input[type=checkbox] {
+  appearance: none;
+  width: 18px; height: 18px;
+  border: 2px solid var(--border-2);
+  border-radius: 5px;
+  background: var(--bg);
+  cursor: pointer;
+  flex-shrink: 0;
+  position: relative;
+}
+.smart-check-row input[type=checkbox]:checked {
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  border-color: var(--primary);
+}
+.smart-check-row input[type=checkbox]:checked::after {
+  content: '\2713';
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 900; color: #fff;
+}
+.smart-check-body { flex: 1; min-width: 0; }
+.smart-check-title { font-size: 13px; font-weight: 700; }
+.smart-check-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.smart-check-all-row {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 4px;
+  font-size: 11px; color: var(--text-3);
+}
+.smart-link-btn {
+  background: transparent; border: none;
+  color: var(--primary); font-size: 11px; font-weight: 700;
+  cursor: pointer; text-decoration: underline;
+  padding: 2px 4px;
 }
 @media (max-width: 560px) {
   .settings-modal-backdrop { padding: 12px 8px; }
@@ -4599,42 +4851,92 @@ tbody tr:last-child td { border-bottom: none; }
           </button>
         </div>
 
-        <!-- Profielfoto -->
+        <!-- v70h-s32: Profielfoto - werkende upload -->
         <div class="settings-section">
           <div class="settings-section-head">
             <div class="settings-section-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
             </div>
             <div>
-              <div class="settings-section-title">Profielfoto wijzigen <span class="settings-soon-badge">Binnenkort</span></div>
-              <div class="settings-section-sub">Upload je eigen profielfoto</div>
+              <div class="settings-section-title">Profielfoto</div>
+              <div class="settings-section-sub">Wordt zichtbaar in de zijbalk en op je rapporten</div>
+            </div>
+          </div>
+          <div class="settings-photo-row">
+            <div class="settings-photo-wrap" id="settings-photo-wrap">
+              <img id="settings-photo-preview" class="settings-photo-preview" alt="Profielfoto" style="display:none;" />
+              <div class="settings-photo-initials" id="settings-photo-initials" aria-hidden="true">MS</div>
+            </div>
+            <div class="settings-photo-actions">
+              <input type="file" id="settings-photo-input" accept="image/*" style="display:none;" />
+              <div class="settings-btn-row" style="margin-top:0;">
+                <button type="button" class="settings-btn" id="settings-photo-pick">Foto kiezen</button>
+                <button type="button" class="settings-btn ghost" id="settings-photo-reset">Standaard</button>
+              </div>
+              <div class="settings-photo-hint">JPG of PNG. Wordt lokaal opgeslagen op dit apparaat.</div>
             </div>
           </div>
         </div>
 
-        <!-- Persoonsgegevens -->
+        <!-- v70h-s32: Persoonsgegevens - werkende form -->
         <div class="settings-section">
           <div class="settings-section-head">
             <div class="settings-section-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
             </div>
             <div>
-              <div class="settings-section-title">Persoonsgegevens <span class="settings-soon-badge">Binnenkort</span></div>
-              <div class="settings-section-sub">Telefoonnummer, adres, voorkeuren</div>
+              <div class="settings-section-title">Persoonsgegevens</div>
+              <div class="settings-section-sub">Telefoon, adres en voorkeuren — alleen voor jou zichtbaar</div>
             </div>
+          </div>
+          <div class="settings-field-pair">
+            <div class="settings-field">
+              <label for="settings-tel">Telefoon</label>
+              <input type="tel" id="settings-tel" autocomplete="tel" placeholder="06 12 34 56 78" />
+            </div>
+            <div class="settings-field">
+              <label for="settings-mob">Mobiel (extra)</label>
+              <input type="tel" id="settings-mob" autocomplete="tel" placeholder="optioneel" />
+            </div>
+          </div>
+          <div class="settings-field">
+            <label for="settings-adres">Adres</label>
+            <input type="text" id="settings-adres" autocomplete="street-address" placeholder="Straat 12, 1234 AB Plaats" />
+          </div>
+          <div class="settings-field">
+            <label for="settings-voorkeuren">Voorkeuren / notitie</label>
+            <textarea id="settings-voorkeuren" placeholder="Bijv. favoriete regio, talen, beschikbaarheid..."></textarea>
+          </div>
+          <div class="settings-btn-row">
+            <button type="button" class="settings-btn" id="settings-personal-save">Opslaan</button>
+            <span class="settings-saved-pill" id="settings-personal-saved">&#x2713; Opgeslagen</span>
           </div>
         </div>
 
-        <!-- Import / export -->
+        <!-- v70h-s32: Import / export - werkende knoppen -->
         <div class="settings-section">
           <div class="settings-section-head">
             <div class="settings-section-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             </div>
             <div>
-              <div class="settings-section-title">Import / export <span class="settings-soon-badge">Binnenkort</span></div>
-              <div class="settings-section-sub">Rapporten en wedstrijden in/uit een bestand</div>
+              <div class="settings-section-title">Import &amp; export</div>
+              <div class="settings-section-sub">Rapporten in/uit een bestand. Plak of upload — wordt direct verwerkt.</div>
             </div>
+          </div>
+          <div class="settings-btn-row">
+            <button type="button" class="settings-btn" id="settings-import-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Rapport importeren
+            </button>
+            <button type="button" class="settings-btn ghost" id="settings-export-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Export downloaden
+            </button>
+            <button type="button" class="settings-btn ghost" id="settings-bulkdel-btn" title="Verwijder geimporteerde spelers door hetzelfde JSON-blok nogmaals te plakken">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+              Import ongedaan maken
+            </button>
           </div>
         </div>
 
@@ -4655,7 +4957,94 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; v70h-s30</div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; v70h-s33</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- v70h-s33: Slimme import modal -->
+  <div class="smart-modal-backdrop" id="smart-import-backdrop" role="dialog" aria-modal="true" aria-labelledby="smart-import-title">
+    <div class="smart-modal">
+      <div class="smart-modal-head">
+        <h3 id="smart-import-title">Slim importeren</h3>
+        <button type="button" class="smart-modal-close" id="smart-import-close" aria-label="Sluiten">&times;</button>
+      </div>
+      <div class="smart-modal-body">
+        <p>Plak een rapport-blok of een volledig export-bestand. ScoutingHub herkent automatisch <strong>spelersrapporten</strong>, <strong>wedstrijdrapporten</strong> en <strong>elftal-analyses</strong>, en stuurt elk item naar de juiste plek.</p>
+        <textarea id="smart-import-text" placeholder='Plak hier JSON, bijvoorbeeld:&#10;{"naam": "...", "club": "...", ...}&#10;of&#10;{"thuis": "...", "uit": "...", "datum": "..."}&#10;of een volledig export-bestand met "players", "matchReports", ...'></textarea>
+        <label class="smart-file-pick">
+          <input type="file" id="smart-import-file" accept=".json,application/json,text/plain" />
+        </label>
+        <div class="smart-classify" id="smart-import-classify">
+          <span class="pill muted"><span class="num">0</span> spelers</span>
+          <span class="pill muted"><span class="num">0</span> wedstrijden</span>
+          <span class="pill muted"><span class="num">0</span> analyses</span>
+          <span class="pill muted"><span class="num">0</span> programma</span>
+        </div>
+      </div>
+      <div class="smart-modal-foot">
+        <div class="smart-status" id="smart-import-status"></div>
+        <button type="button" class="settings-btn ghost" id="smart-import-cancel">Annuleren</button>
+        <button type="button" class="settings-btn" id="smart-import-go" disabled>Importeren</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- v70h-s33: Selectieve export modal -->
+  <div class="smart-modal-backdrop" id="smart-export-backdrop" role="dialog" aria-modal="true" aria-labelledby="smart-export-title">
+    <div class="smart-modal">
+      <div class="smart-modal-head">
+        <h3 id="smart-export-title">Exporteren</h3>
+        <button type="button" class="smart-modal-close" id="smart-export-close" aria-label="Sluiten">&times;</button>
+      </div>
+      <div class="smart-modal-body">
+        <p>Kies welke onderdelen je wilt opnemen. Je downloadt &eacute;&eacute;n JSON-bestand met alleen je selectie.</p>
+        <div class="smart-check-all-row">
+          <span id="smart-export-summary">0 onderdelen geselecteerd</span>
+          <button type="button" class="smart-link-btn" id="smart-export-all">Alles selecteren</button>
+        </div>
+        <div class="smart-check-list">
+          <label class="smart-check-row">
+            <input type="checkbox" data-export-slice="players" checked />
+            <div class="smart-check-body">
+              <div class="smart-check-title">Spelersrapporten</div>
+              <div class="smart-check-meta" id="smart-export-meta-players">&mdash;</div>
+            </div>
+          </label>
+          <label class="smart-check-row">
+            <input type="checkbox" data-export-slice="matchReports" checked />
+            <div class="smart-check-body">
+              <div class="smart-check-title">Wedstrijdrapporten</div>
+              <div class="smart-check-meta" id="smart-export-meta-matchReports">&mdash;</div>
+            </div>
+          </label>
+          <label class="smart-check-row">
+            <input type="checkbox" data-export-slice="programma" />
+            <div class="smart-check-body">
+              <div class="smart-check-title">Programma</div>
+              <div class="smart-check-meta" id="smart-export-meta-programma">&mdash;</div>
+            </div>
+          </label>
+          <label class="smart-check-row">
+            <input type="checkbox" data-export-slice="analyses" checked />
+            <div class="smart-check-body">
+              <div class="smart-check-title">Elftal-analyses</div>
+              <div class="smart-check-meta" id="smart-export-meta-analyses">&mdash;</div>
+            </div>
+          </label>
+          <label class="smart-check-row">
+            <input type="checkbox" data-export-slice="personal" />
+            <div class="smart-check-body">
+              <div class="smart-check-title">Persoonsgegevens &amp; instellingen</div>
+              <div class="smart-check-meta">Telefoon, adres, voorkeuren (geen profielfoto)</div>
+            </div>
+          </label>
+        </div>
+      </div>
+      <div class="smart-modal-foot">
+        <div class="smart-status" id="smart-export-status"></div>
+        <button type="button" class="settings-btn ghost" id="smart-export-cancel">Annuleren</button>
+        <button type="button" class="settings-btn" id="smart-export-go">Download</button>
       </div>
     </div>
   </div>
@@ -4731,7 +5120,10 @@ tbody tr:last-child td { border-bottom: none; }
       </nav>
 
       <div class="scout-profile">
-        <img class="scout-avatar-img" alt="Marcel Steeman" src="data:image/jpeg;base64,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" />
+        <div class="scout-avatar-wrap" id="scout-avatar-wrap">
+          <img class="scout-avatar-img" id="scout-avatar-img" alt="Profielfoto" style="display:none;" />
+          <div class="scout-avatar-initials" id="scout-avatar-initials" aria-hidden="true">MS</div>
+        </div>
         <div class="scout-name">Marcel Steeman</div>
         <!-- v70h-s30: scout-email weg uit sidebar, zit nu in Instellingen-modal -->
         <div class="sync-indicator">
@@ -4861,18 +5253,12 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="page-sub" id="db-count">0 spelers</div>
           </div>
           <div style="display:flex; gap:8px;">
-            <button class="btn" id="import-btn" title="Plak een rapport-blok van Copilot om snel een speler toe te voegen">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Rapport importeren
-            </button>
-            <button class="btn btn-ghost" id="player-bulk-delete-btn" title="Verwijder geïmporteerde spelers door hetzelfde JSON-blok nogmaals te plakken">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-              Import ongedaan maken
-            </button>
-            <button class="btn" id="export-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Export
-            </button>
+            <!-- v70h-s32: import / export / bulkdel verplaatst naar Instellingen.
+                 Knoppen blijven verborgen in de DOM zodat bestaande JS-handlers
+                 (#import-btn, #export-btn, #player-bulk-delete-btn) blijven werken. -->
+            <button class="btn" id="import-btn" style="display:none;" aria-hidden="true" tabindex="-1">Rapport importeren</button>
+            <button class="btn btn-ghost" id="player-bulk-delete-btn" style="display:none;" aria-hidden="true" tabindex="-1">Import ongedaan maken</button>
+            <button class="btn" id="export-btn" style="display:none;" aria-hidden="true" tabindex="-1">Export</button>
             <button class="btn btn-primary" data-go="report">+ Nieuw spelersrapport</button>
           </div>
         </div>
@@ -5055,14 +5441,10 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="page-sub" id="matches-count">0 wedstrijden</div>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn btn-secondary" id="match-report-import-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Importeren
-            </button>
-            <button class="btn btn-ghost" id="match-report-bulk-delete-btn" title="Verwijder geïmporteerde wedstrijdrapporten door dezelfde JSON nogmaals te plakken">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-              Import ongedaan maken
-            </button>
+            <!-- v70h-s33: import / bulkdel verplaatst naar Instellingen.
+                 Verborgen gehouden zodat bestaande JS-handlers blijven werken. -->
+            <button class="btn btn-secondary" id="match-report-import-btn" style="display:none;" aria-hidden="true" tabindex="-1">Importeren</button>
+            <button class="btn btn-ghost" id="match-report-bulk-delete-btn" style="display:none;" aria-hidden="true" tabindex="-1">Import ongedaan maken</button>
             <button class="btn btn-primary" id="match-report-new-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Nieuw wedstrijdrapport
@@ -15779,6 +16161,604 @@ onAuthStateChanged(auth, async (user)=>{
     wireSettings();
   }
   new MutationObserver(wireSettings).observe(document.body, { childList: true, subtree: true });
+})();
+
+/* v70h-s32: Instellingen-velden (profielfoto + persoonsgegevens + imp/exp) */
+(function(){
+  const LS_PHOTO = 'sh_profile_photo_v1';
+  const LS_PERS  = 'sh_profile_personal_v1';
+  const DEFAULT_PHOTO_ATTR = 'data-default-src';
+
+  function readPersonal(){
+    try { return JSON.parse(localStorage.getItem(LS_PERS) || '{}') || {}; }
+    catch(_){ return {}; }
+  }
+  function writePersonal(obj){
+    try { localStorage.setItem(LS_PERS, JSON.stringify(obj||{})); } catch(_){}
+  }
+  function readPhoto(){
+    try { return localStorage.getItem(LS_PHOTO) || ''; } catch(_){ return ''; }
+  }
+  function writePhoto(dataUrl){
+    try {
+      if(dataUrl) localStorage.setItem(LS_PHOTO, dataUrl);
+      else localStorage.removeItem(LS_PHOTO);
+    } catch(_){}
+  }
+
+  function computeInitials(){
+    // 1) probeer de scout-naam uit de DOM
+    let src = '';
+    const nameEl = document.querySelector('.scout-name');
+    if(nameEl && nameEl.textContent) src = nameEl.textContent.trim();
+    // 2) fallback op currentUser.email (lokaal deel)
+    if(!src){
+      try {
+        const u = (typeof currentUser !== 'undefined' && currentUser && currentUser.email) || '';
+        if(u) src = u.split('@')[0].replace(/[._-]+/g, ' ');
+      } catch(_){}
+    }
+    if(!src) return '?';
+    const parts = src.split(/\s+/).filter(Boolean);
+    let out = '';
+    if(parts.length >= 2) out = (parts[0][0] || '') + (parts[parts.length-1][0] || '');
+    else if(parts.length === 1) out = parts[0].slice(0, 2);
+    return (out || '?').toUpperCase();
+  }
+
+  function applyPhotoEverywhere(dataUrl){
+    const initials = computeInitials();
+    // Sidebar
+    const sideImg = document.getElementById('scout-avatar-img');
+    const sideIni = document.getElementById('scout-avatar-initials');
+    if(sideIni) sideIni.textContent = initials;
+    if(sideImg && sideIni){
+      if(dataUrl){
+        sideImg.src = dataUrl;
+        sideImg.style.display = 'block';
+        sideIni.style.display = 'none';
+      } else {
+        sideImg.removeAttribute('src');
+        sideImg.style.display = 'none';
+        sideIni.style.display = 'flex';
+      }
+    }
+    // Settings preview
+    const prevImg = document.getElementById('settings-photo-preview');
+    const prevIni = document.getElementById('settings-photo-initials');
+    if(prevIni) prevIni.textContent = initials;
+    if(prevImg && prevIni){
+      if(dataUrl){
+        prevImg.src = dataUrl;
+        prevImg.style.display = 'block';
+        prevIni.style.display = 'none';
+      } else {
+        prevImg.removeAttribute('src');
+        prevImg.style.display = 'none';
+        prevIni.style.display = 'flex';
+      }
+    }
+  }
+
+  function fillPersonalForm(){
+    const p = readPersonal();
+    const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = v || ''; };
+    set('settings-tel', p.tel);
+    set('settings-mob', p.mob);
+    set('settings-adres', p.adres);
+    set('settings-voorkeuren', p.voorkeuren);
+  }
+  function flashSavedPill(){
+    const pill = document.getElementById('settings-personal-saved');
+    if(!pill) return;
+    pill.classList.add('show');
+    clearTimeout(pill.__hideT);
+    pill.__hideT = setTimeout(() => pill.classList.remove('show'), 1800);
+  }
+
+  function wireProfilePhoto(){
+    const pick = document.getElementById('settings-photo-pick');
+    const inp  = document.getElementById('settings-photo-input');
+    const reset = document.getElementById('settings-photo-reset');
+    if(pick && inp && !pick.__shWired){
+      pick.__shWired = true;
+      pick.addEventListener('click', () => inp.click());
+    }
+    if(inp && !inp.__shWired){
+      inp.__shWired = true;
+      inp.addEventListener('change', (ev) => {
+        const f = ev.target.files && ev.target.files[0];
+        if(!f) return;
+        if(f.size > 5 * 1024 * 1024){
+          alert('Foto is te groot (max 5 MB). Kies een kleinere afbeelding.');
+          return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          // Schaal naar 256x256 om opslag te beperken
+          const img = new Image();
+          img.onload = () => {
+            try {
+              const size = 256;
+              const cv = document.createElement('canvas');
+              cv.width = size; cv.height = size;
+              const ctx = cv.getContext('2d');
+              // Cover-crop
+              const ratio = Math.max(size / img.width, size / img.height);
+              const w = img.width * ratio;
+              const h = img.height * ratio;
+              ctx.drawImage(img, (size - w)/2, (size - h)/2, w, h);
+              const out = cv.toDataURL('image/jpeg', 0.85);
+              writePhoto(out);
+              applyPhotoEverywhere(out);
+              if(typeof toast === 'function') toast('Profielfoto bijgewerkt');
+            } catch(err){
+              console.warn('photo resize failed', err);
+              writePhoto(reader.result);
+              applyPhotoEverywhere(reader.result);
+            }
+          };
+          img.onerror = () => alert('Kon de afbeelding niet lezen.');
+          img.src = reader.result;
+        };
+        reader.onerror = () => alert('Kon het bestand niet lezen.');
+        reader.readAsDataURL(f);
+        inp.value = '';
+      });
+    }
+    if(reset && !reset.__shWired){
+      reset.__shWired = true;
+      reset.addEventListener('click', () => {
+        if(!confirm('Profielfoto verwijderen en terug naar je initialen?')) return;
+        writePhoto('');
+        applyPhotoEverywhere('');
+        if(typeof toast === 'function') toast('Profielfoto verwijderd');
+      });
+    }
+  }
+
+  function wirePersonal(){
+    const save = document.getElementById('settings-personal-save');
+    if(save && !save.__shWired){
+      save.__shWired = true;
+      save.addEventListener('click', () => {
+        const get = id => (document.getElementById(id) || {}).value || '';
+        writePersonal({
+          tel:        get('settings-tel').trim(),
+          mob:        get('settings-mob').trim(),
+          adres:      get('settings-adres').trim(),
+          voorkeuren: get('settings-voorkeuren').trim()
+        });
+        flashSavedPill();
+        if(typeof toast === 'function') toast('Persoonsgegevens opgeslagen');
+      });
+    }
+  }
+
+  function wireImpExp(){
+    const imp = document.getElementById('settings-import-btn');
+    const exp = document.getElementById('settings-export-btn');
+    const del = document.getElementById('settings-bulkdel-btn');
+    const closeSettings = window.__shCloseSettings;
+
+    if(imp && !imp.__shWired){
+      imp.__shWired = true;
+      imp.addEventListener('click', () => {
+        if(typeof closeSettings === 'function') closeSettings();
+        setTimeout(() => { if(typeof openSmartImport === 'function') openSmartImport(); }, 50);
+      });
+    }
+    if(exp && !exp.__shWired){
+      exp.__shWired = true;
+      exp.addEventListener('click', () => {
+        if(typeof closeSettings === 'function') closeSettings();
+        setTimeout(() => { if(typeof openSmartExport === 'function') openSmartExport(); }, 50);
+      });
+    }
+    if(del && !del.__shWired){
+      del.__shWired = true;
+      del.addEventListener('click', () => {
+        if(typeof closeSettings === 'function') closeSettings();
+        setTimeout(() => {
+          if(typeof openPlayerBulkDeleteModal === 'function') openPlayerBulkDeleteModal();
+          else { const b = document.getElementById('player-bulk-delete-btn'); if(b) b.click(); }
+        }, 50);
+      });
+    }
+  }
+
+  function refreshSettingsFields(){
+    // wordt aangeroepen telkens dat de DOM verandert (MutationObserver)
+    applyPhotoEverywhere(readPhoto());
+    fillPersonalForm();
+    wireProfilePhoto();
+    wirePersonal();
+    wireImpExp();
+  }
+
+  // Eerste run + observer
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', refreshSettingsFields);
+  } else {
+    refreshSettingsFields();
+  }
+  new MutationObserver(refreshSettingsFields).observe(document.body, { childList: true, subtree: true });
+
+  // Bij elke modal-open opnieuw vullen (waarden kunnen verouderd zijn na sync)
+  const origOpen = window.__shOpenSettings;
+  if(typeof origOpen === 'function'){
+    window.__shOpenSettings = function(){
+      origOpen.apply(this, arguments);
+      setTimeout(refreshSettingsFields, 30);
+    };
+    // Re-wire sidebar settings button naar de nieuwe wrapper
+    document.addEventListener('click', (ev) => {
+      const btn = ev.target.closest && ev.target.closest('#sidebar-settings-btn');
+      if(btn){ ev.preventDefault(); window.__shOpenSettings(); }
+    }, true);
+  }
+})();
+
+/* v70h-s33: Slimme import + selectieve export */
+(function(){
+  /* ===== Classify ===== */
+  function classifyEntry(o){
+    if(!o || typeof o !== 'object') return null;
+    // Volledig export-bestand?
+    if(Array.isArray(o.players) || Array.isArray(o.matchReports) ||
+       Array.isArray(o.analyses) || Array.isArray(o.programma)){
+      return { kind: 'bundle', data: o };
+    }
+    // Wedstrijdrapport heuristiek
+    const hasMatchField = ('thuis' in o) || ('uit' in o) ||
+                          ('thuisclub' in o) || ('uitclub' in o) ||
+                          ('wedstrijd' in o && o.wedstrijd && (o.wedstrijd.thuis || o.wedstrijd.uit));
+    const hasPlayerField = 'naam' in o && o.naam;
+    if(hasPlayerField) return { kind: 'player' };
+    if(hasMatchField) return { kind: 'match' };
+    // Analyse heuristiek: positie-keys A t/m K, of "spelers" array
+    if(o.formatie || o.witteVlekken || o.leeftijd && (o.A || o.B || o.C)){
+      return { kind: 'analysis' };
+    }
+    // Programma-item heuristiek
+    if(o.datum && (o.tijd || o.locatie) && !hasMatchField){
+      return { kind: 'programma' };
+    }
+    return null;
+  }
+
+  function classifyList(list){
+    const counts = { player: 0, match: 0, analysis: 0, programma: 0, bundle: 0, unknown: 0 };
+    const buckets = { player: [], match: [], analysis: [], programma: [], bundle: [] };
+    (list || []).forEach(item => {
+      const c = classifyEntry(item);
+      if(!c){ counts.unknown++; return; }
+      counts[c.kind]++;
+      if(c.kind === 'bundle') buckets.bundle.push(c.data);
+      else buckets[c.kind].push(item);
+    });
+    return { counts, buckets };
+  }
+
+  function classifyText(raw){
+    if(!raw || !raw.trim()) return { counts:{player:0,match:0,analysis:0,programma:0,bundle:0,unknown:0}, buckets:null, list:null };
+    let list = null;
+    try {
+      if(typeof _parseImportListRaw === 'function') list = _parseImportListRaw(raw);
+    } catch(_){}
+    if(!list){
+      // Last-ditch JSON parse
+      try {
+        const j = JSON.parse(raw);
+        list = Array.isArray(j) ? j : [j];
+      } catch(_){ return { counts:null, buckets:null, list:null, error:'Kan JSON niet lezen.' }; }
+    }
+    const cls = classifyList(list);
+    // Bundles "ontvouwen" voor preview
+    if(cls.buckets.bundle.length){
+      cls.buckets.bundle.forEach(b => {
+        if(Array.isArray(b.players)) cls.buckets.player.push(...b.players), cls.counts.player += b.players.length;
+        if(Array.isArray(b.matchReports)) cls.buckets.match.push(...b.matchReports), cls.counts.match += b.matchReports.length;
+        if(Array.isArray(b.analyses)) cls.buckets.analysis.push(...b.analyses), cls.counts.analysis += b.analyses.length;
+        if(Array.isArray(b.programma)) cls.buckets.programma.push(...b.programma), cls.counts.programma += b.programma.length;
+      });
+    }
+    return { counts: cls.counts, buckets: cls.buckets, list };
+  }
+
+  /* ===== Smart import modal ===== */
+  let smartImportState = { text: '', wired: false };
+
+  function openSmartImport(){
+    const bd = document.getElementById('smart-import-backdrop');
+    if(!bd) return;
+    wireSmartImport();
+    const ta = document.getElementById('smart-import-text');
+    const file = document.getElementById('smart-import-file');
+    if(ta) ta.value = '';
+    if(file) file.value = '';
+    updateSmartImportPreview('');
+    setSmartStatus('smart-import-status', '');
+    bd.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    setTimeout(() => { if(ta) ta.focus(); }, 30);
+  }
+  function closeSmartImport(){
+    const bd = document.getElementById('smart-import-backdrop');
+    if(!bd) return;
+    bd.classList.remove('show');
+    document.body.style.overflow = '';
+  }
+  window.openSmartImport = openSmartImport;
+  window.closeSmartImport = closeSmartImport;
+
+  function updateSmartImportPreview(raw){
+    smartImportState.text = raw || '';
+    const wrap = document.getElementById('smart-import-classify');
+    const goBtn = document.getElementById('smart-import-go');
+    if(!wrap) return;
+    if(!raw || !raw.trim()){
+      wrap.innerHTML = `
+        <span class="pill muted"><span class="num">0</span> spelers</span>
+        <span class="pill muted"><span class="num">0</span> wedstrijden</span>
+        <span class="pill muted"><span class="num">0</span> analyses</span>
+        <span class="pill muted"><span class="num">0</span> programma</span>`;
+      if(goBtn) goBtn.disabled = true;
+      setSmartStatus('smart-import-status', '');
+      return;
+    }
+    const r = classifyText(raw);
+    if(r.error){
+      wrap.innerHTML = `<span class="pill muted"><span class="num">!</span> Onleesbaar</span>`;
+      if(goBtn) goBtn.disabled = true;
+      setSmartStatus('smart-import-status', r.error, 'err');
+      return;
+    }
+    const c = r.counts;
+    const totalKnown = c.player + c.match + c.analysis + c.programma;
+    function pill(label, n){
+      const cls = n > 0 ? 'pill' : 'pill muted';
+      return `<span class="${cls}"><span class="num">${n}</span> ${label}</span>`;
+    }
+    wrap.innerHTML = pill('spelers', c.player) + pill('wedstrijden', c.match) +
+                     pill('analyses', c.analysis) + pill('programma', c.programma) +
+                     (c.unknown ? `<span class="pill muted"><span class="num">${c.unknown}</span> overig</span>` : '');
+    if(goBtn) goBtn.disabled = totalKnown === 0;
+    if(totalKnown === 0){
+      setSmartStatus('smart-import-status', 'Geen herkenbare items gevonden in deze invoer.', 'err');
+    } else {
+      setSmartStatus('smart-import-status', '');
+    }
+  }
+
+  function setSmartStatus(id, msg, level){
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.textContent = msg || '';
+    el.classList.remove('ok', 'err');
+    if(level) el.classList.add(level);
+  }
+
+  function wireSmartImport(){
+    if(smartImportState.wired) return;
+    smartImportState.wired = true;
+    const bd = document.getElementById('smart-import-backdrop');
+    const close = document.getElementById('smart-import-close');
+    const cancel = document.getElementById('smart-import-cancel');
+    const ta = document.getElementById('smart-import-text');
+    const file = document.getElementById('smart-import-file');
+    const go = document.getElementById('smart-import-go');
+    if(bd) bd.addEventListener('click', (ev) => { if(ev.target === bd) closeSmartImport(); });
+    if(close) close.addEventListener('click', closeSmartImport);
+    if(cancel) cancel.addEventListener('click', closeSmartImport);
+    if(ta) ta.addEventListener('input', (e) => updateSmartImportPreview(e.target.value));
+    if(file) file.addEventListener('change', (ev) => {
+      const f = ev.target.files && ev.target.files[0];
+      if(!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = String(reader.result || '');
+        if(ta) ta.value = text;
+        updateSmartImportPreview(text);
+      };
+      reader.onerror = () => setSmartStatus('smart-import-status', 'Kon bestand niet lezen.', 'err');
+      reader.readAsText(f);
+    });
+    if(go) go.addEventListener('click', runSmartImport);
+    document.addEventListener('keydown', (ev) => {
+      if(ev.key === 'Escape'){
+        const b = document.getElementById('smart-import-backdrop');
+        if(b && b.classList.contains('show')) closeSmartImport();
+      }
+    });
+  }
+
+  async function runSmartImport(){
+    const raw = smartImportState.text;
+    const r = classifyText(raw);
+    if(!r.buckets){ setSmartStatus('smart-import-status', r.error || 'Niets te importeren.', 'err'); return; }
+    setSmartStatus('smart-import-status', 'Bezig met importeren\u2026', 'ok');
+    const go = document.getElementById('smart-import-go');
+    if(go) go.disabled = true;
+
+    const summary = { player: { ok:0, fail:0 }, match: { ok:0, fail:0 }, analysis: { ok:0, fail:0 }, programma: { ok:0, fail:0 } };
+
+    // Spelers
+    for(const p of r.buckets.player){
+      try {
+        if(!p || !p.naam){ summary.player.fail++; continue; }
+        const obj = Object.assign({}, p);
+        if(!obj.id) obj.id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('p_' + Date.now() + '_' + Math.random().toString(36).slice(2,7));
+        if(typeof savePlayer === 'function'){ await savePlayer(obj); summary.player.ok++; }
+        else summary.player.fail++;
+      } catch(_){ summary.player.fail++; }
+    }
+    // Wedstrijden
+    for(const m of r.buckets.match){
+      try {
+        const obj = Object.assign({}, m);
+        if(!obj.id) obj.id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('m_' + Date.now() + '_' + Math.random().toString(36).slice(2,7));
+        if(typeof saveMatchReport === 'function'){ await saveMatchReport(obj); summary.match.ok++; }
+        else summary.match.fail++;
+      } catch(_){ summary.match.fail++; }
+    }
+    // Analyses
+    for(const a of r.buckets.analysis){
+      try {
+        const obj = Object.assign({}, a);
+        if(!obj.id) obj.id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('a_' + Date.now() + '_' + Math.random().toString(36).slice(2,7));
+        if(typeof saveAnalysis === 'function'){ await saveAnalysis(obj); summary.analysis.ok++; }
+        else summary.analysis.fail++;
+      } catch(_){ summary.analysis.fail++; }
+    }
+    // Programma
+    for(const it of r.buckets.programma){
+      try {
+        const obj = Object.assign({}, it);
+        if(!obj.id) obj.id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('pr_' + Date.now() + '_' + Math.random().toString(36).slice(2,7));
+        if(typeof saveProgrammaItem === 'function'){ await saveProgrammaItem(obj); summary.programma.ok++; }
+        else summary.programma.fail++;
+      } catch(_){ summary.programma.fail++; }
+    }
+
+    const parts = [];
+    if(summary.player.ok)    parts.push(`${summary.player.ok} speler${summary.player.ok===1?'':'s'}`);
+    if(summary.match.ok)     parts.push(`${summary.match.ok} wedstrijd${summary.match.ok===1?'':'en'}`);
+    if(summary.analysis.ok)  parts.push(`${summary.analysis.ok} analyse${summary.analysis.ok===1?'':'s'}`);
+    if(summary.programma.ok) parts.push(`${summary.programma.ok} programma-item${summary.programma.ok===1?'':'s'}`);
+    const totalFail = summary.player.fail + summary.match.fail + summary.analysis.fail + summary.programma.fail;
+    const okMsg = parts.length ? ('Geïmporteerd: ' + parts.join(', ')) : 'Niets geïmporteerd';
+    const finalMsg = totalFail ? (okMsg + ` — ${totalFail} overgeslagen`) : okMsg;
+    setSmartStatus('smart-import-status', finalMsg, parts.length ? 'ok' : 'err');
+    if(go) go.disabled = false;
+    if(typeof toast === 'function' && parts.length) toast(okMsg);
+    setTimeout(() => { if(parts.length) closeSmartImport(); }, 1400);
+  }
+
+  /* ===== Smart export modal ===== */
+  let smartExportState = { wired: false };
+
+  function openSmartExport(){
+    const bd = document.getElementById('smart-export-backdrop');
+    if(!bd) return;
+    wireSmartExport();
+    refreshSmartExportMeta();
+    refreshSmartExportSummary();
+    setSmartStatus('smart-export-status', '');
+    bd.classList.add('show');
+    document.body.style.overflow = 'hidden';
+  }
+  function closeSmartExport(){
+    const bd = document.getElementById('smart-export-backdrop');
+    if(!bd) return;
+    bd.classList.remove('show');
+    document.body.style.overflow = '';
+  }
+  window.openSmartExport = openSmartExport;
+  window.closeSmartExport = closeSmartExport;
+
+  function refreshSmartExportMeta(){
+    const tryLoad = (fn, fallback) => {
+      try { return (typeof fn === 'function' ? fn() : fallback) || fallback; }
+      catch(_){ return fallback; }
+    };
+    const players = tryLoad(typeof loadPlayers !== 'undefined' && loadPlayers, []);
+    const matches = tryLoad(typeof loadMatchReports !== 'undefined' && loadMatchReports, []);
+    const analyses = tryLoad(typeof loadAnalyses !== 'undefined' && loadAnalyses, []);
+    const programma = tryLoad(typeof loadProgramma !== 'undefined' && loadProgramma, []);
+    const set = (id, txt) => { const el = document.getElementById(id); if(el) el.textContent = txt; };
+    set('smart-export-meta-players',     `${players.length} item${players.length===1?'':'s'}`);
+    set('smart-export-meta-matchReports', `${matches.length} item${matches.length===1?'':'s'}`);
+    set('smart-export-meta-analyses',    `${analyses.length} item${analyses.length===1?'':'s'}`);
+    set('smart-export-meta-programma',   `${programma.length} item${programma.length===1?'':'s'}`);
+  }
+
+  function getExportChecks(){
+    const out = {};
+    document.querySelectorAll('#smart-export-backdrop input[type=checkbox][data-export-slice]').forEach(c => {
+      out[c.dataset.exportSlice] = !!c.checked;
+    });
+    return out;
+  }
+  function refreshSmartExportSummary(){
+    const c = getExportChecks();
+    const n = Object.values(c).filter(Boolean).length;
+    const sum = document.getElementById('smart-export-summary');
+    if(sum) sum.textContent = `${n} onderde${n===1?'el':'len'} geselecteerd`;
+    const go = document.getElementById('smart-export-go');
+    if(go) go.disabled = (n === 0);
+    const allBtn = document.getElementById('smart-export-all');
+    if(allBtn){
+      const total = Object.keys(c).length;
+      allBtn.textContent = (n === total) ? 'Alles deselecteren' : 'Alles selecteren';
+    }
+  }
+
+  function wireSmartExport(){
+    if(smartExportState.wired) return;
+    smartExportState.wired = true;
+    const bd = document.getElementById('smart-export-backdrop');
+    const close = document.getElementById('smart-export-close');
+    const cancel = document.getElementById('smart-export-cancel');
+    const allBtn = document.getElementById('smart-export-all');
+    const go = document.getElementById('smart-export-go');
+    if(bd) bd.addEventListener('click', (ev) => { if(ev.target === bd) closeSmartExport(); });
+    if(close) close.addEventListener('click', closeSmartExport);
+    if(cancel) cancel.addEventListener('click', closeSmartExport);
+    bd?.querySelectorAll('input[type=checkbox][data-export-slice]').forEach(c => {
+      c.addEventListener('change', refreshSmartExportSummary);
+    });
+    if(allBtn) allBtn.addEventListener('click', () => {
+      const checks = bd.querySelectorAll('input[type=checkbox][data-export-slice]');
+      const allOn = Array.from(checks).every(c => c.checked);
+      checks.forEach(c => { c.checked = !allOn; });
+      refreshSmartExportSummary();
+    });
+    if(go) go.addEventListener('click', runSmartExport);
+    document.addEventListener('keydown', (ev) => {
+      if(ev.key === 'Escape'){
+        const b = document.getElementById('smart-export-backdrop');
+        if(b && b.classList.contains('show')) closeSmartExport();
+      }
+    });
+  }
+
+  function runSmartExport(){
+    const c = getExportChecks();
+    const safeLoad = (fn) => { try { return (typeof fn === 'function' ? fn() : []) || []; } catch(_){ return []; } };
+    const data = {
+      exported: new Date().toISOString(),
+      version: 'v70h-s33',
+      scout: (typeof currentUser !== 'undefined' && currentUser && currentUser.email) || 'Marcel Steeman'
+    };
+    if(c.players)      data.players      = safeLoad(typeof loadPlayers !== 'undefined' && loadPlayers);
+    if(c.matchReports) data.matchReports = safeLoad(typeof loadMatchReports !== 'undefined' && loadMatchReports);
+    if(c.analyses)     data.analyses     = safeLoad(typeof loadAnalyses !== 'undefined' && loadAnalyses);
+    if(c.programma)    data.programma    = safeLoad(typeof loadProgramma !== 'undefined' && loadProgramma);
+    if(c.personal){
+      try { data.personal = JSON.parse(localStorage.getItem('sh_profile_personal_v1') || '{}') || {}; }
+      catch(_){ data.personal = {}; }
+    }
+
+    try {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const dateStr = (typeof todayISO === 'function') ? todayISO() : new Date().toISOString().slice(0,10);
+      a.href = url;
+      a.download = `scoutinghub_export_${dateStr}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setSmartStatus('smart-export-status', 'Download gestart.', 'ok');
+      if(typeof toast === 'function') toast('Export gedownload');
+      setTimeout(closeSmartExport, 800);
+    } catch(err){
+      console.warn('export failed', err);
+      setSmartStatus('smart-export-status', 'Download is mislukt.', 'err');
+    }
+  }
 })();
 </script>
 

@@ -819,12 +819,14 @@ a { color: var(--accent); text-decoration: none; }
   border-right: 1px solid var(--border);
   padding: 14px 12px;
   display: flex; flex-direction: column;
-  position: sticky; top: 0; height: 100vh; max-height: 100vh;
-  /* v70h-s2: GEEN onafhankelijke scroll — sidebar is altijd volledig in beeld */
+  /* v70h-s3: hard fixed — altijd in beeld, scrolt nooit los van de pagina */
+  position: fixed; top: 0; left: 0;
+  width: 240px; height: 100vh; max-height: 100vh;
   overflow: hidden;
   overscroll-behavior: contain;
   scrollbar-width: none;
   -ms-overflow-style: none;
+  z-index: 50;
 }
 .sidebar::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .brand {
@@ -923,7 +925,7 @@ a { color: var(--accent); text-decoration: none; }
 @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
 
 /* Main */
-.main { padding: 24px 32px 48px 32px; max-width: 1500px; }
+.main { padding: 24px 32px 48px 32px; max-width: 1500px; grid-column: 2; }
 .topbar {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 22px;
@@ -14367,18 +14369,55 @@ body:not(.view-active-report) #view-report {
     }
   });
 
-  // v70h-s2: event-delegation in plaats van wireBtn — werkt ook als knoppen
-  // later in de DOM verschijnen, en kan niet "verloren" gaan door re-renders.
+  // v70h-s3: 3-laags wiring — direct attach + polling + delegation
   const TRIGGER_IDS = ['nav-new-report-btn', 'dash-new-report-btn', 'bn-new-report-btn'];
-  document.addEventListener('click', (e) => {
-    const btn = e.target.closest('#nav-new-report-btn, #dash-new-report-btn, #bn-new-report-btn');
-    if(!btn) return;
-    if(!TRIGGER_IDS.includes(btn.id)) return;
-    e.preventDefault();
-    e.stopPropagation();
+
+  function toggleFor(btn){
     if(menu.classList.contains('show') && anchor === btn){ close(); }
     else { open(btn); }
-  }, true); // capture-phase: vangen vóór andere handlers (zoals .nav-item)
+  }
+
+  // Laag 1: capture-phase delegation op document (vangt vóór nav-item handler)
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('#nav-new-report-btn, #dash-new-report-btn, #bn-new-report-btn');
+    if(!btn || !TRIGGER_IDS.includes(btn.id)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.stopImmediatePropagation();
+    toggleFor(btn);
+  }, true);
+
+  // Laag 2: directe listeners op de knoppen zelf — pollt tot ze bestaan,
+  // markert ze zodat dubbele bindings uitblijven.
+  function wireDirectly(){
+    TRIGGER_IDS.forEach((id) => {
+      const btn = document.getElementById(id);
+      if(!btn || btn.__shNewWired) return;
+      btn.__shNewWired = true;
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleFor(btn);
+      });
+    });
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', wireDirectly);
+  } else {
+    wireDirectly();
+  }
+  // Re-wire bij DOM-mutaties (login -> app shell verschijnt)
+  const __shNewMo = new MutationObserver(wireDirectly);
+  __shNewMo.observe(document.body, { childList: true, subtree: true });
+  // Veiligheids-poll voor de eerste 6 seconden na load
+  let __shNewPoll = 0;
+  const __shNewIv = setInterval(() => {
+    wireDirectly();
+    if(++__shNewPoll > 30){ clearInterval(__shNewIv); }
+  }, 200);
+
+  // Expose voor debug en handmatige aanroep
+  window.__shToggleNewMenu = toggleFor;
 
   document.addEventListener('mousedown', (e) => {
     if(!menu.classList.contains('show')) return;

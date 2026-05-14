@@ -2378,48 +2378,41 @@ tbody tr:last-child td { border-bottom: none; }
   opacity: 1;
 }
 
-/* Install PWA button */
+/* v70h-s26: Install PWA button — discreet in sidebar */
 .install-btn {
-  position: fixed;
-  bottom: calc(20px + env(safe-area-inset-bottom));
-  right: 20px;
-  z-index: 700;
-  background: linear-gradient(135deg, var(--primary), var(--primary-2));
-  color: white;
-  border: none;
-  border-radius: 999px;
-  padding: 12px 20px;
-  padding-right: 38px;
-  font-weight: 700;
-  font-size: 13px;
-  box-shadow: 0 10px 30px rgba(229,57,53,.45);
+  position: relative;
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px 32px 9px 12px;
+  background: linear-gradient(135deg, rgba(229,57,53,.14), rgba(229,57,53,.06));
+  color: var(--text);
+  border: 1px solid rgba(229,57,53,.35);
+  border-radius: 8px;
+  font-size: 12px; font-weight: 600;
   cursor: pointer;
   display: none;
   align-items: center;
   gap: 8px;
-  animation: installPulse 2.2s ease-in-out infinite;
+  font-family: inherit;
+  transition: background .15s, border-color .15s;
 }
 .install-btn.show { display: inline-flex; }
-.install-btn:hover { transform: translateY(-1px); animation: none; }
-.install-btn svg.icon-down { width: 16px; height: 16px; }
+.install-btn:hover { background: rgba(229,57,53,.22); border-color: rgba(229,57,53,.55); }
+.install-btn svg.icon-down { width: 14px; height: 14px; flex-shrink: 0; }
 .install-btn-close {
   position: absolute;
-  top: 50%; right: 10px;
+  top: 50%; right: 6px;
   transform: translateY(-50%);
-  width: 22px; height: 22px;
+  width: 18px; height: 18px;
   border-radius: 50%;
-  background: rgba(0,0,0,.25);
-  border: none; color: #fff;
-  font-size: 14px; line-height: 1;
+  background: rgba(255,255,255,.08);
+  border: none; color: var(--text-2);
+  font-size: 13px; line-height: 1;
   cursor: pointer;
   display: flex; align-items: center; justify-content: center;
   padding: 0;
 }
-.install-btn-close:hover { background: rgba(0,0,0,.45); }
-@keyframes installPulse {
-  0%, 100% { box-shadow: 0 10px 30px rgba(229,57,53,.45); transform: scale(1); }
-  50%      { box-shadow: 0 14px 40px rgba(229,57,53,.75); transform: scale(1.04); }
-}
+.install-btn-close:hover { background: rgba(255,255,255,.18); color: var(--text); }
 /* Instructie-modal voor handmatig installeren */
 .install-modal-backdrop {
   position: fixed; inset: 0;
@@ -2951,10 +2944,6 @@ tbody tr:last-child td { border-bottom: none; }
   .matches-list, .match-card { max-width: 100%; }
   .match-dropdown-row { flex-wrap: wrap; }
 
-  /* Hide install button on mobile to avoid covering content (already covered by bottom-nav) */
-  .install-btn {
-    bottom: calc(80px + env(safe-area-inset-bottom));
-  }
 
   /* Geo panel stacks */
   .geo-panel-wrap { grid-template-columns: 1fr; }
@@ -4063,16 +4052,6 @@ tbody tr:last-child td { border-bottom: none; }
   <!-- Sidebar drawer overlay (mobile) -->
   <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
-  <!-- Install PWA floating button -->
-  <button class="install-btn" id="install-btn" type="button" aria-label="App installeren">
-    <svg class="icon-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 3v12"/>
-      <path d="M7 10l5 5 5-5"/>
-      <path d="M5 21h14"/>
-    </svg>
-    Installeer app
-    <span class="install-btn-close" id="install-btn-close" role="button" aria-label="Sluiten">×</span>
-  </button>
   <!-- Handmatige installatie-instructies modal -->
   <div class="install-modal-backdrop" id="install-modal-backdrop">
     <div class="install-modal" role="dialog" aria-labelledby="install-modal-title">
@@ -4164,6 +4143,16 @@ tbody tr:last-child td { border-bottom: none; }
         <button type="button" class="sidebar-settings-btn" id="sidebar-settings-btn" title="Instellingen">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
           <span>Instellingen</span>
+        </button>
+        <!-- v70h-s26: install-knop in sidebar i.p.v. floating -->
+        <button class="install-btn" id="install-btn" type="button" aria-label="App installeren">
+          <svg class="icon-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v12"/>
+            <path d="M7 10l5 5 5-5"/>
+            <path d="M5 21h14"/>
+          </svg>
+          Installeer app
+          <span class="install-btn-close" id="install-btn-close" role="button" aria-label="Sluiten">×</span>
         </button>
         <button class="logout-btn" id="logout-btn">Uitloggen</button>
       </div>

@@ -1477,6 +1477,69 @@ body.view-active-report #view-report {
 }
 
 /* Draft restored banner (bovenaan rapport-formulier) */
+.db-draft-card {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px;
+  margin: 0 0 14px 0;
+  background: linear-gradient(135deg, rgba(245,197,24,.12), rgba(245,197,24,.06));
+  border: 1.5px solid rgba(245,197,24,.45);
+  border-left: 4px solid var(--warn, #f5c518);
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(245,197,24,.08);
+}
+.db-draft-card .ic {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: rgba(245,197,24,.18);
+  color: var(--warn, #f5c518);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px; font-weight: 800;
+  flex-shrink: 0;
+}
+.db-draft-card .info { flex: 1; min-width: 0; }
+.db-draft-card .info .badge {
+  display: inline-block;
+  font-size: 10px; font-weight: 800;
+  color: var(--warn, #f5c518);
+  background: rgba(245,197,24,.18);
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: .5px;
+  margin-bottom: 4px;
+}
+.db-draft-card .info .title {
+  font-weight: 700; font-size: 15px;
+  color: var(--text, #e7eaf0);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.db-draft-card .info .meta {
+  font-size: 12px;
+  color: var(--text-3, #7b8294);
+  margin-top: 2px;
+}
+.db-draft-card .actions { display: flex; gap: 8px; flex-shrink: 0; }
+.db-draft-card .actions button {
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 13px; font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--border, #2a2f3a);
+  background: var(--bg-2, #11151c);
+  color: var(--text, #e7eaf0);
+  transition: background .12s, transform .08s;
+}
+.db-draft-card .actions button.primary {
+  background: var(--warn, #f5c518);
+  border-color: var(--warn, #f5c518);
+  color: #1a1d24;
+}
+.db-draft-card .actions button:hover { transform: translateY(-1px); }
+.db-draft-card .actions button.primary:hover { background: #fcd23f; }
+@media (max-width: 540px) {
+  .db-draft-card { flex-wrap: wrap; }
+  .db-draft-card .actions { width: 100%; }
+  .db-draft-card .actions button { flex: 1; }
+}
 .draft-restored-banner {
   background: linear-gradient(135deg, rgba(245,197,24,.18), rgba(245,197,24,.08));
   border: 1px solid rgba(245,197,24,.4);
@@ -7027,7 +7090,11 @@ function go(view){
   if(view === 'compare')   renderCompare();
   if(view === 'matches')   renderMatches();
   if(view === 'pitch')     renderPitch();
-  if(view === 'report')    resetReportForm();
+  if(view === 'report')    {
+    resetReportForm();
+    // v70e: concept-banner opnieuw evalueren bij elke navigatie naar rapport
+    setTimeout(() => { if(typeof window.__shTryRestore === 'function') window.__shTryRestore(); }, 50);
+  }
   if(view === 'contacts')  renderContacts();
   if(view === 'programma') renderProgramma();
   if(view === 'adresboek') renderAdresboek();
@@ -7904,6 +7971,30 @@ function renderDist(dist, outline){
 }
 
 /* =============== DATABASE =============== */
+function wireDraftCard(){
+  // v70e: knoppen op concept-rij bedraden
+  const resumeBtn = document.getElementById('db-draft-resume');
+  const delBtn = document.getElementById('db-draft-delete');
+  if(resumeBtn){
+    resumeBtn.addEventListener('click', () => {
+      go('report');
+      // tryRestore wordt nu door go('report') zelf opnieuw aangeroepen.
+      // Direct ook de "laad concept" knop drukken zodat de form alvast invult.
+      setTimeout(() => {
+        const loadBtn = document.getElementById('report-draft-load');
+        if(loadBtn) loadBtn.click();
+      }, 200);
+    });
+  }
+  if(delBtn){
+    delBtn.addEventListener('click', () => {
+      if(!confirm('Concept echt verwijderen? Je verliest het ingevulde rapport.')) return;
+      if(typeof window.__shDropDraft === 'function') window.__shDropDraft();
+      try { localStorage.removeItem('sh_report_draft_v1'); } catch(_){}
+      applyFilters();
+    });
+  }
+}
 function renderDatabase(){
   const players = loadPlayers();
   $('#db-count').textContent = `${players.length} speler${players.length===1?'':'s'}`;
@@ -7954,14 +8045,43 @@ function applyFilters(){
   });
 
   const wrap = $('#db-table-wrap');
+  // v70e: concept-rij rendering helper
+  const draftSnap = (typeof window.__shHasMeaningfulDraft === 'function') ? window.__shHasMeaningfulDraft() : null;
+  const draftHtml = draftSnap ? (function(){
+    const naam = (draftSnap['f-naam'] || '').trim() || 'Onbenoemde speler';
+    const club = (draftSnap['f-club'] || '').trim();
+    const ts = draftSnap._meta && draftSnap._meta.ts;
+    let agoTxt = '';
+    if(ts){
+      const sec = Math.max(1, Math.round((Date.now() - ts) / 1000));
+      if(sec < 60) agoTxt = sec + ' sec geleden';
+      else if(sec < 3600) agoTxt = Math.round(sec/60) + ' min geleden';
+      else if(sec < 86400) agoTxt = Math.round(sec/3600) + ' uur geleden';
+      else agoTxt = Math.round(sec/86400) + ' dag(en) geleden';
+    }
+    return `
+      <div class="db-draft-card">
+        <div class="ic">!</div>
+        <div class="info">
+          <div class="badge">Concept</div>
+          <div class="title">${escapeHtml(naam)}${club ? ' &middot; ' + escapeHtml(club) : ''}</div>
+          <div class="meta">Niet ingediend${agoTxt ? ' &middot; ' + agoTxt : ''}</div>
+        </div>
+        <div class="actions">
+          <button type="button" class="primary" id="db-draft-resume">Verder gaan</button>
+          <button type="button" id="db-draft-delete">Verwijderen</button>
+        </div>
+      </div>`;
+  })() : '';
   if(!filtered.length){
-    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">○</div><div>Geen spelers gevonden.</div></div>';
+    wrap.innerHTML = draftHtml + '<div class="empty-state"><div class="empty-icon">○</div><div>Geen spelers gevonden.</div></div>';
+    wireDraftCard();
     return;
   }
   const filteredIds = filtered.map(p => p.id);
   dbCheckedIds = dbCheckedIds.filter(id => filteredIds.includes(id));
   const allChecked = filteredIds.length > 0 && filteredIds.every(id => dbCheckedIds.includes(id));
-  wrap.innerHTML = `
+  wrap.innerHTML = draftHtml + `
     <table>
       <thead>
         <tr>
@@ -8002,6 +8122,7 @@ function applyFilters(){
     </table>
     <div id="db-compare-bar-host"></div>
   `;
+  wireDraftCard();
   // Row click → detail (but ignore clicks on the checkbox column)
   $$('tbody tr', wrap).forEach(tr=>{
     tr.addEventListener('click', (ev)=>{
@@ -13521,6 +13642,8 @@ onAuthStateChanged(auth, async (user)=>{
     // Verwijder eventuele oude restrictie-attribuut: input mag normaal typen
     input.removeAttribute('readonly');
     input.removeAttribute('inputmode');
+    // v70e: kill native datalist dropdown (anders zie je 2 popups naast elkaar)
+    input.removeAttribute('list');
     input.style.cursor = '';
     input.style.caretColor = '';
 
@@ -13740,6 +13863,20 @@ onAuthStateChanged(auth, async (user)=>{
     }
     window.__shDraftSnap = snap;
   }
+  // v70e: globaal beschikbaar zodat go('report') 'm opnieuw kan triggeren
+  window.__shTryRestore = tryRestore;
+  window.__shDropDraft = dropDraft;
+  window.__shHasMeaningfulDraft = function(){
+    try {
+      const raw = localStorage.getItem(DRAFT_KEY);
+      if(!raw) return null;
+      const snap = JSON.parse(raw);
+      if(!snap || !snap._meta) return null;
+      if(Date.now() - snap._meta.ts > DRAFT_MAX_AGE_MS) return null;
+      if(!hasMeaningfulContent(snap)) return null;
+      return snap;
+    } catch(_){ return null; }
+  };
 
   if(btnLoad){
     btnLoad.addEventListener('click', () => {

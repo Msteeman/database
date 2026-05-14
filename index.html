@@ -14334,28 +14334,8 @@ body:not(.view-active-report) #view-report {
     anchor = null;
   }
 
-  // v70h-s5: korte toast bovenaan scherm zodat user op telefoon kan zien dat de tik aankomt
-  function __shToast(msg){
-    try {
-      let t = document.getElementById('__sh-toast');
-      if(!t){
-        t = document.createElement('div');
-        t.id = '__sh-toast';
-        t.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);'+
-          'background:#0bc484;color:#000;padding:10px 16px;border-radius:8px;'+
-          'font-weight:700;font-size:14px;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.4);'+
-          'pointer-events:none;transition:opacity .25s;opacity:0;';
-        document.body.appendChild(t);
-      }
-      t.textContent = msg;
-      t.style.opacity = '1';
-      clearTimeout(t.__hideTm);
-      t.__hideTm = setTimeout(() => { t.style.opacity = '0'; }, 1800);
-    } catch(_){}
-  }
-
+  // v70h-s6: toast verwijderd, robuuste listeners blijven.
   function __shHandleKind(kind){
-    __shToast('Optie: ' + kind);
     close();
     try {
       if(kind === 'speler'){
@@ -14384,9 +14364,7 @@ body:not(.view-active-report) #view-report {
           }
         }, 140);
       }
-    } catch(err){
-      __shToast('FOUT: ' + (err && err.message ? err.message : err));
-    }
+    } catch(_){}
   }
 
   // Per-knop directe listeners — click + pointerup + touchend met dedupe

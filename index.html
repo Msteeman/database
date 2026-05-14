@@ -681,6 +681,78 @@ a { color: var(--accent); text-decoration: none; }
 .td-actions .btn-route:hover { filter: brightness(1.1); transform: translateY(-1px); }
 .td-actions .btn-route:active { transform: translateY(0); }
 .td-empty { font-size: 12px; color: var(--text-3); font-style: italic; padding: 6px 0; }
+
+/* Aankomende wedstrijden (3 dagen) — compact */
+.upcoming-matches {
+  background: var(--bg-2);
+  border: 1px solid var(--border-2);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.upcoming-matches-head {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 10px;
+}
+.upcoming-matches-title {
+  font-size: 13px; font-weight: 700;
+  letter-spacing: .4px; text-transform: uppercase;
+  color: var(--text-2);
+}
+.upcoming-matches-count {
+  font-size: 11px; color: var(--text-3);
+}
+.up-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 0;
+  border-top: 1px dashed var(--border-2);
+  cursor: pointer;
+  transition: background .15s;
+}
+.up-row:first-of-type { border-top: none; }
+.up-row:hover { background: rgba(255,255,255,.03); }
+.up-when {
+  display: flex; flex-direction: column;
+  min-width: 78px; flex-shrink: 0;
+}
+.up-day {
+  font-size: 12px; font-weight: 700;
+  color: var(--primary);
+}
+.up-time {
+  font-size: 11px; color: var(--text-3);
+  margin-top: 1px;
+}
+.up-teams {
+  flex: 1; min-width: 0;
+  font-size: 13px; font-weight: 600;
+  color: var(--text-1);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.up-meta {
+  display: flex; align-items: center; gap: 8px;
+  flex-shrink: 0;
+}
+.up-tag {
+  display: inline-block; padding: 2px 8px;
+  background: rgba(255,255,255,.05);
+  border: 1px solid var(--border-2);
+  border-radius: 999px;
+  font-size: 10px; color: var(--text-2);
+}
+.up-route {
+  text-decoration: none;
+  font-size: 16px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: background .15s;
+}
+.up-route:hover { background: rgba(227,6,19,.15); }
+@media (max-width: 480px){
+  .up-when { min-width: 64px; }
+  .up-day { font-size: 11px; }
+  .up-teams { font-size: 12px; }
+}
 /* Film-gradient text utility — same DNA as the intro wordmark */
 .film-text {
   background: var(--film-grad);
@@ -3672,6 +3744,7 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
 
         <div id="today-matches-wrap" style="display:none; margin-bottom:18px;"></div>
+        <div id="upcoming-matches-wrap" style="display:none; margin-bottom:18px;"></div>
         <div class="kpi-grid" id="kpi-grid"></div>
 
         <div id="dash-empty" style="display:none;"></div>
@@ -5779,6 +5852,7 @@ function subscribeData(){
   unsubProgramma = onSnapshot(programmaCol(), snap=>{
     programmaCache = snap.docs.map(d => ({...d.data(), id: d.id}));
     if(currentView === 'programma') renderProgramma();
+    if(currentView === 'dashboard') { renderTodayMatches(); renderUpcomingMatches(); }
     setSync('ok');
   }, err=>{
     console.error('Programma sync error:', err);
@@ -6888,8 +6962,85 @@ function renderTodayMatches(){
   });
 }
 
+function renderUpcomingMatches(){
+  const wrap = document.getElementById('upcoming-matches-wrap');
+  if(!wrap) return;
+  if(typeof programmaCache === 'undefined' || !Array.isArray(programmaCache) || programmaCache.length === 0){
+    wrap.style.display = 'none'; wrap.innerHTML = ''; return;
+  }
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const horizon = new Date(today.getTime() + 4*24*3600*1000); // +4: pak dag t/m +3
+  const items = programmaCache.filter(p => {
+    if(!p || !p.datum) return false;
+    const d = new Date(p.datum + 'T00:00:00');
+    return d > today && d < horizon;
+  });
+  if(items.length === 0){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  items.sort((a,b) => {
+    const ka = (a.datum||'') + ' ' + (a.tijd||'99:99');
+    const kb = (b.datum||'') + ' ' + (b.tijd||'99:99');
+    return ka.localeCompare(kb);
+  });
+  const weekdays = ['Zo','Ma','Di','Wo','Do','Vr','Za'];
+  const lines = items.map(it => {
+    const d = new Date(it.datum + 'T00:00:00');
+    const diffDays = Math.round((d - today) / (24*3600*1000));
+    let label = '';
+    if(diffDays === 1) label = 'Morgen';
+    else if(diffDays === 2) label = 'Overmorgen';
+    else label = `${weekdays[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const teams = `${escapeHtml(it.thuis||'?')} — ${escapeHtml(it.uit||'?')}`;
+    const tijd = it.tijd ? escapeHtml(it.tijd) : '';
+    const club = (typeof CLUB_ADRESSEN !== 'undefined' && it.thuis)
+      ? CLUB_ADRESSEN[it.thuis.toLowerCase().trim()] : null;
+    let mapsUrl = '';
+    if(club && club.lat && club.lon){
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${club.lat},${club.lon}`;
+    } else if(club && club.adres){
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(club.adres)}`;
+    } else if(it.locatie){
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(it.locatie)}`;
+    }
+    const routeHtml = mapsUrl
+      ? `<a class="up-route" href="${mapsUrl}" target="_blank" rel="noopener" title="Route via Google Maps">🗺️</a>`
+      : '';
+    const leef = it.leeftijd ? `<span class="up-tag">${escapeHtml(it.leeftijd)}</span>` : '';
+    return `
+      <div class="up-row" data-prog-id="${it.id}">
+        <div class="up-when">
+          <span class="up-day">${label}</span>
+          ${tijd ? `<span class="up-time">${tijd}</span>` : ''}
+        </div>
+        <div class="up-teams">${teams}</div>
+        <div class="up-meta">${leef}${routeHtml}</div>
+      </div>`;
+  }).join('');
+  wrap.innerHTML = `
+    <div class="upcoming-matches">
+      <div class="upcoming-matches-head">
+        <div class="upcoming-matches-title">Aankomende wedstrijden</div>
+        <div class="upcoming-matches-count">${items.length} de komende 3 dagen</div>
+      </div>
+      ${lines}
+    </div>
+  `;
+  wrap.style.display = 'block';
+  // Klik op een regel -> open de wedstrijd in programma-modal.
+  wrap.querySelectorAll('.up-row').forEach(row => {
+    row.addEventListener('click', e => {
+      if(e.target.closest('a')) return;
+      const pid = row.dataset.progId;
+      if(!pid) return;
+      if(typeof go === 'function') go('programma');
+      setTimeout(() => { if(typeof openProgMatchModal === 'function') openProgMatchModal(pid); }, 80);
+    });
+  });
+}
+
 function renderDashboard(){
   renderTodayMatches();
+  renderUpcomingMatches();
   const players = loadPlayers();
   $('#dashboard-date').textContent =
     new Date().toLocaleDateString('nl-NL',{weekday:'long', day:'numeric', month:'long', year:'numeric'});

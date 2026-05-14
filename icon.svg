@@ -9,12 +9,32 @@
       <stop offset="0%" stop-color="#ffffff" stop-opacity="0.45"/>
       <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
+    <radialGradient id="ydot" cx="35%" cy="30%" r="70%">
+      <stop offset="0%" stop-color="#fff7d0"/>
+      <stop offset="40%" stop-color="#f5c518"/>
+      <stop offset="100%" stop-color="#b88a08"/>
+    </radialGradient>
+    <filter id="ydotglow" x="-100%" y="-100%" width="300%" height="300%">
+      <feGaussianBlur stdDeviation="5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
+  <!-- Heater shield -->
   <path d="M256 26 L454 96 L454 250 C454 372 372 461 256 493 C140 461 58 372 58 250 L58 96 Z"
         fill="url(#bg)" stroke="#ffffff" stroke-opacity="0.6" stroke-width="6"/>
+  <!-- Top shine -->
   <path d="M256 26 L454 96 L454 192 C384 205 320 192 256 178 C192 192 128 205 58 192 L58 96 Z"
         fill="url(#shine)"/>
+  <!-- SH wordmark -->
   <text x="256" y="332" text-anchor="middle"
         font-family="Arial Black, Arial, sans-serif"
         font-size="186" font-weight="900" fill="#ffffff" letter-spacing="-6">SH</text>
+  <!-- Gele stip centraal boven schild — bevroren orbit op 12-uur-positie -->
+  <g filter="url(#ydotglow)">
+    <circle cx="256" cy="26" r="22" fill="url(#ydot)" stroke="#ffffff" stroke-opacity="0.55" stroke-width="3"/>
+    <circle cx="250" cy="20" r="6" fill="#ffffff" fill-opacity="0.85"/>
+  </g>
 </svg>

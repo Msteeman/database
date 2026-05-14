@@ -4957,7 +4957,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; v70h-s33</div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; v70h-s33b</div>
       </div>
     </div>
   </div>
@@ -16211,31 +16211,33 @@ onAuthStateChanged(auth, async (user)=>{
     // Sidebar
     const sideImg = document.getElementById('scout-avatar-img');
     const sideIni = document.getElementById('scout-avatar-initials');
-    if(sideIni) sideIni.textContent = initials;
+    // v70h-s33b: alleen schrijven bij verschil — anders triggert textContent
+    // de MutationObserver(refreshSettingsFields), wat een infinite loop oplevert.
+    if(sideIni && sideIni.textContent !== initials) sideIni.textContent = initials;
     if(sideImg && sideIni){
       if(dataUrl){
-        sideImg.src = dataUrl;
-        sideImg.style.display = 'block';
-        sideIni.style.display = 'none';
+        if(sideImg.getAttribute('src') !== dataUrl) sideImg.src = dataUrl;
+        if(sideImg.style.display !== 'block') sideImg.style.display = 'block';
+        if(sideIni.style.display !== 'none') sideIni.style.display = 'none';
       } else {
-        sideImg.removeAttribute('src');
-        sideImg.style.display = 'none';
-        sideIni.style.display = 'flex';
+        if(sideImg.hasAttribute('src')) sideImg.removeAttribute('src');
+        if(sideImg.style.display !== 'none') sideImg.style.display = 'none';
+        if(sideIni.style.display !== 'flex') sideIni.style.display = 'flex';
       }
     }
     // Settings preview
     const prevImg = document.getElementById('settings-photo-preview');
     const prevIni = document.getElementById('settings-photo-initials');
-    if(prevIni) prevIni.textContent = initials;
+    if(prevIni && prevIni.textContent !== initials) prevIni.textContent = initials;
     if(prevImg && prevIni){
       if(dataUrl){
-        prevImg.src = dataUrl;
-        prevImg.style.display = 'block';
-        prevIni.style.display = 'none';
+        if(prevImg.getAttribute('src') !== dataUrl) prevImg.src = dataUrl;
+        if(prevImg.style.display !== 'block') prevImg.style.display = 'block';
+        if(prevIni.style.display !== 'none') prevIni.style.display = 'none';
       } else {
-        prevImg.removeAttribute('src');
-        prevImg.style.display = 'none';
-        prevIni.style.display = 'flex';
+        if(prevImg.hasAttribute('src')) prevImg.removeAttribute('src');
+        if(prevImg.style.display !== 'none') prevImg.style.display = 'none';
+        if(prevIni.style.display !== 'flex') prevIni.style.display = 'flex';
       }
     }
   }

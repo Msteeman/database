@@ -1406,21 +1406,44 @@ tbody tr:last-child td { border-bottom: none; }
 .grade-pick-pot.selected[data-grade="C"] { background: transparent; border-color: var(--grade-c); color: var(--grade-c); }
 .grade-pick-pot.selected[data-grade="D"] { background: transparent; border-color: var(--grade-d); color: var(--grade-d); }
 /* Sub-criteria (atletisch) pickers blijven compacter */
-.subcriteria-row .grade-pick { padding: 11px 0; font-size: 16px; min-height: 44px; }
+.subcriteria-row .grade-picker { gap: 4px; }
+.subcriteria-row .grade-pick { padding: 8px 0; font-size: 14px; min-height: 38px; letter-spacing: 0; font-weight: 700; }
+@media (max-width: 380px) {
+  .subcriteria-row .grade-picker { gap: 3px; }
+  .subcriteria-row .grade-pick { font-size: 13px; padding: 7px 0; min-height: 36px; }
+}
 
-/* === v70: Sticky form-actions + autosave + draft restore === */
+/* === v70a: Fixed form-actions (altijd zichtbaar, ook zonder scroll) === */
 .form-actions-sticky {
-  position: sticky;
+  position: fixed;
   bottom: 0;
   left: 0; right: 0;
   background: rgba(17,21,28,.96);
   -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
   border-top: 1px solid var(--border);
-  margin: 22px -16px 0 -16px;
+  margin: 0;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom)) 16px;
   display: flex; gap: 10px; align-items: center;
   box-shadow: 0 -8px 24px rgba(0,0,0,.4);
-  z-index: 60;
+  z-index: 95; /* lager dan bottom-nav (99) zodat die boven blijft */
+}
+/* Op mobiel: boven de bottom-nav (52px hoog + safe-area) */
+@media (max-width: 1024px) {
+  .form-actions-sticky {
+    bottom: calc(58px + env(safe-area-inset-bottom));
+    padding-bottom: 12px;
+  }
+}
+/* Alleen tonen als #view-report actief is */
+body:not(.view-active-report) .form-actions-sticky { display: none !important; }
+/* Padding aan de onderkant van het rapport zodat content niet onder de bar valt */
+body.view-active-report #view-report {
+  padding-bottom: 110px;
+}
+@media (max-width: 1024px) {
+  body.view-active-report #view-report {
+    padding-bottom: calc(150px + env(safe-area-inset-bottom));
+  }
 }
 .form-actions-sticky .autosave-status {
   flex: 1;
@@ -6984,18 +7007,11 @@ function showApp(){
 let formDirty = false;
 function setDirty(v){ formDirty = !!v; }
 function confirmDiscard(){
-  if(!formDirty) return true;
-  const ok = confirm('Je hebt niet-opgeslagen wijzigingen in het rapport. Weet je zeker dat je weg wilt? Wijzigingen gaan verloren.');
-  if(ok) setDirty(false);
-  return ok;
+  // v70a: autosave bewaart alles als concept — geen onderbrekende prompt meer
+  setDirty(false);
+  return true;
 }
-window.addEventListener('beforeunload', (e)=>{
-  if(formDirty){
-    e.preventDefault();
-    e.returnValue = '';
-    return '';
-  }
-});
+/* v70a: beforeunload weggehaald — concept blijft staan in localStorage */
 
 /* =============== NAVIGATION =============== */
 function go(view){
@@ -13360,21 +13376,60 @@ input[data-picker]:focus { caret-color: transparent; }
     close();
   }
 
-  // Open on touch/click of any [data-picker] input
+  // v70a: per-input directe wiring (robuuster op iOS PWA + Android WebView)
+  function wireOne(input){
+    if(input.__shPickerWired) return;
+    input.__shPickerWired = true;
+    // Voorkom dat het toetsenbord opent — readonly is al gezet, maar dit is extra zekerheid.
+    input.setAttribute('readonly', 'readonly');
+    input.setAttribute('inputmode', 'none');
+    input.style.cursor = 'pointer';
+    input.style.caretColor = 'transparent';
+    const handler = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      open(input);
+    };
+    input.addEventListener('click', handler);
+    input.addEventListener('pointerdown', handler);
+    input.addEventListener('touchstart', handler, { passive: false });
+    input.addEventListener('focus', () => {
+      input.blur();
+      open(input);
+    });
+    // Voor de labels die mogelijk om het input staan
+    const label = input.closest('label');
+    if(label && !label.__shPickerLblWired){
+      label.__shPickerLblWired = true;
+      label.addEventListener('click', (e) => {
+        if(e.target === input) return; // handler op input zelf vangt 'm al
+        e.preventDefault();
+        open(input);
+      });
+    }
+  }
+  function wireAll(){
+    document.querySelectorAll('input[data-picker]').forEach(wireOne);
+  }
+  wireAll();
+  // Inputs die later in de DOM komen (modals, edit-mode) ook opvangen
+  const pickerObs = new MutationObserver(wireAll);
+  pickerObs.observe(document.body, { childList: true, subtree: true });
+  // Fallback delegated handlers (capture) — voor edge cases
   document.addEventListener('click', (e) => {
     const t = e.target;
-    if(t && t.matches && t.matches('input[data-picker]')){
+    if(t && t.matches && t.matches('input[data-picker]') && !t.__shPickerWired){
       e.preventDefault();
       open(t);
     }
-  });
-  document.addEventListener('focus', (e) => {
+  }, true);
+  document.addEventListener('focusin', (e) => {
     const t = e.target;
     if(t && t.matches && t.matches('input[data-picker]')){
-      t.blur(); // voorkom toetsenbord
-      open(t);
+      t.blur();
+      if(!backdrop.classList.contains('show')) open(t);
     }
-  }, true);
+  });
 
   searchEl.addEventListener('input', () => render(searchEl.value));
   listEl.addEventListener('click', (e) => {
@@ -13591,17 +13646,21 @@ input[data-picker]:focus { caret-color: transparent; }
   }
 
   // ---- Copy last report ----
-  // "Laatste rapport" = meest recent ingevoerde speler (window.spelers of equivalent)
+  // "Laatste rapport" = meest recent ingevoerde speler uit playersCache
   function getLastReport(){
-    // Probeer meerdere globals — afhankelijk van hoe data heet in deze app
-    const candidates = [window.players, window.spelers, window.STATE && window.STATE.players, window.STATE && window.STATE.spelers];
-    for(const arr of candidates){
+    // playersCache is de Firebase-realtime lijst (zie ~regel 5963)
+    const sources = [
+      typeof playersCache !== 'undefined' ? playersCache : null,
+      window.playersCache,
+      window.players, window.spelers,
+      window.STATE && (window.STATE.players || window.STATE.spelers),
+    ];
+    for(const arr of sources){
       if(Array.isArray(arr) && arr.length){
-        // Sorteer op invoer/created/datum — pak meest recent
         const copy = arr.slice();
         copy.sort((a,b) => {
-          const tb = new Date(b.invoer_datum || b.created || b.updated || b.wedstrijd?.datum || 0).getTime() || 0;
-          const ta = new Date(a.invoer_datum || a.created || a.updated || a.wedstrijd?.datum || 0).getTime() || 0;
+          const tb = new Date(b.invoer_datum || b.created || b.updated || (b.wedstrijd && b.wedstrijd.datum) || 0).getTime() || 0;
+          const ta = new Date(a.invoer_datum || a.created || a.updated || (a.wedstrijd && a.wedstrijd.datum) || 0).getTime() || 0;
           return tb - ta;
         });
         return copy[0];
@@ -13727,11 +13786,24 @@ input[data-picker]:focus { caret-color: transparent; }
 
   // ---- Init ----
   setStatus('saved', 'Concept opgeslagen');
-  // Wacht heel even tot data geladen is — dan banner + copy-row evalueren
-  setTimeout(() => {
-    tryRestore();
-    refreshCopyRow();
-  }, 800);
+
+  // Body-class meegeven zodat we de save-bar alleen op #view-report tonen
+  function syncReportBodyClass(){
+    const v = document.getElementById('view-report');
+    if(!v) return;
+    document.body.classList.toggle('view-active-report', v.classList.contains('active'));
+  }
+  syncReportBodyClass();
+  const viewObs = new MutationObserver(syncReportBodyClass);
+  const vrep = document.getElementById('view-report');
+  if(vrep) viewObs.observe(vrep, { attributes: true, attributeFilter: ['class'] });
+
+  // Wacht tot data geladen is — banner + copy-row evalueren, en herhaal voor zekerheid
+  setTimeout(() => { tryRestore(); refreshCopyRow(); }, 800);
+  setTimeout(refreshCopyRow, 2500);
+  setTimeout(refreshCopyRow, 5000);
+  // Expose voor handmatig refreshen na Firebase-load
+  window.__shRefreshCopyRow = refreshCopyRow;
 })();
 /* ===== /v70a ===== */
 </script>

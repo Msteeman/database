@@ -14526,5 +14526,106 @@ body:not(.view-active-report) #view-report {
 })();
 </script>
 
+
+<!-- v70h-s9: opslaan-knop debug paneel -->
+<script>
+(function(){
+  function ensurePanel(){
+    let p = document.getElementById('__sh-save-dbg');
+    if(p) return p;
+    p = document.createElement('div');
+    p.id = '__sh-save-dbg';
+    p.style.cssText = 'position:fixed;top:8px;left:8px;max-width:340px;'+
+      'background:rgba(0,0,0,.85);color:#0f0;padding:8px 10px;border-radius:6px;'+
+      'font-family:monospace;font-size:11px;line-height:1.4;z-index:99999;'+
+      'pointer-events:none;white-space:pre-wrap;max-height:60vh;overflow:hidden;';
+    document.body.appendChild(p);
+    return p;
+  }
+  function fmt(n){ return (n === undefined || n === null) ? '?' : Math.round(n); }
+  function render(){
+    const p = ensurePanel();
+    const t = new Date();
+    const stamp = String(t.getMinutes()).padStart(2,'0')+':'+String(t.getSeconds()).padStart(2,'0');
+    const view = (typeof currentView !== 'undefined') ? currentView
+               : (window.currentView || 'onbekend');
+    const el = document.getElementById('report-form-actions');
+    const btn = document.getElementById('report-save-btn');
+    let lines = ['[' + stamp + '] view=' + view];
+    if(!el){
+      lines.push('el #report-form-actions: NIET aanwezig in DOM');
+    } else {
+      const cs = window.getComputedStyle(el);
+      const r = el.getBoundingClientRect();
+      const ah = el.classList.contains('form-actions-sticky');
+      lines.push('el: found  hasStickyClass=' + ah);
+      lines.push('position=' + cs.position + '  bottom=' + cs.bottom);
+      lines.push('display=' + cs.display + '  z-index=' + cs.zIndex);
+      lines.push('BBox top=' + fmt(r.top) + ' left=' + fmt(r.left));
+      lines.push('     w=' + fmt(r.width) + ' h=' + fmt(r.height));
+      lines.push('scrollY=' + fmt(window.scrollY) +
+                 ' vpH=' + fmt(window.innerHeight));
+      const stuckAtBottom = (cs.position === 'fixed' && cs.bottom !== 'auto');
+      lines.push(stuckAtBottom ? '>> ZWEVEND: knop zit fixed onderaan'
+                               : '>> OK: knop is onderdeel van pagina');
+    }
+    if(btn){
+      const br = btn.getBoundingClientRect();
+      const bcs = window.getComputedStyle(btn);
+      lines.push('btn: pos=' + bcs.position + ' top=' + fmt(br.top));
+    }
+    p.textContent = lines.join('\n');
+  }
+  let __shSaveRafTick = 0;
+  function scheduleRender(){
+    if(__shSaveRafTick) return;
+    __shSaveRafTick = requestAnimationFrame(() => {
+      __shSaveRafTick = 0;
+      try { render(); } catch(_){}
+    });
+  }
+  // Verberg paneel buiten rapportscherm
+  function maybeShow(){
+    const p = document.getElementById('__sh-save-dbg');
+    const v = (typeof currentView !== 'undefined') ? currentView
+            : (window.currentView || '');
+    if(v === 'report'){
+      if(!p) ensurePanel();
+      render();
+    } else if(p){
+      p.remove();
+    }
+  }
+  window.addEventListener('scroll', () => {
+    const v = (typeof currentView !== 'undefined') ? currentView
+            : (window.currentView || '');
+    if(v === 'report') scheduleRender();
+  }, true);
+  window.addEventListener('resize', () => {
+    const v = (typeof currentView !== 'undefined') ? currentView
+            : (window.currentView || '');
+    if(v === 'report') scheduleRender();
+  });
+  // Patch window.go zodat we bij elke view-switch herevalueren
+  function patchGoForDbg(){
+    if(typeof window.go !== 'function'){
+      setTimeout(patchGoForDbg, 100);
+      return;
+    }
+    if(window.__shSaveDbgGoPatched) return;
+    window.__shSaveDbgGoPatched = true;
+    const orig = window.go;
+    window.go = function(view){
+      const r = orig.apply(this, arguments);
+      setTimeout(maybeShow, 60);
+      return r;
+    };
+  }
+  patchGoForDbg();
+  // Eerste poging
+  setTimeout(maybeShow, 800);
+})();
+</script>
+
 </body>
 </html>

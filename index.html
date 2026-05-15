@@ -65,6 +65,41 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <style>
+/* s35ac: Demo modus banner */
+.demo-banner {
+  position: sticky; top: 0; z-index: 9000;
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; padding: 8px 14px;
+  background: linear-gradient(90deg, #fde047 0%, #facc15 100%);
+  color: #422006; font-size: 13px; font-weight: 600;
+  border-bottom: 1px solid #ca8a04;
+  box-shadow: 0 2px 4px rgba(0,0,0,.08);
+}
+.demo-banner.hidden { display: none !important; }
+.demo-banner-text { display:flex; align-items:center; gap:8px; }
+.demo-banner-text::before { content:'\1F3AC'; font-size:16px; }
+.demo-banner-close {
+  background: rgba(0,0,0,.08); border: 0; color: #422006;
+  width: 26px; height: 26px; border-radius: 50%;
+  cursor: pointer; font-size: 16px; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+}
+.demo-banner-close:hover { background: rgba(0,0,0,.16); }
+.demo-toggle-row { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+.demo-toggle-switch { position:relative; width:44px; height:24px; flex-shrink:0; }
+.demo-toggle-switch input { opacity:0; width:0; height:0; }
+.demo-toggle-slider {
+  position:absolute; cursor:pointer; inset:0;
+  background:#475569; border-radius:24px; transition:.2s;
+}
+.demo-toggle-slider::before {
+  content:''; position:absolute; left:3px; top:3px;
+  width:18px; height:18px; background:#fff; border-radius:50%;
+  transition:.2s;
+}
+.demo-toggle-switch input:checked + .demo-toggle-slider { background:#facc15; }
+.demo-toggle-switch input:checked + .demo-toggle-slider::before { transform:translateX(20px); }
+
 /* =========================================================
    SCOUTINGHUB — Marcel Steeman
    FC Twente / Heracles — O12/O15 jeugdscouting
@@ -5000,6 +5035,11 @@ tbody tr:last-child td { border-bottom: none; }
 
 <!-- =================== APP =================== -->
 <div id="app">
+  <!-- s35ac: Demo modus banner — alleen zichtbaar als demo-toggle aan -->
+  <div class="demo-banner hidden" id="demo-banner" role="status" aria-live="polite">
+    <span class="demo-banner-text">Demo modus actief &mdash; Mark Visser</span>
+    <button type="button" class="demo-banner-close" id="demo-banner-close" aria-label="Banner verbergen">&times;</button>
+  </div>
   <!-- Mobile topbar (hidden on desktop) -->
   <header class="mobile-topbar">
     <button class="mt-home" id="mt-home" aria-label="Naar dashboard">
@@ -5068,6 +5108,26 @@ tbody tr:last-child td { border-bottom: none; }
           <div class="settings-row">
             <span class="settings-row-label">E-mailadres</span>
             <span class="settings-row-value" id="settings-email">&mdash;</span>
+          </div>
+        </div>
+
+        <!-- s35ac: Demo modus -->
+        <div class="settings-section">
+          <div class="settings-section-head">
+            <div class="settings-section-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+            </div>
+            <div>
+              <div class="settings-section-title">Demo modus</div>
+              <div class="settings-section-sub">Toont fictieve naam &quot;Mark Visser&quot; in plaats van je eigen naam &mdash; handig voor video-opnames en screenshots.</div>
+            </div>
+          </div>
+          <div class="demo-toggle-row">
+            <span class="settings-row-label">Demo modus inschakelen</span>
+            <label class="demo-toggle-switch">
+              <input type="checkbox" id="settings-demo-toggle" />
+              <span class="demo-toggle-slider"></span>
+            </label>
           </div>
         </div>
 
@@ -8867,11 +8927,71 @@ function showApp(){
   // v70h-s30: email nu in Instellingen-modal i.p.v. sidebar
   const _se = document.getElementById('settings-email');
   if(_se) _se.textContent = currentUser.email || '\u2014';
+  // s35ac: Demo modus identity-overlay toepassen indien aan
+  if(typeof applyDemoIdentity === 'function') applyDemoIdentity();
   resetInactivity();
   ['mousemove','keydown','click','scroll','touchstart'].forEach(ev=>{
     document.addEventListener(ev, resetInactivity, {passive:true});
   });
 }
+
+/* =============== DEMO MODUS (s35ac) =============== */
+const SH_DEMO_KEY = 'sh-demo-mode';
+const SH_DEMO_BANNER_HIDDEN_KEY = 'sh-demo-banner-hidden';
+const SH_DEMO_NAME = 'Mark Visser';
+const SH_DEMO_INITIALS = 'MV';
+const SH_DEMO_EMAIL = 'm.visser@scouting.nl';
+function isDemoModeOn(){
+  try { return localStorage.getItem(SH_DEMO_KEY) === '1'; } catch(_){ return false; }
+}
+function setDemoMode(on){
+  try { localStorage.setItem(SH_DEMO_KEY, on ? '1' : '0'); } catch(_){ }
+  if(on){
+    // bij heractiveren: banner ook weer tonen
+    try { localStorage.removeItem(SH_DEMO_BANNER_HIDDEN_KEY); } catch(_){ }
+  }
+  applyDemoIdentity();
+}
+function applyDemoIdentity(){
+  const on = isDemoModeOn();
+  const nameEl = document.querySelector('.scout-name');
+  const initEl = document.getElementById('scout-avatar-initials');
+  const emailEl = document.getElementById('settings-email');
+  const banner = document.getElementById('demo-banner');
+  const toggle = document.getElementById('settings-demo-toggle');
+  if(on){
+    if(nameEl) nameEl.textContent = SH_DEMO_NAME;
+    if(initEl) initEl.textContent = SH_DEMO_INITIALS;
+    if(emailEl) emailEl.textContent = SH_DEMO_EMAIL;
+    let bannerHidden = false;
+    try { bannerHidden = localStorage.getItem(SH_DEMO_BANNER_HIDDEN_KEY) === '1'; } catch(_){ }
+    if(banner) banner.classList.toggle('hidden', bannerHidden);
+  } else {
+    // Echte identiteit herstellen
+    const realName = (currentUser && currentUser.displayName) || 'Marcel Steeman';
+    const realEmail = (currentUser && currentUser.email) || '\u2014';
+    const realInit = realName.split(/\s+/).map(s=>s[0]||'').join('').slice(0,2).toUpperCase() || 'MS';
+    if(nameEl) nameEl.textContent = realName;
+    if(initEl) initEl.textContent = realInit;
+    if(emailEl) emailEl.textContent = realEmail;
+    if(banner) banner.classList.add('hidden');
+  }
+  if(toggle) toggle.checked = on;
+}
+// Toggle in Instellingen-modal
+document.addEventListener('change', (e) => {
+  if(e.target && e.target.id === 'settings-demo-toggle'){
+    setDemoMode(!!e.target.checked);
+  }
+});
+// Banner dismiss-knop (alleen verbergen, toggle blijft aan)
+document.addEventListener('click', (e) => {
+  if(e.target && e.target.id === 'demo-banner-close'){
+    try { localStorage.setItem(SH_DEMO_BANNER_HIDDEN_KEY, '1'); } catch(_){ }
+    const banner = document.getElementById('demo-banner');
+    if(banner) banner.classList.add('hidden');
+  }
+});
 
 /* =============== DIRTY FORM TRACKING =============== */
 let formDirty = false;

@@ -9158,6 +9158,20 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
       if($('#f-w-datum')) $('#f-w-datum').value = prog.datum || '';
       if($('#f-w-thuis')) $('#f-w-thuis').value = prog.thuis || '';
       if($('#f-w-uit')) $('#f-w-uit').value = prog.uit || '';
+      // s35ab: schrijf concept-record SYNCHROON (geen 800ms wachten).
+      // Anders kan een snelle hertik of wegnavigatie de autosave missen
+      // -> geen programma_link-record -> volgende open ziet leeg formulier.
+      // f-id krijgt nu meteen het id; alle volgende autosaves UPDATEN dezelfde rij.
+      if(typeof window.__shBuildScoutingConcept === 'function'
+         && typeof uid === 'function'
+         && typeof savePlayer === 'function'){
+        try {
+          const newId = uid();
+          if($('#f-id')) $('#f-id').value = newId;
+          const concPlayer = window.__shBuildScoutingConcept(newId);
+          savePlayer(concPlayer).catch(err => console.warn('s35ab initial concept save failed:', err));
+        } catch(err){ console.warn('s35ab initial concept build failed:', err); }
+      }
       // Banner met concept-status
       injectScoutingBanner(prog, progSp, matchedPlayer);
     } catch(e){ console.error('openScoutingPlayerForm error:', e); }
@@ -10003,16 +10017,24 @@ function renderGeo(){
 function renderGeoBreadcrumb(){
   const bc = $('#geo-breadcrumb');
   if(!bc) return;
+  // s35ab: 'Regio'-root verwijderd. Lege breadcrumb is verborgen; bij
+  // drill-down (stad/club/team) tonen we '← Terug' + crumbs.
   const parts = [];
-  parts.push({label:'Regio', level:'map'});
   if(geoState.city) parts.push({label:geoState.city, level:'city'});
   if(geoState.club) parts.push({label:geoState.club, level:'club'});
   if(geoState.team) parts.push({label:geoState.team, level:'team'});
-  bc.innerHTML = parts.map((p, i)=>{
+  if(parts.length === 0){
+    bc.innerHTML = '';
+    bc.style.display = 'none';
+    return;
+  }
+  bc.style.display = '';
+  const back = '<span class="geo-crumb geo-crumb-back" data-level="map">← Terug</span>';
+  const crumbs = parts.map((p, i)=>{
     const isLast = i === parts.length - 1;
-    const sep = i > 0 ? '<span class="geo-crumb-sep">›</span>' : '';
-    return `${sep}<span class="geo-crumb ${isLast?'current':''}" data-level="${p.level}">${escapeHtml(p.label)}</span>`;
+    return `<span class="geo-crumb-sep">›</span><span class="geo-crumb ${isLast?'current':''}" data-level="${p.level}">${escapeHtml(p.label)}</span>`;
   }).join('');
+  bc.innerHTML = back + crumbs;
   $$('.geo-crumb', bc).forEach(el=>{
     if(el.classList.contains('current')) return;
     el.addEventListener('click', ()=>{
@@ -17283,6 +17305,8 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
       programma_link: ctx ? { progId: ctx.progId, spelerKey: ctx.spelerKey } : null
     };
   }
+  // s35ab: openScoutingPlayerForm gebruikt deze om synchroon een concept te schrijven.
+  window.__shBuildScoutingConcept = buildScoutingConcept;
 
   function doSave(){
     if(suspended) return;

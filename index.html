@@ -15086,6 +15086,12 @@ onAuthStateChanged(auth, async (user)=>{
     if(installBtn) installBtn.classList.add('install-btn--hidden');
   });
 })();
+
+/* s35c — expose data aan het window zodat de picker-IIFE in script #2 erbij kan. */
+try { if (typeof HV_CLUBS !== 'undefined') window.HV_CLUBS = HV_CLUBS; } catch(_){}
+try { if (typeof CLUB_ADRESSEN !== 'undefined') window.CLUB_ADRESSEN = CLUB_ADRESSEN; } catch(_){}
+try { if (typeof HV_CLUB_ADRESSEN !== 'undefined') window.HV_CLUB_ADRESSEN = HV_CLUB_ADRESSEN; } catch(_){}
+try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_NAAM = CLUB_ADRESSEN_BY_NAAM; } catch(_){}
 </script>
 
 <!-- Adresboek-autocomplete: gevuld door fillClubDatalist() -->
@@ -15569,11 +15575,14 @@ onAuthStateChanged(auth, async (user)=>{
     }
     if(type === 'club'){
       const names = new Set();
-      if(typeof CLUB_ADRESSEN !== 'undefined' && CLUB_ADRESSEN){
-        Object.values(CLUB_ADRESSEN).forEach(c => { if(c && c.naam) names.add(c.naam); });
+      // s35c: data leeft in script #1; we lezen via window.* zodat de picker erbij kan.
+      const _CA = (typeof CLUB_ADRESSEN !== 'undefined' && CLUB_ADRESSEN) ? CLUB_ADRESSEN : (window.CLUB_ADRESSEN || null);
+      if(_CA){
+        try { Object.values(_CA).forEach(c => { if(c && c.naam) names.add(c.naam); }); } catch(_){}
       }
-      if(typeof HV_CLUBS !== 'undefined' && Array.isArray(HV_CLUBS)){
-        HV_CLUBS.forEach(c => { if(c && c.naam) names.add(c.naam); });
+      const _HV = (typeof HV_CLUBS !== 'undefined' && Array.isArray(HV_CLUBS)) ? HV_CLUBS : (Array.isArray(window.HV_CLUBS) ? window.HV_CLUBS : null);
+      if(_HV){
+        _HV.forEach(c => { if(c && c.naam) names.add(c.naam); });
       }
       // Clubs uit eerder ingevulde rapporten meenemen (zo komen handmatig-toegevoegde clubs terug)
       try {

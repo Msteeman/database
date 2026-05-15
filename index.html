@@ -5290,7 +5290,7 @@ tbody tr:last-child td { border-bottom: none; }
 
           <div class="panel" style="margin-top:16px; opacity: .92;">
             <div class="panel-title" style="font-size: 13px;">
-              Regio kaart
+              Nederland
               <span class="panel-title-icon">●</span>
             </div>
             <div id="geo-breadcrumb" class="geo-breadcrumb"></div>
@@ -6081,7 +6081,7 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
 
         <div class="filters" style="margin-bottom:14px;">
-          <input id="adresboek-search" class="filter-input" type="text" placeholder="Zoek op club, plaats of adres..." />
+          <input id="adresboek-search" class="filter-input" type="text" placeholder="Zoek op clubnaam..." />
           <select id="adresboek-sort" class="filter-select">
             <option value="naam">Op club (A–Z)</option>
             <option value="plaats">Op plaats</option>
@@ -7834,15 +7834,10 @@ function renderAdresboek(){
   let items = _getAdresboekClubs().slice();
   const total = items.length;
 
-  // Zoek filtert door alles heen; alfabet + provincie alleen bij lege zoek.
+  // s35i: zoek alleen op clubnaam (niet meer op plaats/provincie — anders
+  // matcht "utrecht" ook alle clubs uit de provincie Utrecht).
   if(search){
-    items = items.filter(c =>
-      c.naam.toLowerCase().includes(search) ||
-      (c.plaats    || '').toLowerCase().includes(search) ||
-      (c.adres     || '').toLowerCase().includes(search) ||
-      (c.sportpark || '').toLowerCase().includes(search) ||
-      (c.provincie || '').toLowerCase().includes(search)
-    );
+    items = items.filter(c => c.naam.toLowerCase().includes(search));
   } else {
     if(_adresboekProvincie){
       items = items.filter(c => c.provincie === _adresboekProvincie);
@@ -9311,46 +9306,40 @@ async function renderGeoCity(city){
 }
 
 async function renderGeoClub(city, club){
+  // s35j: elftal-tussenstap (vaak alleen "Algemeen") overslaan — toon direct rapporten.
   const L = window.L;
   const map = _leafletMap;
   if(!L || !map) return;
   clearMarkers();
-  const players = loadPlayers().filter(p => cityForPlayer(p) === city && (p.club || 'Onbekend').trim() === club);
-  const byTeam = {};
-  players.forEach(p=>{
-    const team = teamForPlayer(p);
-    if(!byTeam[team]) byTeam[team] = [];
-    byTeam[team].push(p);
-  });
-  const teams = Object.keys(byTeam).sort();
+  const players = loadPlayers()
+    .filter(p => cityForPlayer(p) === city && (p.club || 'Onbekend').trim() === club)
+    .sort((a,b)=> new Date(b.datum||0) - new Date(a.datum||0));
   const coords = coordsForCity(city) || (await lookupCityCoords(city));
   if(coords){
     const icon = buildMarkerIcon(L, club, players.length, 'club');
     L.marker([coords.lat, coords.lng], { icon }).addTo(_leafletLayer);
     map.flyTo([coords.lat, coords.lng], 13, { duration: 0.6 });
   }
-  $('#geo-list-title').textContent = `Elftallen ${club} (${teams.length})`;
-  if(!teams.length){
-    $('#geo-list-items').innerHTML = '<div class="geo-empty-text">Geen elftallen gevonden.</div>';
+  $('#geo-list-title').textContent = `Rapporten ${club} (${players.length})`;
+  if(!players.length){
+    $('#geo-list-items').innerHTML = '<div class="geo-empty-text">Geen rapporten gevonden.</div>';
     return;
   }
-  $('#geo-list-items').innerHTML = teams.map(team=>{
-    const n = byTeam[team].length;
-    return `
-      <div class="geo-list-item" data-team="${escapeHtml(team)}">
-        <div class="geo-list-item-icon">${escapeHtml(team.slice(0,3))}</div>
-        <div class="geo-list-item-info">
-          <div class="geo-list-item-name">${escapeHtml(team)}</div>
-          <div class="geo-list-item-meta">${n} rapport${n===1?'':'en'}</div>
-        </div>
-        <div class="geo-list-item-count">${n}</div>
-      </div>`;
-  }).join('');
+  $('#geo-list-items').innerHTML = players.map(p=>`
+    <div class="geo-list-item" data-id="${p.id}">
+      <div class="geo-list-item-icon">${escapeHtml(initials(p.naam))}</div>
+      <div class="geo-list-item-info">
+        <div class="geo-list-item-name">${escapeHtml(p.naam)}</div>
+        <div class="geo-list-item-meta">${escapeHtml(positionLabel(p.positie))} · ${formatDate(p.datum)}</div>
+      </div>
+      <div class="geo-list-item-grades">
+        <span class="grade ${p.huidig_niveau||'D'}" style="padding:0 6px;height:18px;font-size:10px;">${p.huidig_niveau||'-'}</span>
+        <span class="grade outline ${p.potentieel_niveau||'D'}" style="padding:0 6px;height:18px;font-size:10px;">${p.potentieel_niveau||'-'}</span>
+      </div>
+    </div>
+  `).join('');
   $$('.geo-list-item', $('#geo-list-items')).forEach(el=>{
-    el.addEventListener('click', ()=>{
-      geoState = {level:'team', city, club, team:el.dataset.team};
-      renderGeo();
-    });
+    el.addEventListener('click', ()=> openDetail(el.dataset.id));
   });
 }
 

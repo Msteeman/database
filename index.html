@@ -8063,6 +8063,41 @@ function openMatchReportModal(id){
   if(delBtn)  delBtn.style.display = r ? '' : 'none';
 
   bd.classList.add('open');
+  // v70h-s35a: auto-fill plaats + adres uit findClubInfo zodra mr-thuis gevuld wordt.
+  (function(){
+    const thuis = $('#mr-thuis');
+    const plaats = $('#mr-plaats');
+    const adres = $('#mr-adres');
+    if(!thuis || (!plaats && !adres)) return;
+    function tryFill(){
+      if(typeof window.findClubInfo !== 'function') return;
+      const ci = window.findClubInfo(thuis.value);
+      if(!ci) return;
+      const pl = ci.plaats || '';
+      const parts = [ci.sportpark, ci.adres, ci.postcode].filter(Boolean);
+      const ad = parts.join(' \u00b7 ');
+      if(plaats && pl){
+        const curP = plaats.value.trim();
+        if(!curP || plaats.dataset.autofill === '1'){
+          plaats.value = pl;
+          plaats.dataset.autofill = '1';
+        }
+      }
+      if(adres && ad){
+        const curA = adres.value.trim();
+        if(!curA || adres.dataset.autofill === '1'){
+          adres.value = ad;
+          adres.dataset.autofill = '1';
+        }
+      }
+    }
+    if(plaats) plaats.addEventListener('input', () => { plaats.dataset.autofill = '0'; });
+    if(adres)  adres.addEventListener('input',  () => { adres.dataset.autofill  = '0'; });
+    thuis.addEventListener('change', tryFill);
+    thuis.addEventListener('blur', tryFill);
+    thuis.addEventListener('input', tryFill);
+    tryFill();
+  })();
   setTimeout(()=> $('#mr-thuis').focus(), 50);
 }
 
@@ -13591,30 +13626,38 @@ function openProgMatchModal(progId, defaultDate){
   $('#pm-notities').value = it ? (it.notities||'') : '';
   $('#pm-delete').style.display = it ? '' : 'none';
   showModal('prog-match-backdrop');
-  // Auto-fill sportpark uit CLUB_ADRESSEN zodra thuisclub gekozen wordt.
+  // v70h-s35a: auto-fill sportpark + plaats uit CLUB_ADRESSEN zodra thuisclub gekozen wordt.
   (function(){
     const thuis = $('#pm-thuis');
     const loc = $('#pm-locatie');
+    const plaats = $('#pm-plaats');
     if(!thuis || !loc) return;
     function tryFill(){
-      // v70h: gebruik centrale lookup die ook naam-keys + fuzzy match accepteert
       if(typeof window.findClubInfo !== 'function') return;
       const ci = window.findClubInfo(thuis.value);
       if(!ci) return;
       const sp = ci.sportpark || '';
-      if(!sp) return;
-      const cur = loc.value.trim();
-      if(!cur || loc.dataset.autofill === '1'){
-        loc.value = sp;
-        loc.dataset.autofill = '1';
+      const pl = ci.plaats || '';
+      if(sp){
+        const cur = loc.value.trim();
+        if(!cur || loc.dataset.autofill === '1'){
+          loc.value = sp;
+          loc.dataset.autofill = '1';
+        }
+      }
+      if(plaats && pl){
+        const curP = plaats.value.trim();
+        if(!curP || plaats.dataset.autofill === '1'){
+          plaats.value = pl;
+          plaats.dataset.autofill = '1';
+        }
       }
     }
-    // Mark als handmatig zodra gebruiker zelf in pm-locatie typt.
     loc.addEventListener('input', () => { loc.dataset.autofill = '0'; });
+    if(plaats) plaats.addEventListener('input', () => { plaats.dataset.autofill = '0'; });
     thuis.addEventListener('change', tryFill);
     thuis.addEventListener('blur', tryFill);
     thuis.addEventListener('input', tryFill);
-    // Run eenmalig bij openen indien thuis al gevuld is.
     tryFill();
   })();
   setTimeout(()=> $('#pm-datum').focus(), 80);
@@ -14518,6 +14561,17 @@ function initApp(){
     const raw = ($('#f-club').value || '').trim();
     if(!raw) return;
     const key = raw.toLowerCase();
+    // v70h-s35a: directe lookup via findClubInfo (CLUB_ADRESSEN + HV_CLUBS) heeft voorrang
+    if(typeof window.findClubInfo === 'function'){
+      const ci = window.findClubInfo(raw);
+      if(ci){
+        if(plaatsEl && !plaatsEl.value.trim() && ci.plaats) plaatsEl.value = ci.plaats;
+        if(adresEl && !adresEl.value.trim()){
+          const parts = [ci.sportpark, ci.adres, ci.postcode].filter(Boolean);
+          if(parts.length) adresEl.value = parts.join(' \u00b7 ');
+        }
+      }
+    }
     const plaatsFilled = plaatsEl.value.trim();
     const adresFilled  = adresEl && adresEl.value.trim();
     // 1. Snelle hardcoded match (alleen plaats)

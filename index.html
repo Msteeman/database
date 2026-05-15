@@ -3311,104 +3311,69 @@ tbody tr:last-child td { border-bottom: none; }
   color: var(--text-3);
   min-width: 84px;
 }
-/* v70h-s34: klikbaar voetbalveld + opstelling-toggle in compare-modal */
-.cmp-pitch-block {
-  background: linear-gradient(180deg, rgba(11,140,82,0.10), rgba(7,90,55,0.06));
-  border: 1px solid rgba(11,140,82,0.25);
-  border-radius: 12px;
-  padding: 10px 12px 12px;
-  margin-bottom: 4px;
+/* v70h-s35: categorie-knoppen, dropdowns, leeftijd-rij, provincie-select */
+.cmp-cat-row {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 6px; margin-bottom: 8px;
 }
-.cmp-pitch-head {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; margin-bottom: 8px; flex-wrap: wrap;
-}
-.cmp-formation-toggle {
-  display: inline-flex; gap: 4px; padding: 3px;
-  background: rgba(0,0,0,0.25); border-radius: 999px;
-}
-.cmp-form-btn {
-  appearance: none; border: 0; background: transparent;
-  color: var(--text-dim, #9aa5b1);
-  font-weight: 700; font-size: 12px; letter-spacing: .3px;
-  padding: 6px 12px; border-radius: 999px; cursor: pointer;
-  transition: background .15s ease, color .15s ease;
-}
-.cmp-form-btn:hover { color: var(--text, #e6edf3); }
-.cmp-form-btn.active {
-  background: var(--primary, #0b8c52); color: #fff;
-}
-.cmp-pitch {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 2 / 3;
-  max-width: 360px;
-  margin: 0 auto;
-  background:
-    linear-gradient(180deg, rgba(7,90,55,0.55), rgba(11,140,82,0.55)),
-    repeating-linear-gradient(180deg,
-      rgba(255,255,255,0.04) 0,
-      rgba(255,255,255,0.04) 18px,
-      rgba(0,0,0,0.05) 18px,
-      rgba(0,0,0,0.05) 36px);
-  border: 2px solid rgba(255,255,255,0.55);
-  border-radius: 10px;
-  overflow: hidden;
-}
-.cmp-pitch::before,
-.cmp-pitch::after {
-  content: '';
-  position: absolute; left: 50%; transform: translateX(-50%);
-  border: 2px solid rgba(255,255,255,0.55);
-  pointer-events: none;
-}
-.cmp-pitch::before { /* middencirkel */
-  top: 50%; width: 28%; aspect-ratio: 1 / 1;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-}
-.cmp-pitch::after { /* middenlijn */
-  top: 50%; width: 100%; height: 0;
-  border-left: 0; border-right: 0; border-bottom: 0;
-  transform: translateY(-50%);
-}
-.cmp-pitch-box {
-  position: absolute; left: 50%; transform: translateX(-50%);
-  width: 56%; height: 14%;
-  border: 2px solid rgba(255,255,255,0.55);
-  pointer-events: none;
-}
-.cmp-pitch-box.top { top: 0; border-top: 0; }
-.cmp-pitch-box.bottom { bottom: 0; border-bottom: 0; }
-.cmp-pitch-spot {
-  position: absolute;
-  width: 11%; aspect-ratio: 1 / 1;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: rgba(255,255,255,0.92);
-  color: #093822;
-  font-weight: 800; font-size: 10px;
-  border: 2px solid rgba(255,255,255,0.95);
-  display: flex; align-items: center; justify-content: center;
+.cmp-cat-btn {
+  appearance: none; border: 1px solid var(--border-2, var(--border));
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
-  transition: transform .12s ease, background .15s ease, color .15s ease;
+  background: rgba(255,255,255,0.04); color: var(--text);
+  padding: 10px 8px; border-radius: 10px;
+  font-size: 12.5px; font-weight: 700;
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+  position: relative;
 }
-.cmp-pitch-spot:hover { transform: translate(-50%, -50%) scale(1.08); }
-.cmp-pitch-spot.active {
-  background: var(--primary, #0b8c52);
-  color: #fff;
-  border-color: #ffd700;
-  box-shadow: 0 0 0 3px rgba(255,215,0,0.35), 0 2px 8px rgba(0,0,0,0.45);
+.cmp-cat-btn:hover { border-color: var(--primary, #0b8c52); }
+.cmp-cat-btn.active {
+  background: linear-gradient(135deg, var(--primary, #0b8c52), var(--primary-2, #0a8f5e));
+  border-color: var(--primary, #0b8c52); color: #fff;
 }
-.cmp-pitch-hint {
-  margin-top: 8px;
-  text-align: center;
-  font-size: 11px;
-  color: var(--text-dim, #9aa5b1);
+.cmp-cat-btn .cmp-cat-ico { font-size: 18px; line-height: 1; }
+.cmp-cat-btn .cmp-cat-count {
+  position: absolute; top: 4px; right: 6px;
+  background: #ffd700; color: #000;
+  font-size: 10px; font-weight: 800;
+  min-width: 16px; height: 16px; padding: 0 4px;
+  border-radius: 999px; display: none;
+  align-items: center; justify-content: center;
 }
-.cmp-filter-row-prov { flex-wrap: wrap; }
-.cmp-filter-row-prov .cmp-filter-chip { font-size: 11px; padding: 4px 9px; }
+.cmp-cat-btn.has-selection .cmp-cat-count { display: inline-flex; }
+.cmp-cat-dropdown {
+  display: none;
+  background: rgba(0,0,0,0.25); border: 1px solid var(--border-2, var(--border));
+  border-radius: 10px; padding: 10px 12px;
+  flex-direction: column; gap: 6px; margin-bottom: 4px;
+}
+.cmp-cat-dropdown.show { display: flex; }
+.cmp-cat-opt {
+  appearance: none; border: 1px solid var(--border-2, var(--border));
+  cursor: pointer;
+  background: rgba(255,255,255,0.03); color: var(--text);
+  padding: 8px 12px; border-radius: 8px; font-size: 13px;
+  text-align: left;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.cmp-cat-opt:hover { border-color: var(--primary, #0b8c52); }
+.cmp-cat-opt.active {
+  background: var(--primary, #0b8c52); color: #fff;
+  border-color: var(--primary, #0b8c52);
+}
+.cmp-cat-opt .code { font-size: 11px; color: var(--text-3, #9aa5b1); font-weight: 700; }
+.cmp-cat-opt.active .code { color: rgba(255,255,255,0.85); }
+.cmp-prov-select {
+  appearance: none; border: 1px solid var(--border-2, var(--border));
+  background: var(--bg); color: var(--text);
+  padding: 8px 30px 8px 12px; border-radius: 8px; font-size: 13px;
+  cursor: pointer; min-width: 200px;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%239aa5b1' d='M0 0l5 6 5-6z'/></svg>");
+  background-repeat: no-repeat; background-position: right 10px center;
+}
+.cmp-age-row { gap: 4px; }
+.cmp-age-row .cmp-filter-chip { padding: 4px 9px; font-size: 11px; min-width: 38px; text-align: center; }
 .cmp-filter-chip {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 10px;
@@ -5502,18 +5467,30 @@ tbody tr:last-child td { border-bottom: none; }
               <input type="search" id="cmp-add-search" placeholder="Zoek op naam, club, positie, elftal..." autocomplete="off" />
             </div>
             <div class="cmp-add-modal-filters">
-              <!-- v70h-s34: klikbaar voetbalveld met opstelling-selectie -->
-              <div class="cmp-pitch-block">
-                <div class="cmp-pitch-head">
-                  <span class="cmp-filter-label">Opstelling</span>
-                  <div class="cmp-formation-toggle" id="cmp-formation-toggle">
-                    <button type="button" class="cmp-form-btn active" data-formation="4-3-3">4-3-3</button>
-                    <button type="button" class="cmp-form-btn" data-formation="4-4-2">4-4-2</button>
-                    <button type="button" class="cmp-form-btn" data-formation="3-5-2">3-5-2</button>
-                  </div>
+              <!-- v70h-s35: vier categorie-knoppen met uitklap-dropdowns -->
+              <div>
+                <span class="cmp-filter-label" style="display:block;margin-bottom:6px;">Positie</span>
+                <div class="cmp-cat-row" id="cmp-cat-row">
+                  <button type="button" class="cmp-cat-btn" data-cat="KEEPER">
+                    <span class="cmp-cat-ico" aria-hidden="true">&#129508;</span>Keeper
+                    <span class="cmp-cat-count">0</span>
+                  </button>
+                  <button type="button" class="cmp-cat-btn" data-cat="VERDEDIGING">
+                    <span class="cmp-cat-ico" aria-hidden="true">&#128737;&#65039;</span>Verdediging
+                    <span class="cmp-cat-count">0</span>
+                  </button>
+                  <button type="button" class="cmp-cat-btn" data-cat="MIDDENVELD">
+                    <span class="cmp-cat-ico" aria-hidden="true">&#9881;&#65039;</span>Middenveld
+                    <span class="cmp-cat-count">0</span>
+                  </button>
+                  <button type="button" class="cmp-cat-btn" data-cat="AANVAL">
+                    <span class="cmp-cat-ico" aria-hidden="true">&#9876;&#65039;</span>Aanval
+                    <span class="cmp-cat-count">0</span>
+                  </button>
                 </div>
-                <div class="cmp-pitch" id="cmp-pitch" aria-label="Klikbaar voetbalveld om posities te selecteren"></div>
-                <div class="cmp-pitch-hint">Tik op een positie om te filteren · meerdere posities = OR</div>
+                <div class="cmp-cat-dropdown" id="cmp-cat-dd-VERDEDIGING"></div>
+                <div class="cmp-cat-dropdown" id="cmp-cat-dd-MIDDENVELD"></div>
+                <div class="cmp-cat-dropdown" id="cmp-cat-dd-AANVAL"></div>
               </div>
               <div class="cmp-filter-row">
                 <span class="cmp-filter-label">Huidig</span>
@@ -5529,16 +5506,15 @@ tbody tr:last-child td { border-bottom: none; }
                 <button type="button" class="cmp-filter-chip grade-chip C" data-grade-pot="C">C</button>
                 <button type="button" class="cmp-filter-chip grade-chip D" data-grade-pot="D">D</button>
               </div>
-              <div class="cmp-filter-row">
+              <div class="cmp-filter-row cmp-age-row" id="cmp-age-row">
                 <span class="cmp-filter-label">Leeftijd</span>
-                <button type="button" class="cmp-filter-chip" data-cat="JO13">JO13</button>
-                <button type="button" class="cmp-filter-chip" data-cat="JO15">JO15</button>
-                <button type="button" class="cmp-filter-chip" data-cat="JO17">JO17</button>
-                <button type="button" class="cmp-filter-chip" data-cat="JO19">JO19</button>
+                <!-- O.8 t/m O.19 chips via JS -->
               </div>
-              <div class="cmp-filter-row cmp-filter-row-prov" id="cmp-filter-prov-row">
+              <div class="cmp-filter-row">
                 <span class="cmp-filter-label">Provincie</span>
-                <!-- chips ingespoten via JS -->
+                <select class="cmp-prov-select" id="cmp-prov-select">
+                  <option value="">Alle provincies</option>
+                </select>
                 <button type="button" class="cmp-filter-clear" id="cmp-filter-clear">Filters wissen</button>
               </div>
             </div>
@@ -6254,9 +6230,15 @@ tbody tr:last-child td { border-bottom: none; }
             <input id="pm-uit" type="text" required placeholder="Bijv. Ajax" autocomplete="off" data-picker="club" />
           </div>
         </div>
-        <div class="field" style="margin-top:12px;">
-          <label>Sportpark / locatie</label>
-          <input id="pm-locatie" type="text" placeholder="Wordt automatisch ingevuld op basis van thuisclub" />
+        <div class="field-row" style="margin-top:12px;">
+          <div class="field">
+            <label>Plaats</label>
+            <input id="pm-plaats" type="text" placeholder="Wordt automatisch ingevuld vanuit thuisclub" />
+          </div>
+          <div class="field">
+            <label>Sportpark / locatie</label>
+            <input id="pm-locatie" type="text" placeholder="Wordt automatisch ingevuld op basis van thuisclub" />
+          </div>
         </div>
         <div class="field" style="margin-top:12px;">
           <label>Notities (optioneel)</label>
@@ -6554,6 +6536,16 @@ tbody tr:last-child td { border-bottom: none; }
           <div class="field">
             <label>Uitspelende ploeg *</label>
             <input id="mr-uit" type="text" required placeholder="Bijv. Scherpenzeel 12.1" autocomplete="off" data-picker="club" />
+          </div>
+        </div>
+        <div class="field-row" style="margin-top:12px;">
+          <div class="field">
+            <label>Plaats</label>
+            <input id="mr-plaats" type="text" placeholder="Wordt automatisch ingevuld vanuit thuisclub" />
+          </div>
+          <div class="field">
+            <label>Sportpark / adres</label>
+            <input id="mr-adres" type="text" placeholder="Wordt automatisch ingevuld vanuit thuisclub" />
           </div>
         </div>
         <div class="field" style="margin-top:12px;">
@@ -9936,59 +9928,46 @@ function renderComparePicker(){
 /* ===== v70h-s31: zoek-/filter-modal voor toevoegen van spelers ===== */
 let cmpAddModalState = {
   query: '',
-  formation: '4-3-3',
   pos: new Set(),
   cur: new Set(),
   pot: new Set(),
-  cat: new Set(),       // v70h-s34: leeftijdscategorie JO13/JO15/JO17/JO19
-  prov: new Set(),      // v70h-s34: provincies (multi-select)
+  cat: new Set(),       // v70h-s35: leeftijdscategorie O.8..O.19
+  prov: '',             // v70h-s35: provincie (single select via dropdown)
+  openCat: null,        // v70h-s35: welke categorie-dropdown open is
   wired: false
 };
 
-/* v70h-s34: opstelling -> positie-coordinates op pitch (procent x/y, 0-100).
-   Y=0 = bovenkant (verdediging tegenstander), Y=100 = onderkant (eigen doel).
-   Codes komen uit ALL_POSITIONS (GK, LB, LCV, CV, RCV, RB, VM, CM, AM, LM, RM, LV, CS, RV). */
-const CMP_FORMATIONS = {
-  '4-3-3': [
-    { code: 'GK',  x: 50, y: 92, label: 'GK' },
-    { code: 'LB',  x: 14, y: 72, label: 'LB' },
-    { code: 'LCV', x: 36, y: 76, label: 'LCV' },
-    { code: 'RCV', x: 64, y: 76, label: 'RCV' },
-    { code: 'RB',  x: 86, y: 72, label: 'RB' },
-    { code: 'VM',  x: 50, y: 58, label: 'VM' },
-    { code: 'CM',  x: 30, y: 46, label: 'CM' },
-    { code: 'AM',  x: 70, y: 46, label: 'AM' },
-    { code: 'LV',  x: 16, y: 22, label: 'LV' },
-    { code: 'CS',  x: 50, y: 14, label: 'CS' },
-    { code: 'RV',  x: 84, y: 22, label: 'RV' }
+/* v70h-s35: positie-categorieen voor de Vergelijken-modal.
+   Volgorde binnen verdediging/middenveld is van rechts naar links zoals op het veld. */
+const CMP_POSITION_CATS = {
+  KEEPER: [
+    { code: 'GK', label: 'Keeper' }
   ],
-  '4-4-2': [
-    { code: 'GK',  x: 50, y: 92, label: 'GK' },
-    { code: 'LB',  x: 14, y: 74, label: 'LB' },
-    { code: 'LCV', x: 36, y: 78, label: 'LCV' },
-    { code: 'RCV', x: 64, y: 78, label: 'RCV' },
-    { code: 'RB',  x: 86, y: 74, label: 'RB' },
-    { code: 'LM',  x: 14, y: 50, label: 'LM' },
-    { code: 'CM',  x: 36, y: 52, label: 'CM' },
-    { code: 'AM',  x: 64, y: 52, label: 'AM' },
-    { code: 'RM',  x: 86, y: 50, label: 'RM' },
-    { code: 'CS',  x: 36, y: 18, label: 'CS-L' },
-    { code: 'CS',  x: 64, y: 18, label: 'CS-R' }
+  VERDEDIGING: [
+    { code: 'RB',  label: 'Rechtsback' },
+    { code: 'RCV', label: 'Rechter centrale verdediger' },
+    { code: 'CV',  label: 'Centrale verdediger' },
+    { code: 'LCV', label: 'Linker centrale verdediger' },
+    { code: 'LB',  label: 'Linksback' }
   ],
-  '3-5-2': [
-    { code: 'GK',  x: 50, y: 92, label: 'GK' },
-    { code: 'LCV', x: 24, y: 76, label: 'LCV' },
-    { code: 'CV',  x: 50, y: 78, label: 'CV' },
-    { code: 'RCV', x: 76, y: 76, label: 'RCV' },
-    { code: 'LM',  x: 12, y: 50, label: 'LM' },
-    { code: 'VM',  x: 34, y: 54, label: 'VM' },
-    { code: 'CM',  x: 50, y: 48, label: 'CM' },
-    { code: 'AM',  x: 66, y: 54, label: 'AM' },
-    { code: 'RM',  x: 88, y: 50, label: 'RM' },
-    { code: 'CS',  x: 36, y: 18, label: 'CS-L' },
-    { code: 'CS',  x: 64, y: 18, label: 'CS-R' }
+  MIDDENVELD: [
+    { code: 'RM', label: 'Rechtermiddenvelder' },
+    { code: 'VM', label: 'Verdedigende middenvelder' },
+    { code: 'CM', label: 'Centrale middenvelder' },
+    { code: 'AM', label: 'Aanvallende middenvelder' },
+    { code: 'LM', label: 'Linkermiddenvelder' }
+  ],
+  AANVAL: [
+    { code: 'RV', label: 'Rechtsbuiten' },
+    { code: 'CS', label: 'Spits' },
+    { code: 'LV', label: 'Linksbuiten' }
   ]
 };
+const CMP_AGE_CATS = ['O.8','O.9','O.10','O.11','O.12','O.13','O.14','O.15','O.16','O.17','O.18','O.19'];
+const CMP_PROVINCIES_SORTED = [
+  'Drenthe','Flevoland','Friesland','Gelderland','Groningen','Limburg',
+  'Noord-Brabant','Noord-Holland','Overijssel','Utrecht','Zeeland','Zuid-Holland'
+];
 
 function openCmpAddModal(){
   const max = (typeof CMP_MAX === 'number') ? CMP_MAX : 6;
@@ -9999,14 +9978,12 @@ function openCmpAddModal(){
   }
   const bd = document.getElementById('cmp-add-modal-backdrop');
   if(!bd) return;
-  // v70h-s34: pitch + provincies (her)renderen bij elke open
-  renderCmpAddPitch();
-  renderCmpAddProvinces();
+  // v70h-s35: categorie-knoppen + leeftijd-rij + provincie-select renderen
+  renderCmpAddCategoryButtons();
+  renderCmpAddCategoryDropdowns();
+  renderCmpAddAgeRow();
+  renderCmpAddProvinceSelect();
   wireCmpAddModal();
-  // Formatie-toggle visueel syncen
-  document.querySelectorAll('#cmp-formation-toggle .cmp-form-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.formation === cmpAddModalState.formation);
-  });
   bd.classList.add('show');
   document.body.style.overflow = 'hidden';
   renderCmpAddResults();
@@ -10024,48 +10001,74 @@ function closeCmpAddModal(){
 window.openCmpAddModal = openCmpAddModal;
 window.closeCmpAddModal = closeCmpAddModal;
 
-/* v70h-s34: render klikbaar voetbalveld voor de gekozen formatie. */
-function renderCmpAddPitch(){
-  const pitch = document.getElementById('cmp-pitch');
-  if(!pitch) return;
-  const formation = cmpAddModalState.formation || '4-3-3';
-  const spots = CMP_FORMATIONS[formation] || CMP_FORMATIONS['4-3-3'];
-  // Doelgebieden + spots
-  const boxes = '<div class="cmp-pitch-box top"></div><div class="cmp-pitch-box bottom"></div>';
-  const html = boxes + spots.map((s, i) => {
-    const active = cmpAddModalState.pos.has(s.code) ? ' active' : '';
-    const titleLabel = positionLabel(s.code) || s.code;
-    return `<button type="button" class="cmp-pitch-spot${active}" data-pos="${escapeAttr(s.code)}"
-              style="left:${s.x}%;top:${s.y}%;" title="${escapeAttr(titleLabel)}" aria-pressed="${active?'true':'false'}">${escapeHtml(s.label)}</button>`;
-  }).join('');
-  pitch.innerHTML = html;
+/* v70h-s35: categorie-knoppen (Keeper/Verdediging/Middenveld/Aanval) renderen. */
+function renderCmpAddCategoryButtons(){
+  document.querySelectorAll('#cmp-cat-row .cmp-cat-btn').forEach(btn => {
+    const cat = btn.dataset.cat;
+    let count = 0, anyActive = false;
+    if(cat === 'KEEPER'){
+      anyActive = cmpAddModalState.pos.has('GK');
+      if(anyActive) count = 1;
+    } else {
+      (CMP_POSITION_CATS[cat] || []).forEach(p => {
+        if(cmpAddModalState.pos.has(p.code)){ count++; anyActive = true; }
+      });
+    }
+    btn.classList.toggle('active', anyActive || cmpAddModalState.openCat === cat);
+    btn.classList.toggle('has-selection', count > 0);
+    const cnt = btn.querySelector('.cmp-cat-count');
+    if(cnt) cnt.textContent = String(count);
+  });
 }
 
-/* v70h-s34: render provincie-chips (alleen die met ten minste 1 speler). */
-function renderCmpAddProvinces(){
-  const row = document.getElementById('cmp-filter-prov-row');
+/* v70h-s35: dropdowns per categorie (V/M/A) renderen. */
+function renderCmpAddCategoryDropdowns(){
+  ['VERDEDIGING','MIDDENVELD','AANVAL'].forEach(cat => {
+    const dd = document.getElementById('cmp-cat-dd-' + cat);
+    if(!dd) return;
+    dd.innerHTML = (CMP_POSITION_CATS[cat] || []).map(p => {
+      const active = cmpAddModalState.pos.has(p.code) ? ' active' : '';
+      return `<button type="button" class="cmp-cat-opt${active}" data-pos="${escapeAttr(p.code)}">`
+        + `<span>${escapeHtml(p.label)}</span>`
+        + `<span class="code">${escapeHtml(p.code)}</span>`
+        + `</button>`;
+    }).join('');
+    dd.classList.toggle('show', cmpAddModalState.openCat === cat);
+  });
+}
+
+/* v70h-s35: O.8 t/m O.19 leeftijd-chips. */
+function renderCmpAddAgeRow(){
+  const row = document.getElementById('cmp-age-row');
   if(!row) return;
+  row.querySelectorAll('.cmp-filter-chip[data-cat]').forEach(c => c.remove());
+  CMP_AGE_CATS.forEach(a => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'cmp-filter-chip' + (cmpAddModalState.cat.has(a) ? ' active' : '');
+    btn.dataset.cat = a;
+    btn.textContent = a;
+    row.appendChild(btn);
+  });
+}
+
+/* v70h-s35: alfabetische provincie-dropdown. */
+function renderCmpAddProvinceSelect(){
+  const sel = document.getElementById('cmp-prov-select');
+  if(!sel) return;
   const players = loadPlayers();
   const counts = {};
   players.forEach(p => {
     const prov = _cmpPlayerProvincie(p);
     if(prov) counts[prov] = (counts[prov] || 0) + 1;
   });
-  // Verwijder oude provincie-chips, behoud label + clear-knop
-  row.querySelectorAll('.cmp-filter-chip[data-prov]').forEach(c => c.remove());
-  const clearBtn = row.querySelector('#cmp-filter-clear');
-  const provs = (typeof _NL_PROVINCIES !== 'undefined' ? _NL_PROVINCIES : []);
-  provs.forEach(prov => {
-    if(!counts[prov]) return;
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'cmp-filter-chip';
-    btn.dataset.prov = prov;
-    btn.textContent = `${prov} (${counts[prov]})`;
-    if(cmpAddModalState.prov.has(prov)) btn.classList.add('active');
-    if(clearBtn) row.insertBefore(btn, clearBtn);
-    else row.appendChild(btn);
-  });
+  sel.innerHTML = '<option value="">Alle provincies</option>' +
+    CMP_PROVINCIES_SORTED.map(prov => {
+      const c = counts[prov] || 0;
+      const dis = c === 0 ? ' disabled' : '';
+      const sl = cmpAddModalState.prov === prov ? ' selected' : '';
+      return `<option value="${escapeAttr(prov)}"${sl}${dis}>${escapeHtml(prov)}${c ? ` (${c})` : ''}</option>`;
+    }).join('');
 }
 
 /* v70h-s34: bepaal provincie van een speler via club + adresboek. */
@@ -10081,17 +10084,12 @@ function _cmpPlayerProvincie(p){
   return '';
 }
 
-/* v70h-s34: leeftijdscategorie afleiden uit elftal-veld (O.13 -> JO13). */
+/* v70h-s35: leeftijdscategorie afleiden uit elftal-veld (O.8..O.19 exact). */
 function _cmpPlayerCategorie(p){
   const el = (p && (p.elftal || (typeof deriveElftalFromReport === 'function' ? deriveElftalFromReport(p) : ''))) || '';
   const m = el.match(/O\.?\s*(\d{1,2})/i);
   if(!m) return '';
-  const n = parseInt(m[1], 10);
-  if(n <= 13) return 'JO13';
-  if(n <= 15) return 'JO15';
-  if(n <= 17) return 'JO17';
-  if(n <= 19) return 'JO19';
-  return '';
+  return 'O.' + m[1];
 }
 
 function wireCmpAddModal(){
@@ -10118,41 +10116,35 @@ function wireCmpAddModal(){
     });
   }
 
-  // Delegated chip-/spot-/formation-clicks
+  // v70h-s35: categorie-knoppen, dropdown-opties, chips en provincie-select
   const filters = document.querySelector('.cmp-add-modal-filters');
   if(filters){
     filters.addEventListener('click', (ev) => {
-      // v70h-s34: formatie-toggle
-      const formBtn = ev.target.closest('.cmp-form-btn');
-      if(formBtn){
-        const f = formBtn.dataset.formation;
-        if(f && cmpAddModalState.formation !== f){
-          cmpAddModalState.formation = f;
-          document.querySelectorAll('#cmp-formation-toggle .cmp-form-btn').forEach(b => {
-            b.classList.toggle('active', b === formBtn);
-          });
-          renderCmpAddPitch();
-          renderCmpAddResults();
+      // Categorie-knop (Keeper direct, anderen open/close dropdown)
+      const catBtn = ev.target.closest('.cmp-cat-btn');
+      if(catBtn){
+        const cat = catBtn.dataset.cat;
+        if(cat === 'KEEPER'){
+          toggleSet(cmpAddModalState.pos, 'GK');
+          cmpAddModalState.openCat = null;
+        } else {
+          cmpAddModalState.openCat = (cmpAddModalState.openCat === cat) ? null : cat;
         }
+        renderCmpAddCategoryButtons();
+        renderCmpAddCategoryDropdowns();
+        renderCmpAddResults();
         return;
       }
-      // v70h-s34: voetbalveld-positie
-      const spot = ev.target.closest('.cmp-pitch-spot');
-      if(spot){
-        const code = spot.dataset.pos;
-        if(code){
-          toggleSet(cmpAddModalState.pos, code);
-          // Sync alle spots met deze code (4-4-2/3-5-2 hebben 2 spitsen)
-          document.querySelectorAll('.cmp-pitch-spot[data-pos="' + CSS.escape(code) + '"]').forEach(s => {
-            const on = cmpAddModalState.pos.has(code);
-            s.classList.toggle('active', on);
-            s.setAttribute('aria-pressed', on ? 'true' : 'false');
-          });
-          renderCmpAddResults();
-        }
+      // Positie-optie in dropdown
+      const opt = ev.target.closest('.cmp-cat-opt');
+      if(opt){
+        toggleSet(cmpAddModalState.pos, opt.dataset.pos);
+        renderCmpAddCategoryButtons();
+        renderCmpAddCategoryDropdowns();
+        renderCmpAddResults();
         return;
       }
-      // Bestaande + nieuwe chips
+      // Chips: grade-cur / grade-pot / age
       const chip = ev.target.closest('.cmp-filter-chip');
       if(chip){
         if(chip.dataset.gradeCur){
@@ -10161,8 +10153,6 @@ function wireCmpAddModal(){
           toggleSet(cmpAddModalState.pot, chip.dataset.gradePot);
         } else if(chip.dataset.cat){
           toggleSet(cmpAddModalState.cat, chip.dataset.cat);
-        } else if(chip.dataset.prov){
-          toggleSet(cmpAddModalState.prov, chip.dataset.prov);
         } else { return; }
         chip.classList.toggle('active');
         renderCmpAddResults();
@@ -10173,15 +10163,24 @@ function wireCmpAddModal(){
         cmpAddModalState.cur.clear();
         cmpAddModalState.pot.clear();
         cmpAddModalState.cat.clear();
-        cmpAddModalState.prov.clear();
+        cmpAddModalState.prov = '';
+        cmpAddModalState.openCat = null;
+        renderCmpAddCategoryButtons();
+        renderCmpAddCategoryDropdowns();
+        renderCmpAddAgeRow();
+        renderCmpAddProvinceSelect();
         filters.querySelectorAll('.cmp-filter-chip').forEach(c => c.classList.remove('active'));
-        filters.querySelectorAll('.cmp-pitch-spot').forEach(s => {
-          s.classList.remove('active');
-          s.setAttribute('aria-pressed', 'false');
-        });
         renderCmpAddResults();
       }
     });
+    // Provincie-select (dropdown change)
+    const provSel = document.getElementById('cmp-prov-select');
+    if(provSel){
+      provSel.addEventListener('change', (e) => {
+        cmpAddModalState.prov = e.target.value || '';
+        renderCmpAddResults();
+      });
+    }
   }
 
   // ESC sluit overal
@@ -10226,8 +10225,8 @@ function renderCmpAddResults(){
   if(fcat && fcat.size > 0){
     players = players.filter(p => fcat.has(_cmpPlayerCategorie(p)));
   }
-  if(fprov && fprov.size > 0){
-    players = players.filter(p => fprov.has(_cmpPlayerProvincie(p)));
+  if(fprov){
+    players = players.filter(p => _cmpPlayerProvincie(p) === fprov);
   }
 
   players.sort((a,b) => (a.naam||'').localeCompare(b.naam||'', 'nl'));
@@ -15630,6 +15629,35 @@ onAuthStateChanged(auth, async (user)=>{
     activeInput.dispatchEvent(new Event('input', { bubbles: true }));
     activeInput.dispatchEvent(new Event('change', { bubbles: true }));
     pushRecent(activeType, val);
+    // v70h-s35: bij thuisclub-velden direct plaats + adres autoinvullen vanuit findClubInfo
+    try {
+      if(activeType === 'club' && activeInput && typeof window.findClubInfo === 'function'){
+        const id = activeInput.id || '';
+        const CLUB_AUTOFILL_MAP = {
+          'mr-thuis': { plaats: 'mr-plaats', adres: 'mr-adres' },
+          'f-club':   { plaats: 'f-plaats',  adres: 'f-adres'  },
+          'pm-thuis': { plaats: 'pm-plaats', adres: 'pm-locatie' }
+        };
+        const map = CLUB_AUTOFILL_MAP[id];
+        if(map){
+          const info = window.findClubInfo(val);
+          if(info){
+            if(map.plaats){
+              const pEl = document.getElementById(map.plaats);
+              if(pEl){ pEl.value = info.plaats || ''; pEl.dispatchEvent(new Event('input', { bubbles: true })); }
+            }
+            if(map.adres){
+              const aEl = document.getElementById(map.adres);
+              if(aEl){
+                const parts = [info.sportpark, info.adres, info.postcode].filter(Boolean);
+                aEl.value = parts.join(' \u00b7 ');
+                aEl.dispatchEvent(new Event('input', { bubbles: true }));
+              }
+            }
+          }
+        }
+      }
+    } catch(_){}
     close();
   }
 

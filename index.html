@@ -845,6 +845,47 @@ a { color: var(--accent); text-decoration: none; }
 .sa-empty-players { font-size: 12px; color: var(--text-3); font-style: italic; padding: 6px 0; }
 .sa-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .sa-actions .btn-ghost { font-size: 12px; padding: 6px 12px; }
+/* s35t: speler-autocomplete suggestie-strip in programma-modal */
+.pp-suggestion-wrap {
+  margin: 4px 0 14px;
+  border-radius: 10px;
+  background: rgba(78,161,255,0.06);
+  border: 1px solid rgba(78,161,255,0.30);
+  overflow: hidden;
+}
+.pp-sug-title {
+  font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: .6px; color: #93c5fd; font-weight: 700;
+  padding: 8px 12px 4px;
+}
+.pp-sug-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 9px 12px; cursor: pointer;
+  border-top: 1px solid rgba(78,161,255,0.15);
+  transition: background .12s;
+}
+.pp-sug-row:hover { background: rgba(78,161,255,0.14); }
+.pp-sug-row:first-of-type { border-top: 1px solid rgba(78,161,255,0.20); }
+.pp-sug-name {
+  font-size: 13.5px; font-weight: 700; color: var(--text-1);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  min-width: 0; flex: 1;
+}
+.pp-sug-meta {
+  font-size: 11px; color: var(--text-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  max-width: 55%;
+}
+.pp-sug-apply {
+  font-size: 11px; padding: 4px 10px;
+  background: rgba(78,161,255,0.20);
+  border: 1px solid rgba(78,161,255,0.40);
+  color: #93c5fd; border-radius: 14px;
+  font-weight: 700; letter-spacing: .3px;
+}
+.pp-sug-row:hover .pp-sug-apply {
+  background: rgba(78,161,255,0.30); color: #dbeafe;
+}
 /* Film-gradient text utility — same DNA as the intro wordmark */
 .film-text {
   background: var(--film-grad);
@@ -6447,6 +6488,8 @@ tbody tr:last-child td { border-bottom: none; }
       <form id="prog-player-form" autocomplete="off">
         <input type="hidden" id="pp-progid" />
         <input type="hidden" id="pp-spelerid" />
+        <!-- s35t: suggestie-strip uit spelersdatabase op basis van naam/club/geboorte -->
+        <div id="pp-suggestion-wrap" class="pp-suggestion-wrap" style="display:none;"></div>
         <!-- s35q: voornaam + achternaam losse velden, geboorte ook hier. -->
         <div class="field-row" style="margin-top:0;">
           <div class="field">
@@ -14476,6 +14519,130 @@ async function deleteProgMatchFromForm(){
 }
 
 /* ------------- Plan player modal ------------- */
+/* ----- s35t: speler-autocomplete in programma-modal ----- */
+let __ppSugTimer = null;
+function schedulePpSuggestionRefresh(){
+  if(__ppSugTimer) clearTimeout(__ppSugTimer);
+  __ppSugTimer = setTimeout(renderPpSuggestions, 180);
+}
+// Zoek matchende spelers in playersCache met scoring.
+// Retourneer top 5 (score >= 3).
+function getPpSuggestions(){
+  const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+  if(!players.length) return [];
+  const norm = s => String(s||'').trim().toLowerCase();
+  const vn = norm($('#pp-voornaam')?.value);
+  const an = norm($('#pp-achternaam')?.value);
+  const gb = norm($('#pp-geboorte')?.value);
+  const cl = norm($('#pp-club')?.value);
+  // Minimaal 2 chars in voornaam OF achternaam, anders geen suggesties
+  if((vn.length < 2) && (an.length < 2)) return [];
+  function namen(p){
+    let pvn = norm(p.voornaam), pan = norm(p.achternaam);
+    if((!pvn || !pan) && p.naam && typeof splitNaam === 'function'){
+      const s = splitNaam(p.naam);
+      if(!pvn) pvn = norm(s.voornaam);
+      if(!pan) pan = norm(s.achternaam);
+    }
+    return { pvn, pan };
+  }
+  const scored = [];
+  for(const p of players){
+    const { pvn, pan } = namen(p);
+    let score = 0;
+    if(vn){
+      if(pvn === vn) score += 3;
+      else if(pvn.startsWith(vn)) score += 2;
+      else continue; // voornaam moet matchen als ingevuld
+    }
+    if(an){
+      if(pan === an) score += 3;
+      else if(pan.startsWith(an)) score += 2;
+      else continue; // achternaam moet matchen als ingevuld
+    }
+    if(gb && norm(p.geboorte) === gb) score += 3;
+    const pcl = norm(p.club);
+    if(cl){
+      if(pcl === cl) score += 2;
+      else if(pcl && pcl.includes(cl)) score += 1;
+    }
+    if(score >= 2) scored.push({ player: p, score }); // s35u: prefix-match op enkel voornaam ook tonen
+  }
+  scored.sort((a,b) => b.score - a.score);
+  return scored.slice(0, 5).map(x => x.player);
+}
+
+function renderPpSuggestions(){
+  const wrap = document.getElementById('pp-suggestion-wrap');
+  if(!wrap) return;
+  // Niet tonen bij bewerken van bestaande speler
+  const editing = !!($('#pp-spelerid')?.value);
+  if(editing){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  const suggestions = getPpSuggestions();
+  if(!suggestions.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  const rows = suggestions.map(p => {
+    const naam = p.naam || [p.voornaam, p.achternaam].filter(Boolean).join(' ') || '(geen naam)';
+    const metaParts = [];
+    if(p.club) metaParts.push(p.club);
+    if(p.geboorte){
+      const parts = String(p.geboorte).split('-');
+      metaParts.push(parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : p.geboorte);
+    }
+    if(p.positie) metaParts.push(p.positie);
+    return `<div class="pp-sug-row" data-player-id="${escapeHtml(p.id)}">
+      <div style="min-width:0; flex:1; display:flex; flex-direction:column; gap:2px;">
+        <div class="pp-sug-name">${escapeHtml(naam)}</div>
+        ${metaParts.length ? `<div class="pp-sug-meta">${escapeHtml(metaParts.join(' · '))}</div>` : ''}
+      </div>
+      <span class="pp-sug-apply">VUL IN</span>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = `<div class="pp-sug-title">Uit spelersdatabase (${suggestions.length})</div>${rows}`;
+  wrap.style.display = '';
+  wrap.querySelectorAll('.pp-sug-row').forEach(row => {
+    row.addEventListener('click', () => applyPpSuggestion(row.dataset.playerId));
+  });
+}
+
+function applyPpSuggestion(playerId){
+  if(!playerId) return;
+  const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+  const p = players.find(x => x.id === playerId);
+  if(!p){ toast('Speler niet gevonden in database', true); return; }
+  // Splits naam indien voornaam/achternaam ontbreken
+  let vn = p.voornaam || '', an = p.achternaam || '';
+  if((!vn || !an) && p.naam && typeof splitNaam === 'function'){
+    const s = splitNaam(p.naam);
+    if(!vn) vn = s.voornaam;
+    if(!an) an = s.achternaam;
+  }
+  $('#pp-voornaam').value = vn;
+  $('#pp-achternaam').value = an;
+  if(p.geboorte) $('#pp-geboorte').value = p.geboorte;
+  if(p.club) $('#pp-club').value = p.club;
+  if(p.rugnummer !== undefined && p.rugnummer !== null) $('#pp-rugnummer').value = String(p.rugnummer);
+  if(p.positie) $('#pp-positie').value = p.positie;
+  if(typeof syncNaamHidden === 'function') syncNaamHidden('pp');
+  // Verberg suggestie-strip na keuze
+  const wrap = document.getElementById('pp-suggestion-wrap');
+  if(wrap){ wrap.style.display = 'none'; wrap.innerHTML = ''; }
+  // s35v: laat zien wat er allemaal ingevuld is (incl. hidden fields)
+  const naam = [vn, an].filter(Boolean).join(' ');
+  const bits = [];
+  if(p.geboorte){
+    const parts = String(p.geboorte).split('-');
+    bits.push('geb. ' + (parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : p.geboorte));
+  }
+  if(p.club) bits.push(p.club);
+  if(p.rugnummer !== undefined && p.rugnummer !== null && String(p.rugnummer).trim() !== '') bits.push('#' + p.rugnummer);
+  if(p.positie) bits.push(p.positie);
+  const msg = 'Ingevuld: ' + naam + (bits.length ? ' · ' + bits.join(' · ') : '');
+  if(typeof toast === 'function') toast(msg);
+}
+window.getPpSuggestions = getPpSuggestions;
+window.renderPpSuggestions = renderPpSuggestions;
+window.applyPpSuggestion = applyPpSuggestion;
+
 function openProgPlayerModal(progId, spelerId){
   const it = programmaCache.find(p => p.id === progId);
   if(!it) return;
@@ -14507,6 +14674,10 @@ function openProgPlayerModal(progId, spelerId){
   refreshPpFullStatus();
   $('#pp-delete').style.display = sp ? '' : 'none';
   showModal('prog-player-backdrop');
+  // s35t: reset suggestie-strip en check direct (bij sp leeg toont 'ie niets totdat user typt)
+  const sugWrap = document.getElementById('pp-suggestion-wrap');
+  if(sugWrap){ sugWrap.style.display = 'none'; sugWrap.innerHTML = ''; }
+  if(typeof renderPpSuggestions === 'function') setTimeout(renderPpSuggestions, 50);
   setTimeout(()=> $('#pp-voornaam').focus(), 80); // s35q: voornaam is nu eerste veld
 }
 function closeProgPlayerModal(){ hideModal('prog-player-backdrop'); ppFullDraft = null; }
@@ -14928,8 +15099,11 @@ function wireProgrammaUI(){
   $('#pp-full-clear')?.addEventListener('click', () => { ppFullDraft = null; refreshPpFullStatus(); });
   $('#prog-player-backdrop')?.addEventListener('click', e => { if(e.target.id === 'prog-player-backdrop') autoSaveProgPlayerOnClose(); });
   // s35q: live sync van verborgen pp-naam + f-naam uit voornaam/achternaam
-  $('#pp-voornaam')?.addEventListener('input', () => syncNaamHidden('pp'));
-  $('#pp-achternaam')?.addEventListener('input', () => syncNaamHidden('pp'));
+  // s35t: + suggestion refresh op alle pp-velden
+  $('#pp-voornaam')?.addEventListener('input', () => { syncNaamHidden('pp'); schedulePpSuggestionRefresh(); });
+  $('#pp-achternaam')?.addEventListener('input', () => { syncNaamHidden('pp'); schedulePpSuggestionRefresh(); });
+  $('#pp-geboorte')?.addEventListener('input', () => schedulePpSuggestionRefresh());
+  $('#pp-club')?.addEventListener('input', () => schedulePpSuggestionRefresh());
   $('#f-voornaam')?.addEventListener('input', () => syncNaamHidden('f'));
   $('#f-achternaam')?.addEventListener('input', () => syncNaamHidden('f'));
 

@@ -6288,28 +6288,18 @@ tbody tr:last-child td { border-bottom: none; }
       <form id="prog-player-form" autocomplete="off">
         <input type="hidden" id="pp-progid" />
         <input type="hidden" id="pp-spelerid" />
-        <div class="field-row">
-          <div class="field" style="flex:2;">
-            <label>Naam speler *</label>
-            <input id="pp-naam" type="text" required placeholder="Voor- en achternaam" />
-          </div>
-          <div class="field">
-            <label>Rugnummer</label>
-            <input id="pp-rugnummer" type="text" placeholder="#10" />
-          </div>
+        <!-- s35p: rugnummer + positie weg uit voorwerk-form. Vul je tijdens observatie in. -->
+        <div class="field" style="margin-top:0;">
+          <label>Naam speler *</label>
+          <input id="pp-naam" type="text" required placeholder="Voor- en achternaam" />
         </div>
-        <div class="field-row" style="margin-top:12px;">
-          <div class="field">
-            <label>Club</label>
-            <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" data-picker="club" />
-          </div>
-          <div class="field">
-            <label>Positie</label>
-            <select id="pp-positie">
-              <option value="">Kies positie</option>
-            </select>
-          </div>
+        <div class="field" style="margin-top:12px;">
+          <label>Club</label>
+          <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" data-picker="club" />
         </div>
+        <!-- s35p: hidden inputs houden bestaande waarden van eerdere edits in stand -->
+        <input type="hidden" id="pp-rugnummer" />
+        <input type="hidden" id="pp-positie" />
         <div class="field" style="margin-top:12px;">
           <label>Aandachtspunten / voorrapport</label>
           <textarea id="pp-notities" rows="3" placeholder="Waar wil je tijdens deze wedstrijd op letten?"></textarea>
@@ -13874,15 +13864,11 @@ function openProgPlayerModal(progId, spelerId){
   $('#pp-progid').value = progId;
   $('#pp-spelerid').value = sp ? sp.id : '';
   $('#pp-naam').value = sp ? (sp.naam||'') : '';
-  $('#pp-rugnummer').value = sp ? (sp.rugnummer||'') : '';
   $('#pp-club').value = sp ? (sp.club || '') : (it.thuis || '');
   $('#pp-notities').value = sp ? (sp.voor_notities||'') : '';
-
-  // Populate positions dropdown (gebruik refreshPositionDropdowns niet — eigen lijst)
-  const positieSel = $('#pp-positie');
-  positieSel.innerHTML = '<option value="">Kies positie</option>' +
-    (window.POSITIONS_FLAT || []).map(p => `<option value="${p.code}">${p.label}</option>`).join('');
-  positieSel.value = sp ? (sp.positie||'') : '';
+  // s35p: hidden inputs — bewaar bestaande rugnummer/positie van een eerdere edit
+  $('#pp-rugnummer').value = sp ? (sp.rugnummer||'') : '';
+  $('#pp-positie').value = sp ? (sp.positie||'') : '';
 
   ppFullDraft = sp && sp.volledig ? {...sp.volledig} : null;
   refreshPpFullStatus();
@@ -13900,19 +13886,25 @@ function refreshPpFullStatus(){
     : '';
 }
 
-async function saveProgPlayerFromForm(e){
-  e.preventDefault();
+async function saveProgPlayerFromForm(e, opts){
+  if(e && typeof e.preventDefault === 'function') e.preventDefault();
+  const silent = !!(opts && opts.silent);
   const progId = $('#pp-progid').value;
   const it = programmaCache.find(p => p.id === progId);
-  if(!it){ toast('Geplande wedstrijd niet gevonden', true); return; }
+  if(!it){ if(!silent) toast('Geplande wedstrijd niet gevonden', true); return false; }
 
   const spelerId = $('#pp-spelerid').value || genId('progsp');
+  const naam = $('#pp-naam').value.trim();
+  if(!naam){
+    // s35p: zonder naam slaan we niet op (zelfs niet bij auto-save)
+    return false;
+  }
   const speler = {
     id: spelerId,
-    naam: $('#pp-naam').value.trim(),
-    rugnummer: $('#pp-rugnummer').value.trim(),
+    naam,
+    rugnummer: ($('#pp-rugnummer').value||'').trim(),
     club: $('#pp-club').value.trim(),
-    positie: $('#pp-positie').value,
+    positie: ($('#pp-positie').value||''),
     voor_notities: $('#pp-notities').value.trim(),
     volledig: ppFullDraft ? {...ppFullDraft} : null,
     modified: Date.now()
@@ -13925,9 +13917,27 @@ async function saveProgPlayerFromForm(e){
   try {
     await saveProgrammaItem(updated);
     closeProgPlayerModal();
-    toast('Speler opgeslagen');
-  } catch(e){}
+    if(!silent) toast('Speler opgeslagen');
+    return true;
+  } catch(e){ return false; }
 }
+
+// s35p: auto-save bij sluiten modal (X, klik buiten, Annuleren).
+// - Bestaande speler: altijd opslaan (zelfs als naam leeg is gemaakt? Nee: behoud
+//   minimaal naam; als alles leeg is bij edit, dan negeren we de sluiting).
+// - Nieuwe speler: alleen opslaan als naam ingevuld is.
+async function autoSaveProgPlayerOnClose(){
+  const isEditing = !!$('#pp-spelerid').value;
+  const naam = ($('#pp-naam').value||'').trim();
+  const club = ($('#pp-club').value||'').trim();
+  const notities = ($('#pp-notities').value||'').trim();
+  const hasContent = naam || club || notities || ppFullDraft;
+  if(!hasContent && !isEditing){ closeProgPlayerModal(); return; }
+  if(!naam){ closeProgPlayerModal(); return; }
+  const ok = await saveProgPlayerFromForm({preventDefault:()=>{}}, {silent:true});
+  if(!ok) closeProgPlayerModal();
+}
+window.autoSaveProgPlayerOnClose = autoSaveProgPlayerOnClose;
 
 async function deleteProgPlayerFromForm(){
   const progId = $('#pp-progid').value;
@@ -14218,14 +14228,14 @@ function wireProgrammaUI(){
   $('#pm-delete')?.addEventListener('click', deleteProgMatchFromForm);
   $('#prog-match-backdrop')?.addEventListener('click', e => { if(e.target.id === 'prog-match-backdrop') closeProgMatchModal(); });
 
-  // Plan player modal
-  $('#prog-player-close')?.addEventListener('click', closeProgPlayerModal);
-  $('#pp-cancel')?.addEventListener('click', closeProgPlayerModal);
+  // Plan player modal — s35p: alle sluit-acties triggeren auto-save
+  $('#prog-player-close')?.addEventListener('click', autoSaveProgPlayerOnClose);
+  $('#pp-cancel')?.addEventListener('click', autoSaveProgPlayerOnClose);
   $('#prog-player-form')?.addEventListener('submit', saveProgPlayerFromForm);
   $('#pp-delete')?.addEventListener('click', deleteProgPlayerFromForm);
   $('#pp-open-full')?.addEventListener('click', openPpFullForm);
   $('#pp-full-clear')?.addEventListener('click', () => { ppFullDraft = null; refreshPpFullStatus(); });
-  $('#prog-player-backdrop')?.addEventListener('click', e => { if(e.target.id === 'prog-player-backdrop') closeProgPlayerModal(); });
+  $('#prog-player-backdrop')?.addEventListener('click', e => { if(e.target.id === 'prog-player-backdrop') autoSaveProgPlayerOnClose(); });
 
   // Reminder modal
   $('#prog-reminder-close')?.addEventListener('click', () => hideModal('prog-reminder-backdrop'));

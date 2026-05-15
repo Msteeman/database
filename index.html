@@ -100,6 +100,51 @@
 .demo-toggle-switch input:checked + .demo-toggle-slider { background:#facc15; }
 .demo-toggle-switch input:checked + .demo-toggle-slider::before { transform:translateX(20px); }
 
+/* s35ad: Debug-paneel modal */
+.debug-modal {
+  position: fixed; inset: 0; z-index: 9500;
+  background: rgba(15,23,42,.72);
+  display: none; align-items: flex-start; justify-content: center;
+  padding: 24px; overflow-y: auto;
+}
+.debug-modal.is-open { display: flex; }
+.debug-modal-inner {
+  background: #fff; color: #0f172a;
+  width: 100%; max-width: 1100px; border-radius: 12px;
+  box-shadow: 0 24px 64px rgba(0,0,0,.35);
+  padding: 18px 20px 20px;
+}
+.debug-modal-head {
+  display:flex; align-items:center; justify-content:space-between;
+  gap:12px; margin-bottom:12px; border-bottom:1px solid #e2e8f0; padding-bottom:10px;
+}
+.debug-modal-title { font-size:16px; font-weight:700; }
+.debug-modal-sub { font-size:12px; color:#64748b; font-weight:500; }
+.debug-modal-actions { display:flex; gap:8px; }
+.debug-btn {
+  background:#0ea5e9; border:0; color:#fff; padding:6px 12px;
+  border-radius:6px; font-size:13px; font-weight:600; cursor:pointer;
+}
+.debug-btn.secondary { background:#475569; }
+.debug-btn.danger { background:#dc2626; }
+.debug-btn:hover { filter: brightness(1.08); }
+.debug-table { width:100%; border-collapse:collapse; font-size:12px; }
+.debug-table th, .debug-table td {
+  border-bottom:1px solid #e2e8f0; padding:6px 8px; text-align:left;
+  vertical-align: top;
+}
+.debug-table th { background:#f1f5f9; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:.4px; }
+.debug-table td.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:11px; color:#334155; }
+.debug-table tr.empty-row td { background:#fef2f2; color:#991b1b; }
+.debug-table tr.dup-row td { background:#fffbeb; }
+.debug-empty { padding:24px; text-align:center; color:#64748b; }
+.debug-row-btn {
+  background:#dc2626; color:#fff; border:0; padding:4px 9px; border-radius:5px;
+  font-size:11px; font-weight:600; cursor:pointer;
+}
+.debug-row-btn:hover { background:#b91c1c; }
+.debug-section-title { font-size:12px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.5px; margin:14px 0 6px; }
+
 /* =========================================================
    SCOUTINGHUB — Marcel Steeman
    FC Twente / Heracles — O12/O15 jeugdscouting
@@ -5040,6 +5085,23 @@ tbody tr:last-child td { border-bottom: none; }
     <span class="demo-banner-text">Demo modus actief &mdash; Mark Visser</span>
     <button type="button" class="demo-banner-close" id="demo-banner-close" aria-label="Banner verbergen">&times;</button>
   </div>
+  <!-- s35ad: Debug-paneel modal -->
+  <div class="debug-modal" id="debug-modal" role="dialog" aria-modal="true" aria-labelledby="debug-modal-title">
+    <div class="debug-modal-inner">
+      <div class="debug-modal-head">
+        <div>
+          <div class="debug-modal-title" id="debug-modal-title">Concept-records debug</div>
+          <div class="debug-modal-sub" id="debug-modal-sub">&mdash;</div>
+        </div>
+        <div class="debug-modal-actions">
+          <button type="button" class="debug-btn secondary" id="debug-refresh">Vernieuwen</button>
+          <button type="button" class="debug-btn danger" id="debug-delete-empty">Lege duplicaten verwijderen</button>
+          <button type="button" class="debug-btn secondary" id="debug-close">Sluiten</button>
+        </div>
+      </div>
+      <div id="debug-modal-body"></div>
+    </div>
+  </div>
   <!-- Mobile topbar (hidden on desktop) -->
   <header class="mobile-topbar">
     <button class="mt-home" id="mt-home" aria-label="Naar dashboard">
@@ -5128,6 +5190,11 @@ tbody tr:last-child td { border-bottom: none; }
               <input type="checkbox" id="settings-demo-toggle" />
               <span class="demo-toggle-slider"></span>
             </label>
+          </div>
+          <!-- s35ad: Debug-paneel knop -->
+          <div class="demo-toggle-row" style="margin-top:10px;">
+            <span class="settings-row-label">Concept-records inspecteren</span>
+            <button type="button" class="debug-btn secondary" id="settings-debug-open">Debug openen (Ctrl+Shift+D)</button>
           </div>
         </div>
 
@@ -8935,6 +9002,153 @@ function showApp(){
   });
 }
 
+/* =============== CONCEPT DEBUG (s35ad) =============== */
+function openConceptDebug(){
+  const m = document.getElementById('debug-modal');
+  if(!m) return;
+  m.classList.add('is-open');
+  renderConceptDebug();
+}
+function closeConceptDebug(){
+  const m = document.getElementById('debug-modal');
+  if(m) m.classList.remove('is-open');
+}
+window.openConceptDebug = openConceptDebug;
+window.closeConceptDebug = closeConceptDebug;
+function _shTsOf(p){
+  const t = (p && (p.updated_at || (p._meta && p._meta.ts) || p.ts)) || '';
+  return t || '';
+}
+function renderConceptDebug(){
+  const body = document.getElementById('debug-modal-body');
+  const sub  = document.getElementById('debug-modal-sub');
+  if(!body) return;
+  const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+  const concepts = players.filter(p => p && p.concept === true);
+  // groepeer op programma_link key voor duplicaat-detectie
+  const groups = {};
+  concepts.forEach(p => {
+    const k = (p.programma_link && (p.programma_link.progId+'|'+p.programma_link.spelerKey)) || '(geen link)';
+    (groups[k] = groups[k] || []).push(p);
+  });
+  const dupCount = Object.values(groups).filter(g => g.length > 1).length;
+  const emptyCount = concepts.filter(p => {
+    const ctx = (p.wedstrijd && p.wedstrijd.context) || '';
+    return !ctx.trim();
+  }).length;
+  if(sub){
+    sub.textContent = concepts.length + ' concept-records, '
+      + dupCount + ' slot(s) met duplicaten, '
+      + emptyCount + ' zonder wedstrijdcontext';
+  }
+  if(!concepts.length){
+    body.innerHTML = '<div class="debug-empty">Geen concept-records gevonden.</div>';
+    return;
+  }
+  // sorteer per groep nieuwste eerst
+  function tsNum(p){ const n = Date.parse(_shTsOf(p)); return isNaN(n) ? 0 : n; }
+  Object.keys(groups).forEach(k => groups[k].sort((a,b) => tsNum(b) - tsNum(a)));
+  const rows = [];
+  rows.push('<table class="debug-table"><thead><tr>'
+    + '<th>ID</th><th>Naam</th><th>Programma-link</th><th>Wedstrijdcontext</th><th>Timestamp</th><th>Status</th><th>Actie</th>'
+    + '</tr></thead><tbody>');
+  const esc = s => String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  Object.keys(groups).sort().forEach(key => {
+    const grp = groups[key];
+    grp.forEach((p, idx) => {
+      const ctx = (p.wedstrijd && p.wedstrijd.context) || '';
+      const isEmpty = !ctx.trim();
+      const isDup = grp.length > 1;
+      const isNewest = idx === 0;
+      const naam = p.naam || [p.voornaam, p.achternaam].filter(Boolean).join(' ') || '(geen naam)';
+      const link = p.programma_link ? (p.programma_link.progId + ' / ' + p.programma_link.spelerKey) : '(geen)';
+      let status = isNewest ? 'NIEUWSTE' : 'OUDERE DUP';
+      if(isEmpty) status += ' • LEEG';
+      const cls = [];
+      if(isEmpty) cls.push('empty-row');
+      else if(isDup && !isNewest) cls.push('dup-row');
+      rows.push('<tr class="' + cls.join(' ') + '">'
+        + '<td class="mono">' + esc(p.id) + '</td>'
+        + '<td>' + esc(naam) + '</td>'
+        + '<td class="mono">' + esc(link) + '</td>'
+        + '<td>' + esc(ctx || '(leeg)') + '</td>'
+        + '<td class="mono">' + esc(_shTsOf(p)) + '</td>'
+        + '<td>' + esc(status) + '</td>'
+        + '<td><button type="button" class="debug-row-btn" data-debug-del="' + esc(p.id) + '">Verwijder</button></td>'
+        + '</tr>');
+    });
+  });
+  rows.push('</tbody></table>');
+  body.innerHTML = rows.join('');
+}
+// Verwijder concept-record
+async function deleteConceptRecord(id){
+  if(!id) return;
+  if(!confirm('Concept-record \'' + id + '\' definitief verwijderen?')) return;
+  try {
+    if(typeof deletePlayer === 'function'){
+      await deletePlayer(id);
+    } else {
+      const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+      const filtered = players.filter(p => p.id !== id);
+      if(typeof savePlayers === 'function') await savePlayers(filtered);
+      else localStorage.setItem('playersCache', JSON.stringify(filtered));
+      if(Array.isArray(window.playersCache)) window.playersCache = filtered;
+    }
+  } catch(e){ console.warn('deleteConceptRecord faalde:', e); }
+  renderConceptDebug();
+}
+// Verwijder ALLE lege duplicaten (concept-records zonder wedstrijdcontext
+// waarvoor in dezelfde programma-slot een gevulde versie bestaat)
+async function deleteEmptyDuplicates(){
+  const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+  const concepts = players.filter(p => p && p.concept === true);
+  const groups = {};
+  concepts.forEach(p => {
+    if(!p.programma_link) return;
+    const k = p.programma_link.progId + '|' + p.programma_link.spelerKey;
+    (groups[k] = groups[k] || []).push(p);
+  });
+  const toDel = [];
+  Object.values(groups).forEach(grp => {
+    if(grp.length < 2) return;
+    const hasFilled = grp.some(p => ((p.wedstrijd && p.wedstrijd.context) || '').trim());
+    if(!hasFilled) return;
+    grp.forEach(p => {
+      const ctx = (p.wedstrijd && p.wedstrijd.context) || '';
+      if(!ctx.trim()) toDel.push(p.id);
+    });
+  });
+  if(!toDel.length){ alert('Geen lege duplicaten gevonden.'); return; }
+  if(!confirm(toDel.length + ' lege duplicaat-record(s) verwijderen?')) return;
+  for(const id of toDel){
+    try {
+      if(typeof deletePlayer === 'function') await deletePlayer(id);
+    } catch(e){ console.warn('delete', id, 'faalde:', e); }
+  }
+  renderConceptDebug();
+}
+// Bindings
+document.addEventListener('click', (e) => {
+  if(!e.target) return;
+  if(e.target.id === 'settings-debug-open'){ openConceptDebug(); return; }
+  if(e.target.id === 'debug-close'){ closeConceptDebug(); return; }
+  if(e.target.id === 'debug-refresh'){ renderConceptDebug(); return; }
+  if(e.target.id === 'debug-delete-empty'){ deleteEmptyDuplicates(); return; }
+  const delId = e.target.getAttribute && e.target.getAttribute('data-debug-del');
+  if(delId){ deleteConceptRecord(delId); return; }
+});
+// Toetsen-shortcut Ctrl+Shift+D
+document.addEventListener('keydown', (e) => {
+  if(e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')){
+    e.preventDefault();
+    openConceptDebug();
+  } else if(e.key === 'Escape'){
+    const m = document.getElementById('debug-modal');
+    if(m && m.classList.contains('is-open')) closeConceptDebug();
+  }
+});
+
 /* =============== DEMO MODUS (s35ac) =============== */
 const SH_DEMO_KEY = 'sh-demo-mode';
 const SH_DEMO_BANNER_HIDDEN_KEY = 'sh-demo-banner-hidden';
@@ -9093,9 +9307,18 @@ function isMatchInWindow(prog, now){
 function findSlotConcept(progId, spelerKey){
   if(!progId || !spelerKey) return null;
   const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
-  return players.find(p => p && p.concept === true && p.programma_link
+  // s35ad: meerdere matches mogelijk (duplicaten uit s35ab) -> nieuwste winnen.
+  const hits = players.filter(p => p && p.concept === true && p.programma_link
     && p.programma_link.progId === progId
-    && p.programma_link.spelerKey === spelerKey) || null;
+    && p.programma_link.spelerKey === spelerKey);
+  if(!hits.length) return null;
+  function tsOf(p){
+    const t = (p && (p.updated_at || p._meta && p._meta.ts || p.ts)) || '';
+    const n = Date.parse(t);
+    return isNaN(n) ? 0 : n;
+  }
+  hits.sort((a,b) => tsOf(b) - tsOf(a));
+  return hits[0];
 }
 window.findSlotConcept = findSlotConcept;
 
@@ -9278,20 +9501,8 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
       if($('#f-w-datum')) $('#f-w-datum').value = prog.datum || '';
       if($('#f-w-thuis')) $('#f-w-thuis').value = prog.thuis || '';
       if($('#f-w-uit')) $('#f-w-uit').value = prog.uit || '';
-      // s35ab: schrijf concept-record SYNCHROON (geen 800ms wachten).
-      // Anders kan een snelle hertik of wegnavigatie de autosave missen
-      // -> geen programma_link-record -> volgende open ziet leeg formulier.
-      // f-id krijgt nu meteen het id; alle volgende autosaves UPDATEN dezelfde rij.
-      if(typeof window.__shBuildScoutingConcept === 'function'
-         && typeof uid === 'function'
-         && typeof savePlayer === 'function'){
-        try {
-          const newId = uid();
-          if($('#f-id')) $('#f-id').value = newId;
-          const concPlayer = window.__shBuildScoutingConcept(newId);
-          savePlayer(concPlayer).catch(err => console.warn('s35ab initial concept save failed:', err));
-        } catch(err){ console.warn('s35ab initial concept build failed:', err); }
-      }
+      // s35ad: s35ab synchroon-schrijf verwijderd — die maakte duplicaten.
+      // doSave() (autosave 800ms) zorgt nu zelf voor uid + initiele save.
       // Banner met concept-status
       injectScoutingBanner(prog, progSp, matchedPlayer);
     } catch(e){ console.error('openScoutingPlayerForm error:', e); }

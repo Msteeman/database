@@ -3311,6 +3311,104 @@ tbody tr:last-child td { border-bottom: none; }
   color: var(--text-3);
   min-width: 84px;
 }
+/* v70h-s34: klikbaar voetbalveld + opstelling-toggle in compare-modal */
+.cmp-pitch-block {
+  background: linear-gradient(180deg, rgba(11,140,82,0.10), rgba(7,90,55,0.06));
+  border: 1px solid rgba(11,140,82,0.25);
+  border-radius: 12px;
+  padding: 10px 12px 12px;
+  margin-bottom: 4px;
+}
+.cmp-pitch-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; margin-bottom: 8px; flex-wrap: wrap;
+}
+.cmp-formation-toggle {
+  display: inline-flex; gap: 4px; padding: 3px;
+  background: rgba(0,0,0,0.25); border-radius: 999px;
+}
+.cmp-form-btn {
+  appearance: none; border: 0; background: transparent;
+  color: var(--text-dim, #9aa5b1);
+  font-weight: 700; font-size: 12px; letter-spacing: .3px;
+  padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  transition: background .15s ease, color .15s ease;
+}
+.cmp-form-btn:hover { color: var(--text, #e6edf3); }
+.cmp-form-btn.active {
+  background: var(--primary, #0b8c52); color: #fff;
+}
+.cmp-pitch {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  max-width: 360px;
+  margin: 0 auto;
+  background:
+    linear-gradient(180deg, rgba(7,90,55,0.55), rgba(11,140,82,0.55)),
+    repeating-linear-gradient(180deg,
+      rgba(255,255,255,0.04) 0,
+      rgba(255,255,255,0.04) 18px,
+      rgba(0,0,0,0.05) 18px,
+      rgba(0,0,0,0.05) 36px);
+  border: 2px solid rgba(255,255,255,0.55);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.cmp-pitch::before,
+.cmp-pitch::after {
+  content: '';
+  position: absolute; left: 50%; transform: translateX(-50%);
+  border: 2px solid rgba(255,255,255,0.55);
+  pointer-events: none;
+}
+.cmp-pitch::before { /* middencirkel */
+  top: 50%; width: 28%; aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.cmp-pitch::after { /* middenlijn */
+  top: 50%; width: 100%; height: 0;
+  border-left: 0; border-right: 0; border-bottom: 0;
+  transform: translateY(-50%);
+}
+.cmp-pitch-box {
+  position: absolute; left: 50%; transform: translateX(-50%);
+  width: 56%; height: 14%;
+  border: 2px solid rgba(255,255,255,0.55);
+  pointer-events: none;
+}
+.cmp-pitch-box.top { top: 0; border-top: 0; }
+.cmp-pitch-box.bottom { bottom: 0; border-bottom: 0; }
+.cmp-pitch-spot {
+  position: absolute;
+  width: 11%; aspect-ratio: 1 / 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(255,255,255,0.92);
+  color: #093822;
+  font-weight: 800; font-size: 10px;
+  border: 2px solid rgba(255,255,255,0.95);
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+  transition: transform .12s ease, background .15s ease, color .15s ease;
+}
+.cmp-pitch-spot:hover { transform: translate(-50%, -50%) scale(1.08); }
+.cmp-pitch-spot.active {
+  background: var(--primary, #0b8c52);
+  color: #fff;
+  border-color: #ffd700;
+  box-shadow: 0 0 0 3px rgba(255,215,0,0.35), 0 2px 8px rgba(0,0,0,0.45);
+}
+.cmp-pitch-hint {
+  margin-top: 8px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-dim, #9aa5b1);
+}
+.cmp-filter-row-prov { flex-wrap: wrap; }
+.cmp-filter-row-prov .cmp-filter-chip { font-size: 11px; padding: 4px 9px; }
 .cmp-filter-chip {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 5px 10px;
@@ -5404,9 +5502,18 @@ tbody tr:last-child td { border-bottom: none; }
               <input type="search" id="cmp-add-search" placeholder="Zoek op naam, club, positie, elftal..." autocomplete="off" />
             </div>
             <div class="cmp-add-modal-filters">
-              <div class="cmp-filter-row" id="cmp-filter-pos-row">
-                <span class="cmp-filter-label">Positie</span>
-                <!-- chips ingespoten via JS -->
+              <!-- v70h-s34: klikbaar voetbalveld met opstelling-selectie -->
+              <div class="cmp-pitch-block">
+                <div class="cmp-pitch-head">
+                  <span class="cmp-filter-label">Opstelling</span>
+                  <div class="cmp-formation-toggle" id="cmp-formation-toggle">
+                    <button type="button" class="cmp-form-btn active" data-formation="4-3-3">4-3-3</button>
+                    <button type="button" class="cmp-form-btn" data-formation="4-4-2">4-4-2</button>
+                    <button type="button" class="cmp-form-btn" data-formation="3-5-2">3-5-2</button>
+                  </div>
+                </div>
+                <div class="cmp-pitch" id="cmp-pitch" aria-label="Klikbaar voetbalveld om posities te selecteren"></div>
+                <div class="cmp-pitch-hint">Tik op een positie om te filteren · meerdere posities = OR</div>
               </div>
               <div class="cmp-filter-row">
                 <span class="cmp-filter-label">Huidig</span>
@@ -5421,6 +5528,17 @@ tbody tr:last-child td { border-bottom: none; }
                 <button type="button" class="cmp-filter-chip grade-chip B" data-grade-pot="B">B</button>
                 <button type="button" class="cmp-filter-chip grade-chip C" data-grade-pot="C">C</button>
                 <button type="button" class="cmp-filter-chip grade-chip D" data-grade-pot="D">D</button>
+              </div>
+              <div class="cmp-filter-row">
+                <span class="cmp-filter-label">Leeftijd</span>
+                <button type="button" class="cmp-filter-chip" data-cat="JO13">JO13</button>
+                <button type="button" class="cmp-filter-chip" data-cat="JO15">JO15</button>
+                <button type="button" class="cmp-filter-chip" data-cat="JO17">JO17</button>
+                <button type="button" class="cmp-filter-chip" data-cat="JO19">JO19</button>
+              </div>
+              <div class="cmp-filter-row cmp-filter-row-prov" id="cmp-filter-prov-row">
+                <span class="cmp-filter-label">Provincie</span>
+                <!-- chips ingespoten via JS -->
                 <button type="button" class="cmp-filter-clear" id="cmp-filter-clear">Filters wissen</button>
               </div>
             </div>
@@ -6128,11 +6246,11 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
-            <label>Thuisclub *</label>
+            <label>Thuisspelende ploeg *</label>
             <input id="pm-thuis" type="text" required placeholder="Bijv. AFC" autocomplete="off" data-picker="club" />
           </div>
           <div class="field">
-            <label>Uitclub *</label>
+            <label>Uitspelende ploeg *</label>
             <input id="pm-uit" type="text" required placeholder="Bijv. Ajax" autocomplete="off" data-picker="club" />
           </div>
         </div>
@@ -6431,11 +6549,11 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Thuisspelende ploeg *</label>
-            <input id="mr-thuis" type="text" required placeholder="Bijv. Roda'46 12.2" />
+            <input id="mr-thuis" type="text" required placeholder="Bijv. Roda'46 12.2" autocomplete="off" data-picker="club" />
           </div>
           <div class="field">
             <label>Uitspelende ploeg *</label>
-            <input id="mr-uit" type="text" required placeholder="Bijv. Scherpenzeel 12.1" />
+            <input id="mr-uit" type="text" required placeholder="Bijv. Scherpenzeel 12.1" autocomplete="off" data-picker="club" />
           </div>
         </div>
         <div class="field" style="margin-top:12px;">
@@ -9818,10 +9936,58 @@ function renderComparePicker(){
 /* ===== v70h-s31: zoek-/filter-modal voor toevoegen van spelers ===== */
 let cmpAddModalState = {
   query: '',
+  formation: '4-3-3',
   pos: new Set(),
   cur: new Set(),
   pot: new Set(),
+  cat: new Set(),       // v70h-s34: leeftijdscategorie JO13/JO15/JO17/JO19
+  prov: new Set(),      // v70h-s34: provincies (multi-select)
   wired: false
+};
+
+/* v70h-s34: opstelling -> positie-coordinates op pitch (procent x/y, 0-100).
+   Y=0 = bovenkant (verdediging tegenstander), Y=100 = onderkant (eigen doel).
+   Codes komen uit ALL_POSITIONS (GK, LB, LCV, CV, RCV, RB, VM, CM, AM, LM, RM, LV, CS, RV). */
+const CMP_FORMATIONS = {
+  '4-3-3': [
+    { code: 'GK',  x: 50, y: 92, label: 'GK' },
+    { code: 'LB',  x: 14, y: 72, label: 'LB' },
+    { code: 'LCV', x: 36, y: 76, label: 'LCV' },
+    { code: 'RCV', x: 64, y: 76, label: 'RCV' },
+    { code: 'RB',  x: 86, y: 72, label: 'RB' },
+    { code: 'VM',  x: 50, y: 58, label: 'VM' },
+    { code: 'CM',  x: 30, y: 46, label: 'CM' },
+    { code: 'AM',  x: 70, y: 46, label: 'AM' },
+    { code: 'LV',  x: 16, y: 22, label: 'LV' },
+    { code: 'CS',  x: 50, y: 14, label: 'CS' },
+    { code: 'RV',  x: 84, y: 22, label: 'RV' }
+  ],
+  '4-4-2': [
+    { code: 'GK',  x: 50, y: 92, label: 'GK' },
+    { code: 'LB',  x: 14, y: 74, label: 'LB' },
+    { code: 'LCV', x: 36, y: 78, label: 'LCV' },
+    { code: 'RCV', x: 64, y: 78, label: 'RCV' },
+    { code: 'RB',  x: 86, y: 74, label: 'RB' },
+    { code: 'LM',  x: 14, y: 50, label: 'LM' },
+    { code: 'CM',  x: 36, y: 52, label: 'CM' },
+    { code: 'AM',  x: 64, y: 52, label: 'AM' },
+    { code: 'RM',  x: 86, y: 50, label: 'RM' },
+    { code: 'CS',  x: 36, y: 18, label: 'CS-L' },
+    { code: 'CS',  x: 64, y: 18, label: 'CS-R' }
+  ],
+  '3-5-2': [
+    { code: 'GK',  x: 50, y: 92, label: 'GK' },
+    { code: 'LCV', x: 24, y: 76, label: 'LCV' },
+    { code: 'CV',  x: 50, y: 78, label: 'CV' },
+    { code: 'RCV', x: 76, y: 76, label: 'RCV' },
+    { code: 'LM',  x: 12, y: 50, label: 'LM' },
+    { code: 'VM',  x: 34, y: 54, label: 'VM' },
+    { code: 'CM',  x: 50, y: 48, label: 'CM' },
+    { code: 'AM',  x: 66, y: 54, label: 'AM' },
+    { code: 'RM',  x: 88, y: 50, label: 'RM' },
+    { code: 'CS',  x: 36, y: 18, label: 'CS-L' },
+    { code: 'CS',  x: 64, y: 18, label: 'CS-R' }
+  ]
 };
 
 function openCmpAddModal(){
@@ -9833,9 +9999,14 @@ function openCmpAddModal(){
   }
   const bd = document.getElementById('cmp-add-modal-backdrop');
   if(!bd) return;
-  // chips voor positie eenmalig (of opnieuw bij dataset-wissel) renderen
-  renderCmpAddPositionChips();
+  // v70h-s34: pitch + provincies (her)renderen bij elke open
+  renderCmpAddPitch();
+  renderCmpAddProvinces();
   wireCmpAddModal();
+  // Formatie-toggle visueel syncen
+  document.querySelectorAll('#cmp-formation-toggle .cmp-form-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.formation === cmpAddModalState.formation);
+  });
   bd.classList.add('show');
   document.body.style.overflow = 'hidden';
   renderCmpAddResults();
@@ -9853,31 +10024,74 @@ function closeCmpAddModal(){
 window.openCmpAddModal = openCmpAddModal;
 window.closeCmpAddModal = closeCmpAddModal;
 
-function renderCmpAddPositionChips(){
-  const row = document.getElementById('cmp-filter-pos-row');
+/* v70h-s34: render klikbaar voetbalveld voor de gekozen formatie. */
+function renderCmpAddPitch(){
+  const pitch = document.getElementById('cmp-pitch');
+  if(!pitch) return;
+  const formation = cmpAddModalState.formation || '4-3-3';
+  const spots = CMP_FORMATIONS[formation] || CMP_FORMATIONS['4-3-3'];
+  // Doelgebieden + spots
+  const boxes = '<div class="cmp-pitch-box top"></div><div class="cmp-pitch-box bottom"></div>';
+  const html = boxes + spots.map((s, i) => {
+    const active = cmpAddModalState.pos.has(s.code) ? ' active' : '';
+    const titleLabel = positionLabel(s.code) || s.code;
+    return `<button type="button" class="cmp-pitch-spot${active}" data-pos="${escapeAttr(s.code)}"
+              style="left:${s.x}%;top:${s.y}%;" title="${escapeAttr(titleLabel)}" aria-pressed="${active?'true':'false'}">${escapeHtml(s.label)}</button>`;
+  }).join('');
+  pitch.innerHTML = html;
+}
+
+/* v70h-s34: render provincie-chips (alleen die met ten minste 1 speler). */
+function renderCmpAddProvinces(){
+  const row = document.getElementById('cmp-filter-prov-row');
   if(!row) return;
   const players = loadPlayers();
-  // Unieke positie-codes verzamelen + sorteren op label
-  const seen = new Set();
-  const entries = [];
+  const counts = {};
   players.forEach(p => {
-    const code = (p.positie || '').trim();
-    if(!code || seen.has(code)) return;
-    seen.add(code);
-    entries.push({ code, label: positionLabel(code) || code });
+    const prov = _cmpPlayerProvincie(p);
+    if(prov) counts[prov] = (counts[prov] || 0) + 1;
   });
-  entries.sort((a,b) => a.label.localeCompare(b.label, 'nl'));
-  // Verwijder oude chips, behoud label
-  row.querySelectorAll('.cmp-filter-chip[data-pos]').forEach(c => c.remove());
-  entries.forEach(e => {
+  // Verwijder oude provincie-chips, behoud label + clear-knop
+  row.querySelectorAll('.cmp-filter-chip[data-prov]').forEach(c => c.remove());
+  const clearBtn = row.querySelector('#cmp-filter-clear');
+  const provs = (typeof _NL_PROVINCIES !== 'undefined' ? _NL_PROVINCIES : []);
+  provs.forEach(prov => {
+    if(!counts[prov]) return;
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'cmp-filter-chip';
-    btn.dataset.pos = e.code;
-    btn.textContent = e.label;
-    if(cmpAddModalState.pos.has(e.code)) btn.classList.add('active');
-    row.appendChild(btn);
+    btn.dataset.prov = prov;
+    btn.textContent = `${prov} (${counts[prov]})`;
+    if(cmpAddModalState.prov.has(prov)) btn.classList.add('active');
+    if(clearBtn) row.insertBefore(btn, clearBtn);
+    else row.appendChild(btn);
   });
+}
+
+/* v70h-s34: bepaal provincie van een speler via club + adresboek. */
+function _cmpPlayerProvincie(p){
+  if(!p || !p.club) return '';
+  try {
+    const info = (typeof findClubInfo === 'function') ? findClubInfo(p.club) : null;
+    const pc = (info && info.postcode) || '';
+    if(pc && typeof pcToProvince === 'function'){
+      return pcToProvince(pc) || '';
+    }
+  } catch(_){}
+  return '';
+}
+
+/* v70h-s34: leeftijdscategorie afleiden uit elftal-veld (O.13 -> JO13). */
+function _cmpPlayerCategorie(p){
+  const el = (p && (p.elftal || (typeof deriveElftalFromReport === 'function' ? deriveElftalFromReport(p) : ''))) || '';
+  const m = el.match(/O\.?\s*(\d{1,2})/i);
+  if(!m) return '';
+  const n = parseInt(m[1], 10);
+  if(n <= 13) return 'JO13';
+  if(n <= 15) return 'JO15';
+  if(n <= 17) return 'JO17';
+  if(n <= 19) return 'JO19';
+  return '';
 }
 
 function wireCmpAddModal(){
@@ -9904,18 +10118,51 @@ function wireCmpAddModal(){
     });
   }
 
-  // Delegated chip-clicks
+  // Delegated chip-/spot-/formation-clicks
   const filters = document.querySelector('.cmp-add-modal-filters');
   if(filters){
     filters.addEventListener('click', (ev) => {
+      // v70h-s34: formatie-toggle
+      const formBtn = ev.target.closest('.cmp-form-btn');
+      if(formBtn){
+        const f = formBtn.dataset.formation;
+        if(f && cmpAddModalState.formation !== f){
+          cmpAddModalState.formation = f;
+          document.querySelectorAll('#cmp-formation-toggle .cmp-form-btn').forEach(b => {
+            b.classList.toggle('active', b === formBtn);
+          });
+          renderCmpAddPitch();
+          renderCmpAddResults();
+        }
+        return;
+      }
+      // v70h-s34: voetbalveld-positie
+      const spot = ev.target.closest('.cmp-pitch-spot');
+      if(spot){
+        const code = spot.dataset.pos;
+        if(code){
+          toggleSet(cmpAddModalState.pos, code);
+          // Sync alle spots met deze code (4-4-2/3-5-2 hebben 2 spitsen)
+          document.querySelectorAll('.cmp-pitch-spot[data-pos="' + CSS.escape(code) + '"]').forEach(s => {
+            const on = cmpAddModalState.pos.has(code);
+            s.classList.toggle('active', on);
+            s.setAttribute('aria-pressed', on ? 'true' : 'false');
+          });
+          renderCmpAddResults();
+        }
+        return;
+      }
+      // Bestaande + nieuwe chips
       const chip = ev.target.closest('.cmp-filter-chip');
       if(chip){
-        if(chip.dataset.pos){
-          toggleSet(cmpAddModalState.pos, chip.dataset.pos);
-        } else if(chip.dataset.gradeCur){
+        if(chip.dataset.gradeCur){
           toggleSet(cmpAddModalState.cur, chip.dataset.gradeCur);
         } else if(chip.dataset.gradePot){
           toggleSet(cmpAddModalState.pot, chip.dataset.gradePot);
+        } else if(chip.dataset.cat){
+          toggleSet(cmpAddModalState.cat, chip.dataset.cat);
+        } else if(chip.dataset.prov){
+          toggleSet(cmpAddModalState.prov, chip.dataset.prov);
         } else { return; }
         chip.classList.toggle('active');
         renderCmpAddResults();
@@ -9925,7 +10172,13 @@ function wireCmpAddModal(){
         cmpAddModalState.pos.clear();
         cmpAddModalState.cur.clear();
         cmpAddModalState.pot.clear();
+        cmpAddModalState.cat.clear();
+        cmpAddModalState.prov.clear();
         filters.querySelectorAll('.cmp-filter-chip').forEach(c => c.classList.remove('active'));
+        filters.querySelectorAll('.cmp-pitch-spot').forEach(s => {
+          s.classList.remove('active');
+          s.setAttribute('aria-pressed', 'false');
+        });
         renderCmpAddResults();
       }
     });
@@ -9967,6 +10220,15 @@ function renderCmpAddResults(){
   if(fpos.size > 0) players = players.filter(p => fpos.has(p.positie || ''));
   if(fcur.size > 0) players = players.filter(p => fcur.has((p.huidig_niveau || '').toUpperCase()));
   if(fpot.size > 0) players = players.filter(p => fpot.has((p.potentieel_niveau || '').toUpperCase()));
+  // v70h-s34: AND tussen categorieën, OR binnen
+  const fcat = cmpAddModalState.cat;
+  const fprov = cmpAddModalState.prov;
+  if(fcat && fcat.size > 0){
+    players = players.filter(p => fcat.has(_cmpPlayerCategorie(p)));
+  }
+  if(fprov && fprov.size > 0){
+    players = players.filter(p => fprov.has(_cmpPlayerProvincie(p)));
+  }
 
   players.sort((a,b) => (a.naam||'').localeCompare(b.naam||'', 'nl'));
 
@@ -15257,6 +15519,9 @@ onAuthStateChanged(auth, async (user)=>{
       if(typeof CLUB_ADRESSEN !== 'undefined' && CLUB_ADRESSEN){
         Object.values(CLUB_ADRESSEN).forEach(c => { if(c && c.naam) names.add(c.naam); });
       }
+      if(typeof HV_CLUBS !== 'undefined' && Array.isArray(HV_CLUBS)){
+        HV_CLUBS.forEach(c => { if(c && c.naam) names.add(c.naam); });
+      }
       // Clubs uit eerder ingevulde rapporten meenemen (zo komen handmatig-toegevoegde clubs terug)
       try {
         if(typeof playersCache !== 'undefined' && Array.isArray(playersCache)){
@@ -15340,10 +15605,6 @@ onAuthStateChanged(auth, async (user)=>{
         (it.recent ? '<span class="recent-mark">recent</span>' : '') +
         '</button>'
       ).join('');
-    }
-    if(f && !exact){
-      html += '<button type="button" class="sh-ac-add" data-add="' + escapeHtml(raw.trim()) + '">' +
-              '<span class="plus">+</span>Voeg toe: "' + escapeHtml(raw.trim()) + '"</button>';
     }
     dd.innerHTML = html || '<div class="sh-ac-empty">Geen suggesties</div>';
     activeIdx = -1;

@@ -7191,12 +7191,20 @@ function scheduleGeoRerender(){
 
 function cityForPlayer(p){
   if(p.plaats && p.plaats.trim()) return p.plaats.trim();
-  const key = (p.club||'').trim().toLowerCase();
+  const club = (p.club||'').trim();
+  const key = club.toLowerCase();
   if(!key) return '';
   if(CLUB_ADRESSEN[key] && CLUB_ADRESSEN[key].plaats) return CLUB_ADRESSEN[key].plaats;
   if(CLUB_CITY[key]) return CLUB_CITY[key];
+  // s35k: probeer de HV-adresboek (2990 clubs) vóór async Nominatim-lookup.
+  // Dit voorkomt dat clubs zonder plaats-veld (PSV Eindhoven, Jonathan, ...)
+  // op de Veluwe-fallback "Nederland" belanden.
+  if(typeof window.findClubInfo === 'function'){
+    const ci = window.findClubInfo(club);
+    if(ci && ci.plaats) return ci.plaats;
+  }
   if(_clubCache[key] !== undefined) return _clubCache[key] || '';
-  lookupClubCity(p.club||'').then(city=>{ if(city) scheduleGeoRerender(); });
+  lookupClubCity(club).then(city=>{ if(city) scheduleGeoRerender(); });
   return '';
 }
 function teamForPlayer(p){
@@ -7389,6 +7397,30 @@ function matchReportsCol(){ return collection(db, 'users', currentUser.uid, 'mat
 function tipsCol(){ return collection(db, 'users', currentUser.uid, 'tips'); }
 function programmaCol(){ return collection(db, 'users', currentUser.uid, 'programma'); }
 
+// s35l: vul plaats/adres/postcode op een rapport of wedstrijd in via
+// findClubInfo, met de thuisspelende ploeg als bron. Velden die al
+// gevuld zijn worden gerespecteerd. Retourneert {changed, rec}.
+function enrichRecordFromHomeClub(rec){
+  if(!rec || typeof window.findClubInfo !== 'function') return {changed:false, rec};
+  const homeKey = (rec.wedstrijd && rec.wedstrijd.thuis) || rec.thuis || rec.club || '';
+  if(!homeKey || !homeKey.trim()) return {changed:false, rec};
+  const info = window.findClubInfo(homeKey);
+  if(!info) return {changed:false, rec};
+  let changed = false;
+  const out = {...rec};
+  if((!out.plaats || !String(out.plaats).trim()) && info.plaats){
+    out.plaats = info.plaats; changed = true;
+  }
+  if((!out.adres || !String(out.adres).trim()) && info.adres){
+    out.adres = info.adres; changed = true;
+  }
+  if((!out.postcode || !String(out.postcode).trim()) && info.postcode){
+    out.postcode = info.postcode; changed = true;
+  }
+  return {changed, rec: out};
+}
+window.enrichRecordFromHomeClub = enrichRecordFromHomeClub;
+
 function loadPlayers(){ return playersCache; }
 function loadAnalyses(){ return analysesCache; }
 function loadContacts(){ return contactsCache; }
@@ -7400,6 +7432,7 @@ function currentAnalysis(){ return currentAnalysisId ? getAnalysis(currentAnalys
 
 function subscribeData(){
   let datumMigrationDone = false;
+  let geoPlayersMigrationDone = false;  // s35l
   unsubPlayers = onSnapshot(playersCol(), snap=>{
     playersCache = snap.docs.map(d => ({...d.data(), id: d.id}));
     if(!datumMigrationDone){
@@ -7408,6 +7441,18 @@ function subscribeData(){
       if(toFix.length){
         Promise.all(toFix.map(p => savePlayer({...p, datum: p.wedstrijd.datum}).catch(()=>{})))
           .then(()=> toast(`${toFix.length} rapportdatum${toFix.length===1?'':'s'} bijgewerkt naar wedstrijddatum`));
+      }
+    }
+    if(!geoPlayersMigrationDone){
+      geoPlayersMigrationDone = true;
+      // s35l: backfill plaats/adres/postcode via thuisclub (findClubInfo).
+      const enriched = playersCache
+        .map(p => enrichRecordFromHomeClub(p))
+        .filter(r => r.changed)
+        .map(r => r.rec);
+      if(enriched.length){
+        Promise.all(enriched.map(p => savePlayer(p).catch(()=>{})))
+          .then(()=> toast(`${enriched.length} rapport${enriched.length===1?'':'en'} aangevuld met adres`));
       }
     }
     if(currentView === 'dashboard') renderDashboard();
@@ -7441,8 +7486,21 @@ function subscribeData(){
     setSync('offline');
   });
 
+  let geoMatchesMigrationDone = false;  // s35l
   unsubMatchReports = onSnapshot(matchReportsCol(), snap=>{
     matchReportsCache = snap.docs.map(d => ({...d.data(), id: d.id}));
+    if(!geoMatchesMigrationDone){
+      geoMatchesMigrationDone = true;
+      // s35l: backfill plaats/adres/postcode via thuisclub.
+      const enriched = matchReportsCache
+        .map(m => enrichRecordFromHomeClub(m))
+        .filter(r => r.changed)
+        .map(r => r.rec);
+      if(enriched.length){
+        Promise.all(enriched.map(m => saveMatchReport(m).catch(()=>{})))
+          .then(()=> toast(`${enriched.length} wedstrijd${enriched.length===1?'':'en'} aangevuld met adres`));
+      }
+    }
     if(currentView === 'matches') renderMatches();
     setSync('ok');
   }, err=>{
@@ -7487,8 +7545,12 @@ function unsubscribeData(){
 async function savePlayer(player){
   setSync('syncing');
   try {
-    const id = player.id;
-    const {id: _drop, ...data} = player;
+    // s35l: verrijk plaats/adres/postcode uit thuisclub vóór opslaan
+    const enriched = (typeof enrichRecordFromHomeClub === 'function')
+      ? enrichRecordFromHomeClub(player).rec
+      : player;
+    const id = enriched.id;
+    const {id: _drop, ...data} = enriched;
     await setDoc(doc(playersCol(), id), data);
   } catch(e){
     console.error('Save player error:', e);
@@ -7535,8 +7597,12 @@ async function deleteContact(id){
 async function saveMatchReport(report){
   setSync('syncing');
   try {
-    const id = report.id;
-    const {id: _drop, ...data} = report;
+    // s35l: verrijk plaats/adres/postcode uit thuisclub vóór opslaan
+    const enriched = (typeof enrichRecordFromHomeClub === 'function')
+      ? enrichRecordFromHomeClub(report).rec
+      : report;
+    const id = enriched.id;
+    const {id: _drop, ...data} = enriched;
     await setDoc(doc(matchReportsCol(), id), data);
   } catch(e){
     console.error('Save match report error:', e);

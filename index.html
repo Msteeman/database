@@ -9069,12 +9069,19 @@ async function ensureActiveMatchReport(prog){
 // progSp = speler-object uit programma. prog = wedstrijd.
 function openScoutingPlayerForm(prog, progSp, matchedPlayer){
   if(!prog || !progSp) return;
+  // s35y: pending-vlag SYNCHROON zodat tryRestore (+50ms) banner skipt.
+  // resetReportForm wist alleen __shScoutingCtx, niet __shScoutingPending.
+  window.__shScoutingPending = { progId: prog.id, spelerKey: progSp.id };
   go('report');
   setTimeout(() => {
     try {
       resetReportForm();
       // s35x: zet scouting-context voor autosave (concept-record).
       window.__shScoutingCtx = { progId: prog.id, spelerKey: progSp.id };
+      window.__shScoutingPending = null;
+      // s35y: belt-and-suspenders — verberg eventuele localStorage-banner
+      const dbanner = document.getElementById('report-draft-banner');
+      if(dbanner) dbanner.classList.add('hidden');
       // s35x: bestaat er al een concept voor dit slot? -> laad dat
       const slotConcept = (typeof findSlotConcept === 'function')
         ? findSlotConcept(prog.id, progSp.id) : null;
@@ -17329,6 +17336,13 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
 
   // ---- draft restore on load ----
   function tryRestore(){
+    // s35y: in scouting-modus heeft het slot zijn eigen concept-record
+    // (zie findSlotConcept in openScoutingPlayerForm). De localStorage-
+    // draft-banner is alleen relevant voor de 'Nieuw rapport' database-flow.
+    if(window.__shScoutingPending || window.__shScoutingCtx){
+      if(banner) banner.classList.add('hidden');
+      return;
+    }
     let raw;
     try { raw = localStorage.getItem(DRAFT_KEY); } catch(_){ return; }
     if(!raw) return;

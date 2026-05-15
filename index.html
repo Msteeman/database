@@ -8964,6 +8964,19 @@ function showApp(){
     localStorage.removeItem('sh-demo-banner-hidden');
   } catch(_){ }
 })();
+// s35af: flush pending autosave bij tab-verbergen of pagina-sluiten
+(function _shFlushOnHide(){
+  function flush(){
+    if(typeof window.__shFlushAutosave === 'function'){
+      try { window.__shFlushAutosave(); } catch(_){ }
+    }
+  }
+  window.addEventListener('pagehide', flush);
+  window.addEventListener('beforeunload', flush);
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'hidden') flush();
+  });
+})();
 function openConceptDebug(){
   const m = document.getElementById('debug-modal');
   if(!m) return;
@@ -9125,6 +9138,11 @@ function go(view){
   // v70h-s1.2: guard tegen falsy view (bv. nav-item zonder data-view)
   if(!view || typeof view !== 'string') return;
   if(currentView === 'report' && view !== 'report'){
+    // s35af: flush pending autosave VOORDAT we de view verlaten,
+    // zodat een snelle wegklik (<300ms debounce) niet je tekst kwijtraakt.
+    if(typeof window.__shFlushAutosave === 'function'){
+      try { window.__shFlushAutosave(); } catch(_){ }
+    }
     if(!confirmDiscard()) return;
   }
   currentView = view;
@@ -17372,7 +17390,7 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
 /* ===== v70a: Autosave + Draft Restore + Copy Last Report ===== */
 (function(){
   const DRAFT_KEY = 'sh_report_draft_v1';
-  const DRAFT_DEBOUNCE_MS = 800;
+  const DRAFT_DEBOUNCE_MS = 300; // s35af: van 800ms -> 300ms
   const DRAFT_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 14; // 14 dagen
 
   const form = document.getElementById('report-form');
@@ -17579,6 +17597,17 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
       setStatus('saved', 'Concept opgeslagen');
     }
   }
+
+  // s35af: synchroon flushen van pending autosave.
+  // Roept doSave() direct aan en wist de pending timer.
+  // Veilig om vaker te bellen — doSave bewaakt zelf de no-content case.
+  window.__shFlushAutosave = function(){
+    if(saveTimer){
+      clearTimeout(saveTimer);
+      saveTimer = null;
+    }
+    try { doSave(); } catch(e){ console.warn('flush autosave faalde:', e); }
+  };
 
   form.addEventListener('input', scheduleSave);
   form.addEventListener('change', scheduleSave);

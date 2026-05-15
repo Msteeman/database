@@ -15687,6 +15687,8 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
   let activeType = null;
   let activeIdx = -1;
   let suppressBlurClose = false;
+  let suppressClearTimer = null;   // s35g: echte timer i.p.v. setTimeout(0)
+  let renderDebounceTimer = null;  // s35g: debounce voor render tijdens typen
 
   function position(){
     if(!activeInput) return;
@@ -15821,20 +15823,32 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
     close();
   }
 
-  // mousedown beats blur — voorkomt dat dropdown sluit voordat keuze is gepakt
-  dd.addEventListener('mousedown', (e) => {
+  // s35g: hulpfunctie — zet suppressBlurClose aan en wis 'm pas na 250ms
+  function holdSuppress(){
     suppressBlurClose = true;
-    setTimeout(() => { suppressBlurClose = false; }, 0);
+    if(suppressClearTimer) clearTimeout(suppressClearTimer);
+    suppressClearTimer = setTimeout(() => { suppressBlurClose = false; }, 250);
+  }
+  // s35g: pick op pointerdown — vuurt direct, vóór blur. preventDefault houdt focus vast.
+  dd.addEventListener('pointerdown', (e) => {
+    const add = e.target.closest('.sh-ac-add');
+    const opt = e.target.closest('.sh-ac-opt');
+    if(!add && !opt) return;
+    e.preventDefault(); // voorkomt blur op input
+    holdSuppress();
+    if(add){ pick(add.dataset.add); return; }
+    pick(opt.dataset.val);
   });
+  // Click-fallback voor toetsenbord/AT (Enter op een option via screenreader)
   dd.addEventListener('click', (e) => {
     const add = e.target.closest('.sh-ac-add');
     if(add){ pick(add.dataset.add); return; }
     const opt = e.target.closest('.sh-ac-opt');
     if(opt) pick(opt.dataset.val);
   });
-  // Touch op mobiel — touchstart geeft direct response
+  // Touch — zelfde holdSuppress zodat de vlag niet blijft hangen
   dd.addEventListener('touchstart', (e) => {
-    suppressBlurClose = true;
+    holdSuppress();
   }, { passive: true });
 
   function highlight(delta){
@@ -15858,7 +15872,17 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
     input.style.caretColor = '';
 
     input.addEventListener('focus', () => openFor(input));
-    input.addEventListener('input', () => { if(activeInput === input) render(); else openFor(input); });
+    // s35g: debounce render tijdens typen — optielijst schuift niet onder de vinger weg
+    input.addEventListener('input', () => {
+      if(activeInput === input){
+        if(renderDebounceTimer) clearTimeout(renderDebounceTimer);
+        renderDebounceTimer = setTimeout(() => {
+          if(activeInput === input) render();
+        }, 60);
+      } else {
+        openFor(input);
+      }
+    });
     input.addEventListener('click', () => { if(!dd.classList.contains('show')) openFor(input); });
     input.addEventListener('blur', () => {
       if(suppressBlurClose) return; // klik op dropdown — handler vult al in

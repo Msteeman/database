@@ -14560,18 +14560,34 @@ function initApp(){
     const adresEl  = $('#f-adres');
     const raw = ($('#f-club').value || '').trim();
     if(!raw) return;
-    // s35d: spiegel naar Thuisspelende ploeg als die leeg is
+    // s35e: normaliseer Club zelf naar canonieke adresboek-naam, en spiegel met die naam
     try {
+      const ciPre = (typeof window.findClubInfo === 'function') ? window.findClubInfo(raw) : null;
+      if(ciPre && ciPre.naam && $('#f-club').value !== ciPre.naam){
+        $('#f-club').value = ciPre.naam;
+      }
       const thuisEl = $('#f-w-thuis');
-      if(thuisEl && !thuisEl.value.trim()){
-        thuisEl.value = raw;
-        thuisEl.dispatchEvent(new Event('input', { bubbles: true }));
+      if(thuisEl){
+        const mirrorVal = (ciPre && ciPre.naam) ? ciPre.naam : raw;
+        const cur = (thuisEl.value || '').trim();
+        let safeToOverwrite = !cur;
+        if(!safeToOverwrite){
+          try {
+            const curInfo = (typeof window.findClubInfo === 'function') ? window.findClubInfo(cur) : null;
+            if(curInfo) safeToOverwrite = true;
+          } catch(_){}
+        }
+        if(safeToOverwrite && cur !== mirrorVal){
+          thuisEl.value = mirrorVal;
+          thuisEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
       }
     } catch(_){}
-    const key = raw.toLowerCase();
+    const raw2 = ($('#f-club').value || '').trim();
+    const key = raw2.toLowerCase();
     // v70h-s35a: directe lookup via findClubInfo (CLUB_ADRESSEN + HV_CLUBS) heeft voorrang
     if(typeof window.findClubInfo === 'function'){
-      const ci = window.findClubInfo(raw);
+      const ci = window.findClubInfo(raw2);
       if(ci){
         if(plaatsEl && !plaatsEl.value.trim() && ci.plaats) plaatsEl.value = ci.plaats;
         if(adresEl && !adresEl.value.trim()){
@@ -14626,9 +14642,25 @@ function initApp(){
         const adresEl  = $('#f-adres');
         let info = null;
         try { if(typeof window.findClubInfo === 'function') info = window.findClubInfo(raw); } catch(_){}
-        if(clubEl && !clubEl.value.trim()){
-          clubEl.value = (info && info.naam) ? info.naam : raw;
-          clubEl.dispatchEvent(new Event('input', { bubbles: true }));
+        // s35e: normaliseer Thuisspelende ploeg zelf naar canonieke naam
+        if(info && info.naam && thuisInp.value !== info.naam){
+          thuisInp.value = info.naam;
+        }
+        // s35e: Club spiegelt mee — overschrijf óók als oude waarde een bekende club was
+        if(clubEl){
+          const canonical = (info && info.naam) ? info.naam : raw;
+          const cur = (clubEl.value || '').trim();
+          let safeToOverwrite = !cur;
+          if(!safeToOverwrite){
+            try {
+              const curInfo = (typeof window.findClubInfo === 'function') ? window.findClubInfo(cur) : null;
+              if(curInfo) safeToOverwrite = true;
+            } catch(_){}
+          }
+          if(safeToOverwrite && cur !== canonical){
+            clubEl.value = canonical;
+            clubEl.dispatchEvent(new Event('input', { bubbles: true }));
+          }
         }
         if(info){
           if(plaatsEl && !plaatsEl.value.trim() && info.plaats){
@@ -15745,6 +15777,11 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
         const map = CLUB_AUTOFILL_MAP[id];
         if(map){
           const info = window.findClubInfo(val);
+          // s35e: normaliseer bron-veld zelf naar adresboek-naam zodat "roda" -> "RODA '46"
+          if(info && info.naam && activeInput.value !== info.naam){
+            activeInput.value = info.naam;
+            activeInput.dispatchEvent(new Event('input', { bubbles: true }));
+          }
           if(info){
             if(map.plaats){
               const pEl = document.getElementById(map.plaats);
@@ -15759,12 +15796,23 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
               }
             }
           }
-          // s35d: spiegel clubnaam naar partner-veld (club <-> thuisclub) wanneer leeg
+          // s35e: mirror beweegt mee — overschrijven als oude waarde leeg is OF een herkenbare clubnaam was
           if(map.mirror){
             const mEl = document.getElementById(map.mirror);
-            if(mEl && !mEl.value.trim()){
-              mEl.value = (info && info.naam) ? info.naam : val;
-              mEl.dispatchEvent(new Event('input', { bubbles: true }));
+            if(mEl){
+              const canonical = (info && info.naam) ? info.naam : val;
+              const cur = (mEl.value || '').trim();
+              let safeToOverwrite = !cur;
+              if(!safeToOverwrite){
+                try {
+                  const curInfo = window.findClubInfo(cur);
+                  if(curInfo) safeToOverwrite = true; // oude waarde was een bekende club -> mag weg
+                } catch(_){}
+              }
+              if(safeToOverwrite && cur !== canonical){
+                mEl.value = canonical;
+                mEl.dispatchEvent(new Event('input', { bubbles: true }));
+              }
             }
           }
         }
@@ -17202,164 +17250,6 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
   else if(mq.addListener) mq.addListener(place);
   setTimeout(place, 800);
   setTimeout(place, 2500);
-})();
-</script>
-
-<!-- v70h-s35b: club autofill debug panel -->
-<div id="club-debug-panel" style="
-  position: fixed; right: 12px; bottom: 12px; z-index: 9999;
-  background: rgba(13,17,23,0.97); color: #e6edf3;
-  border: 1px solid #30363d; border-radius: 10px;
-  padding: 0; max-width: 360px; width: calc(100vw - 24px);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 11px; line-height: 1.45;
-  box-shadow: 0 6px 30px rgba(0,0,0,0.6);
-  display: none;
-">
-  <div id="club-debug-head" style="
-    display:flex;align-items:center;justify-content:space-between;
-    padding:8px 12px;border-bottom:1px solid #30363d;
-    background:#161b22;border-radius:10px 10px 0 0;cursor:pointer;
-    user-select:none;
-  ">
-    <span style="font-weight:700;font-size:12px;color:#ffd700;">🔍 Club-debug</span>
-    <span id="club-debug-toggle" style="color:#9aa5b1;font-size:14px;">▾</span>
-  </div>
-  <div id="club-debug-body" style="padding:10px 12px;max-height:50vh;overflow:auto;">
-    <div id="club-debug-content" style="white-space:pre-wrap;word-break:break-word;"></div>
-  </div>
-</div>
-
-<script>
-(function(){
-  const panel   = document.getElementById('club-debug-panel');
-  const head    = document.getElementById('club-debug-head');
-  const body    = document.getElementById('club-debug-body');
-  const toggle  = document.getElementById('club-debug-toggle');
-  const content = document.getElementById('club-debug-content');
-  if(!panel) return;
-
-  const TARGETS = [
-    { id:'mr-thuis', plaats:'mr-plaats', adres:'mr-adres',   label:'Wedstrijdrapport'   },
-    { id:'f-club',   plaats:'f-plaats',  adres:'f-adres',    label:'Spelersrapport'     },
-    { id:'pm-thuis', plaats:'pm-plaats', adres:'pm-locatie', label:'Wedstrijd inplannen'}
-  ];
-
-  let collapsed = false;
-  head.addEventListener('click', () => {
-    collapsed = !collapsed;
-    body.style.display = collapsed ? 'none' : 'block';
-    toggle.textContent = collapsed ? '▸' : '▾';
-  });
-
-  function dataStatus(){
-    const hv = (typeof HV_CLUBS !== 'undefined' && Array.isArray(HV_CLUBS)) ? HV_CLUBS.length : 'undef';
-    const ca = (typeof CLUB_ADRESSEN !== 'undefined' && CLUB_ADRESSEN) ? Object.keys(CLUB_ADRESSEN).length : 'undef';
-    const fci = (typeof window.findClubInfo === 'function') ? 'OK' : 'MISSING';
-    const hasAjax = (typeof HV_CLUBS !== 'undefined' && Array.isArray(HV_CLUBS))
-      ? HV_CLUBS.some(c => c && c.naam && c.naam.toLowerCase() === 'ajax') : false;
-    return { hv, ca, fci, hasAjax };
-  }
-
-  function matchPreview(query){
-    if(!query) return [];
-    const q = query.toLowerCase();
-    const out = [];
-    const seen = new Set();
-    if(typeof HV_CLUBS !== 'undefined' && Array.isArray(HV_CLUBS)){
-      for(const c of HV_CLUBS){
-        if(!c || !c.naam) continue;
-        if(c.naam.toLowerCase().includes(q) && !seen.has(c.naam)){
-          seen.add(c.naam);
-          out.push(c.naam + ' [HV]');
-          if(out.length >= 8) break;
-        }
-      }
-    }
-    if(out.length < 8 && typeof CLUB_ADRESSEN !== 'undefined' && CLUB_ADRESSEN){
-      for(const c of Object.values(CLUB_ADRESSEN)){
-        if(!c || !c.naam) continue;
-        if(c.naam.toLowerCase().includes(q) && !seen.has(c.naam)){
-          seen.add(c.naam);
-          out.push(c.naam + ' [CA]');
-          if(out.length >= 8) break;
-        }
-      }
-    }
-    return out;
-  }
-
-  let activeTarget = null;
-  function render(){
-    const s = dataStatus();
-    let html = '';
-    html += 'HV_CLUBS.length     : ' + s.hv + '\n';
-    html += 'CLUB_ADRESSEN keys  : ' + s.ca + '\n';
-    html += 'findClubInfo        : ' + s.fci + '\n';
-    html += 'HV bevat "Ajax"     : ' + (s.hasAjax ? 'JA' : 'NEE') + '\n';
-    html += '────────────────────────────\n';
-    if(!activeTarget){
-      html += '(typ in een thuisclub-veld om live state te zien)';
-    } else {
-      const t = activeTarget;
-      const inp = document.getElementById(t.id);
-      const val = inp ? inp.value : '(input weg)';
-      html += t.label + ' — #' + t.id + '\n';
-      html += 'invoer : "' + val + '"\n';
-      if(val){
-        let ci = null;
-        try { ci = (typeof window.findClubInfo === 'function') ? window.findClubInfo(val) : null; } catch(e){ ci = '[error: ' + e.message + ']'; }
-        if(ci && typeof ci === 'object'){
-          html += 'findClubInfo →\n';
-          html += '  naam      : ' + (ci.naam || '∅') + '\n';
-          html += '  plaats    : ' + (ci.plaats || '∅') + '\n';
-          html += '  sportpark : ' + (ci.sportpark || '∅') + '\n';
-          html += '  adres     : ' + (ci.adres || '∅') + '\n';
-          html += '  postcode  : ' + (ci.postcode || '∅') + '\n';
-        } else {
-          html += 'findClubInfo → ' + (ci === null ? 'null (geen match)' : String(ci)) + '\n';
-        }
-        const m = matchPreview(val);
-        html += 'matches    : ' + (m.length ? m.join(', ') : '(geen)') + '\n';
-      }
-      const pEl = t.plaats ? document.getElementById(t.plaats) : null;
-      const aEl = t.adres  ? document.getElementById(t.adres)  : null;
-      html += 'plaats-veld: ' + (pEl ? '"' + pEl.value + '"' : '(geen)') + '\n';
-      html += 'adres-veld : ' + (aEl ? '"' + aEl.value + '"' : '(geen)') + '\n';
-    }
-    content.textContent = html;
-  }
-
-  function attach(){
-    TARGETS.forEach(t => {
-      const inp = document.getElementById(t.id);
-      if(!inp || inp.dataset.debugWired === '1') return;
-      inp.dataset.debugWired = '1';
-      ['input','focus','change','blur'].forEach(ev => {
-        inp.addEventListener(ev, () => { activeTarget = t; panel.style.display = 'block'; render(); });
-      });
-    });
-  }
-
-  // Initial attach + observer voor modals die later in DOM komen
-  attach();
-  const mo = new MutationObserver(() => attach());
-  mo.observe(document.body, { childList: true, subtree: true });
-
-  // Render élke seconde, ook als data later laadt
-  setInterval(render, 1000);
-  setTimeout(render, 300);
-
-  // Show panel zodra er één van de 3 modals open is
-  function checkModalOpen(){
-    const open =
-      (document.getElementById('mreport-backdrop') && document.getElementById('mreport-backdrop').classList.contains('open')) ||
-      (document.getElementById('prog-match-backdrop') && document.getElementById('prog-match-backdrop').classList.contains('show')) ||
-      (document.getElementById('player-form-modal') && document.getElementById('player-form-modal').classList.contains('open')) ||
-      (document.getElementById('player-form-backdrop') && document.getElementById('player-form-backdrop').classList.contains('open'));
-    if(open) panel.style.display = 'block';
-  }
-  setInterval(checkModalOpen, 500);
 })();
 </script>
 

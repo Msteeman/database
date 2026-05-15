@@ -5152,6 +5152,14 @@ tbody tr:last-child td { border-bottom: none; }
             <span class="settings-row-label">Concept-records bekijken</span>
             <button type="button" class="debug-btn secondary" id="settings-debug-open">Debug openen (Ctrl+Shift+D)</button>
           </div>
+          <!-- s35ag: trace-logger knoppen -->
+          <div class="demo-toggle-row" style="margin-top:10px;">
+            <span class="settings-row-label">Trace-log (acties stap-voor-stap)</span>
+            <span style="display:flex; gap:6px;">
+              <button type="button" class="debug-btn" id="settings-trace-copy">Kopieer &amp; download</button>
+              <button type="button" class="debug-btn secondary" id="settings-trace-clear">Wissen</button>
+            </span>
+          </div>
         </div>
 
         <!-- Installeer app -->
@@ -7724,6 +7732,34 @@ const DEFAULT_FORMATION = '1-4-3-3';
 let currentUser = null;
 let currentView = 'dashboard';
 let playersCache = [];
+
+/* =============== s35ag TRACE LOGGER =============== */
+// Rolling buffer in localStorage 'sh-trace' (max 500 entries).
+// Roep aan met __shTrace('event-naam', {extra:'data'}).
+// Marcel kan window.__shTraceDump() in console plakken, OF gebruikt
+// de 'Trace kopiëren' knop in Instellingen → Diagnose.
+const SH_TRACE_KEY = 'sh-trace';
+const SH_TRACE_MAX = 500;
+function __shTrace(event, data){
+  try {
+    const arr = JSON.parse(localStorage.getItem(SH_TRACE_KEY) || '[]');
+    arr.push({ ts: new Date().toISOString(), event: String(event||''), data: data || null });
+    while(arr.length > SH_TRACE_MAX) arr.shift();
+    localStorage.setItem(SH_TRACE_KEY, JSON.stringify(arr));
+  } catch(_){ /* localStorage vol/private mode */ }
+}
+function __shTraceDump(){
+  try { return localStorage.getItem(SH_TRACE_KEY) || '[]'; }
+  catch(_){ return '[]'; }
+}
+function __shTraceClear(){
+  try { localStorage.removeItem(SH_TRACE_KEY); } catch(_){ }
+}
+window.__shTrace = __shTrace;
+window.__shTraceDump = __shTraceDump;
+window.__shTraceClear = __shTraceClear;
+__shTrace('app-init', { ts: Date.now(), ua: (navigator && navigator.userAgent) || '' });
+
 let analysesCache = [];
 let contactsCache = [];
 let matchReportsCache = [];
@@ -8966,15 +9002,15 @@ function showApp(){
 })();
 // s35af: flush pending autosave bij tab-verbergen of pagina-sluiten
 (function _shFlushOnHide(){
-  function flush(){
+  function flush(reason){
     if(typeof window.__shFlushAutosave === 'function'){
-      try { window.__shFlushAutosave(); } catch(_){ }
+      try { window.__shFlushAutosave(reason); } catch(_){ }
     }
   }
-  window.addEventListener('pagehide', flush);
-  window.addEventListener('beforeunload', flush);
+  window.addEventListener('pagehide', () => flush('pagehide'));
+  window.addEventListener('beforeunload', () => flush('beforeunload'));
   document.addEventListener('visibilitychange', () => {
-    if(document.visibilityState === 'hidden') flush();
+    if(document.visibilityState === 'hidden') flush('vis-hidden');
   });
 })();
 function openConceptDebug(){
@@ -9102,6 +9138,44 @@ async function deleteEmptyDuplicates(){
   }
   renderConceptDebug();
 }
+// s35ag: trace download + copy + clear
+function _shTraceFilename(){
+  const d = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  return 'sh-trace_' + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate())
+    + '_' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds()) + '.txt';
+}
+async function _shTraceCopy(){
+  const raw = (typeof __shTraceDump === 'function') ? __shTraceDump() : '[]';
+  let pretty = raw;
+  try { pretty = JSON.stringify(JSON.parse(raw), null, 2); } catch(_){ }
+  let copied = false;
+  try {
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      await navigator.clipboard.writeText(pretty);
+      copied = true;
+    }
+  } catch(_){ }
+  // Altijd OOK een download triggeren — sommige browsers geven geen clipboard
+  try {
+    const blob = new Blob([pretty], { type:'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = _shTraceFilename();
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { try { document.body.removeChild(a); URL.revokeObjectURL(url); } catch(_){ } }, 200);
+  } catch(_){ }
+  if(typeof toast === 'function'){
+    toast(copied ? 'Trace gekopieerd & gedownload' : 'Trace gedownload (klembord niet beschikbaar)');
+  } else {
+    alert(copied ? 'Trace gekopieerd & gedownload' : 'Trace gedownload');
+  }
+}
+function _shTraceClearUI(){
+  if(!confirm('Trace-log wissen?')) return;
+  if(typeof __shTraceClear === 'function') __shTraceClear();
+  if(typeof toast === 'function') toast('Trace gewist');
+}
 // Bindings
 document.addEventListener('click', (e) => {
   if(!e.target) return;
@@ -9109,14 +9183,19 @@ document.addEventListener('click', (e) => {
   if(e.target.id === 'debug-close'){ closeConceptDebug(); return; }
   if(e.target.id === 'debug-refresh'){ renderConceptDebug(); return; }
   if(e.target.id === 'debug-delete-empty'){ deleteEmptyDuplicates(); return; }
+  if(e.target.id === 'settings-trace-copy'){ _shTraceCopy(); return; }
+  if(e.target.id === 'settings-trace-clear'){ _shTraceClearUI(); return; }
   const delId = e.target.getAttribute && e.target.getAttribute('data-debug-del');
   if(delId){ deleteConceptRecord(delId); return; }
 });
-// Toetsen-shortcut Ctrl+Shift+D
+// Toetsen-shortcut Ctrl+Shift+D + Ctrl+Shift+T (s35ag: trace dump)
 document.addEventListener('keydown', (e) => {
   if(e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')){
     e.preventDefault();
     openConceptDebug();
+  } else if(e.ctrlKey && e.shiftKey && (e.key === 'T' || e.key === 't')){
+    e.preventDefault();
+    if(typeof _shTraceCopy === 'function') _shTraceCopy();
   } else if(e.key === 'Escape'){
     const m = document.getElementById('debug-modal');
     if(m && m.classList.contains('is-open')) closeConceptDebug();
@@ -9140,8 +9219,9 @@ function go(view){
   if(currentView === 'report' && view !== 'report'){
     // s35af: flush pending autosave VOORDAT we de view verlaten,
     // zodat een snelle wegklik (<300ms debounce) niet je tekst kwijtraakt.
+    if(typeof window.__shTrace === 'function') __shTrace('go-leave-report', { to: view });
     if(typeof window.__shFlushAutosave === 'function'){
-      try { window.__shFlushAutosave(); } catch(_){ }
+      try { window.__shFlushAutosave('go-leave-report'); } catch(_){ }
     }
     if(!confirmDiscard()) return;
   }
@@ -9226,12 +9306,23 @@ function isMatchInWindow(prog, now){
 // s35x: zoek bestaand concept voor een specifieke programma-slot.
 // spelerKey = stable sp.id (genId('progsp')).
 function findSlotConcept(progId, spelerKey){
-  if(!progId || !spelerKey) return null;
+  if(!progId || !spelerKey){
+    if(typeof __shTrace === 'function') __shTrace('findslot-bad-args', { progId, spelerKey });
+    return null;
+  }
   const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
   // s35ad: meerdere matches mogelijk (duplicaten uit s35ab) -> nieuwste winnen.
   const hits = players.filter(p => p && p.concept === true && p.programma_link
     && p.programma_link.progId === progId
     && p.programma_link.spelerKey === spelerKey);
+  if(typeof __shTrace === 'function'){
+    __shTrace('findslot', {
+      progId, spelerKey,
+      cache_size: players.length,
+      hits: hits.length,
+      hit_ids: hits.map(h => h && h.id).filter(Boolean)
+    });
+  }
   if(!hits.length) return null;
   function tsOf(p){
     const t = (p && (p.updated_at || p._meta && p._meta.ts || p.ts)) || '';
@@ -9337,7 +9428,18 @@ async function ensureActiveMatchReport(prog){
 // matchedPlayer (optioneel) = bestaande speler uit playersCache (3-traps).
 // progSp = speler-object uit programma. prog = wedstrijd.
 function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
-  if(!prog || !progSp) return;
+  if(!prog || !progSp){
+    if(typeof __shTrace === 'function') __shTrace('openform-bad-args', {
+      has_prog: !!prog, has_sp: !!progSp
+    });
+    return;
+  }
+  if(typeof __shTrace === 'function') __shTrace('openform-entry', {
+    progId: prog.id, spelerKey: progSp.id,
+    sp_naam: progSp.naam || '',
+    has_hint: !!slotConceptHint,
+    has_matched: !!matchedPlayer
+  });
   // s35y: pending-vlag SYNCHROON zodat tryRestore (+50ms) banner skipt.
   // resetReportForm wist alleen __shScoutingCtx, niet __shScoutingPending.
   window.__shScoutingPending = { progId: prog.id, spelerKey: progSp.id };
@@ -12428,6 +12530,10 @@ function refreshPositionDropdowns(){
   if(currentBeoogd) beoogdSel.value = currentBeoogd;
 }
 function resetReportForm(){
+  if(typeof __shTrace === 'function') __shTrace('reset-report-form', {
+    had_ctx: !!window.__shScoutingCtx,
+    had_id: !!($('#f-id') && $('#f-id').value)
+  });
   $('#report-title').textContent = 'Nieuw spelersrapport';
   $('#report-form').reset();
   $('#f-id').value = '';
@@ -17561,11 +17667,23 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
   window.__shBuildScoutingConcept = buildScoutingConcept;
 
   function doSave(){
-    if(suspended) return;
+    if(suspended){ __shTrace('dosave-suspended'); return; }
     const snap = gatherFormSnapshot();
     snap._meta = { ts: Date.now() };
+    const _fid = $id('f-id') && $id('f-id').value;
+    const _has = hasMeaningfulContent(snap);
+    __shTrace('dosave-entry', {
+      ctx: window.__shScoutingCtx || null,
+      f_id: _fid || null,
+      has_meaningful: _has,
+      naam: snap['f-naam'] || '',
+      club: snap['f-club'] || '',
+      w_thuis: snap['f-w-thuis'] || '',
+      w_context: snap['f-w-context'] || ''
+    });
     // Sla niet op als er nog niks zinnigs is ingevuld + geen edit-mode
-    if(!hasMeaningfulContent(snap) && !( $id('f-id') && $id('f-id').value )){
+    if(!_has && !_fid){
+      __shTrace('dosave-bail-empty');
       setStatus('saved', 'Concept opgeslagen');
       return;
     }
@@ -17576,16 +17694,40 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
         if(!id){
           id = (typeof uid === 'function') ? uid() : ('concept_' + Date.now());
           if($id('f-id')) $id('f-id').value = id;
+          __shTrace('dosave-new-id', { id, ctx: window.__shScoutingCtx });
         }
         const player = buildScoutingConcept(id);
+        // s35ag: ts toevoegen zodat findSlotConcept hits kan sorteren
+        player.updated_at = new Date().toISOString();
+        // s35ag: SYNCHROON playersCache mutateren -> findSlotConcept ziet de
+        // record meteen, ook als de Firestore round-trip nog niet klaar is.
+        try {
+          if(typeof playersCache !== 'undefined' && Array.isArray(playersCache)){
+            const idx = playersCache.findIndex(p => p && p.id === id);
+            const before = playersCache.length;
+            if(idx >= 0) playersCache[idx] = player;
+            else playersCache.push(player);
+            try { window.playersCache = playersCache; } catch(_){ }
+            __shTrace('dosave-cache-upsert', {
+              id, ctx: window.__shScoutingCtx,
+              cache_before: before, cache_after: playersCache.length,
+              replaced: idx >= 0,
+              has_link: !!player.programma_link,
+              concept_flag: player.concept === true
+            });
+          }
+        } catch(syncErr){ __shTrace('dosave-cache-error', { msg: String(syncErr) }); }
         // Geen await -> fire-and-forget; toast bij fout door savePlayer zelf
         savePlayer(player).then(() => {
+          __shTrace('saveplayer-ok', { id });
           setStatus('saved', 'Opgeslagen ' + nowStr());
-        }).catch(() => {
+        }).catch((err) => {
+          __shTrace('saveplayer-fail', { id, err: String(err) });
           setStatus('saved', 'Concept opgeslagen');
         });
         return;
       } catch(err){
+        __shTrace('dosave-scouting-fail', { msg: String(err) });
         console.warn('s35x autosave (scouting) faalde, fallback naar localStorage:', err);
         // valt door naar localStorage-pad
       }
@@ -17601,12 +17743,16 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
   // s35af: synchroon flushen van pending autosave.
   // Roept doSave() direct aan en wist de pending timer.
   // Veilig om vaker te bellen — doSave bewaakt zelf de no-content case.
-  window.__shFlushAutosave = function(){
+  window.__shFlushAutosave = function(reason){
+    __shTrace('flush-autosave', { reason: reason || 'unknown', timer_pending: !!saveTimer });
     if(saveTimer){
       clearTimeout(saveTimer);
       saveTimer = null;
     }
-    try { doSave(); } catch(e){ console.warn('flush autosave faalde:', e); }
+    try { doSave(); } catch(e){
+      __shTrace('flush-autosave-error', { msg: String(e) });
+      console.warn('flush autosave faalde:', e);
+    }
   };
 
   form.addEventListener('input', scheduleSave);

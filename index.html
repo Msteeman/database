@@ -9021,8 +9021,39 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer){
     try {
       resetReportForm();
       if(matchedPlayer){
-        // Bestaande speler -> alle velden laden, id behouden zodat update werkt
-        loadIntoForm(matchedPlayer);
+        // s35w: gekoppelde speler -> identity-velden uit playersCache prefillen,
+        // MAAR f-id leeg laten zodat opslaan een NIEUW rapport aanmaakt
+        // (oude rapporten van deze speler blijven bestaan).
+        const mp = matchedPlayer;
+        // Splits naam wanneer voornaam/achternaam ontbreken
+        let mvn = mp.voornaam || '', man = mp.achternaam || '';
+        if((!mvn || !man) && mp.naam && typeof splitNaam === 'function'){
+          const s = splitNaam(mp.naam);
+          if(!mvn) mvn = s.voornaam;
+          if(!man) man = s.achternaam;
+        }
+        if($('#f-voornaam')) $('#f-voornaam').value = mvn;
+        if($('#f-achternaam')) $('#f-achternaam').value = man;
+        if($('#f-naam')) $('#f-naam').value = mp.naam || [mvn, man].filter(Boolean).join(' ');
+        if(typeof syncNaamHidden === 'function') syncNaamHidden('f');
+        if($('#f-geboorte')) $('#f-geboorte').value = mp.geboorte || '';
+        if($('#f-club')) $('#f-club').value = mp.club || '';
+        if($('#f-plaats')) $('#f-plaats').value = mp.plaats || '';
+        if($('#f-adres')) $('#f-adres').value = mp.adres || '';
+        if($('#f-rugnummer')) $('#f-rugnummer').value = mp.rugnummer || '';
+        if($('#f-elftal')) $('#f-elftal').value = mp.elftal || '';
+        if($('#f-been')) $('#f-been').value = mp.been || '';
+        if($('#f-tweebenig')) $('#f-tweebenig').value = mp.tweebenig || '';
+        if($('#f-linie')) $('#f-linie').value = mp.linie || '';
+        if(typeof refreshPositionDropdowns === 'function') refreshPositionDropdowns();
+        if($('#f-positie')) $('#f-positie').value = mp.positie || '';
+        if($('#f-beoogd')) $('#f-beoogd').value = mp.beoogd || '';
+        if($('#f-leeftijd')) $('#f-leeftijd').value = mp.leeftijd || prog.leeftijd || '';
+        if($('#f-bouw')) $('#f-bouw').value = mp.bouw || '';
+        if($('#f-lengte')) $('#f-lengte').value = mp.lengte || '';
+        // Title aanpassen: NIEUW rapport, niet bewerken
+        const dispNaam = mp.naam || [mvn, man].filter(Boolean).join(' ') || 'speler';
+        if($('#report-title')) $('#report-title').textContent = 'Nieuw rapport — ' + dispNaam;
       } else {
         // Nieuwe speler -> prefill basis uit programma
         if($('#f-voornaam')) $('#f-voornaam').value = progSp.voornaam || '';
@@ -9055,13 +9086,14 @@ function injectScoutingBanner(prog, progSp, matchedPlayer){
   banner.style.cssText = 'background:rgba(239,68,68,0.10); border:1px solid rgba(239,68,68,0.4); border-radius:10px; padding:12px 14px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;';
   const naam = progSp.naam || [progSp.voornaam, progSp.achternaam].filter(Boolean).join(' ') || 'speler';
   const teams = `${prog.thuis||'?'} — ${prog.uit||'?'}`;
+  // s35w: duidelijker maken dat het ALTIJD een nieuw rapport is
   const link = matchedPlayer
-    ? `<span style="color:#34d399;">● gekoppeld aan bestaande speler</span>`
-    : `<span style="color:#f5c518;">● nieuw rapport (nog niet in database)</span>`;
+    ? `<span style="color:#34d399;">● gekoppeld aan bekende speler — nieuw rapport (oude rapporten blijven bestaan)</span>`
+    : `<span style="color:#f5c518;">● nog niet eerder bekeken — eerste rapport voor deze speler</span>`;
   banner.innerHTML = `
     <div style="font-size:13px; line-height:1.4;">
       <strong style="color:#ef4444;">● Live wedstrijd-modus</strong> — ${escapeHtml(naam)} bij ${escapeHtml(teams)}<br>
-      <span style="font-size:11.5px; color:var(--text-3);">${link} · opslaan voegt toe aan de spelersdatabase.</span>
+      <span style="font-size:11.5px; color:var(--text-3);">${link}</span>
     </div>
     <button type="button" class="btn" id="scouting-back-dash">Terug naar dashboard</button>
   `;

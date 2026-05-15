@@ -5653,16 +5653,22 @@ tbody tr:last-child td { border-bottom: none; }
           <!-- Speler info -->
           <div class="form-section">
             <div class="form-section-title">Speler informatie</div>
-            <div class="field-row">
+            <!-- s35q: voornaam + achternaam losse velden. f-naam hidden voor back-compat. -->
+            <div class="field-row three">
               <div class="field">
-                <label>Naam *</label>
-                <input id="f-naam" type="text" required />
+                <label>Voornaam *</label>
+                <input id="f-voornaam" type="text" required />
+              </div>
+              <div class="field">
+                <label>Achternaam *</label>
+                <input id="f-achternaam" type="text" required />
               </div>
               <div class="field">
                 <label>Geboortedatum</label>
                 <input id="f-geboorte" type="date" />
               </div>
             </div>
+            <input type="hidden" id="f-naam" />
             <div class="field-row">
               <div class="field">
                 <label>Club</label>
@@ -6288,16 +6294,29 @@ tbody tr:last-child td { border-bottom: none; }
       <form id="prog-player-form" autocomplete="off">
         <input type="hidden" id="pp-progid" />
         <input type="hidden" id="pp-spelerid" />
-        <!-- s35p: rugnummer + positie weg uit voorwerk-form. Vul je tijdens observatie in. -->
-        <div class="field" style="margin-top:0;">
-          <label>Naam speler *</label>
-          <input id="pp-naam" type="text" required placeholder="Voor- en achternaam" />
+        <!-- s35q: voornaam + achternaam losse velden, geboorte ook hier. -->
+        <div class="field-row" style="margin-top:0;">
+          <div class="field">
+            <label>Voornaam *</label>
+            <input id="pp-voornaam" type="text" required placeholder="Voornaam" />
+          </div>
+          <div class="field">
+            <label>Achternaam *</label>
+            <input id="pp-achternaam" type="text" required placeholder="Achternaam" />
+          </div>
         </div>
-        <div class="field" style="margin-top:12px;">
-          <label>Club</label>
-          <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" data-picker="club" />
+        <div class="field-row" style="margin-top:12px;">
+          <div class="field">
+            <label>Geboortedatum</label>
+            <input id="pp-geboorte" type="date" />
+          </div>
+          <div class="field">
+            <label>Club</label>
+            <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" data-picker="club" />
+          </div>
         </div>
-        <!-- s35p: hidden inputs houden bestaande waarden van eerdere edits in stand -->
+        <!-- s35q: hidden naam (auto-synced); s35p hidden rugnummer/positie (preserve) -->
+        <input type="hidden" id="pp-naam" />
         <input type="hidden" id="pp-rugnummer" />
         <input type="hidden" id="pp-positie" />
         <div class="field" style="margin-top:12px;">
@@ -6307,8 +6326,8 @@ tbody tr:last-child td { border-bottom: none; }
         <div style="margin-top:14px; padding:12px; border:1px solid var(--border); border-radius:10px; background:var(--bg-2);">
           <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
             <div>
-              <div style="font-weight:600; font-size:13px;">Uitgebreid voorrapport</div>
-              <div style="font-size:11.5px; color:var(--text-3); margin-top:2px;">Open het volledige rapportformulier alvast als concept.</div>
+              <div style="font-weight:600; font-size:13px;">Spelersrapport</div>
+              <div style="font-size:11.5px; color:var(--text-3); margin-top:2px;">Open het volledige spelersrapport alvast als concept.</div>
             </div>
             <button type="button" class="btn btn-secondary" id="pp-open-full">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M14 3h7v7"/><path d="M10 14L21 3"/><path d="M21 14v7H3V3h7"/></svg>
@@ -11484,10 +11503,41 @@ function resetReportForm(){
   $$('.grade-picker').forEach(p=>p.dataset.value='');
   setDirty(false);
 }
+// s35q: split volledige naam in voornaam (eerste woord) + achternaam (rest,
+// inclusief tussenvoegsels zoals 'van der'). Robust voor lege input.
+function splitNaam(naam){
+  const v = String(naam||'').trim();
+  if(!v) return { voornaam: '', achternaam: '' };
+  const parts = v.split(/\s+/);
+  if(parts.length === 1) return { voornaam: parts[0], achternaam: '' };
+  return { voornaam: parts[0], achternaam: parts.slice(1).join(' ') };
+}
+window.splitNaam = splitNaam;
+
+// s35q: sync verborgen *-naam input uit zichtbare voornaam + achternaam.
+// prefix is 'f' voor spelersrapport, 'pp' voor programma modal.
+function syncNaamHidden(prefix){
+  const vn = ($('#'+prefix+'-voornaam')?.value || '').trim();
+  const an = ($('#'+prefix+'-achternaam')?.value || '').trim();
+  const full = [vn, an].filter(Boolean).join(' ');
+  const hidden = $('#'+prefix+'-naam');
+  if(hidden) hidden.value = full;
+}
+window.syncNaamHidden = syncNaamHidden;
+
 function loadIntoForm(p){
-  $('#report-title').textContent = 'Rapport bewerken — ' + p.naam;
+  $('#report-title').textContent = 'Rapport bewerken — ' + (p.naam || [p.voornaam, p.achternaam].filter(Boolean).join(' '));
   $('#f-id').value = p.id;
-  $('#f-naam').value = p.naam || '';
+  // s35q: prefer expliciete voornaam/achternaam, fallback op splitNaam(p.naam)
+  let voornaam = p.voornaam || '';
+  let achternaam = p.achternaam || '';
+  if(!voornaam && !achternaam && p.naam){
+    const s = splitNaam(p.naam);
+    voornaam = s.voornaam; achternaam = s.achternaam;
+  }
+  if($('#f-voornaam')) $('#f-voornaam').value = voornaam;
+  if($('#f-achternaam')) $('#f-achternaam').value = achternaam;
+  $('#f-naam').value = p.naam || [voornaam, achternaam].filter(Boolean).join(' ');
   $('#f-geboorte').value = p.geboorte || '';
   $('#f-club').value = p.club || '';
   $('#f-plaats').value = p.plaats || '';
@@ -11557,7 +11607,13 @@ function updateSliderDisplay(inputId, valId, val){
 async function submitReport(e){
   e.preventDefault();
   const id = $('#f-id').value || uid();
+  // s35q: lees voornaam + achternaam, val terug op f-naam voor edge cases
+  const voornaam = ($('#f-voornaam')?.value || '').trim();
+  const achternaam = ($('#f-achternaam')?.value || '').trim();
+  syncNaamHidden('f');
   const naam = $('#f-naam').value.trim();
+  if(!voornaam){ toast('Vul een voornaam in', true); return; }
+  if(!achternaam){ toast('Vul een achternaam in', true); return; }
   if(!naam){ toast('Vul een naam in', true); return; }
   const huidig = getPickerValue('huidig_niveau');
   const pot = getPickerValue('potentieel_niveau');
@@ -11569,6 +11625,8 @@ async function submitReport(e){
   const player = {
     id,
     naam,
+    voornaam,
+    achternaam,
     geboorte: $('#f-geboorte').value,
     club: $('#f-club').value.trim(),
     plaats: $('#f-plaats').value.trim(),
@@ -13863,7 +13921,20 @@ function openProgPlayerModal(progId, spelerId){
   $('#prog-player-title').textContent = sp ? 'Speler bewerken' : 'Speler toevoegen';
   $('#pp-progid').value = progId;
   $('#pp-spelerid').value = sp ? sp.id : '';
-  $('#pp-naam').value = sp ? (sp.naam||'') : '';
+  // s35q: voornaam/achternaam — fallback op splitNaam(sp.naam) voor oude records
+  let _vn = '', _an = '';
+  if(sp){
+    _vn = sp.voornaam || '';
+    _an = sp.achternaam || '';
+    if(!_vn && !_an && sp.naam){
+      const s = splitNaam(sp.naam);
+      _vn = s.voornaam; _an = s.achternaam;
+    }
+  }
+  $('#pp-voornaam').value = _vn;
+  $('#pp-achternaam').value = _an;
+  $('#pp-naam').value = sp ? (sp.naam || [_vn, _an].filter(Boolean).join(' ')) : '';
+  $('#pp-geboorte').value = sp ? (sp.geboorte||'') : '';
   $('#pp-club').value = sp ? (sp.club || '') : (it.thuis || '');
   $('#pp-notities').value = sp ? (sp.voor_notities||'') : '';
   // s35p: hidden inputs — bewaar bestaande rugnummer/positie van een eerdere edit
@@ -13874,7 +13945,7 @@ function openProgPlayerModal(progId, spelerId){
   refreshPpFullStatus();
   $('#pp-delete').style.display = sp ? '' : 'none';
   showModal('prog-player-backdrop');
-  setTimeout(()=> $('#pp-naam').focus(), 80);
+  setTimeout(()=> $('#pp-voornaam').focus(), 80); // s35q: voornaam is nu eerste veld
 }
 function closeProgPlayerModal(){ hideModal('prog-player-backdrop'); ppFullDraft = null; }
 
@@ -13894,14 +13965,21 @@ async function saveProgPlayerFromForm(e, opts){
   if(!it){ if(!silent) toast('Geplande wedstrijd niet gevonden', true); return false; }
 
   const spelerId = $('#pp-spelerid').value || genId('progsp');
-  const naam = $('#pp-naam').value.trim();
+  // s35q: voornaam + achternaam zijn de zichtbare velden; naam wordt afgeleid
+  const voornaam = ($('#pp-voornaam')?.value || '').trim();
+  const achternaam = ($('#pp-achternaam')?.value || '').trim();
+  syncNaamHidden('pp');
+  const naam = ($('#pp-naam').value||'').trim();
   if(!naam){
-    // s35p: zonder naam slaan we niet op (zelfs niet bij auto-save)
+    // s35p/s35q: zonder naam (i.e. voornaam+achternaam beide leeg) niet opslaan
     return false;
   }
   const speler = {
     id: spelerId,
     naam,
+    voornaam,
+    achternaam,
+    geboorte: ($('#pp-geboorte')?.value||''),
     rugnummer: ($('#pp-rugnummer').value||'').trim(),
     club: $('#pp-club').value.trim(),
     positie: ($('#pp-positie').value||''),
@@ -13928,10 +14006,13 @@ async function saveProgPlayerFromForm(e, opts){
 // - Nieuwe speler: alleen opslaan als naam ingevuld is.
 async function autoSaveProgPlayerOnClose(){
   const isEditing = !!$('#pp-spelerid').value;
+  // s35q: sync hidden naam vóór check, zodat naam de echte combinatie is
+  syncNaamHidden('pp');
   const naam = ($('#pp-naam').value||'').trim();
   const club = ($('#pp-club').value||'').trim();
+  const geboorte = ($('#pp-geboorte')?.value||'').trim();
   const notities = ($('#pp-notities').value||'').trim();
-  const hasContent = naam || club || notities || ppFullDraft;
+  const hasContent = naam || club || geboorte || notities || ppFullDraft;
   if(!hasContent && !isEditing){ closeProgPlayerModal(); return; }
   if(!naam){ closeProgPlayerModal(); return; }
   const ok = await saveProgPlayerFromForm({preventDefault:()=>{}}, {silent:true});
@@ -13958,10 +14039,15 @@ async function deleteProgPlayerFromForm(){
 let ppOpenedForFull = false; // flag zodat we weten dat we terug moeten
 function openPpFullForm(){
   // Sla compact-state op via sessionStorage zodat we terug kunnen
+  // s35q: sync hidden naam en passeer voornaam/achternaam/geboorte mee
+  syncNaamHidden('pp');
   const ctx = {
     progId: $('#pp-progid').value,
     spelerId: $('#pp-spelerid').value || genId('progsp'),
     naam: $('#pp-naam').value,
+    voornaam: ($('#pp-voornaam')?.value || ''),
+    achternaam: ($('#pp-achternaam')?.value || ''),
+    geboorte: ($('#pp-geboorte')?.value || ''),
     rugnummer: $('#pp-rugnummer').value,
     club: $('#pp-club').value,
     positie: $('#pp-positie').value,
@@ -13976,7 +14062,12 @@ function openPpFullForm(){
   resetReportForm();
   // Vooraf vullen met basis + bestaand concept
   const p = ctx.volledig || {};
+  // s35q: prefill voornaam/achternaam in full form; sync hidden naam
+  if(ctx.voornaam && $('#f-voornaam')) $('#f-voornaam').value = ctx.voornaam;
+  if(ctx.achternaam && $('#f-achternaam')) $('#f-achternaam').value = ctx.achternaam;
   if(ctx.naam) $('#f-naam').value = ctx.naam;
+  syncNaamHidden('f');
+  if(ctx.geboorte) $('#f-geboorte').value = ctx.geboorte;
   if(ctx.club) $('#f-club').value = ctx.club;
   if(ctx.rugnummer) $('#f-rugnummer').value = ctx.rugnummer;
   if(ctx.positie) $('#f-positie').value = ctx.positie;
@@ -14025,6 +14116,9 @@ function injectProgFullBanner(ctx){
     const updatedSp = {
       id: ctx.spelerId,
       naam: draft.naam || ctx.naam,
+      voornaam: draft.voornaam || ctx.voornaam || '',
+      achternaam: draft.achternaam || ctx.achternaam || '',
+      geboorte: draft.geboorte || ctx.geboorte || '',
       rugnummer: draft.rugnummer || ctx.rugnummer,
       club: draft.club || ctx.club,
       positie: draft.positie || ctx.positie,
@@ -14051,8 +14145,12 @@ function backToProgrammaFromFull(progId){
 
 function collectReportFormData(){
   // Verzamelt alle velden zoals saveReport doet, zonder daadwerkelijk op te slaan
+  // s35q: zorg dat hidden naam in sync is voordat we 'm lezen
+  if(typeof syncNaamHidden === 'function') syncNaamHidden('f');
   const data = {
     naam: $('#f-naam').value.trim(),
+    voornaam: ($('#f-voornaam')?.value || '').trim(),
+    achternaam: ($('#f-achternaam')?.value || '').trim(),
     geboorte: $('#f-geboorte').value,
     club: $('#f-club').value.trim(),
     plaats: ($('#f-plaats') ? $('#f-plaats').value.trim() : ''),
@@ -14236,6 +14334,11 @@ function wireProgrammaUI(){
   $('#pp-open-full')?.addEventListener('click', openPpFullForm);
   $('#pp-full-clear')?.addEventListener('click', () => { ppFullDraft = null; refreshPpFullStatus(); });
   $('#prog-player-backdrop')?.addEventListener('click', e => { if(e.target.id === 'prog-player-backdrop') autoSaveProgPlayerOnClose(); });
+  // s35q: live sync van verborgen pp-naam + f-naam uit voornaam/achternaam
+  $('#pp-voornaam')?.addEventListener('input', () => syncNaamHidden('pp'));
+  $('#pp-achternaam')?.addEventListener('input', () => syncNaamHidden('pp'));
+  $('#f-voornaam')?.addEventListener('input', () => syncNaamHidden('f'));
+  $('#f-achternaam')?.addEventListener('input', () => syncNaamHidden('f'));
 
   // Reminder modal
   $('#prog-reminder-close')?.addEventListener('click', () => hideModal('prog-reminder-backdrop'));

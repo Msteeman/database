@@ -9262,6 +9262,35 @@ window.openMatchReportModal = openMatchReportModal;
 window.openProgMatchModal = openProgMatchModal;
 window.isoDateStr = isoDateStr;
 
+// s35ah: bridge voor doSave (leeft in een gewoon <script>-blok en kan
+// savePlayer/playersCache niet zien). Mutateert playersCache SYNCHROON
+// VOOR de async Firestore-write, zodat findSlotConcept de record meteen ziet.
+window.__shScoutingSave = function(player){
+  if(!player || !player.id){
+    if(typeof __shTrace === 'function') __shTrace('module-save-bad-arg', { has_player: !!player });
+    return Promise.reject(new Error('player.id ontbreekt'));
+  }
+  try {
+    const idx = playersCache.findIndex(p => p && p.id === player.id);
+    const before = playersCache.length;
+    if(idx >= 0) playersCache[idx] = player;
+    else playersCache.push(player);
+    if(typeof __shTrace === 'function'){
+      __shTrace('module-cache-upsert', {
+        id: player.id,
+        cache_before: before,
+        cache_after: playersCache.length,
+        replaced: idx >= 0,
+        has_link: !!player.programma_link,
+        concept_flag: player.concept === true
+      });
+    }
+  } catch(e){
+    if(typeof __shTrace === 'function') __shTrace('module-cache-error', { msg: String(e) });
+  }
+  return savePlayer(player);
+};
+
 /* =============== s35s: BEZIG MET SCOUTEN =============== */
 // KNVB-duur per leeftijdscategorie (in minuten ná aftrap):
 // 2x speeltijd + rust + time-outs (pupillen) + blessuretijd-buffer + 15 min navullen
@@ -14992,9 +15021,22 @@ function openProgMatchModal(progId, defaultDate){
 }
 function closeProgMatchModal(){ hideModal('prog-match-backdrop'); }
 
+let __savingProgMatch = false;
 async function saveProgMatchFromForm(e){
   e.preventDefault();
-  const id = $('#pm-id').value || genId('prog');
+  // s35ah: dubbele-klik-guard -> 1x klikken = 1 wedstrijd.
+  if(__savingProgMatch) return;
+  __savingProgMatch = true;
+  const _submitBtn = e.target && e.target.querySelector ? e.target.querySelector('button[type="submit"]') : null;
+  if(_submitBtn){ _submitBtn.disabled = true; _submitBtn.dataset._origText = _submitBtn.textContent; _submitBtn.textContent = 'Opslaan...'; }
+  // ID nu definitief vaststellen + meteen in #pm-id zetten zodat opnieuw
+  // klikken bestaande record bewerkt i.p.v. nieuwe te maken.
+  let _id = $('#pm-id').value;
+  if(!_id){
+    _id = genId('prog');
+    $('#pm-id').value = _id;
+  }
+  const id = _id;
   const existing = programmaCache.find(p => p.id === id);
   const thuis = $('#pm-thuis').value.trim();
   const uit = $('#pm-uit').value.trim();
@@ -15029,6 +15071,14 @@ async function saveProgMatchFromForm(e){
     progExpandedId = id;
     toast('Wedstrijd ingepland');
   } catch(e){ /* toast in saveProgrammaItem */ }
+  finally {
+    __savingProgMatch = false;
+    if(_submitBtn){
+      _submitBtn.disabled = false;
+      if(_submitBtn.dataset._origText) _submitBtn.textContent = _submitBtn.dataset._origText;
+      delete _submitBtn.dataset._origText;
+    }
+  }
 }
 
 async function deleteProgMatchFromForm(){
@@ -17687,8 +17737,10 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
       setStatus('saved', 'Concept opgeslagen');
       return;
     }
-    // s35x: in scouting-modus -> upsert concept-record in playersCache i.p.v. localStorage
-    if(window.__shScoutingCtx && typeof savePlayer === 'function'){
+    // s35ah: in scouting-modus -> via module-bridge schrijven.
+    // savePlayer + playersCache leven in <script type="module"> en zijn
+    // NIET zichtbaar vanuit dit gewone script -> daarom window.__shScoutingSave.
+    if(window.__shScoutingCtx && typeof window.__shScoutingSave === 'function'){
       try {
         let id = ($id('f-id') && $id('f-id').value) || '';
         if(!id){
@@ -17697,28 +17749,15 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
           __shTrace('dosave-new-id', { id, ctx: window.__shScoutingCtx });
         }
         const player = buildScoutingConcept(id);
-        // s35ag: ts toevoegen zodat findSlotConcept hits kan sorteren
         player.updated_at = new Date().toISOString();
-        // s35ag: SYNCHROON playersCache mutateren -> findSlotConcept ziet de
-        // record meteen, ook als de Firestore round-trip nog niet klaar is.
-        try {
-          if(typeof playersCache !== 'undefined' && Array.isArray(playersCache)){
-            const idx = playersCache.findIndex(p => p && p.id === id);
-            const before = playersCache.length;
-            if(idx >= 0) playersCache[idx] = player;
-            else playersCache.push(player);
-            try { window.playersCache = playersCache; } catch(_){ }
-            __shTrace('dosave-cache-upsert', {
-              id, ctx: window.__shScoutingCtx,
-              cache_before: before, cache_after: playersCache.length,
-              replaced: idx >= 0,
-              has_link: !!player.programma_link,
-              concept_flag: player.concept === true
-            });
-          }
-        } catch(syncErr){ __shTrace('dosave-cache-error', { msg: String(syncErr) }); }
-        // Geen await -> fire-and-forget; toast bij fout door savePlayer zelf
-        savePlayer(player).then(() => {
+        __shTrace('dosave-handoff', {
+          id, ctx: window.__shScoutingCtx,
+          has_link: !!player.programma_link,
+          concept_flag: player.concept === true,
+          naam: player.naam || ''
+        });
+        // __shScoutingSave doet sync cache-upsert + async Firestore write.
+        window.__shScoutingSave(player).then(() => {
           __shTrace('saveplayer-ok', { id });
           setStatus('saved', 'Opgeslagen ' + nowStr());
         }).catch((err) => {
@@ -17731,6 +17770,12 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
         console.warn('s35x autosave (scouting) faalde, fallback naar localStorage:', err);
         // valt door naar localStorage-pad
       }
+    } else if(window.__shScoutingCtx){
+      // We hebben ctx maar geen bridge -> hard zichtbaar in trace
+      __shTrace('dosave-no-bridge', {
+        ctx: window.__shScoutingCtx,
+        has_save: typeof window.__shScoutingSave
+      });
     }
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(snap));

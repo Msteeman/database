@@ -853,6 +853,46 @@ a { color: var(--accent); text-decoration: none; }
   border: 1px solid rgba(78,161,255,0.30);
   overflow: hidden;
 }
+/* s35x: sa-tile concept-state — oranje (verschilt van groen=linked en geel=draft) */
+.sa-tile.concept {
+  background: linear-gradient(135deg, rgba(249,115,22,0.18), rgba(249,115,22,0.08));
+  border-color: rgba(249,115,22,0.55);
+}
+.sa-tile.concept .sa-tile-name::before {
+  content: '● ';
+  color: #fb923c;
+}
+.sa-tile-concept-tag {
+  display: inline-block;
+  font-size: 10px; font-weight: 700; letter-spacing: .5px;
+  text-transform: uppercase;
+  background: rgba(249,115,22,0.25); color: #fed7aa;
+  border: 1px solid rgba(249,115,22,0.50);
+  padding: 2px 7px; border-radius: 10px;
+  margin-top: 4px;
+}
+/* s35x: concept-badge naast naam in spelersdatabase-rij */
+.db-concept-badge {
+  display: inline-block;
+  font-size: 10px; font-weight: 700; letter-spacing: .5px;
+  text-transform: uppercase;
+  background: rgba(249,115,22,0.22); color: #fed7aa;
+  border: 1px solid rgba(249,115,22,0.50);
+  padding: 2px 7px; border-radius: 10px;
+  margin-left: 8px; vertical-align: middle;
+}
+/* s35x: history-knop in scouting-banner */
+.scouting-history-btn {
+  font-size: 11.5px; padding: 5px 11px;
+  background: rgba(52,211,153,0.16);
+  border: 1px solid rgba(52,211,153,0.45);
+  color: #6ee7b7; border-radius: 14px;
+  font-weight: 700; letter-spacing: .3px;
+  cursor: pointer; margin-top: 4px;
+}
+.scouting-history-btn:hover {
+  background: rgba(52,211,153,0.28); color: #d1fae5;
+}
 .pp-sug-title {
   font-size: 10.5px; text-transform: uppercase;
   letter-spacing: .6px; color: #93c5fd; font-weight: 700;
@@ -8923,9 +8963,22 @@ function isMatchInWindow(prog, now){
 }
 // 3-traps speler-matching tegen playersCache.
 // Retourneert { player, mode } waarbij mode = 'exact'|'club'|'naam'|null
+// s35x: zoek bestaand concept voor een specifieke programma-slot.
+// spelerKey = stable sp.id (genId('progsp')).
+function findSlotConcept(progId, spelerKey){
+  if(!progId || !spelerKey) return null;
+  const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+  return players.find(p => p && p.concept === true && p.programma_link
+    && p.programma_link.progId === progId
+    && p.programma_link.spelerKey === spelerKey) || null;
+}
+window.findSlotConcept = findSlotConcept;
+
 function findPlayerMatch(speler){
   if(!speler) return { player:null, mode:null };
-  const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+  // s35x: concept-records uitsluiten — die zijn slot-specifiek
+  const allPlayers = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+  const players = allPlayers.filter(p => !p.concept);
   if(!players.length) return { player:null, mode:null };
   const norm = s => String(s||'').trim().toLowerCase();
   const vn = norm(speler.voornaam);
@@ -9020,6 +9073,24 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer){
   setTimeout(() => {
     try {
       resetReportForm();
+      // s35x: zet scouting-context voor autosave (concept-record).
+      window.__shScoutingCtx = { progId: prog.id, spelerKey: progSp.id };
+      // s35x: bestaat er al een concept voor dit slot? -> laad dat
+      const slotConcept = (typeof findSlotConcept === 'function')
+        ? findSlotConcept(prog.id, progSp.id) : null;
+      if(slotConcept){
+        loadIntoForm(slotConcept);
+        const dispNaam = slotConcept.naam
+          || [slotConcept.voornaam, slotConcept.achternaam].filter(Boolean).join(' ')
+          || 'speler';
+        if($('#report-title')) $('#report-title').textContent = 'Concept — ' + dispNaam;
+        // Wedstrijdcontext eventueel synchroniseren met huidig programma
+        if($('#f-w-datum') && !$('#f-w-datum').value) $('#f-w-datum').value = prog.datum || '';
+        if($('#f-w-thuis') && !$('#f-w-thuis').value) $('#f-w-thuis').value = prog.thuis || '';
+        if($('#f-w-uit') && !$('#f-w-uit').value) $('#f-w-uit').value = prog.uit || '';
+        injectScoutingBanner(prog, progSp, matchedPlayer);
+        return;
+      }
       if(matchedPlayer){
         // s35w: gekoppelde speler -> identity-velden uit playersCache prefillen,
         // MAAR f-id leeg laten zodat opslaan een NIEUW rapport aanmaakt
@@ -9090,10 +9161,15 @@ function injectScoutingBanner(prog, progSp, matchedPlayer){
   const link = matchedPlayer
     ? `<span style="color:#34d399;">● gekoppeld aan bekende speler — nieuw rapport (oude rapporten blijven bestaan)</span>`
     : `<span style="color:#f5c518;">● nog niet eerder bekeken — eerste rapport voor deze speler</span>`;
+  // s35x: history-knop bij matched speler
+  const histBtn = matchedPlayer
+    ? `<button type="button" class="scouting-history-btn" id="scouting-history-open">📋 Eerdere rapporten</button>`
+    : '';
   banner.innerHTML = `
-    <div style="font-size:13px; line-height:1.4;">
-      <strong style="color:#ef4444;">● Live wedstrijd-modus</strong> — ${escapeHtml(naam)} bij ${escapeHtml(teams)}<br>
-      <span style="font-size:11.5px; color:var(--text-3);">${link}</span>
+    <div style="font-size:13px; line-height:1.4; display:flex; flex-direction:column; gap:6px;">
+      <div><strong style="color:#ef4444;">● Live wedstrijd-modus</strong> — ${escapeHtml(naam)} bij ${escapeHtml(teams)}</div>
+      <div style="font-size:11.5px; color:var(--text-3);">${link}</div>
+      ${histBtn}
     </div>
     <button type="button" class="btn" id="scouting-back-dash">Terug naar dashboard</button>
   `;
@@ -9104,6 +9180,13 @@ function injectScoutingBanner(prog, progSp, matchedPlayer){
     banner.remove();
     if(typeof go === 'function') go('dashboard');
   });
+  // s35x: history-knop opent speler-detail van gekoppelde speler
+  if(matchedPlayer){
+    const hb = document.getElementById('scouting-history-open');
+    if(hb) hb.addEventListener('click', () => {
+      if(typeof openDetail === 'function') openDetail(matchedPlayer.id);
+    });
+  }
 }
 
 function renderActiveScouting(){
@@ -9146,16 +9229,24 @@ function renderActiveScouting(){
     } else {
       tilesHtml = spelers.map((sp, i) => {
         const { player, mode } = findPlayerMatch(sp);
-        const cls = player ? 'sa-tile linked' : 'sa-tile draft';
+        // s35x: detecteer slot-concept voor deze tile
+        const concept = (typeof findSlotConcept === 'function')
+          ? findSlotConcept(prog.id, sp.id) : null;
+        let cls;
+        if(concept) cls = 'sa-tile concept';
+        else if(player) cls = 'sa-tile linked';
+        else cls = 'sa-tile draft';
         const naam = sp.naam || [sp.voornaam, sp.achternaam].filter(Boolean).join(' ') || '(geen naam)';
         const meta = [
           sp.rugnummer ? '#' + sp.rugnummer : '',
           sp.positie || '',
           sp.club || ''
         ].filter(Boolean).join(' · ');
+        const conceptTag = concept ? `<div class="sa-tile-concept-tag">concept</div>` : '';
         return `<div class="${cls}" data-prog-id="${escapeHtml(prog.id)}" data-sp-idx="${i}" data-player-id="${player ? escapeHtml(player.id) : ''}" title="Klik om spelersrapport te openen">
           <div class="sa-tile-name">${escapeHtml(naam)}</div>
           ${meta ? `<div class="sa-tile-meta">${escapeHtml(meta)}</div>` : ''}
+          ${conceptTag}
         </div>`;
       }).join('');
     }
@@ -10307,7 +10398,7 @@ function applyFilters(){
               <div style="display:flex; align-items:center; gap:10px;">
                 <div class="recent-avatar" style="width:30px;height:30px;font-size:11px;">${initials(p.naam)}</div>
                 <div>
-                  <div style="font-weight:600;">${escapeHtml(p.naam)}</div>
+                  <div style="font-weight:600;">${escapeHtml(p.naam)}${p.concept ? '<span class="db-concept-badge">● concept</span>' : ''}</div>
                   <div style="font-size:11px; color:var(--text-3);">${p.been||''}</div>
                 </div>
               </div>
@@ -12049,6 +12140,8 @@ function resetReportForm(){
   refreshPositionDropdowns();
   $$('.grade-pick').forEach(b=>b.classList.remove('selected'));
   $$('.grade-picker').forEach(p=>p.dataset.value='');
+  // s35x: scouting-context loslaten zodat autosave terugvalt op localStorage
+  window.__shScoutingCtx = null;
   setDirty(false);
 }
 // s35q: split volledige naam in voornaam (eerste woord) + achternaam (rest,
@@ -17102,6 +17195,75 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
     clearTimeout(saveTimer);
     saveTimer = setTimeout(doSave, DRAFT_DEBOUNCE_MS);
   }
+  // s35x: bouw player-object uit form-velden (subset van submitReport).
+  // Genoeg om als rij in spelersdatabase te tonen en terug te laden.
+  function buildScoutingConcept(id){
+    const vn = ($id('f-voornaam')?.value || '').trim();
+    const an = ($id('f-achternaam')?.value || '').trim();
+    if(typeof syncNaamHidden === 'function') syncNaamHidden('f');
+    const naam = ($id('f-naam')?.value || '').trim() || [vn, an].filter(Boolean).join(' ');
+    const ctx = window.__shScoutingCtx || null;
+    const huidig = (typeof getPickerValue === 'function') ? getPickerValue('huidig_niveau') : '';
+    const pot = (typeof getPickerValue === 'function') ? getPickerValue('potentieel_niveau') : '';
+    return {
+      id,
+      naam: naam || '(concept)',
+      voornaam: vn,
+      achternaam: an,
+      geboorte: $id('f-geboorte')?.value || '',
+      club: ($id('f-club')?.value || '').trim(),
+      plaats: ($id('f-plaats')?.value || '').trim(),
+      adres: ($id('f-adres')?.value || '').trim(),
+      rugnummer: ($id('f-rugnummer')?.value || '').trim(),
+      elftal: ($id('f-elftal')?.value || '').trim(),
+      been: $id('f-been')?.value || '',
+      tweebenig: ($id('f-tweebenig')?.value || '').trim(),
+      linie: $id('f-linie')?.value || '',
+      positie: $id('f-positie')?.value || '',
+      beoogd: $id('f-beoogd')?.value || '',
+      leeftijd: $id('f-leeftijd')?.value || '',
+      methode: $id('f-methode')?.value || 'Live',
+      advies: $id('f-advies')?.value || '',
+      wapen: ($id('f-wapen')?.value || '').trim(),
+      notities: ($id('f-notities')?.value || '').trim(),
+      wedstrijd: {
+        datum: $id('f-w-datum')?.value || '',
+        thuis: ($id('f-w-thuis')?.value || '').trim(),
+        uit: ($id('f-w-uit')?.value || '').trim(),
+        uitslag: ($id('f-w-uitslag')?.value || '').trim(),
+        opstelling: $id('f-w-opstelling')?.value || '',
+        context: ($id('f-w-context')?.value || '').trim(),
+        toernooi: !!($id('f-w-toernooi') && $id('f-w-toernooi').checked),
+        toernooi_naam: ($id('f-w-toernooi-naam')?.value || '').trim()
+      },
+      bouw: $id('f-bouw')?.value || '',
+      lengte: $id('f-lengte')?.value || '',
+      motoriek: $id('f-motoriek')?.value || '',
+      rijping: $id('f-rijping')?.value || '',
+      beoordelingen: {
+        techniek_huidig: (typeof getPickerValue === 'function') ? getPickerValue('techniek_huidig') : '',
+        techniek_tekst: ($id('f-tekst-techniek')?.value || '').trim(),
+        inzicht_huidig: (typeof getPickerValue === 'function') ? getPickerValue('inzicht_huidig') : '',
+        inzicht_tekst: ($id('f-tekst-inzicht')?.value || '').trim(),
+        grit_huidig: (typeof getPickerValue === 'function') ? getPickerValue('grit_huidig') : '',
+        grit_tekst: ($id('f-tekst-grit')?.value || '').trim(),
+        explosiviteit_huidig: (typeof getPickerValue === 'function') ? getPickerValue('explosiviteit_huidig') : '',
+        explosiviteit_tekst: ($id('f-tekst-explosiviteit')?.value || '').trim(),
+        sprinten_huidig: (typeof getPickerValue === 'function') ? getPickerValue('sprinten_huidig') : '',
+        sprinten_tekst: ($id('f-tekst-sprinten')?.value || '').trim(),
+        duelleren_huidig: (typeof getPickerValue === 'function') ? getPickerValue('duelleren_huidig') : '',
+        duelleren_tekst: ($id('f-tekst-duelleren')?.value || '').trim(),
+        wendbaarheid_huidig: (typeof getPickerValue === 'function') ? getPickerValue('wendbaarheid_huidig') : '',
+        wendbaarheid_tekst: ($id('f-tekst-wendbaarheid')?.value || '').trim()
+      },
+      huidig_niveau: huidig || '',
+      potentieel_niveau: pot || '',
+      datum: ($id('f-w-datum')?.value) || (typeof todayISO === 'function' ? todayISO() : ''),
+      concept: true,
+      programma_link: ctx ? { progId: ctx.progId, spelerKey: ctx.spelerKey } : null
+    };
+  }
+
   function doSave(){
     if(suspended) return;
     const snap = gatherFormSnapshot();
@@ -17110,6 +17272,27 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
     if(!hasMeaningfulContent(snap) && !( $id('f-id') && $id('f-id').value )){
       setStatus('saved', 'Concept opgeslagen');
       return;
+    }
+    // s35x: in scouting-modus -> upsert concept-record in playersCache i.p.v. localStorage
+    if(window.__shScoutingCtx && typeof savePlayer === 'function'){
+      try {
+        let id = ($id('f-id') && $id('f-id').value) || '';
+        if(!id){
+          id = (typeof uid === 'function') ? uid() : ('concept_' + Date.now());
+          if($id('f-id')) $id('f-id').value = id;
+        }
+        const player = buildScoutingConcept(id);
+        // Geen await -> fire-and-forget; toast bij fout door savePlayer zelf
+        savePlayer(player).then(() => {
+          setStatus('saved', 'Opgeslagen ' + nowStr());
+        }).catch(() => {
+          setStatus('saved', 'Concept opgeslagen');
+        });
+        return;
+      } catch(err){
+        console.warn('s35x autosave (scouting) faalde, fallback naar localStorage:', err);
+        // valt door naar localStorage-pad
+      }
     }
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(snap));

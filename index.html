@@ -753,6 +753,54 @@ a { color: var(--accent); text-decoration: none; }
   .up-day { font-size: 11px; }
   .up-teams { font-size: 12px; }
 }
+/* s35r: prog-match-detail (read-only) modal */
+.pmd-grid {
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 10px 16px; margin-top: 4px;
+}
+.pmd-cell { min-width: 0; }
+.pmd-cell.full { grid-column: 1 / -1; }
+.pmd-label {
+  font-size: 10.5px; text-transform: uppercase;
+  letter-spacing: .6px; color: var(--text-3);
+  margin-bottom: 2px; font-weight: 600;
+}
+.pmd-value {
+  font-size: 14px; color: var(--text-1);
+  word-break: break-word;
+}
+.pmd-value.empty { color: var(--text-3); font-style: italic; }
+.pmd-value.big { font-size: 17px; font-weight: 700; }
+.pmd-section {
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--border-2);
+}
+.pmd-section-title {
+  font-size: 11px; text-transform: uppercase;
+  letter-spacing: .6px; color: var(--text-3);
+  margin-bottom: 8px; font-weight: 700;
+}
+.pmd-players {
+  display: flex; flex-direction: column; gap: 4px;
+}
+.pmd-player-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 10px; background: var(--bg-2);
+  border: 1px solid var(--border-2); border-radius: 8px;
+  font-size: 13px; cursor: pointer;
+  transition: background .15s;
+}
+.pmd-player-row:hover { background: rgba(78,161,255,.10); }
+.pmd-player-name { font-weight: 600; }
+.pmd-player-meta { font-size: 11px; color: var(--text-3); }
+.pmd-empty {
+  font-size: 12px; color: var(--text-3); font-style: italic;
+  padding: 8px 0;
+}
+.pmd-actions {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-top: 18px; justify-content: flex-end;
+}
 /* Film-gradient text utility — same DNA as the intro wordmark */
 .film-text {
   background: var(--film-grad);
@@ -6206,6 +6254,65 @@ tbody tr:last-child td { border-bottom: none; }
 </div>
 
 <!-- =================== PROGRAMMA: PLAN MATCH MODAL =================== -->
+<!-- s35r: read-only wedstrijd-detail modal (dashboard / upcoming) -->
+<div class="modal-backdrop" id="prog-match-detail-backdrop">
+  <div class="modal" id="prog-match-detail-modal">
+    <div class="modal-header">
+      <div class="modal-title" id="pmd-title">Wedstrijddetails</div>
+      <button class="modal-close" id="prog-match-detail-close">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="pmd-grid">
+        <div class="pmd-cell">
+          <div class="pmd-label">Datum</div>
+          <div class="pmd-value" id="pmd-datum">—</div>
+        </div>
+        <div class="pmd-cell">
+          <div class="pmd-label">Aftrap</div>
+          <div class="pmd-value" id="pmd-tijd">—</div>
+        </div>
+        <div class="pmd-cell full">
+          <div class="pmd-label">Thuis vs Uit</div>
+          <div class="pmd-value big" id="pmd-teams">—</div>
+        </div>
+        <div class="pmd-cell">
+          <div class="pmd-label">Elftal</div>
+          <div class="pmd-value" id="pmd-leeftijd">—</div>
+        </div>
+        <div class="pmd-cell">
+          <div class="pmd-label">Wedstrijdinformatie</div>
+          <div class="pmd-value" id="pmd-info">—</div>
+        </div>
+        <div class="pmd-cell">
+          <div class="pmd-label">Scoutingmethode</div>
+          <div class="pmd-value" id="pmd-methode">—</div>
+        </div>
+        <div class="pmd-cell">
+          <div class="pmd-label">Plaats</div>
+          <div class="pmd-value" id="pmd-plaats">—</div>
+        </div>
+        <div class="pmd-cell full">
+          <div class="pmd-label">Sportpark / locatie</div>
+          <div class="pmd-value" id="pmd-locatie">—</div>
+        </div>
+        <div class="pmd-cell full" id="pmd-notities-wrap" style="display:none;">
+          <div class="pmd-label">Notities</div>
+          <div class="pmd-value" id="pmd-notities">—</div>
+        </div>
+      </div>
+      <div class="pmd-section">
+        <div class="pmd-section-title" id="pmd-spelers-title">Spelers</div>
+        <div class="pmd-players" id="pmd-spelers"></div>
+      </div>
+      <div class="pmd-actions">
+        <button type="button" class="btn" id="pmd-add-player">+ Speler toevoegen</button>
+        <button type="button" class="btn" id="pmd-route" style="display:none;">🗺️ Route</button>
+        <button type="button" class="btn btn-primary" id="pmd-edit">Bewerken</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="prog-match-backdrop">
   <div class="modal" id="prog-match-modal">
     <div class="modal-header">
@@ -8849,8 +8956,8 @@ function renderTodayMatches(){
       const act = btn.dataset.act;
       if(act === 'edit-match'){
         const id = btn.dataset.progid;
-        if(typeof go === 'function') go('programma');
-        setTimeout(() => { if(typeof openProgMatchModal === 'function') openProgMatchModal(id); }, 80);
+        // s35r: open edit-modal direct; gebruiker blijft op dashboard na sluiten.
+        if(typeof openProgMatchModal === 'function') openProgMatchModal(id);
       } else if(act === 'add-player'){
         const id = btn.dataset.progid;
         if(typeof openProgPlayerModal === 'function') openProgPlayerModal(id, null);
@@ -8974,8 +9081,8 @@ function renderUpcomingMatches(){
       if(e.target.closest('a')) return;
       const pid = row.dataset.progId;
       if(!pid) return;
-      if(typeof go === 'function') go('programma');
-      setTimeout(() => { if(typeof openProgMatchModal === 'function') openProgMatchModal(pid); }, 80);
+      // s35r: open read-only detail-modal vanaf dashboard. Sluit -> terug naar dashboard.
+      if(typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(pid);
     });
   });
 }
@@ -13798,6 +13905,95 @@ function openProgDetail(id){
   }
 }
 
+/* ------------- s35r: read-only wedstrijd-detail modal ------------- */
+function openProgMatchDetailModal(progId){
+  const it = programmaCache.find(p => p.id === progId);
+  if(!it){ toast('Wedstrijd niet gevonden', true); return; }
+
+  function setVal(elId, val, fallback){
+    const el = $('#'+elId);
+    if(!el) return;
+    const v = (val || '').toString().trim();
+    if(v){ el.textContent = v; el.classList.remove('empty'); }
+    else { el.textContent = fallback || '—'; el.classList.add('empty'); }
+  }
+  // Datum -> NL formaat (DD-MM-YYYY) als datum gevuld is
+  let datumNL = '';
+  if(it.datum){
+    const parts = String(it.datum).split('-');
+    if(parts.length === 3) datumNL = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    else datumNL = it.datum;
+  }
+  setVal('pmd-datum', datumNL);
+  setVal('pmd-tijd', it.tijd);
+  $('#pmd-teams').textContent = `${it.thuis || '?'} — ${it.uit || '?'}`;
+  $('#pmd-teams').classList.remove('empty');
+  setVal('pmd-leeftijd', it.leeftijd);
+  setVal('pmd-info', it.info);
+  setVal('pmd-methode', it.methode);
+  setVal('pmd-plaats', it.plaats);
+  setVal('pmd-locatie', it.locatie);
+  const notWrap = $('#pmd-notities-wrap');
+  if(it.notities && String(it.notities).trim()){
+    notWrap.style.display = '';
+    $('#pmd-notities').textContent = it.notities;
+  } else {
+    notWrap.style.display = 'none';
+  }
+
+  // Spelers-lijst
+  const spelers = Array.isArray(it.spelers) ? it.spelers : [];
+  $('#pmd-spelers-title').textContent = `Spelers (${spelers.length})`;
+  const listEl = $('#pmd-spelers');
+  if(spelers.length === 0){
+    listEl.innerHTML = '<div class="pmd-empty">Nog geen spelers toegevoegd. Klik op "+ Speler toevoegen" om te beginnen.</div>';
+  } else {
+    listEl.innerHTML = spelers.map(sp => {
+      const naam = sp.naam || [sp.voornaam, sp.achternaam].filter(Boolean).join(' ') || '(geen naam)';
+      const metaParts = [];
+      if(sp.rugnummer) metaParts.push('#' + sp.rugnummer);
+      if(sp.positie) metaParts.push(sp.positie);
+      if(sp.club) metaParts.push(sp.club);
+      const meta = metaParts.join(' · ');
+      return `<div class="pmd-player-row" data-spid="${escapeHtml(sp.id||'')}">
+        <span class="pmd-player-name">${escapeHtml(naam)}</span>
+        ${meta ? `<span class="pmd-player-meta">${escapeHtml(meta)}</span>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  // Route-knop alleen tonen als we maps-url kunnen bouwen
+  const routeBtn = $('#pmd-route');
+  let mapsUrl = '';
+  if(typeof window.findClubInfo === 'function' && it.thuis){
+    const ci = window.findClubInfo(it.thuis);
+    if(ci && ci.lat && ci.lon) mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${ci.lat},${ci.lon}`;
+    else if(ci && (ci.adres || ci.adresFull)) mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(ci.adresFull || ci.adres)}`;
+  }
+  if(!mapsUrl && it.locatie) mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(it.locatie)}`;
+  if(mapsUrl){
+    routeBtn.style.display = '';
+    routeBtn.dataset.url = mapsUrl;
+  } else {
+    routeBtn.style.display = 'none';
+    routeBtn.dataset.url = '';
+  }
+
+  // Bewaar huidige id voor knop-handlers
+  $('#prog-match-detail-modal').dataset.progId = progId;
+  showModal('prog-match-detail-backdrop');
+
+  // Speler-rij klik -> open bestaande speler in prog-player-modal
+  listEl.querySelectorAll('.pmd-player-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const spid = row.dataset.spid;
+      if(typeof openProgPlayerModal === 'function') openProgPlayerModal(progId, spid || null);
+    });
+  });
+}
+function closeProgMatchDetailModal(){ hideModal('prog-match-detail-backdrop'); }
+window.openProgMatchDetailModal = openProgMatchDetailModal;
+
 /* ------------- Plan match modal ------------- */
 function openProgMatchModal(progId, defaultDate){
   const it = progId ? programmaCache.find(p => p.id === progId) : null;
@@ -13996,6 +14192,14 @@ async function saveProgPlayerFromForm(e, opts){
     await saveProgrammaItem(updated);
     closeProgPlayerModal();
     if(!silent) toast('Speler opgeslagen');
+    // s35r: als detail-modal open is, ververs de spelerslijst
+    const detailBd = document.getElementById('prog-match-detail-backdrop');
+    if(detailBd && detailBd.classList.contains('active')){
+      const detailId = document.getElementById('prog-match-detail-modal')?.dataset.progId;
+      if(detailId === progId && typeof openProgMatchDetailModal === 'function'){
+        openProgMatchDetailModal(progId);
+      }
+    }
     return true;
   } catch(e){ return false; }
 }
@@ -14318,6 +14522,29 @@ function wireProgrammaUI(){
   $('#programma-today-btn')?.addEventListener('click', () => { progWeekOffset = 0; renderProgramma(); });
   $('#prog-prev-week')?.addEventListener('click', () => { progWeekOffset--; renderProgramma(); });
   $('#prog-next-week')?.addEventListener('click', () => { progWeekOffset++; renderProgramma(); });
+
+  // s35r: read-only wedstrijd-detail modal
+  $('#prog-match-detail-close')?.addEventListener('click', closeProgMatchDetailModal);
+  $('#prog-match-detail-backdrop')?.addEventListener('click', e => {
+    if(e.target.id === 'prog-match-detail-backdrop') closeProgMatchDetailModal();
+  });
+  $('#pmd-edit')?.addEventListener('click', () => {
+    const progId = $('#prog-match-detail-modal').dataset.progId;
+    if(!progId) return;
+    closeProgMatchDetailModal();
+    setTimeout(() => openProgMatchModal(progId), 60);
+  });
+  $('#pmd-add-player')?.addEventListener('click', () => {
+    const progId = $('#prog-match-detail-modal').dataset.progId;
+    if(!progId) return;
+    // Detail-modal niet sluiten — speler-modal komt erbovenop. Bij opslaan/sluiten
+    // van speler-modal blijft detail-modal zichtbaar met geüpdatete spelerslijst.
+    openProgPlayerModal(progId, null);
+  });
+  $('#pmd-route')?.addEventListener('click', () => {
+    const url = $('#pmd-route').dataset.url;
+    if(url) window.open(url, '_blank', 'noopener');
+  });
 
   // Plan match modal
   $('#prog-match-close')?.addEventListener('click', closeProgMatchModal);

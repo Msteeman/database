@@ -5653,7 +5653,7 @@ tbody tr:last-child td { border-bottom: none; }
               </div>
             </div>
             <div class="field" style="margin-top:4px;">
-              <label>Adres <span style="color:var(--text-3);font-weight:400;font-size:11px;">(automatisch ingevuld vanuit club — handmatig aanpassen mag)</span></label>
+              <label>Adres</label>
               <input id="f-adres" type="text" placeholder="Bijv. Sportlaan 12, 1234 AB Amsterdam" />
             </div>
             <div class="field-row three">
@@ -14560,6 +14560,14 @@ function initApp(){
     const adresEl  = $('#f-adres');
     const raw = ($('#f-club').value || '').trim();
     if(!raw) return;
+    // s35d: spiegel naar Thuisspelende ploeg als die leeg is
+    try {
+      const thuisEl = $('#f-w-thuis');
+      if(thuisEl && !thuisEl.value.trim()){
+        thuisEl.value = raw;
+        thuisEl.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    } catch(_){}
     const key = raw.toLowerCase();
     // v70h-s35a: directe lookup via findClubInfo (CLUB_ADRESSEN + HV_CLUBS) heeft voorrang
     if(typeof window.findClubInfo === 'function'){
@@ -14606,6 +14614,38 @@ function initApp(){
   });
   $('#report-form').addEventListener('submit', submitReport);
   $('#report-form').addEventListener('input', ()=> setDirty(true));
+  // s35d: omgekeerde koppeling — vul Club/Plaats/Adres als Thuisspelende ploeg eerst gevuld wordt
+  try {
+    const thuisInp = $('#f-w-thuis');
+    if(thuisInp){
+      thuisInp.addEventListener('blur', ()=>{
+        const raw = (thuisInp.value || '').trim();
+        if(!raw) return;
+        const clubEl   = $('#f-club');
+        const plaatsEl = $('#f-plaats');
+        const adresEl  = $('#f-adres');
+        let info = null;
+        try { if(typeof window.findClubInfo === 'function') info = window.findClubInfo(raw); } catch(_){}
+        if(clubEl && !clubEl.value.trim()){
+          clubEl.value = (info && info.naam) ? info.naam : raw;
+          clubEl.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        if(info){
+          if(plaatsEl && !plaatsEl.value.trim() && info.plaats){
+            plaatsEl.value = info.plaats;
+            plaatsEl.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+          if(adresEl && !adresEl.value.trim()){
+            const parts = [info.sportpark, info.adres, info.postcode].filter(Boolean);
+            if(parts.length){
+              adresEl.value = parts.join(' \u00b7 ');
+              adresEl.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+          }
+        }
+      });
+    }
+  } catch(_){}
   $('#report-form').addEventListener('change', ()=> setDirty(true));
   $('#report-form').addEventListener('click', (e)=>{
     if(e.target.classList && e.target.classList.contains('grade-pick')) setDirty(true);
@@ -15698,7 +15738,8 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
         const id = activeInput.id || '';
         const CLUB_AUTOFILL_MAP = {
           'mr-thuis': { plaats: 'mr-plaats', adres: 'mr-adres' },
-          'f-club':   { plaats: 'f-plaats',  adres: 'f-adres'  },
+          'f-club':   { plaats: 'f-plaats',  adres: 'f-adres',  mirror: 'f-w-thuis' },
+          'f-w-thuis':{ plaats: 'f-plaats',  adres: 'f-adres',  mirror: 'f-club'    },
           'pm-thuis': { plaats: 'pm-plaats', adres: 'pm-locatie' }
         };
         const map = CLUB_AUTOFILL_MAP[id];
@@ -15716,6 +15757,14 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
                 aEl.value = parts.join(' \u00b7 ');
                 aEl.dispatchEvent(new Event('input', { bubbles: true }));
               }
+            }
+          }
+          // s35d: spiegel clubnaam naar partner-veld (club <-> thuisclub) wanneer leeg
+          if(map.mirror){
+            const mEl = document.getElementById(map.mirror);
+            if(mEl && !mEl.value.trim()){
+              mEl.value = (info && info.naam) ? info.naam : val;
+              mEl.dispatchEvent(new Event('input', { bubbles: true }));
             }
           }
         }

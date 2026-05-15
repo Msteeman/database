@@ -5003,6 +5003,27 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
+        <!-- s35m: Adressen synchroniseren -->
+        <div class="settings-section">
+          <div class="settings-section-head">
+            <div class="settings-section-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            </div>
+            <div>
+              <div class="settings-section-title">Adressen synchroniseren</div>
+              <div class="settings-section-sub">Vult plaats/adres/postcode op alle rapporten + wedstrijden vanuit het adresboek. Adresboek is leidend.</div>
+            </div>
+          </div>
+          <div class="settings-btn-row">
+            <button type="button" class="settings-btn" id="settings-sync-adressen">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+              Nu synchroniseren
+            </button>
+            <span class="settings-saved-pill" id="settings-sync-pill" style="display:none;">&#x2713; Klaar</span>
+          </div>
+          <div id="settings-sync-result" style="display:none; margin-top:10px; padding:12px; background:var(--panel-2); border-radius:8px; font-size:13px; line-height:1.6;"></div>
+        </div>
+
         <!-- App-instellingen -->
         <div class="settings-section">
           <div class="settings-section-head">
@@ -7397,29 +7418,72 @@ function matchReportsCol(){ return collection(db, 'users', currentUser.uid, 'mat
 function tipsCol(){ return collection(db, 'users', currentUser.uid, 'tips'); }
 function programmaCol(){ return collection(db, 'users', currentUser.uid, 'programma'); }
 
-// s35l: vul plaats/adres/postcode op een rapport of wedstrijd in via
-// findClubInfo, met de thuisspelende ploeg als bron. Velden die al
-// gevuld zijn worden gerespecteerd. Retourneert {changed, rec}.
-function enrichRecordFromHomeClub(rec){
-  if(!rec || typeof window.findClubInfo !== 'function') return {changed:false, rec};
-  const homeKey = (rec.wedstrijd && rec.wedstrijd.thuis) || rec.thuis || rec.club || '';
-  if(!homeKey || !homeKey.trim()) return {changed:false, rec};
+// s35m: vul plaats/adres/postcode op rapport/wedstrijd vanuit findClubInfo
+// (thuisspelende ploeg = bron). opts.force=true overschrijft ook bestaande
+// afwijkende waarden — adresboek is leidend.
+// Retourneert: {changed, aangevuld, gecorrigeerd, gematcht, homeKey, rec}.
+function enrichRecordFromHomeClub(rec, opts){
+  const force = !!(opts && opts.force);
+  const empty = {changed:false, aangevuld:false, gecorrigeerd:false, gematcht:false, homeKey:'', rec};
+  if(!rec || typeof window.findClubInfo !== 'function') return empty;
+  const homeKey = ((rec.wedstrijd && rec.wedstrijd.thuis) || rec.thuis || rec.club || '').trim();
+  if(!homeKey) return empty;
   const info = window.findClubInfo(homeKey);
-  if(!info) return {changed:false, rec};
-  let changed = false;
+  if(!info) return {...empty, homeKey};
+  let aangevuld = false;
+  let gecorrigeerd = false;
   const out = {...rec};
-  if((!out.plaats || !String(out.plaats).trim()) && info.plaats){
-    out.plaats = info.plaats; changed = true;
-  }
-  if((!out.adres || !String(out.adres).trim()) && info.adres){
-    out.adres = info.adres; changed = true;
-  }
-  if((!out.postcode || !String(out.postcode).trim()) && info.postcode){
-    out.postcode = info.postcode; changed = true;
-  }
-  return {changed, rec: out};
+  const apply = (field) => {
+    const v = (info[field]||'').trim();
+    if(!v) return;
+    const cur = (out[field]||'').toString().trim();
+    if(!cur){
+      out[field] = v; aangevuld = true;
+    } else if(force && cur.toLowerCase() !== v.toLowerCase()){
+      out[field] = v; gecorrigeerd = true;
+    }
+  };
+  apply('plaats');
+  apply('adres');
+  apply('postcode');
+  const changed = aangevuld || gecorrigeerd;
+  return {changed, aangevuld, gecorrigeerd, gematcht:true, homeKey, rec: out};
 }
 window.enrichRecordFromHomeClub = enrichRecordFromHomeClub;
+
+// s35m: walk alle rapporten + wedstrijden, force:true, en sla op.
+// Retourneert promise van {aangevuldR, gecorrigeerdR, aangevuldM, gecorrigeerdM, nietGematcht:[], totaalR, totaalM}.
+async function syncAllAddressesFromAdresboek(){
+  const result = {
+    aangevuldR: 0, gecorrigeerdR: 0, aangevuldM: 0, gecorrigeerdM: 0,
+    nietGematcht: [], totaalR: 0, totaalM: 0
+  };
+  const niet = new Set();
+  const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+  const matches = (typeof loadMatchReports === 'function') ? loadMatchReports() : [];
+  result.totaalR = players.length;
+  result.totaalM = matches.length;
+  const playerWrites = [];
+  for(const p of players){
+    const r = enrichRecordFromHomeClub(p, {force:true});
+    if(!r.gematcht && r.homeKey) niet.add(r.homeKey);
+    if(r.aangevuld) result.aangevuldR++;
+    if(r.gecorrigeerd) result.gecorrigeerdR++;
+    if(r.changed) playerWrites.push(savePlayer(r.rec).catch(()=>{}));
+  }
+  const matchWrites = [];
+  for(const m of matches){
+    const r = enrichRecordFromHomeClub(m, {force:true});
+    if(!r.gematcht && r.homeKey) niet.add(r.homeKey);
+    if(r.aangevuld) result.aangevuldM++;
+    if(r.gecorrigeerd) result.gecorrigeerdM++;
+    if(r.changed) matchWrites.push(saveMatchReport(r.rec).catch(()=>{}));
+  }
+  await Promise.all([...playerWrites, ...matchWrites]);
+  result.nietGematcht = Array.from(niet).sort((a,b)=>a.localeCompare(b,'nl'));
+  return result;
+}
+window.syncAllAddressesFromAdresboek = syncAllAddressesFromAdresboek;
 
 function loadPlayers(){ return playersCache; }
 function loadAnalyses(){ return analysesCache; }
@@ -7445,14 +7509,14 @@ function subscribeData(){
     }
     if(!geoPlayersMigrationDone){
       geoPlayersMigrationDone = true;
-      // s35l: backfill plaats/adres/postcode via thuisclub (findClubInfo).
+      // s35m: backfill + correct plaats/adres/postcode via thuisclub (force).
       const enriched = playersCache
-        .map(p => enrichRecordFromHomeClub(p))
+        .map(p => enrichRecordFromHomeClub(p, {force:true}))
         .filter(r => r.changed)
         .map(r => r.rec);
       if(enriched.length){
         Promise.all(enriched.map(p => savePlayer(p).catch(()=>{})))
-          .then(()=> toast(`${enriched.length} rapport${enriched.length===1?'':'en'} aangevuld met adres`));
+          .then(()=> toast(`${enriched.length} rapport${enriched.length===1?'':'en'} bijgewerkt vanuit adresboek`));
       }
     }
     if(currentView === 'dashboard') renderDashboard();
@@ -7491,14 +7555,14 @@ function subscribeData(){
     matchReportsCache = snap.docs.map(d => ({...d.data(), id: d.id}));
     if(!geoMatchesMigrationDone){
       geoMatchesMigrationDone = true;
-      // s35l: backfill plaats/adres/postcode via thuisclub.
+      // s35m: backfill + correct plaats/adres/postcode via thuisclub (force).
       const enriched = matchReportsCache
-        .map(m => enrichRecordFromHomeClub(m))
+        .map(m => enrichRecordFromHomeClub(m, {force:true}))
         .filter(r => r.changed)
         .map(r => r.rec);
       if(enriched.length){
         Promise.all(enriched.map(m => saveMatchReport(m).catch(()=>{})))
-          .then(()=> toast(`${enriched.length} wedstrijd${enriched.length===1?'':'en'} aangevuld met adres`));
+          .then(()=> toast(`${enriched.length} wedstrijd${enriched.length===1?'':'en'} bijgewerkt vanuit adresboek`));
       }
     }
     if(currentView === 'matches') renderMatches();
@@ -16654,6 +16718,54 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
       backdrop.__shWired = true;
       backdrop.addEventListener('click', (ev) => {
         if(ev.target === backdrop) closeSettings();
+      });
+    }
+    const syncBtn = document.getElementById('settings-sync-adressen');
+    if(syncBtn && !syncBtn.__shWired){
+      syncBtn.__shWired = true;
+      syncBtn.addEventListener('click', async () => {
+        if(typeof window.syncAllAddressesFromAdresboek !== 'function'){
+          alert('Synchronisatie niet beschikbaar — laad de app opnieuw.');
+          return;
+        }
+        const resultBox = document.getElementById('settings-sync-result');
+        const pill = document.getElementById('settings-sync-pill');
+        const origLabel = syncBtn.innerHTML;
+        syncBtn.disabled = true;
+        syncBtn.innerHTML = 'Bezig…';
+        if(pill) pill.style.display = 'none';
+        if(resultBox){ resultBox.style.display = 'none'; resultBox.innerHTML = ''; }
+        try {
+          const r = await window.syncAllAddressesFromAdresboek();
+          const totGewijzigd = r.aangevuldR + r.gecorrigeerdR + r.aangevuldM + r.gecorrigeerdM;
+          let html = '<div style=\"margin-bottom:6px;\"><strong>Synchronisatie voltooid</strong></div>';
+          html += '<div>&#x2705; ' + r.aangevuldR + ' rapport' + (r.aangevuldR===1?'':'en') + ' aangevuld (leeg \u2192 adresboek)</div>';
+          html += '<div>&#x1F501; ' + r.gecorrigeerdR + ' rapport' + (r.gecorrigeerdR===1?'':'en') + ' gecorrigeerd (afwijkend \u2192 adresboek)</div>';
+          html += '<div>&#x2705; ' + r.aangevuldM + ' wedstrijd' + (r.aangevuldM===1?'':'en') + ' aangevuld</div>';
+          html += '<div>&#x1F501; ' + r.gecorrigeerdM + ' wedstrijd' + (r.gecorrigeerdM===1?'':'en') + ' gecorrigeerd</div>';
+          if(r.nietGematcht.length){
+            const safe = r.nietGematcht.map(c => c.replace(/[<>&"]/g, ch => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;'}[ch])));
+            html += '<div style=\"margin-top:10px;\"><strong>&#x26A0;&#xFE0F; ' + r.nietGematcht.length + ' clubnaam' + (r.nietGematcht.length===1?'':'en') + ' niet gevonden in adresboek:</strong></div>';
+            html += '<div style=\"margin-top:6px; max-height:180px; overflow:auto; padding:8px; background:var(--panel); border-radius:6px; font-family:monospace; font-size:12px;\">' + safe.map(c=>'\u2022 '+c).join('<br>') + '</div>';
+            html += '<div style=\"margin-top:6px; font-size:12px; color:var(--muted);\">Tip: corrigeer de clubnaam in het rapport, of voeg de club toe aan het adresboek.</div>';
+          } else if(totGewijzigd === 0){
+            html += '<div style=\"margin-top:10px; color:var(--muted);\">Alle adressen waren al up-to-date.</div>';
+          }
+          if(resultBox){
+            resultBox.innerHTML = html;
+            resultBox.style.display = 'block';
+          }
+          if(pill){ pill.style.display = 'inline-flex'; setTimeout(()=>{ pill.style.display='none'; }, 4000); }
+        } catch(err){
+          console.error('sync adressen failed', err);
+          if(resultBox){
+            resultBox.innerHTML = '<strong>Synchronisatie mislukt</strong> — controleer je verbinding en probeer opnieuw.';
+            resultBox.style.display = 'block';
+          }
+        } finally {
+          syncBtn.disabled = false;
+          syncBtn.innerHTML = origLabel;
+        }
       });
     }
     const clearBtn = document.getElementById('settings-clear-cache');

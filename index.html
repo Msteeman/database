@@ -3893,6 +3893,9 @@ tbody tr:last-child td { border-bottom: none; }
 
   /* Geo panel stacks */
   .geo-panel-wrap { grid-template-columns: 1fr; }
+  /* s35aa: op smaller scherm map iets korter, lijst zelfstandig scrollbaar */
+  .geo-map-wrap { height: 240px; min-height: 200px; }
+  .geo-list-panel { height: auto; min-height: 0; max-height: 320px; }
 
   /* Cards/lists tighter */
   .card { padding: 14px; }
@@ -3920,6 +3923,7 @@ tbody tr:last-child td { border-bottom: none; }
   display: grid;
   grid-template-columns: 1.3fr 1fr;
   gap: 16px;
+  align-items: stretch;
 }
 .geo-breadcrumb {
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
@@ -3939,9 +3943,9 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--bg-3);
   border: 1px solid var(--border); border-radius: 10px;
   padding: 0;
-  aspect-ratio: 16 / 9;
-  min-height: 220px;
-  max-height: 320px;
+  /* s35aa: vaste hoogte i.p.v. aspect-ratio zodat map en lijst gelijk eindigen */
+  height: 320px;
+  min-height: 280px;
   overflow: hidden;
 }
 #geo-leaflet-map {
@@ -4018,16 +4022,17 @@ tbody tr:last-child td { border-bottom: none; }
 .geo-list-panel {
   background: var(--bg-3); border: 1px solid var(--border);
   border-radius: 10px; padding: 12px 14px;
-  min-height: 220px;
-  max-height: 320px;
+  /* s35aa: zelfde hoogte als .geo-map-wrap voor nette grid-rij */
+  height: 320px;
+  min-height: 280px;
   display: flex; flex-direction: column;
 }
-.geo-list-items { max-height: 260px !important; }
+/* s35aa: dubbele max-height-declaratie verwijderd; alleen flex-regel hieronder */
 .geo-list-title {
   font-size: 12px; text-transform: uppercase; letter-spacing: 1px;
   color: var(--text-3); font-weight: 700; margin-bottom: 12px;
 }
-.geo-list-items { display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; max-height: 480px; }
+.geo-list-items { display: flex; flex-direction: column; gap: 6px; flex: 1; overflow-y: auto; min-height: 0; }
 .geo-list-item {
   display: flex; align-items: center; gap: 10px;
   background: var(--bg-2); border: 1px solid var(--border);
@@ -5486,7 +5491,7 @@ tbody tr:last-child td { border-bottom: none; }
 
           <div class="panel" style="margin-top:16px; opacity: .92;">
             <div class="panel-title" style="font-size: 13px;">
-              Nederland
+              Overzichtsmap
               <span class="panel-title-icon">●</span>
             </div>
             <div id="geo-breadcrumb" class="geo-breadcrumb"></div>
@@ -9067,7 +9072,7 @@ async function ensureActiveMatchReport(prog){
 // Open spelersrapport in concept-modus voor scouting-tile klik.
 // matchedPlayer (optioneel) = bestaande speler uit playersCache (3-traps).
 // progSp = speler-object uit programma. prog = wedstrijd.
-function openScoutingPlayerForm(prog, progSp, matchedPlayer){
+function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
   if(!prog || !progSp) return;
   // s35y: pending-vlag SYNCHROON zodat tryRestore (+50ms) banner skipt.
   // resetReportForm wist alleen __shScoutingCtx, niet __shScoutingPending.
@@ -9082,9 +9087,13 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer){
       // s35y: belt-and-suspenders — verberg eventuele localStorage-banner
       const dbanner = document.getElementById('report-draft-banner');
       if(dbanner) dbanner.classList.add('hidden');
-      // s35x: bestaat er al een concept voor dit slot? -> laad dat
-      const slotConcept = (typeof findSlotConcept === 'function')
-        ? findSlotConcept(prog.id, progSp.id) : null;
+      // s35aa: hint van de aanroeper (sa-tile render heeft 'm al gevonden) is
+      // betrouwbaarder dan opnieuw zoeken — anders kan cache-timing voor verschil zorgen.
+      let slotConcept = slotConceptHint || null;
+      if(!slotConcept){
+        slotConcept = (typeof findSlotConcept === 'function')
+          ? findSlotConcept(prog.id, progSp.id) : null;
+      }
       if(slotConcept){
         loadIntoForm(slotConcept);
         const dispNaam = slotConcept.naam
@@ -9293,7 +9302,11 @@ function renderActiveScouting(){
         const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
         matched = players.find(p => p.id === playerId) || null;
       }
-      openScoutingPlayerForm(prog, sp, matched);
+      // s35aa: zoek slot-concept op klik-moment (zelfde data als de oranje tile)
+      // en geef mee aan openScoutingPlayerForm zodat heropenen altijd werkt.
+      const slotConcept = (typeof findSlotConcept === 'function')
+        ? findSlotConcept(prog.id, sp.id) : null;
+      openScoutingPlayerForm(prog, sp, matched, slotConcept);
     });
   });
 
@@ -17658,6 +17671,18 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
   // v70h-s8: schone handler — gebruikt window.go die nu wel beschikbaar is
   function __shHandleKind(kind){
     close();
+    // s35z: sluit ook de mobiele sidebar-drawer (anders blijft 'ie open
+    // na keuze in het Nieuw-submenu op mobiel)
+    try {
+      if(window.innerWidth <= 900){
+        const sb = document.getElementById('sidebar');
+        const bd = document.getElementById('sidebar-backdrop');
+        const bg = document.getElementById('burger-btn');
+        if(sb) sb.classList.remove('open');
+        if(bd) bd.classList.remove('show');
+        if(bg) bg.setAttribute('aria-expanded','false');
+      }
+    } catch(_){}
     try {
       if(kind === 'speler'){
         if(typeof window.go === 'function') window.go('report');

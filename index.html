@@ -801,6 +801,50 @@ a { color: var(--accent); text-decoration: none; }
   display: flex; gap: 10px; flex-wrap: wrap;
   margin-top: 18px; justify-content: flex-end;
 }
+/* s35s: 'Bezig met scouten' widget */
+.scouting-active-wrap { margin-bottom: 18px; }
+.sa-card {
+  background: linear-gradient(135deg, rgba(245,197,24,0.12), rgba(245,197,24,0.04));
+  border: 1px solid rgba(245,197,24,0.45);
+  border-radius: 14px; padding: 14px 16px; margin-bottom: 12px;
+  position: relative;
+}
+.sa-card::before {
+  content: ''; position: absolute; top: 12px; left: -1px;
+  width: 4px; height: calc(100% - 24px);
+  background: #f5c518; border-radius: 0 4px 4px 0;
+}
+.sa-header { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+.sa-title { font-size: 15px; font-weight: 700; color: var(--text-1); display: flex; align-items: center; gap: 8px; }
+.sa-pulse {
+  display: inline-block; width: 9px; height: 9px;
+  background: #ef4444; border-radius: 50%;
+  animation: sa-pulse 1.4s ease-in-out infinite;
+}
+@keyframes sa-pulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:.45;transform:scale(.78);} }
+.sa-meta { font-size: 12px; color: var(--text-3); display: flex; gap: 10px; flex-wrap: wrap; }
+.sa-meta b { color: var(--text-2); font-weight: 600; }
+.sa-status { font-size: 11px; padding: 3px 8px; border-radius: 10px; background: rgba(239,68,68,0.18); color: #fca5a5; font-weight: 600; letter-spacing: .3px; }
+.sa-status.warmup { background: rgba(245,197,24,0.20); color: #f5c518; }
+.sa-status.live { background: rgba(16,185,129,0.20); color: #34d399; }
+.sa-players-title { font-size: 11px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-3); font-weight: 700; margin: 10px 0 6px; }
+.sa-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+.sa-tile {
+  background: var(--bg-2); border: 1px solid var(--border-2);
+  border-radius: 10px; padding: 10px 12px; cursor: pointer;
+  transition: transform .12s, border-color .12s, background .12s;
+  display: flex; flex-direction: column; gap: 4px; min-width: 0;
+}
+.sa-tile:hover { background: rgba(78,161,255,.10); border-color: rgba(78,161,255,.4); transform: translateY(-1px); }
+.sa-tile.draft { border-color: rgba(245,197,24,0.5); }
+.sa-tile.draft::after { content: '● concept'; font-size: 10px; color: #f5c518; font-weight: 600; letter-spacing: .3px; margin-top: 2px; }
+.sa-tile.linked { border-color: rgba(16,185,129,0.4); }
+.sa-tile.linked::after { content: '● gekoppeld'; font-size: 10px; color: #34d399; font-weight: 600; letter-spacing: .3px; margin-top: 2px; }
+.sa-tile-name { font-size: 13px; font-weight: 700; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sa-tile-meta { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sa-empty-players { font-size: 12px; color: var(--text-3); font-style: italic; padding: 6px 0; }
+.sa-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+.sa-actions .btn-ghost { font-size: 12px; padding: 6px 12px; }
 /* Film-gradient text utility — same DNA as the intro wordmark */
 .film-text {
   background: var(--film-grad);
@@ -5288,6 +5332,8 @@ tbody tr:last-child td { border-bottom: none; }
           </button>
         </div>
 
+        <!-- s35s: Bezig met scouten widget -->
+        <div id="scouting-active-wrap" class="scouting-active-wrap" style="display:none;"></div>
         <div id="today-matches-wrap" style="display:none; margin-bottom:18px;"></div>
         <div id="upcoming-matches-wrap" style="display:none; margin-bottom:18px;"></div>
         <div class="kpi-grid" id="kpi-grid"></div>
@@ -7731,7 +7777,7 @@ function subscribeData(){
   unsubProgramma = onSnapshot(programmaCol(), snap=>{
     programmaCache = snap.docs.map(d => ({...d.data(), id: d.id}));
     if(currentView === 'programma') renderProgramma();
-    if(currentView === 'dashboard') { renderTodayMatches(); renderUpcomingMatches(); }
+    if(currentView === 'dashboard') { renderActiveScouting(); renderTodayMatches(); renderUpcomingMatches(); }
     setSync('ok');
   }, err=>{
     console.error('Programma sync error:', err);
@@ -8793,6 +8839,325 @@ window.openMatchReportModal = openMatchReportModal;
 window.openProgMatchModal = openProgMatchModal;
 window.isoDateStr = isoDateStr;
 
+/* =============== s35s: BEZIG MET SCOUTEN =============== */
+// KNVB-duur per leeftijdscategorie (in minuten ná aftrap):
+// 2x speeltijd + rust + time-outs (pupillen) + blessuretijd-buffer + 15 min navullen
+//   O8/O9:  2x20 + 10 rust + 4 time-out + 5 bl + 15 buf  = ~75
+//   O10:    2x25 + 10 rust + 4 time-out + 5 bl + 15 buf  = ~85
+//   O11/12: 2x30 + 10 rust + 4 time-out + 5 bl + 15 buf  = ~95
+//   O13:    2x30 + 15 rust + 5 bl + 15 buf               = ~95
+//   O14/15: 2x35 + 15 rust + 5 bl + 15 buf               = ~105
+//   O16/17: 2x40 + 15 rust + 5 bl + 15 buf               = ~115
+//   O18/19/23: 2x45 + 15 rust + 5 bl + 15 buf            = ~125
+const KNVB_DUUR_MIN = {
+  'O.8':75,  'O.9':75,  'O.10':85, 'O.11':95, 'O.12':95,
+  'O.13':95, 'O.14':105,'O.15':105,'O.16':115,'O.17':115,
+  'O.18':125,'O.19':125,'O.21':125,'O.23':125
+};
+function getMatchDurationMin(leeftijd){
+  if(!leeftijd) return 120;
+  const k = String(leeftijd).trim().toUpperCase();
+  return KNVB_DUUR_MIN[k] || 120;
+}
+// Pre-window opent 30 min vóór aftrap, post-window = duur na aftrap
+const SCOUTING_PRE_MIN = 30;
+function getMatchWindow(prog){
+  if(!prog || !prog.datum || !prog.tijd) return null;
+  const [hh,mm] = String(prog.tijd).split(':').map(n=>parseInt(n,10));
+  if(isNaN(hh) || isNaN(mm)) return null;
+  const [Y,M,D] = String(prog.datum).split('-').map(n=>parseInt(n,10));
+  if(!Y||!M||!D) return null;
+  const kick = new Date(Y, M-1, D, hh, mm, 0, 0);
+  const start = new Date(kick.getTime() - SCOUTING_PRE_MIN*60000);
+  const end   = new Date(kick.getTime() + getMatchDurationMin(prog.leeftijd)*60000);
+  return { kick, start, end };
+}
+function isMatchInWindow(prog, now){
+  const w = getMatchWindow(prog);
+  if(!w) return false;
+  const t = (now || new Date()).getTime();
+  return t >= w.start.getTime() && t <= w.end.getTime();
+}
+// 3-traps speler-matching tegen playersCache.
+// Retourneert { player, mode } waarbij mode = 'exact'|'club'|'naam'|null
+function findPlayerMatch(speler){
+  if(!speler) return { player:null, mode:null };
+  const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+  if(!players.length) return { player:null, mode:null };
+  const norm = s => String(s||'').trim().toLowerCase();
+  const vn = norm(speler.voornaam);
+  const an = norm(speler.achternaam);
+  const gb = norm(speler.geboorte);
+  const cl = norm(speler.club);
+  const naam = norm(speler.naam);
+  // Splits naam wanneer voornaam/achternaam ontbreken
+  let _vn = vn, _an = an;
+  if((!_vn || !_an) && naam && typeof splitNaam === 'function'){
+    const s = splitNaam(naam);
+    if(!_vn) _vn = norm(s.voornaam);
+    if(!_an) _an = norm(s.achternaam);
+  }
+  function playerNamen(p){
+    let pvn = norm(p.voornaam), pan = norm(p.achternaam);
+    if((!pvn || !pan) && p.naam && typeof splitNaam === 'function'){
+      const s = splitNaam(p.naam);
+      if(!pvn) pvn = norm(s.voornaam);
+      if(!pan) pan = norm(s.achternaam);
+    }
+    return { pvn, pan };
+  }
+  // Tier 1: voornaam + achternaam + geboorte
+  if(_vn && _an && gb){
+    const hits = players.filter(p => {
+      const {pvn, pan} = playerNamen(p);
+      return pvn===_vn && pan===_an && norm(p.geboorte)===gb;
+    });
+    if(hits.length === 1) return { player: hits[0], mode:'exact' };
+  }
+  // Tier 2: voornaam + achternaam + club
+  if(_vn && _an && cl){
+    const hits = players.filter(p => {
+      const {pvn, pan} = playerNamen(p);
+      return pvn===_vn && pan===_an && norm(p.club)===cl;
+    });
+    if(hits.length === 1) return { player: hits[0], mode:'club' };
+  }
+  // Tier 3: volledige naam
+  if(naam){
+    const hits = players.filter(p => norm(p.naam) === naam ||
+      (norm(p.voornaam)+' '+norm(p.achternaam)).trim() === naam);
+    if(hits.length === 1) return { player: hits[0], mode:'naam' };
+  }
+  // Tier 2b: voornaam + achternaam zonder andere criteria
+  if(_vn && _an){
+    const hits = players.filter(p => {
+      const {pvn, pan} = playerNamen(p);
+      return pvn===_vn && pan===_an;
+    });
+    if(hits.length === 1) return { player: hits[0], mode:'naam' };
+  }
+  return { player:null, mode:null };
+}
+window.findPlayerMatch = findPlayerMatch;
+
+// Auto-create wedstrijdrapport voor een wedstrijd in venster (idempotent).
+// ID = mr_prog_<progId>. Bestaat 'm al? Niets doen.
+async function ensureActiveMatchReport(prog){
+  if(!prog) return null;
+  const mrId = 'mr_prog_' + prog.id;
+  const existing = (matchReportsCache||[]).find(r => r.id === mrId);
+  if(existing) return existing;
+  const report = {
+    id: mrId,
+    datum: prog.datum || todayISO(),
+    leeftijd: prog.leeftijd || '',
+    thuis: prog.thuis || '',
+    uit: prog.uit || '',
+    opmerking: prog.notities || '',
+    auto_from_programma: true,
+    programma_id: prog.id,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
+  };
+  try {
+    await saveMatchReport(report);
+    return report;
+  } catch(e){
+    console.error('ensureActiveMatchReport faalde:', e);
+    return null;
+  }
+}
+
+// Open spelersrapport in concept-modus voor scouting-tile klik.
+// matchedPlayer (optioneel) = bestaande speler uit playersCache (3-traps).
+// progSp = speler-object uit programma. prog = wedstrijd.
+function openScoutingPlayerForm(prog, progSp, matchedPlayer){
+  if(!prog || !progSp) return;
+  go('report');
+  setTimeout(() => {
+    try {
+      resetReportForm();
+      if(matchedPlayer){
+        // Bestaande speler -> alle velden laden, id behouden zodat update werkt
+        loadIntoForm(matchedPlayer);
+      } else {
+        // Nieuwe speler -> prefill basis uit programma
+        if($('#f-voornaam')) $('#f-voornaam').value = progSp.voornaam || '';
+        if($('#f-achternaam')) $('#f-achternaam').value = progSp.achternaam || '';
+        if($('#f-naam')) $('#f-naam').value = progSp.naam ||
+          [progSp.voornaam, progSp.achternaam].filter(Boolean).join(' ');
+        if(typeof syncNaamHidden === 'function') syncNaamHidden('f');
+        if(progSp.geboorte && $('#f-geboorte')) $('#f-geboorte').value = progSp.geboorte;
+        if(progSp.club && $('#f-club')) $('#f-club').value = progSp.club;
+        if(progSp.rugnummer && $('#f-rugnummer')) $('#f-rugnummer').value = progSp.rugnummer;
+        if(progSp.positie && $('#f-positie')) $('#f-positie').value = progSp.positie;
+        if(prog.leeftijd && $('#f-leeftijd')) $('#f-leeftijd').value = prog.leeftijd;
+      }
+      // Wedstrijdcontext invullen vanuit programma
+      if($('#f-w-datum')) $('#f-w-datum').value = prog.datum || '';
+      if($('#f-w-thuis')) $('#f-w-thuis').value = prog.thuis || '';
+      if($('#f-w-uit')) $('#f-w-uit').value = prog.uit || '';
+      // Banner met concept-status
+      injectScoutingBanner(prog, progSp, matchedPlayer);
+    } catch(e){ console.error('openScoutingPlayerForm error:', e); }
+  }, 80);
+}
+window.openScoutingPlayerForm = openScoutingPlayerForm;
+
+function injectScoutingBanner(prog, progSp, matchedPlayer){
+  let banner = document.getElementById('scouting-active-banner');
+  if(banner) banner.remove();
+  banner = document.createElement('div');
+  banner.id = 'scouting-active-banner';
+  banner.style.cssText = 'background:rgba(239,68,68,0.10); border:1px solid rgba(239,68,68,0.4); border-radius:10px; padding:12px 14px; margin-bottom:14px; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;';
+  const naam = progSp.naam || [progSp.voornaam, progSp.achternaam].filter(Boolean).join(' ') || 'speler';
+  const teams = `${prog.thuis||'?'} — ${prog.uit||'?'}`;
+  const link = matchedPlayer
+    ? `<span style="color:#34d399;">● gekoppeld aan bestaande speler</span>`
+    : `<span style="color:#f5c518;">● nieuw rapport (nog niet in database)</span>`;
+  banner.innerHTML = `
+    <div style="font-size:13px; line-height:1.4;">
+      <strong style="color:#ef4444;">● Live wedstrijd-modus</strong> — ${escapeHtml(naam)} bij ${escapeHtml(teams)}<br>
+      <span style="font-size:11.5px; color:var(--text-3);">${link} · opslaan voegt toe aan de spelersdatabase.</span>
+    </div>
+    <button type="button" class="btn" id="scouting-back-dash">Terug naar dashboard</button>
+  `;
+  const form = document.getElementById('view-report');
+  if(form) form.insertBefore(banner, form.firstChild.nextSibling);
+  const backBtn = document.getElementById('scouting-back-dash');
+  if(backBtn) backBtn.addEventListener('click', () => {
+    banner.remove();
+    if(typeof go === 'function') go('dashboard');
+  });
+}
+
+function renderActiveScouting(){
+  const wrap = document.getElementById('scouting-active-wrap');
+  if(!wrap) return;
+  if(typeof programmaCache === 'undefined' || !Array.isArray(programmaCache) || programmaCache.length === 0){
+    wrap.style.display = 'none'; wrap.innerHTML = ''; return;
+  }
+  const now = new Date();
+  const active = programmaCache
+    .filter(p => p && p.datum && p.tijd && isMatchInWindow(p, now))
+    .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
+  if(active.length === 0){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+
+  // Auto-create match_reports (fire and forget — UI updateet via onSnapshot)
+  active.forEach(prog => { ensureActiveMatchReport(prog); });
+
+  const cards = active.map(prog => {
+    const w = getMatchWindow(prog);
+    const kickT = w ? w.kick.getTime() : null;
+    let status = 'live', statusLabel = '● Bezig';
+    if(kickT && now.getTime() < kickT){
+      status = 'warmup';
+      const min = Math.round((kickT - now.getTime())/60000);
+      statusLabel = 'Aftrap over ' + min + ' min';
+    } else if(kickT){
+      const min = Math.round((now.getTime() - kickT)/60000);
+      statusLabel = '● Bezig — ' + min + ' min na aftrap';
+    }
+    const teams = `${escapeHtml(prog.thuis||'?')} — ${escapeHtml(prog.uit||'?')}`;
+    const metaParts = [];
+    if(prog.tijd) metaParts.push('<b>Aftrap</b> ' + escapeHtml(prog.tijd));
+    if(prog.leeftijd) metaParts.push('<b>Elftal</b> ' + escapeHtml(prog.leeftijd));
+    if(prog.methode) metaParts.push(escapeHtml(prog.methode));
+    if(prog.locatie) metaParts.push('📍 ' + escapeHtml(prog.locatie));
+    const spelers = Array.isArray(prog.spelers) ? prog.spelers : [];
+    let tilesHtml = '';
+    if(spelers.length === 0){
+      tilesHtml = '<div class="sa-empty-players">Nog geen spelers gepland voor deze wedstrijd. Voeg ze toe via "+ Speler toevoegen".</div>';
+    } else {
+      tilesHtml = spelers.map((sp, i) => {
+        const { player, mode } = findPlayerMatch(sp);
+        const cls = player ? 'sa-tile linked' : 'sa-tile draft';
+        const naam = sp.naam || [sp.voornaam, sp.achternaam].filter(Boolean).join(' ') || '(geen naam)';
+        const meta = [
+          sp.rugnummer ? '#' + sp.rugnummer : '',
+          sp.positie || '',
+          sp.club || ''
+        ].filter(Boolean).join(' · ');
+        return `<div class="${cls}" data-prog-id="${escapeHtml(prog.id)}" data-sp-idx="${i}" data-player-id="${player ? escapeHtml(player.id) : ''}" title="Klik om spelersrapport te openen">
+          <div class="sa-tile-name">${escapeHtml(naam)}</div>
+          ${meta ? `<div class="sa-tile-meta">${escapeHtml(meta)}</div>` : ''}
+        </div>`;
+      }).join('');
+    }
+    return `
+      <div class="sa-card" data-prog-id="${escapeHtml(prog.id)}">
+        <div class="sa-header">
+          <div>
+            <div class="sa-title"><span class="sa-pulse"></span> Bezig met scouten — ${teams}</div>
+            <div class="sa-meta">${metaParts.join('<span style=\"opacity:.3\">|</span>')}</div>
+          </div>
+          <div class="sa-status ${status}">${statusLabel}</div>
+        </div>
+        <div class="sa-players-title">Spelers (${spelers.length})</div>
+        <div class="sa-tiles">${tilesHtml}</div>
+        <div class="sa-actions">
+          <button class="btn-ghost" data-sa-act="add-player" data-progid="${escapeHtml(prog.id)}">+ Speler toevoegen</button>
+          <button class="btn-ghost" data-sa-act="open-match" data-progid="${escapeHtml(prog.id)}">Wedstrijddetails</button>
+        </div>
+      </div>`;
+  }).join('');
+
+  wrap.innerHTML = cards;
+  wrap.style.display = '';
+
+  // Tile-klik -> open spelersrapport in concept-modus
+  wrap.querySelectorAll('.sa-tile').forEach(tile => {
+    tile.addEventListener('click', () => {
+      const progId = tile.dataset.progId;
+      const spIdx = parseInt(tile.dataset.spIdx, 10);
+      const playerId = tile.dataset.playerId;
+      const prog = programmaCache.find(p => p.id === progId);
+      if(!prog) return;
+      const sp = (prog.spelers||[])[spIdx];
+      if(!sp) return;
+      let matched = null;
+      if(playerId){
+        const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+        matched = players.find(p => p.id === playerId) || null;
+      }
+      openScoutingPlayerForm(prog, sp, matched);
+    });
+  });
+
+  // Wedstrijd-actie buttons
+  wrap.querySelectorAll('[data-sa-act]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const act = btn.dataset.saAct;
+      const progId = btn.dataset.progid;
+      if(!progId) return;
+      if(act === 'add-player'){
+        if(typeof openProgPlayerModal === 'function') openProgPlayerModal(progId, null);
+      } else if(act === 'open-match'){
+        if(typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(progId);
+      }
+    });
+  });
+}
+window.renderActiveScouting = renderActiveScouting;
+
+// Periodieke refresh — elke 60s zodat het venster automatisch opent/sluit
+let __scoutingTimer = null;
+function startScoutingTimer(){
+  if(__scoutingTimer) return;
+  __scoutingTimer = setInterval(() => {
+    if(typeof currentView !== 'undefined' && currentView === 'dashboard'){
+      renderActiveScouting();
+    }
+  }, 60000);
+}
+// Start timer zodra de pagina klaar is
+if(document.readyState === 'complete' || document.readyState === 'interactive'){
+  setTimeout(startScoutingTimer, 100);
+} else {
+  document.addEventListener('DOMContentLoaded', () => setTimeout(startScoutingTimer, 100));
+}
+
 /* =============== DASHBOARD =============== */
 function renderTodayMatches(){
   const wrap = document.getElementById('today-matches-wrap');
@@ -9088,6 +9453,7 @@ function renderUpcomingMatches(){
 }
 
 function renderDashboard(){
+  renderActiveScouting(); // s35s
   renderTodayMatches();
   renderUpcomingMatches();
   const players = loadPlayers();

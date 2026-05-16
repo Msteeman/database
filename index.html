@@ -104,6 +104,15 @@
 .today-match-meta { font-size: 11.5px !important; gap: 8px !important; flex-wrap: wrap; }
 .today-match-meta > * { line-height: 1.3; }
 .today-match-countdown { padding: 1px 6px !important; font-size: 11px !important; }
+/* s35bd: klikbaar adres in today-match meta-row */
+.td-loc-nav {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: rgba(245,200,66,0.4);
+  text-underline-offset: 2px;
+  transition: color .15s;
+}
+.td-loc-nav:hover { color: var(--gold,#f5c842); }
 .today-match-players { gap: 4px !important; margin-top: 4px !important; }
 .today-player-chip { padding: 2px 7px !important; font-size: 11px !important; }
 .today-matches-head { padding-bottom: 6px !important; margin-bottom: 6px !important; }
@@ -454,6 +463,39 @@ a { color: var(--accent); text-decoration: none; }
   color: var(--primary);
   margin: 0 8px;
   opacity: .7;
+}
+/* s35bc: login intro-pijlers + blurb */
+.login-hero-pillars {
+  margin-top: 18px;
+  display: flex; gap: 10px; align-items: center; justify-content: center;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.88);
+  opacity: 0;
+  animation: appleFadeUp 1.0s cubic-bezier(.16,1,.3,1) 1.25s both;
+}
+.login-hero-pillars i {
+  font-style: normal;
+  color: var(--primary);
+  opacity: .8;
+}
+.login-hero-blurb {
+  margin-top: 18px;
+  max-width: 480px;
+  font-size: 14px;
+  line-height: 1.55;
+  text-align: center;
+  color: rgba(255,255,255,0.72);
+  font-weight: 400;
+  opacity: 0;
+  animation: appleFadeUp 1.0s cubic-bezier(.16,1,.3,1) 1.45s both;
+}
+.login-hero-blurb em {
+  font-style: normal;
+  color: var(--primary);
+  font-weight: 700;
 }
 
 @keyframes appleHeroIn {
@@ -1139,6 +1181,26 @@ a { color: var(--accent); text-decoration: none; }
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--border-2), transparent);
   margin: 22px 0 22px 0;
+}
+/* s35bc: korte intro in login-card (zichtbaar op mobile) */
+.login-card-intro {
+  margin: 16px 0 8px;
+  padding: 14px 12px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  text-align: center;
+}
+.lci-pillars {
+  display: flex; gap: 8px; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: 0.18em; text-transform: uppercase;
+  color: rgba(255,255,255,0.78);
+  margin-bottom: 8px;
+}
+.lci-pillars i { font-style: normal; color: var(--primary); opacity: .85; }
+.lci-blurb {
+  font-size: 12.5px; line-height: 1.5;
+  color: var(--text-3); font-weight: 400;
 }
 .login-field { margin-bottom: 14px; }
 .login-field label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .8px; color: var(--text-3); margin-bottom: 6px; }
@@ -4801,6 +4863,51 @@ tbody tr:last-child td { border-bottom: none; }
   opacity: 0;
   animation: introFadeUp 0.9s ease-out 3.10s forwards;
 }
+/* s35bc: roterende trigger-woorden die het scherm vullen */
+.intro-rotor {
+  position: relative;
+  margin-top: 32px;
+  width: 100%;
+  height: clamp(56px, 10vw, 96px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.intro-rotor .word {
+  position: absolute;
+  left: 50%; top: 50%;
+  transform: translate(-50%, -50%) translateY(14px) scale(.94);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: clamp(32px, 6.4vw, 68px);
+  font-weight: 800;
+  letter-spacing: -1.2px;
+  background: linear-gradient(135deg, #ffffff 0%, #ff8189 45%, #e30613 75%, #f5c518 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  white-space: nowrap;
+  opacity: 0;
+  filter: blur(8px);
+}
+.intro-rotor .word:not(.last) { animation: rotorWord 1.0s cubic-bezier(.16,1,.3,1) forwards; }
+.intro-rotor .word.last       { animation: rotorLast 1.1s cubic-bezier(.16,1,.3,1) forwards; }
+.intro-rotor .word:nth-child(1) { animation-delay: 2.20s; }
+.intro-rotor .word:nth-child(2) { animation-delay: 2.55s; }
+.intro-rotor .word:nth-child(3) { animation-delay: 2.90s; }
+.intro-rotor .word:nth-child(4) { animation-delay: 3.25s; }
+.intro-rotor .word:nth-child(5) { animation-delay: 3.60s; }
+@keyframes rotorWord {
+  0%   { opacity: 0; filter: blur(8px); transform: translate(-50%,-50%) translateY(14px) scale(.94); }
+  22%  { opacity: 1; filter: blur(0);   transform: translate(-50%,-50%) translateY(0) scale(1); }
+  60%  { opacity: 1; filter: blur(0);   transform: translate(-50%,-50%) translateY(0) scale(1); }
+  100% { opacity: 0; filter: blur(6px); transform: translate(-50%,-50%) translateY(-14px) scale(1.02); }
+}
+@keyframes rotorLast {
+  0%   { opacity: 0; filter: blur(8px); transform: translate(-50%,-50%) translateY(14px) scale(.94); }
+  30%  { opacity: 1; filter: blur(0);   transform: translate(-50%,-50%) translateY(0) scale(1); }
+  100% { opacity: 1; filter: blur(0);   transform: translate(-50%,-50%) translateY(0) scale(1); }
+}
 .intro-tagline em {
   font-style: normal;
   color: #e30613;
@@ -5070,7 +5177,7 @@ tbody tr:last-child td { border-bottom: none; }
   <div class="intro-corner tl"></div>
   <div class="intro-corner tr"></div>
   <div class="intro-corner bl"><b>SH</b> &middot; Scouting Hub</div>
-  <div class="intro-corner br intro-corner-small">&copy; Marcel Steeman</div>
+  <div class="intro-corner br intro-corner-small">ScoutingHub</div>
   <div class="intro-stage">
     <div class="intro-logo">
       <div class="intro-logo-orbit" aria-hidden="true">
@@ -5103,13 +5210,12 @@ tbody tr:last-child td { border-bottom: none; }
       <span class="letter" style="animation-delay:1.30s">S</span><span class="letter" style="animation-delay:1.38s">c</span><span class="letter" style="animation-delay:1.46s">o</span><span class="letter" style="animation-delay:1.54s">u</span><span class="letter" style="animation-delay:1.62s">t</span><span class="letter" style="animation-delay:1.70s">i</span><span class="letter" style="animation-delay:1.78s">n</span><span class="letter" style="animation-delay:1.86s">g</span><span class="letter accent" style="animation-delay:2.00s">H</span><span class="letter accent" style="animation-delay:2.08s">u</span><span class="letter accent" style="animation-delay:2.16s">b</span>
     </h1>
     <div class="intro-rule"></div>
-    <div class="intro-tagline">Professional Youth Football Scouting</div>
-    <div class="intro-meta">
-      <span><b>Youth Academy</b></span>
-      <i></i>
-      <span>Player Database</span>
-      <i></i>
-      <span>Performance Insights</span>
+    <div class="intro-rotor" aria-hidden="true">
+      <span class="word">Scouten</span>
+      <span class="word">Snel invullen</span>
+      <span class="word">Snel overzicht</span>
+      <span class="word">Rapporten bekijken</span>
+      <span class="word last">Spelers vergelijken</span>
     </div>
   </div>
   <div class="intro-bloom"></div>
@@ -5172,7 +5278,16 @@ tbody tr:last-child td { border-bottom: none; }
       </svg>
     </div>
     <h1 class="login-hero-title film-text"><span class="word">ScoutingHub</span></h1>
-    <div class="login-hero-tag">Professional<span>•</span>Edition</div>
+    <div class="login-hero-tag">Door een scout<span>•</span>voor scouts</div>
+    <div class="login-hero-pillars" aria-hidden="true">
+      <span>Laagdrempelig</span><i>·</i>
+      <span>Snel</span><i>·</i>
+      <span>Intuïtief</span>
+    </div>
+    <p class="login-hero-blurb">
+      Vul beoordelingen razendsnel in. Bekijk overzichten in één blik.
+      Vergelijk spelers op de criteria die <em>jij</em> belangrijk vindt.
+    </p>
   </div>
   <div class="login-card">
     <div class="login-logo">
@@ -5202,6 +5317,11 @@ tbody tr:last-child td { border-bottom: none; }
         <div class="login-title"><span class="film-text">Scouting</span><span style="color:#fff;">Hub</span></div>
         <div class="login-sub">Professional Edition</div>
       </div>
+    </div>
+
+    <div class="login-card-intro">
+      <div class="lci-pillars"><span>Laagdrempelig</span><i>·</i><span>Snel</span><i>·</i><span>Intuïtief</span></div>
+      <div class="lci-blurb">Door een scout, voor scouts. Razendsnel beoordelingen invullen, in één blik overzicht, en spelers vergelijken op jouw criteria.</div>
     </div>
 
     <!-- Login screen -->
@@ -5491,7 +5611,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bb (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bd (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
       </div>
     </div>
   </div>
@@ -6816,6 +6936,17 @@ algemeen:</textarea>
           <div class="field">
             <label>Uitspelende ploeg *</label>
             <input id="pm-uit" type="text" required placeholder="Bijv. Ajax" autocomplete="off" data-picker="club" />
+          </div>
+        </div>
+        <!-- s35bd: elftal per club (bv. O.16-1 vs O.16-2) -->
+        <div class="field-row" style="margin-top:12px;">
+          <div class="field">
+            <label>Elftal thuis (optioneel)</label>
+            <input id="pm-thuis-elftal" type="text" placeholder="bv. O.16-1" autocomplete="off" maxlength="20" />
+          </div>
+          <div class="field">
+            <label>Elftal uit (optioneel)</label>
+            <input id="pm-uit-elftal" type="text" placeholder="bv. O.16-2" autocomplete="off" maxlength="20" />
           </div>
         </div>
         <div class="field-row" style="margin-top:12px;">
@@ -11127,7 +11258,8 @@ function renderActiveScouting(){
       const min = Math.round((now.getTime() - kickT)/60000);
       statusLabel = '● Bezig — ' + min + ' min na aftrap';
     }
-    const teams = `${escapeHtml(prog.thuis||'?')} — ${escapeHtml(prog.uit||'?')}`;
+    // s35bd: titel-format 'Club Elftal — Club Elftal'
+    const teams = `${escapeHtml(prog.thuis||'?')}${prog.thuis_elftal?' '+escapeHtml(prog.thuis_elftal):''} — ${escapeHtml(prog.uit||'?')}${prog.uit_elftal?' '+escapeHtml(prog.uit_elftal):''}`;
     const metaParts = [];
     if(prog.tijd) metaParts.push('<b>Aftrap</b> ' + escapeHtml(prog.tijd));
     if(prog.leeftijd) metaParts.push('<b>Elftal</b> ' + escapeHtml(prog.leeftijd));
@@ -11191,10 +11323,10 @@ function renderActiveScouting(){
         <div class="sa-snelnotities" data-progid="${escapeHtml(prog.id)}" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border,#2a2f3a);">
           <div style="font-size:11px; color:var(--muted,#9aa3b7); text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px;">Snel notities (${prog.snelnotities.length})</div>
           ${prog.snelnotities.map((sn, idx) => `
-            <div class="sa-snelnotitie-row" style="background:rgba(255,255,255,0.04); border:1px solid var(--border,#2a2f3a); border-radius:8px; padding:8px 10px; margin-bottom:6px; font-size:12.5px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
-              <div style="flex:1; min-width:0;">
-                <div style="font-weight:600; color:var(--text,#e5e9f5);">${escapeHtml(sn.naam || 'Onbenoemd')}${sn.rugnummer ? ' &middot; #'+escapeHtml(String(sn.rugnummer)) : ''}</div>
-                ${sn.tekst ? `<div style="color:var(--muted,#9aa3b7); white-space:pre-wrap; margin-top:4px; line-height:1.45;">${escapeHtml(sn.tekst)}</div>` : ''}
+            <div class="sa-snelnotitie-row" data-sa-act="edit-snel-notitie" data-progid="${escapeHtml(prog.id)}" data-snidx="${idx}" style="background:rgba(255,255,255,0.04); border:1px solid var(--border,#2a2f3a); border-radius:8px; padding:8px 10px; margin-bottom:6px; font-size:12.5px; display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer; transition:background .15s, border-color .15s;" title="Klik om te bewerken">
+              <div style="flex:1; min-width:0; display:flex; align-items:center; gap:8px;">
+                <span style="color:var(--gold,#f5c842); font-size:11px; line-height:1;">&#9656;</span>
+                <div style="font-weight:600; color:var(--text,#e5e9f5); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(sn.naam || 'Onbenoemd')}${sn.rugnummer ? ' <span style=\'color:var(--muted,#9aa3b7); font-weight:500;\'>&middot; #'+escapeHtml(String(sn.rugnummer))+'</span>' : ''}${sn.positie ? ' <span style=\'color:var(--gold,#f5c842); font-weight:600; font-size:11px; background:rgba(245,200,66,0.12); padding:1px 6px; border-radius:4px; margin-left:4px;\'>'+escapeHtml(sn.positie)+'</span>' : ''}</div>
               </div>
               <button class="btn-ghost" data-sa-act="del-snel-notitie" data-progid="${escapeHtml(prog.id)}" data-snidx="${idx}" style="padding:3px 8px; font-size:11px; flex-shrink:0;" title="Verwijderen">×</button>
             </div>`).join('')}
@@ -11207,6 +11339,25 @@ function renderActiveScouting(){
           <div style="display:grid; grid-template-columns:1fr 70px; gap:8px; margin-bottom:8px;">
             <input class="sa-snel-naam" type="text" placeholder="Naam speler" style="background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:8px 11px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13.5px; outline:none;" />
             <input class="sa-snel-rug" type="text" placeholder="#nr" style="background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:8px 11px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13.5px; outline:none;" />
+          </div>
+          <div style="margin-bottom:8px;">
+            <select class="sa-snel-positie" style="width:100%; background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:8px 11px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13.5px; outline:none;">
+              <option value="">Positie (optioneel)</option>
+              <option value="GK">GK — Keeper</option>
+              <option value="LB">LB — Linksback</option>
+              <option value="LCV">LCV — Linker centrale verdediger</option>
+              <option value="CV">CV — Centrale verdediger</option>
+              <option value="RCV">RCV — Rechter centrale verdediger</option>
+              <option value="RB">RB — Rechtsback</option>
+              <option value="VM">VM — Verdedigende middenvelder</option>
+              <option value="CM">CM — Centrale middenvelder</option>
+              <option value="AM">AM — Aanvallende middenvelder</option>
+              <option value="LM">LM — Linker middenvelder</option>
+              <option value="RM">RM — Rechter middenvelder</option>
+              <option value="LV">LV — Linksbuiten</option>
+              <option value="CS">CS — Centrumspits</option>
+              <option value="RV">RV — Rechtsbuiten</option>
+            </select>
           </div>
           <textarea class="sa-snel-tekst" placeholder="bv. techniek a: scherp" style="width:100%; min-height:280px; background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:10px 12px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13.5px; outline:none; resize:vertical; box-sizing:border-box; line-height:1.6;">techniek:
 inzicht:
@@ -11309,8 +11460,8 @@ algemeen:</textarea>
         if(typeof openProgPlayerModal === 'function') openProgPlayerModal(progId, null);
       } else if(act === 'open-match'){
         if(typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(progId);
-      } else if(act === 'add-snel-notitie'){
-        // s35ba: open mini-form + wire auto-save + click-outside (eenmalig per form)
+      } else if(act === 'add-snel-notitie' || act === 'edit-snel-notitie'){
+        // s35bd: open mini-form (nieuw of bestaand) + wire auto-save + click-outside
         const card = btn.closest('.sa-card');
         if(!card) return;
         const form = card.querySelector(`.sa-snel-form[data-progid="${progId}"]`);
@@ -11318,18 +11469,21 @@ algemeen:</textarea>
         form.style.display = 'block';
         const naamIn = form.querySelector('.sa-snel-naam');
         const rugIn  = form.querySelector('.sa-snel-rug');
+        const posIn  = form.querySelector('.sa-snel-positie');
         const txtIn  = form.querySelector('.sa-snel-tekst');
         const statusEl = form.querySelector('.sa-snel-status');
-        // Auto-save wiring (eenmalig)
+        // Auto-save wiring (eenmalig per form-element)
         if(!form.__shAutoWired){
           form.__shAutoWired = true;
           let debTimer = null;
           let savedSnId = null;
+          const defaultTekst = 'techniek:\ninzicht:\nmentaliteit:\nexplosiviteit:\nsprinten:\nduelleren:\nwendbaarheid:\nalgemeen:';
           const doAutoSave = async () => {
             const naam = naamIn.value.trim();
             const rug  = rugIn.value.trim();
+            const pos  = posIn ? posIn.value.trim() : '';
             const tekst= txtIn.value.trim();
-            if(!naam && !tekst){
+            if(!naam && !tekst && !pos){
               if(statusEl){ statusEl.textContent = '\u00a0'; }
               return;
             }
@@ -11341,14 +11495,15 @@ algemeen:</textarea>
               if(existing){
                 existing.naam = naam;
                 existing.rugnummer = rug;
+                existing.positie = pos;
                 existing.tekst = tekst;
               } else {
                 savedSnId = 'sn_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-                prog.snelnotities.push({ id: savedSnId, naam, rugnummer: rug, tekst, created: Date.now() });
+                prog.snelnotities.push({ id: savedSnId, naam, rugnummer: rug, positie: pos, tekst, created: Date.now() });
               }
             } else {
               savedSnId = 'sn_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-              prog.snelnotities.push({ id: savedSnId, naam, rugnummer: rug, tekst, created: Date.now() });
+              prog.snelnotities.push({ id: savedSnId, naam, rugnummer: rug, positie: pos, tekst, created: Date.now() });
             }
             prog.modified = Date.now();
             try {
@@ -11364,13 +11519,24 @@ algemeen:</textarea>
             if(debTimer) clearTimeout(debTimer);
             debTimer = setTimeout(doAutoSave, 700);
           };
-          [naamIn, rugIn, txtIn].forEach(el => el && el.addEventListener('input', onInput));
+          [naamIn, rugIn, posIn, txtIn].forEach(el => el && el.addEventListener('input', onInput));
+          if(posIn) posIn.addEventListener('change', onInput);
+          // Helper: form vullen vanuit bestaande snel-notitie
+          form.__shFillFromSn = (sn) => {
+            naamIn.value = sn.naam || '';
+            rugIn.value  = sn.rugnummer || '';
+            if(posIn) posIn.value = sn.positie || '';
+            txtIn.value  = sn.tekst || defaultTekst;
+            savedSnId    = sn.id || null;
+            if(statusEl){ statusEl.textContent = 'bewerken'; statusEl.style.color = ''; }
+          };
           // Reset state wanneer form sluit
           form.__shReset = () => {
             if(debTimer){ clearTimeout(debTimer); debTimer = null; }
             doAutoSave().then(() => {
               naamIn.value = ''; rugIn.value = '';
-              txtIn.value = 'techniek:\ninzicht:\nmentaliteit:\nexplosiviteit:\nsprinten:\nduelleren:\nwendbaarheid:\nalgemeen:';
+              if(posIn) posIn.value = '';
+              txtIn.value = defaultTekst;
               savedSnId = null;
               if(statusEl){ statusEl.textContent = '\u00a0'; statusEl.style.color = ''; }
               if(typeof renderActiveScouting === 'function') renderActiveScouting();
@@ -11385,12 +11551,23 @@ algemeen:</textarea>
             openForms.forEach(f => {
               if(f.style.display !== 'block') return;
               if(f.contains(ev.target)) return;
-              // Klik op de "+ Snel notitie"-knop telt niet als buiten
               if(ev.target.closest('[data-sa-act="add-snel-notitie"]')) return;
+              if(ev.target.closest('[data-sa-act="edit-snel-notitie"]')) return;
               f.style.display = 'none';
               if(typeof f.__shReset === 'function') f.__shReset();
             });
           });
+        }
+        // Edit-mode: form vullen vanuit bestaande snel-notitie
+        if(act === 'edit-snel-notitie'){
+          const snidx = parseInt(btn.dataset.snidx, 10);
+          const prog = programmaCache.find(p => p.id === progId);
+          const sn = (prog && Array.isArray(prog.snelnotities)) ? prog.snelnotities[snidx] : null;
+          if(sn && typeof form.__shFillFromSn === 'function'){
+            form.__shFillFromSn(sn);
+          }
+          // Scroll form in beeld
+          try { form.scrollIntoView({behavior:'smooth', block:'center'}); } catch(_){}
         }
         if(naamIn) naamIn.focus();
       } else if(act === 'del-snel-notitie'){
@@ -11486,7 +11663,8 @@ function renderTodayMatches(){
   }
 
   const cards = items.map(it => {
-    const teams = `${escapeHtml(it.thuis||'?')} — ${escapeHtml(it.uit||'?')}`;
+    // s35bd: titel-format 'Club Elftal — Club Elftal'
+    const teams = `${escapeHtml(it.thuis||'?')}${it.thuis_elftal?' '+escapeHtml(it.thuis_elftal):''} — ${escapeHtml(it.uit||'?')}${it.uit_elftal?' '+escapeHtml(it.uit_elftal):''}`;
     const tijd = it.tijd || '—';
     let cdHtml = '';
     if(it.tijd){
@@ -11507,11 +11685,10 @@ function renderTodayMatches(){
     const club = (typeof CLUB_ADRESSEN !== 'undefined' && it.thuis)
       ? CLUB_ADRESSEN[it.thuis.toLowerCase().trim()]
       : null;
-    let mapsHtml = '';
+    // s35bd: maps-url eenmaal vaststellen; locatie wordt klikbaar (confirm -> open)
     let mapsUrl = '';
     let locHtml = '';
-    if(it.locatie){ locHtml = `<span>📍 ${escapeHtml(it.locatie)}</span>`; }
-    else if(club && club.sportpark){ locHtml = `<span>📍 ${escapeHtml(club.sportpark)}</span>`; }
+    const locLabel = it.locatie || (club && club.sportpark) || '';
     if(club && club.lat && club.lon){
       mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${club.lat},${club.lon}`;
     } else if(club && club.adres){
@@ -11519,8 +11696,12 @@ function renderTodayMatches(){
     } else if(it.locatie){
       mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(it.locatie)}`;
     }
-    if(mapsUrl){
-      mapsHtml = `<a href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Route ›</a>`;
+    if(locLabel){
+      if(mapsUrl){
+        locHtml = `<span class="td-loc-nav" data-maps-url="${escapeAttr(mapsUrl)}" data-loc-label="${escapeAttr(locLabel)}" title="Klik om te navigeren">📍 ${escapeHtml(locLabel)}</span>`;
+      } else {
+        locHtml = `<span>📍 ${escapeHtml(locLabel)}</span>`;
+      }
     }
     const spelers = (it.spelers || []).map(s => ({...s, __progId: it.id}));
     const chipsCompact = chipsHtml(spelers, false);
@@ -11542,9 +11723,7 @@ function renderTodayMatches(){
           <div class="td-section-title">Spelers (${spelers.length})</div>
           <div class="td-players">${playerRows}</div>
           <div class="td-actions">
-            ${mapsUrl ? `<a class="btn-route" href="${mapsUrl}" target="_blank" rel="noopener" onclick="event.stopPropagation()">🗺️ Route via Google Maps</a>` : ''}
             <button class="btn-ghost" data-act="add-player" data-progid="${it.id}">+ Speler toevoegen</button>
-            <button class="btn-ghost" data-act="edit-match" data-progid="${it.id}">Wedstrijd bewerken</button>
           </div>
         </div>
       `;
@@ -11558,11 +11737,8 @@ function renderTodayMatches(){
         <div class="today-match-meta">
           ${cdHtml}
           ${locHtml}
-          ${mapsHtml}
-          ${it.leeftijd ? `<span>${escapeHtml(it.leeftijd)}</span>` : ''}
           <span class="td-toggle">${isOpen ? '▾ Inklappen' : '▸ Klik voor details'}</span>
         </div>
-        ${!isOpen && chipsCompact ? `<div class="today-match-players">${chipsCompact}</div>` : ''}
         ${detailsHtml}
       </div>
     `;
@@ -11582,7 +11758,7 @@ function renderTodayMatches(){
   // Card click: toggle expand (negeer klikken op chips, links, knoppen, textarea).
   wrap.querySelectorAll('.today-match-card').forEach(card => {
     card.addEventListener('click', e => {
-      if(e.target.closest('a, button, .today-player-chip, textarea, .td-details')) return;
+      if(e.target.closest('a, button, .today-player-chip, textarea, .td-details, .td-loc-nav')) return;
       const pid = card.dataset.progId;
       if(!pid) return;
       wrap.dataset.expandedId = (wrap.dataset.expandedId === pid) ? '' : pid;
@@ -11595,6 +11771,18 @@ function renderTodayMatches(){
       e.stopPropagation();
       const pid = chip.dataset.playerId;
       if(pid && typeof openDetail === 'function') openDetail(pid);
+    });
+  });
+  // s35bd: klikbaar adres -> confirm-dialog -> Google Maps openen
+  wrap.querySelectorAll('.td-loc-nav').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const url = el.dataset.mapsUrl;
+      const label = el.dataset.locLabel || 'deze locatie';
+      if(!url) return;
+      if(confirm(`Wil je navigeren naar ${label}?`)){
+        window.open(url, '_blank', 'noopener');
+      }
     });
   });
   // Actie-knoppen in uitgeklapte view.
@@ -11709,7 +11897,8 @@ function renderUpcomingMatches(){
     if(diffDays === 1) label = 'Morgen';
     else if(diffDays === 2) label = 'Overmorgen';
     else label = `${weekdays[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    const teams = `${escapeHtml(it.thuis||'?')} — ${escapeHtml(it.uit||'?')}`;
+    // s35bd: titel-format 'Club Elftal — Club Elftal'
+    const teams = `${escapeHtml(it.thuis||'?')}${it.thuis_elftal?' '+escapeHtml(it.thuis_elftal):''} — ${escapeHtml(it.uit||'?')}${it.uit_elftal?' '+escapeHtml(it.uit_elftal):''}`;
     const tijd = it.tijd ? escapeHtml(it.tijd) : '';
     const club = (typeof CLUB_ADRESSEN !== 'undefined' && it.thuis)
       ? CLUB_ADRESSEN[it.thuis.toLowerCase().trim()] : null;
@@ -16826,7 +17015,7 @@ function progDetailHTML(it){
     <div class="prog-detail-card${isV?' verwerkt':''}" data-prog-detail-id="${it.id}">
       <div class="prog-detail-head">
         <div>
-          <div class="prog-detail-title">${escapeHtml(it.thuis||'?')} — ${escapeHtml(it.uit||'?')}</div>
+          <div class="prog-detail-title">${escapeHtml(it.thuis||'?')}${it.thuis_elftal?' '+escapeHtml(it.thuis_elftal):''} — ${escapeHtml(it.uit||'?')}${it.uit_elftal?' '+escapeHtml(it.uit_elftal):''}</div>
           <div class="prog-detail-meta">
             ${datum ? `<span>${datum}</span>` : ''}
             ${it.tijd ? `<span>${it.tijd}</span>` : ''}
@@ -17007,6 +17196,9 @@ function openProgMatchModal(progId, defaultDate){
   })();
   $('#pm-thuis').value = it ? (it.thuis||'') : '';
   $('#pm-uit').value = it ? (it.uit||'') : '';
+  // s35bd: elftal-per-club velden
+  if($('#pm-thuis-elftal')) $('#pm-thuis-elftal').value = it ? (it.thuis_elftal||'') : '';
+  if($('#pm-uit-elftal'))   $('#pm-uit-elftal').value   = it ? (it.uit_elftal||'')   : '';
   $('#pm-locatie').value = it ? (it.locatie||'') : '';
   if($('#pm-veld')) $('#pm-veld').value = it ? (it.veld||'') : '';
   $('#pm-notities').value = it ? (it.notities||'') : '';
@@ -17078,6 +17270,10 @@ async function saveProgMatchFromForm(e){
     if(ci) locatie = ci.sportpark || ci.naam || '';
   }
 
+  // s35bd: elftal-per-club
+  const thuis_elftal = ($('#pm-thuis-elftal')?.value || '').trim();
+  const uit_elftal   = ($('#pm-uit-elftal')?.value   || '').trim();
+
   const item = {
     id,
     datum,
@@ -17086,6 +17282,7 @@ async function saveProgMatchFromForm(e){
     methode: $('#pm-methode').value,
     info: $('#pm-info').value.trim(),
     thuis, uit, locatie,
+    thuis_elftal, uit_elftal,
     veld: ($('#pm-veld')?.value || '').trim(),
     notities: $('#pm-notities').value.trim(),
     spelers: existing ? (existing.spelers || []) : [],
@@ -17643,7 +17840,7 @@ function checkProgrammaReminder(){
       const datum = it.datum ? formatNlDateFull(parseIsoDate(it.datum)) : '?';
       const spN = (it.spelers||[]).length;
       return `<div style="padding:10px 12px; border-bottom:1px solid var(--border); cursor:pointer;" data-rem-id="${it.id}">
-        <div style="font-weight:600; font-size:13px;">${escapeHtml(it.thuis||'?')} — ${escapeHtml(it.uit||'?')}</div>
+        <div style="font-weight:600; font-size:13px;">${escapeHtml(it.thuis||'?')}${it.thuis_elftal?' '+escapeHtml(it.thuis_elftal):''} — ${escapeHtml(it.uit||'?')}${it.uit_elftal?' '+escapeHtml(it.uit_elftal):''}</div>
         <div style="font-size:11.5px; color:var(--text-3); margin-top:2px;">${datum}${it.leeftijd?' · '+escapeHtml(it.leeftijd):''}${spN?' · '+spN+' speler'+(spN===1?'':'s'):''}</div>
       </div>`;
     }).join('');
@@ -18664,7 +18861,7 @@ function initAuthForms(){
     }
   } catch(e){}
   const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const holdMs = prefersReduced ? 800 : 5000;
+  const holdMs = prefersReduced ? 800 : 4200;
   const outMs  = prefersReduced ? 200 : 1000;
   let dismissed = false;
   function dismiss(){

@@ -1936,36 +1936,28 @@ tbody tr:last-child td { border-bottom: none; }
   }
 }
 
-/* Draft restored banner (bovenaan rapport-formulier) */
+/* Draft restored banner (bovenaan rapport-formulier) — s35aq: rustig gemaakt */
 .db-draft-card {
   display: flex; align-items: center; gap: 10px;
-  padding: 8px 12px;
-  margin: 0 0 10px 0;
-  background: linear-gradient(135deg, rgba(245,197,24,.12), rgba(245,197,24,.06));
-  border: 1px solid rgba(245,197,24,.45);
-  border-left: 3px solid var(--warn, #f5c518);
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(245,197,24,.06);
+  padding: 7px 11px;
+  margin: 0 0 8px 0;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border, #2a2f3a);
+  border-radius: 8px;
 }
-.db-draft-card .ic {
-  width: 24px; height: 24px;
-  border-radius: 50%;
-  background: rgba(245,197,24,.18);
-  color: var(--warn, #f5c518);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 800;
-  flex-shrink: 0;
-}
+.db-draft-card .ic { display: none; }
 .db-draft-card .info { flex: 1; min-width: 0; }
 .db-draft-card .info .badge {
   display: inline-block;
-  font-size: 9px; font-weight: 800;
-  color: var(--warn, #f5c518);
-  background: rgba(245,197,24,.18);
-  padding: 1px 6px;
+  font-size: 9.5px; font-weight: 700;
+  color: var(--text-3, #8a93ab);
+  background: rgba(255,255,255,0.05);
+  border: 1px solid var(--border, #2a2f3a);
+  padding: 1px 7px;
   border-radius: 999px;
-  letter-spacing: .5px;
+  letter-spacing: .3px;
   margin-bottom: 2px;
+  text-transform: uppercase;
 }
 .db-draft-card .info .title {
   font-weight: 700; font-size: 13px;
@@ -6006,6 +5998,28 @@ tbody tr:last-child td { border-bottom: none; }
           <div class="report-intro-strip" style="grid-column:1/-1; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 14px; margin-bottom:8px; font-size:13px; color:var(--muted,#9aa3b7); line-height:1.45;">
             <strong style="color:var(--text,#e5e9f5); font-weight:600;">Dit is een concept.</strong> Alles wat je invult wordt automatisch opgeslagen. Klaar? Klik onderaan op <strong style="color:var(--text,#e5e9f5); font-weight:600;">Indienen</strong>.
           </div>
+          <!-- s35aq: opklapbaar Snel notitie-paneel — handig langs de lijn (mobile + desktop) -->
+          <div class="snel-notitie-panel" id="snel-notitie-panel" style="grid-column:1/-1;">
+            <button type="button" class="snel-notitie-toggle" id="snel-notitie-toggle">
+              <span class="sn-arr" id="snel-notitie-arr">▸</span>
+              <span>📝 Snel notitie</span>
+              <span class="sn-meta">optioneel — tik alles in één blok, vult velden hieronder</span>
+            </button>
+            <div class="snel-notitie-body" id="snel-notitie-body">
+              <textarea id="snel-notitie-text" placeholder="techniek a: scherp
+inzicht b: leest spel goed
+mentaliteit a: leider"></textarea>
+              <div class="snel-notitie-help">
+                Patroon per regel: <kbd>term a/b/c/d: opmerking</kbd> &mdash; bv. <kbd>techniek a: prima eerste actie</kbd>.
+                Lege stubs worden overgeslagen. Niet-herkende regels gaan naar <strong>Algemene notities</strong>.
+              </div>
+              <div class="snel-notitie-actions">
+                <span class="snel-notitie-status" id="snel-notitie-status">&nbsp;</span>
+                <button type="button" class="snel-notitie-btn ghost" id="snel-notitie-stubs">↺ Stubs</button>
+                <button type="button" class="snel-notitie-btn" id="snel-notitie-fill">→ Vul velden in</button>
+              </div>
+            </div>
+          </div>
           <div id="report-draft-banner" hidden style="display:none">
             <div id="report-draft-meta" hidden></div>
             <button type="button" id="report-draft-discard" hidden></button>
@@ -6187,28 +6201,7 @@ tbody tr:last-child td { border-bottom: none; }
               Beoordeel het <strong style="color:var(--text-2)">huidige niveau</strong> per categorie. Potentieel wordt alleen bij de eindbeoordeling ingevuld.
             </div>
 
-            <!-- s35an (#7): opklapbaar Snel notitie-paneel met slimme conversie -->
-            <div class="snel-notitie-panel" id="snel-notitie-panel">
-              <button type="button" class="snel-notitie-toggle" id="snel-notitie-toggle">
-                <span class="sn-arr" id="snel-notitie-arr">▸</span>
-                <span>📝 Snel notitie</span>
-                <span class="sn-meta">optioneel — tik alles in één blok</span>
-              </button>
-              <div class="snel-notitie-body" id="snel-notitie-body">
-                <textarea id="snel-notitie-text" placeholder="techniek a: scherp
-inzicht b: leest spel goed
-mentaliteit a: leider"></textarea>
-                <div class="snel-notitie-help">
-                  Patroon per regel: <kbd>term a/b/c/d: opmerking</kbd> &mdash; bv. <kbd>techniek a: prima eerste actie</kbd>.
-                  Lege stubs worden overgeslagen. Niet-herkende regels gaan naar <strong>Algemene notities</strong>.
-                </div>
-                <div class="snel-notitie-actions">
-                  <span class="snel-notitie-status" id="snel-notitie-status">&nbsp;</span>
-                  <button type="button" class="snel-notitie-btn ghost" id="snel-notitie-stubs">↺ Stubs</button>
-                  <button type="button" class="snel-notitie-btn" id="snel-notitie-fill">→ Vul velden in</button>
-                </div>
-              </div>
-            </div>
+            <!-- s35aq: Snel notitie-paneel verhuisd naar bovenaan rapport-form -->
 
             <!-- Techniek -->
             <div class="criteria-block">
@@ -11045,15 +11038,13 @@ function applyFilters(){
     }
     return `
       <div class="db-draft-card">
-        <div class="ic">!</div>
         <div class="info">
-          <div class="badge">Concept</div>
+          <div class="badge">Concept vanuit wedstrijd</div>
           <div class="title">${escapeHtml(naam)}${club ? ' &middot; ' + escapeHtml(club) : ''}</div>
           <div class="meta">Niet ingediend${agoTxt ? ' &middot; ' + agoTxt : ''}</div>
         </div>
         <div class="actions">
-          <button type="button" class="primary" id="db-draft-resume">Verder gaan</button>
-          <button type="button" id="db-draft-delete">Verwijderen</button>
+          <button type="button" class="primary" id="db-draft-resume">Hier ook verder gaan</button>
         </div>
       </div>`;
   })() : '';

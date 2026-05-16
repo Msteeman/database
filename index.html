@@ -113,6 +113,99 @@
   transition: color .15s;
 }
 .td-loc-nav:hover { color: var(--gold,#f5c842); }
+/* s35be: structured snel-notitie form */
+.sa-snel-terms {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.sa-snel-term-row {
+  display: grid;
+  grid-template-columns: 100px 14px 1fr;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 4px;
+  border-radius: 6px;
+  transition: background .15s;
+}
+.sa-snel-term-row:hover { background: rgba(245,200,66,0.03); }
+.sa-snel-term-row:focus-within { background: rgba(245,200,66,0.06); }
+.sa-snel-term-label {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  color: var(--gold,#f5c842);
+  user-select: none;
+  text-align: right;
+  padding-right: 4px;
+}
+.sa-snel-term-chev {
+  color: var(--gold,#f5c842);
+  opacity: .6;
+  font-size: 16px;
+  line-height: 1;
+  text-align: center;
+  user-select: none;
+}
+.sa-snel-term-input {
+  width: 100%;
+  background: #0a0c12;
+  border: 1px solid var(--border2,#2d3242);
+  border-radius: 6px;
+  padding: 8px 11px;
+  color: var(--text,#e5e9f5);
+  font-family: inherit;
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color .15s, background .15s;
+  box-sizing: border-box;
+}
+.sa-snel-term-input:focus {
+  border-color: var(--gold,#f5c842);
+  background: #0d1018;
+}
+/* s35be: snel wedstrijdnotitie form */
+.sa-snel-wstr-form {
+  margin-top: 10px;
+  padding: 12px;
+  background: rgba(255,107,107,0.06);
+  border: 1px solid rgba(255,107,107,0.25);
+  border-radius: 10px;
+}
+.sa-snel-wstr-form textarea {
+  width: 100%;
+  min-height: 180px;
+  background: #0a0c12;
+  border: 1px solid var(--border2,#2d3242);
+  border-radius: 6px;
+  padding: 10px 12px;
+  color: var(--text,#e5e9f5);
+  font-family: inherit;
+  font-size: 13.5px;
+  outline: none;
+  resize: vertical;
+  box-sizing: border-box;
+  line-height: 1.55;
+}
+.sa-snel-wstr-form textarea:focus {
+  border-color: #ff6b6b;
+}
+/* s35be: convert-to-rapport knop */
+.sa-snel-convert {
+  padding: 3px 8px;
+  font-size: 11px;
+  flex-shrink: 0;
+  color: var(--gold,#f5c842);
+  background: rgba(245,200,66,0.10);
+  border: 1px solid rgba(245,200,66,0.30);
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background .15s;
+}
+.sa-snel-convert:hover { background: rgba(245,200,66,0.18); }
 .today-match-players { gap: 4px !important; margin-top: 4px !important; }
 .today-player-chip { padding: 2px 7px !important; font-size: 11px !important; }
 .today-matches-head { padding-bottom: 6px !important; margin-bottom: 6px !important; }
@@ -5611,7 +5704,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bd (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35be (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
       </div>
     </div>
   </div>
@@ -6906,18 +6999,13 @@ algemeen:</textarea>
             <input id="pm-tijd" type="time" />
           </div>
         </div>
-        <div class="field-row" style="margin-top:12px;">
-          <div class="field">
-            <label>Elftal</label>
-            <input id="pm-leeftijd" type="text" placeholder="Bijv. O.15-1" autocomplete="off" data-picker="elftal" />
-          </div>
-          <div class="field">
-            <label>Scoutingmethode</label>
-            <select id="pm-methode">
-              <option>Live</option>
-              <option>Video</option>
-            </select>
-          </div>
+        <!-- s35be: pm-leeftijd weg (elftal wordt nu per-club ingevuld) -->
+        <div class="field" style="margin-top:12px;">
+          <label>Scoutingmethode</label>
+          <select id="pm-methode">
+            <option>Live</option>
+            <option>Video</option>
+          </select>
         </div>
         <div class="field" style="margin-top:12px;">
           <label>Wedstrijdinformatie</label>
@@ -6942,11 +7030,11 @@ algemeen:</textarea>
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Elftal thuis (optioneel)</label>
-            <input id="pm-thuis-elftal" type="text" placeholder="bv. O.16-1" autocomplete="off" maxlength="20" />
+            <input id="pm-thuis-elftal" type="text" placeholder="bv. O.16-1" autocomplete="off" maxlength="20" data-picker="elftal" />
           </div>
           <div class="field">
             <label>Elftal uit (optioneel)</label>
-            <input id="pm-uit-elftal" type="text" placeholder="bv. O.16-2" autocomplete="off" maxlength="20" />
+            <input id="pm-uit-elftal" type="text" placeholder="bv. O.16-2" autocomplete="off" maxlength="20" data-picker="elftal" />
           </div>
         </div>
         <div class="field-row" style="margin-top:12px;">
@@ -11328,19 +11416,22 @@ function renderActiveScouting(){
                 <span style="color:var(--gold,#f5c842); font-size:11px; line-height:1;">&#9656;</span>
                 <div style="font-weight:600; color:var(--text,#e5e9f5); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(sn.naam || 'Onbenoemd')}${sn.rugnummer ? ' <span style=\'color:var(--muted,#9aa3b7); font-weight:500;\'>&middot; #'+escapeHtml(String(sn.rugnummer))+'</span>' : ''}${sn.positie ? ' <span style=\'color:var(--gold,#f5c842); font-weight:600; font-size:11px; background:rgba(245,200,66,0.12); padding:1px 6px; border-radius:4px; margin-left:4px;\'>'+escapeHtml(sn.positie)+'</span>' : ''}</div>
               </div>
-              <button class="btn-ghost" data-sa-act="del-snel-notitie" data-progid="${escapeHtml(prog.id)}" data-snidx="${idx}" style="padding:3px 8px; font-size:11px; flex-shrink:0;" title="Verwijderen">×</button>
+              <div style="display:flex; gap:4px; flex-shrink:0;">
+                <button class="sa-snel-convert" data-sa-act="convert-snel-to-rapport" data-progid="${escapeHtml(prog.id)}" data-snidx="${idx}" title="Omzetten naar volledig spelersrapport">&rarr; Rapport</button>
+                <button class="btn-ghost" data-sa-act="del-snel-notitie" data-progid="${escapeHtml(prog.id)}" data-snidx="${idx}" style="padding:3px 8px; font-size:11px;" title="Verwijderen">×</button>
+              </div>
             </div>`).join('')}
         </div>` : ''}
         <div class="sa-snel-form" data-progid="${escapeHtml(prog.id)}" style="display:none; margin-top:10px; padding:12px; background:rgba(245,200,66,0.06); border:1px solid rgba(245,200,66,0.25); border-radius:10px;">
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-            <div style="font-size:11px; color:var(--gold,#f5c842); text-transform:uppercase; letter-spacing:.6px; font-weight:700;">+ Snel notitie (speler)</div>
+            <div style="font-size:11px; color:var(--gold,#f5c842); text-transform:uppercase; letter-spacing:.6px; font-weight:700;">+ Snel spelersnotitie</div>
             <div class="sa-snel-status" data-progid="${escapeHtml(prog.id)}" style="font-size:11px; color:var(--text-3,#8b93a8); font-style:italic;">&nbsp;</div>
           </div>
           <div style="display:grid; grid-template-columns:1fr 70px; gap:8px; margin-bottom:8px;">
             <input class="sa-snel-naam" type="text" placeholder="Naam speler" style="background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:8px 11px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13.5px; outline:none;" />
             <input class="sa-snel-rug" type="text" placeholder="#nr" style="background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:8px 11px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13.5px; outline:none;" />
           </div>
-          <div style="margin-bottom:8px;">
+          <div style="margin-bottom:10px;">
             <select class="sa-snel-positie" style="width:100%; background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:8px 11px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13.5px; outline:none;">
               <option value="">Positie (optioneel)</option>
               <option value="GK">GK — Keeper</option>
@@ -11359,20 +11450,45 @@ function renderActiveScouting(){
               <option value="RV">RV — Rechtsbuiten</option>
             </select>
           </div>
-          <textarea class="sa-snel-tekst" placeholder="bv. techniek a: scherp" style="width:100%; min-height:280px; background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:10px 12px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13.5px; outline:none; resize:vertical; box-sizing:border-box; line-height:1.6;">techniek:
-inzicht:
-mentaliteit:
-explosiviteit:
-sprinten:
-duelleren:
-wendbaarheid:
-algemeen:</textarea>
+          <!-- s35be: structured snel-notitie — 8 vaste termen, labels staan vast -->
+          <div class="sa-snel-terms">
+            <div class="sa-snel-term-row"><span class="sa-snel-term-label">techniek</span><span class="sa-snel-term-chev">&rsaquo;</span><input class="sa-snel-term-input" data-term="techniek" type="text" placeholder="bv. scherp, snel" /></div>
+            <div class="sa-snel-term-row"><span class="sa-snel-term-label">inzicht</span><span class="sa-snel-term-chev">&rsaquo;</span><input class="sa-snel-term-input" data-term="inzicht" type="text" placeholder="bv. leest spel goed" /></div>
+            <div class="sa-snel-term-row"><span class="sa-snel-term-label">mentaliteit</span><span class="sa-snel-term-chev">&rsaquo;</span><input class="sa-snel-term-input" data-term="mentaliteit" type="text" placeholder="bv. werkt hard, leidt" /></div>
+            <div class="sa-snel-term-row"><span class="sa-snel-term-label">explosiviteit</span><span class="sa-snel-term-chev">&rsaquo;</span><input class="sa-snel-term-input" data-term="explosiviteit" type="text" placeholder="bv. eerste 5m sterk" /></div>
+            <div class="sa-snel-term-row"><span class="sa-snel-term-label">sprinten</span><span class="sa-snel-term-chev">&rsaquo;</span><input class="sa-snel-term-input" data-term="sprinten" type="text" placeholder="bv. topsnelheid hoog" /></div>
+            <div class="sa-snel-term-row"><span class="sa-snel-term-label">duelleren</span><span class="sa-snel-term-chev">&rsaquo;</span><input class="sa-snel-term-input" data-term="duelleren" type="text" placeholder="bv. wint 1-op-1" /></div>
+            <div class="sa-snel-term-row"><span class="sa-snel-term-label">wendbaarheid</span><span class="sa-snel-term-chev">&rsaquo;</span><input class="sa-snel-term-input" data-term="wendbaarheid" type="text" placeholder="bv. soepel, lichtvoetig" /></div>
+            <div class="sa-snel-term-row"><span class="sa-snel-term-label">algemeen</span><span class="sa-snel-term-chev">&rsaquo;</span><input class="sa-snel-term-input" data-term="algemeen" type="text" placeholder="bv. interessante speler" /></div>
+          </div>
+          <!-- hidden tekst-store voor backwards compat met handler/exports -->
+          <textarea class="sa-snel-tekst" style="display:none;" aria-hidden="true"></textarea>
+          <div style="margin-top:8px; font-size:11px; color:var(--text-3,#8b93a8); font-style:italic; text-align:right;">Klik naast het scherm om te sluiten — auto-opgeslagen tijdens typen</div>
+        </div>
+        ${(prog.wedstrijdnotities && prog.wedstrijdnotities.length) ? `
+        <div class="sa-wstrnotities" data-progid="${escapeHtml(prog.id)}" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border,#2a2f3a);">
+          <div style="font-size:11px; color:var(--muted,#9aa3b7); text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px;">Wedstrijdnotities (${prog.wedstrijdnotities.length})</div>
+          ${prog.wedstrijdnotities.map((wn, idx) => `
+            <div class="sa-wstrnotitie-row" data-sa-act="edit-snel-wstr" data-progid="${escapeHtml(prog.id)}" data-wnidx="${idx}" style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.20); border-radius:8px; padding:8px 10px; margin-bottom:6px; font-size:12.5px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px; cursor:pointer; transition:background .15s;" title="Klik om te bewerken">
+              <div style="flex:1; min-width:0; display:flex; align-items:flex-start; gap:8px;">
+                <span style="color:#ff6b6b; font-size:11px; line-height:1.3; flex-shrink:0;">&#9656;</span>
+                <div style="color:var(--text,#e5e9f5); white-space:pre-wrap; overflow:hidden; line-height:1.45; flex:1;">${escapeHtml((wn.tekst||'').slice(0, 140))}${(wn.tekst||'').length > 140 ? '…' : ''}</div>
+              </div>
+              <button class="btn-ghost" data-sa-act="del-snel-wstr" data-progid="${escapeHtml(prog.id)}" data-wnidx="${idx}" style="padding:3px 8px; font-size:11px; flex-shrink:0;" title="Verwijderen">×</button>
+            </div>`).join('')}
+        </div>` : ''}
+        <div class="sa-snel-wstr-form" data-progid="${escapeHtml(prog.id)}" style="display:none;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
+            <div style="font-size:11px; color:#ff8189; text-transform:uppercase; letter-spacing:.6px; font-weight:700;">+ Snel wedstrijdnotitie</div>
+            <div class="sa-snel-wstr-status" style="font-size:11px; color:var(--text-3,#8b93a8); font-style:italic;">&nbsp;</div>
+          </div>
+          <textarea class="sa-snel-wstr-tekst" placeholder="Tactiek, score, weer, opvallende momenten..."></textarea>
           <div style="margin-top:8px; font-size:11px; color:var(--text-3,#8b93a8); font-style:italic; text-align:right;">Klik naast het scherm om te sluiten — auto-opgeslagen tijdens typen</div>
         </div>
         <div class="sa-actions">
-          <button class="btn-ghost" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}">+ Snel notitie (speler)</button>
+          <button class="btn-ghost sa-trigger-snel" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}">+ Snel spelersnotitie</button>
+          <button class="btn-ghost sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}">+ Snel wedstrijdnotitie</button>
           <button class="btn-ghost" data-sa-act="add-player" data-progid="${escapeHtml(prog.id)}">+ Speler toevoegen</button>
-          <button class="btn-ghost" data-sa-act="open-match" data-progid="${escapeHtml(prog.id)}">Wedstrijddetails</button>
         </div>
       </div>`;
   }).join('');
@@ -11461,7 +11577,8 @@ algemeen:</textarea>
       } else if(act === 'open-match'){
         if(typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(progId);
       } else if(act === 'add-snel-notitie' || act === 'edit-snel-notitie'){
-        // s35bd: open mini-form (nieuw of bestaand) + wire auto-save + click-outside
+        // s35be: open snel-spelersnotitie form, sync 8 termen <-> hidden textarea,
+        // +/- toggle op trigger-button, auto-save, click-outside.
         const card = btn.closest('.sa-card');
         if(!card) return;
         const form = card.querySelector(`.sa-snel-form[data-progid="${progId}"]`);
@@ -11471,25 +11588,62 @@ algemeen:</textarea>
         const rugIn  = form.querySelector('.sa-snel-rug');
         const posIn  = form.querySelector('.sa-snel-positie');
         const txtIn  = form.querySelector('.sa-snel-tekst');
+        const termIns = Array.from(form.querySelectorAll('.sa-snel-term-input'));
         const statusEl = form.querySelector('.sa-snel-status');
+        // +/- toggle: trigger-knop tonen als "−" zolang form open
+        const triggerBtn = card.querySelector('.sa-trigger-snel[data-progid="' + progId + '"]');
+        if(triggerBtn && !form.__shTriggerSet){
+          form.__shTriggerSet = true;
+          form.__shTriggerBtn = triggerBtn;
+          form.__shTriggerOrig = triggerBtn.textContent;
+        }
+        if(form.__shTriggerBtn){
+          form.__shTriggerBtn.textContent = '\u2212 Snel spelersnotitie';
+        }
         // Auto-save wiring (eenmalig per form-element)
         if(!form.__shAutoWired){
           form.__shAutoWired = true;
           let debTimer = null;
           let savedSnId = null;
-          const defaultTekst = 'techniek:\ninzicht:\nmentaliteit:\nexplosiviteit:\nsprinten:\nduelleren:\nwendbaarheid:\nalgemeen:';
+          const TERMS = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
+          const defaultTekst = TERMS.map(t => t + ':').join('\n');
+          // Compose: 8 inputs -> tekst-string (backwards-compat formaat)
+          const composeTekst = () => {
+            return TERMS.map(t => {
+              const el = termIns.find(x => x.dataset.term === t);
+              const v = el ? el.value.trim() : '';
+              return t + ':' + (v ? ' ' + v : '');
+            }).join('\n');
+          };
+          // Parse: tekst-string -> 8 inputs (regex per term)
+          const parseTekstIntoInputs = (tekst) => {
+            const src = tekst || '';
+            TERMS.forEach(t => {
+              const el = termIns.find(x => x.dataset.term === t);
+              if(!el) return;
+              const re = new RegExp('^\\s*' + t + '\\s*:\\s*(.*)$', 'mi');
+              const m = src.match(re);
+              el.value = (m && m[1]) ? m[1].trim() : '';
+            });
+          };
+          // Sync term-inputs -> hidden textarea on every input
+          const syncTerms = () => { if(txtIn) txtIn.value = composeTekst(); };
           const doAutoSave = async () => {
+            syncTerms();
             const naam = naamIn.value.trim();
             const rug  = rugIn.value.trim();
             const pos  = posIn ? posIn.value.trim() : '';
-            const tekst= txtIn.value.trim();
-            if(!naam && !tekst && !pos){
+            const tekstRaw = txtIn ? txtIn.value : '';
+            // Termen leeg? Check of inhoud meer is dan alleen labels
+            const hasTermContent = termIns.some(el => el.value.trim().length > 0);
+            if(!naam && !pos && !hasTermContent){
               if(statusEl){ statusEl.textContent = '\u00a0'; }
               return;
             }
             const prog = programmaCache.find(p => p.id === progId);
             if(!prog) return;
             if(!Array.isArray(prog.snelnotities)) prog.snelnotities = [];
+            const tekst = tekstRaw;
             if(savedSnId){
               const existing = prog.snelnotities.find(s => s.id === savedSnId);
               if(existing){
@@ -11515,18 +11669,21 @@ algemeen:</textarea>
             }
           };
           const onInput = () => {
+            syncTerms();
             if(statusEl){ statusEl.textContent = 'bezig met opslaan\u2026'; statusEl.style.color = ''; }
             if(debTimer) clearTimeout(debTimer);
             debTimer = setTimeout(doAutoSave, 700);
           };
-          [naamIn, rugIn, posIn, txtIn].forEach(el => el && el.addEventListener('input', onInput));
+          [naamIn, rugIn, posIn].forEach(el => el && el.addEventListener('input', onInput));
+          termIns.forEach(el => el.addEventListener('input', onInput));
           if(posIn) posIn.addEventListener('change', onInput);
-          // Helper: form vullen vanuit bestaande snel-notitie
+          // Helper: form vullen vanuit bestaande snel-notitie (parse tekst -> inputs)
           form.__shFillFromSn = (sn) => {
             naamIn.value = sn.naam || '';
             rugIn.value  = sn.rugnummer || '';
             if(posIn) posIn.value = sn.positie || '';
-            txtIn.value  = sn.tekst || defaultTekst;
+            parseTekstIntoInputs(sn.tekst || '');
+            syncTerms();
             savedSnId    = sn.id || null;
             if(statusEl){ statusEl.textContent = 'bewerken'; statusEl.style.color = ''; }
           };
@@ -11536,9 +11693,14 @@ algemeen:</textarea>
             doAutoSave().then(() => {
               naamIn.value = ''; rugIn.value = '';
               if(posIn) posIn.value = '';
-              txtIn.value = defaultTekst;
+              termIns.forEach(el => el.value = '');
+              if(txtIn) txtIn.value = defaultTekst;
               savedSnId = null;
               if(statusEl){ statusEl.textContent = '\u00a0'; statusEl.style.color = ''; }
+              // Toggle trigger-knop terug naar "+"
+              if(form.__shTriggerBtn && form.__shTriggerOrig){
+                form.__shTriggerBtn.textContent = form.__shTriggerOrig;
+              }
               if(typeof renderActiveScouting === 'function') renderActiveScouting();
             });
           };
@@ -11566,10 +11728,170 @@ algemeen:</textarea>
           if(sn && typeof form.__shFillFromSn === 'function'){
             form.__shFillFromSn(sn);
           }
-          // Scroll form in beeld
           try { form.scrollIntoView({behavior:'smooth', block:'center'}); } catch(_){}
         }
         if(naamIn) naamIn.focus();
+      } else if(act === 'add-snel-wstr'){
+        // s35be: snel wedstrijdnotitie (vrije tekst — tactiek/score/weer)
+        const card = btn.closest('.sa-card');
+        if(!card) return;
+        const form = card.querySelector(`.sa-snel-wstr-form[data-progid="${progId}"]`);
+        if(!form) return;
+        form.style.display = 'block';
+        const txtIn = form.querySelector('.sa-snel-wstr-tekst');
+        const statusEl = form.querySelector('.sa-snel-wstr-status');
+        const triggerBtn = card.querySelector('.sa-trigger-wstr[data-progid="' + progId + '"]');
+        if(triggerBtn && !form.__shTriggerSet){
+          form.__shTriggerSet = true;
+          form.__shTriggerBtn = triggerBtn;
+          form.__shTriggerOrig = triggerBtn.textContent;
+        }
+        if(form.__shTriggerBtn){
+          form.__shTriggerBtn.textContent = '\u2212 Snel wedstrijdnotitie';
+        }
+        if(!form.__shWstrWired){
+          form.__shWstrWired = true;
+          let debTimer = null;
+          let savedWnId = null;
+          const doAutoSave = async () => {
+            const tekst = txtIn.value.trim();
+            if(!tekst){
+              if(statusEl){ statusEl.textContent = '\u00a0'; }
+              return;
+            }
+            const prog = programmaCache.find(p => p.id === progId);
+            if(!prog) return;
+            if(!Array.isArray(prog.wedstrijdnotities)) prog.wedstrijdnotities = [];
+            if(savedWnId){
+              const ex = prog.wedstrijdnotities.find(w => w.id === savedWnId);
+              if(ex) ex.tekst = tekst;
+              else {
+                savedWnId = 'wn_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+                prog.wedstrijdnotities.push({ id: savedWnId, tekst, created: Date.now() });
+              }
+            } else {
+              savedWnId = 'wn_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+              prog.wedstrijdnotities.push({ id: savedWnId, tekst, created: Date.now() });
+            }
+            prog.modified = Date.now();
+            try {
+              if(typeof saveProgrammaItem === 'function') await saveProgrammaItem(prog);
+              if(statusEl){ statusEl.textContent = '\u2713 auto-opgeslagen'; statusEl.style.color = '#4ade80'; }
+              setTimeout(() => { if(statusEl){ statusEl.style.color = ''; statusEl.textContent = 'auto-opgeslagen'; } }, 1500);
+            } catch(err){
+              if(statusEl){ statusEl.textContent = 'fout bij opslaan'; statusEl.style.color = '#ef4444'; }
+            }
+          };
+          txtIn.addEventListener('input', () => {
+            if(statusEl){ statusEl.textContent = 'bezig met opslaan\u2026'; statusEl.style.color = ''; }
+            if(debTimer) clearTimeout(debTimer);
+            debTimer = setTimeout(doAutoSave, 700);
+          });
+          form.__shFillFromWn = (wn) => {
+            txtIn.value = wn.tekst || '';
+            savedWnId = wn.id || null;
+            if(statusEl){ statusEl.textContent = 'bewerken'; statusEl.style.color = ''; }
+          };
+          form.__shReset = () => {
+            if(debTimer){ clearTimeout(debTimer); debTimer = null; }
+            doAutoSave().then(() => {
+              txtIn.value = '';
+              savedWnId = null;
+              if(statusEl){ statusEl.textContent = '\u00a0'; statusEl.style.color = ''; }
+              if(form.__shTriggerBtn && form.__shTriggerOrig){
+                form.__shTriggerBtn.textContent = form.__shTriggerOrig;
+              }
+              if(typeof renderActiveScouting === 'function') renderActiveScouting();
+            });
+          };
+        }
+        // Click-outside wiring (eenmalig globaal)
+        if(!window.__shWstrOutsideWired){
+          window.__shWstrOutsideWired = true;
+          document.addEventListener('mousedown', (ev) => {
+            const openForms = document.querySelectorAll('.sa-snel-wstr-form');
+            openForms.forEach(f => {
+              if(f.style.display !== 'block') return;
+              if(f.contains(ev.target)) return;
+              if(ev.target.closest('[data-sa-act="add-snel-wstr"]')) return;
+              if(ev.target.closest('[data-sa-act="edit-snel-wstr"]')) return;
+              f.style.display = 'none';
+              if(typeof f.__shReset === 'function') f.__shReset();
+            });
+          });
+        }
+        if(txtIn) txtIn.focus();
+      } else if(act === 'edit-snel-wstr'){
+        // s35be: open wstr-form en vul met bestaande notitie
+        const card = btn.closest('.sa-card');
+        if(!card) return;
+        const form = card.querySelector(`.sa-snel-wstr-form[data-progid="${progId}"]`);
+        if(!form) return;
+        // Triggert add-snel-wstr-wiring eerst via een synthetische click? Simpeler:
+        // open form direct en roep __shFillFromWn nadat wiring eenmaal ingezet.
+        const idx = parseInt(btn.dataset.wnidx, 10);
+        const prog = programmaCache.find(p => p.id === progId);
+        const wn = (prog && Array.isArray(prog.wedstrijdnotities)) ? prog.wedstrijdnotities[idx] : null;
+        // Re-trigger via dispatching click op trigger-button (zo wiring + toggle in 1 pad)
+        const triggerBtn = card.querySelector('.sa-trigger-wstr[data-progid="' + progId + '"]');
+        if(triggerBtn) triggerBtn.click();
+        if(wn && typeof form.__shFillFromWn === 'function') form.__shFillFromWn(wn);
+        try { form.scrollIntoView({behavior:'smooth', block:'center'}); } catch(_){}
+      } else if(act === 'del-snel-wstr'){
+        const idx = parseInt(btn.dataset.wnidx, 10);
+        const prog = programmaCache.find(p => p.id === progId);
+        if(!prog || !Array.isArray(prog.wedstrijdnotities)) return;
+        if(idx < 0 || idx >= prog.wedstrijdnotities.length) return;
+        if(!confirm('Wedstrijdnotitie verwijderen?')) return;
+        prog.wedstrijdnotities.splice(idx, 1);
+        prog.modified = Date.now();
+        try {
+          if(typeof saveProgrammaItem === 'function') await saveProgrammaItem(prog);
+          if(typeof renderActiveScouting === 'function') renderActiveScouting();
+        } catch(err){}
+      } else if(act === 'convert-snel-to-rapport'){
+        // s35be: snel-notitie -> volledig spelersrapport. Open speler-modal
+        // met prefill (naam, rugnummer, positie, tekst als voor_notities).
+        const snidx = parseInt(btn.dataset.snidx, 10);
+        const prog = programmaCache.find(p => p.id === progId);
+        const sn = (prog && Array.isArray(prog.snelnotities)) ? prog.snelnotities[snidx] : null;
+        if(!sn) return;
+        if(typeof openProgPlayerModal === 'function'){
+          openProgPlayerModal(progId, null);
+          // Prefill in next tick (modal moet eerst DOM populaten)
+          setTimeout(() => {
+            try {
+              const fullNaam = (sn.naam || '').trim();
+              let vn = '', an = '';
+              if(fullNaam){
+                if(typeof splitNaam === 'function'){
+                  const s = splitNaam(fullNaam);
+                  vn = s.voornaam || ''; an = s.achternaam || '';
+                } else {
+                  const parts = fullNaam.split(/\s+/);
+                  vn = parts[0] || '';
+                  an = parts.slice(1).join(' ');
+                }
+              }
+              const ppVn = document.getElementById('pp-voornaam');
+              const ppAn = document.getElementById('pp-achternaam');
+              const ppNa = document.getElementById('pp-naam');
+              const ppRu = document.getElementById('pp-rugnummer');
+              const ppPo = document.getElementById('pp-positie');
+              const ppNo = document.getElementById('pp-notities');
+              if(ppVn) ppVn.value = vn;
+              if(ppAn) ppAn.value = an;
+              if(ppNa) ppNa.value = [vn, an].filter(Boolean).join(' ');
+              if(ppRu) ppRu.value = sn.rugnummer || '';
+              if(ppPo) ppPo.value = sn.positie || '';
+              if(ppNo) ppNo.value = sn.tekst || '';
+              // Marker voor latere stappen — bewaar snel-notitie id
+              window.__shConvertingFromSnId = sn.id || null;
+              window.__shConvertingFromProgId = progId;
+            } catch(_){}
+          }, 60);
+          if(typeof toast === 'function') toast('Snel-notitie geladen — vul aanvullende info in');
+        }
       } else if(act === 'del-snel-notitie'){
         const idx = parseInt(btn.dataset.snidx, 10);
         const prog = programmaCache.find(p => p.id === progId);
@@ -17181,7 +17503,7 @@ function openProgMatchModal(progId, defaultDate){
   $('#pm-id').value = it ? it.id : '';
   $('#pm-datum').value = it ? (it.datum||'') : (defaultDate || isoDateStr(new Date()));
   $('#pm-tijd').value = it ? (it.tijd||'') : '';
-  $('#pm-leeftijd').value = it ? (it.leeftijd||'') : '';
+  // s35be: pm-leeftijd field weg — niet meer laden
   $('#pm-methode').value = it ? (it.methode || 'Live') : 'Live';
   // pm-info is nu een <select> — voeg legacy-waarden alsnog toe.
   (function(){
@@ -17278,7 +17600,7 @@ async function saveProgMatchFromForm(e){
     id,
     datum,
     tijd: $('#pm-tijd').value,
-    leeftijd: $('#pm-leeftijd').value,
+    // s35be: leeftijd-veld weg (elftal nu per-club)
     methode: $('#pm-methode').value,
     info: $('#pm-info').value.trim(),
     thuis, uit, locatie,
@@ -19567,6 +19889,16 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
       const recentSet = new Set(recents);
       const ordered = recents.concat(opts.filter(o => !recentSet.has(o)));
       items = ordered.slice(0, MAX_VISIBLE).map(o => ({ val: o, recent: recentSet.has(o) }));
+    } else if(activeType === 'elftal' && /^\d{1,2}$/.test(f)){
+      // s35be: bij 1-2 digit query op elftal ALLEEN matchen op leeftijd
+      // (2 cijfers tussen "O." en "-"). Typ "3" mag GEEN O.16-3 geven —
+      // de 3 daar is een teamnummer, niet een leeftijd.
+      const matches = opts.filter(o => {
+        const m = o.match(/^O\.(\d+)-/);
+        return m && m[1] === f;
+      });
+      const recentSet = new Set(recents);
+      items = matches.slice(0, MAX_VISIBLE).map(o => ({ val: o, recent: recentSet.has(o) }));
     } else {
       // Filter — eerst die starten met de zoekterm, dan rest
       const startsWith = [];

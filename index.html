@@ -3151,6 +3151,38 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 /* ===== Programma detail (uitgeklapt) ===== */
+/* s35an (#7): opklapbaar 'Snel notitie'-paneel met slimme conversie naar criterium-velden */
+.snel-notitie-panel{background:rgba(245,200,66,0.05);border:1px solid rgba(245,200,66,0.25);border-radius:10px;margin-bottom:14px;overflow:hidden}
+.snel-notitie-toggle{width:100%;background:transparent;border:0;color:var(--text,#e5e9f5);padding:11px 14px;display:flex;align-items:center;gap:9px;font-size:13px;font-weight:500;cursor:pointer;text-align:left;font-family:inherit}
+.snel-notitie-toggle:hover{background:rgba(245,200,66,0.05)}
+.snel-notitie-toggle .sn-arr{transition:.2s;display:inline-block;color:#f5c842;width:12px}
+.snel-notitie-toggle .sn-meta{margin-left:auto;font-size:11.5px;color:var(--text-3,#8a93ab);font-weight:400}
+.snel-notitie-body{display:none;padding:0 14px 14px;border-top:1px dashed rgba(245,200,66,0.2)}
+.snel-notitie-body.open{display:block}
+.snel-notitie-body textarea{width:100%;background:#0a0c12;border:1px solid var(--border-2,#2d3242);border-radius:8px;padding:9px 11px;color:var(--text,#e5e9f5);font-family:inherit;font-size:13px;min-height:170px;outline:none;resize:vertical;margin-top:10px;box-sizing:border-box;line-height:1.5}
+.snel-notitie-body textarea:focus{border-color:#f5c842}
+.snel-notitie-help{font-size:11.5px;color:var(--text-3,#8a93ab);margin-top:8px;line-height:1.5}
+.snel-notitie-help kbd{background:#1c2030;border:1px solid #2d3242;border-radius:4px;padding:1px 5px;font-size:10.5px;font-family:inherit}
+.snel-notitie-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap}
+.snel-notitie-status{font-size:11.5px;color:var(--text-3,#8a93ab);margin-right:auto}
+.snel-notitie-btn{background:#f5c842;color:#000;border:0;padding:7px 14px;border-radius:7px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
+.snel-notitie-btn:hover{background:#fcd454}
+.snel-notitie-btn.ghost{background:transparent;color:var(--text-3,#8a93ab);border:1px solid var(--border-2,#2d3242);font-weight:500}
+.snel-notitie-btn.ghost:hover{color:var(--text,#e5e9f5)}
+/* s35am (#6): voor-rapport read-only info-blok bovenaan spelersrapport */
+.voor-rapport-block{background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.3);border-radius:10px;padding:11px 14px;margin-bottom:14px;display:flex;gap:11px;align-items:flex-start;font-size:13px;line-height:1.5}
+.voor-rapport-block .vr-ic{font-size:16px;color:#60a5fa;flex-shrink:0;line-height:1.3}
+.voor-rapport-block .vr-body{flex:1;color:var(--text,#e5e9f5)}
+.voor-rapport-block .vr-head{font-weight:600;color:#60a5fa;font-size:12px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
+.voor-rapport-block .vr-text{white-space:pre-line}
+.voor-rapport-block .vr-meta{font-size:11px;color:var(--text-3,#8a93ab);margin-top:4px;font-style:italic}
+/* s35ak (#4): visuele highlight + strip voor auto-ingevulde wedstrijdvelden in spelersrapport */
+.rep-prog-autofill-strip{grid-column:1/-1;background:rgba(245,197,24,0.08);border:1px solid rgba(245,197,24,0.25);border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:12.5px;color:var(--text,#e5e9f5);display:flex;align-items:center;gap:8px;line-height:1.45}
+.rep-prog-autofill-strip .ic{color:#f5c518;font-size:14px}
+.rep-prog-autofill-strip strong{color:#f5c518;font-weight:600}
+.rep-auto-field input{background:rgba(245,197,24,0.07) !important;border-color:rgba(245,197,24,0.35) !important}
+.rep-auto-badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:99px;background:#f5c518;color:#000;margin-left:6px;letter-spacing:.3px;vertical-align:middle}
+.rep-auto-badge.edited{background:#ef4444;color:#fff}
 .prog-detail-card {
   background: var(--bg-2); border: 1px solid var(--border);
   border-radius: 14px; padding: 16px;
@@ -5901,16 +5933,13 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
 
         <form id="report-form" class="form-grid" autocomplete="off">
-          <div class="draft-restored-banner hidden" id="report-draft-banner">
-            <div class="icon">📋</div>
-            <div class="text">
-              <strong>Concept hersteld</strong>
-              <div id="report-draft-meta" style="font-size:12.5px; color: var(--muted, #7b8294); margin-top:2px;">—</div>
-            </div>
-            <div class="actions">
-              <button type="button" id="report-draft-discard">Wissen</button>
-              <button type="button" class="primary" id="report-draft-load">Verder</button>
-            </div>
+          <div class="report-intro-strip" style="grid-column:1/-1; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 14px; margin-bottom:8px; font-size:13px; color:var(--muted,#9aa3b7); line-height:1.45;">
+            <strong style="color:var(--text,#e5e9f5); font-weight:600;">Dit is een concept.</strong> Alles wat je invult wordt automatisch opgeslagen. Klaar? Klik onderaan op <strong style="color:var(--text,#e5e9f5); font-weight:600;">Indienen</strong>.
+          </div>
+          <div id="report-draft-banner" hidden style="display:none">
+            <div id="report-draft-meta" hidden></div>
+            <button type="button" id="report-draft-discard" hidden></button>
+            <button type="button" id="report-draft-load" hidden></button>
           </div>
           <div class="copy-last-row" id="report-copy-row" style="display:none;">
             <button type="button" class="btn-copy-last" id="report-copy-last">
@@ -5942,7 +5971,7 @@ tbody tr:last-child td { border-bottom: none; }
             <input type="hidden" id="f-naam" />
             <div class="field-row">
               <div class="field">
-                <label>Club</label>
+                <label>Club van de speler</label>
                 <input id="f-club" type="text" autocomplete="off" data-picker="club" />
               </div>
               <div class="field">
@@ -5980,6 +6009,10 @@ tbody tr:last-child td { border-bottom: none; }
           <!-- Wedstrijd -->
           <div class="form-section">
             <div class="form-section-title">Wedstrijd</div>
+            <div class="rep-prog-autofill-strip" id="rep-prog-autofill-strip" hidden>
+              <span class="ic">↻</span>
+              <span><strong>Overgenomen uit programma.</strong> Pas aan indien nodig.</span>
+            </div>
             <div class="field-row three">
               <div class="field">
                 <label>Datum wedstrijd</label>
@@ -6082,6 +6115,29 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="form-section-title">Beoordeling per categorie</div>
             <div style="font-size:12px; color:var(--text-3); margin-bottom:14px; line-height:1.5;">
               Beoordeel het <strong style="color:var(--text-2)">huidige niveau</strong> per categorie. Potentieel wordt alleen bij de eindbeoordeling ingevuld.
+            </div>
+
+            <!-- s35an (#7): opklapbaar Snel notitie-paneel met slimme conversie -->
+            <div class="snel-notitie-panel" id="snel-notitie-panel">
+              <button type="button" class="snel-notitie-toggle" id="snel-notitie-toggle">
+                <span class="sn-arr" id="snel-notitie-arr">▸</span>
+                <span>📝 Snel notitie</span>
+                <span class="sn-meta">optioneel — tik alles in één blok</span>
+              </button>
+              <div class="snel-notitie-body" id="snel-notitie-body">
+                <textarea id="snel-notitie-text" placeholder="techniek a: scherp
+inzicht b: leest spel goed
+mentaliteit a: leider"></textarea>
+                <div class="snel-notitie-help">
+                  Patroon per regel: <kbd>term a/b/c/d: opmerking</kbd> &mdash; bv. <kbd>techniek a: prima eerste actie</kbd>.
+                  Lege stubs worden overgeslagen. Niet-herkende regels gaan naar <strong>Algemene notities</strong>.
+                </div>
+                <div class="snel-notitie-actions">
+                  <span class="snel-notitie-status" id="snel-notitie-status">&nbsp;</span>
+                  <button type="button" class="snel-notitie-btn ghost" id="snel-notitie-stubs">↺ Stubs</button>
+                  <button type="button" class="snel-notitie-btn" id="snel-notitie-fill">→ Vul velden in</button>
+                </div>
+              </div>
             </div>
 
             <!-- Techniek -->
@@ -6232,12 +6288,12 @@ tbody tr:last-child td { border-bottom: none; }
           <div class="form-actions form-actions-sticky" id="report-form-actions">
             <div class="autosave-status" id="report-autosave-status">
               <span class="dot"></span>
-              <span class="text" id="report-autosave-text">Concept opgeslagen</span>
+              <span class="text" id="report-autosave-text">Automatisch opgeslagen</span>
             </div>
             <button type="button" class="btn" id="report-clear">Wissen</button>
             <button type="submit" form="report-form" class="btn btn-primary" id="report-save-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-              Rapport opslaan
+              Indienen
             </button>
           </div>
         </form>
@@ -9469,6 +9525,15 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
     has_hint: !!slotConceptHint,
     has_matched: !!matchedPlayer
   });
+  // s35al (#8): SYNCHROON flush van een eventuele lopende autosave-timer
+  // VOORDAT we de pending-flag/ctx wisselen. Zonder dit kan een saveTimer
+  // met de OUDE spelerKey nog vuren nadat ctx al naar de NIEUWE speler is
+  // gezet — dat veroorzaakt lege duplicate concept-records (zie #8).
+  try {
+    if(typeof window.__shFlushAutosave === 'function'){
+      window.__shFlushAutosave('open-scouting-form');
+    }
+  } catch(_){ }
   // s35y: pending-vlag SYNCHROON zodat tryRestore (+50ms) banner skipt.
   // resetReportForm wist alleen __shScoutingCtx, niet __shScoutingPending.
   window.__shScoutingPending = { progId: prog.id, spelerKey: progSp.id };
@@ -9499,6 +9564,7 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
         if($('#f-w-datum') && !$('#f-w-datum').value) $('#f-w-datum').value = prog.datum || '';
         if($('#f-w-thuis') && !$('#f-w-thuis').value) $('#f-w-thuis').value = prog.thuis || '';
         if($('#f-w-uit') && !$('#f-w-uit').value) $('#f-w-uit').value = prog.uit || '';
+        try { const _s = document.getElementById('rep-prog-autofill-strip'); if(_s) _s.hidden = false; } catch(_){}
         injectScoutingBanner(prog, progSp, matchedPlayer);
         return;
       }
@@ -9553,14 +9619,73 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
       if($('#f-w-datum')) $('#f-w-datum').value = prog.datum || '';
       if($('#f-w-thuis')) $('#f-w-thuis').value = prog.thuis || '';
       if($('#f-w-uit')) $('#f-w-uit').value = prog.uit || '';
+      // s35ak (#4): markeer wedstrijd-velden visueel als auto-ingevuld vanuit programma
+      try {
+        const strip = document.getElementById('rep-prog-autofill-strip');
+        if(strip) strip.hidden = false;
+        const autoMap = { 'f-w-datum': prog.datum||'', 'f-w-thuis': prog.thuis||'', 'f-w-uit': prog.uit||'' };
+        Object.keys(autoMap).forEach(id => {
+          const inp = document.getElementById(id); if(!inp) return;
+          const fld = inp.closest('.field'); if(fld) fld.classList.add('rep-auto-field');
+          inp.dataset.repOrig = autoMap[id];
+          if(!inp.dataset.repAutoBound){
+            inp.dataset.repAutoBound = '1';
+            inp.addEventListener('input', () => {
+              const f = inp.closest('.field'); if(!f) return;
+              if((inp.value||'') !== (inp.dataset.repOrig||'')) f.classList.add('rep-auto-edited');
+              else f.classList.remove('rep-auto-edited');
+            });
+          }
+        });
+      } catch(_){}
+      // einde s35ak
       // s35ad: s35ab synchroon-schrijf verwijderd — die maakte duplicaten.
       // doSave() (autosave 800ms) zorgt nu zelf voor uid + initiele save.
       // Banner met concept-status
       injectScoutingBanner(prog, progSp, matchedPlayer);
+      // s35am (#6): voor-rapport (progSp.voor_notities) read-only bovenaan rapport.
+      try { injectVoorRapportBlock(prog, progSp); } catch(_){}
     } catch(e){ console.error('openScoutingPlayerForm error:', e); }
   }, 80);
 }
 window.openScoutingPlayerForm = openScoutingPlayerForm;
+
+// s35am (#6): voor-rapport als read-only info-blok bovenaan spelersrapport.
+// progSp.voor_notities is op de programma-pagina ingevuld (aandachtspunten).
+function injectVoorRapportBlock(prog, progSp){
+  const old = document.getElementById('voor-rapport-block'); if(old) old.remove();
+  const txt = (progSp && progSp.voor_notities ? String(progSp.voor_notities).trim() : '');
+  if(!txt) return; // niets ingevuld -> blok niet tonen
+  const div = document.createElement('div');
+  div.id = 'voor-rapport-block';
+  div.className = 'voor-rapport-block';
+  // datum-formatter: '15 mei' uit prog.datum (YYYY-MM-DD)
+  let datumLabel = '';
+  if(prog && prog.datum){
+    try {
+      const d = new Date(prog.datum + 'T00:00:00');
+      const mnd = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+      if(!isNaN(d.getTime())) datumLabel = d.getDate() + ' ' + mnd[d.getMonth()];
+    } catch(_){}
+  }
+  const escHtml = (typeof escapeHtml === 'function') ? escapeHtml : (s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])));
+  div.innerHTML = `
+    <span class="vr-ic">📝</span>
+    <div class="vr-body">
+      <div class="vr-head">Je voorbereiding${datumLabel ? ' · '+escHtml(datumLabel) : ''}</div>
+      <div class="vr-text">${escHtml(txt)}</div>
+      <div class="vr-meta">Niet bewerkbaar — alleen ter referentie. Pas aan via programma → speler.</div>
+    </div>`;
+  // voeg toe onder de scouting-banner (of bovenaan #view-report als banner ontbreekt)
+  const banner = document.getElementById('scouting-active-banner');
+  if(banner && banner.parentNode){
+    banner.parentNode.insertBefore(div, banner.nextSibling);
+  } else {
+    const form = document.getElementById('view-report');
+    if(form) form.insertBefore(div, form.firstChild.nextSibling);
+  }
+}
+window.injectVoorRapportBlock = injectVoorRapportBlock;
 
 function injectScoutingBanner(prog, progSp, matchedPlayer){
   let banner = document.getElementById('scouting-active-banner');
@@ -10023,14 +10148,19 @@ function renderUpcomingMatches(){
     </div>
   `;
   wrap.style.display = 'block';
-  // Klik op een regel -> open de wedstrijd in programma-modal.
+  // s35aj (#2): klik op regel -> direct naar programma met deze match uitgeklapt. Geen tussenmodal.
   wrap.querySelectorAll('.up-row').forEach(row => {
     row.addEventListener('click', e => {
       if(e.target.closest('a')) return;
       const pid = row.dataset.progId;
       if(!pid) return;
-      // s35r: open read-only detail-modal vanaf dashboard. Sluit -> terug naar dashboard.
-      if(typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(pid);
+      try { progExpandedId = pid; } catch(_) { window.progExpandedId = pid; }
+      if(typeof go === 'function') go('programma');
+      setTimeout(() => {
+        const el = document.querySelector(`.prog-detail-card[data-prog-detail-id="${pid}"]`)
+                || document.querySelector('.prog-detail-card');
+        if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
+      }, 140);
     });
   });
 }
@@ -12531,6 +12661,135 @@ function buildGradePickers(){
     });
   });
 }
+// s35an (#7): TERM-MAP synoniemen -> canonisch criterium (matcht grade-picker data-key prefix)
+const SHORT_TERM_MAP = {
+  'techniek':'techniek','balcontrole':'techniek','passing':'techniek','passen':'techniek',
+  'dribbel':'techniek','dribbelen':'techniek','eerste aanname':'techniek','kappen':'techniek','traptechniek':'techniek','afwerken':'techniek',
+  'inzicht':'inzicht','positiekeuze':'inzicht','positie':'inzicht','omschakeling':'inzicht',
+  'beslissing':'inzicht','spelinzicht':'inzicht','keuze':'inzicht','overzicht':'inzicht','scannen':'inzicht',
+  'grit':'grit','mentaliteit':'grit','leiderschap':'grit','doorzettingsvermogen':'grit','focus':'grit','wilskracht':'grit','drive':'grit','felheid':'grit','durf':'grit',
+  'explosiviteit':'explosiviteit','explosief':'explosiviteit','start':'explosiviteit','versnelling':'explosiviteit',
+  'sprinten':'sprinten','sprint':'sprinten','snelheid':'sprinten','loopvermogen':'sprinten',
+  'duelleren':'duelleren','duel':'duelleren','duels':'duelleren','lichaamskracht':'duelleren','tweekamp':'duelleren',
+  'wendbaarheid':'wendbaarheid','draaien':'wendbaarheid','balans':'wendbaarheid','wendbaar':'wendbaarheid','coordinatie':'wendbaarheid'
+};
+const SHORT_CRIT_LABEL = {
+  techniek:'Techniek', inzicht:'Inzicht', grit:'Mentaliteit',
+  explosiviteit:'Explosiviteit', sprinten:'Sprinten',
+  duelleren:'Duelleren', wendbaarheid:'Wendbaarheid'
+};
+// s35an: parser — leest 'term [a/b/c/d]: tekst' regels uit ruwe notitie.
+function parseSnelNotitie(raw){
+  const lines = (raw||'').split(/\n+/).map(l => l.trim()).filter(Boolean);
+  const crit = {}; const rest = []; let grade = null;
+  const gm = (raw||'').match(/(\d{1,2})\s*\/\s*10/);
+  if(gm) grade = gm[1];
+  lines.forEach(line => {
+    if(/^[a-zéëïü\s]+\s*[:,\-\u2014]\s*$/i.test(line)) return; // lege stub
+    let m = line.match(/^([a-zéëïü\s]+?)\s+([abcd])\s*[:,\-\u2014]\s*(.+)$/i);
+    if(!m){
+      const m2 = line.match(/^([abcd])\s+([a-zéëïü\s]+?)\s*[:,\-\u2014]\s*(.+)$/i);
+      if(m2) m = [m2[0], m2[2], m2[1], m2[3]];
+    }
+    if(!m){
+      const m3 = line.match(/^([a-zéëïü\s]+?)\s*[:,\-\u2014]\s*(.+)$/i);
+      if(m3){
+        const term = m3[1].toLowerCase().trim();
+        const can = SHORT_TERM_MAP[term];
+        if(can){
+          if(!crit[can]) crit[can] = {rating:null, tekst:m3[2].trim()};
+          else crit[can].tekst += ' \u00b7 '+m3[2].trim();
+          return;
+        }
+      }
+      rest.push(line); return;
+    }
+    const term = m[1].toLowerCase().trim();
+    const rating = m[2].toLowerCase();
+    const tekst = m[3].trim();
+    const can = SHORT_TERM_MAP[term];
+    if(!can){ rest.push(line); return; }
+    if(!crit[can]){ crit[can] = {rating, tekst}; return; }
+    const order = {a:4,b:3,c:2,d:1};
+    if(order[rating] > order[crit[can].rating||'d']) crit[can].rating = rating;
+    crit[can].tekst += ' \u00b7 '+tekst;
+  });
+  return {crit, rest, grade};
+}
+// s35an: vul ratings + toelichtingen + algemene notities op basis van parser-resultaat
+function applySnelNotitieToForm(){
+  const raw = (document.getElementById('snel-notitie-text')||{}).value || '';
+  const status = document.getElementById('snel-notitie-status');
+  const {crit, rest, grade} = parseSnelNotitie(raw);
+  let nFilled = 0;
+  Object.entries(crit).forEach(([can, v]) => {
+    const pickerKey = can + '_huidig';
+    if(v.rating && typeof setPickerValue === 'function'){
+      setPickerValue(pickerKey, v.rating.toUpperCase());
+    }
+    const ta = document.getElementById('f-tekst-' + can);
+    if(ta && v.tekst){
+      ta.value = v.tekst;
+      ta.style.transition = 'background .35s';
+      ta.style.background = 'rgba(74,222,128,0.15)';
+      setTimeout(() => { ta.style.background = ''; }, 600);
+    }
+    nFilled++;
+  });
+  // niet-herkend + cijfer -> algemene notities (append, niet overschrijven)
+  const notitiesEl = document.getElementById('f-notities');
+  if(notitiesEl){
+    const extra = [];
+    if(grade) extra.push('Algemene indruk: '+grade+'/10');
+    if(rest.length) extra.push(rest.join(' \u00b7 '));
+    if(extra.length){
+      const cur = (notitiesEl.value||'').trim();
+      const add = extra.join(' \u00b7 ');
+      notitiesEl.value = cur ? (cur + '\n' + add) : add;
+    }
+  }
+  if(typeof setDirty === 'function') setDirty(true);
+  if(status){
+    if(nFilled === 0 && !rest.length && !grade){
+      status.textContent = 'Geen herkende regels.';
+      status.style.color = '#fbbf24';
+    } else {
+      const parts = [];
+      if(nFilled) parts.push(nFilled+' criterium'+(nFilled===1?'':'a')+' ingevuld');
+      if(rest.length || grade) parts.push('rest naar algemene notities');
+      status.textContent = '\u2713 '+parts.join(' \u00b7 ');
+      status.style.color = '#4ade80';
+    }
+    setTimeout(() => { status.textContent = '\u00a0'; status.style.color=''; }, 3500);
+  }
+}
+window.applySnelNotitieToForm = applySnelNotitieToForm;
+// s35an: paneel-toggle, stubs, en fill-knop activeren zodra DOM klaar is
+function initSnelNotitiePanel(){
+  const toggle = document.getElementById('snel-notitie-toggle');
+  const body   = document.getElementById('snel-notitie-body');
+  const arr    = document.getElementById('snel-notitie-arr');
+  const fillBtn= document.getElementById('snel-notitie-fill');
+  const stubBtn= document.getElementById('snel-notitie-stubs');
+  const ta     = document.getElementById('snel-notitie-text');
+  if(!toggle || !body || toggle.dataset.bound) return;
+  toggle.dataset.bound = '1';
+  toggle.addEventListener('click', () => {
+    const open = body.classList.toggle('open');
+    if(arr) arr.textContent = open ? '\u25be' : '\u25b8';
+  });
+  if(fillBtn) fillBtn.addEventListener('click', applySnelNotitieToForm);
+  if(stubBtn) stubBtn.addEventListener('click', () => {
+    if(!ta) return;
+    ta.value = 'techniek:\ninzicht:\nmentaliteit:\nexplosiviteit:\nsprinten:\nduelleren:\nwendbaarheid:\nalgemeen:';
+    ta.focus();
+  });
+}
+window.initSnelNotitiePanel = initSnelNotitiePanel;
+document.addEventListener('DOMContentLoaded', initSnelNotitiePanel);
+// fallback: init na korte tick voor het geval DOMContentLoaded al gevuurd is
+setTimeout(initSnelNotitiePanel, 0);
+
 function setPickerValue(key, val){
   const picker = document.querySelector(`.grade-picker[data-key="${key}"]`);
   if(!picker) return;
@@ -12752,7 +13011,8 @@ async function submitReport(e){
     },
     huidig_niveau: huidig,
     potentieel_niveau: pot,
-    datum: $('#f-w-datum').value || todayISO()
+    datum: $('#f-w-datum').value || todayISO(),
+    concept: false
   };
   try {
     await savePlayer(player);
@@ -15448,7 +15708,7 @@ function injectProgFullBanner(ctx){
       setDirty(false);
       sessionStorage.removeItem('progFullCtx');
       banner.remove();
-      toast('Concept opgeslagen');
+      toast('Opgeslagen');
       backToProgrammaFromFull(ctx.progId);
     } catch(e){}
   });
@@ -17377,8 +17637,9 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
         const id = activeInput.id || '';
         const CLUB_AUTOFILL_MAP = {
           'mr-thuis': { plaats: 'mr-plaats', adres: 'mr-adres' },
-          'f-club':   { plaats: 'f-plaats',  adres: 'f-adres',  mirror: 'f-w-thuis' },
-          'f-w-thuis':{ plaats: 'f-plaats',  adres: 'f-adres',  mirror: 'f-club'    },
+          // s35ak (#3): club v/d speler en thuisclub v/d wedstrijd zijn los — geen mirror meer
+          'f-club':   { plaats: 'f-plaats',  adres: 'f-adres' },
+          'f-w-thuis':{ /* alleen autofill via adresboek op plaats/adres als de wedstrijd-thuisclub wijzigt */ plaats: 'f-plaats', adres: 'f-adres' },
           'pm-thuis': { plaats: 'pm-plaats', adres: 'pm-locatie' }
         };
         const map = CLUB_AUTOFILL_MAP[id];
@@ -17734,7 +17995,7 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
     // Sla niet op als er nog niks zinnigs is ingevuld + geen edit-mode
     if(!_has && !_fid){
       __shTrace('dosave-bail-empty');
-      setStatus('saved', 'Concept opgeslagen');
+      setStatus('saved', 'Automatisch opgeslagen');
       return;
     }
     // s35ah: in scouting-modus -> via module-bridge schrijven.
@@ -17762,7 +18023,7 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
           setStatus('saved', 'Opgeslagen ' + nowStr());
         }).catch((err) => {
           __shTrace('saveplayer-fail', { id, err: String(err) });
-          setStatus('saved', 'Concept opgeslagen');
+          setStatus('saved', 'Automatisch opgeslagen');
         });
         return;
       } catch(err){
@@ -17781,7 +18042,7 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
       localStorage.setItem(DRAFT_KEY, JSON.stringify(snap));
       setStatus('saved', 'Opgeslagen ' + nowStr());
     } catch(_){
-      setStatus('saved', 'Concept opgeslagen');
+      setStatus('saved', 'Automatisch opgeslagen');
     }
   }
 
@@ -17812,7 +18073,7 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
   // ---- on submit success / clear: drop draft ----
   function dropDraft(){
     try { localStorage.removeItem(DRAFT_KEY); } catch(_){}
-    setStatus('saved', 'Concept opgeslagen');
+    setStatus('saved', 'Automatisch opgeslagen');
   }
   form.addEventListener('submit', () => {
     // Na geslaagde submit (savePlayer wist form en navigeert), draft is niet meer relevant
@@ -18037,7 +18298,7 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
   });
 
   // ---- Init ----
-  setStatus('saved', 'Concept opgeslagen');
+  setStatus('saved', 'Automatisch opgeslagen');
 
   // Body-class meegeven zodat we de save-bar alleen op #view-report tonen
   function syncReportBodyClass(){

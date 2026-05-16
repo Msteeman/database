@@ -911,6 +911,73 @@ a { color: var(--accent); text-decoration: none; }
   content: '● ';
   color: #fb923c;
 }
+/* s35ap (#2): sa-tile inline expand met voor-rapport + acties */
+.sa-tile { position: relative; }
+.sa-tile.open {
+  grid-column: 1 / -1;
+  background: rgba(78,161,255,0.05);
+  border-color: rgba(78,161,255,0.45);
+  cursor: default;
+}
+.sa-tile.open:hover { transform: none; }
+.sa-tile-panel { display: none; }
+.sa-tile.open .sa-tile-panel {
+  display: block;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-2);
+}
+.sa-tile-voorrap {
+  background: rgba(96,165,250,0.08);
+  border: 1px solid rgba(96,165,250,0.25);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: #bcd2ee;
+  line-height: 1.45;
+  margin-bottom: 10px;
+}
+.sa-tile-voorrap .vr-head {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+  color: #60a5fa;
+  margin-bottom: 4px;
+}
+.sa-tile-voorrap .vr-text { white-space: pre-line; color: var(--text-1); }
+.sa-tile-acts {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.sa-tile-acts button {
+  padding: 6px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  border-radius: 7px;
+  border: 1px solid var(--border-2);
+  background: var(--bg-2);
+  color: var(--text-1);
+  cursor: pointer;
+  transition: .12s;
+}
+.sa-tile-acts button:hover { border-color: #4ea1ff; color: #4ea1ff; }
+.sa-tile-acts button.primary {
+  background: linear-gradient(135deg, #ff8189 0%, #e30613 55%, #f5c518 100%);
+  border-color: transparent;
+  color: white;
+}
+.sa-tile-acts button.primary:hover { color: white; opacity: .92; }
+.sa-tile-close {
+  position: absolute; top: 8px; right: 8px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border-2);
+  color: var(--text-3);
+  font-size: 14px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.sa-tile-close:hover { color: var(--text-1); background: rgba(255,255,255,0.12); }
 .sa-tile-concept-tag {
   display: inline-block;
   font-size: 10px; font-weight: 700; letter-spacing: .5px;
@@ -9796,10 +9863,25 @@ function renderActiveScouting(){
           sp.club || ''
         ].filter(Boolean).join(' · ');
         const conceptTag = concept ? `<div class="sa-tile-concept-tag">concept</div>` : '';
-        return `<div class="${cls}" data-prog-id="${escapeHtml(prog.id)}" data-sp-idx="${i}" data-player-id="${player ? escapeHtml(player.id) : ''}" title="Klik om spelersrapport te openen">
+        // s35ap (#2): voor-rapport aandachtspunten inline tonen + actie-knoppen
+        const vrTxt = (sp && sp.voor_notities ? String(sp.voor_notities).trim() : '');
+        const vrHtml = vrTxt
+          ? `<div class="sa-tile-voorrap"><div class="vr-head">📝 Je aandachtspunten</div><div class="vr-text">${escapeHtml(vrTxt)}</div></div>`
+          : `<div class="sa-tile-voorrap" style="background:rgba(255,255,255,0.03);border-color:var(--border-2);color:var(--text-3)"><div class="vr-head" style="color:var(--text-3)">📝 Geen aandachtspunten</div><div class="vr-text" style="color:var(--text-3);font-style:italic">Geen voor-rapport ingevuld voor deze speler.</div></div>`;
+        const primaryLabel = concept ? 'Concept verder invullen' : 'Open spelersrapport';
+        const actsHtml = `<div class="sa-tile-acts">
+          <button type="button" class="primary" data-tile-act="open-report">${primaryLabel}</button>
+          <button type="button" data-tile-act="edit-voorrap">${vrTxt ? 'Aandachtspunten bewerken' : 'Aandachtspunten toevoegen'}</button>
+        </div>`;
+        return `<div class="${cls}" data-prog-id="${escapeHtml(prog.id)}" data-sp-idx="${i}" data-player-id="${player ? escapeHtml(player.id) : ''}" title="Klik om uit te klappen">
+          <button type="button" class="sa-tile-close" data-tile-act="close" aria-label="Sluiten" style="display:none">×</button>
           <div class="sa-tile-name">${escapeHtml(naam)}</div>
           ${meta ? `<div class="sa-tile-meta">${escapeHtml(meta)}</div>` : ''}
           ${conceptTag}
+          <div class="sa-tile-panel">
+            ${vrHtml}
+            ${actsHtml}
+          </div>
         </div>`;
       }).join('');
     }
@@ -9824,26 +9906,72 @@ function renderActiveScouting(){
   wrap.innerHTML = cards;
   wrap.style.display = '';
 
-  // Tile-klik -> open spelersrapport in concept-modus
+  // s35ap (#2): tile-klik -> inline uitklappen (toont voor-rapport + acties)
+  function __saOpenReport(tile){
+    const progId = tile.dataset.progId;
+    const spIdx = parseInt(tile.dataset.spIdx, 10);
+    const playerId = tile.dataset.playerId;
+    const prog = programmaCache.find(p => p.id === progId);
+    if(!prog) return;
+    const sp = (prog.spelers||[])[spIdx];
+    if(!sp) return;
+    let matched = null;
+    if(playerId){
+      const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+      matched = players.find(p => p.id === playerId) || null;
+    }
+    const slotConcept = (typeof findSlotConcept === 'function')
+      ? findSlotConcept(prog.id, sp.id) : null;
+    openScoutingPlayerForm(prog, sp, matched, slotConcept);
+  }
   wrap.querySelectorAll('.sa-tile').forEach(tile => {
-    tile.addEventListener('click', () => {
-      const progId = tile.dataset.progId;
-      const spIdx = parseInt(tile.dataset.spIdx, 10);
-      const playerId = tile.dataset.playerId;
-      const prog = programmaCache.find(p => p.id === progId);
-      if(!prog) return;
-      const sp = (prog.spelers||[])[spIdx];
-      if(!sp) return;
-      let matched = null;
-      if(playerId){
-        const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
-        matched = players.find(p => p.id === playerId) || null;
+    tile.addEventListener('click', (e) => {
+      // klik op actie-knop binnen panel
+      const actBtn = e.target.closest('[data-tile-act]');
+      if(actBtn){
+        e.stopPropagation();
+        const act = actBtn.dataset.tileAct;
+        if(act === 'close'){
+          tile.classList.remove('open');
+          const x = tile.querySelector('.sa-tile-close');
+          if(x) x.style.display = 'none';
+          return;
+        }
+        if(act === 'open-report'){
+          __saOpenReport(tile);
+          return;
+        }
+        if(act === 'edit-voorrap'){
+          // open programma-speler-modal voor deze sp (voor-rapport invullen)
+          const progId = tile.dataset.progId;
+          const spIdx = parseInt(tile.dataset.spIdx, 10);
+          const prog = programmaCache.find(p => p.id === progId);
+          if(!prog) return;
+          const sp = (prog.spelers||[])[spIdx];
+          if(!sp) return;
+          if(typeof openProgPlayerModal === 'function'){
+            openProgPlayerModal(progId, sp.id);
+          }
+          return;
+        }
+        return;
       }
-      // s35aa: zoek slot-concept op klik-moment (zelfde data als de oranje tile)
-      // en geef mee aan openScoutingPlayerForm zodat heropenen altijd werkt.
-      const slotConcept = (typeof findSlotConcept === 'function')
-        ? findSlotConcept(prog.id, sp.id) : null;
-      openScoutingPlayerForm(prog, sp, matched, slotConcept);
+      // tile zelf: toggle uitklappen
+      const isOpen = tile.classList.contains('open');
+      // sluit andere tiles in dezelfde sa-card
+      const card = tile.closest('.sa-card');
+      if(card){
+        card.querySelectorAll('.sa-tile.open').forEach(t => {
+          if(t !== tile){
+            t.classList.remove('open');
+            const x = t.querySelector('.sa-tile-close');
+            if(x) x.style.display = 'none';
+          }
+        });
+      }
+      tile.classList.toggle('open', !isOpen);
+      const x = tile.querySelector('.sa-tile-close');
+      if(x) x.style.display = isOpen ? 'none' : '';
     });
   });
 
@@ -15580,10 +15708,24 @@ function closeProgPlayerModal(){ hideModal('prog-player-backdrop'); ppFullDraft 
 
 function refreshPpFullStatus(){
   const has = !!ppFullDraft;
-  $('#pp-full-status').style.display = has ? 'block' : 'none';
-  $('#pp-full-status-text').textContent = has
+  // s35ap (#3): groene "Concept-rapport ingevuld"-banner verbergen
+  //            (de knop-tekst zelf zegt al dat er een concept is)
+  const statusEl = $('#pp-full-status');
+  if(statusEl) statusEl.style.display = 'none';
+  const txtEl = $('#pp-full-status-text');
+  if(txtEl) txtEl.textContent = has
     ? `Concept-rapport ingevuld (${Object.keys(ppFullDraft).length} velden).`
     : '';
+  // s35ap (#4): knop-label wisselen "Volledig invullen" <-> "Concept verder invullen"
+  try {
+    const btn = document.getElementById('pp-open-full');
+    if(btn){
+      const labelNode = Array.from(btn.childNodes).find(n => n.nodeType === 3 && n.textContent.trim());
+      const newLabel = has ? 'Concept verder invullen' : 'Volledig invullen';
+      if(labelNode) labelNode.textContent = ' ' + newLabel;
+      else btn.appendChild(document.createTextNode(' ' + newLabel));
+    }
+  } catch(_){}
 }
 
 async function saveProgPlayerFromForm(e, opts){
@@ -18186,11 +18328,14 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
         }
       }
     } catch(_){}
-    // s35ao (#3): val terug op Firebase-gesynchroniseerde players-cache
-    // (zo zie je op desktop ook concepten die op de phone zijn gestart)
+    // s35ap (B1 fix): playersCache is de juiste globale variabele (line 7793).
+    // `players` bestaat alleen lokaal binnen applyFilters() — scope-bug uit s35ao.
     try {
-      if(typeof players !== 'undefined' && Array.isArray(players)){
-        const cand = players.filter(p => p && p.concept === true);
+      const cache = (typeof playersCache !== 'undefined' && Array.isArray(playersCache))
+        ? playersCache
+        : ((typeof players !== 'undefined' && Array.isArray(players)) ? players : null);
+      if(cache){
+        const cand = cache.filter(p => p && p.concept === true);
         if(cand.length){
           // pak meest recente
           cand.sort((a,b) => (b.modified||b.datum||0) - (a.modified||a.datum||0));

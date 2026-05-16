@@ -5164,8 +5164,9 @@ tbody tr:last-child td { border-bottom: none; }
         <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
           <defs>
             <linearGradient id="mtLogoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#ff2a3a"/>
-              <stop offset="100%" stop-color="#8a0410"/>
+              <stop offset="0%" stop-color="#ff8189"/>
+              <stop offset="55%" stop-color="#e30613"/>
+              <stop offset="100%" stop-color="#f5c518"/>
             </linearGradient>
           </defs>
           <path d="M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z"
@@ -5175,7 +5176,7 @@ tbody tr:last-child td { border-bottom: none; }
           <circle cx="40" cy="13" r="2.8" fill="#f5c518"/>
         </svg>
       </div>
-      <div class="mt-title">ScoutingHub</div>
+      <div class="mt-title">Scouting Hub</div>
     </button>
     <button class="burger-btn" id="burger-btn" aria-label="Menu openen" aria-controls="sidebar" aria-expanded="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
@@ -5502,8 +5503,9 @@ tbody tr:last-child td { border-bottom: none; }
           <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
             <defs>
               <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#ff2a3a"/>
-                <stop offset="100%" stop-color="#8a0410"/>
+                <stop offset="0%" stop-color="#ff8189"/>
+                <stop offset="55%" stop-color="#e30613"/>
+                <stop offset="100%" stop-color="#f5c518"/>
               </linearGradient>
             </defs>
             <path d="M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z"
@@ -5514,8 +5516,8 @@ tbody tr:last-child td { border-bottom: none; }
           </svg>
         </div>
         <div>
-          <div class="brand-text">Scouting</div>
-          <div class="brand-sub">Platform</div>
+          <div class="brand-text">Scouting Hub</div>
+          <div class="brand-sub">Professional Edition</div>
         </div>
       </div>
 
@@ -6009,9 +6011,14 @@ tbody tr:last-child td { border-bottom: none; }
               <span class="sn-meta">optioneel — tik alles in één blok, vult velden hieronder</span>
             </button>
             <div class="snel-notitie-body" id="snel-notitie-body">
-              <textarea id="snel-notitie-text" placeholder="techniek a: scherp
-inzicht b: leest spel goed
-mentaliteit a: leider"></textarea>
+              <textarea id="snel-notitie-text" placeholder="bv. techniek a: scherp">techniek:
+inzicht:
+mentaliteit:
+explosiviteit:
+sprinten:
+duelleren:
+wendbaarheid:
+algemeen:</textarea>
               <div class="snel-notitie-help">
                 Patroon per regel: <kbd>term a/b/c/d: opmerking</kbd> &mdash; bv. <kbd>techniek a: prima eerste actie</kbd>.
                 Lege stubs worden overgeslagen. Niet-herkende regels gaan naar <strong>Algemene notities</strong>.
@@ -9964,7 +9971,14 @@ function renderActiveScouting(){
             <input class="sa-snel-naam" type="text" placeholder="Naam speler" style="background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:7px 10px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13px; outline:none;" />
             <input class="sa-snel-rug" type="text" placeholder="#nr" style="background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:7px 10px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13px; outline:none;" />
           </div>
-          <textarea class="sa-snel-tekst" placeholder="techniek a: scherp eerste actie&#10;inzicht b: leest spel goed&#10;mentaliteit a: leider" style="width:100%; min-height:90px; background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:7px 10px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13px; outline:none; resize:vertical; box-sizing:border-box;"></textarea>
+          <textarea class="sa-snel-tekst" placeholder="bv. techniek a: scherp" style="width:100%; min-height:180px; background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:7px 10px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13px; outline:none; resize:vertical; box-sizing:border-box; line-height:1.55;">techniek:
+inzicht:
+mentaliteit:
+explosiviteit:
+sprinten:
+duelleren:
+wendbaarheid:
+algemeen:</textarea>
           <div style="margin-top:8px; display:flex; gap:6px; justify-content:flex-end;">
             <button class="btn-ghost" data-sa-act="cancel-snel-notitie" data-progid="${escapeHtml(prog.id)}" style="padding:6px 12px; font-size:12px;">Annuleren</button>
             <button class="btn btn-primary" data-sa-act="save-snel-notitie" data-progid="${escapeHtml(prog.id)}" style="padding:6px 12px; font-size:12px;">Opslaan</button>
@@ -19807,5 +19821,50 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
 })();
 </script>
 
+
+<!-- s35at (#231): tip-systeem 💡 BASAAL — floating knop + modal -->
+<button id="sh-tip-btn" type="button" aria-label="Wat zie ik op dit scherm?" style="position:fixed; bottom:78px; right:14px; z-index:9000; width:46px; height:46px; border-radius:50%; border:1px solid rgba(245,200,66,0.4); background:rgba(245,200,66,0.12); color:#f5c842; font-size:22px; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.4); display:inline-flex; align-items:center; justify-content:center;">💡</button>
+<div id="sh-tip-modal" style="display:none; position:fixed; inset:0; z-index:9100; background:rgba(0,0,0,0.5); backdrop-filter:blur(3px); align-items:center; justify-content:center; padding:20px;">
+  <div style="background:linear-gradient(180deg,#181c28 0%,#13161f 100%); border:1px solid rgba(245,200,66,0.3); border-radius:14px; padding:18px; max-width:340px; width:100%; box-shadow:0 12px 32px rgba(0,0,0,0.6);">
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+      <div style="font-size:14px; font-weight:700; color:#f5c842; display:flex; align-items:center; gap:6px;">💡 <span id="sh-tip-title">Dit scherm</span></div>
+      <button type="button" id="sh-tip-close" style="background:transparent; border:0; color:#8a93ab; font-size:22px; line-height:1; width:28px; height:28px; border-radius:6px; cursor:pointer;">×</button>
+    </div>
+    <ul id="sh-tip-list" style="margin:0; padding-left:18px; font-size:13px; line-height:1.65; color:#e5e9f5;"></ul>
+  </div>
+</div>
+<script>
+(function(){
+  var TIPS = {
+    dashboard:  {t:'Dashboard',       items:["Wedstrijden van vandaag","Concepten die nog openstaan"]},
+    programma:  {t:'Programma',       items:["Komende wedstrijden","Per wedstrijd: spelers + snel notitie"]},
+    database:   {t:'Database',        items:["Alle gescoute spelers","Zoekbalk + filter bovenaan"]},
+    compare:    {t:'Vergelijken',     items:["Twee spelers naast elkaar","Radar + scores"]},
+    matches:    {t:'Wedstrijden',     items:["Gespeelde wedstrijden","Rapporten per wedstrijd"]},
+    pitch:      {t:'Veld',            items:["Opstelling op het veld"]},
+    report:     {t:'Spelersrapport',  items:["Per criterium een waardering","Bovenaan: 📝 Snel notitie om snel te tikken","Automatisch opgeslagen — knop Indienen onderaan"]},
+    contacts:   {t:'Contacten',       items:["Contactpersonen van clubs"]},
+    adresboek:  {t:'Adresboek',       items:["Adressen van sportparken"]},
+    tips:       {t:'Tips',            items:["Hulp en uitleg"]}
+  };
+  function currentView(){
+    try { if(typeof window.currentView !== 'undefined' && window.currentView) return window.currentView; } catch(_){}
+    var v = document.querySelector('.view.active'); if(v && v.id) return v.id.replace(/^view-/,'');
+    return 'dashboard';
+  }
+  function openTip(){
+    var v = currentView(); var d = TIPS[v] || {t:'Dit scherm', items:["(geen tips beschikbaar voor deze pagina)"]};
+    document.getElementById('sh-tip-title').textContent = d.t;
+    document.getElementById('sh-tip-list').innerHTML = d.items.map(function(i){return '<li>'+i+'</li>';}).join('');
+    document.getElementById('sh-tip-modal').style.display = 'flex';
+  }
+  function closeTip(){ document.getElementById('sh-tip-modal').style.display = 'none'; }
+  document.getElementById('sh-tip-btn').addEventListener('click', openTip);
+  document.getElementById('sh-tip-close').addEventListener('click', closeTip);
+  document.getElementById('sh-tip-modal').addEventListener('click', function(e){ if(e.target.id==='sh-tip-modal') closeTip(); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') closeTip(); });
+})();
+</script>
+<!-- /s35at -->
 </body>
 </html>

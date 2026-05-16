@@ -19823,7 +19823,7 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
 
 
 <!-- s35at (#231): tip-systeem 💡 BASAAL — floating knop + modal -->
-<button id="sh-tip-btn" type="button" aria-label="Wat zie ik op dit scherm?" style="position:fixed; bottom:78px; right:14px; z-index:9000; width:46px; height:46px; border-radius:50%; border:1px solid rgba(245,200,66,0.4); background:rgba(245,200,66,0.12); color:#f5c842; font-size:22px; cursor:pointer; box-shadow:0 4px 12px rgba(0,0,0,0.4); display:inline-flex; align-items:center; justify-content:center;">💡</button>
+<button id="sh-tip-btn" type="button" aria-label="Wat zie ik op dit scherm?" title="Wat zie ik op dit scherm?" style="display:none; width:22px; height:22px; padding:0; margin-left:8px; border-radius:50%; border:1px solid rgba(245,200,66,0.45); background:rgba(245,200,66,0.10); color:#f5c842; font-size:12px; line-height:1; cursor:pointer; vertical-align:middle; align-items:center; justify-content:center;">?</button>
 <div id="sh-tip-modal" style="display:none; position:fixed; inset:0; z-index:9100; background:rgba(0,0,0,0.5); backdrop-filter:blur(3px); align-items:center; justify-content:center; padding:20px;">
   <div style="background:linear-gradient(180deg,#181c28 0%,#13161f 100%); border:1px solid rgba(245,200,66,0.3); border-radius:14px; padding:18px; max-width:340px; width:100%; box-shadow:0 12px 32px rgba(0,0,0,0.6);">
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
@@ -19859,6 +19859,25 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
     document.getElementById('sh-tip-modal').style.display = 'flex';
   }
   function closeTip(){ document.getElementById('sh-tip-modal').style.display = 'none'; }
+  function placeTipBtn(){
+    var btn = document.getElementById('sh-tip-btn'); if(!btn) return;
+    var view = document.querySelector('.view.active'); if(!view){ btn.style.display='none'; return; }
+    var title = view.querySelector('.view-title, h1, h2, header h1, .page-title');
+    if(!title){ btn.style.display='none'; return; }
+    if(btn.parentElement !== title) title.appendChild(btn);
+    btn.style.display='inline-flex';
+  }
+  placeTipBtn();
+  // Wanneer go() of vergelijkbare view-switch draait, opnieuw plaatsen.
+  var _origGo = window.go;
+  if(typeof _origGo === 'function'){
+    window.go = function(){ var r = _origGo.apply(this, arguments); try{ setTimeout(placeTipBtn, 30); }catch(_){} return r; };
+  }
+  // Fallback: observeer .view.active wijzigingen.
+  try {
+    var mo = new MutationObserver(function(){ placeTipBtn(); });
+    document.querySelectorAll('.view').forEach(function(v){ mo.observe(v, {attributes:true, attributeFilter:['class']}); });
+  } catch(_){}
   document.getElementById('sh-tip-btn').addEventListener('click', openTip);
   document.getElementById('sh-tip-close').addEventListener('click', closeTip);
   document.getElementById('sh-tip-modal').addEventListener('click', function(e){ if(e.target.id==='sh-tip-modal') closeTip(); });

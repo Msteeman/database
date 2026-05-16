@@ -120,41 +120,38 @@
   gap: 10px;
   margin-bottom: 6px;
 }
+/* s35bf: structured form stacked — label boven, invulveld eronder */
 .sa-snel-term-row {
-  display: grid;
-  grid-template-columns: 100px 14px 1fr;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 4px;
+  display: block;
+  padding: 2px 0;
   border-radius: 6px;
   transition: background .15s;
 }
-.sa-snel-term-row:hover { background: rgba(245,200,66,0.03); }
-.sa-snel-term-row:focus-within { background: rgba(245,200,66,0.06); }
+.sa-snel-term-row:focus-within .sa-snel-term-label {
+  color: var(--gold,#f5c842);
+  opacity: 1;
+}
 .sa-snel-term-label {
-  font-size: 11.5px;
-  font-weight: 700;
+  display: block;
+  font-size: 10.5px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: .04em;
-  color: var(--gold,#f5c842);
+  letter-spacing: .06em;
+  color: var(--muted,#9aa3b7);
+  opacity: .85;
   user-select: none;
-  text-align: right;
-  padding-right: 4px;
+  text-align: left;
+  margin-bottom: 4px;
+  padding-left: 2px;
+  transition: color .15s, opacity .15s;
 }
-.sa-snel-term-chev {
-  color: var(--gold,#f5c842);
-  opacity: .6;
-  font-size: 16px;
-  line-height: 1;
-  text-align: center;
-  user-select: none;
-}
+.sa-snel-term-chev { display: none; }
 .sa-snel-term-input {
   width: 100%;
   background: #0a0c12;
   border: 1px solid var(--border2,#2d3242);
   border-radius: 6px;
-  padding: 8px 11px;
+  padding: 9px 11px;
   color: var(--text,#e5e9f5);
   font-family: inherit;
   font-size: 13.5px;
@@ -165,6 +162,21 @@
 .sa-snel-term-input:focus {
   border-color: var(--gold,#f5c842);
   background: #0d1018;
+}
+/* s35bf: trigger-knop "open" state — duidelijk zichtbaar wanneer form open is */
+.sa-trigger-snel.is-open {
+  background: rgba(245,200,66,0.18) !important;
+  border-color: var(--gold,#f5c842) !important;
+  color: var(--gold,#f5c842) !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 0 1px rgba(245,200,66,0.35) inset;
+}
+.sa-trigger-wstr.is-open {
+  background: rgba(255,107,107,0.18) !important;
+  border-color: #ff6b6b !important;
+  color: #ff8189 !important;
+  font-weight: 700 !important;
+  box-shadow: 0 0 0 1px rgba(255,107,107,0.35) inset;
 }
 /* s35be: snel wedstrijdnotitie form */
 .sa-snel-wstr-form {
@@ -5704,7 +5716,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35be (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bf (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
       </div>
     </div>
   </div>
@@ -11598,7 +11610,9 @@ function renderActiveScouting(){
           form.__shTriggerOrig = triggerBtn.textContent;
         }
         if(form.__shTriggerBtn){
-          form.__shTriggerBtn.textContent = '\u2212 Snel spelersnotitie';
+          // s35bf: duidelijke open-state met class + nieuwe label
+          form.__shTriggerBtn.classList.add('is-open');
+          form.__shTriggerBtn.textContent = '\u00d7 Sluiten \u2014 Snel spelersnotitie';
         }
         // Auto-save wiring (eenmalig per form-element)
         if(!form.__shAutoWired){
@@ -11699,6 +11713,7 @@ function renderActiveScouting(){
               if(statusEl){ statusEl.textContent = '\u00a0'; statusEl.style.color = ''; }
               // Toggle trigger-knop terug naar "+"
               if(form.__shTriggerBtn && form.__shTriggerOrig){
+                form.__shTriggerBtn.classList.remove('is-open');
                 form.__shTriggerBtn.textContent = form.__shTriggerOrig;
               }
               if(typeof renderActiveScouting === 'function') renderActiveScouting();
@@ -11747,7 +11762,9 @@ function renderActiveScouting(){
           form.__shTriggerOrig = triggerBtn.textContent;
         }
         if(form.__shTriggerBtn){
-          form.__shTriggerBtn.textContent = '\u2212 Snel wedstrijdnotitie';
+          // s35bf: duidelijke open-state met class + nieuwe label
+          form.__shTriggerBtn.classList.add('is-open');
+          form.__shTriggerBtn.textContent = '\u00d7 Sluiten \u2014 Snel wedstrijdnotitie';
         }
         if(!form.__shWstrWired){
           form.__shWstrWired = true;
@@ -11799,6 +11816,7 @@ function renderActiveScouting(){
               savedWnId = null;
               if(statusEl){ statusEl.textContent = '\u00a0'; statusEl.style.color = ''; }
               if(form.__shTriggerBtn && form.__shTriggerOrig){
+                form.__shTriggerBtn.classList.remove('is-open');
                 form.__shTriggerBtn.textContent = form.__shTriggerOrig;
               }
               if(typeof renderActiveScouting === 'function') renderActiveScouting();

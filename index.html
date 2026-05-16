@@ -5716,7 +5716,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bf (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bg (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
       </div>
     </div>
   </div>
@@ -5905,11 +5905,7 @@ tbody tr:last-child td { border-bottom: none; }
     <!-- ============ MAIN ============ -->
     <main class="main">
 
-      <!-- s35aw: globale DEMO-strip — getoond op elke pagina als demo@ ingelogd -->
-      <div id="demo-strip" style="display:none;background:linear-gradient(90deg,#fff7d1,#ffe88a);color:#5a3d00;padding:8px 14px;border-radius:0;margin:0 0 12px 0;font-size:12.5px;line-height:1.45;border-bottom:1px solid #e0c060;position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <span style="background:#f5c518;color:#1a1a1a;font-weight:800;font-size:11px;letter-spacing:0.5px;padding:3px 8px;border-radius:6px;flex-shrink:0;">DEMO</span>
-        <span><strong>Demo-omgeving.</strong> Alle spelers, rapporten en wedstrijden zijn fictief. Eventuele overeenkomst tussen verzonnen namen en bestaande personen is toeval. De getoonde clubs zijn echt; de spelers spelen daar niet daadwerkelijk.</span>
-      </div>
+      <!-- s35bg: demo-strip definitief verwijderd (CSS bug + niet gewenst in eigen omgeving) -->
 
       <!-- ====== DASHBOARD ====== -->
       <section class="view active" id="view-dashboard">
@@ -11237,7 +11233,7 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
       // Banner met concept-status
       injectScoutingBanner(prog, progSp, matchedPlayer);
       // s35am (#6): voor-rapport (progSp.voor_notities) read-only bovenaan rapport.
-      try { injectVoorRapportBlock(prog, progSp); } catch(_){}
+      /* s35bg: voor-rapport-block uitgeschakeld (blauw blok ongewenst) */
     } catch(e){ console.error('openScoutingPlayerForm error:', e); }
   }, 80);
 }
@@ -11428,15 +11424,14 @@ function renderActiveScouting(){
                 <span style="color:var(--gold,#f5c842); font-size:11px; line-height:1;">&#9656;</span>
                 <div style="font-weight:600; color:var(--text,#e5e9f5); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(sn.naam || 'Onbenoemd')}${sn.rugnummer ? ' <span style=\'color:var(--muted,#9aa3b7); font-weight:500;\'>&middot; #'+escapeHtml(String(sn.rugnummer))+'</span>' : ''}${sn.positie ? ' <span style=\'color:var(--gold,#f5c842); font-weight:600; font-size:11px; background:rgba(245,200,66,0.12); padding:1px 6px; border-radius:4px; margin-left:4px;\'>'+escapeHtml(sn.positie)+'</span>' : ''}</div>
               </div>
-              <div style="display:flex; gap:4px; flex-shrink:0;">
-                <button class="sa-snel-convert" data-sa-act="convert-snel-to-rapport" data-progid="${escapeHtml(prog.id)}" data-snidx="${idx}" title="Omzetten naar volledig spelersrapport">&rarr; Rapport</button>
-                <button class="btn-ghost" data-sa-act="del-snel-notitie" data-progid="${escapeHtml(prog.id)}" data-snidx="${idx}" style="padding:3px 8px; font-size:11px;" title="Verwijderen">×</button>
-              </div>
+              <!-- s35bg: convert-knop weg uit active scouting tile (verhuist naar nav>wedstrijden) -->
+              <button class="btn-ghost" data-sa-act="del-snel-notitie" data-progid="${escapeHtml(prog.id)}" data-snidx="${idx}" style="padding:3px 8px; font-size:11px; flex-shrink:0;" title="Verwijderen">×</button>
             </div>`).join('')}
         </div>` : ''}
         <div class="sa-snel-form" data-progid="${escapeHtml(prog.id)}" style="display:none; margin-top:10px; padding:12px; background:rgba(245,200,66,0.06); border:1px solid rgba(245,200,66,0.25); border-radius:10px;">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-            <div style="font-size:11px; color:var(--gold,#f5c842); text-transform:uppercase; letter-spacing:.6px; font-weight:700;">+ Snel spelersnotitie</div>
+          <!-- s35bg: heading werkt als sluit-knop -->
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:10px;">
+            <div class="sa-snel-close-head" data-progid="${escapeHtml(prog.id)}" style="font-size:11px; color:var(--gold,#f5c842); text-transform:uppercase; letter-spacing:.6px; font-weight:700; cursor:pointer; user-select:none;" title="Klik om te sluiten">+ Snel spelersnotitie — sluiten &times;</div>
             <div class="sa-snel-status" data-progid="${escapeHtml(prog.id)}" style="font-size:11px; color:var(--text-3,#8b93a8); font-style:italic;">&nbsp;</div>
           </div>
           <div style="display:grid; grid-template-columns:1fr 70px; gap:8px; margin-bottom:8px;">
@@ -11475,7 +11470,7 @@ function renderActiveScouting(){
           </div>
           <!-- hidden tekst-store voor backwards compat met handler/exports -->
           <textarea class="sa-snel-tekst" style="display:none;" aria-hidden="true"></textarea>
-          <div style="margin-top:8px; font-size:11px; color:var(--text-3,#8b93a8); font-style:italic; text-align:right;">Klik naast het scherm om te sluiten — auto-opgeslagen tijdens typen</div>
+          <!-- s35bg: onderaan-instructie weg (heading is nu close-trigger) -->
         </div>
         ${(prog.wedstrijdnotities && prog.wedstrijdnotities.length) ? `
         <div class="sa-wstrnotities" data-progid="${escapeHtml(prog.id)}" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border,#2a2f3a);">
@@ -11490,12 +11485,13 @@ function renderActiveScouting(){
             </div>`).join('')}
         </div>` : ''}
         <div class="sa-snel-wstr-form" data-progid="${escapeHtml(prog.id)}" style="display:none;">
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">
-            <div style="font-size:11px; color:#ff8189; text-transform:uppercase; letter-spacing:.6px; font-weight:700;">+ Snel wedstrijdnotitie</div>
+          <!-- s35bg: heading werkt als sluit-knop -->
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:10px;">
+            <div class="sa-snel-wstr-close-head" data-progid="${escapeHtml(prog.id)}" style="font-size:11px; color:#ff8189; text-transform:uppercase; letter-spacing:.6px; font-weight:700; cursor:pointer; user-select:none;" title="Klik om te sluiten">+ Snel wedstrijdnotitie — sluiten &times;</div>
             <div class="sa-snel-wstr-status" style="font-size:11px; color:var(--text-3,#8b93a8); font-style:italic;">&nbsp;</div>
           </div>
           <textarea class="sa-snel-wstr-tekst" placeholder="Tactiek, score, weer, opvallende momenten..."></textarea>
-          <div style="margin-top:8px; font-size:11px; color:var(--text-3,#8b93a8); font-style:italic; text-align:right;">Klik naast het scherm om te sluiten — auto-opgeslagen tijdens typen</div>
+          <!-- s35bg: onderaan-instructie weg (heading is nu close-trigger) -->
         </div>
         <div class="sa-actions">
           <button class="btn-ghost sa-trigger-snel" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}">+ Snel spelersnotitie</button>
@@ -11613,6 +11609,18 @@ function renderActiveScouting(){
           // s35bf: duidelijke open-state met class + nieuwe label
           form.__shTriggerBtn.classList.add('is-open');
           form.__shTriggerBtn.textContent = '\u00d7 Sluiten \u2014 Snel spelersnotitie';
+        }
+        // s35bg: heading-click = close trigger (eenmalig per form)
+        if(!form.__shHeadCloseWired){
+          form.__shHeadCloseWired = true;
+          const closeHead = form.querySelector('.sa-snel-close-head');
+          if(closeHead){
+            closeHead.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              form.style.display = 'none';
+              if(typeof form.__shReset === 'function') form.__shReset();
+            });
+          }
         }
         // Auto-save wiring (eenmalig per form-element)
         if(!form.__shAutoWired){
@@ -11765,6 +11773,18 @@ function renderActiveScouting(){
           // s35bf: duidelijke open-state met class + nieuwe label
           form.__shTriggerBtn.classList.add('is-open');
           form.__shTriggerBtn.textContent = '\u00d7 Sluiten \u2014 Snel wedstrijdnotitie';
+        }
+        // s35bg: heading-click = close trigger voor wstr-form (eenmalig)
+        if(!form.__shWstrHeadCloseWired){
+          form.__shWstrHeadCloseWired = true;
+          const closeHead = form.querySelector('.sa-snel-wstr-close-head');
+          if(closeHead){
+            closeHead.addEventListener('click', (ev) => {
+              ev.stopPropagation();
+              form.style.display = 'none';
+              if(typeof form.__shReset === 'function') form.__shReset();
+            });
+          }
         }
         if(!form.__shWstrWired){
           form.__shWstrWired = true;

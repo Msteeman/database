@@ -16974,10 +16974,14 @@ function initApp(){
   $('#report-form').addEventListener('click', (e)=>{
     if(e.target.classList && e.target.classList.contains('grade-pick')) setDirty(true);
   });
-  $('#report-clear').addEventListener('click', ()=>{
-    if(!confirmDiscard()) return;
-    resetReportForm();
-  });
+  // s35as hotfix: #report-clear is in #227 verwijderd — null-check toegevoegd
+  const _clearBtn = $('#report-clear');
+  if(_clearBtn){
+    _clearBtn.addEventListener('click', ()=>{
+      if(!confirmDiscard()) return;
+      resetReportForm();
+    });
+  }
   $('#report-cancel').addEventListener('click', ()=>{
     if(!confirmDiscard()) return;
     resetReportForm();

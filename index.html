@@ -5570,9 +5570,12 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
         <div class="scout-name">Marcel Steeman</div>
         <!-- v70h-s30: scout-email weg uit sidebar, zit nu in Instellingen-modal -->
-        <div class="sync-indicator">
+        <div class="sync-indicator" id="sync-indicator" title="Klik voor sync-details">
           <span class="sync-dot" id="sync-dot"></span>
           <span id="sync-text">Cloud gesynchroniseerd</span>
+        </div>
+        <div id="sync-detail" style="font-size:10.5px; color:var(--muted,#9aa3b7); margin-top:2px; padding:0 4px; line-height:1.35; opacity:.75;">
+          <span id="sync-detail-uid">—</span> &middot; <span id="sync-detail-time">—</span>
         </div>
         <button type="button" class="sidebar-settings-btn" id="sidebar-settings-btn" title="Instellingen">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -6348,12 +6351,19 @@ mentaliteit a: leider"></textarea>
             </div>
           </div>
 
+          <!-- s35ar (#226): kleine "Verwijder dit concept"-knop onderaan rapport, met bevestiging -->
+          <div style="margin-top:18px; padding-top:14px; border-top:1px dashed var(--border,#2a2f3a); text-align:center;">
+            <button type="button" class="btn" id="report-delete-concept" style="background:transparent; border:1px solid rgba(233,78,59,0.3); color:#e94e3b; padding:6px 14px; font-size:12px; opacity:.85;">
+              🗑️ Verwijder dit concept
+            </button>
+            <div style="font-size:11px; color:var(--muted,#9aa3b7); margin-top:6px;">Je verliest dan alles wat in dit rapport staat. Vraagt om bevestiging.</div>
+          </div>
+
           <div class="form-actions form-actions-sticky" id="report-form-actions">
             <div class="autosave-status" id="report-autosave-status">
               <span class="dot"></span>
               <span class="text" id="report-autosave-text">Automatisch opgeslagen</span>
             </div>
-            <button type="button" class="btn" id="report-clear">Wissen</button>
             <button type="submit" form="report-form" class="btn btn-primary" id="report-save-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               Indienen
@@ -7926,8 +7936,55 @@ function setSync(state){
   dot.classList.remove('syncing','offline');
   if(state === 'syncing'){ dot.classList.add('syncing'); txt.textContent = 'Bezig met synchroniseren...'; }
   else if(state === 'offline'){ dot.classList.add('offline'); txt.textContent = 'Geen verbinding'; }
-  else { txt.textContent = 'Cloud gesynchroniseerd'; }
+  else {
+    txt.textContent = 'Cloud gesynchroniseerd';
+    window.__lastSyncMs = Date.now();
+  }
+  // s35ar (#224): UID-6 + project + relatieve laatste-sync tijd
+  try {
+    const uidEl = document.getElementById('sync-detail-uid');
+    const tEl   = document.getElementById('sync-detail-time');
+    if(uidEl){
+      const uid = (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) ? currentUser.uid : '';
+      uidEl.textContent = uid ? ('UID: ' + uid.slice(0,6) + ' / database-scouting') : 'niet ingelogd';
+    }
+    if(tEl){
+      if(state === 'offline'){
+        tEl.textContent = 'offline';
+      } else if(window.__lastSyncMs){
+        const sec = Math.max(1, Math.round((Date.now() - window.__lastSyncMs) / 1000));
+        if(sec < 60) tEl.textContent = 'net nu';
+        else if(sec < 3600) tEl.textContent = Math.round(sec/60) + ' min geleden';
+        else if(sec < 86400) tEl.textContent = Math.round(sec/3600) + ' uur geleden';
+        else tEl.textContent = Math.round(sec/86400) + ' dag(en) geleden';
+      } else {
+        tEl.textContent = '—';
+      }
+    }
+  } catch(_){}
 }
+// s35ar (#224): refresh "x min geleden" elke 30s + klik = detail-dialog
+if(!window.__syncRefreshTimer){
+  window.__syncRefreshTimer = setInterval(() => {
+    try { if(typeof setSync === 'function') setSync(null); } catch(_){}
+  }, 30000);
+}
+document.addEventListener('click', e => {
+  const ind = e.target.closest && e.target.closest('#sync-indicator');
+  if(!ind) return;
+  const uid = (typeof currentUser !== 'undefined' && currentUser && currentUser.uid) ? currentUser.uid : '(niet ingelogd)';
+  const email = (typeof currentUser !== 'undefined' && currentUser && currentUser.email) ? currentUser.email : '—';
+  const last = window.__lastSyncMs ? new Date(window.__lastSyncMs).toLocaleString('nl-NL') : 'nog niet gesynchroniseerd';
+  const online = navigator.onLine ? 'ja' : 'NEE (geen verbinding)';
+  alert('Sync-details\n\n' +
+        'Account: ' + email + '\n' +
+        'UID: ' + uid + '\n' +
+        'Project: database-scouting\n' +
+        'Online: ' + online + '\n' +
+        'Laatste sync: ' + last + '\n\n' +
+        'App en laptop moeten op hetzelfde UID inloggen om data te delen.\n' +
+        'Sync gebeurt automatisch zodra je verbinding hebt.');
+});
 
 /* =============== DATA LAYER (Firestore) =============== */
 function playersCol(){ return collection(db, 'users', currentUser.uid, 'players'); }
@@ -9889,7 +9946,32 @@ function renderActiveScouting(){
         </div>
         <div class="sa-players-title">Spelers (${spelers.length})</div>
         <div class="sa-tiles">${tilesHtml}</div>
+        ${(prog.snelnotities && prog.snelnotities.length) ? `
+        <div class="sa-snelnotities" data-progid="${escapeHtml(prog.id)}" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border,#2a2f3a);">
+          <div style="font-size:11px; color:var(--muted,#9aa3b7); text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px;">Snel notities (${prog.snelnotities.length})</div>
+          ${prog.snelnotities.map((sn, idx) => `
+            <div class="sa-snelnotitie-row" style="background:rgba(255,255,255,0.04); border:1px solid var(--border,#2a2f3a); border-radius:8px; padding:8px 10px; margin-bottom:6px; font-size:12.5px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+              <div style="flex:1; min-width:0;">
+                <div style="font-weight:600; color:var(--text,#e5e9f5);">${escapeHtml(sn.naam || 'Onbenoemd')}${sn.rugnummer ? ' &middot; #'+escapeHtml(String(sn.rugnummer)) : ''}</div>
+                ${sn.tekst ? `<div style="color:var(--muted,#9aa3b7); white-space:pre-wrap; margin-top:4px; line-height:1.45;">${escapeHtml(sn.tekst)}</div>` : ''}
+              </div>
+              <button class="btn-ghost" data-sa-act="del-snel-notitie" data-progid="${escapeHtml(prog.id)}" data-snidx="${idx}" style="padding:3px 8px; font-size:11px; flex-shrink:0;" title="Verwijderen">×</button>
+            </div>`).join('')}
+        </div>` : ''}
+        <div class="sa-snel-form" data-progid="${escapeHtml(prog.id)}" style="display:none; margin-top:10px; padding:10px; background:rgba(245,200,66,0.06); border:1px solid rgba(245,200,66,0.25); border-radius:10px;">
+          <div style="font-size:11px; color:var(--gold,#f5c842); text-transform:uppercase; letter-spacing:.6px; margin-bottom:8px; font-weight:700;">+ Snel notitie (speler)</div>
+          <div style="display:grid; grid-template-columns:1fr 70px; gap:8px; margin-bottom:8px;">
+            <input class="sa-snel-naam" type="text" placeholder="Naam speler" style="background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:7px 10px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13px; outline:none;" />
+            <input class="sa-snel-rug" type="text" placeholder="#nr" style="background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:7px 10px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13px; outline:none;" />
+          </div>
+          <textarea class="sa-snel-tekst" placeholder="techniek a: scherp eerste actie&#10;inzicht b: leest spel goed&#10;mentaliteit a: leider" style="width:100%; min-height:90px; background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:7px 10px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13px; outline:none; resize:vertical; box-sizing:border-box;"></textarea>
+          <div style="margin-top:8px; display:flex; gap:6px; justify-content:flex-end;">
+            <button class="btn-ghost" data-sa-act="cancel-snel-notitie" data-progid="${escapeHtml(prog.id)}" style="padding:6px 12px; font-size:12px;">Annuleren</button>
+            <button class="btn btn-primary" data-sa-act="save-snel-notitie" data-progid="${escapeHtml(prog.id)}" style="padding:6px 12px; font-size:12px;">Opslaan</button>
+          </div>
+        </div>
         <div class="sa-actions">
+          <button class="btn-ghost" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}">+ Snel notitie (speler)</button>
           <button class="btn-ghost" data-sa-act="add-player" data-progid="${escapeHtml(prog.id)}">+ Speler toevoegen</button>
           <button class="btn-ghost" data-sa-act="open-match" data-progid="${escapeHtml(prog.id)}">Wedstrijddetails</button>
         </div>
@@ -9970,7 +10052,7 @@ function renderActiveScouting(){
 
   // Wedstrijd-actie buttons
   wrap.querySelectorAll('[data-sa-act]').forEach(btn => {
-    btn.addEventListener('click', e => {
+    btn.addEventListener('click', async e => {
       e.stopPropagation();
       const act = btn.dataset.saAct;
       const progId = btn.dataset.progid;
@@ -9979,6 +10061,66 @@ function renderActiveScouting(){
         if(typeof openProgPlayerModal === 'function') openProgPlayerModal(progId, null);
       } else if(act === 'open-match'){
         if(typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(progId);
+      } else if(act === 'add-snel-notitie'){
+        // s35ar (#223): toon inline mini-form
+        const card = btn.closest('.sa-card');
+        if(!card) return;
+        const form = card.querySelector(`.sa-snel-form[data-progid="${progId}"]`);
+        if(!form) return;
+        form.style.display = 'block';
+        const naamIn = form.querySelector('.sa-snel-naam');
+        if(naamIn) naamIn.focus();
+      } else if(act === 'cancel-snel-notitie'){
+        const card = btn.closest('.sa-card');
+        if(!card) return;
+        const form = card.querySelector(`.sa-snel-form[data-progid="${progId}"]`);
+        if(!form) return;
+        form.style.display = 'none';
+        form.querySelector('.sa-snel-naam').value = '';
+        form.querySelector('.sa-snel-rug').value = '';
+        form.querySelector('.sa-snel-tekst').value = '';
+      } else if(act === 'save-snel-notitie'){
+        const card = btn.closest('.sa-card');
+        if(!card) return;
+        const form = card.querySelector(`.sa-snel-form[data-progid="${progId}"]`);
+        if(!form) return;
+        const naam = form.querySelector('.sa-snel-naam').value.trim();
+        const rug  = form.querySelector('.sa-snel-rug').value.trim();
+        const tekst= form.querySelector('.sa-snel-tekst').value.trim();
+        if(!naam && !tekst){
+          if(typeof toast === 'function') toast('Vul minimaal een naam of notitie in', true);
+          return;
+        }
+        const prog = programmaCache.find(p => p.id === progId);
+        if(!prog) return;
+        if(!Array.isArray(prog.snelnotities)) prog.snelnotities = [];
+        prog.snelnotities.push({
+          id: 'sn_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+          naam, rugnummer: rug, tekst,
+          created: Date.now()
+        });
+        prog.modified = Date.now();
+        try {
+          if(typeof saveProgrammaItem === 'function') await saveProgrammaItem(prog);
+          if(typeof toast === 'function') toast('Snel notitie opgeslagen');
+          if(typeof renderActiveScouting === 'function') renderActiveScouting();
+        } catch(err){
+          if(typeof toast === 'function') toast('Fout bij opslaan', true);
+        }
+      } else if(act === 'del-snel-notitie'){
+        const idx = parseInt(btn.dataset.snidx, 10);
+        const prog = programmaCache.find(p => p.id === progId);
+        if(!prog || !Array.isArray(prog.snelnotities)) return;
+        if(idx < 0 || idx >= prog.snelnotities.length) return;
+        if(!confirm('Snel notitie verwijderen?')) return;
+        prog.snelnotities.splice(idx, 1);
+        prog.modified = Date.now();
+        try {
+          if(typeof saveProgrammaItem === 'function') await saveProgrammaItem(prog);
+          if(typeof renderActiveScouting === 'function') renderActiveScouting();
+        } catch(err){
+          if(typeof toast === 'function') toast('Fout bij verwijderen', true);
+        }
       }
     });
   });
@@ -10174,9 +10316,31 @@ function renderTodayMatches(){
         const pid = btn.dataset.pid;
         if(pid && typeof openDetail === 'function') openDetail(pid);
       } else if(act === 'open-prog-player'){
+        // s35ar (#222): direct naar spelersrapport, geen tussen-modal
         const progid = btn.dataset.progid;
         const spid = btn.dataset.spid;
-        if(typeof openProgPlayerModal === 'function') openProgPlayerModal(progid, spid || null);
+        const prog = programmaCache.find(p => p.id === progid);
+        if(!prog){
+          if(typeof openProgPlayerModal === 'function') openProgPlayerModal(progid, spid || null);
+          return;
+        }
+        const sp = (prog.spelers||[]).find(s => s && s.id === spid);
+        if(!sp){
+          if(typeof openProgPlayerModal === 'function') openProgPlayerModal(progid, spid || null);
+          return;
+        }
+        let matched = null;
+        if(sp.player_id){
+          const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+          matched = players.find(p => p.id === sp.player_id) || null;
+        }
+        const slotConcept = (typeof findSlotConcept === 'function')
+          ? findSlotConcept(prog.id, sp.id) : null;
+        if(typeof openScoutingPlayerForm === 'function'){
+          openScoutingPlayerForm(prog, sp, matched, slotConcept);
+        } else if(typeof openProgPlayerModal === 'function'){
+          openProgPlayerModal(progid, spid || null);
+        }
       }
     });
   });
@@ -10900,29 +11064,61 @@ function renderDist(dist, outline){
 }
 
 /* =============== DATABASE =============== */
+// s35ar (#226): "Verwijder dit concept" onderaan rapport-form
+document.addEventListener('click', e => {
+  const btn = e.target.closest && e.target.closest('#report-delete-concept');
+  if(!btn) return;
+  e.preventDefault();
+  const ok = confirm('Weet je zeker dat je dit concept wil verwijderen?\n\nAlles wat je hier hebt ingevuld gaat weg en kun je niet meer terughalen.');
+  if(!ok) return;
+  try {
+    if(typeof window.__shDropDraft === 'function') window.__shDropDraft();
+    try { localStorage.removeItem('sh_report_draft_v1'); } catch(_){}
+    // huidig formulier ook leegmaken zodat er niks blijft hangen
+    const form = document.getElementById('report-form');
+    if(form && typeof form.reset === 'function') form.reset();
+    if(typeof toast === 'function') toast('Concept verwijderd');
+    if(typeof go === 'function') go('dashboard');
+    if(typeof applyFilters === 'function') applyFilters();
+  } catch(err){
+    if(typeof toast === 'function') toast('Fout bij verwijderen', true);
+  }
+});
+
 function wireDraftCard(){
-  // v70e: knoppen op concept-rij bedraden
-  const resumeBtn = document.getElementById('db-draft-resume');
-  const delBtn = document.getElementById('db-draft-delete');
-  if(resumeBtn){
-    resumeBtn.addEventListener('click', () => {
-      go('report');
-      // tryRestore wordt nu door go('report') zelf opnieuw aangeroepen.
-      // Direct ook de "laad concept" knop drukken zodat de form alvast invult.
-      setTimeout(() => {
-        const loadBtn = document.getElementById('report-draft-load');
-        if(loadBtn) loadBtn.click();
-      }, 200);
+  // s35ar (#225): meerdere resume-knoppen — class-based + route per concept
+  document.querySelectorAll('.db-draft-resume-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const isLoose = btn.dataset.loose === '1';
+      if(isLoose){
+        go('report');
+        setTimeout(() => {
+          const loadBtn = document.getElementById('report-draft-load');
+          if(loadBtn) loadBtn.click();
+        }, 200);
+        return;
+      }
+      const progid = btn.dataset.progid;
+      const spid   = btn.dataset.spid;
+      const pid    = btn.dataset.pid;
+      try {
+        const prog = programmaCache.find(p => p.id === progid);
+        if(!prog){ go('report'); return; }
+        const sp = (prog.spelers||[]).find(s => s && s.id === spid);
+        if(!sp){ go('report'); return; }
+        const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+        const matched = sp.player_id ? (players.find(p => p.id === sp.player_id) || null) : null;
+        const concept = pid ? (players.find(p => p.id === pid) || null) : null;
+        if(typeof openScoutingPlayerForm === 'function'){
+          openScoutingPlayerForm(prog, sp, matched, concept);
+        } else {
+          go('report');
+        }
+      } catch(_){
+        go('report');
+      }
     });
-  }
-  if(delBtn){
-    delBtn.addEventListener('click', () => {
-      if(!confirm('Concept echt verwijderen? Je verliest het ingevulde rapport.')) return;
-      if(typeof window.__shDropDraft === 'function') window.__shDropDraft();
-      try { localStorage.removeItem('sh_report_draft_v1'); } catch(_){}
-      applyFilters();
-    });
-  }
+  });
 }
 function renderDatabase(){
   const players = loadPlayers();
@@ -11022,32 +11218,69 @@ function applyFilters(){
   });
 
   const wrap = $('#db-table-wrap');
-  // v70e: concept-rij rendering helper
-  const draftSnap = (typeof window.__shHasMeaningfulDraft === 'function') ? window.__shHasMeaningfulDraft() : null;
-  const draftHtml = draftSnap ? (function(){
-    const naam = (draftSnap['f-naam'] || '').trim() || 'Onbenoemde speler';
-    const club = (draftSnap['f-club'] || '').trim();
-    const ts = draftSnap._meta && draftSnap._meta.ts;
-    let agoTxt = '';
-    if(ts){
-      const sec = Math.max(1, Math.round((Date.now() - ts) / 1000));
-      if(sec < 60) agoTxt = sec + ' sec geleden';
-      else if(sec < 3600) agoTxt = Math.round(sec/60) + ' min geleden';
-      else if(sec < 86400) agoTxt = Math.round(sec/3600) + ' uur geleden';
-      else agoTxt = Math.round(sec/86400) + ' dag(en) geleden';
+  // s35ar (#225): alle concepten ophalen — slot-concepten + losse draft
+  const _draftParts = [];
+  function _agoOf(ts){
+    if(!ts) return '';
+    const sec = Math.max(1, Math.round((Date.now() - ts) / 1000));
+    if(sec < 60) return sec + ' sec geleden';
+    if(sec < 3600) return Math.round(sec/60) + ' min geleden';
+    if(sec < 86400) return Math.round(sec/3600) + ' uur geleden';
+    return Math.round(sec/86400) + ' dag(en) geleden';
+  }
+  try {
+    if(typeof programmaCache !== 'undefined' && Array.isArray(programmaCache) && typeof findSlotConcept === 'function'){
+      programmaCache.forEach(prog => {
+        (prog.spelers || []).forEach(sp => {
+          if(!sp || !sp.id) return;
+          const c = findSlotConcept(prog.id, sp.id);
+          if(!c) return;
+          const naam = ((c.voornaam||'') + ' ' + (c.achternaam||'')).trim() || sp.naam || 'Onbenoemde speler';
+          const club = (c.club || '').trim();
+          const tsRaw = c.modified || c.created || (c._meta && c._meta.ts);
+          const ts = (typeof tsRaw === 'number') ? tsRaw : (tsRaw && typeof tsRaw.toMillis === 'function' ? tsRaw.toMillis() : 0);
+          const ago = _agoOf(ts);
+          _draftParts.push(`
+            <div class="db-draft-card">
+              <div class="info">
+                <div class="badge">Concept vanuit wedstrijd</div>
+                <div class="title">${escapeHtml(naam)}${club ? ' &middot; ' + escapeHtml(club) : ''}</div>
+                <div class="meta">Niet ingediend${ago ? ' &middot; ' + ago : ''}</div>
+              </div>
+              <div class="actions">
+                <button type="button" class="primary db-draft-resume-btn" data-progid="${escapeHtml(prog.id)}" data-spid="${escapeHtml(sp.id)}" data-pid="${escapeHtml(c.id||'')}">Hier ook verder gaan</button>
+              </div>
+            </div>`);
+        });
+      });
     }
-    return `
-      <div class="db-draft-card">
-        <div class="info">
-          <div class="badge">Concept vanuit wedstrijd</div>
-          <div class="title">${escapeHtml(naam)}${club ? ' &middot; ' + escapeHtml(club) : ''}</div>
-          <div class="meta">Niet ingediend${agoTxt ? ' &middot; ' + agoTxt : ''}</div>
-        </div>
-        <div class="actions">
-          <button type="button" class="primary" id="db-draft-resume">Hier ook verder gaan</button>
-        </div>
-      </div>`;
-  })() : '';
+  } catch(_){}
+  // losse draft (localStorage / __shHasMeaningfulDraft) — alleen als hij niet al via slot getoond is
+  try {
+    const draftSnap = (typeof window.__shHasMeaningfulDraft === 'function') ? window.__shHasMeaningfulDraft() : null;
+    if(draftSnap){
+      const naam = (draftSnap['f-naam'] || '').trim() || 'Onbenoemde speler';
+      const club = (draftSnap['f-club'] || '').trim();
+      const ts = draftSnap._meta && draftSnap._meta.ts;
+      const ago = _agoOf(ts);
+      // dedup: als de losse draft hetzelfde is als al getoond, skip
+      const dup = _draftParts.some(h => h.indexOf('>'+escapeHtml(naam)) > -1);
+      if(!dup){
+        _draftParts.push(`
+          <div class="db-draft-card">
+            <div class="info">
+              <div class="badge">Concept</div>
+              <div class="title">${escapeHtml(naam)}${club ? ' &middot; ' + escapeHtml(club) : ''}</div>
+              <div class="meta">Niet ingediend${ago ? ' &middot; ' + ago : ''}</div>
+            </div>
+            <div class="actions">
+              <button type="button" class="primary db-draft-resume-btn" data-loose="1">Hier ook verder gaan</button>
+            </div>
+          </div>`);
+      }
+    }
+  } catch(_){}
+  const draftHtml = _draftParts.join('');
   // s35ao: draftHtml naar eigen slot boven filters
   { const slot = document.getElementById('db-draft-slot'); if(slot) slot.innerHTML = draftHtml; }
   if(!filtered.length){

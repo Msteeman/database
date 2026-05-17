@@ -3791,18 +3791,24 @@ tbody tr:last-child td { border-bottom: none; }
     padding-right: 0 !important;
   }
   /* day-col cards strekken zich uit tot de schermrand */
+  /* s35cd: extra padding-left/right zodat tekst (dag-naam, evt-titel) niet wegvalt */
+  /* in de 14px bleed-zone — anders zie je "aa 11" i.p.v. "Maa 11".              */
   #view-programma #programma-grid.prog-grid-uur > .agenda-day-col {
     border-radius: 0 !important;
     border-left: 0 !important;
     border-right: 0 !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
   }
   /* Week-mode cellen ook edge-to-edge (op mobile is dat 1 kolom) */
   #view-programma #programma-grid.prog-week-grid > .pwg-day {
     border-radius: 0 !important;
     border-left: 0 !important;
     border-right: 0 !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
   }
   /* Voorkom horizontale overflow op programma-pagina (Week-knop knipte af) */
   #view-programma {

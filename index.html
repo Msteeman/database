@@ -6400,7 +6400,8 @@ tbody tr:last-child td { border-bottom: none; }
     </div>
 
     <!-- Login screen -->
-    <div id="login-form">
+    <!-- s35cf: <form> i.p.v. <div> zodat password-field correct geassocieerd is -->
+    <form id="login-form" onsubmit="event.preventDefault(); tryLogin(); return false;" autocomplete="on">
       <div class="login-field">
         <label>E-mailadres</label>
         <input id="login-email" type="email" class="login-input" placeholder="jouw@email.nl" autocomplete="email" />
@@ -6409,12 +6410,12 @@ tbody tr:last-child td { border-bottom: none; }
         <label>Wachtwoord</label>
         <input id="login-pw" type="password" class="login-input" placeholder="Voer wachtwoord in" autocomplete="current-password" />
       </div>
-      <button id="login-btn" class="login-btn">Inloggen</button>
+      <button id="login-btn" type="submit" class="login-btn">Inloggen</button>
       <div id="login-error" class="login-error"></div>
       <div class="login-footer">
         Je gegevens worden veilig opgeslagen in de cloud en zijn op elk apparaat beschikbaar.
       </div>
-    </div>
+    </form>
   </div>
 </div>
 

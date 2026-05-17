@@ -10710,6 +10710,77 @@ setTimeout(async () => {
   }
 }, 5000);
 
+// ============ s35cq: DEMO MIGRATIE — BVO/divisie-strings -> A/B/C/D ============
+// Demo-account is eerder geseed met BVO-strings; nieuwe seed re-runt niet
+// door localStorage-vlag. Deze migratie loopt eenmalig per demo-login en
+// herschrijft bestaande records naar de huidige A/B/C/D + numeriek advies.
+const __SH_NIV_MAP = {
+  'Top BVO':                 'A',
+  'BVO Eredivisie':          'B',
+  'BVO Eerste Divisie':      'C',
+  'BVO Tweede Divisie':      'C',
+  'Amateur Hoofdklasse':     'D',
+  'Amateur Eerste Klasse':   'D',
+  'Amateur Tweede Klasse':   'D',
+  'Amateur Tweede Divisie':  'D',
+  'Amateur Derde Divisie':   'D'
+};
+const __SH_ADV_MAP = {
+  'Top-talent — direct doorstromen': '4',
+  'Top-talent - direct doorstromen': '4',
+  'Direct contracteren':              '4',
+  'Op proef uitnodigen':              '3',
+  'Periodiek monitoren':              '2',
+  'Volgen — nog laat-rijp':           '2',
+  'Volgen - nog laat-rijp':           '2',
+  'Volgen':                            '2',
+  'Geen vervolgstap':                  '1'
+};
+function __shMapNiveau(v){
+  if(!v || typeof v !== 'string') return v;
+  if(/^[ABCD]$/.test(v)) return v;
+  if(__SH_NIV_MAP[v]) return __SH_NIV_MAP[v];
+  if(/^Top\b/i.test(v)) return 'A';
+  if(/Eredivisie/i.test(v)) return /^BVO/i.test(v) ? 'B' : 'C';
+  if(/BVO/i.test(v)) return 'C';
+  if(/Amateur|Hoofdklasse|Tweede Klasse|Derde Klasse/i.test(v)) return 'D';
+  return v;
+}
+function __shMapAdvies(v){
+  if(v == null) return v;
+  const s = String(v);
+  if(/^[1-4]$/.test(s)) return s;
+  if(__SH_ADV_MAP[s]) return __SH_ADV_MAP[s];
+  return s;
+}
+let __shDemoMigrateDone = false;
+setTimeout(async () => {
+  try {
+    if(__shDemoMigrateDone) return;
+    if(!__shIsDemoUser()) return;
+    const flagKey = 'sh_demo_niveau_migrate_v1_' + (currentUser && currentUser.uid || 'anon');
+    if(localStorage.getItem(flagKey)) return;
+    if(!Array.isArray(playersCache) || playersCache.length === 0) return;
+    let fixed = 0;
+    for(const p of playersCache){
+      const oldH = p.huidig_niveau, oldP = p.potentieel_niveau, oldA = p.advies;
+      const newH = __shMapNiveau(oldH);
+      const newP = __shMapNiveau(oldP);
+      const newA = __shMapAdvies(oldA);
+      if(newH !== oldH || newP !== oldP || newA !== oldA){
+        try {
+          await savePlayer({...p, huidig_niveau: newH, potentieel_niveau: newP, advies: newA});
+          fixed++;
+        } catch(e){ console.warn('migrate fail', p.id, e); }
+      }
+    }
+    localStorage.setItem(flagKey, new Date().toISOString());
+    __shDemoMigrateDone = true;
+    if(typeof __shTrace === 'function') __shTrace('demo-niveau-migrate-done', {fixed, total: playersCache.length});
+    if(fixed > 0 && typeof toast === 'function') toast(`Demo-data bijgewerkt (${fixed} spelers)`);
+  } catch(e){ console.error('demo-migrate error:', e); }
+}, 8000);
+
 let currentAnalysisId = null;
 let unsubPlayers = null;
 let unsubAnalyses = null;

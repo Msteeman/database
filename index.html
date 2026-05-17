@@ -3778,6 +3778,44 @@ tbody tr:last-child td { border-bottom: none; }
   .prog-week-grid .pwg-add-btn { font-size: 12px; padding: 7px; }
 }
 
+/* ===== s35cc: Programma-agenda edge-to-edge op mobile ===== */
+/* .main heeft padding:14px op mobile → agenda blokken bleeds er overheen */
+/* zodat ze écht van schermrand tot schermrand staan in 1d/3d/Week mode.   */
+@media (max-width: 900px) {
+  #view-programma #programma-grid {
+    margin-left: -14px !important;
+    margin-right: -14px !important;
+    width: calc(100% + 28px) !important;
+    max-width: calc(100% + 28px) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  /* day-col cards strekken zich uit tot de schermrand */
+  #view-programma #programma-grid.prog-grid-uur > .agenda-day-col {
+    border-radius: 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+  /* Week-mode cellen ook edge-to-edge (op mobile is dat 1 kolom) */
+  #view-programma #programma-grid.prog-week-grid > .pwg-day {
+    border-radius: 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+  }
+  /* Voorkom horizontale overflow op programma-pagina (Week-knop knipte af) */
+  #view-programma {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+  }
+  #view-programma .prog-weekbar,
+  #view-programma .topbar {
+    max-width: 100% !important;
+    box-sizing: border-box;
+  }
+}
+
 /* ===== s35cb: forceer programma-grid volledige breedte in alle modi ===== */
 /* Marcel: "agenda in app nog steeds niet breed uitgelijnd, moet bij alle drie  */
 /* de dagen 1, 3, hele week volledig uitgelijnd staan." → defensive width:100%. */

@@ -5944,7 +5944,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bl (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bm (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
       </div>
     </div>
   </div>
@@ -7803,8 +7803,16 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35bl &middot; 17 mei 2026</div>
+    <div class="changelog-ver">v70h-s35bm &middot; 17 mei 2026</div>
 
+    <div class="changelog-item">
+      <div class="changelog-item-title">Snel-notitie sluit niet meer vanzelf</div>
+      <div class="changelog-item-detail">Wedstrijdnotitie bleef vanzelf sluiten na typen + wachten — opgelost. Dashboard rendert niet meer tijdens autosave zolang een notitie open is, dus je kunt rustig typen, kijken en doortypen.</div>
+    </div>
+    <div class="changelog-item">
+      <div class="changelog-item-title">Sluitknop binnen de notitie (geen scroll-jump meer)</div>
+      <div class="changelog-item-detail">De drie actie-knoppen wisselden van label naar "× Sluiten" als een notitie openstond — wat soms de pagina liet springen. Nu blijven ze gewoon staan als gradient-knop; sluiten doe je via de × in de notitie-balk of door erbuiten te klikken.</div>
+    </div>
     <div class="changelog-item">
       <div class="changelog-item-title">Actieve wedstrijd-tegel inklapbaar op mobiel</div>
       <div class="changelog-item-detail">Klik op de gele balk om in te klappen — alleen de wedstrijdtitel + minutenpill blijven zichtbaar. Klik nog eens om uit te klappen. Keuze wordt onthouden per wedstrijd.</div>
@@ -9919,9 +9927,16 @@ function subscribeData(){
 
   unsubProgramma = onSnapshot(programmaCol(), snap=>{
     programmaCache = snap.docs.map(d => ({...d.data(), id: d.id}));
+    // s35bm: skip dashboard re-render zolang een snel-notitie open staat — anders
+    // verdwijnt het formulier vanzelf na elke autosave (firestore -> snapshot -> render).
+    const hasOpenSnelForm = !!document.querySelector(
+      '.sa-snel-form[style*="display: block"], .sa-snel-wstr-form[style*="display: block"]'
+    );
     if(currentView === 'programma') renderProgramma();
     if(currentView === 'agenda') renderAgenda();
-    if(currentView === 'dashboard') { renderActiveScouting(); renderTodayMatches(); renderUpcomingMatches(); }
+    if(currentView === 'dashboard' && !hasOpenSnelForm){
+      renderActiveScouting(); renderTodayMatches(); renderUpcomingMatches();
+    }
     setSync('ok');
   }, err=>{
     console.error('Programma sync error:', err);
@@ -11921,11 +11936,15 @@ function renderActiveScouting(){
         if(typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(progId);
       } else if(act === 'add-snel-notitie' || act === 'edit-snel-notitie'){
         // s35be: open snel-spelersnotitie form, sync 8 termen <-> hidden textarea,
-        // +/- toggle op trigger-button, auto-save, click-outside.
+        // auto-save, click-outside. s35bm: trigger-toggle verwijderd.
         const card = btn.closest('.sa-card');
         if(!card) return;
         const form = card.querySelector(`.sa-snel-form[data-progid="${progId}"]`);
         if(!form) return;
+        // s35bm: re-klikken op trigger terwijl form open is = no-op (voorkomt scroll-naar-boven)
+        if(act === 'add-snel-notitie' && form.style.display === 'block'){
+          return;
+        }
         form.style.display = 'block';
         const naamIn = form.querySelector('.sa-snel-naam');
         const rugIn  = form.querySelector('.sa-snel-rug');
@@ -11933,18 +11952,6 @@ function renderActiveScouting(){
         const txtIn  = form.querySelector('.sa-snel-tekst');
         const termIns = Array.from(form.querySelectorAll('.sa-snel-term-input'));
         const statusEl = form.querySelector('.sa-snel-status');
-        // +/- toggle: trigger-knop tonen als "−" zolang form open
-        const triggerBtn = card.querySelector('.sa-trigger-snel[data-progid="' + progId + '"]');
-        if(triggerBtn && !form.__shTriggerSet){
-          form.__shTriggerSet = true;
-          form.__shTriggerBtn = triggerBtn;
-          form.__shTriggerOrig = triggerBtn.textContent;
-        }
-        if(form.__shTriggerBtn){
-          // s35bf: duidelijke open-state met class + nieuwe label
-          form.__shTriggerBtn.classList.add('is-open');
-          form.__shTriggerBtn.textContent = '\u00d7 Sluiten \u2014 Snel spelersnotitie';
-        }
         // s35bg: heading-click = close trigger (eenmalig per form)
         if(!form.__shHeadCloseWired){
           form.__shHeadCloseWired = true;
@@ -12054,11 +12061,6 @@ function renderActiveScouting(){
               if(txtIn) txtIn.value = defaultTekst;
               savedSnId = null;
               if(statusEl){ statusEl.textContent = '\u00a0'; statusEl.style.color = ''; }
-              // Toggle trigger-knop terug naar "+"
-              if(form.__shTriggerBtn && form.__shTriggerOrig){
-                form.__shTriggerBtn.classList.remove('is-open');
-                form.__shTriggerBtn.textContent = form.__shTriggerOrig;
-              }
               if(typeof renderActiveScouting === 'function') renderActiveScouting();
             });
           };
@@ -12090,25 +12092,18 @@ function renderActiveScouting(){
         }
         if(naamIn) naamIn.focus();
       } else if(act === 'add-snel-wstr'){
-        // s35be: snel wedstrijdnotitie (vrije tekst — tactiek/score/weer)
+        // s35be: snel wedstrijdnotitie (vrije tekst — tactiek/score/weer).
+        // s35bm: trigger-toggle verwijderd, no-op bij re-click.
         const card = btn.closest('.sa-card');
         if(!card) return;
         const form = card.querySelector(`.sa-snel-wstr-form[data-progid="${progId}"]`);
         if(!form) return;
+        if(form.style.display === 'block'){
+          return;
+        }
         form.style.display = 'block';
         const txtIn = form.querySelector('.sa-snel-wstr-tekst');
         const statusEl = form.querySelector('.sa-snel-wstr-status');
-        const triggerBtn = card.querySelector('.sa-trigger-wstr[data-progid="' + progId + '"]');
-        if(triggerBtn && !form.__shTriggerSet){
-          form.__shTriggerSet = true;
-          form.__shTriggerBtn = triggerBtn;
-          form.__shTriggerOrig = triggerBtn.textContent;
-        }
-        if(form.__shTriggerBtn){
-          // s35bf: duidelijke open-state met class + nieuwe label
-          form.__shTriggerBtn.classList.add('is-open');
-          form.__shTriggerBtn.textContent = '\u00d7 Sluiten \u2014 Snel wedstrijdnotitie';
-        }
         // s35bg: heading-click = close trigger voor wstr-form (eenmalig)
         if(!form.__shWstrHeadCloseWired){
           form.__shWstrHeadCloseWired = true;
@@ -12170,10 +12165,6 @@ function renderActiveScouting(){
               txtIn.value = '';
               savedWnId = null;
               if(statusEl){ statusEl.textContent = '\u00a0'; statusEl.style.color = ''; }
-              if(form.__shTriggerBtn && form.__shTriggerOrig){
-                form.__shTriggerBtn.classList.remove('is-open');
-                form.__shTriggerBtn.textContent = form.__shTriggerOrig;
-              }
               if(typeof renderActiveScouting === 'function') renderActiveScouting();
             });
           };
@@ -12195,17 +12186,16 @@ function renderActiveScouting(){
         }
         if(txtIn) txtIn.focus();
       } else if(act === 'edit-snel-wstr'){
-        // s35be: open wstr-form en vul met bestaande notitie
+        // s35be: open wstr-form en vul met bestaande notitie.
+        // s35bm: form was mogelijk al open (no-op zou edit blokkeren) — sluit eerst.
         const card = btn.closest('.sa-card');
         if(!card) return;
         const form = card.querySelector(`.sa-snel-wstr-form[data-progid="${progId}"]`);
         if(!form) return;
-        // Triggert add-snel-wstr-wiring eerst via een synthetische click? Simpeler:
-        // open form direct en roep __shFillFromWn nadat wiring eenmaal ingezet.
         const idx = parseInt(btn.dataset.wnidx, 10);
         const prog = programmaCache.find(p => p.id === progId);
         const wn = (prog && Array.isArray(prog.wedstrijdnotities)) ? prog.wedstrijdnotities[idx] : null;
-        // Re-trigger via dispatching click op trigger-button (zo wiring + toggle in 1 pad)
+        if(form.style.display === 'block'){ form.style.display = 'none'; }
         const triggerBtn = card.querySelector('.sa-trigger-wstr[data-progid="' + progId + '"]');
         if(triggerBtn) triggerBtn.click();
         if(wn && typeof form.__shFillFromWn === 'function') form.__shFillFromWn(wn);
@@ -19921,7 +19911,7 @@ onAuthStateChanged(auth, async (user)=>{
     // s35bk-3: push-up changelog, EXACT 1x per gebruiker per release
     setTimeout(() => {
       try {
-        const KEY = 'shown_changelog_v70h-s35bl';
+        const KEY = 'shown_changelog_v70h-s35bm';
         if(!localStorage.getItem(KEY)){
           const back = document.getElementById('changelog-backdrop');
           if(back){

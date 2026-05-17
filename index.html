@@ -3436,7 +3436,6 @@ tbody tr:last-child td { border-bottom: none; }
   .prog-weekbar { padding: 10px 12px; gap: 8px; }
   .prog-weeklabel { font-size: 13px; }
   .prog-weekbar-controls { gap: 6px; flex-wrap: wrap; }
-  .prog-weekbar-controls .prog-span-toggle { margin-left: auto; }
   .prog-span-toggle button { padding: 6px 10px; font-size: 11.5px; }
 }
 .prog-grid {
@@ -3562,12 +3561,13 @@ tbody tr:last-child td { border-bottom: none; }
   color: var(--text-1, #e5e9f5); letter-spacing: .02em;
 }
 .agenda-view-toggle {
-  display: inline-flex; gap: 0;
+  display: flex; flex: 1 1 0; gap: 0;
   background: var(--panel-2, #161a25);
   border: 1px solid var(--border, #262b39);
   border-radius: 6px; overflow: hidden;
 }
 .agenda-view-toggle button {
+  flex: 1 1 0; text-align: center;
   background: transparent; border: 0; color: var(--muted, #9aa3b7);
   padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600;
 }
@@ -3685,12 +3685,13 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* ===== s35bk-3: Programma span-toggle + uur-as in programma-grid ===== */
 .prog-span-toggle {
-  display: inline-flex; gap: 0;
+  display: flex; flex: 1 1 0; gap: 0;
   background: var(--panel-2, #161a25);
   border: 1px solid var(--border, #262b39);
   border-radius: 6px; overflow: hidden;
 }
 .prog-span-toggle button {
+  flex: 1 1 0; text-align: center;
   background: transparent; border: 0; color: var(--muted, #9aa3b7);
   padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600;
 }
@@ -11945,6 +11946,12 @@ const KNVB_DUUR_MIN = {
 function getMatchDurationMin(leeftijd){
   if(!leeftijd) return 120;
   const k = String(leeftijd).trim().toUpperCase();
+  // s35bx: 'O.8-9' (elftal 9 van O.8) -> 'O.8'. Ook 'JO8'/'MO13-2' -> 'O.8'/'O.13'.
+  const baseMatch = k.match(/^[JM]?O\.?(\d{1,2})/);
+  if(baseMatch){
+    const norm = 'O.' + baseMatch[1];
+    if(KNVB_DUUR_MIN[norm]) return KNVB_DUUR_MIN[norm];
+  }
   return KNVB_DUUR_MIN[k] || 120;
 }
 // s35bk: pre-window 5 min vóór aftrap (startend), post-window = duur + 15 min (zojuist afgelopen)
@@ -17467,11 +17474,10 @@ function renderMatches(){
               ${chevron}
             </div>
             <div class="match-meta">
-              <span class="match-status-pill verwerkt">Verwerkt</span>
+              ${_shIsVerwerktA ? '<span class="match-status-pill verwerkt">✓ Verwerkt</span>' : ''}
               ${ageBadge}
               ${opstellingMeta}
               ${countMeta}
-              ${_shIsVerwerktA ? '<span class="match-status-pill" style="background:rgba(127,217,158,0.18);color:#7fd99e;border:1px solid #7fd99e;">🔒 Afgesloten</span>' : ''}
             </div>
             ${_shBan}
           </div>
@@ -17480,12 +17486,6 @@ function renderMatches(){
             <div class="match-dropdown-title">Rapporten — klik op een speler om te openen</div>
             <div class="match-dropdown-list">${dropdownRows}</div>
           </div>
-          <button type="button" class="match-verwerk-toggle${_shIsVerwerktA?' is-locked':''}" data-match-verwerk="${escapeHtml(_shKeyA)}" aria-label="${_shIsVerwerktA?'Wedstrijd-status herzien':'Wedstrijd verwerken'}" onclick="event.stopPropagation()">
-            ${_shIsVerwerktA
-              ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Verwerkt`
-              : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Verwerken`
-            }
-          </button>
         </div>
       `;
     }
@@ -19309,7 +19309,7 @@ function renderAgenda(){
             const cls = agendaLeeftijdClass(it.leeftijd);
             const dur = getMatchDurationMin(it.leeftijd);
             const title = `${(it.thuis||'?')} — ${(it.uit||'?')}${it.leeftijd? ' ('+it.leeftijd+')':''}`;
-            return `<div class="agenda-mobile-evt" data-agenda-progid="${it.id||''}"><span class="t">${escapeHtml(it.tijd||'')}</span><span class="lbl">${escapeHtml(title)}</span><span class="dur">${dur}m</span></div>`;
+            return `<div class="agenda-mobile-evt" data-agenda-progid="${it.id||''}"><span class="t">${escapeHtml(it.tijd||'')}</span><span class="lbl">${escapeHtml(title)}</span></div>`;
           }).join('')}
         </div>`;
     }).join('');
@@ -19368,7 +19368,6 @@ function renderAgendaHourRow(hour, items){
     const loc = it.locatie || it.adres || '';
     const meta = [loc].filter(Boolean).join(' &middot; ');
     return `<div class="agenda-evt ${cls} ${stCls}" data-agenda-progid="${it.id||''}">
-      <span class="agenda-evt-dur">${dur}m</span>
       <div class="agenda-evt-title">${escapeHtml(it.tijd||'')} &middot; ${escapeHtml(title)}</div>
       ${meta? `<div class="agenda-evt-meta">${escapeHtml(meta)}</div>`:''}
     </div>`;
@@ -19459,7 +19458,7 @@ function renderProgrammaUur(){
             const dur = getMatchDurationMin(it.leeftijd);
             const stCls = _shMatchStatusClass(it); // s35bu
             const title = `${(it.thuis||'?')} — ${(it.uit||'?')}${it.leeftijd? ' ('+it.leeftijd+')':''}`;
-            return `<div class="agenda-mobile-evt ${stCls}" data-agenda-progid="${it.id||''}"><span class="t">${escapeHtml(it.tijd||'')}</span><span class="lbl">${escapeHtml(title)}</span><span class="dur">${dur}m</span></div>`;
+            return `<div class="agenda-mobile-evt ${stCls}" data-agenda-progid="${it.id||''}"><span class="t">${escapeHtml(it.tijd||'')}</span><span class="lbl">${escapeHtml(title)}</span></div>`;
           }).join('')}
         </div>`;
     }).join('');
@@ -19560,7 +19559,6 @@ function renderProgramma(){
       const t = escapeHtml(it.tijd||'');
       const teams = `${(it.thuis||'?')} — ${(it.uit||'?')}`;
       return `<div class="pwg-evt ${cls} ${stCls}" data-prog-week-evt="${it.id||''}">
-        <span class="pwg-evt-dur">${dur}m</span>
         <div class="pwg-evt-title">${t} ${escapeHtml(teams)}</div>
       </div>`;
     };

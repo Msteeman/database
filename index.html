@@ -1544,8 +1544,14 @@ a { color: var(--accent); text-decoration: none; }
 }
 .btn-ghost { background: transparent; }
 .btn-sm { padding: 6px 10px; font-size: 12px; }
-.btn-danger { color: var(--red); border-color: rgba(239,68,68,.3); }
-.btn-danger:hover { background: rgba(239,68,68,.1); border-color: var(--red); }
+/* s35bk-3: btn-danger uses red->yellow gradient like btn-primary */
+.btn-danger {
+  background: linear-gradient(135deg, #ff8189 0%, #e30613 55%, #f5c518 100%) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+  box-shadow: 0 2px 8px rgba(227,6,19,.28);
+}
+.btn-danger:hover { filter: brightness(1.08); box-shadow: 0 3px 10px rgba(227,6,19,.36); }
 
 /* ---------- VIEWS — Apple-style transitions (pronounced) ---------- */
 .view { display: none; }
@@ -3609,6 +3615,79 @@ tbody tr:last-child td { border-bottom: none; }
 @media (min-width: 901px) {
   .agenda-mobile-block { display: none; }
 }
+
+/* ===== s35bk-3: Programma span-toggle + uur-as in programma-grid ===== */
+.prog-span-toggle {
+  display: inline-flex; gap: 0;
+  background: var(--panel-2, #161a25);
+  border: 1px solid var(--border, #262b39);
+  border-radius: 6px; overflow: hidden;
+  margin-left: 8px;
+}
+.prog-span-toggle button {
+  background: transparent; border: 0; color: var(--muted, #9aa3b7);
+  padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600;
+}
+.prog-span-toggle button.active {
+  background: var(--accent, #f5c842); color: #1a1a1a;
+}
+/* Wanneer uur-as actief is, geen 7-koloms grid */
+#programma-grid.prog-grid-uur {
+  display: block !important;
+  grid-template-columns: none !important;
+}
+#programma-grid.prog-grid-uur .agenda-day-col { margin-bottom: 14px; }
+
+/* ===== s35bk-3: Push-up changelog modal ===== */
+.changelog-backdrop {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,.6); backdrop-filter: blur(4px);
+  display: none; align-items: flex-end; justify-content: center;
+}
+.changelog-backdrop.active { display: flex; animation: cl-fade .25s ease; }
+.changelog-modal {
+  background: var(--panel, #11141c);
+  border: 1px solid var(--border, #262b39);
+  border-bottom: 0;
+  border-radius: 16px 16px 0 0;
+  width: 100%; max-width: 540px;
+  padding: 22px 22px 28px;
+  animation: cl-slide .35s cubic-bezier(.16,1,.3,1);
+  max-height: 80vh; overflow-y: auto;
+}
+@keyframes cl-fade { from{opacity:0} to{opacity:1} }
+@keyframes cl-slide { from{transform:translateY(100%)} to{transform:translateY(0)} }
+.changelog-grip {
+  width: 40px; height: 4px; background: var(--border, #262b39);
+  border-radius: 2px; margin: -10px auto 18px;
+}
+.changelog-title {
+  font-size: 18px; font-weight: 700;
+  color: var(--accent, #f5c842); margin-bottom: 4px;
+}
+.changelog-ver {
+  font-size: 11px; color: var(--muted, #9aa3b7);
+  text-transform: uppercase; letter-spacing: .08em;
+  font-variant-numeric: tabular-nums; margin-bottom: 16px;
+}
+.changelog-item {
+  background: var(--panel-2, #161a25);
+  border: 1px solid var(--border, #262b39);
+  border-left: 3px solid var(--accent, #f5c842);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.changelog-item-title { font-weight: 600; font-size: 13.5px; color: var(--text, #e5e9f5); margin-bottom: 4px; }
+.changelog-item-detail { font-size: 12.5px; color: var(--muted, #9aa3b7); line-height: 1.5; }
+.changelog-close {
+  width: 100%; margin-top: 14px;
+  background: linear-gradient(135deg, #ff8189 0%, #e30613 55%, #f5c518 100%);
+  color: #fff; border: 0; border-radius: 8px;
+  padding: 12px; font-size: 14px; font-weight: 700; cursor: pointer;
+  box-shadow: 0 2px 8px rgba(227,6,19,.28);
+}
+.changelog-close:hover { filter: brightness(1.08); }
 
 /* ===== Programma detail (uitgeklapt) ===== */
 /* s35an (#7): opklapbaar 'Snel notitie'-paneel met slimme conversie naar criterium-velden */
@@ -5833,7 +5912,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bk-2 (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bk-3 (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
       </div>
     </div>
   </div>
@@ -5964,10 +6043,6 @@ tbody tr:last-child td { border-bottom: none; }
         <button class="nav-item" data-view="programma">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/><line x1="7" y1="13" x2="9" y2="13"/><line x1="11" y1="13" x2="13" y2="13"/><line x1="15" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="9" y2="17"/><line x1="11" y1="17" x2="13" y2="17"/></svg>
           <span>Programma</span>
-        </button>
-        <button class="nav-item" data-view="agenda">
-          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
-          <span>Agenda</span>
         </button>
         <button class="nav-item" data-view="matches">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="1"/><line x1="12" y1="6" x2="12" y2="19"/><circle cx="12" cy="12.5" r="2"/><path d="M3 10.5 H6 V14.5 H3"/><path d="M21 10.5 H18 V14.5 H21"/></svg>
@@ -6408,13 +6483,18 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
 
         <div class="prog-weekbar">
-          <button class="btn btn-ghost" id="prog-prev-week" aria-label="Vorige week">
+          <button class="btn btn-ghost" id="prog-prev-week" aria-label="Vorige">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
           </button>
           <div class="prog-weeklabel" id="prog-weeklabel">Week —</div>
-          <button class="btn btn-ghost" id="prog-next-week" aria-label="Volgende week">
+          <button class="btn btn-ghost" id="prog-next-week" aria-label="Volgende">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
+          <div class="prog-span-toggle" role="tablist" aria-label="Weergave">
+            <button type="button" data-prog-span="1">1 dag</button>
+            <button type="button" data-prog-span="3">3 dagen</button>
+            <button type="button" data-prog-span="7" class="active">Week</button>
+          </div>
         </div>
 
         <div id="programma-grid" class="prog-grid"></div>
@@ -7642,7 +7722,7 @@ algemeen:</textarea>
       <div id="mreport-bulkdel-status" style="margin-top:10px; font-size:12px; min-height:18px;"></div>
       <div class="form-actions" style="margin-top:16px;">
         <button type="button" class="btn" id="mreport-bulkdel-cancel">Annuleren</button>
-        <button type="button" class="btn" id="mreport-bulkdel-go" style="background:var(--red); color:#fff; border-color:var(--red);">
+        <button type="button" class="btn btn-primary" id="mreport-bulkdel-go">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
           Verwijderen
         </button>
@@ -7676,7 +7756,7 @@ algemeen:</textarea>
       <div id="player-bulkdel-status" style="margin-top:10px; font-size:12px; min-height:18px;"></div>
       <div class="form-actions" style="margin-top:16px;">
         <button type="button" class="btn" id="player-bulkdel-cancel">Annuleren</button>
-        <button type="button" class="btn" id="player-bulkdel-go" style="background:var(--red); color:#fff; border-color:var(--red);">
+        <button type="button" class="btn btn-primary" id="player-bulkdel-go">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
           Verwijderen
         </button>
@@ -7685,6 +7765,34 @@ algemeen:</textarea>
   </div>
 </div>
 
+
+<!-- =================== CHANGELOG MODAL (s35bk-3) =================== -->
+<div class="changelog-backdrop" id="changelog-backdrop">
+  <div class="changelog-modal">
+    <div class="changelog-grip"></div>
+    <div class="changelog-title">Nieuw in deze versie</div>
+    <div class="changelog-ver">v70h-s35bk-3 &middot; 17 mei 2026</div>
+
+    <div class="changelog-item">
+      <div class="changelog-item-title">Agenda samengevoegd met Programma</div>
+      <div class="changelog-item-detail">Toggle bovenin: 1 dag &middot; 3 dagen &middot; Week. Uur-as voor day-views, week-grid voor de hele week.</div>
+    </div>
+    <div class="changelog-item">
+      <div class="changelog-item-title">Actieve wedstrijd-tegel: 5/15 min window</div>
+      <div class="changelog-item-detail">Tegel verschijnt 5 minuten voor aftrap en blijft 15 minuten na het einde zichtbaar, met officiële KNVB-speeltijden per leeftijd.</div>
+    </div>
+    <div class="changelog-item">
+      <div class="changelog-item-title">Verwijder-knoppen in stijl</div>
+      <div class="changelog-item-detail">Alle verwijder-knoppen krijgen dezelfde rood-naar-geel gradient als de hoofdknoppen — visueel consistent.</div>
+    </div>
+    <div class="changelog-item">
+      <div class="changelog-item-title">Programma-detailkaart opgeschoond</div>
+      <div class="changelog-item-detail">Route- en Verwerken-knoppen zijn verwijderd. Bewerken blijft als enige kern-actie.</div>
+    </div>
+
+    <button class="changelog-close" id="changelog-close-btn">Begrepen — laat me 'm gebruiken</button>
+  </div>
+</div>
 
 <!-- =================== TOAST =================== -->
 <div class="toast" id="toast"></div>
@@ -11523,7 +11631,7 @@ function renderActiveScouting(){
     const spelers = Array.isArray(prog.spelers) ? prog.spelers : [];
     let tilesHtml = '';
     if(spelers.length === 0){
-      tilesHtml = '<div class="sa-empty-players">Nog geen spelers gepland voor deze wedstrijd. Voeg ze toe via "+ Speler toevoegen".</div>';
+      tilesHtml = '<div class="sa-empty-players">Nog geen spelers gepland voor deze wedstrijd.</div>';
     } else {
       tilesHtml = spelers.map((sp, i) => {
         const { player, mode } = findPlayerMatch(sp);
@@ -17394,6 +17502,27 @@ function genId(prefix){
 function pad2(n){ return String(n).padStart(2,'0'); }
 function isoDateStr(d){ return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`; }
 function parseIsoDate(s){ if(!s) return null; const [y,m,d]=s.split('-').map(Number); return new Date(y, m-1, d); }
+/* s35bk-3: tolerant date parser — accepts ISO-string, Date, Firebase Timestamp, or millis */
+function parseAnyDate(v){
+  if(!v) return null;
+  if(v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  if(typeof v === 'number'){ const d = new Date(v); return isNaN(d.getTime()) ? null : d; }
+  if(typeof v === 'object'){
+    if(typeof v.toDate === 'function'){ try { const d = v.toDate(); return isNaN(d.getTime()) ? null : d; } catch(_){ return null; } }
+    if(typeof v.seconds === 'number'){ const d = new Date(v.seconds*1000); return isNaN(d.getTime()) ? null : d; }
+  }
+  if(typeof v === 'string'){
+    const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m) return new Date(+m[1], +m[2]-1, +m[3]);
+    const d = new Date(v); return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+function datumToIsoStr(v){
+  const d = parseAnyDate(v);
+  if(!d) return '';
+  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+}
 
 /* ISO 8601 week: maandag = dag 1 */
 function getISOWeek(date){
@@ -17454,7 +17583,7 @@ function renderAgenda(){
   // Items per dag
   const rangeItems = programmaCache.filter(p => {
     if(!p.datum) return false;
-    const d = parseIsoDate(p.datum);
+    const d = parseAnyDate(p.datum);
     if(!d) return false;
     return d >= start && d <= last;
   });
@@ -17471,7 +17600,7 @@ function renderAgenda(){
     const dStr = isoDateStr(d);
     const isToday = d.getTime() === today.getTime();
     const dayItems = rangeItems
-      .filter(p => p.datum === dStr)
+      .filter(p => datumToIsoStr(p.datum) === dStr)
       .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
 
     // Heeft de dag events na 17:00? -> avond auto-uitklappen
@@ -17572,7 +17701,134 @@ function renderAgendaHourRow(hour, items){
   return `<div class="agenda-hour-row"><div class="agenda-hour-label">${hh}</div><div class="agenda-hour-cell">${evts}</div></div>`;
 }
 
+/* s35bk-3: span-toggle state for Programma (1/3/7 days) */
+let progSpan = 7;
+let progDayOffset = 0; // 0 = today (used when progSpan !== 7)
+
+function renderProgrammaUur(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const start = new Date(today); start.setDate(start.getDate() + progDayOffset);
+  const days = [];
+  for(let i=0; i<progSpan; i++){
+    const d = new Date(start); d.setDate(d.getDate()+i);
+    days.push(d);
+  }
+  const last = days[days.length-1];
+
+  // Label in #prog-weeklabel
+  const fmt = d => `${DAY_NAMES_NL[(d.getDay()+6)%7].slice(0,3)} ${d.getDate()} ${MONTH_NL[d.getMonth()].slice(0,3)}`;
+  const lbl = progSpan === 1
+    ? `${DAY_NAMES_NL[(start.getDay()+6)%7]} ${start.getDate()} ${MONTH_NL[start.getMonth()]} ${start.getFullYear()}`
+    : `${fmt(start)} — ${fmt(last)} ${last.getFullYear()}`;
+  const lblEl = $('#prog-weeklabel'); if(lblEl) lblEl.textContent = lbl;
+  const subEl = $('#programma-sub');
+  if(subEl) subEl.textContent = progSpan === 1 ? 'Eén dag — sideline overzicht' : 'Drie dagen — sideline overzicht';
+
+  const rangeItems = programmaCache.filter(p => {
+    if(!p.datum) return false;
+    const d = parseAnyDate(p.datum);
+    if(!d) return false;
+    return d >= start && d <= last;
+  });
+
+  const grid = $('#programma-grid');
+  if(!grid) return;
+  grid.classList.add('prog-grid-uur');
+
+  $('#programma-empty').style.display = rangeItems.length === 0 ? 'block' : 'none';
+
+  grid.innerHTML = days.map(d => {
+    const dStr = isoDateStr(d);
+    const isToday = d.getTime() === today.getTime();
+    const dayItems = rangeItems
+      .filter(p => datumToIsoStr(p.datum) === dStr)
+      .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
+
+    const hasEvening = dayItems.some(it => {
+      const t = String(it.tijd||''); const h = parseInt(t.split(':')[0], 10);
+      return !isNaN(h) && h >= 17;
+    });
+
+    const morningRows = [];
+    for(let h=8; h<17; h++){
+      const hourItems = dayItems.filter(it => parseInt((it.tijd||'').split(':')[0],10) === h);
+      morningRows.push(renderAgendaHourRow(h, hourItems));
+    }
+    const eveningRows = [];
+    for(let h=17; h<23; h++){
+      const hourItems = dayItems.filter(it => parseInt((it.tijd||'').split(':')[0],10) === h);
+      eveningRows.push(renderAgendaHourRow(h, hourItems));
+    }
+    const eveningId = `prog-evening-${dStr}`;
+    const eveningHtml = hasEvening
+      ? eveningRows.join('')
+      : `<button class="agenda-evening-toggle" data-agenda-evening="${eveningId}"><span><strong>Avond 17:00 — 22:00</strong> &middot; geen wedstrijden</span><span>uitklappen ▾</span></button><div id="${eveningId}" style="display:none">${eveningRows.join('')}</div>`;
+
+    const blockDefs = [
+      {label:'Ochtend',   range:'08-11', from:8,  to:11},
+      {label:'Middag',    range:'11-14', from:11, to:14},
+      {label:'Vroeg-mid', range:'14-17', from:14, to:17},
+      {label:'Eind-mid',  range:'17-20', from:17, to:20},
+      {label:'Avond',     range:'20-23', from:20, to:23}
+    ];
+    const mobileBlocks = blockDefs.map(b => {
+      const items = dayItems.filter(it => {
+        const h = parseInt((it.tijd||'').split(':')[0], 10);
+        return !isNaN(h) && h >= b.from && h < b.to;
+      });
+      if(items.length === 0) return '';
+      return `
+        <div class="agenda-mobile-block">
+          <div class="agenda-mobile-block-time">${b.label} &middot; ${b.range}</div>
+          ${items.map(it => {
+            const dur = getMatchDurationMin(it.leeftijd);
+            const title = `${(it.thuis||'?')} — ${(it.uit||'?')}${it.leeftijd? ' ('+it.leeftijd+')':''}`;
+            return `<div class="agenda-mobile-evt" data-agenda-progid="${it.id||''}"><span class="t">${escapeHTML(it.tijd||'')}</span><span class="lbl">${escapeHTML(title)}</span><span class="dur">${dur}m</span></div>`;
+          }).join('')}
+        </div>`;
+    }).join('');
+    const mobileHtml = mobileBlocks || `<div class="agenda-empty" style="padding:14px">Geen wedstrijden.</div>`;
+
+    return `
+      <div class="agenda-day-col">
+        <div class="agenda-day-head">
+          <div class="agenda-day-name${isToday?' today':''}">${DAY_NAMES_NL[(d.getDay()+6)%7]} ${d.getDate()} ${MONTH_NL[d.getMonth()].slice(0,3)}${isToday?' &middot; vandaag':''}</div>
+          <div class="agenda-day-count">${dayItems.length} wedstrijd${dayItems.length===1?'':'en'}</div>
+        </div>
+        ${morningRows.join('')}
+        ${eveningHtml}
+        ${mobileHtml}
+        <button class="prog-add-btn" data-prog-add-day="${dStr}" style="margin-top:10px">+ Wedstrijd</button>
+      </div>`;
+  }).join('');
+
+  grid.querySelectorAll('[data-agenda-evening]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tgt = document.getElementById(btn.dataset.agendaEvening);
+      if(tgt){ tgt.style.display = (tgt.style.display === 'none' ? '' : 'none'); btn.style.display='none'; }
+    });
+  });
+  grid.querySelectorAll('[data-agenda-progid]').forEach(el => {
+    el.addEventListener('click', () => {
+      const pid = el.dataset.agendaProgid;
+      if(pid && typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(pid);
+    });
+  });
+  grid.querySelectorAll('[data-prog-add-day]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      openProgMatchModal(null, btn.dataset.progAddDay);
+    });
+  });
+}
+
 function renderProgramma(){
+  // s35bk-3: branch on progSpan
+  if(progSpan !== 7){
+    const g = $('#programma-grid'); if(g) g.classList.add('prog-grid-uur');
+    return renderProgrammaUur();
+  }
+  const g = $('#programma-grid'); if(g) g.classList.remove('prog-grid-uur');
   const monday = getCurrentDisplayMonday();
   const sunday = new Date(monday); sunday.setDate(sunday.getDate()+6);
   const [jaar, weeknr] = getISOWeek(monday);
@@ -17594,7 +17850,7 @@ function renderProgramma(){
 
   const weekItems = programmaCache.filter(p => {
     if(!p.datum) return false;
-    const d = parseIsoDate(p.datum);
+    const d = parseAnyDate(p.datum);
     if(!d) return false;
     return d >= monday && d <= sunday;
   });
@@ -17602,7 +17858,7 @@ function renderProgramma(){
   grid.innerHTML = days.map(d => {
     const dStr = isoDateStr(d);
     const isToday = d.getTime() === today.getTime();
-    const dayItems = weekItems.filter(p => p.datum === dStr)
+    const dayItems = weekItems.filter(p => datumToIsoStr(p.datum) === dStr)
       .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
     return `
       <div class="prog-day${isToday ? ' today' : ''}">
@@ -18536,9 +18792,28 @@ function checkProgrammaReminder(){
 /* ------------- Wire up programma events (once) ------------- */
 function wireProgrammaUI(){
   $('#programma-new-btn')?.addEventListener('click', () => openProgMatchModal(null, isoDateStr(new Date())));
-  $('#programma-today-btn')?.addEventListener('click', () => { progWeekOffset = 0; renderProgramma(); });
-  $('#prog-prev-week')?.addEventListener('click', () => { progWeekOffset--; renderProgramma(); });
-  $('#prog-next-week')?.addEventListener('click', () => { progWeekOffset++; renderProgramma(); });
+  $('#programma-today-btn')?.addEventListener('click', () => { progWeekOffset = 0; progDayOffset = 0; renderProgramma(); });
+  $('#prog-prev-week')?.addEventListener('click', () => {
+    if(progSpan === 7) progWeekOffset--;
+    else progDayOffset -= progSpan;
+    renderProgramma();
+  });
+  $('#prog-next-week')?.addEventListener('click', () => {
+    if(progSpan === 7) progWeekOffset++;
+    else progDayOffset += progSpan;
+    renderProgramma();
+  });
+  document.querySelectorAll('[data-prog-span]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const nxt = parseInt(btn.dataset.progSpan, 10) || 7;
+      if(nxt === progSpan) return;
+      progSpan = nxt;
+      progDayOffset = 0;
+      progWeekOffset = 0;
+      document.querySelectorAll('[data-prog-span]').forEach(b => b.classList.toggle('active', b === btn));
+      renderProgramma();
+    });
+  });
 
   // s35bk-2: Agenda-view bindings
   $('#agenda-today-btn')?.addEventListener('click', () => { agendaDayOffset = 0; renderAgenda(); });
@@ -19575,6 +19850,21 @@ onAuthStateChanged(auth, async (user)=>{
     showApp();
     renderDashboard();
     setTimeout(() => { try { checkProgrammaReminder(); } catch(e){ console.warn(e); } }, 1800);
+    // s35bk-3: push-up changelog, first-login-only per release
+    setTimeout(() => {
+      try {
+        const KEY = 'shown_changelog_v70h-s35bk-3';
+        if(!localStorage.getItem(KEY)){
+          const back = document.getElementById('changelog-backdrop');
+          if(back){
+            back.classList.add('active');
+            const close = () => { back.classList.remove('active'); localStorage.setItem(KEY, '1'); };
+            document.getElementById('changelog-close-btn')?.addEventListener('click', close, { once: true });
+            back.addEventListener('click', (e) => { if(e.target === back) close(); }, { once: true });
+          }
+        }
+      } catch(e){ console.warn('changelog', e); }
+    }, 2400);
   } else {
     currentUser = null;
     unsubscribeData();

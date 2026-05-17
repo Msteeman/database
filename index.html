@@ -1115,6 +1115,38 @@ a { color: var(--accent); text-decoration: none; }
 .sa-empty-players { font-size: 12px; color: var(--text-3); font-style: italic; padding: 6px 0; }
 .sa-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .sa-actions .btn-ghost { font-size: 12px; padding: 6px 12px; }
+/* ===== s35bl: gradient op de drie spelers-uitklap actie-knoppen ===== */
+.sa-actions .sa-grad {
+  background: linear-gradient(135deg, #ff8189 0%, #e30613 55%, #f5c518 100%);
+  border: 0;
+  color: #fff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(227,6,19,.28);
+  transition: filter .12s, transform .12s;
+}
+.sa-actions .sa-grad:hover { filter: brightness(1.08); transform: translateY(-1px); }
+/* ===== s35bl: inklapbare sa-card op mobiel ===== */
+.sa-header { cursor: pointer; user-select: none; }
+.sa-header .sa-collapse-chev {
+  display: inline-block; margin-left: 8px; font-size: 11px;
+  color: var(--text-3, #8a93ab); transition: transform .18s;
+  align-self: center;
+}
+.sa-card.sa-collapsed .sa-header { margin-bottom: 0; }
+.sa-card.sa-collapsed .sa-header .sa-collapse-chev { transform: rotate(-90deg); }
+.sa-card.sa-collapsed .sa-header .sa-meta,
+.sa-card.sa-collapsed .sa-players-title,
+.sa-card.sa-collapsed .sa-tiles,
+.sa-card.sa-collapsed .sa-snelnotities,
+.sa-card.sa-collapsed .sa-wstrnotities,
+.sa-card.sa-collapsed .sa-snel-form,
+.sa-card.sa-collapsed .sa-snel-wstr-form,
+.sa-card.sa-collapsed .sa-actions { display: none !important; }
+/* Mobile-only: open door klik, default collapsed */
+@media (max-width: 900px) {
+  .sa-card { padding: 12px 14px; }
+  .sa-title { font-size: 14px; }
+}
 /* s35t: speler-autocomplete suggestie-strip in programma-modal */
 .pp-suggestion-wrap {
   margin: 4px 0 14px;
@@ -5912,7 +5944,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bk-3 (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bl (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
       </div>
     </div>
   </div>
@@ -7771,8 +7803,16 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35bk-3 &middot; 17 mei 2026</div>
+    <div class="changelog-ver">v70h-s35bl &middot; 17 mei 2026</div>
 
+    <div class="changelog-item">
+      <div class="changelog-item-title">Actieve wedstrijd-tegel inklapbaar op mobiel</div>
+      <div class="changelog-item-detail">Klik op de gele balk om in te klappen — alleen de wedstrijdtitel + minutenpill blijven zichtbaar. Klik nog eens om uit te klappen. Keuze wordt onthouden per wedstrijd.</div>
+    </div>
+    <div class="changelog-item">
+      <div class="changelog-item-title">Snel-notitie + Speler toevoegen knoppen in gradient</div>
+      <div class="changelog-item-detail">De drie actie-knoppen in de spelers-uitklap krijgen dezelfde rood-naar-geel gradient als de hoofdknoppen — visueel consistent.</div>
+    </div>
     <div class="changelog-item">
       <div class="changelog-item-title">Agenda samengevoegd met Programma</div>
       <div class="changelog-item-detail">Toggle bovenin: 1 dag &middot; 3 dagen &middot; Week. Uur-as voor day-views, week-grid voor de hele week.</div>
@@ -11673,12 +11713,13 @@ function renderActiveScouting(){
     }
     return `
       <div class="sa-card" data-prog-id="${escapeHtml(prog.id)}">
-        <div class="sa-header">
+        <div class="sa-header" data-sa-collapse="1">
           <div>
             <div class="sa-title"><span class="sa-pulse"></span> Bezig met scouten — ${teams}</div>
             <div class="sa-meta">${metaParts.join('<span style=\"opacity:.3\">|</span>')}</div>
           </div>
           <div class="sa-status ${status}">${statusLabel}</div>
+          <span class="sa-collapse-chev" aria-hidden="true">&#9662;</span>
         </div>
         <div class="sa-players-title">Spelers (${spelers.length})</div>
         <div class="sa-tiles">${tilesHtml}</div>
@@ -11761,15 +11802,42 @@ function renderActiveScouting(){
           <!-- s35bg: onderaan-instructie weg (heading is nu close-trigger) -->
         </div>
         <div class="sa-actions">
-          <button class="btn-ghost sa-trigger-snel" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}">+ Snel spelersnotitie</button>
-          <button class="btn-ghost sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}">+ Snel wedstrijdnotitie</button>
-          <button class="btn-ghost" data-sa-act="add-player" data-progid="${escapeHtml(prog.id)}">+ Speler toevoegen</button>
+          <button class="btn-ghost sa-grad sa-trigger-snel" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}">+ Snel spelersnotitie</button>
+          <button class="btn-ghost sa-grad sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}">+ Snel wedstrijdnotitie</button>
+          <button class="btn-ghost sa-grad" data-sa-act="add-player" data-progid="${escapeHtml(prog.id)}">+ Speler toevoegen</button>
         </div>
       </div>`;
   }).join('');
 
   wrap.innerHTML = cards;
   wrap.style.display = '';
+
+  // ===== s35bl: sa-card inklapbaar op mobiel (header = toggle) =====
+  try {
+    const isMobile = window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
+    wrap.querySelectorAll('.sa-card').forEach(card => {
+      const progId = card.dataset.progId;
+      const stateKey = 'sa_collapsed_' + (progId || 'x');
+      // default state: mobiel = collapsed tenzij gebruiker al expliciet open zette
+      let collapsed = isMobile;
+      try {
+        const saved = localStorage.getItem(stateKey);
+        if(saved === '1') collapsed = true;
+        else if(saved === '0') collapsed = false;
+      } catch(_){}
+      if(collapsed) card.classList.add('sa-collapsed');
+      const hdr = card.querySelector('.sa-header[data-sa-collapse="1"]');
+      if(hdr){
+        hdr.addEventListener('click', (e) => {
+          // klikken in de status-pill of titel-tekst telt — alleen niet als gebruiker tekst selecteert
+          if(window.getSelection && String(window.getSelection()).length > 0) return;
+          const willCollapse = !card.classList.contains('sa-collapsed');
+          card.classList.toggle('sa-collapsed', willCollapse);
+          try { localStorage.setItem(stateKey, willCollapse ? '1' : '0'); } catch(_){}
+        });
+      }
+    });
+  } catch(e){ console.warn('sa-collapse', e); }
 
   // s35ap (#2): tile-klik -> inline uitklappen (toont voor-rapport + acties)
   function __saOpenReport(tile){
@@ -19850,15 +19918,17 @@ onAuthStateChanged(auth, async (user)=>{
     showApp();
     renderDashboard();
     setTimeout(() => { try { checkProgrammaReminder(); } catch(e){ console.warn(e); } }, 1800);
-    // s35bk-3: push-up changelog, first-login-only per release
+    // s35bk-3: push-up changelog, EXACT 1x per gebruiker per release
     setTimeout(() => {
       try {
-        const KEY = 'shown_changelog_v70h-s35bk-3';
+        const KEY = 'shown_changelog_v70h-s35bl';
         if(!localStorage.getItem(KEY)){
           const back = document.getElementById('changelog-backdrop');
           if(back){
             back.classList.add('active');
-            const close = () => { back.classList.remove('active'); localStorage.setItem(KEY, '1'); };
+            // Direct vlag zetten: popup is nu getoond, ongeacht hoe je 'm sluit
+            try { localStorage.setItem(KEY, '1'); } catch(_){}
+            const close = () => { back.classList.remove('active'); };
             document.getElementById('changelog-close-btn')?.addEventListener('click', close, { once: true });
             back.addEventListener('click', (e) => { if(e.target === back) close(); }, { once: true });
           }

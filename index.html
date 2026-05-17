@@ -22554,23 +22554,7 @@ onAuthStateChanged(auth, async (user)=>{
     showApp();
     renderDashboard();
     setTimeout(() => { try { checkProgrammaReminder(); } catch(e){ console.warn(e); } }, 1800);
-    // s35bk-3: push-up changelog, EXACT 1x per gebruiker per release
-    setTimeout(() => {
-      try {
-        const KEY = 'shown_changelog_v70h-s35bo';
-        if(!localStorage.getItem(KEY)){
-          const back = document.getElementById('changelog-backdrop');
-          if(back){
-            back.classList.add('active');
-            // Direct vlag zetten: popup is nu getoond, ongeacht hoe je 'm sluit
-            try { localStorage.setItem(KEY, '1'); } catch(_){}
-            const close = () => { back.classList.remove('active'); };
-            document.getElementById('changelog-close-btn')?.addEventListener('click', close, { once: true });
-            back.addEventListener('click', (e) => { if(e.target === back) close(); }, { once: true });
-          }
-        }
-      } catch(e){ console.warn('changelog', e); }
-    }, 2400);
+    // s35cr: changelog-popup volledig uitgeschakeld (Marcel: weghalen)
   } else {
     currentUser = null;
     unsubscribeData();

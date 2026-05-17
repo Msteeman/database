@@ -8948,22 +8948,52 @@ function coordsForCity(city){
 /* ========= Nominatim helpers (v2) =========
    Strategie: meerdere zoekqueries (sportpark/stadion/clubnaam) met POI-scoring,
    daarna reverse-geocode op coords als straatadres ontbreekt. */
+/* ===== s35ce: globale Nominatim-queue =====
+   Probleem: cityForPlayer() wordt voor élke speler tegelijk aangeroepen → burst van
+   parallel-fetches → Nominatim 429 → browser ziet missing CORS headers → console vol.
+   Oplossing: één serial queue, 1.2s spacing, negatieve cache voor 429/falen.
+   Geen 'Accept' header meer → geen CORS preflight → fetch is "simple request".        */
+const _NOM_GAP_MS = 1200;
+let _nomLastTs = 0;
+let _nomChain = Promise.resolve();
+const _nomNegCache = new Map(); // url → ts (vermijdt retries binnen sessie)
+const _NOM_NEG_TTL = 5 * 60 * 1000; // 5 min cooldown na fail
+
+function _nomFetch(url){
+  // Skip recent failures
+  const negTs = _nomNegCache.get(url);
+  if(negTs && (Date.now() - negTs) < _NOM_NEG_TTL) return Promise.resolve(null);
+
+  // Serial chain: elke call wacht op de vorige + min 1.2s tussenpoos
+  const run = _nomChain.then(async () => {
+    const wait = Math.max(0, _nomLastTs + _NOM_GAP_MS - Date.now());
+    if(wait > 0) await new Promise(r => setTimeout(r, wait));
+    _nomLastTs = Date.now();
+    try {
+      // GEEN custom headers → simple CORS request, geen preflight
+      const res = await fetch(url);
+      if(!res.ok){
+        _nomNegCache.set(url, Date.now());
+        return null;
+      }
+      return await res.json();
+    } catch(_){
+      _nomNegCache.set(url, Date.now());
+      return null;
+    }
+  });
+  _nomChain = run.catch(()=>{}); // chain blijft alive
+  return run;
+}
+
 async function _nominatimSearch(query){
   const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&limit=10&addressdetails=1&extratags=1&countrycodes=nl&accept-language=nl`;
-  try {
-    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-    if(!res.ok) return [];
-    const data = await res.json();
-    return Array.isArray(data) ? data : [];
-  } catch(_){ return []; }
+  const data = await _nomFetch(url);
+  return Array.isArray(data) ? data : [];
 }
 async function _nominatimReverse(lat, lon){
   const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1&accept-language=nl&zoom=18`;
-  try {
-    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-    if(!res.ok) return null;
-    return await res.json();
-  } catch(_){ return null; }
+  return await _nomFetch(url);
 }
 function _scoreHit(h){
   // Hogere score = beter resultaat. POI (sportpark/stadion) wint van settlement.
@@ -9012,7 +9042,7 @@ async function _findBestClubHit(clubName){
       if(sc > bestScore){ bestScore = sc; best = h; }
     }
     if(bestScore >= 180) break;
-    await new Promise(r => setTimeout(r, 1100)); // Nominatim policy: max 1 req/sec
+    /* s35ce: extra sleep niet meer nodig — _nomFetch heeft globale 1.2s spacing */
   }
   return best;
 }
@@ -9050,7 +9080,7 @@ async function lookupClubCity(clubName){
 
       // Geen huisnummer maar wel coords? Reverse geocode voor compleet straatadres.
       if(!addr.house_number && best.lat && best.lon){
-        await new Promise(r => setTimeout(r, 1100));
+        /* s35ce: queue regelt spacing */
         const rev = await _nominatimReverse(best.lat, best.lon);
         if(rev && rev.address){
           const revFormatted = _fmtAddress(rev.address);
@@ -9092,9 +9122,7 @@ async function lookupCityCoords(city){
     try {
       const q = encodeURIComponent(`${city}, Nederland`);
       const url = `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1&countrycodes=nl&accept-language=nl`;
-      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
-      if(!res.ok) return null;
-      const data = await res.json();
+      const data = await _nomFetch(url);
       if(!Array.isArray(data) || !data.length) return null;
       const r = data[0];
       const coords = { lat: parseFloat(r.lat), lng: parseFloat(r.lon) };

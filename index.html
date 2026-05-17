@@ -4935,6 +4935,181 @@ tbody tr:last-child td { border-bottom: none; }
   margin-bottom: 4px;
 }
 .match-group-header:first-child { padding-top: 0; }
+/* ===== s35bs: Wedstrijd-bewerken modal (full-screen) ===== */
+.wstr-edit-backdrop {
+  position: fixed; inset: 0; z-index: 9998;
+  background: rgba(0,0,0,0.72);
+  display: none; align-items: stretch; justify-content: center;
+  padding: 0;
+}
+.wstr-edit-backdrop.show { display: flex; }
+.wstr-edit-modal {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 0; max-width: 680px; width: 100%;
+  max-height: 100vh; overflow-y: auto;
+  display: flex; flex-direction: column;
+  margin: 0 auto;
+}
+@media (min-width: 720px) {
+  .wstr-edit-backdrop { padding: 24px; align-items: center; }
+  .wstr-edit-modal { border-radius: 14px; max-height: 92vh; box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+}
+.wstr-edit-head {
+  padding: 18px 22px 16px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  position: sticky; top: 0; background: var(--panel); z-index: 2;
+}
+.wstr-edit-head-main { flex: 1; min-width: 0; }
+.wstr-edit-eyebrow {
+  font-size: 10.5px; font-weight: 700; color: var(--accent, #4ea1ff);
+  text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 4px;
+}
+.wstr-edit-title {
+  font-size: 18px; font-weight: 800; color: var(--text);
+  line-height: 1.3; word-break: break-word;
+}
+.wstr-edit-sub {
+  font-size: 12px; color: var(--text-3); margin-top: 4px;
+  display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+}
+.wstr-edit-sub .pill-inline {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 999px;
+  background: var(--bg-2); border: 1px solid var(--border);
+  font-size: 11px; color: var(--text-2);
+}
+.wstr-edit-sub .pill-inline.locked {
+  background: rgba(127,217,158,0.16); color: #7fd99e; border-color: #7fd99e;
+}
+.wstr-edit-body { padding: 16px 22px 8px; flex: 1; }
+
+.wstr-edit-section { margin-bottom: 20px; }
+.wstr-edit-section:last-child { margin-bottom: 8px; }
+.wstr-edit-section-head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+  padding-bottom: 6px; border-bottom: 1px dashed var(--border);
+}
+.wstr-edit-section-icon {
+  width: 22px; height: 22px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-2); color: var(--text-2);
+}
+.wstr-edit-section-title {
+  font-size: 13px; font-weight: 800; color: var(--text);
+  text-transform: uppercase; letter-spacing: 0.05em;
+}
+.wstr-edit-section-count {
+  font-size: 11px; color: var(--text-3); margin-left: auto;
+  background: var(--bg-2); padding: 2px 8px; border-radius: 999px;
+}
+
+/* Speler-rij in modal */
+.wstr-edit-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: var(--bg-2);
+  border: 1px solid var(--border); border-radius: 8px;
+  margin-bottom: 6px; transition: border-color .15s, background .15s;
+}
+.wstr-edit-item:hover { border-color: var(--accent, #4ea1ff); background: var(--panel); }
+.wstr-edit-item.is-concept {
+  border-style: dashed; border-color: rgba(245,200,66,0.55);
+  background: rgba(245,200,66,0.06);
+}
+.wstr-edit-item-avatar {
+  flex-shrink: 0; width: 32px; height: 32px; border-radius: 50%;
+  background: var(--primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; font-size: 12px;
+}
+.wstr-edit-item-main { flex: 1; min-width: 0; }
+.wstr-edit-item-name {
+  font-size: 13.5px; font-weight: 700; color: var(--text);
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.wstr-edit-item-sub { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+.wstr-edit-item-actions {
+  display: flex; gap: 6px; flex-shrink: 0;
+}
+.wstr-edit-mini-btn {
+  background: transparent; color: var(--text-2);
+  border: 1px solid var(--border);
+  padding: 5px 10px; border-radius: 6px;
+  font-size: 11.5px; font-weight: 700; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 4px;
+  transition: all .15s; font-family: inherit;
+}
+.wstr-edit-mini-btn:hover { border-color: var(--accent, #4ea1ff); color: var(--accent, #4ea1ff); }
+.wstr-edit-mini-btn.primary {
+  background: var(--primary); border-color: var(--primary); color: #fff;
+}
+.wstr-edit-mini-btn.primary:hover { filter: brightness(1.1); }
+
+/* Snel-notitie / wedstrijdnotitie rij */
+.wstr-edit-note {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px; border-radius: 8px;
+  margin-bottom: 6px; transition: all .15s;
+}
+.wstr-edit-note.snel {
+  background: rgba(245,200,66,0.08);
+  border: 1px solid rgba(245,200,66,0.30);
+}
+.wstr-edit-note.wstr {
+  background: rgba(78,161,255,0.06);
+  border: 1px solid rgba(78,161,255,0.24);
+}
+.wstr-edit-note-icon {
+  flex-shrink: 0; width: 24px; height: 24px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.wstr-edit-note.snel .wstr-edit-note-icon { background: rgba(245,200,66,0.18); color: #f5c842; }
+.wstr-edit-note.wstr .wstr-edit-note-icon { background: rgba(78,161,255,0.18); color: #4ea1ff; }
+.wstr-edit-note-main { flex: 1; min-width: 0; font-size: 12.5px; color: var(--text); line-height: 1.45; }
+.wstr-edit-note-title {
+  font-size: 12.5px; font-weight: 700; color: var(--text); margin-bottom: 3px;
+  display: flex; align-items: center; gap: 6px;
+}
+.wstr-edit-note-text {
+  font-size: 12px; color: var(--text-2); line-height: 1.5;
+  display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.wstr-edit-note-action {
+  background: transparent; border: 1px solid transparent;
+  color: var(--accent, #4ea1ff); padding: 4px 8px;
+  border-radius: 5px; font-size: 11.5px; font-weight: 700;
+  cursor: pointer; flex-shrink: 0; align-self: center;
+  transition: all .15s; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.wstr-edit-note-action:hover {
+  background: rgba(78,161,255,0.10); border-color: rgba(78,161,255,0.30);
+}
+.wstr-edit-note.snel .wstr-edit-note-action { color: #f5c842; }
+.wstr-edit-note.snel .wstr-edit-note-action:hover {
+  background: rgba(245,200,66,0.14); border-color: rgba(245,200,66,0.40);
+}
+
+.wstr-edit-empty {
+  font-size: 12px; color: var(--text-3); padding: 12px 14px;
+  text-align: center; background: var(--bg-2);
+  border: 1px dashed var(--border); border-radius: 8px;
+}
+
+.wstr-edit-foot {
+  padding: 14px 22px 18px;
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;
+  border-top: 1px solid var(--border);
+  background: var(--panel);
+  position: sticky; bottom: 0;
+}
+.wstr-edit-foot .btn { width: 100%; justify-content: center; }
+@media (min-width: 560px) {
+  .wstr-edit-foot { grid-template-columns: repeat(4, 1fr); }
+}
+
 /* ===== s35br: Wedstrijd-koppeling + verwerken-modal ===== */
 .m-snel-banner {
   background: rgba(245,200,66,0.08);
@@ -5169,29 +5344,16 @@ tbody tr:last-child td { border-bottom: none; }
 .match-card.match-report-card { border-left-color: var(--accent, #4ea1ff); }
 .match-card.match-card-toernooi { border-left-color: #f5c518; }
 
-/* Edit-mode toggle */
-.match-edit-toggle {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: transparent; border: 1px solid var(--border);
-  color: var(--text-3); cursor: pointer;
-  padding: 4px 10px; border-radius: 6px;
-  font-size: 11.5px; font-weight: 600;
-  transition: all 0.15s;
+/* s35bs: report-card klikbaar -> opent edit-modal */
+.match-card.match-report-card { cursor: pointer; }
+.match-card.match-report-card .match-report-click-hint {
+  display: flex; align-items: center; justify-content: center;
+  color: var(--text-3); padding: 0 4px;
+  transition: color .15s, transform .15s;
 }
-.match-edit-toggle:hover {
-  border-color: var(--primary); color: var(--primary);
+.match-card.match-report-card:hover .match-report-click-hint {
+  color: var(--accent, #4ea1ff); transform: translateX(2px);
 }
-.match-edit-toggle.active {
-  background: rgba(227,6,19,0.12); border-color: var(--primary); color: #ff8189;
-}
-
-/* Verberg actie-balk standaard; toon alleen in edit-mode */
-.match-report-card .match-report-actions {
-  display: none;
-  flex-wrap: wrap; gap: 8px; margin-top: 12px;
-  padding-top: 12px; border-top: 1px dashed var(--border);
-}
-.match-report-card.editing .match-report-actions { display: flex; }
 
 /* Empty state met CTA */
 .m-empty {
@@ -5227,13 +5389,9 @@ tbody tr:last-child td { border-bottom: none; }
   transition: border-color .15s, transform .15s;
   position: relative; /* s35bq: voor edit-toggle */
 }
-.match-report-card .match-edit-toggle {
-  position: absolute; top: 10px; right: 12px;
-}
 @media (max-width: 700px) {
   .match-card { grid-template-columns: 70px 1fr; padding: 12px 14px; gap: 10px; }
   .match-card .match-players { display: none; }
-  .match-report-card .match-edit-toggle { top: 8px; right: 8px; padding: 3px 8px; font-size: 11px; }
   .match-date-day { font-size: 19px; }
 }
 .match-card:hover { border-color: var(--border-2); transform: translateX(2px); }
@@ -6912,7 +7070,6 @@ tbody tr:last-child td { border-bottom: none; }
         <select id="match-age" class="filter-select" style="display:none;" aria-hidden="true" tabindex="-1"><option value="">Alle leeftijden</option></select>
 
         <div id="matches-list" class="matches-list"></div>
-        <div id="match-compare-bar-host"></div>
         <div id="matches-empty" class="m-empty" style="display:none;">
           <div class="m-empty-icon">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
@@ -7628,6 +7785,26 @@ algemeen:</textarea>
 
 <!-- =================== PROGRAMMA: PLAN MATCH MODAL =================== -->
 <!-- s35r: read-only wedstrijd-detail modal (dashboard / upcoming) -->
+<!-- s35bs: Wedstrijd-bewerken modal (full-screen) -->
+<div class="wstr-edit-backdrop" id="wstr-edit-backdrop" role="dialog" aria-modal="true" aria-labelledby="wstr-edit-title">
+  <div class="wstr-edit-modal">
+    <div class="wstr-edit-head">
+      <div class="wstr-edit-head-main">
+        <div class="wstr-edit-eyebrow">Wedstrijd bewerken</div>
+        <div class="wstr-edit-title" id="wstr-edit-title">—</div>
+        <div class="wstr-edit-sub" id="wstr-edit-sub">—</div>
+      </div>
+      <button class="wstr-verwerk-close" id="wstr-edit-close" aria-label="Sluiten">×</button>
+    </div>
+    <div class="wstr-edit-body" id="wstr-edit-body">
+      <!-- gevuld door _shOpenEditModal -->
+    </div>
+    <div class="wstr-edit-foot" id="wstr-edit-foot">
+      <!-- actie-knoppen door JS gevuld -->
+    </div>
+  </div>
+</div>
+
 <!-- s35br: Wedstrijd verwerken modal -->
 <div class="wstr-verwerk-backdrop" id="wstr-verwerk-backdrop" role="dialog" aria-modal="true" aria-labelledby="wstr-verwerk-title">
   <div class="wstr-verwerk-modal">
@@ -14143,10 +14320,8 @@ const CMP_GRADE_VAL = { A:4, B:3, C:2, D:1 };
 let cmpSelectedIds = [];
 let cmpSearchQuery = '';
 let dbCheckedIds = [];
-let matchCheckedIds = [];
-// s35bq: extra filter-state
+// s35bs: extra filter-state (compare + edit-mode state vervallen)
 let matchStatusFilter = "";  // "", "verwerkt", "toernooi", "info"
-let matchEditingIds = new Set();
 // s35br: wedstrijd-verwerken persistent state + helpers
 const SH_VERWERK_KEY = "sh_wedstrijd_verwerkt_v1";
 function _shLoadVerwerkt(){
@@ -14215,6 +14390,299 @@ function _shCollectWedstrijdNotities(m){
 function _shPlayerIsConcept(pl){
   return !!(pl && (pl.concept === true || pl.status === "concept"));
 }
+// s35bs: open Wedstrijd-bewerken modal (full-screen)
+function _shOpenEditModal(m){
+  const back = document.getElementById("wstr-edit-backdrop");
+  if(!back || !m) return;
+  window.__shCurrentEditMatch = m;
+
+  const key = _shMatchKey(m);
+  const isLocked = shIsWedstrijdVerwerkt(key);
+
+  // Header
+  const titleEl = document.getElementById("wstr-edit-title");
+  const subEl = document.getElementById("wstr-edit-sub");
+  const teamTxt = (m.thuis && m.uit) ? `${m.thuis} — ${m.uit}` : (m.toernooi_naam || "Wedstrijd");
+  if(titleEl) titleEl.textContent = teamTxt;
+  const subParts = [];
+  if(m.datum){
+    try {
+      const dt = new Date(m.datum);
+      if(!isNaN(dt)) subParts.push(`<span class="pill-inline">${dt.toLocaleDateString("nl-NL",{weekday:"short",day:"numeric",month:"long",year:"numeric"})}</span>`);
+      else subParts.push(`<span class="pill-inline">${escapeHtml(m.datum)}</span>`);
+    } catch(_){ subParts.push(`<span class="pill-inline">${escapeHtml(m.datum)}</span>`); }
+  }
+  if(m.uitslag) subParts.push(`<span class="pill-inline">⚽ ${escapeHtml(m.uitslag)}</span>`);
+  if(m.age) subParts.push(`<span class="pill-inline">${escapeHtml(m.age)}</span>`);
+  if(isLocked) subParts.push(`<span class="pill-inline locked">🔒 Verwerkt</span>`);
+  if(subEl) subEl.innerHTML = subParts.join("");
+
+  // Verzamel gekoppelde data
+  let players = Array.isArray(m.players) ? m.players.slice() : [];
+  // Voor report-cards: vind gekoppelde spelers via report-id
+  if(m.kind === "report" && players.length === 0){
+    try {
+      const all = (typeof loadPlayers === "function") ? loadPlayers() : [];
+      players = all.filter(p => {
+        const rids = Array.isArray(p.match_report_ids) ? p.match_report_ids : [];
+        if(rids.indexOf(m.id) >= 0) return true;
+        if(p.match_report_id === m.id) return true;
+        return false;
+      });
+    } catch(_){}
+  }
+  const sns = _shCollectSnelNotities(m);
+  const wns = _shCollectWedstrijdNotities(m);
+
+  // Body opbouwen
+  const bodyEl = document.getElementById("wstr-edit-body");
+  if(!bodyEl) return;
+  let html = "";
+
+  if(m.opmerking){
+    html += `<div class="wstr-edit-section">
+      <div class="wstr-edit-section-head">
+        <div class="wstr-edit-section-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></svg></div>
+        <div class="wstr-edit-section-title">Wedstrijdopmerking</div>
+      </div>
+      <div style="font-size:13px;color:var(--text-2);line-height:1.5;padding:8px 12px;background:var(--bg-2);border-radius:8px;">${escapeHtml(m.opmerking).replace(/\n/g,"<br>")}</div>
+    </div>`;
+  }
+
+  // Sectie: Gekoppelde spelers
+  html += `<div class="wstr-edit-section">
+    <div class="wstr-edit-section-head">
+      <div class="wstr-edit-section-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+      <div class="wstr-edit-section-title">Gekoppelde spelers</div>
+      <div class="wstr-edit-section-count">${players.length}</div>
+    </div>`;
+  if(players.length === 0){
+    html += `<div class="wstr-edit-empty">Nog géén spelers gekoppeld aan deze wedstrijd.</div>`;
+  } else {
+    html += players.map(pl => {
+      const initials = (pl.naam || '?').split(/\s+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+      const posLabel = (typeof positionLabel === 'function' ? (positionLabel(pl.positie) || pl.positie || '') : (pl.positie || ''));
+      const sub = [posLabel, pl.club].filter(Boolean).join(' • ');
+      const isConcept = _shPlayerIsConcept(pl);
+      const conceptBadge = isConcept ? `<span class="mdr-concept-badge">Concept</span>` : '';
+      const submitBtn = isConcept ? `<button type="button" class="wstr-edit-mini-btn primary" data-edit-submit="${escapeHtml(pl.id)}" title="Direct indienen">→ Indienen</button>` : '';
+      return `<div class="wstr-edit-item${isConcept?' is-concept':''}">
+        <div class="wstr-edit-item-avatar">${escapeHtml(initials || '?')}</div>
+        <div class="wstr-edit-item-main">
+          <div class="wstr-edit-item-name">${escapeHtml(pl.naam || '—')}${conceptBadge}</div>
+          ${sub ? `<div class="wstr-edit-item-sub">${escapeHtml(sub)}</div>` : ''}
+        </div>
+        <div class="wstr-edit-item-actions">
+          ${submitBtn}
+          <button type="button" class="wstr-edit-mini-btn" data-edit-player="${escapeHtml(pl.id)}" title="Open rapport">Openen</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+  html += `</div>`;
+
+  // Sectie: Snel-spelersnotities
+  html += `<div class="wstr-edit-section">
+    <div class="wstr-edit-section-head">
+      <div class="wstr-edit-section-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.3v1h6v-1c0-1 .3-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg></div>
+      <div class="wstr-edit-section-title">Snel-spelersnotities</div>
+      <div class="wstr-edit-section-count">${sns.length}</div>
+    </div>`;
+  if(sns.length === 0){
+    html += `<div class="wstr-edit-empty">Geen openstaande snel-notities.</div>`;
+  } else {
+    html += sns.map(({progId, snIdx, sn}) => {
+      const naam = (sn.naam || "Onbenoemde speler").trim();
+      const num = sn.rugnummer ? `#${escapeHtml(String(sn.rugnummer))} ` : "";
+      const tekst = (sn.tekst || "").trim();
+      return `<div class="wstr-edit-note snel">
+        <div class="wstr-edit-note-icon">💡</div>
+        <div class="wstr-edit-note-main">
+          <div class="wstr-edit-note-title">${num}${escapeHtml(naam)}</div>
+          ${tekst ? `<div class="wstr-edit-note-text">${escapeHtml(tekst)}</div>` : '<div class="wstr-edit-note-text" style="font-style:italic;opacity:0.7;">(geen tekst)</div>'}
+        </div>
+        <button type="button" class="wstr-edit-note-action" data-edit-snel-prog="${escapeHtml(progId)}" data-edit-snel-idx="${snIdx}">Open & omzetten →</button>
+      </div>`;
+    }).join('');
+  }
+  html += `</div>`;
+
+  // Sectie: Wedstrijdnotities
+  html += `<div class="wstr-edit-section">
+    <div class="wstr-edit-section-head">
+      <div class="wstr-edit-section-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+      <div class="wstr-edit-section-title">Wedstrijdnotities</div>
+      <div class="wstr-edit-section-count">${wns.length}</div>
+    </div>`;
+  if(wns.length === 0){
+    html += `<div class="wstr-edit-empty">Geen wedstrijdnotities — voeg er één toe vanuit Programma.</div>`;
+  } else {
+    html += wns.map(({progId, wnIdx, wn}) => {
+      const tekst = ((wn && (wn.tekst || wn.notitie)) || "").trim();
+      const titel = (wn && wn.titel) ? wn.titel : "Wedstrijdnotitie";
+      return `<div class="wstr-edit-note wstr">
+        <div class="wstr-edit-note-icon">📝</div>
+        <div class="wstr-edit-note-main">
+          <div class="wstr-edit-note-title">${escapeHtml(titel)}</div>
+          ${tekst ? `<div class="wstr-edit-note-text">${escapeHtml(tekst)}</div>` : '<div class="wstr-edit-note-text" style="font-style:italic;opacity:0.7;">(geen tekst)</div>'}
+        </div>
+        <button type="button" class="wstr-edit-note-action" data-edit-wstr-prog="${escapeHtml(progId)}" data-edit-wstr-idx="${wnIdx}">Open & bewerken →</button>
+      </div>`;
+    }).join('');
+  }
+  html += `</div>`;
+
+  bodyEl.innerHTML = html;
+
+  // Footer-acties (preserveer class-namen zodat bestaande handlers werken)
+  const footEl = document.getElementById("wstr-edit-foot");
+  if(footEl){
+    const reportId = m.kind === "report" ? m.id : "";
+    footEl.innerHTML = `
+      <button type="button" class="btn btn-secondary match-verwerk-btn" data-match-key="${escapeHtml(key)}" data-report-id="${escapeHtml(reportId)}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+        ${isLocked ? 'Status herzien' : 'Verwerken'}
+      </button>
+      ${m.kind === "report" ? `
+      <button type="button" class="btn btn-secondary match-report-edit" data-report-id="${escapeHtml(m.id)}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Rapport bewerken
+      </button>
+      <button type="button" class="btn btn-ghost match-report-add-player" data-report-id="${escapeHtml(m.id)}">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        + Speler
+      </button>
+      <button type="button" class="btn btn-ghost match-report-delete" data-report-id="${escapeHtml(m.id)}" style="color:#ef4444;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        Verwijderen
+      </button>` : ''}
+    `;
+  }
+
+  // Wire interne acties (binnen modal)
+  bodyEl.querySelectorAll('[data-edit-player]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pid = btn.dataset.editPlayer;
+      _shCloseEditModal();
+      if(typeof openDetail === "function") openDetail(pid);
+    });
+  });
+  bodyEl.querySelectorAll('[data-edit-submit]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      _shSubmitConceptPlayer(btn.dataset.editSubmit);
+      // Modal hergebruikt: re-open na korte tick
+      setTimeout(() => { if(window.__shCurrentEditMatch) _shOpenEditModal(window.__shCurrentEditMatch); }, 220);
+    });
+  });
+  bodyEl.querySelectorAll('[data-edit-snel-prog]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const progId = btn.dataset.editSnelProg;
+      const idx = parseInt(btn.dataset.editSnelIdx, 10);
+      _shCloseEditModal();
+      _shConvertSnelToRapport(progId, idx);
+    });
+  });
+  bodyEl.querySelectorAll('[data-edit-wstr-prog]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const progId = btn.dataset.editWstrProg;
+      _shCloseEditModal();
+      try {
+        if(typeof currentTab !== "undefined") currentTab = "programma";
+        if(typeof renderApp === "function") renderApp();
+        setTimeout(() => {
+          const el = document.querySelector(`[data-prog-id="${progId}"]`);
+          if(el && typeof el.scrollIntoView === "function") el.scrollIntoView({behavior:"smooth", block:"center"});
+        }, 200);
+      } catch(_){}
+    });
+  });
+
+  // Footer-buttons: existing handlers nemen het over via event-delegation
+  // Maar omdat ze niet binnen #matches-list zitten, wire ze hier expliciet door:
+  if(footEl){
+    footEl.querySelectorAll('.match-verwerk-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rid = btn.dataset.reportId;
+        const mk = btn.dataset.matchKey;
+        if(rid){
+          const r = matchReportsCache.find(x => x.id === rid);
+          if(r){ _shCloseEditModal(); _shOpenVerwerkModal({ kind:"report", id:r.id, datum:r.datum, thuis:r.thuis, uit:r.uit, opmerking:r.opmerking }); }
+        } else if(mk){
+          const found = _shFindMatchByKey(mk);
+          if(found){ _shCloseEditModal(); _shOpenVerwerkModal(found); }
+        }
+      });
+    });
+    footEl.querySelectorAll('.match-report-edit').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rid = btn.dataset.reportId;
+        _shCloseEditModal();
+        if(typeof openMatchReportModal === "function" && rid) openMatchReportModal(rid);
+      });
+    });
+    footEl.querySelectorAll('.match-report-add-player').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const rid = btn.dataset.reportId;
+        _shCloseEditModal();
+        try {
+          window.__shAddPlayerForReportId = rid;
+          const newBtn = document.getElementById("add-player-btn") || document.getElementById("player-add-btn");
+          if(newBtn) newBtn.click();
+        } catch(_){}
+      });
+    });
+    footEl.querySelectorAll('.match-report-delete').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        const rid = btn.dataset.reportId;
+        if(!rid) return;
+        const r = matchReportsCache.find(x => x.id === rid);
+        const naam = r ? `${r.thuis} — ${r.uit}` : "deze wedstrijd";
+        if(!confirm(`Wedstrijdrapport "${naam}" definitief verwijderen?\n\nDit kan niet ongedaan worden gemaakt.`)) return;
+        try { await deleteMatchReport(rid); _shCloseEditModal(); if(typeof toast==="function") toast("Verwijderd"); }
+        catch(err){ console.warn("delete report failed", err); if(typeof toast==="function") toast("Verwijderen mislukt", true); }
+      });
+    });
+  }
+
+  back.classList.add("show");
+  document.body.style.overflow = "hidden";
+}
+
+function _shCloseEditModal(){
+  const back = document.getElementById("wstr-edit-backdrop");
+  if(back) back.classList.remove("show");
+  document.body.style.overflow = "";
+  window.__shCurrentEditMatch = null;
+}
+
+// One-time wiring van edit-modal close handlers
+(function _shWireEditModalOnce(){
+  if(window.__shEditModalWired) return;
+  window.__shEditModalWired = true;
+  const wire = () => {
+    const close = document.getElementById("wstr-edit-close");
+    const back = document.getElementById("wstr-edit-backdrop");
+    if(close && !close.dataset.wired){ close.dataset.wired="1"; close.addEventListener("click", _shCloseEditModal); }
+    if(back && !back.dataset.wired){ back.dataset.wired="1"; back.addEventListener("click", (e) => { if(e.target === back) _shCloseEditModal(); }); }
+  };
+  document.addEventListener("DOMContentLoaded", wire);
+  if(document.readyState !== "loading") setTimeout(wire, 0);
+  document.addEventListener("keydown", (e) => {
+    if(e.key === "Escape"){
+      const back = document.getElementById("wstr-edit-backdrop");
+      if(back && back.classList.contains("show")) _shCloseEditModal();
+    }
+  });
+})();
+
 // s35br: zoek aggregated match terug aan de hand van match-key
 function _shFindMatchByKey(key){
   if(!key) return null;
@@ -16745,9 +17213,6 @@ function renderMatches(){
           </div>
           <div class="match-teams">
             <div class="match-teams-row">
-              <label style="display:inline-flex;align-items:center;margin-right:8px;cursor:pointer;" onclick="event.stopPropagation()">
-                <input type="checkbox" class="match-report-check" data-id="${escapeHtml(m.id)}" ${checked} style="width:18px;height:18px;cursor:pointer;">
-              </label>
               <span class="match-team-home">${thuisClean}</span>
               <span class="match-vs">vs</span>
               <span class="match-team-away">${uitClean}</span>
@@ -16760,31 +17225,10 @@ function renderMatches(){
             </div>
             ${m.opmerking ? `<div class="match-report-note">${escapeHtml(m.opmerking)}</div>` : ''}
             ${_shBannerHTML(m)}
-            <div class="match-report-actions">
-              <button type="button" class="btn btn-secondary match-verwerk-btn" data-match-key="${escapeHtml(_shMatchKey(m))}" data-report-id="${escapeHtml(m.id)}">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-                ${_shIsVerwerktR ? 'Wedstrijd-status herzien' : 'Wedstrijd verwerken'}
-              </button>
-              <button type="button" class="btn btn-secondary match-report-edit" data-report-id="${escapeHtml(m.id)}">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                Wedstrijdrapport bewerken
-              </button>
-              <button type="button" class="btn btn-ghost match-report-add-player" data-report-id="${escapeHtml(m.id)}">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Speler rapporteren
-              </button>
-              <button type="button" class="btn btn-ghost match-report-delete" data-report-id="${escapeHtml(m.id)}" style="color:#ef4444;">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                Verwijderen
-              </button>
-            </div>
           </div>
-          <button type="button" class="match-edit-toggle${isEditing?' active':''}" data-report-edit-toggle="${escapeHtml(m.id)}" aria-label="${isEditing?'Sluiten':'Bewerken'}" onclick="event.stopPropagation()">
-            ${isEditing
-              ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Sluiten`
-              : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Bewerken`
-            }
-          </button>
+          <div class="match-report-click-hint" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
         </div>
       `;
       return;
@@ -16982,17 +17426,7 @@ function renderMatches(){
     });
   });
 
-  list.querySelectorAll('.match-report-check').forEach(cb => {
-    cb.addEventListener('change', (ev) => {
-      ev.stopPropagation();
-      const id = cb.dataset.id;
-      if(cb.checked){ if(!matchCheckedIds.includes(id)) matchCheckedIds.push(id); }
-      else { matchCheckedIds = matchCheckedIds.filter(x => x !== id); }
-      renderMatchCompareBar();
-    });
-  });
-
-  // s35br: snel-notitie chip → open spelersrapport-modal met prefill
+  // s35bs: snel-notitie chip → open spelersrapport-modal met prefill
   list.querySelectorAll('.m-snel-chip').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -17035,31 +17469,25 @@ function renderMatches(){
     });
   });
 
-  // s35bq: edit-toggle per report-card
-  list.querySelectorAll('[data-report-edit-toggle]').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const id = btn.dataset.reportEditToggle;
-      const card = btn.closest('.match-card');
-      if(!card) return;
-      const willEdit = !card.classList.contains('editing');
-      // Sluit andere edit-modes
-      list.querySelectorAll('.match-card.editing').forEach(c => {
-        if(c !== card){ c.classList.remove('editing'); }
+  // s35bs: hele report-card klikbaar -> open Wedstrijd-bewerken modal
+  list.querySelectorAll('.match-card.match-report-card').forEach(card => {
+    card.addEventListener('click', (e) => {
+      // Inner interactieve elementen hebben hun eigen stopPropagation
+      const rid = card.dataset.reportId;
+      if(!rid) return;
+      const r = (typeof matchReportsCache !== 'undefined') ? matchReportsCache.find(x => x.id === rid) : null;
+      if(!r){ if(typeof toast === "function") toast("Rapport niet gevonden", true); return; }
+      _shOpenEditModal({
+        kind: 'report',
+        id: r.id,
+        datum: r.datum,
+        thuis: r.thuis,
+        uit: r.uit,
+        uitslag: r.uitslag,
+        age: r.age,
+        opmerking: r.opmerking,
+        players: []
       });
-      matchEditingIds.clear();
-      if(willEdit){
-        card.classList.add('editing');
-        matchEditingIds.add(id);
-        btn.classList.add('active');
-        btn.setAttribute('aria-label', 'Sluiten');
-        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Sluiten`;
-      } else {
-        card.classList.remove('editing');
-        btn.classList.remove('active');
-        btn.setAttribute('aria-label', 'Bewerken');
-        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Bewerken`;
-      }
     });
   });
 
@@ -17097,48 +17525,6 @@ function renderMatches(){
     });
   }
 
-  renderMatchCompareBar();
-}
-
-function renderMatchCompareBar(){
-  const host = document.getElementById('match-compare-bar-host');
-  if(!host) return;
-  const n = matchCheckedIds.length;
-  if(n === 0){ host.innerHTML = ''; return; }
-  host.innerHTML = `
-    <div class="db-compare-bar">
-      <div class="db-compare-bar-text">${n} rapport${n===1?'':'en'} geselecteerd</div>
-      <button type="button" class="db-compare-bar-btn ghost" id="match-compare-clear">Wis</button>
-      <button type="button" class="db-compare-bar-btn" id="match-bulk-delete" style="color:#ef4444;border-color:#ef4444;">Verwijder ${n}</button>
-    </div>
-  `;
-  const clearBtn = document.getElementById('match-compare-clear');
-  if(clearBtn){
-    clearBtn.addEventListener('click', () => {
-      matchCheckedIds = [];
-      renderMatches();
-    });
-  }
-  const delBtn = document.getElementById('match-bulk-delete');
-  if(delBtn){
-    delBtn.addEventListener('click', async () => {
-      const count = matchCheckedIds.length;
-      if(count === 0) return;
-      if(!confirm(`${count} wedstrijdrapport${count===1?'':'en'} definitief verwijderen?\n\nDit kan niet ongedaan worden gemaakt.`)) return;
-      delBtn.disabled = true;
-      delBtn.textContent = 'Bezig...';
-      const ids = matchCheckedIds.slice();
-      let ok = 0, fail = 0;
-      for(const id of ids){
-        try { await deleteMatchReport(id); ok++; }
-        catch(e){ console.error('delete report failed', id, e); fail++; }
-      }
-      matchCheckedIds = [];
-      renderMatches();
-      if(fail > 0) alert(`${ok} verwijderd, ${fail} mislukt. Zie console voor details.`);
-      else toast(`${ok} rapport${ok===1?'':'en'} verwijderd`);
-    });
-  }
 }
 
 function renderPitch(){

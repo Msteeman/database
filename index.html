@@ -3803,12 +3803,32 @@ tbody tr:last-child td { border-bottom: none; }
     padding-right: 16px !important;
   }
   /* Week-mode cellen ook edge-to-edge (op mobile is dat 1 kolom) */
+  /* s35cl: padding-left/right bumped 16→20, top/bottom expliciet, plus
+     defensieve padding op alle directe kinderen zodat tekst NIET op de
+     rand staat zelfs als één regel een !important kwijtraakt.            */
   #view-programma #programma-grid.prog-week-grid > .pwg-day {
     border-radius: 0 !important;
     border-left: 0 !important;
     border-right: 0 !important;
-    padding-left: 16px !important;
-    padding-right: 16px !important;
+    padding: 12px 20px !important;
+  }
+  /* Belt-and-braces: alle directe inhoud krijgt zelf ook nog padding.
+     pwg-day-head bevat "Maa 11" + count-badge — must inset.              */
+  #view-programma #programma-grid.prog-week-grid > .pwg-day > .pwg-day-head,
+  #view-programma #programma-grid.prog-week-grid > .pwg-day > .pwg-hour-row,
+  #view-programma #programma-grid.prog-week-grid > .pwg-day > .pwg-add-btn {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    box-sizing: border-box;
+  }
+  /* Same voor 1-dag / 3-dagen modus (.agenda-day-col children) */
+  #view-programma #programma-grid.prog-grid-uur > .agenda-day-col {
+    padding: 12px 20px !important;
+  }
+  #view-programma #programma-grid.prog-grid-uur > .agenda-day-col > * {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    box-sizing: border-box;
   }
   /* Voorkom horizontale overflow op programma-pagina (Week-knop knipte af) */
   #view-programma {
@@ -6292,7 +6312,8 @@ tbody tr:last-child td { border-bottom: none; }
   .nav-role-coord, .nav-role-admin { display: none !important; }
   body.role-coord .nav-role-coord { display: flex !important; }
   body.role-admin .nav-role-coord,
-  body.role-admin .nav-role-admin { display: flex !important; }
+  /* s35cm: Admin-knop bewust uit nav verborgen — toegang via Instellingen */
+  /* body.role-admin .nav-role-admin { display: flex !important; }  -- disabled */
   /* Admin-section in settings: alleen tonen voor admin */
   #settings-admin-section { display: none; }
   body.role-admin #settings-admin-section { display: block; }
@@ -24999,5 +25020,120 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
 })();
 </script>
 <!-- /s35at -->
+
+<!-- ===== s35cl: layout debug overlay (URL hash #debug of #debug-layout) ===== -->
+<style id="s35cl-debug-style">
+  #s35cl-debug{position:fixed;top:8px;left:8px;right:8px;z-index:99999;
+    background:rgba(8,10,16,.94);color:#e5e9f5;border:1px solid #f5c842;
+    border-radius:8px;padding:10px 12px;font:11px/1.4 ui-monospace,Menlo,Consolas,monospace;
+    max-height:60vh;overflow:auto;box-shadow:0 8px 24px rgba(0,0,0,.6);display:none}
+  #s35cl-debug.on{display:block}
+  #s35cl-debug h4{margin:0 0 6px;color:#f5c842;font:600 12px system-ui;letter-spacing:.3px}
+  #s35cl-debug .row{display:flex;justify-content:space-between;gap:8px;padding:2px 0;border-bottom:1px dotted #262b39}
+  #s35cl-debug .k{color:#9aa3b7}
+  #s35cl-debug .v{color:#e5e9f5;text-align:right;font-variant-numeric:tabular-nums}
+  #s35cl-debug .grp{margin-top:8px;padding-top:6px;border-top:1px solid #262b39}
+  #s35cl-debug .close{position:absolute;top:6px;right:8px;background:transparent;border:0;color:#9aa3b7;font-size:16px;cursor:pointer}
+  #s35cl-debug .hint{color:#9aa3b7;font-size:10px;margin-top:6px}
+</style>
+<div id="s35cl-debug" aria-hidden="true">
+  <button class="close" aria-label="Sluit debug" onclick="document.getElementById('s35cl-debug').classList.remove('on')">×</button>
+  <h4>Layout Debug (s35cl)</h4>
+  <div id="s35cl-debug-body">…</div>
+  <div class="hint">Verberg: × of typ #debug-off in URL. Vernieuw met R.</div>
+</div>
+<script>
+(function(){
+  function px(n){ return Math.round(n*10)/10 + 'px'; }
+  function rect(el){
+    if(!el) return 'n/a';
+    var r = el.getBoundingClientRect();
+    return px(r.left)+' → '+px(r.right)+'  (w '+px(r.width)+')';
+  }
+  function cs(el, props){
+    if(!el) return {};
+    var s = getComputedStyle(el);
+    var o = {};
+    props.forEach(function(p){ o[p] = s[p]; });
+    return o;
+  }
+  function row(k, v){ return '<div class="row"><span class="k">'+k+'</span><span class="v">'+v+'</span></div>'; }
+  function grp(title){ return '<div class="grp"><b style="color:#f5c842">'+title+'</b></div>'; }
+  function dump(){
+    var body = '';
+    body += row('viewport', window.innerWidth + ' × ' + window.innerHeight);
+    body += row('mode', (window.innerWidth <= 900 ? 'mobile (≤900px)' : 'desktop'));
+    var main = document.querySelector('.main');
+    if(main){
+      var s = cs(main, ['paddingLeft','paddingRight','marginLeft','marginRight','width']);
+      body += grp('.main');
+      body += row('padL / padR', s.paddingLeft + ' / ' + s.paddingRight);
+      body += row('marL / marR', s.marginLeft + ' / ' + s.marginRight);
+      body += row('width', s.width);
+      body += row('rect L→R', rect(main));
+    }
+    var grid = document.getElementById('programma-grid');
+    if(grid){
+      var s = cs(grid, ['paddingLeft','paddingRight','marginLeft','marginRight','width','maxWidth']);
+      body += grp('#programma-grid (' + (grid.className||'-') + ')');
+      body += row('padL / padR', s.paddingLeft + ' / ' + s.paddingRight);
+      body += row('marL / marR', s.marginLeft + ' / ' + s.marginRight);
+      body += row('width', s.width + '  max ' + s.maxWidth);
+      body += row('rect L→R', rect(grid));
+    }
+    var day = document.querySelector('#programma-grid .pwg-day, #programma-grid .agenda-day-col');
+    if(day){
+      var s = cs(day, ['paddingLeft','paddingRight','paddingTop','paddingBottom','marginLeft','marginRight','width','borderLeftWidth','borderRightWidth']);
+      body += grp('.pwg-day / .agenda-day-col (eerste)');
+      body += row('padL / padR', s.paddingLeft + ' / ' + s.paddingRight);
+      body += row('padT / padB', s.paddingTop + ' / ' + s.paddingBottom);
+      body += row('borderL / borderR', s.borderLeftWidth + ' / ' + s.borderRightWidth);
+      body += row('marL / marR', s.marginLeft + ' / ' + s.marginRight);
+      body += row('width', s.width);
+      body += row('rect L→R', rect(day));
+      var head = day.querySelector('.pwg-day-head, .agenda-day-head');
+      if(head){
+        var hs = cs(head, ['paddingLeft','paddingRight','marginLeft','marginRight']);
+        body += grp('  └ .pwg-day-head ("Maa 11")');
+        body += row('padL / padR', hs.paddingLeft + ' / ' + hs.paddingRight);
+        body += row('marL / marR', hs.marginLeft + ' / ' + hs.marginRight);
+        body += row('rect L→R', rect(head));
+      }
+      var hr = day.querySelector('.pwg-hour-row, .agenda-hour-row');
+      if(hr){
+        var rs = cs(hr, ['paddingLeft','paddingRight','marginLeft','marginRight','gridTemplateColumns']);
+        body += grp('  └ .pwg-hour-row (eerste)');
+        body += row('padL / padR', rs.paddingLeft + ' / ' + rs.paddingRight);
+        body += row('marL / marR', rs.marginLeft + ' / ' + rs.marginRight);
+        body += row('grid-cols', rs.gridTemplateColumns);
+        body += row('rect L→R', rect(hr));
+        var lab = hr.querySelector('.pwg-hour-label, .agenda-hour-label');
+        if(lab) body += row('label "08" rect', rect(lab));
+      }
+    }
+    document.getElementById('s35cl-debug-body').innerHTML = body || '<i>Geen elementen gevonden</i>';
+  }
+  function toggle(){
+    var h = (location.hash||'').toLowerCase();
+    var ov = document.getElementById('s35cl-debug');
+    if(!ov) return;
+    if(h === '#debug' || h === '#debug-layout'){ ov.classList.add('on'); dump(); }
+    else if(h === '#debug-off'){ ov.classList.remove('on'); }
+  }
+  window.addEventListener('hashchange', toggle);
+  window.addEventListener('resize', function(){ if(document.getElementById('s35cl-debug').classList.contains('on')) dump(); });
+  /* MutationObserver: dump opnieuw zodra programma-grid herrendert */
+  document.addEventListener('DOMContentLoaded', function(){
+    toggle();
+    var g = document.getElementById('programma-grid');
+    if(g){
+      new MutationObserver(function(){ if(document.getElementById('s35cl-debug').classList.contains('on')) dump(); })
+        .observe(g, {childList:true, subtree:true});
+    }
+  });
+  /* expose handmatige trigger */
+  window.s35clDebug = function(){ location.hash = '#debug'; toggle(); };
+})();
+</script>
 </body>
 </html>

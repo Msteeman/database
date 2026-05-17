@@ -6237,6 +6237,66 @@ tbody tr:last-child td { border-bottom: none; }
 
 
 </style>
+<style id="s35cg-roles">
+  /* s35cg: rollen-systeem visibility gates */
+  .nav-role-coord, .nav-role-admin { display: none !important; }
+  body.role-coord .nav-role-coord { display: flex !important; }
+  body.role-admin .nav-role-coord,
+  body.role-admin .nav-role-admin { display: flex !important; }
+  /* Admin-section in settings: alleen tonen voor admin */
+  #settings-admin-section { display: none; }
+  body.role-admin #settings-admin-section { display: block; }
+  /* Scout-veld in wedstrijd-modal alleen voor coord/admin */
+  #pm-scout-row { display: none; }
+  body.role-coord #pm-scout-row,
+  body.role-admin #pm-scout-row { display: block; }
+  /* Team-overzicht layout */
+  #view-team-overzicht .to-tabs { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+  #view-team-overzicht .to-tab {
+    padding: 8px 16px; border-radius: 8px; background: #1f2937; color: #e5e7eb;
+    cursor: pointer; border: 1px solid #374151; font-size: 14px;
+  }
+  #view-team-overzicht .to-tab.active { background: #f59e0b; color: #111827; border-color: #f59e0b; }
+  #view-team-overzicht .to-section { display: none; }
+  #view-team-overzicht .to-section.active { display: block; }
+  #view-team-overzicht .to-empty { color: #9ca3af; padding: 20px; text-align: center; font-size: 14px; }
+  #view-team-overzicht .to-scout-group { margin-bottom: 18px; }
+  #view-team-overzicht .to-scout-head {
+    font-weight: 600; color: #f59e0b; padding: 8px 4px; border-bottom: 1px solid #374151;
+    margin-bottom: 8px; display: flex; align-items: center; gap: 8px;
+  }
+  #view-team-overzicht .to-scout-count {
+    background: #374151; color: #d1d5db; padding: 2px 8px; border-radius: 10px;
+    font-size: 12px; font-weight: 500;
+  }
+  #view-team-overzicht .to-card {
+    padding: 12px; background: #111827; border: 1px solid #1f2937; border-radius: 10px;
+    margin-bottom: 6px; font-size: 14px;
+  }
+  #view-team-overzicht .to-card-title { font-weight: 600; color: #f3f4f6; margin-bottom: 4px; }
+  #view-team-overzicht .to-card-meta { color: #9ca3af; font-size: 12px; }
+  /* Admin paneel */
+  #view-admin .admin-user-row {
+    display: flex; gap: 12px; align-items: center; padding: 12px;
+    border-bottom: 1px solid #1f2937; flex-wrap: wrap;
+  }
+  #view-admin .admin-user-email { flex: 1 1 200px; color: #e5e7eb; font-size: 14px; }
+  #view-admin .admin-user-role-select, #view-admin .admin-user-team-input {
+    background: #1f2937; color: #e5e7eb; border: 1px solid #374151; border-radius: 6px;
+    padding: 6px 10px; font-size: 13px;
+  }
+  #view-admin .admin-save-btn {
+    background: #f59e0b; color: #111827; border: 0; border-radius: 6px;
+    padding: 6px 14px; cursor: pointer; font-weight: 600; font-size: 13px;
+  }
+  #view-admin .admin-role-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: 600; margin-left: 6px;
+  }
+  #view-admin .admin-role-badge.scout { background: #1f2937; color: #9ca3af; }
+  #view-admin .admin-role-badge.coordinator { background: #1e3a8a; color: #93c5fd; }
+  #view-admin .admin-role-badge.admin { background: #7c2d12; color: #fdba74; }
+</style>
 </head>
 <body>
 
@@ -6508,6 +6568,31 @@ tbody tr:last-child td { border-bottom: none; }
             <span class="settings-row-label">E-mailadres</span>
             <span class="settings-row-value" id="settings-email">&mdash;</span>
           </div>
+          <!-- s35cg: rol + team uit user-doc -->
+          <div class="settings-row">
+            <span class="settings-row-label">Rol</span>
+            <span class="settings-row-value" id="settings-role">&mdash;</span>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label">Team</span>
+            <span class="settings-row-value" id="settings-team">&mdash;</span>
+          </div>
+        </div>
+
+        <!-- s35cg: Admin sneltoegang in settings (alleen voor admin via CSS-gating) -->
+        <div class="settings-section" id="settings-admin-section">
+          <div class="settings-section-head">
+            <div class="settings-section-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            </div>
+            <div>
+              <div class="settings-section-title">Beheer</div>
+              <div class="settings-section-sub">Open het admin-paneel voor gebruikersbeheer</div>
+            </div>
+          </div>
+          <button class="install-btn" id="settings-open-admin-btn" type="button">
+            Open admin-paneel
+          </button>
         </div>
 
         <!-- s35bi: Diagnose-sectie verwijderd uit instellingen-view (debug blijft beschikbaar via Ctrl+Shift+D) -->
@@ -6755,6 +6840,16 @@ tbody tr:last-child td { border-bottom: none; }
         <button class="nav-item" data-view="matches">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="1"/><line x1="12" y1="6" x2="12" y2="19"/><circle cx="12" cy="12.5" r="2"/><path d="M3 10.5 H6 V14.5 H3"/><path d="M21 10.5 H18 V14.5 H21"/></svg>
           Wedstrijden
+        </button>
+        <!-- s35cg: Team-overzicht (alleen voor coördinatoren + admin via body-class) -->
+        <button class="nav-item nav-role-coord" data-view="team-overzicht">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Team-overzicht
+        </button>
+        <!-- s35cg: Admin (alleen voor admin via body-class) -->
+        <button class="nav-item nav-role-admin" data-view="admin">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          Admin
         </button>
         <button class="nav-item" data-view="compare">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/><path d="M12 8v8"/></svg>
@@ -7867,6 +7962,50 @@ algemeen:</textarea>
         </div>
       </section>
 
+      <!-- ====== s35cg: TEAM-OVERZICHT (coord/admin) ====== -->
+      <section class="view" id="view-team-overzicht">
+        <div class="view-header">
+          <h2 style="margin:0 0 4px 0;">Team-overzicht</h2>
+          <div style="color:#9ca3af; font-size:13px;">Rapporten van alle scouts in je team</div>
+        </div>
+        <div class="to-tabs">
+          <button class="to-tab active" data-to-tab="wedstrijd">Wedstrijdrapporten</button>
+          <button class="to-tab" data-to-tab="speler">Spelersrapporten</button>
+          <button class="to-tab" data-to-tab="scouts">Scouts in team</button>
+        </div>
+        <div class="to-section active" id="to-section-wedstrijd">
+          <div class="to-empty" id="to-empty-wedstrijd">Laden…</div>
+          <div id="to-list-wedstrijd"></div>
+        </div>
+        <div class="to-section" id="to-section-speler">
+          <div class="to-empty" id="to-empty-speler">Laden…</div>
+          <div id="to-list-speler"></div>
+        </div>
+        <div class="to-section" id="to-section-scouts">
+          <div class="to-empty" id="to-empty-scouts">Laden…</div>
+          <div id="to-list-scouts"></div>
+        </div>
+      </section>
+
+      <!-- ====== s35cg: ADMIN-PANEEL (alleen admin) ====== -->
+      <section class="view" id="view-admin">
+        <div class="view-header">
+          <h2 style="margin:0 0 4px 0;">Gebruikersbeheer</h2>
+          <div style="color:#9ca3af; font-size:13px;">Rol en team per gebruiker instellen</div>
+        </div>
+        <div id="admin-users-list" style="background:#0b1220; border:1px solid #1f2937; border-radius:10px; overflow:hidden;">
+          <div class="to-empty">Laden…</div>
+        </div>
+        <div style="margin-top:14px; padding:12px; background:#0b1220; border:1px solid #1f2937; border-radius:10px;">
+          <div style="font-weight:600; margin-bottom:6px;">Toelichting</div>
+          <div style="font-size:13px; color:#9ca3af; line-height:1.5;">
+            <strong>Scout</strong>: ziet alleen eigen data.<br/>
+            <strong>Coördinator</strong>: ziet rapporten van alle scouts in zijn/haar team + kan wedstrijden inplannen voor scouts.<br/>
+            <strong>Admin</strong>: full control. Wijzigingen zijn direct actief; gebruiker moet opnieuw inloggen om het zelf te zien.
+          </div>
+        </div>
+      </section>
+
       <!-- ====== PLAYER DETAIL (full-page) ====== -->
       <section class="view" id="view-player">
         <div id="player-view-body"></div>
@@ -8030,6 +8169,14 @@ algemeen:</textarea>
             <option>Live</option>
             <option>Video</option>
           </select>
+        </div>
+        <!-- s35cg: scout-dropdown — alleen zichtbaar voor coord/admin -->
+        <div class="field" id="pm-scout-row" style="margin-top:12px;">
+          <label>Toewijzen aan scout</label>
+          <select id="pm-scout">
+            <option value="">— Mijzelf —</option>
+          </select>
+          <div style="font-size:11px; color:#9ca3af; margin-top:4px;">Coördinator: kies een scout uit je team om de wedstrijd voor te plannen.</div>
         </div>
         <div class="field" style="margin-top:12px;">
           <label>Wedstrijdinformatie</label>
@@ -8626,7 +8773,9 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
   getFirestore, collection, doc,
-  onSnapshot, setDoc, deleteDoc, getDoc
+  onSnapshot, setDoc, deleteDoc, getDoc,
+  /* s35cg: extra imports voor rollen-systeem */
+  updateDoc, query, where, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* =============== FIREBASE CONFIG =============== */
@@ -10860,8 +11009,21 @@ async function saveProgrammaItem(item){
   setSync('syncing');
   try {
     const id = item.id;
-    const {id: _drop, ...data} = item;
-    await setDoc(doc(programmaCol(), id), data);
+    const {id: _drop, _targetScoutUid, ...data} = item;
+    /* s35cg: coordinator kan een wedstrijd voor een andere scout inplannen.
+       Als _targetScoutUid is gezet (en niet de huidige user), schrijf in
+       users/{scoutUid}/programma/{id} i.p.v. eigen subcollectie.            */
+    const targetUid = (_targetScoutUid && _targetScoutUid !== currentUser.uid)
+      ? _targetScoutUid : currentUser.uid;
+    if(targetUid !== currentUser.uid){
+      /* Cross-scout: schrijf naar users/{targetUid}/programma/{id}.
+         Mark wie het geplanned heeft voor audit.                            */
+      data.planned_by = currentUser.uid;
+      data.planned_by_email = currentUser.email || '';
+      await setDoc(doc(db, 'users', targetUid, 'programma', id), data);
+    } else {
+      await setDoc(doc(programmaCol(), id), data);
+    }
   } catch(e){
     console.error('Save programma error:', e);
     toast('Opslaan mislukt — controleer je verbinding', true);
@@ -20069,6 +20231,12 @@ function openProgMatchModal(progId, defaultDate){
   if($('#pm-veld')) $('#pm-veld').value = it ? (it.veld||'') : '';
   $('#pm-notities').value = it ? (it.notities||'') : '';
   $('#pm-delete').style.display = it ? '' : 'none';
+  /* s35cg: vul scout-dropdown als je coordinator/admin bent */
+  try {
+    if(typeof populateScoutDropdown === 'function'){
+      populateScoutDropdown(it && it._targetScoutUid ? it._targetScoutUid : '');
+    }
+  } catch(_){}
   showModal('prog-match-backdrop');
   // v70h-s35a: auto-fill sportpark + plaats uit CLUB_ADRESSEN zodra thuisclub gekozen wordt.
   (function(){
@@ -20140,6 +20308,9 @@ async function saveProgMatchFromForm(e){
   const thuis_elftal = ($('#pm-thuis-elftal')?.value || '').trim();
   const uit_elftal   = ($('#pm-uit-elftal')?.value   || '').trim();
 
+  /* s35cg: scout-dropdown uitlezen (lege string = mijzelf) */
+  const _scoutSel = $('#pm-scout');
+  const _targetScoutUid = (_scoutSel && _scoutSel.value) ? _scoutSel.value : '';
   const item = {
     id,
     datum,
@@ -20156,7 +20327,9 @@ async function saveProgMatchFromForm(e){
     verwerkt_op: existing ? (existing.verwerkt_op || null) : null,
     verwerkt_player_ids: existing ? (existing.verwerkt_player_ids || []) : [],
     created: existing ? existing.created : Date.now(),
-    modified: Date.now()
+    modified: Date.now(),
+    /* s35cg: doorgegeven aan saveProgrammaItem voor cross-scout write */
+    _targetScoutUid
   };
   try {
     await saveProgrammaItem(item);
@@ -21799,12 +21972,386 @@ function initAuthForms(){
   setTimeout(dismiss, holdMs);
 })();
 
+/* ============================================================
+   s35cg: ROLLEN-SYSTEEM
+   Scouts | Coordinatoren | Admin
+   - Rol komt uit users/{uid}.role (scout|coordinator|admin)
+   - Team komt uit users/{uid}.teamId (default 'demo_team')
+   - ADMIN_EMAILS = hardcoded super-admin (alleen Marcel)
+   ============================================================ */
+const ADMIN_EMAILS = ['msteeman@jsrdemo.nl'];
+let currentUserRole = 'scout';
+let currentUserTeamId = 'demo_team';
+let teamScoutsCache = []; // [{uid, email, displayName, role, teamId}]
+
+async function loadUserRole(){
+  try {
+    if(!currentUser) return;
+    const uref = doc(db, 'users', currentUser.uid);
+    const usnap = await getDoc(uref);
+    let role = 'scout';
+    let teamId = 'demo_team';
+    let displayName = currentUser.displayName || '';
+    if(usnap.exists()){
+      const d = usnap.data() || {};
+      role = (d.role || 'scout').toLowerCase();
+      teamId = d.teamId || 'demo_team';
+      displayName = d.displayName || displayName;
+    } else {
+      /* Eerste login: stamp user-doc */
+      try {
+        await setDoc(uref, {
+          email: currentUser.email || '',
+          displayName: displayName,
+          role: 'scout',
+          teamId: 'demo_team',
+          created: Date.now()
+        }, { merge: true });
+      } catch(e){ console.warn('user-doc create skipped', e); }
+    }
+    /* ADMIN_EMAILS override: Marcel wordt altijd admin */
+    if(currentUser.email && ADMIN_EMAILS.includes(currentUser.email.toLowerCase())){
+      role = 'admin';
+      /* Sync naar Firestore zodat rules kloppen */
+      try {
+        await setDoc(uref, { role: 'admin', email: currentUser.email }, { merge: true });
+      } catch(e){ /* niet kritisch */ }
+    }
+    currentUserRole = role;
+    currentUserTeamId = teamId;
+    /* Body-class voor CSS-gating */
+    document.body.classList.remove('role-scout','role-coord','role-admin');
+    if(role === 'admin') document.body.classList.add('role-admin');
+    else if(role === 'coordinator') document.body.classList.add('role-coord');
+    else document.body.classList.add('role-scout');
+    /* Update settings-rows */
+    const sr = document.getElementById('settings-role');
+    if(sr) sr.textContent = role.charAt(0).toUpperCase()+role.slice(1);
+    const st = document.getElementById('settings-team');
+    if(st) st.textContent = teamId;
+    console.log('[s35cg] role=' + role + ' team=' + teamId);
+  } catch(e){
+    console.warn('[s35cg] loadUserRole failed:', e);
+  }
+}
+
+/* Lijst van scouts in mijn team (coord/admin) — voor dropdowns + team-overzicht */
+async function loadTeamScouts(){
+  if(currentUserRole === 'scout') { teamScoutsCache = []; return; }
+  try {
+    const q = query(collection(db, 'users'), where('teamId', '==', currentUserTeamId));
+    const snap = await getDocs(q);
+    const out = [];
+    snap.forEach(docSnap => {
+      const d = docSnap.data() || {};
+      out.push({
+        uid: docSnap.id,
+        email: d.email || '',
+        displayName: d.displayName || d.email || docSnap.id.slice(0,6),
+        role: d.role || 'scout',
+        teamId: d.teamId || 'demo_team'
+      });
+    });
+    teamScoutsCache = out;
+  } catch(e){
+    console.warn('[s35cg] loadTeamScouts failed:', e);
+    teamScoutsCache = [];
+  }
+}
+
+/* Vul de scout-dropdown in de wedstrijd-modal */
+function populateScoutDropdown(preselectUid){
+  const sel = document.getElementById('pm-scout');
+  if(!sel) return;
+  if(currentUserRole === 'scout'){
+    sel.innerHTML = '<option value="">— Mijzelf —</option>';
+    sel.value = '';
+    return;
+  }
+  let html = '<option value="">— Mijzelf —</option>';
+  /* Scouts: alleen role=scout tonen (coord plant voor scouts, niet voor andere coords) */
+  const scouts = teamScoutsCache.filter(u => u.uid !== currentUser.uid && u.role === 'scout');
+  scouts.sort((a,b)=> (a.displayName||'').localeCompare(b.displayName||''));
+  for(const s of scouts){
+    const label = (s.displayName || s.email).replace(/"/g,'&quot;');
+    html += '<option value="' + s.uid + '">' + label + '</option>';
+  }
+  sel.innerHTML = html;
+  if(preselectUid) sel.value = preselectUid;
+}
+
+/* ============================================================
+   TEAM-OVERZICHT renderer (coord/admin)
+   N+1: voor elke scout in team → match_reports + players ophalen
+   ============================================================ */
+let __teamOverzichtCache = null;
+
+async function fetchTeamReports(){
+  if(currentUserRole === 'scout') return { match_reports: [], players: [], scouts: [] };
+  await loadTeamScouts();
+  const teamScouts = teamScoutsCache;
+  const allMatches = [];
+  const allPlayers = [];
+  for(const s of teamScouts){
+    /* Match reports */
+    try {
+      const mSnap = await getDocs(collection(db, 'users', s.uid, 'match_reports'));
+      mSnap.forEach(d => {
+        const data = d.data() || {};
+        allMatches.push({
+          id: d.id,
+          _scoutUid: s.uid,
+          _scoutName: s.displayName || s.email,
+          ...data
+        });
+      });
+    } catch(e){ console.warn('match_reports fail for', s.uid, e); }
+    /* Players */
+    try {
+      const pSnap = await getDocs(collection(db, 'users', s.uid, 'players'));
+      pSnap.forEach(d => {
+        const data = d.data() || {};
+        allPlayers.push({
+          id: d.id,
+          _scoutUid: s.uid,
+          _scoutName: s.displayName || s.email,
+          ...data
+        });
+      });
+    } catch(e){ console.warn('players fail for', s.uid, e); }
+  }
+  return { match_reports: allMatches, players: allPlayers, scouts: teamScouts };
+}
+
+function _toEscape(s){ return String(s||'').replace(/[&<>"']/g, c => ({
+  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+}[c])); }
+
+function _groupByScout(rows){
+  const m = new Map();
+  for(const r of rows){
+    const k = r._scoutUid;
+    if(!m.has(k)) m.set(k, { name: r._scoutName, items: [] });
+    m.get(k).items.push(r);
+  }
+  return Array.from(m.entries()).map(([uid, v]) => ({ uid, name: v.name, items: v.items }));
+}
+
+async function renderTeamOverzicht(){
+  const empWed = document.getElementById('to-empty-wedstrijd');
+  const lstWed = document.getElementById('to-list-wedstrijd');
+  const empSp  = document.getElementById('to-empty-speler');
+  const lstSp  = document.getElementById('to-list-speler');
+  const empSc  = document.getElementById('to-empty-scouts');
+  const lstSc  = document.getElementById('to-list-scouts');
+  if(!empWed) return;
+  empWed.textContent = 'Laden…'; if(lstWed) lstWed.innerHTML = '';
+  empSp.textContent  = 'Laden…'; if(lstSp)  lstSp.innerHTML  = '';
+  empSc.textContent  = 'Laden…'; if(lstSc)  lstSc.innerHTML  = '';
+  const data = await fetchTeamReports();
+  __teamOverzichtCache = data;
+
+  /* ----- Wedstrijdrapporten ----- */
+  if(!data.match_reports.length){
+    empWed.style.display = 'block';
+    empWed.textContent = 'Nog geen wedstrijdrapporten in je team.';
+    lstWed.innerHTML = '';
+  } else {
+    empWed.style.display = 'none';
+    const groups = _groupByScout(data.match_reports);
+    groups.sort((a,b)=> a.name.localeCompare(b.name));
+    let h = '';
+    for(const g of groups){
+      g.items.sort((a,b)=> (b.datum||'').localeCompare(a.datum||''));
+      h += '<div class="to-scout-group">';
+      h += '  <div class="to-scout-head">' + _toEscape(g.name)
+        +  '<span class="to-scout-count">' + g.items.length + '</span></div>';
+      for(const it of g.items){
+        const titel = (it.thuis||'?') + ' – ' + (it.uit||'?');
+        const meta  = (it.datum||'') + (it.locatie ? ' · ' + it.locatie : '');
+        h += '<div class="to-card">';
+        h += '  <div class="to-card-title">' + _toEscape(titel) + '</div>';
+        h += '  <div class="to-card-meta">' + _toEscape(meta) + '</div>';
+        h += '</div>';
+      }
+      h += '</div>';
+    }
+    lstWed.innerHTML = h;
+  }
+
+  /* ----- Spelersrapporten (players) ----- */
+  if(!data.players.length){
+    empSp.style.display = 'block';
+    empSp.textContent = 'Nog geen spelersrapporten in je team.';
+    lstSp.innerHTML = '';
+  } else {
+    empSp.style.display = 'none';
+    const groups = _groupByScout(data.players);
+    groups.sort((a,b)=> a.name.localeCompare(b.name));
+    let h = '';
+    for(const g of groups){
+      g.items.sort((a,b)=> ((b.created||0) - (a.created||0)));
+      h += '<div class="to-scout-group">';
+      h += '  <div class="to-scout-head">' + _toEscape(g.name)
+        +  '<span class="to-scout-count">' + g.items.length + '</span></div>';
+      for(const it of g.items){
+        const naam = (it.voornaam||'') + ' ' + (it.achternaam||'') || it.naam || '(geen naam)';
+        const meta = (it.club||'') + (it.positie ? ' · ' + it.positie : '');
+        h += '<div class="to-card">';
+        h += '  <div class="to-card-title">' + _toEscape(naam) + '</div>';
+        h += '  <div class="to-card-meta">' + _toEscape(meta) + '</div>';
+        h += '</div>';
+      }
+      h += '</div>';
+    }
+    lstSp.innerHTML = h;
+  }
+
+  /* ----- Scouts in team ----- */
+  if(!data.scouts.length){
+    empSc.style.display = 'block';
+    empSc.textContent = 'Geen scouts in je team gevonden.';
+    lstSc.innerHTML = '';
+  } else {
+    empSc.style.display = 'none';
+    let h = '';
+    for(const s of data.scouts){
+      const me = s.uid === currentUser.uid ? ' (jij)' : '';
+      h += '<div class="to-card">';
+      h += '  <div class="to-card-title">' + _toEscape(s.displayName || s.email) + me + '</div>';
+      h += '  <div class="to-card-meta">' + _toEscape(s.email) + ' · ' + _toEscape(s.role) + '</div>';
+      h += '</div>';
+    }
+    lstSc.innerHTML = h;
+  }
+}
+
+/* Tab-switching binnen team-overzicht */
+document.addEventListener('click', (e) => {
+  const tab = e.target.closest && e.target.closest('#view-team-overzicht .to-tab');
+  if(!tab) return;
+  const which = tab.dataset.toTab;
+  document.querySelectorAll('#view-team-overzicht .to-tab').forEach(t => t.classList.toggle('active', t === tab));
+  document.querySelectorAll('#view-team-overzicht .to-section').forEach(s => {
+    s.classList.toggle('active', s.id === 'to-section-' + which);
+  });
+});
+
+/* ============================================================
+   ADMIN-PANEEL renderer (alleen role=admin)
+   ============================================================ */
+async function renderAdminPanel(){
+  const wrap = document.getElementById('admin-users-list');
+  if(!wrap) return;
+  if(currentUserRole !== 'admin'){
+    wrap.innerHTML = '<div class="to-empty">Geen toegang — alleen admin.</div>';
+    return;
+  }
+  wrap.innerHTML = '<div class="to-empty">Laden…</div>';
+  let users = [];
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    snap.forEach(d => {
+      const dd = d.data() || {};
+      users.push({
+        uid: d.id,
+        email: dd.email || '',
+        displayName: dd.displayName || '',
+        role: dd.role || 'scout',
+        teamId: dd.teamId || 'demo_team'
+      });
+    });
+  } catch(e){
+    wrap.innerHTML = '<div class="to-empty">Laden mislukt: ' + _toEscape(e.message||'') + '</div>';
+    return;
+  }
+  if(!users.length){ wrap.innerHTML = '<div class="to-empty">Nog geen gebruikers.</div>'; return; }
+  users.sort((a,b)=> (a.email||'').localeCompare(b.email||''));
+  let h = '';
+  for(const u of users){
+    const me = u.uid === currentUser.uid ? ' <em style="color:#9ca3af;">(jij)</em>' : '';
+    h += '<div class="admin-user-row" data-uid="' + _toEscape(u.uid) + '">';
+    h += '  <div class="admin-user-email">' + _toEscape(u.email || u.displayName || u.uid)
+       + ' <span class="admin-role-badge ' + _toEscape(u.role) + '">' + _toEscape(u.role) + '</span>' + me + '</div>';
+    h += '  <select class="admin-user-role-select" data-uid="' + _toEscape(u.uid) + '">';
+    for(const r of ['scout','coordinator','admin']){
+      const sel = (r === u.role) ? ' selected' : '';
+      h += '<option value="' + r + '"' + sel + '>' + r + '</option>';
+    }
+    h += '  </select>';
+    h += '  <input class="admin-user-team-input" data-uid="' + _toEscape(u.uid) + '" value="'
+       + _toEscape(u.teamId) + '" placeholder="teamId" />';
+    h += '  <button class="admin-save-btn" data-uid="' + _toEscape(u.uid) + '">Opslaan</button>';
+    h += '</div>';
+  }
+  wrap.innerHTML = h;
+}
+
+document.addEventListener('click', async (e) => {
+  const btn = e.target.closest && e.target.closest('.admin-save-btn');
+  if(!btn) return;
+  const uid = btn.dataset.uid;
+  if(!uid) return;
+  const row = btn.closest('.admin-user-row');
+  const roleSel = row.querySelector('.admin-user-role-select');
+  const teamInp = row.querySelector('.admin-user-team-input');
+  const newRole = roleSel.value;
+  const newTeam = (teamInp.value || 'demo_team').trim();
+  btn.disabled = true;
+  const origText = btn.textContent;
+  btn.textContent = 'Opslaan…';
+  try {
+    await updateDoc(doc(db, 'users', uid), { role: newRole, teamId: newTeam });
+    btn.textContent = 'Opgeslagen ✓';
+    setTimeout(()=> { btn.textContent = origText; btn.disabled = false; }, 1400);
+    if(typeof toast === 'function') toast('Gebruiker bijgewerkt');
+    /* Refresh admin badge */
+    const badge = row.querySelector('.admin-role-badge');
+    if(badge){ badge.className = 'admin-role-badge ' + newRole; badge.textContent = newRole; }
+  } catch(err){
+    console.error('Admin save failed:', err);
+    btn.textContent = 'Fout';
+    if(typeof toast === 'function') toast('Opslaan mislukt: ' + (err.message||''), true);
+    setTimeout(()=> { btn.textContent = origText; btn.disabled = false; }, 1800);
+  }
+});
+
+/* Settings: open admin-paneel knop */
+document.addEventListener('click', (e) => {
+  if(e.target && e.target.id === 'settings-open-admin-btn'){
+    const back = document.getElementById('settings-modal-backdrop');
+    if(back) back.classList.remove('active');
+    if(typeof switchView === 'function') switchView('admin');
+    else {
+      const btn = document.querySelector('[data-view="admin"]');
+      if(btn) btn.click();
+    }
+  }
+});
+
+/* Re-render bij view-switch naar admin/team-overzicht */
+document.addEventListener('click', (e) => {
+  const navBtn = e.target.closest && e.target.closest('[data-view]');
+  if(!navBtn) return;
+  const v = navBtn.dataset.view;
+  if(v === 'team-overzicht'){
+    setTimeout(()=> { renderTeamOverzicht().catch(err=>console.warn(err)); }, 60);
+  } else if(v === 'admin'){
+    setTimeout(()=> { renderAdminPanel().catch(err=>console.warn(err)); }, 60);
+  }
+});
+
 /* =============== BOOT =============== */
 initAuthForms();
 
 onAuthStateChanged(auth, async (user)=>{
   if(user){
     currentUser = user;
+    /* s35cg: rol + team ophalen vóór de rest van de app start */
+    await loadUserRole();
+    if(currentUserRole !== 'scout'){
+      try { await loadTeamScouts(); } catch(_){}
+    }
     initApp();
     subscribeData();
     showApp();

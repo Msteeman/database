@@ -3670,6 +3670,91 @@ tbody tr:last-child td { border-bottom: none; }
 }
 #programma-grid.prog-grid-uur .agenda-day-col { margin-bottom: 14px; }
 
+/* ===== s35bn: Programma week-view mini uur-as ===== */
+#programma-grid.prog-week-grid {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr) !important;
+  gap: 8px;
+}
+.prog-week-grid .pwg-day {
+  background: var(--panel, #11141c);
+  border: 1px solid var(--border, #262b39);
+  border-radius: 10px; padding: 8px; min-height: 240px;
+  display: flex; flex-direction: column;
+}
+.prog-week-grid .pwg-day.today {
+  border-color: var(--red, #e30613);
+  box-shadow: 0 0 0 1px rgba(227,6,19,.3) inset;
+}
+.prog-week-grid .pwg-day-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding-bottom: 6px; margin-bottom: 6px;
+  border-bottom: 1px solid var(--border, #262b39);
+}
+.prog-week-grid .pwg-day-name {
+  font-weight: 700; font-size: 12px; color: var(--accent, #f5c842);
+}
+.prog-week-grid .pwg-day.today .pwg-day-name { color: var(--red, #e30613); }
+.prog-week-grid .pwg-day-count { font-size: 10px; color: var(--muted, #9aa3b7); }
+.prog-week-grid .pwg-hour-row {
+  display: grid; grid-template-columns: 36px 1fr; gap: 4px;
+  align-items: start; padding: 1px 0; min-height: 24px;
+}
+.prog-week-grid .pwg-hour-row.empty { min-height: 14px; }
+.prog-week-grid .pwg-hour-label {
+  color: var(--muted, #9aa3b7); font-size: 9.5px;
+  text-align: right; padding-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.prog-week-grid .pwg-evt {
+  background: linear-gradient(90deg, rgba(245,200,66,.16), rgba(245,200,66,.06));
+  border-left: 3px solid var(--accent, #f5c842);
+  border-radius: 4px; padding: 4px 6px; margin: 1px 0;
+  cursor: pointer; position: relative; overflow: hidden;
+  font-size: 10.5px; line-height: 1.35;
+}
+.prog-week-grid .pwg-evt:hover { background: linear-gradient(90deg, rgba(245,200,66,.24), rgba(245,200,66,.10)); }
+.prog-week-grid .pwg-evt.O8, .prog-week-grid .pwg-evt.O9, .prog-week-grid .pwg-evt.O10 {
+  border-left-color: #7fd99e;
+  background: linear-gradient(90deg, rgba(127,217,158,.14), rgba(127,217,158,.05));
+}
+.prog-week-grid .pwg-evt.O16, .prog-week-grid .pwg-evt.O17, .prog-week-grid .pwg-evt.O18,
+.prog-week-grid .pwg-evt.O19, .prog-week-grid .pwg-evt.O21, .prog-week-grid .pwg-evt.O23 {
+  border-left-color: var(--red, #e30613);
+  background: linear-gradient(90deg, rgba(227,6,19,.14), rgba(227,6,19,.05));
+}
+.prog-week-grid .pwg-evt-title {
+  font-weight: 600; color: var(--text-1, #e5e9f5);
+  padding-right: 36px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.prog-week-grid .pwg-evt-dur {
+  position: absolute; top: 3px; right: 4px;
+  font-size: 9px; color: var(--muted, #9aa3b7);
+  background: rgba(0,0,0,.35); padding: 1px 4px;
+  border-radius: 3px; font-variant-numeric: tabular-nums;
+}
+.prog-week-grid .pwg-add-btn {
+  margin-top: auto; padding: 4px;
+  background: transparent; border: 1px dashed var(--accent, #f5c842);
+  color: var(--accent, #f5c842); border-radius: 5px;
+  font-size: 10px; font-weight: 600; cursor: pointer; width: 100%;
+}
+@media (max-width: 900px) {
+  #programma-grid.prog-week-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .prog-week-grid .pwg-day { min-height: auto; }
+  .prog-week-grid .pwg-day-name { font-size: 14px; }
+  .prog-week-grid .pwg-day-count { font-size: 11.5px; }
+  .prog-week-grid .pwg-hour-row { grid-template-columns: 50px 1fr; min-height: 32px; }
+  .prog-week-grid .pwg-hour-label { font-size: 11px; }
+  .prog-week-grid .pwg-evt { font-size: 12.5px; padding: 6px 9px; }
+  .prog-week-grid .pwg-evt-title { white-space: normal; padding-right: 44px; }
+  .prog-week-grid .pwg-evt-dur { font-size: 10px; padding: 2px 6px; top: 5px; right: 7px; }
+  .prog-week-grid .pwg-add-btn { font-size: 12px; padding: 7px; }
+}
+
 /* ===== s35bk-3: Push-up changelog modal ===== */
 .changelog-backdrop {
   position: fixed; inset: 0; z-index: 9999;
@@ -5944,7 +6029,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bm (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bn (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
       </div>
     </div>
   </div>
@@ -7803,8 +7888,12 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35bm &middot; 17 mei 2026</div>
+    <div class="changelog-ver">v70h-s35bn &middot; 17 mei 2026</div>
 
+    <div class="changelog-item">
+      <div class="changelog-item-title">Programma week-view in agenda-look</div>
+      <div class="changelog-item-detail">De Week-modus van Programma toont nu een mini-uur-as per dag (zoals 1-dag en 3-dagen al deden). Wedstrijden krijgen dezelfde kleur-codering (groen O.8–10, goud O.11–15, rood O.16+) en duur-badges (m). Vandaag-kolom met rode rand. Op mobiel valt het terug op één-kolom-per-dag onder elkaar.</div>
+    </div>
     <div class="changelog-item">
       <div class="changelog-item-title">Snel-notitie sluit niet meer vanzelf</div>
       <div class="changelog-item-detail">Wedstrijdnotitie bleef vanzelf sluiten na typen + wachten — opgelost. Dashboard rendert niet meer tijdens autosave zolang een notitie open is, dus je kunt rustig typen, kijken en doortypen.</div>
@@ -17883,10 +17972,13 @@ function renderProgrammaUur(){
 function renderProgramma(){
   // s35bk-3: branch on progSpan
   if(progSpan !== 7){
-    const g = $('#programma-grid'); if(g) g.classList.add('prog-grid-uur');
+    const g = $('#programma-grid');
+    if(g){ g.classList.add('prog-grid-uur'); g.classList.remove('prog-week-grid'); }
     return renderProgrammaUur();
   }
-  const g = $('#programma-grid'); if(g) g.classList.remove('prog-grid-uur');
+  // s35bn: week-view -> mini uur-as grid (consistent met 1d/3d agenda-look)
+  const g = $('#programma-grid');
+  if(g){ g.classList.remove('prog-grid-uur'); g.classList.add('prog-week-grid'); }
   const monday = getCurrentDisplayMonday();
   const sunday = new Date(monday); sunday.setDate(sunday.getDate()+6);
   const [jaar, weeknr] = getISOWeek(monday);
@@ -17913,21 +18005,64 @@ function renderProgramma(){
     return d >= monday && d <= sunday;
   });
 
+  // Vaste anchor-uren (08, 10, 12, 14, 16) + extra rij voor élk event-uur dat er nog niet bij zit.
+  const ANCHOR_HOURS = [8, 10, 12, 14, 16];
+
   grid.innerHTML = days.map(d => {
     const dStr = isoDateStr(d);
     const isToday = d.getTime() === today.getTime();
     const dayItems = weekItems.filter(p => datumToIsoStr(p.datum) === dStr)
       .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
+
+    const dayHourOf = it => {
+      const t = String(it.tijd||''); const h = parseInt(t.split(':')[0], 10);
+      return isNaN(h) ? -1 : h;
+    };
+    const ochtend = dayItems.filter(it => dayHourOf(it) >= 0 && dayHourOf(it) < 17);
+    const avond   = dayItems.filter(it => dayHourOf(it) >= 17);
+
+    const ochtendEventHours = new Set(ochtend.map(dayHourOf).filter(h => h >= 0 && h < 17));
+    const ochtendShowHours = Array.from(new Set([...ANCHOR_HOURS, ...ochtendEventHours])).sort((a,b)=>a-b);
+
+    const evtChip = it => {
+      const cls = agendaLeeftijdClass(it.leeftijd);
+      const dur = getMatchDurationMin(it.leeftijd);
+      const t = escapeHTML(it.tijd||'');
+      const teams = `${(it.thuis||'?')} — ${(it.uit||'?')}`;
+      return `<div class="pwg-evt ${cls}" data-prog-week-evt="${it.id||''}">
+        <span class="pwg-evt-dur">${dur}m</span>
+        <div class="pwg-evt-title">${t} ${escapeHTML(teams)}</div>
+      </div>`;
+    };
+
+    const ochtendRows = ochtendShowHours.map(h => {
+      const items = ochtend.filter(it => dayHourOf(it) === h);
+      const lbl = String(h).padStart(2,'0');
+      if(items.length === 0){
+        return `<div class="pwg-hour-row empty"><div class="pwg-hour-label">${lbl}</div><div></div></div>`;
+      }
+      return `<div class="pwg-hour-row"><div class="pwg-hour-label">${lbl}</div><div>${items.map(evtChip).join('')}</div></div>`;
+    }).join('');
+
+    let avondHtml = '';
+    if(avond.length > 0){
+      const avondHours = Array.from(new Set(avond.map(dayHourOf))).sort((a,b)=>a-b);
+      avondHtml = avondHours.map(h => {
+        const items = avond.filter(it => dayHourOf(it) === h);
+        const lbl = String(h).padStart(2,'0');
+        return `<div class="pwg-hour-row"><div class="pwg-hour-label">${lbl}</div><div>${items.map(evtChip).join('')}</div></div>`;
+      }).join('');
+    }
+
     return `
-      <div class="prog-day${isToday ? ' today' : ''}">
-        <div class="prog-day-head">
-          <div class="prog-day-name">${DAY_NAMES_NL[d.getDay()===0?6:d.getDay()-1]}</div>
-          <div class="prog-day-date">${d.getDate()} ${MONTH_NL[d.getMonth()].slice(0,3)}</div>
+      <div class="pwg-day${isToday ? ' today' : ''}">
+        <div class="pwg-day-head">
+          <div class="pwg-day-name">${DAY_NAMES_NL[(d.getDay()+6)%7].slice(0,3)} ${d.getDate()}</div>
+          <div class="pwg-day-count">${dayItems.length}</div>
         </div>
-        <div class="prog-matches">
-          ${dayItems.map(it => progMatchCardHTML(it)).join('')}
-        </div>
-        <button class="prog-add-btn" data-prog-add-day="${dStr}">+ Wedstrijd</button>
+        ${ochtendRows}
+        ${avondHtml}
+        <button class="pwg-add-btn" data-prog-add-day="${dStr}">+</button>
       </div>
     `;
   }).join('');
@@ -17940,23 +18075,16 @@ function renderProgramma(){
       openProgMatchModal(null, btn.dataset.progAddDay);
     });
   });
-  grid.querySelectorAll('[data-prog-id]').forEach(card => {
-    card.addEventListener('click', () => openProgDetail(card.dataset.progId));
+  grid.querySelectorAll('[data-prog-week-evt]').forEach(el => {
+    el.addEventListener('click', () => {
+      const pid = el.dataset.progWeekEvt;
+      if(pid && typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(pid);
+    });
   });
 
-  // Detail-card als er een uitgeklapt is
+  // s35bn: detail-card legacy host wegruimen (modal heeft voorrang in week-view)
   const expandedHost = document.querySelector('#programma-grid + .prog-detail-card');
   if(expandedHost) expandedHost.remove();
-  if(progExpandedId){
-    const it = programmaCache.find(p => p.id === progExpandedId);
-    if(it){
-      const detail = document.createElement('div');
-      detail.innerHTML = progDetailHTML(it);
-      const card = detail.firstElementChild;
-      grid.parentNode.insertBefore(card, grid.nextSibling);
-      wireProgDetail(card, it);
-    }
-  }
 }
 
 function progMatchCardHTML(it){
@@ -19911,7 +20039,7 @@ onAuthStateChanged(auth, async (user)=>{
     // s35bk-3: push-up changelog, EXACT 1x per gebruiker per release
     setTimeout(() => {
       try {
-        const KEY = 'shown_changelog_v70h-s35bm';
+        const KEY = 'shown_changelog_v70h-s35bn';
         if(!localStorage.getItem(KEY)){
           const back = document.getElementById('changelog-backdrop');
           if(back){

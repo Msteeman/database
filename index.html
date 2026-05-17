@@ -6128,6 +6128,40 @@ tbody tr:last-child td { border-bottom: none; }
   border-radius: 999px;
   font-size: 11px; font-weight: 700;
 }
+/* ===== s35bu: agenda match-status kleurcodering ===== */
+.agenda-evt.prog-status-komend,
+.agenda-mobile-evt.prog-status-komend,
+.pwg-evt.prog-status-komend {
+  border-left: 3px solid #4ea1ff;
+}
+.agenda-evt.prog-status-bezig,
+.agenda-mobile-evt.prog-status-bezig,
+.pwg-evt.prog-status-bezig {
+  border-left: 3px solid #f5c842;
+  box-shadow: 0 0 0 2px rgba(245,200,66,0.18) inset;
+  position: relative;
+}
+.agenda-evt.prog-status-bezig::after,
+.pwg-evt.prog-status-bezig::after {
+  content: 'LIVE';
+  position: absolute; top: 4px; right: 6px;
+  font-size: 9px; font-weight: 800; letter-spacing: 0.08em;
+  color: #f5c842; background: rgba(245,200,66,0.16);
+  padding: 1px 5px; border-radius: 4px;
+  animation: progLivePulse 1.6s ease-in-out infinite;
+}
+@keyframes progLivePulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+.agenda-evt.prog-status-afgelopen,
+.agenda-mobile-evt.prog-status-afgelopen,
+.pwg-evt.prog-status-afgelopen {
+  border-left: 3px solid #6e7689;
+  opacity: 0.62;
+  filter: grayscale(0.35);
+}
+
 .db-compare-filter-btn:disabled .cmp-count { background: rgba(0,0,0,.15); }
 
 
@@ -14380,13 +14414,66 @@ function _shCollectSnelNotities(m){
   });
   return out;
 }
-// Verzamel alle wedstrijdnotities
+// s35bu: open Wedstrijdrapport-modal met prefill uit een (snel-)wedstrijdnotitie
+function _shConvertWstrNotitieToRapport(progId, wnIdx){
+  try {
+    const items = (typeof loadProgramma === 'function') ? loadProgramma() : [];
+    const p = items.find(x => x && x.id === progId);
+    if(!p){ if(typeof toast === 'function') toast('Programma-item niet gevonden', true); return; }
+    let tekst = '';
+    let title = '';
+    if(wnIdx === -1){
+      // Programmanotitie (scalar)
+      tekst = (p.notities || '').trim();
+      title = 'Programmanotitie';
+    } else {
+      const wns = Array.isArray(p.wedstrijdnotities) ? p.wedstrijdnotities : [];
+      const wn = wns[wnIdx];
+      if(!wn){ if(typeof toast === 'function') toast('Wedstrijdnotitie niet gevonden', true); return; }
+      tekst = ((wn.tekst || wn.notitie) || '').trim();
+      title = wn.titel || '';
+    }
+    // Markers voor consumer in match-rapport save-handler
+    window.__shConvertingFromWnIdx = wnIdx;
+    window.__shConvertingFromWnProgId = progId;
+    // Open lege match-rapport modal en prefill
+    if(typeof openMatchReportModal === 'function'){
+      openMatchReportModal('');
+      setTimeout(() => {
+        try {
+          const setVal = (id, v) => { const el = document.getElementById(id); if(el && v != null && el.value === '') el.value = v; };
+          setVal('mr-datum', p.datum || '');
+          setVal('mr-thuis', p.thuis || '');
+          setVal('mr-uit',   p.uit   || '');
+          setVal('mr-age',   p.leeftijd || '');
+          const opm = document.getElementById('mr-opmerking');
+          if(opm){
+            const prefix = title ? (title + ': ') : '';
+            opm.value = (opm.value ? (opm.value + '\n\n') : '') + prefix + tekst;
+          }
+        } catch(_){}
+      }, 60);
+    } else {
+      if(typeof toast === 'function') toast('Rapport-modal niet beschikbaar', true);
+    }
+  } catch(err){
+    console.warn('convert wstr-notitie failed', err);
+    if(typeof toast === 'function') toast('Omzetten mislukt', true);
+  }
+}
+
+// Verzamel alle wedstrijdnotities (s35bu: ook p.notities scalar)
 function _shCollectWedstrijdNotities(m){
   const out = [];
   _shFindLinkedPrograms(m).forEach(p => {
     (p.wedstrijdnotities || []).forEach((wn, idx) => {
       out.push({ progId: p.id, wnIdx: idx, wn });
     });
+    // s35bu: programma-veld 'notities' (scalar) is óók een wedstrijdnotitie
+    const sc = (p && typeof p.notities === 'string') ? p.notities.trim() : '';
+    if(sc){
+      out.push({ progId: p.id, wnIdx: -1, wn: { tekst: sc, titel: 'Programmanotitie', _isProgNotities: true } });
+    }
   });
   return out;
 }
@@ -14530,7 +14617,7 @@ function _shOpenEditModal(m){
           <div class="wstr-edit-note-title">${escapeHtml(titel)}</div>
           ${tekst ? `<div class="wstr-edit-note-text">${escapeHtml(tekst)}</div>` : '<div class="wstr-edit-note-text" style="font-style:italic;opacity:0.7;">(geen tekst)</div>'}
         </div>
-        <button type="button" class="wstr-edit-note-action" data-edit-wstr-prog="${escapeHtml(progId)}" data-edit-wstr-idx="${wnIdx}">Open & bewerken →</button>
+        <button type="button" class="wstr-edit-note-action" data-edit-wstr-prog="${escapeHtml(progId)}" data-edit-wstr-idx="${wnIdx}">Open & omzetten →</button>
       </div>`;
     }).join('');
   }
@@ -14593,15 +14680,10 @@ function _shOpenEditModal(m){
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const progId = btn.dataset.editWstrProg;
+      const wnIdx = parseInt(btn.dataset.editWstrIdx, 10);
       _shCloseEditModal();
-      try {
-        if(typeof currentTab !== "undefined") currentTab = "programma";
-        if(typeof renderApp === "function") renderApp();
-        setTimeout(() => {
-          const el = document.querySelector(`[data-prog-id="${progId}"]`);
-          if(el && typeof el.scrollIntoView === "function") el.scrollIntoView({behavior:"smooth", block:"center"});
-        }, 200);
-      } catch(_){}
+      // s35bu: open Wedstrijdrapport-modal met prefill uit (snel-)wedstrijdnotitie
+      _shConvertWstrNotitieToRapport(progId, wnIdx);
     });
   });
 
@@ -14837,6 +14919,51 @@ function _shOpenVerwerkModal(m){
     confirmBtn.dataset.key = key;
     confirmBtn.dataset.locked = isLocked ? "1" : "0";
   }
+
+  // s35bu: snelknop 'Alle concepten + markeer verwerkt' als er nog concepten zijn
+  try {
+    if(!isLocked){
+      const players = _shFindLinkedPlayers ? _shFindLinkedPlayers(m) : [];
+      const concepts = (players || []).filter(_shPlayerIsConcept);
+      if(concepts.length > 0 && confirmBtn && confirmBtn.parentNode){
+        let allBtn = document.getElementById('wstr-verwerk-all-concepts');
+        if(!allBtn){
+          allBtn = document.createElement('button');
+          allBtn.type = 'button';
+          allBtn.id = 'wstr-verwerk-all-concepts';
+          allBtn.className = 'btn btn-secondary';
+          allBtn.style.marginRight = '8px';
+          confirmBtn.parentNode.insertBefore(allBtn, confirmBtn);
+        }
+        allBtn.textContent = `Alle ${concepts.length} concept${concepts.length===1?'':'en'} indienen + verwerken`;
+        allBtn.onclick = async () => {
+          allBtn.disabled = true;
+          try {
+            for(const pl of concepts){
+              try {
+                const fresh = (typeof loadPlayers === 'function') ? loadPlayers().find(x => x.id === pl.id) : pl;
+                if(!fresh) continue;
+                const upd = {...fresh, concept: false, status: 'volledig', modified: Date.now()};
+                if(typeof savePlayer === 'function') await savePlayer(upd);
+              } catch(_){}
+            }
+            shMarkWedstrijdVerwerkt(key, true);
+            if(typeof toast === 'function') toast(`${concepts.length} concept${concepts.length===1?'':'en'} ingediend en verwerkt`);
+            _shCloseVerwerkModal();
+            if(typeof renderMatches === 'function') renderMatches();
+          } finally {
+            allBtn.disabled = false;
+          }
+        };
+      } else {
+        const old = document.getElementById('wstr-verwerk-all-concepts');
+        if(old) old.remove();
+      }
+    } else {
+      const old = document.getElementById('wstr-verwerk-all-concepts');
+      if(old) old.remove();
+    }
+  } catch(_){}
 
   back.classList.add("show");
   // Body lokaal: links naar in/uitklappen
@@ -19215,6 +19342,19 @@ function renderAgenda(){
     });
   });
 }
+// s35bu: returnt CSS-class voor match-status (komend / bezig / afgelopen)
+function _shMatchStatusClass(prog){
+  try {
+    if(typeof getMatchWindow !== 'function') return '';
+    const w = getMatchWindow(prog);
+    if(!w) return '';
+    const now = new Date();
+    if(now > w.end)        return 'prog-status-afgelopen';
+    if(now >= w.start)     return 'prog-status-bezig';
+    return 'prog-status-komend';
+  } catch(_){ return ''; }
+}
+
 function renderAgendaHourRow(hour, items){
   const hh = String(hour).padStart(2,'0') + ':00';
   if(items.length === 0){
@@ -19223,10 +19363,11 @@ function renderAgendaHourRow(hour, items){
   const evts = items.map(it => {
     const cls = agendaLeeftijdClass(it.leeftijd);
     const dur = getMatchDurationMin(it.leeftijd);
+    const stCls = _shMatchStatusClass(it); // s35bu
     const title = `${(it.thuis||'?')} — ${(it.uit||'?')}${it.leeftijd? ' ('+it.leeftijd+')':''}`;
     const loc = it.locatie || it.adres || '';
     const meta = [loc].filter(Boolean).join(' &middot; ');
-    return `<div class="agenda-evt ${cls}" data-agenda-progid="${it.id||''}">
+    return `<div class="agenda-evt ${cls} ${stCls}" data-agenda-progid="${it.id||''}">
       <span class="agenda-evt-dur">${dur}m</span>
       <div class="agenda-evt-title">${escapeHtml(it.tijd||'')} &middot; ${escapeHtml(title)}</div>
       ${meta? `<div class="agenda-evt-meta">${escapeHtml(meta)}</div>`:''}
@@ -19316,8 +19457,9 @@ function renderProgrammaUur(){
           <div class="agenda-mobile-block-time">${b.label} &middot; ${b.range}</div>
           ${items.map(it => {
             const dur = getMatchDurationMin(it.leeftijd);
+            const stCls = _shMatchStatusClass(it); // s35bu
             const title = `${(it.thuis||'?')} — ${(it.uit||'?')}${it.leeftijd? ' ('+it.leeftijd+')':''}`;
-            return `<div class="agenda-mobile-evt" data-agenda-progid="${it.id||''}"><span class="t">${escapeHtml(it.tijd||'')}</span><span class="lbl">${escapeHtml(title)}</span><span class="dur">${dur}m</span></div>`;
+            return `<div class="agenda-mobile-evt ${stCls}" data-agenda-progid="${it.id||''}"><span class="t">${escapeHtml(it.tijd||'')}</span><span class="lbl">${escapeHtml(title)}</span><span class="dur">${dur}m</span></div>`;
           }).join('')}
         </div>`;
     }).join('');
@@ -19414,9 +19556,10 @@ function renderProgramma(){
     const evtChip = it => {
       const cls = agendaLeeftijdClass(it.leeftijd);
       const dur = getMatchDurationMin(it.leeftijd);
+      const stCls = _shMatchStatusClass(it); // s35bu
       const t = escapeHtml(it.tijd||'');
       const teams = `${(it.thuis||'?')} — ${(it.uit||'?')}`;
-      return `<div class="pwg-evt ${cls}" data-prog-week-evt="${it.id||''}">
+      return `<div class="pwg-evt ${cls} ${stCls}" data-prog-week-evt="${it.id||''}">
         <span class="pwg-evt-dur">${dur}m</span>
         <div class="pwg-evt-title">${t} ${escapeHtml(teams)}</div>
       </div>`;
@@ -19657,6 +19800,52 @@ function openProgMatchDetailModal(progId){
 
   // Bewaar huidige id voor knop-handlers
   $('#prog-match-detail-modal').dataset.progId = progId;
+  // s35bu: als wedstrijd afgelopen is -> bewerken via Programma blokkeren,
+  //        CTA naar Wedstrijden-tab (zelfde regel als dashboard).
+  try {
+    const _w = (typeof getMatchWindow === 'function') ? getMatchWindow(it) : null;
+    const _isAfgelopen = !!(_w && new Date() > _w.end);
+    const _addBtn  = document.getElementById('pmd-add-player');
+    const _editBtn = document.getElementById('pmd-edit');
+    const _actions = document.querySelector('#prog-match-detail-modal .pmd-actions');
+    // verwijder oude CTA als die nog stond
+    const _oldCta = document.getElementById('pmd-goto-wedstrijden');
+    if(_oldCta) _oldCta.remove();
+    if(_isAfgelopen){
+      if(_addBtn)  _addBtn.style.display  = 'none';
+      if(_editBtn) _editBtn.style.display = 'none';
+      if(_actions){
+        const cta = document.createElement('button');
+        cta.type = 'button';
+        cta.id = 'pmd-goto-wedstrijden';
+        cta.className = 'btn btn-primary';
+        cta.innerHTML = '✓ Afgelopen — bewerken via Wedstrijden';
+        cta.addEventListener('click', () => {
+          try { closeProgMatchDetailModal(); } catch(_){}
+          try {
+            if(typeof currentTab !== 'undefined') currentTab = 'wedstrijden';
+            if(typeof renderApp === 'function') renderApp();
+            setTimeout(() => {
+              try {
+                const m = {
+                  kind: 'aggregated',
+                  datum: it.datum, thuis: it.thuis, uit: it.uit,
+                  uitslag: it.uitslag || '', age: it.leeftijd || '',
+                  opmerking: it.notities || '',
+                  players: []
+                };
+                if(typeof _shOpenEditModal === 'function') _shOpenEditModal(m);
+              } catch(_){}
+            }, 220);
+          } catch(_){}
+        });
+        _actions.appendChild(cta);
+      }
+    } else {
+      if(_addBtn)  _addBtn.style.display  = '';
+      if(_editBtn) _editBtn.style.display = '';
+    }
+  } catch(_){}
   showModal('prog-match-detail-backdrop');
 
   // Speler-rij klik -> open bestaande speler in prog-player-modal
@@ -20039,6 +20228,23 @@ async function saveProgPlayerFromForm(e, opts){
   const updated = {...it, spelers, modified: Date.now()};
   try {
     await saveProgrammaItem(updated);
+    // s35bu: consume markers van _shConvertSnelToRapport -> splice source snel-notitie
+    try {
+      const _snId = window.__shConvertingFromSnId;
+      const _snProgId = window.__shConvertingFromProgId;
+      if(_snId && _snProgId && _snProgId === progId){
+        const arr = Array.isArray(updated.snelnotities) ? updated.snelnotities.slice() : [];
+        const filtered = arr.filter(s => s && s.id !== _snId);
+        if(filtered.length !== arr.length){
+          const after = {...updated, snelnotities: filtered, modified: Date.now()};
+          await saveProgrammaItem(after);
+        }
+      }
+    } catch(_){}
+    finally {
+      window.__shConvertingFromSnId = null;
+      window.__shConvertingFromProgId = null;
+    }
     closeProgPlayerModal();
     if(!silent) toast('Speler opgeslagen');
     // s35r: als detail-modal open is, ververs de spelerslijst

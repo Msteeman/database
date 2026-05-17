@@ -4935,6 +4935,106 @@ tbody tr:last-child td { border-bottom: none; }
   margin-bottom: 4px;
 }
 .match-group-header:first-child { padding-top: 0; }
+/* ===== s35bq: Wedstrijden redesign ===== */
+.m-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 10px; margin: 4px 0 14px;
+}
+.m-stat {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 2px;
+  border-left: 3px solid var(--border-2);
+}
+.m-stat.verwerkt { border-left-color: #7fd99e; }
+.m-stat.toernooi { border-left-color: #f5c518; }
+.m-stat.info     { border-left-color: var(--accent, #4ea1ff); }
+.m-stat-num {
+  font-size: 24px; font-weight: 800; color: var(--text); line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.m-stat-lbl {
+  font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-3); font-weight: 700;
+}
+
+.m-search-row {
+  display: flex; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 10px; align-items: center;
+}
+.m-search-row .filter-input { flex: 1; min-width: 220px; }
+
+.m-chip-row {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  margin-bottom: 8px;
+}
+.m-chip {
+  background: var(--panel); border: 1px solid var(--border-2);
+  color: var(--text-2); padding: 6px 12px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: all 0.15s; user-select: none;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.m-chip:hover { border-color: var(--primary); color: var(--text); }
+.m-chip.active {
+  background: var(--primary); border-color: var(--primary);
+  color: #fff;
+}
+.m-chip-count {
+  font-size: 10.5px; font-weight: 700; opacity: 0.7;
+  background: rgba(255,255,255,0.08); padding: 1px 6px; border-radius: 999px;
+}
+.m-chip.active .m-chip-count { background: rgba(0,0,0,0.18); opacity: 1; }
+
+/* Uniforme kaart-shell: zelfde border / padding voor alle types */
+.match-card.match-report-card { border-left-color: var(--accent, #4ea1ff); }
+.match-card.match-card-toernooi { border-left-color: #f5c518; }
+
+/* Edit-mode toggle */
+.match-edit-toggle {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-3); cursor: pointer;
+  padding: 4px 10px; border-radius: 6px;
+  font-size: 11.5px; font-weight: 600;
+  transition: all 0.15s;
+}
+.match-edit-toggle:hover {
+  border-color: var(--primary); color: var(--primary);
+}
+.match-edit-toggle.active {
+  background: rgba(227,6,19,0.12); border-color: var(--primary); color: #ff8189;
+}
+
+/* Verberg actie-balk standaard; toon alleen in edit-mode */
+.match-report-card .match-report-actions {
+  display: none;
+  flex-wrap: wrap; gap: 8px; margin-top: 12px;
+  padding-top: 12px; border-top: 1px dashed var(--border);
+}
+.match-report-card.editing .match-report-actions { display: flex; }
+
+/* Empty state met CTA */
+.m-empty {
+  text-align: center; padding: 56px 20px 64px;
+  background: var(--panel); border: 1px dashed var(--border-2);
+  border-radius: 12px; color: var(--text-3);
+}
+.m-empty-icon { color: var(--text-3); margin-bottom: 14px; }
+.m-empty-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.m-empty-sub { font-size: 13px; max-width: 480px; margin: 0 auto 18px; line-height: 1.55; }
+.m-empty .btn { display: inline-flex; align-items: center; gap: 6px; }
+
+@media (max-width: 700px) {
+  .m-stats { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .m-stat { padding: 10px 12px; }
+  .m-stat-num { font-size: 20px; }
+  .m-search-row { gap: 6px; }
+  .m-search-row .filter-input,
+  .m-search-row .filter-select { padding: 7px 10px; font-size: 13px; }
+  .m-chip { padding: 5px 10px; font-size: 11.5px; }
+}
+
 .match-card {
   background: var(--panel);
   border: 1px solid var(--border);
@@ -4946,6 +5046,16 @@ tbody tr:last-child td { border-bottom: none; }
   gap: 16px;
   align-items: center;
   transition: border-color .15s, transform .15s;
+  position: relative; /* s35bq: voor edit-toggle */
+}
+.match-report-card .match-edit-toggle {
+  position: absolute; top: 10px; right: 12px;
+}
+@media (max-width: 700px) {
+  .match-card { grid-template-columns: 70px 1fr; padding: 12px 14px; gap: 10px; }
+  .match-card .match-players { display: none; }
+  .match-report-card .match-edit-toggle { top: 8px; right: 8px; padding: 3px 8px; font-size: 11px; }
+  .match-date-day { font-size: 19px; }
 }
 .match-card:hover { border-color: var(--border-2); transform: translateX(2px); }
 .match-date {
@@ -6590,8 +6700,6 @@ tbody tr:last-child td { border-bottom: none; }
             <div class="page-sub" id="matches-count">0 wedstrijden</div>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <!-- v70h-s33: import / bulkdel verplaatst naar Instellingen.
-                 Verborgen gehouden zodat bestaande JS-handlers blijven werken. -->
             <button class="btn btn-secondary" id="match-report-import-btn" style="display:none;" aria-hidden="true" tabindex="-1">Importeren</button>
             <button class="btn btn-ghost" id="match-report-bulk-delete-btn" style="display:none;" aria-hidden="true" tabindex="-1">Import ongedaan maken</button>
             <button class="btn btn-primary" id="match-report-new-btn">
@@ -6601,20 +6709,43 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="filters">
+        <!-- s35bq: stats-balk -->
+        <div class="m-stats" id="match-stats">
+          <div class="m-stat"><div class="m-stat-num" id="m-stat-total">0</div><div class="m-stat-lbl">Totaal</div></div>
+          <div class="m-stat verwerkt"><div class="m-stat-num" id="m-stat-verwerkt">0</div><div class="m-stat-lbl">Verwerkt</div></div>
+          <div class="m-stat toernooi"><div class="m-stat-num" id="m-stat-toernooi">0</div><div class="m-stat-lbl">Toernooien</div></div>
+          <div class="m-stat info"><div class="m-stat-num" id="m-stat-info">0</div><div class="m-stat-lbl">Alleen rapport</div></div>
+        </div>
+
+        <!-- s35bq: zoek + sort -->
+        <div class="m-search-row">
           <input id="match-search" class="filter-input" type="text" placeholder="Zoek op team of leeftijd..." />
-          <select id="match-age" class="filter-select"><option value="">Alle leeftijden</option></select>
           <select id="match-sort" class="filter-select">
             <option value="newest">Nieuwste eerst</option>
             <option value="oldest">Oudste eerst</option>
           </select>
         </div>
 
+        <!-- s35bq: chip-filters -->
+        <div class="m-chip-row" id="match-age-chips" data-chip-group="age"></div>
+        <div class="m-chip-row" id="match-status-chips" data-chip-group="status"></div>
+        <!-- compat: behoud verborgen select voor oude handlers -->
+        <select id="match-age" class="filter-select" style="display:none;" aria-hidden="true" tabindex="-1"><option value="">Alle leeftijden</option></select>
+
         <div id="matches-list" class="matches-list"></div>
         <div id="match-compare-bar-host"></div>
-        <div id="matches-empty" style="display:none; text-align:center; padding:60px 20px; color:var(--text-3);">
-          <div style="font-size:14px; margin-bottom:10px;">Nog geen wedstrijden bekend.</div>
-          <div style="font-size:12px;">Wedstrijden verschijnen automatisch zodra je rapporten opslaat met een thuis- en uitspelende ploeg, of klik op <strong>Nieuw wedstrijdrapport</strong>.</div>
+        <div id="matches-empty" class="m-empty" style="display:none;">
+          <div class="m-empty-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <div class="m-empty-title">Nog geen wedstrijden bekend</div>
+          <div class="m-empty-sub">Wedstrijden verschijnen automatisch zodra je een rapport opslaat met thuis- en uitspelende ploeg. Of begin nu met een nieuw wedstrijdrapport.</div>
+          <button type="button" class="btn btn-primary" id="m-empty-cta">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nieuw wedstrijdrapport
+          </button>
         </div>
       </section>
 
@@ -13814,6 +13945,9 @@ let cmpSelectedIds = [];
 let cmpSearchQuery = '';
 let dbCheckedIds = [];
 let matchCheckedIds = [];
+// s35bq: extra filter-state
+let matchStatusFilter = "";  // "", "verwerkt", "toernooi", "info"
+let matchEditingIds = new Set();
 
 function cmpPlayerById(id){ return loadPlayers().find(p => p.id === id) || null; }
 function cmpGradeNum(g){ return CMP_GRADE_VAL[g] || 0; }
@@ -15965,19 +16099,56 @@ function renderMatches(){
   }));
   matches = matches.concat(reports);
 
+  // s35bq: stats vóór filtering (totalen op volledige set)
+  const _statTotal = matches.length;
+  const _statVerwerkt = matches.filter(m => m.kind === 'aggregated' && !m.toernooi).length;
+  const _statToernooi = matches.filter(m => m.kind === 'aggregated' && m.toernooi).length;
+  const _statInfo = matches.filter(m => m.kind === 'report').length;
+  const _setText = (id, n) => { const el = document.getElementById(id); if(el) el.textContent = n; };
+  _setText('m-stat-total', _statTotal);
+  _setText('m-stat-verwerkt', _statVerwerkt);
+  _setText('m-stat-toernooi', _statToernooi);
+  _setText('m-stat-info', _statInfo);
+
   // Filters
   const search = ($('#match-search').value || '').toLowerCase().trim();
   const ageFilter = $('#match-age').value || '';
   const sortMode = $('#match-sort').value || 'newest';
 
-  // Populate age filter (unique ages present)
+  // Populate age filter (unique ages present) + chip-row
   const ages = Array.from(new Set(matches.map(m => m.age).filter(Boolean))).sort((a,b)=>{
     return parseInt(a.replace('O','')) - parseInt(b.replace('O',''));
   });
   const ageSel = $('#match-age');
-  const currentAge = ageSel.value;
-  ageSel.innerHTML = '<option value="">Alle leeftijden</option>' +
-    ages.map(a => `<option value="${a}"${a===currentAge?' selected':''}>${a}</option>`).join('');
+  const currentAge = ageSel ? (ageSel.value || ageFilter) : ageFilter;
+  if(ageSel){
+    ageSel.innerHTML = '<option value="">Alle leeftijden</option>' +
+      ages.map(a => `<option value="${a}"${a===currentAge?' selected':''}>${a}</option>`).join('');
+  }
+  // s35bq: render age-chips
+  const ageChipsHost = document.getElementById('match-age-chips');
+  if(ageChipsHost){
+    const ageCounts = {};
+    matches.forEach(m => { if(m.age) ageCounts[m.age] = (ageCounts[m.age]||0)+1; });
+    const totalAge = matches.length;
+    const ageHtml = [`<button type="button" class="m-chip${ageFilter===''?' active':''}" data-age-chip="">Alle <span class="m-chip-count">${totalAge}</span></button>`]
+      .concat(ages.map(a => `<button type="button" class="m-chip${ageFilter===a?' active':''}" data-age-chip="${escapeHtml(a)}">${escapeHtml(a)} <span class="m-chip-count">${ageCounts[a]||0}</span></button>`))
+      .join('');
+    ageChipsHost.innerHTML = ageHtml;
+  }
+  // s35bq: render status-chips
+  const statusChipsHost = document.getElementById('match-status-chips');
+  if(statusChipsHost){
+    const statuses = [
+      { id: '',         label: 'Alle status',    count: _statTotal },
+      { id: 'verwerkt', label: 'Verwerkt',       count: _statVerwerkt },
+      { id: 'toernooi', label: 'Toernooi',       count: _statToernooi },
+      { id: 'info',     label: 'Alleen rapport', count: _statInfo }
+    ];
+    statusChipsHost.innerHTML = statuses.map(s =>
+      `<button type="button" class="m-chip${matchStatusFilter===s.id?' active':''}" data-status-chip="${s.id}">${escapeHtml(s.label)} <span class="m-chip-count">${s.count}</span></button>`
+    ).join('');
+  }
 
   // Apply filters
   if(search){
@@ -15990,6 +16161,14 @@ function renderMatches(){
   }
   if(ageFilter){
     matches = matches.filter(m => m.age === ageFilter);
+  }
+  // s35bq: status-filter
+  if(matchStatusFilter === 'verwerkt'){
+    matches = matches.filter(m => m.kind === 'aggregated' && !m.toernooi);
+  } else if(matchStatusFilter === 'toernooi'){
+    matches = matches.filter(m => m.kind === 'aggregated' && m.toernooi);
+  } else if(matchStatusFilter === 'info'){
+    matches = matches.filter(m => m.kind === 'report');
   }
 
   // Sort
@@ -16029,8 +16208,9 @@ function renderMatches(){
         ? `<span class="match-age-badge">${escapeHtml(m.age)}</span>`
         : '';
       const checked = matchCheckedIds.includes(m.id) ? 'checked' : '';
+      const isEditing = matchEditingIds.has(m.id);
       html += `
-        <div class="match-card match-report-card" data-report-id="${escapeHtml(m.id)}">
+        <div class="match-card match-report-card${isEditing?' editing':''}" data-report-id="${escapeHtml(m.id)}">
           <div class="match-date">
             <div class="match-date-day">${d.day}</div>
             <div class="match-date-month">${d.month}</div>
@@ -16052,11 +16232,26 @@ function renderMatches(){
             </div>
             ${m.opmerking ? `<div class="match-report-note">${escapeHtml(m.opmerking)}</div>` : ''}
             <div class="match-report-actions">
-              <button type="button" class="btn btn-ghost match-report-edit" data-report-id="${escapeHtml(m.id)}">Bewerken</button>
-              <button type="button" class="btn btn-ghost match-report-add-player" data-report-id="${escapeHtml(m.id)}">+ Speler rapporteren</button>
-              <button type="button" class="btn btn-ghost match-report-delete" data-report-id="${escapeHtml(m.id)}" style="color:#ef4444;">Verwijderen</button>
+              <button type="button" class="btn btn-secondary match-report-edit" data-report-id="${escapeHtml(m.id)}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Wedstrijdrapport bewerken
+              </button>
+              <button type="button" class="btn btn-ghost match-report-add-player" data-report-id="${escapeHtml(m.id)}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Speler rapporteren
+              </button>
+              <button type="button" class="btn btn-ghost match-report-delete" data-report-id="${escapeHtml(m.id)}" style="color:#ef4444;">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                Verwijderen
+              </button>
             </div>
           </div>
+          <button type="button" class="match-edit-toggle${isEditing?' active':''}" data-report-edit-toggle="${escapeHtml(m.id)}" aria-label="${isEditing?'Sluiten':'Bewerken'}" onclick="event.stopPropagation()">
+            ${isEditing
+              ? `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Sluiten`
+              : `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Bewerken`
+            }
+          </button>
         </div>
       `;
       return;
@@ -16247,6 +16442,68 @@ function renderMatches(){
       renderMatchCompareBar();
     });
   });
+
+  // s35bq: edit-toggle per report-card
+  list.querySelectorAll('[data-report-edit-toggle]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.reportEditToggle;
+      const card = btn.closest('.match-card');
+      if(!card) return;
+      const willEdit = !card.classList.contains('editing');
+      // Sluit andere edit-modes
+      list.querySelectorAll('.match-card.editing').forEach(c => {
+        if(c !== card){ c.classList.remove('editing'); }
+      });
+      matchEditingIds.clear();
+      if(willEdit){
+        card.classList.add('editing');
+        matchEditingIds.add(id);
+        btn.classList.add('active');
+        btn.setAttribute('aria-label', 'Sluiten');
+        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>Sluiten`;
+      } else {
+        card.classList.remove('editing');
+        btn.classList.remove('active');
+        btn.setAttribute('aria-label', 'Bewerken');
+        btn.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Bewerken`;
+      }
+    });
+  });
+
+  // s35bq: chip-filters
+  const ageHost = document.getElementById('match-age-chips');
+  if(ageHost && !ageHost.dataset.wired){
+    ageHost.dataset.wired = '1';
+    ageHost.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-age-chip]');
+      if(!b) return;
+      const v = b.dataset.ageChip || '';
+      const sel = document.getElementById('match-age');
+      if(sel) sel.value = v;
+      renderMatches();
+    });
+  }
+  const statusHost = document.getElementById('match-status-chips');
+  if(statusHost && !statusHost.dataset.wired){
+    statusHost.dataset.wired = '1';
+    statusHost.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-status-chip]');
+      if(!b) return;
+      matchStatusFilter = b.dataset.statusChip || '';
+      renderMatches();
+    });
+  }
+
+  // s35bq: empty-state CTA
+  const emptyCta = document.getElementById('m-empty-cta');
+  if(emptyCta && !emptyCta.dataset.wired){
+    emptyCta.dataset.wired = '1';
+    emptyCta.addEventListener('click', () => {
+      const btn = document.getElementById('match-report-new-btn');
+      if(btn) btn.click();
+    });
+  }
 
   renderMatchCompareBar();
 }

@@ -5345,7 +5345,9 @@ tbody tr:last-child td { border-bottom: none; }
 .match-card.match-card-toernooi { border-left-color: #f5c518; }
 
 /* s35bs: report-card klikbaar -> opent edit-modal */
-.match-card.match-report-card { cursor: pointer; }
+/* s35bt: aggregated (niet-toernooi) cards óók klikbaar -> modal */
+.match-card.match-report-card,
+.match-card.expandable:not(.match-card-toernooi) { cursor: pointer; }
 .match-card.match-report-card .match-report-click-hint {
   display: flex; align-items: center; justify-content: center;
   color: var(--text-3); padding: 0 4px;
@@ -5354,6 +5356,8 @@ tbody tr:last-child td { border-bottom: none; }
 .match-card.match-report-card:hover .match-report-click-hint {
   color: var(--accent, #4ea1ff); transform: translateX(2px);
 }
+/* s35bt: chevron in aggregated niet-toernooi cards verbergen (modal-flow) */
+.match-card.expandable:not(.match-card-toernooi) .match-chevron { display: none; }
 
 /* Empty state met CTA */
 .m-empty {
@@ -17097,6 +17101,8 @@ function renderMatches(){
   const _statVerwerkt = matches.filter(m => m.kind === 'aggregated' && !m.toernooi).length;
   const _statToernooi = matches.filter(m => m.kind === 'aggregated' && m.toernooi).length;
   const _statInfo = matches.filter(m => m.kind === 'report').length;
+  // s35bt: aantal nog niet verwerkte wedstrijden (aggregated, niet-toernooi)
+  const _statNogVerwerken = matches.filter(m => m.kind === 'aggregated' && !m.toernooi && !shIsWedstrijdVerwerkt(_shMatchKey(m))).length;
   const _setText = (id, n) => { const el = document.getElementById(id); if(el) el.textContent = n; };
   _setText('m-stat-total', _statTotal);
   _setText('m-stat-verwerkt', _statVerwerkt);
@@ -17133,10 +17139,11 @@ function renderMatches(){
   const statusChipsHost = document.getElementById('match-status-chips');
   if(statusChipsHost){
     const statuses = [
-      { id: '',         label: 'Alle status',    count: _statTotal },
-      { id: 'verwerkt', label: 'Verwerkt',       count: _statVerwerkt },
-      { id: 'toernooi', label: 'Toernooi',       count: _statToernooi },
-      { id: 'info',     label: 'Alleen rapport', count: _statInfo }
+      { id: '',              label: 'Alle status',     count: _statTotal },
+      { id: 'nog-verwerken', label: 'Nog te verwerken',count: _statNogVerwerken },
+      { id: 'verwerkt',      label: 'Verwerkt',        count: _statVerwerkt },
+      { id: 'toernooi',      label: 'Toernooi',        count: _statToernooi },
+      { id: 'info',          label: 'Alleen rapport',  count: _statInfo }
     ];
     statusChipsHost.innerHTML = statuses.map(s =>
       `<button type="button" class="m-chip${matchStatusFilter===s.id?' active':''}" data-status-chip="${s.id}">${escapeHtml(s.label)} <span class="m-chip-count">${s.count}</span></button>`
@@ -17155,13 +17162,15 @@ function renderMatches(){
   if(ageFilter){
     matches = matches.filter(m => m.age === ageFilter);
   }
-  // s35bq: status-filter
+  // s35bq + s35bt: status-filter
   if(matchStatusFilter === 'verwerkt'){
     matches = matches.filter(m => m.kind === 'aggregated' && !m.toernooi);
   } else if(matchStatusFilter === 'toernooi'){
     matches = matches.filter(m => m.kind === 'aggregated' && m.toernooi);
   } else if(matchStatusFilter === 'info'){
     matches = matches.filter(m => m.kind === 'report');
+  } else if(matchStatusFilter === 'nog-verwerken'){
+    matches = matches.filter(m => m.kind === 'aggregated' && !m.toernooi && !shIsWedstrijdVerwerkt(_shMatchKey(m)));
   }
 
   // Sort
@@ -17362,14 +17371,42 @@ function renderMatches(){
       openDetail(chip.dataset.playerId);
     });
   });
-  list.querySelectorAll('.match-toggle').forEach(el => {
-    el.addEventListener('click', (e)=>{
-      const card = el.closest('.match-card');
-      if(!card) return;
-      const wasOpen = card.classList.contains('open');
-      list.querySelectorAll('.match-card.open').forEach(c => { if(c !== card) c.classList.remove('open'); });
-      card.classList.toggle('open', !wasOpen);
-    });
+  // s35bt: aggregated niet-toernooi cards openen nu de Wedstrijd-bewerken modal
+  //        (gelijk aan report-cards). Toernooi-cards blijven inline uitklappen.
+  list.querySelectorAll('.match-card.expandable').forEach(card => {
+    const isToernooi = card.classList.contains('match-card-toernooi');
+    if(isToernooi){
+      // Originele expand-inline gedrag voor toernooi clusters
+      card.querySelectorAll('.match-toggle').forEach(el => {
+        el.addEventListener('click', (e)=>{
+          const wasOpen = card.classList.contains('open');
+          list.querySelectorAll('.match-card.open').forEach(c => { if(c !== card) c.classList.remove('open'); });
+          card.classList.toggle('open', !wasOpen);
+        });
+      });
+    } else {
+      // Aggregated wedstrijd -> opent Wedstrijd-bewerken modal
+      card.addEventListener('click', (e) => {
+        // Negeer kliks die uit interactieve children komen (chips, knoppen, dropdown-rijen)
+        const t = e.target;
+        if(t && t.closest && (
+            t.closest('.match-player-chip') ||
+            t.closest('.match-dropdown-row') ||
+            t.closest('.match-verwerk-toggle') ||
+            t.closest('[data-match-verwerk]') ||
+            t.closest('.mdr-submit') ||
+            t.closest('.m-snel-chip') ||
+            t.closest('button') ||
+            t.closest('a')
+        )) return;
+        const key = card.dataset.matchKey;
+        if(!key) return;
+        const m = _shFindMatchByKey(key);
+        if(!m){ if(typeof toast === 'function') toast('Wedstrijd niet gevonden', true); return; }
+        m.kind = 'aggregated';
+        _shOpenEditModal(m);
+      });
+    }
   });
   list.querySelectorAll('.match-dropdown-row').forEach(row => {
     row.addEventListener('click', (e)=>{

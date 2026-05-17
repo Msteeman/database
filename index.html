@@ -3866,6 +3866,56 @@ tbody tr:last-child td { border-bottom: none; }
   }
 }
 
+/* ===== s35ck: Agenda-view (#view-agenda) edge-to-edge op mobile ===== */
+/* De agenda heeft een eigen view (#view-agenda) met #agenda-grid. De edge-to-edge
+   bleed fixes uit s35cc/s35cd targeten alleen #programma-grid en gelden hier dus
+   niet. Dat is waarom de agenda in alle modi (1 dag / 3 dagen / Week) te smal
+   oogt op mobiel — hij blijft binnen de 14px .main padding hangen.            */
+@media (max-width: 900px) {
+  #view-agenda {
+    overflow-x: hidden !important;
+    max-width: 100% !important;
+  }
+  #view-agenda #agenda-grid {
+    margin-left: -14px !important;
+    margin-right: -14px !important;
+    width: calc(100% + 28px) !important;
+    max-width: calc(100% + 28px) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  #view-agenda #agenda-grid > .agenda-day-col {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+    box-sizing: border-box;
+  }
+  /* Toolbar ook full-width (anders vorige/volgende-knoppen + 1d/3d/week
+     wrappen in een smal kaartje terwijl de agenda eronder breed staat).      */
+  #view-agenda .agenda-toolbar {
+    margin-left: -14px !important;
+    margin-right: -14px !important;
+    width: calc(100% + 28px) !important;
+    max-width: calc(100% + 28px) !important;
+    border-radius: 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    box-sizing: border-box;
+  }
+  /* Mobile-block: kleinere binnenmarge zodat de event-tekst lekker breed staat. */
+  #view-agenda .agenda-mobile-block {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 10px 12px !important;
+  }
+}
+
 /* ===== s35bk-3: Push-up changelog modal ===== */
 .changelog-backdrop {
   position: fixed; inset: 0; z-index: 9999;

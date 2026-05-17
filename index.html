@@ -8001,7 +8001,9 @@ algemeen:</textarea>
           <div style="font-size:13px; color:#9ca3af; line-height:1.5;">
             <strong>Scout</strong>: ziet alleen eigen data.<br/>
             <strong>Coördinator</strong>: ziet rapporten van alle scouts in zijn/haar team + kan wedstrijden inplannen voor scouts.<br/>
-            <strong>Admin</strong>: full control. Wijzigingen zijn direct actief; gebruiker moet opnieuw inloggen om het zelf te zien.
+            <strong>Admin</strong>: full control. Wijzigingen zijn direct actief; gebruiker moet opnieuw inloggen om het zelf te zien.<br/>
+            <br/>
+            <strong>TeamId leeg</strong> = individuele gebruiker (geen coordinator-toegang tot z'n data). Default voor nieuwe registraties — admin kan iemand pas in een team plaatsen door hier een teamId in te vullen.
           </div>
         </div>
       </section>
@@ -21981,7 +21983,7 @@ function initAuthForms(){
    ============================================================ */
 const ADMIN_EMAILS = ['msteeman@jsrdemo.nl'];
 let currentUserRole = 'scout';
-let currentUserTeamId = 'demo_team';
+let currentUserTeamId = '';
 let teamScoutsCache = []; // [{uid, email, displayName, role, teamId}]
 
 async function loadUserRole(){
@@ -21990,7 +21992,7 @@ async function loadUserRole(){
     const uref = doc(db, 'users', currentUser.uid);
     const usnap = await getDoc(uref);
     let role = 'scout';
-    let teamId = 'demo_team';
+    let teamId = '';
     let displayName = currentUser.displayName || '';
     if(usnap.exists()){
       const d = usnap.data() || {};
@@ -22004,7 +22006,7 @@ async function loadUserRole(){
           email: currentUser.email || '',
           displayName: displayName,
           role: 'scout',
-          teamId: 'demo_team',
+          teamId: '',
           created: Date.now()
         }, { merge: true });
       } catch(e){ console.warn('user-doc create skipped', e); }
@@ -22028,7 +22030,7 @@ async function loadUserRole(){
     const sr = document.getElementById('settings-role');
     if(sr) sr.textContent = role.charAt(0).toUpperCase()+role.slice(1);
     const st = document.getElementById('settings-team');
-    if(st) st.textContent = teamId;
+    if(st) st.textContent = teamId || 'Individueel (geen team)';
     console.log('[s35cg] role=' + role + ' team=' + teamId);
   } catch(e){
     console.warn('[s35cg] loadUserRole failed:', e);
@@ -22038,6 +22040,8 @@ async function loadUserRole(){
 /* Lijst van scouts in mijn team (coord/admin) — voor dropdowns + team-overzicht */
 async function loadTeamScouts(){
   if(currentUserRole === 'scout') { teamScoutsCache = []; return; }
+  /* s35ch: coordinator zonder team kan geen team-genoten zien */
+  if(!currentUserTeamId){ teamScoutsCache = []; return; }
   try {
     const q = query(collection(db, 'users'), where('teamId', '==', currentUserTeamId));
     const snap = await getDocs(q);
@@ -22049,7 +22053,7 @@ async function loadTeamScouts(){
         email: d.email || '',
         displayName: d.displayName || d.email || docSnap.id.slice(0,6),
         role: d.role || 'scout',
-        teamId: d.teamId || 'demo_team'
+        teamId: d.teamId || ''
       });
     });
     teamScoutsCache = out;
@@ -22088,6 +22092,8 @@ let __teamOverzichtCache = null;
 
 async function fetchTeamReports(){
   if(currentUserRole === 'scout') return { match_reports: [], players: [], scouts: [] };
+  /* s35ch: zonder team is er niets om te tonen */
+  if(!currentUserTeamId) return { match_reports: [], players: [], scouts: [] };
   await loadTeamScouts();
   const teamScouts = teamScoutsCache;
   const allMatches = [];
@@ -22258,7 +22264,7 @@ async function renderAdminPanel(){
         email: dd.email || '',
         displayName: dd.displayName || '',
         role: dd.role || 'scout',
-        teamId: dd.teamId || 'demo_team'
+        teamId: dd.teamId || ''
       });
     });
   } catch(e){
@@ -22280,7 +22286,7 @@ async function renderAdminPanel(){
     }
     h += '  </select>';
     h += '  <input class="admin-user-team-input" data-uid="' + _toEscape(u.uid) + '" value="'
-       + _toEscape(u.teamId) + '" placeholder="teamId" />';
+       + _toEscape(u.teamId) + '" placeholder="(leeg = individueel)" />';
     h += '  <button class="admin-save-btn" data-uid="' + _toEscape(u.uid) + '">Opslaan</button>';
     h += '</div>';
   }
@@ -22296,7 +22302,7 @@ document.addEventListener('click', async (e) => {
   const roleSel = row.querySelector('.admin-user-role-select');
   const teamInp = row.querySelector('.admin-user-team-input');
   const newRole = roleSel.value;
-  const newTeam = (teamInp.value || 'demo_team').trim();
+  const newTeam = (teamInp.value || '').trim();
   btn.disabled = true;
   const origText = btn.textContent;
   btn.textContent = 'Opslaan…';

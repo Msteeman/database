@@ -1199,25 +1199,7 @@ a { color: var(--accent); text-decoration: none; }
   padding-top: 10px;
   border-top: 1px solid var(--border-2);
 }
-.sa-tile-voorrap {
-  background: rgba(96,165,250,0.08);
-  border: 1px solid rgba(96,165,250,0.25);
-  border-radius: 8px;
-  padding: 8px 10px;
-  font-size: 12.5px;
-  color: #bcd2ee;
-  line-height: 1.45;
-  margin-bottom: 10px;
-}
-.sa-tile-voorrap .vr-head {
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: .5px;
-  text-transform: uppercase;
-  color: #60a5fa;
-  margin-bottom: 4px;
-}
-.sa-tile-voorrap .vr-text { white-space: pre-line; color: var(--text-1); }
+/* s35ca-1: .sa-tile-voorrap CSS verwijderd */
 .sa-tile-acts {
   display: flex; gap: 6px; flex-wrap: wrap;
 }
@@ -3866,13 +3848,7 @@ tbody tr:last-child td { border-bottom: none; }
 .snel-notitie-btn:hover{background:#fcd454}
 .snel-notitie-btn.ghost{background:transparent;color:var(--text-3,#8a93ab);border:1px solid var(--border-2,#2d3242);font-weight:500}
 .snel-notitie-btn.ghost:hover{color:var(--text,#e5e9f5)}
-/* s35am (#6): voor-rapport read-only info-blok bovenaan spelersrapport */
-.voor-rapport-block{background:rgba(96,165,250,0.08);border:1px solid rgba(96,165,250,0.3);border-radius:10px;padding:11px 14px;margin-bottom:14px;display:flex;gap:11px;align-items:flex-start;font-size:13px;line-height:1.5}
-.voor-rapport-block .vr-ic{font-size:16px;color:#60a5fa;flex-shrink:0;line-height:1.3}
-.voor-rapport-block .vr-body{flex:1;color:var(--text,#e5e9f5)}
-.voor-rapport-block .vr-head{font-weight:600;color:#60a5fa;font-size:12px;text-transform:uppercase;letter-spacing:.4px;margin-bottom:3px}
-.voor-rapport-block .vr-text{white-space:pre-line}
-.voor-rapport-block .vr-meta{font-size:11px;color:var(--text-3,#8a93ab);margin-top:4px;font-style:italic}
+/* s35ca-1: .voor-rapport-block CSS verwijderd — voor-rapport UI uitgeschakeld */
 /* s35ak (#4): visuele highlight + strip voor auto-ingevulde wedstrijdvelden in spelersrapport */
 .rep-prog-autofill-strip{grid-column:1/-1;background:rgba(245,197,24,0.08);border:1px solid rgba(245,197,24,0.25);border-radius:10px;padding:8px 12px;margin-bottom:8px;font-size:12.5px;color:var(--text,#e5e9f5);display:flex;align-items:center;gap:8px;line-height:1.45}
 .rep-prog-autofill-strip .ic{color:#f5c518;font-size:14px}
@@ -7216,7 +7192,13 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
 
         <form id="report-form" class="form-grid" autocomplete="off">
-          <div class="report-intro-strip" style="grid-column:1/-1; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 14px; margin-bottom:8px; font-size:13px; color:var(--muted,#9aa3b7); line-height:1.45;">
+          <!-- s35ca-3: lock-banner voor ingediende rapporten — read-only met "Bewerk toch" knop -->
+          <div id="report-lock-banner" style="display:none; grid-column:1/-1; background:rgba(251,191,36,0.10); border:1px solid rgba(251,191,36,0.35); border-radius:10px; padding:10px 14px; margin-bottom:8px; font-size:13px; color:#fbbf24; line-height:1.45; align-items:center; gap:10px;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <div style="flex:1; color:var(--text,#e5e9f5);">Dit rapport is <strong style="color:#fbbf24;">ingediend</strong> — alleen-lezen.</div>
+            <button type="button" id="report-unlock-btn" class="btn btn-secondary" style="font-size:12px; padding:5px 10px;">Bewerk toch</button>
+          </div>
+          <div class="report-intro-strip" id="report-intro-strip" style="grid-column:1/-1; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 14px; margin-bottom:8px; font-size:13px; color:var(--muted,#9aa3b7); line-height:1.45;">
             <strong style="color:var(--text,#e5e9f5); font-weight:600;">Dit is een concept.</strong> Alles wat je invult wordt automatisch opgeslagen. Klaar? Klik onderaan op <strong style="color:var(--text,#e5e9f5); font-weight:600;">Indienen</strong>.
           </div>
           <!-- s35aq: opklapbaar Snel notitie-paneel — handig langs de lijn (mobile + desktop) -->
@@ -7587,6 +7569,11 @@ algemeen:</textarea>
               <span class="dot"></span>
               <span class="text" id="report-autosave-text">Automatisch opgeslagen</span>
             </div>
+            <!-- s35ca-3: Opslaan-knop naast Indienen — bewaart als concept zonder verplichte niveaus -->
+            <button type="button" class="btn btn-secondary" id="report-save-draft-btn" style="margin-right:8px;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Opslaan
+            </button>
             <button type="submit" form="report-form" class="btn btn-primary" id="report-save-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               Indienen
@@ -8053,7 +8040,8 @@ algemeen:</textarea>
         <input type="hidden" id="pp-naam" />
         <input type="hidden" id="pp-rugnummer" />
         <input type="hidden" id="pp-positie" />
-        <div class="field" style="margin-top:12px;">
+        <!-- s35ca-1: voorrapport-veld verborgen (data-laag intact, 6 JS-sites blijven werken) -->
+        <div class="field" style="display:none" aria-hidden="true">
           <label>Aandachtspunten / voorrapport</label>
           <textarea id="pp-notities" rows="3" placeholder="Waar wil je tijdens deze wedstrijd op letten?"></textarea>
         </div>
@@ -11980,6 +11968,17 @@ function isMatchInWindow(prog, now){
   const t = (now || new Date()).getTime();
   return t >= w.start.getTime() && t <= w.end.getTime();
 }
+// s35ca-1: een wedstrijd is 'op slot' zodra fluitje+15 verstreken is.
+// Vanaf dat moment zijn snel-notities en spelersrapport-edits op het
+// dashboard read-only — bewerken kan alleen nog via tab Wedstrijden.
+// Nog niet afgedwongen; lock-routes komen in s35ca-2.
+function _shIsMatchLocked(prog, now){
+  const w = getMatchWindow(prog);
+  if(!w) return false;
+  const t = (now || new Date()).getTime();
+  return t > w.end.getTime();
+}
+window._shIsMatchLocked = _shIsMatchLocked;
 // 3-traps speler-matching tegen playersCache.
 // Retourneert { player, mode } waarbij mode = 'exact'|'club'|'naam'|null
 // s35x: zoek bestaand concept voor een specifieke programma-slot.
@@ -12256,42 +12255,7 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
 }
 window.openScoutingPlayerForm = openScoutingPlayerForm;
 
-// s35am (#6): voor-rapport als read-only info-blok bovenaan spelersrapport.
-// progSp.voor_notities is op de programma-pagina ingevuld (aandachtspunten).
-function injectVoorRapportBlock(prog, progSp){
-  const old = document.getElementById('voor-rapport-block'); if(old) old.remove();
-  const txt = (progSp && progSp.voor_notities ? String(progSp.voor_notities).trim() : '');
-  if(!txt) return; // niets ingevuld -> blok niet tonen
-  const div = document.createElement('div');
-  div.id = 'voor-rapport-block';
-  div.className = 'voor-rapport-block';
-  // datum-formatter: '15 mei' uit prog.datum (YYYY-MM-DD)
-  let datumLabel = '';
-  if(prog && prog.datum){
-    try {
-      const d = new Date(prog.datum + 'T00:00:00');
-      const mnd = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-      if(!isNaN(d.getTime())) datumLabel = d.getDate() + ' ' + mnd[d.getMonth()];
-    } catch(_){}
-  }
-  const escHtml = (typeof escapeHtml === 'function') ? escapeHtml : (s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])));
-  div.innerHTML = `
-    <span class="vr-ic">📝</span>
-    <div class="vr-body">
-      <div class="vr-head">Je voorbereiding${datumLabel ? ' · '+escHtml(datumLabel) : ''}</div>
-      <div class="vr-text">${escHtml(txt)}</div>
-      <div class="vr-meta">Niet bewerkbaar — alleen ter referentie. Pas aan via programma → speler.</div>
-    </div>`;
-  // voeg toe onder de scouting-banner (of bovenaan #view-report als banner ontbreekt)
-  const banner = document.getElementById('scouting-active-banner');
-  if(banner && banner.parentNode){
-    banner.parentNode.insertBefore(div, banner.nextSibling);
-  } else {
-    const form = document.getElementById('view-report');
-    if(form) form.insertBefore(div, form.firstChild.nextSibling);
-  }
-}
-window.injectVoorRapportBlock = injectVoorRapportBlock;
+// s35ca-1: injectVoorRapportBlock verwijderd — voor-rapport UI uitgeschakeld
 
 function injectScoutingBanner(prog, progSp, matchedPlayer){
   let banner = document.getElementById('scouting-active-banner');
@@ -12399,15 +12363,10 @@ function renderActiveScouting(){
           sp.club || ''
         ].filter(Boolean).join(' · ');
         const conceptTag = concept ? `<div class="sa-tile-concept-tag">concept</div>` : '';
-        // s35ap (#2): voor-rapport aandachtspunten inline tonen + actie-knoppen
-        const vrTxt = (sp && sp.voor_notities ? String(sp.voor_notities).trim() : '');
-        const vrHtml = vrTxt
-          ? `<div class="sa-tile-voorrap"><div class="vr-head">📝 Je aandachtspunten</div><div class="vr-text">${escapeHtml(vrTxt)}</div></div>`
-          : `<div class="sa-tile-voorrap" style="background:transparent;border:1px dashed var(--border-2);color:var(--text-3);padding:8px 10px"><div class="vr-text" style="color:var(--text-3);font-style:italic;font-size:11.5px">Geen voor-rapport ingevuld.</div></div>`;
+        // s35ca-1: voor-rapport sa-tile-blok + edit-voorrap knop verwijderd
         const primaryLabel = concept ? 'Concept verder invullen' : 'Open spelersrapport';
         const actsHtml = `<div class="sa-tile-acts">
           <button type="button" class="primary" data-tile-act="open-report">${primaryLabel}</button>
-          <button type="button" data-tile-act="edit-voorrap">${vrTxt ? 'Aandachtspunten bewerken' : 'Aandachtspunten toevoegen'}</button>
         </div>`;
         return `<div class="${cls}" data-prog-id="${escapeHtml(prog.id)}" data-sp-idx="${i}" data-player-id="${player ? escapeHtml(player.id) : ''}" title="Klik om uit te klappen">
           <button type="button" class="sa-tile-close" data-tile-act="close" aria-label="Sluiten" style="display:none">×</button>
@@ -12415,7 +12374,6 @@ function renderActiveScouting(){
           ${meta ? `<div class="sa-tile-meta">${escapeHtml(meta)}</div>` : ''}
           ${conceptTag}
           <div class="sa-tile-panel">
-            ${vrHtml}
             ${actsHtml}
           </div>
         </div>`;
@@ -12584,19 +12542,7 @@ function renderActiveScouting(){
           __saOpenReport(tile);
           return;
         }
-        if(act === 'edit-voorrap'){
-          // open programma-speler-modal voor deze sp (voor-rapport invullen)
-          const progId = tile.dataset.progId;
-          const spIdx = parseInt(tile.dataset.spIdx, 10);
-          const prog = programmaCache.find(p => p.id === progId);
-          if(!prog) return;
-          const sp = (prog.spelers||[])[spIdx];
-          if(!sp) return;
-          if(typeof openProgPlayerModal === 'function'){
-            openProgPlayerModal(progId, sp.id);
-          }
-          return;
-        }
+        // s35ca-1: 'edit-voorrap' handler verwijderd — voor-rapport flow weg
         return;
       }
       // tile zelf: toggle uitklappen
@@ -12625,6 +12571,18 @@ function renderActiveScouting(){
       const act = btn.dataset.saAct;
       const progId = btn.dataset.progid;
       if(!progId) return;
+      // s35ca-2: lock dashboard-routes na fluitje+15. Bewerken kan dan
+      // alleen via tab Wedstrijden.
+      if(act === 'add-snel-notitie' || act === 'edit-snel-notitie' ||
+         act === 'add-snel-wstr' || act === 'edit-snel-wstr' || act === 'del-snel-wstr' ||
+         act === 'convert-snel-to-rapport'){
+        const __lockProg = programmaCache.find(p => p.id === progId);
+        if(__lockProg && typeof _shIsMatchLocked === 'function' && _shIsMatchLocked(__lockProg)){
+          if(typeof toast === 'function') toast('Wedstrijd is op slot — bewerk via tab Wedstrijden', true);
+          else alert('Deze wedstrijd is op slot.\nBewerk via tab Wedstrijden.');
+          return;
+        }
+      }
       if(act === 'add-player'){
         if(typeof openProgPlayerModal === 'function') openProgPlayerModal(progId, null);
       } else if(act === 'open-match'){
@@ -12701,6 +12659,11 @@ function renderActiveScouting(){
             }
             const prog = programmaCache.find(p => p.id === progId);
             if(!prog) return;
+            // s35ca-2: failsafe — wedstrijd op slot, niet meer schrijven
+            if(typeof _shIsMatchLocked === 'function' && _shIsMatchLocked(prog)){
+              if(statusEl){ statusEl.textContent = 'op slot — bewerk via Wedstrijden'; statusEl.style.color = '#fbbf24'; }
+              return;
+            }
             if(!Array.isArray(prog.snelnotities)) prog.snelnotities = [];
             const tekst = tekstRaw;
             if(savedSnId){
@@ -12823,6 +12786,11 @@ function renderActiveScouting(){
             }
             const prog = programmaCache.find(p => p.id === progId);
             if(!prog) return;
+            // s35ca-2: failsafe — wedstrijd op slot, niet meer schrijven
+            if(typeof _shIsMatchLocked === 'function' && _shIsMatchLocked(prog)){
+              if(statusEl){ statusEl.textContent = 'op slot — bewerk via Wedstrijden'; statusEl.style.color = '#fbbf24'; }
+              return;
+            }
             if(!Array.isArray(prog.wedstrijdnotities)) prog.wedstrijdnotities = [];
             if(savedWnId){
               const ex = prog.wedstrijdnotities.find(w => w.id === savedWnId);
@@ -14931,6 +14899,8 @@ function _shOpenVerwerkModal(m){
     confirmBtn.textContent = isLocked ? "Open status opnieuw" : "Markeer als verwerkt";
     confirmBtn.dataset.key = key;
     confirmBtn.dataset.locked = isLocked ? "1" : "0";
+    // s35ca-3: concept-count meegeven voor confirm() in _shConfirmVerwerk
+    confirmBtn.dataset.concepts = String(conceptCount || 0);
   }
 
   // s35bu: snelknop 'Alle concepten + markeer verwerkt' als er nog concepten zijn
@@ -15009,6 +14979,14 @@ function _shConfirmVerwerk(){
   const key = btn.dataset.key;
   const wasLocked = btn.dataset.locked === "1";
   if(!key){ _shCloseVerwerkModal(); return; }
+  // s35ca-3: bij verwerken (niet bij heropenen) waarschuwen voor open concepten
+  if(!wasLocked){
+    const cc = parseInt(btn.dataset.concepts || "0", 10) || 0;
+    if(cc > 0){
+      const ok = window.confirm("Er " + (cc===1 ? "is nog 1 concept" : "zijn nog " + cc + " concepten") + " open.\nToch markeren als verwerkt?");
+      if(!ok) return;
+    }
+  }
   shMarkWedstrijdVerwerkt(key, !wasLocked);
   if(typeof toast === "function"){
     toast(wasLocked ? "Status opnieuw open" : "Gemarkeerd als verwerkt");
@@ -16883,7 +16861,76 @@ function resetReportForm(){
   // s35x: scouting-context loslaten zodat autosave terugvalt op localStorage
   window.__shScoutingCtx = null;
   setDirty(false);
+  // s35ca-3: nieuw rapport is per definitie unlocked
+  if(typeof __shSetReportLocked === 'function') __shSetReportLocked(false);
 }
+
+// s35ca-3: read-only modus voor ingediende rapporten. Zet alle inputs/
+// selects/textareas in #report-form op disabled en toont de lock-banner
+// met 'Bewerk toch'-knop. Niveau-pickers krijgen pointer-events:none
+// via een CSS class op de form.
+function __shSetReportLocked(on){
+  const form = document.getElementById('report-form');
+  if(!form) return;
+  const banner = document.getElementById('report-lock-banner');
+  const intro = document.getElementById('report-intro-strip');
+  const saveDraftBtn = document.getElementById('report-save-draft-btn');
+  const submitBtn = document.getElementById('report-save-btn');
+  if(on){
+    form.classList.add('sh-form-locked');
+    form.querySelectorAll('input, select, textarea, button[type="button"][data-tab], .grade-pick').forEach(el => {
+      // hidden #f-id niet disablen — we hebben de waarde nodig
+      if(el.id === 'f-id') return;
+      // niet de lock-banner knop zelf disabelen
+      if(el.id === 'report-unlock-btn') return;
+      try { el.setAttribute('data-sh-was-disabled', el.disabled ? '1' : '0'); } catch(_){}
+      el.disabled = true;
+    });
+    if(banner){ banner.style.display = 'flex'; }
+    if(intro){ intro.style.display = 'none'; }
+    if(saveDraftBtn){ saveDraftBtn.style.display = 'none'; }
+    if(submitBtn){ submitBtn.style.display = 'none'; }
+  } else {
+    form.classList.remove('sh-form-locked');
+    form.querySelectorAll('[data-sh-was-disabled]').forEach(el => {
+      const wasDisabled = el.getAttribute('data-sh-was-disabled') === '1';
+      el.disabled = wasDisabled;
+      el.removeAttribute('data-sh-was-disabled');
+    });
+    if(banner){ banner.style.display = 'none'; }
+    if(intro){ intro.style.display = ''; }
+    if(saveDraftBtn){ saveDraftBtn.style.display = ''; }
+    if(submitBtn){ submitBtn.style.display = ''; }
+  }
+}
+window.__shSetReportLocked = __shSetReportLocked;
+
+// s35ca-3: wire Opslaan-knop + Bewerk-toch knop (one-time)
+(function _shWireReportButtonsOnce(){
+  if(window.__shReportButtonsWired) return;
+  window.__shReportButtonsWired = true;
+  document.addEventListener('click', function(e){
+    const draftBtn = e.target.closest && e.target.closest('#report-save-draft-btn');
+    if(draftBtn){
+      e.preventDefault();
+      window.__shFormSubmitMode = 'draft';
+      const form = document.getElementById('report-form');
+      if(form){
+        // requestSubmit overslaat de submit-knop validatie maar triggert submit-event
+        if(typeof form.requestSubmit === 'function') form.requestSubmit();
+        else form.dispatchEvent(new Event('submit', {cancelable:true, bubbles:true}));
+      }
+      return;
+    }
+    const unlockBtn = e.target.closest && e.target.closest('#report-unlock-btn');
+    if(unlockBtn){
+      e.preventDefault();
+      const ok = window.confirm('Dit rapport is al ingediend.\nWeet je zeker dat je het wilt bewerken?');
+      if(ok && typeof __shSetReportLocked === 'function') __shSetReportLocked(false);
+      return;
+    }
+  });
+})();
 // s35q: split volledige naam in voornaam (eerste woord) + achternaam (rest,
 // inclusief tussenvoegsels zoals 'van der'). Robust voor lege input.
 function splitNaam(naam){
@@ -16973,6 +17020,10 @@ function loadIntoForm(p){
 
   setPickerValue('huidig_niveau', p.huidig_niveau);
   setPickerValue('potentieel_niveau', p.potentieel_niveau);
+  // s35ca-3: rapporten met concept===false zijn ingediend → read-only
+  if(typeof __shSetReportLocked === 'function'){
+    __shSetReportLocked(p && p.concept === false);
+  }
 }
 function updateSliderDisplay(inputId, valId, val){
   const el = document.getElementById(valId);
@@ -16987,6 +17038,10 @@ function updateSliderDisplay(inputId, valId, val){
 }
 async function submitReport(e){
   e.preventDefault();
+  // s35ca-3: mode-flag bepaalt of dit een 'submit' (concept:false) of
+  // 'draft' (concept:true) opslag is. Default 'submit' voor de Indienen-knop.
+  const __mode = (window.__shFormSubmitMode === 'draft') ? 'draft' : 'submit';
+  window.__shFormSubmitMode = null;
   const id = $('#f-id').value || uid();
   // s35q: lees voornaam + achternaam, val terug op f-naam voor edge cases
   const voornaam = ($('#f-voornaam')?.value || '').trim();
@@ -16998,7 +17053,7 @@ async function submitReport(e){
   if(!naam){ toast('Vul een naam in', true); return; }
   const huidig = getPickerValue('huidig_niveau');
   const pot = getPickerValue('potentieel_niveau');
-  if(!huidig || !pot){
+  if(__mode === 'submit' && (!huidig || !pot)){
     toast('Geef huidig én potentieel niveau op', true);
     return;
   }
@@ -17064,11 +17119,16 @@ async function submitReport(e){
     huidig_niveau: huidig,
     potentieel_niveau: pot,
     datum: $('#f-w-datum').value || todayISO(),
-    concept: false
+    concept: (__mode === 'draft')
   };
   try {
     await savePlayer(player);
-    toast(isEdit ? 'Rapport bijgewerkt' : 'Rapport opgeslagen');
+    // s35ca-3: toast tekst hangt af van mode
+    if(__mode === 'draft'){
+      toast(isEdit ? 'Concept bijgewerkt' : 'Concept opgeslagen');
+    } else {
+      toast(isEdit ? 'Rapport bijgewerkt' : 'Rapport ingediend');
+    }
     setDirty(false);
     resetReportForm();
     go('database');

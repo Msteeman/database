@@ -1352,10 +1352,9 @@ a { color: var(--accent); text-decoration: none; }
   /* v70h-s3: hard fixed — altijd in beeld, scrolt nooit los van de pagina */
   position: fixed; top: 0; left: 0;
   width: 240px; height: 100vh; max-height: 100vh;
-  /* s35bh: overflow-y:auto zodat onderste nav-items (Tips) bereikbaar zijn
-     bij krappe viewport / 100% zoom. Scrollbar blijft verborgen via
-     scrollbar-width:none + ::-webkit-scrollbar regel hieronder. */
-  overflow-y: auto;
+  /* s35bn: nav krijgt eigen scroll, sidebar zelf overflow hidden
+     zodat brand+profile gepinned blijven en alleen het middenblok scrolt. */
+  overflow: hidden;
   overscroll-behavior: contain;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -1383,10 +1382,13 @@ a { color: var(--accent); text-decoration: none; }
 .brand-text { font-weight: 800; font-size: 16px; letter-spacing: .3px; line-height: 1.1; }
 .brand-sub { font-size: 10px; color: var(--text-3); letter-spacing: 1.2px; text-transform: uppercase; font-weight: 600; margin-top: 2px; }
 
-.nav { display: flex; flex-direction: column; gap: 2px; min-height: 0; flex: 0 1 auto; }
+/* s35bn: nav krijgt eigen scroll-zone tussen brand en profile.
+   Verbergt zijn scrollbar net zoals de sidebar dat deed. */
+.nav { display: flex; flex-direction: column; gap: 1px; min-height: 0; flex: 1 1 0; overflow-y: auto; scrollbar-width: none; }
+.nav::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .nav-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 7px 10px; border-radius: 7px;
+  padding: 6px 10px; border-radius: 7px; /* s35bn: 7->6px voor 100% zoom */
   color: var(--text-2); border: 1px solid transparent;
   background: transparent;
   text-align: left; width: 100%;
@@ -1399,8 +1401,9 @@ a { color: var(--accent); text-decoration: none; }
 .nav-icon { width: 18px; height: 18px; opacity: .9; }
 
 .scout-profile {
-  margin-top: auto;
-  padding: 14px 10px 10px 10px;            /* v70h-s30: extra top-lucht */
+  /* s35bn: margin-top:auto weg — nav (flex:1 1 0) neemt nu de ruimte. */
+  margin-top: 8px;
+  padding: 10px;                            /* s35bn: 14->10 top voor 100% zoom */
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -3464,6 +3467,149 @@ tbody tr:last-child td { border-bottom: none; }
   .prog-day-name { font-size: 13px; }
 }
 
+/* ===== s35bk-2: Agenda-view (hour-axis web + dichte lijst app) ===== */
+.agenda-toolbar {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-bottom: 14px; padding: 10px 12px;
+  background: var(--panel, #11141c);
+  border: 1px solid var(--border, #262b39);
+  border-radius: 10px;
+}
+.agenda-nav-btn {
+  background: var(--panel-2, #161a25);
+  border: 1px solid var(--border, #262b39);
+  color: var(--text-1, #e5e9f5);
+  padding: 6px 10px; border-radius: 6px; cursor: pointer;
+  font-size: 12.5px; font-weight: 600;
+  display: inline-flex; align-items: center; gap: 4px;
+}
+.agenda-nav-btn:hover { border-color: var(--accent, #f5c842); }
+.agenda-range-label {
+  flex: 1; text-align: center; font-weight: 700; font-size: 13.5px;
+  color: var(--text-1, #e5e9f5); letter-spacing: .02em;
+}
+.agenda-view-toggle {
+  display: inline-flex; gap: 0;
+  background: var(--panel-2, #161a25);
+  border: 1px solid var(--border, #262b39);
+  border-radius: 6px; overflow: hidden;
+}
+.agenda-view-toggle button {
+  background: transparent; border: 0; color: var(--muted, #9aa3b7);
+  padding: 6px 12px; cursor: pointer; font-size: 12px; font-weight: 600;
+}
+.agenda-view-toggle button.active {
+  background: var(--accent, #f5c842); color: #1a1a1a;
+}
+.agenda-day-col {
+  background: var(--panel, #11141c);
+  border: 1px solid var(--border, #262b39);
+  border-radius: 10px; padding: 12px; margin-bottom: 14px;
+}
+.agenda-day-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  padding-bottom: 8px; margin-bottom: 8px;
+  border-bottom: 1px solid var(--border, #262b39);
+}
+.agenda-day-name { font-weight: 700; font-size: 14px; color: var(--accent, #f5c842); }
+.agenda-day-name.today { color: var(--red, #e30613); }
+.agenda-day-count { font-size: 11.5px; color: var(--muted, #9aa3b7); }
+.agenda-hour-row {
+  display: grid; grid-template-columns: 56px 1fr; gap: 8px;
+  align-items: start; padding: 3px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  min-height: 36px;
+}
+.agenda-hour-row.empty { min-height: 22px; }
+.agenda-hour-label {
+  color: var(--muted, #9aa3b7); font-size: 11px;
+  text-align: right; padding-top: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.agenda-hour-cell { position: relative; }
+.agenda-evt {
+  background: linear-gradient(90deg, rgba(245,200,66,.16), rgba(245,200,66,.06));
+  border-left: 3px solid var(--accent, #f5c842);
+  border-radius: 5px; padding: 7px 10px; margin: 2px 0;
+  cursor: pointer; position: relative; overflow: hidden;
+  font-size: 12.5px; line-height: 1.4;
+  transition: background .15s;
+}
+.agenda-evt:hover { background: linear-gradient(90deg, rgba(245,200,66,.24), rgba(245,200,66,.10)); }
+.agenda-evt.O8, .agenda-evt.O9, .agenda-evt.O10 {
+  border-left-color: #7fd99e;
+  background: linear-gradient(90deg, rgba(127,217,158,.14), rgba(127,217,158,.05));
+}
+.agenda-evt.O16, .agenda-evt.O17, .agenda-evt.O18, .agenda-evt.O19, .agenda-evt.O21, .agenda-evt.O23 {
+  border-left-color: var(--red, #e30613);
+  background: linear-gradient(90deg, rgba(227,6,19,.14), rgba(227,6,19,.05));
+}
+.agenda-evt-title {
+  font-weight: 600; color: var(--text-1, #e5e9f5);
+  padding-right: 50px;
+}
+.agenda-evt-meta {
+  color: var(--muted, #9aa3b7); font-size: 11px;
+  margin-top: 1px; padding-right: 50px;
+}
+.agenda-evt-dur {
+  position: absolute; top: 6px; right: 8px;
+  font-size: 10px; color: var(--muted, #9aa3b7);
+  background: rgba(0,0,0,.35); padding: 2px 6px;
+  border-radius: 3px; font-variant-numeric: tabular-nums;
+}
+.agenda-evening-toggle {
+  background: var(--panel-2, #161a25);
+  border: 1px dashed var(--border, #262b39);
+  border-radius: 6px; padding: 9px 12px; margin-top: 8px;
+  cursor: pointer; color: var(--muted, #9aa3b7);
+  font-size: 12px; width: 100%; text-align: left;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.agenda-evening-toggle:hover { background: #191d2a; }
+.agenda-evening-toggle strong { color: var(--text-1, #e5e9f5); }
+.agenda-empty {
+  text-align: center; padding: 30px 20px;
+  color: var(--muted, #9aa3b7); font-size: 13px;
+}
+
+/* App-modus: dichte lijst (alleen blokken met events) */
+.agenda-mobile-block {
+  background: var(--panel-2, #161a25);
+  border: 1px solid var(--border, #262b39);
+  border-radius: 8px; padding: 10px 12px; margin-bottom: 8px;
+}
+.agenda-mobile-block-time {
+  font-size: 10.5px; color: var(--accent, #f5c842);
+  font-weight: 700; text-transform: uppercase;
+  letter-spacing: .06em; margin-bottom: 8px;
+}
+.agenda-mobile-evt {
+  padding: 7px 0; border-bottom: 1px solid rgba(255,255,255,0.04);
+  font-size: 12.5px; cursor: pointer;
+  display: flex; align-items: baseline; gap: 8px;
+}
+.agenda-mobile-evt:last-child { border-bottom: 0; }
+.agenda-mobile-evt .t {
+  color: var(--muted, #9aa3b7); font-size: 11px;
+  width: 42px; flex-shrink: 0; font-variant-numeric: tabular-nums;
+}
+.agenda-mobile-evt .lbl { flex: 1; color: var(--text-1, #e5e9f5); }
+.agenda-mobile-evt .dur {
+  font-size: 10px; color: var(--muted, #9aa3b7);
+  background: rgba(0,0,0,.35); padding: 2px 6px; border-radius: 3px;
+}
+
+@media (max-width: 900px) {
+  .agenda-hour-row { display: none; }
+  .agenda-evening-toggle { display: none; }
+  .agenda-mobile-block { display: block; }
+  .agenda-day-col { padding: 10px; }
+}
+@media (min-width: 901px) {
+  .agenda-mobile-block { display: none; }
+}
+
 /* ===== Programma detail (uitgeklapt) ===== */
 /* s35an (#7): opklapbaar 'Snel notitie'-paneel met slimme conversie naar criterium-velden */
 .snel-notitie-panel{background:rgba(245,200,66,0.05);border:1px solid rgba(245,200,66,0.25);border-radius:10px;margin-bottom:14px;overflow:hidden}
@@ -5003,11 +5149,11 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .intro-rotor .word:not(.last) { animation: rotorWord 1.0s cubic-bezier(.16,1,.3,1) forwards; }
 .intro-rotor .word.last       { animation: rotorLast 1.1s cubic-bezier(.16,1,.3,1) forwards; }
+/* s35bi: 4 woorden ipv 5 — laatste woord (nth-child(4)) krijgt rotorLast */
 .intro-rotor .word:nth-child(1) { animation-delay: 2.20s; }
-.intro-rotor .word:nth-child(2) { animation-delay: 2.55s; }
-.intro-rotor .word:nth-child(3) { animation-delay: 2.90s; }
-.intro-rotor .word:nth-child(4) { animation-delay: 3.25s; }
-.intro-rotor .word:nth-child(5) { animation-delay: 3.60s; }
+.intro-rotor .word:nth-child(2) { animation-delay: 2.60s; }
+.intro-rotor .word:nth-child(3) { animation-delay: 3.00s; }
+.intro-rotor .word:nth-child(4) { animation-delay: 3.40s; }
 @keyframes rotorWord {
   0%   { opacity: 0; filter: blur(8px); transform: translate(-50%,-50%) translateY(14px) scale(.94); }
   22%  { opacity: 1; filter: blur(0);   transform: translate(-50%,-50%) translateY(0) scale(1); }
@@ -5023,6 +5169,33 @@ tbody tr:last-child td { border-bottom: none; }
   font-style: normal;
   color: #e30613;
   font-weight: 700;
+}
+/* s35bi: login-hero CTA-pill ("Binnen 2 minuten je eerste rapport") */
+.login-hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 18px;
+  padding: 9px 16px 9px 13px;
+  background: linear-gradient(135deg, rgba(245,197,24,0.18) 0%, rgba(227,6,19,0.16) 100%);
+  border: 1px solid rgba(245,197,24,0.45);
+  border-radius: 999px;
+  color: #ffe6a8;
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: .015em;
+  box-shadow: 0 2px 10px rgba(227,6,19,0.10), inset 0 1px 0 rgba(255,255,255,0.08);
+  opacity: 0;
+  animation: introFadeUp 0.9s ease-out 3.95s forwards;
+}
+.login-hero-cta-bolt {
+  font-size: 15px;
+  line-height: 1;
+  color: #f5c518;
+  filter: drop-shadow(0 0 4px rgba(245,197,24,0.55));
+}
+@media (max-width: 900px){
+  .login-hero-cta { font-size: 12.5px; padding: 8px 14px 8px 11px; margin-top: 14px; }
 }
 @keyframes introFadeUp {
   0%   { opacity: 0; transform: translateY(14px); }
@@ -5321,11 +5494,11 @@ tbody tr:last-child td { border-bottom: none; }
       <span class="letter" style="animation-delay:1.30s">S</span><span class="letter" style="animation-delay:1.38s">c</span><span class="letter" style="animation-delay:1.46s">o</span><span class="letter" style="animation-delay:1.54s">u</span><span class="letter" style="animation-delay:1.62s">t</span><span class="letter" style="animation-delay:1.70s">i</span><span class="letter" style="animation-delay:1.78s">n</span><span class="letter" style="animation-delay:1.86s">g</span><span class="letter accent" style="animation-delay:2.00s">H</span><span class="letter accent" style="animation-delay:2.08s">u</span><span class="letter accent" style="animation-delay:2.16s">b</span>
     </h1>
     <div class="intro-rule"></div>
+    <!-- s35bi: 4 trigger-woorden (was 5) — "Rapporten bekijken" weg (overlapt met "Snel overzicht") -->
     <div class="intro-rotor" aria-hidden="true">
       <span class="word">Scouten</span>
       <span class="word">Snel invullen</span>
       <span class="word">Snel overzicht</span>
-      <span class="word">Rapporten bekijken</span>
       <span class="word last">Spelers vergelijken</span>
     </div>
   </div>
@@ -5399,6 +5572,11 @@ tbody tr:last-child td { border-bottom: none; }
       Vul beoordelingen razendsnel in. Bekijk overzichten in één blik.
       Vergelijk spelers op de criteria die <em>jij</em> belangrijk vindt.
     </p>
+    <!-- s35bi: CTA-pill onder hero-blurb -->
+    <div class="login-hero-cta" aria-hidden="true">
+      <span class="login-hero-cta-bolt">&#9889;</span>
+      <span>Binnen 2 minuten je eerste rapport</span>
+    </div>
   </div>
   <div class="login-card">
     <div class="login-logo">
@@ -5545,30 +5723,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <!-- s35ae: Diagnose-sectie (vervangt Demo modus uit s35ac) -->
-        <div class="settings-section">
-          <div class="settings-section-head">
-            <div class="settings-section-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.5" y2="16.5"/></svg>
-            </div>
-            <div>
-              <div class="settings-section-title">Diagnose</div>
-              <div class="settings-section-sub">Inspecteer concept-records en ruim lege duplicaten op.</div>
-            </div>
-          </div>
-          <div class="demo-toggle-row">
-            <span class="settings-row-label">Concept-records bekijken</span>
-            <button type="button" class="debug-btn secondary" id="settings-debug-open">Debug openen (Ctrl+Shift+D)</button>
-          </div>
-          <!-- s35ag: trace-logger knoppen -->
-          <div class="demo-toggle-row" style="margin-top:10px;">
-            <span class="settings-row-label">Trace-log (acties stap-voor-stap)</span>
-            <span style="display:flex; gap:6px;">
-              <button type="button" class="debug-btn" id="settings-trace-copy">Kopieer &amp; download</button>
-              <button type="button" class="debug-btn secondary" id="settings-trace-clear">Wissen</button>
-            </span>
-          </div>
-        </div>
+        <!-- s35bi: Diagnose-sectie verwijderd uit instellingen-view (debug blijft beschikbaar via Ctrl+Shift+D) -->
 
         <!-- Installeer app -->
         <div class="settings-section settings-install-block">
@@ -5653,53 +5808,9 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <!-- v70h-s32: Import / export - werkende knoppen -->
-        <div class="settings-section">
-          <div class="settings-section-head">
-            <div class="settings-section-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            </div>
-            <div>
-              <div class="settings-section-title">Import &amp; export</div>
-              <div class="settings-section-sub">Rapporten in/uit een bestand. Plak of upload — wordt direct verwerkt.</div>
-            </div>
-          </div>
-          <div class="settings-btn-row">
-            <button type="button" class="settings-btn" id="settings-import-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              Rapport importeren
-            </button>
-            <button type="button" class="settings-btn ghost" id="settings-export-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              Export downloaden
-            </button>
-            <button type="button" class="settings-btn ghost" id="settings-bulkdel-btn" title="Verwijder geimporteerde spelers door hetzelfde JSON-blok nogmaals te plakken">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-              Import ongedaan maken
-            </button>
-          </div>
-        </div>
+        <!-- s35bi: Import & export sectie verwijderd uit instellingen-view -->
 
-        <!-- s35m: Adressen synchroniseren -->
-        <div class="settings-section">
-          <div class="settings-section-head">
-            <div class="settings-section-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-            </div>
-            <div>
-              <div class="settings-section-title">Adressen synchroniseren</div>
-              <div class="settings-section-sub">Vult plaats/adres/postcode op alle rapporten + wedstrijden vanuit het adresboek. Adresboek is leidend.</div>
-            </div>
-          </div>
-          <div class="settings-btn-row">
-            <button type="button" class="settings-btn" id="settings-sync-adressen">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-              Nu synchroniseren
-            </button>
-            <span class="settings-saved-pill" id="settings-sync-pill" style="display:none;">&#x2713; Klaar</span>
-          </div>
-          <div id="settings-sync-result" style="display:none; margin-top:10px; padding:12px; background:var(--panel-2); border-radius:8px; font-size:13px; line-height:1.6;"></div>
-        </div>
+        <!-- s35bi: Adressen synchroniseren sectie verwijderd uit instellingen-view (adresboek is al leidend) -->
 
         <!-- App-instellingen -->
         <div class="settings-section">
@@ -5722,7 +5833,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bh (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bk-2 (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
       </div>
     </div>
   </div>
@@ -5853,6 +5964,10 @@ tbody tr:last-child td { border-bottom: none; }
         <button class="nav-item" data-view="programma">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="3" x2="8" y2="6"/><line x1="16" y1="3" x2="16" y2="6"/><line x1="7" y1="13" x2="9" y2="13"/><line x1="11" y1="13" x2="13" y2="13"/><line x1="15" y1="13" x2="17" y2="13"/><line x1="7" y1="17" x2="9" y2="17"/><line x1="11" y1="17" x2="13" y2="17"/></svg>
           <span>Programma</span>
+        </button>
+        <button class="nav-item" data-view="agenda">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+          <span>Agenda</span>
         </button>
         <button class="nav-item" data-view="matches">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="1"/><line x1="12" y1="6" x2="12" y2="19"/><circle cx="12" cy="12.5" r="2"/><path d="M3 10.5 H6 V14.5 H3"/><path d="M21 10.5 H18 V14.5 H21"/></svg>
@@ -6308,6 +6423,39 @@ tbody tr:last-child td { border-bottom: none; }
           <div style="font-size:14px; margin-bottom:8px;">Geen wedstrijden ingepland deze week.</div>
           <div style="font-size:12px;">Klik op een dag om te starten.</div>
         </div>
+      </section>
+
+      <!-- ====== AGENDA (s35bk-2) ====== -->
+      <section class="view" id="view-agenda">
+        <div class="topbar">
+          <div>
+            <div class="page-title">Agenda</div>
+            <div class="page-sub" id="agenda-sub">Wedstrijden per uur — sideline-overzicht</div>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-secondary" id="agenda-today-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Vandaag
+            </button>
+          </div>
+        </div>
+
+        <div class="agenda-toolbar">
+          <button class="agenda-nav-btn" id="agenda-prev" aria-label="Vorige">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="agenda-range-label" id="agenda-range-label">—</div>
+          <button class="agenda-nav-btn" id="agenda-next" aria-label="Volgende">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <div class="agenda-view-toggle" role="tablist" aria-label="Weergave">
+            <button data-agenda-span="1" class="active">1 dag</button>
+            <button data-agenda-span="3">3 dagen</button>
+            <button data-agenda-span="7">Week</button>
+          </div>
+        </div>
+
+        <div id="agenda-grid"></div>
       </section>
 
       <!-- ====== REPORT ====== -->
@@ -9624,6 +9772,7 @@ function subscribeData(){
   unsubProgramma = onSnapshot(programmaCol(), snap=>{
     programmaCache = snap.docs.map(d => ({...d.data(), id: d.id}));
     if(currentView === 'programma') renderProgramma();
+    if(currentView === 'agenda') renderAgenda();
     if(currentView === 'dashboard') { renderActiveScouting(); renderTodayMatches(); renderUpcomingMatches(); }
     setSync('ok');
   }, err=>{
@@ -10881,6 +11030,7 @@ function go(view){
   }
   if(view === 'contacts')  renderContacts();
   if(view === 'programma') renderProgramma();
+  if(view === 'agenda')    renderAgenda();
   if(view === 'adresboek') {
     // v70h-s24: reset filters bij elke navigatie naar adresboek
     _adresboekLetter = 'A';
@@ -10942,17 +11092,19 @@ window.__shScoutingSave = function(player){
 //   O16/17: 2x40 + 15 rust + 5 bl + 15 buf               = ~115
 //   O18/19/23: 2x45 + 15 rust + 5 bl + 15 buf            = ~125
 const KNVB_DUUR_MIN = {
-  'O.8':75,  'O.9':75,  'O.10':85, 'O.11':95, 'O.12':95,
-  'O.13':95, 'O.14':105,'O.15':105,'O.16':115,'O.17':115,
-  'O.18':125,'O.19':125,'O.21':125,'O.23':125
+  // s35bk: officiele KNVB-speeltijden (2x speelhelft + rust, totale duur indicatie)
+  'O.8':50,  'O.9':50,  'O.10':60, 'O.11':75, 'O.12':75,
+  'O.13':75, 'O.14':85, 'O.15':85, 'O.16':95, 'O.17':95,
+  'O.18':105,'O.19':105,'O.21':105,'O.23':105
 };
 function getMatchDurationMin(leeftijd){
   if(!leeftijd) return 120;
   const k = String(leeftijd).trim().toUpperCase();
   return KNVB_DUUR_MIN[k] || 120;
 }
-// Pre-window opent 30 min vóór aftrap, post-window = duur na aftrap
-const SCOUTING_PRE_MIN = 30;
+// s35bk: pre-window 5 min vóór aftrap (startend), post-window = duur + 15 min (zojuist afgelopen)
+const SCOUTING_PRE_MIN = 5;
+const SCOUTING_POST_MIN = 15;
 function getMatchWindow(prog){
   if(!prog || !prog.datum || !prog.tijd) return null;
   const [hh,mm] = String(prog.tijd).split(':').map(n=>parseInt(n,10));
@@ -10961,7 +11113,7 @@ function getMatchWindow(prog){
   if(!Y||!M||!D) return null;
   const kick = new Date(Y, M-1, D, hh, mm, 0, 0);
   const start = new Date(kick.getTime() - SCOUTING_PRE_MIN*60000);
-  const end   = new Date(kick.getTime() + getMatchDurationMin(prog.leeftijd)*60000);
+  const end   = new Date(kick.getTime() + (getMatchDurationMin(prog.leeftijd) + SCOUTING_POST_MIN)*60000);
   return { kick, start, end };
 }
 function isMatchInWindow(prog, now){
@@ -12033,6 +12185,8 @@ function renderTodayMatches(){
     // s35bd: titel-format 'Club Elftal — Club Elftal'
     const teams = `${escapeHtml(it.thuis||'?')}${it.thuis_elftal?' '+escapeHtml(it.thuis_elftal):''} — ${escapeHtml(it.uit||'?')}${it.uit_elftal?' '+escapeHtml(it.uit_elftal):''}`;
     const tijd = it.tijd || '—';
+    // s35bk: countdown-badge — wedstrijden binnen scouting-window zitten al in
+    // de actieve gele tegel (renderActiveScouting), dus hier alleen pre-/post-states.
     let cdHtml = '';
     if(it.tijd){
       const [h,m] = it.tijd.split(':').map(n=>parseInt(n,10));
@@ -12042,8 +12196,6 @@ function renderTodayMatches(){
         if(diffMin > 0){
           const hh = Math.floor(diffMin/60), mm2 = diffMin%60;
           cdHtml = `<span class="today-match-countdown">over ${hh? hh+'u ' : ''}${mm2}m</span>`;
-        } else if(diffMin > -120){
-          cdHtml = `<span class="today-match-countdown live">● bezig / net geweest</span>`;
         } else {
           cdHtml = `<span class="today-match-countdown">afgelopen</span>`;
         }
@@ -14991,11 +15143,13 @@ window.applySnelNotitieToForm = applySnelNotitieToForm;
   if(window.__shFsCollapseWired) return;
   window.__shFsCollapseWired = true;
   function applyCollapseDefaults(){
+    // s35bi: web (>900px) standaard expanded, app (<900px) standaard collapsed
+    const isApp = window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
     document.querySelectorAll('.form-section').forEach(sec => {
       if(sec.classList.contains('always-open')) return;
       if(!sec.dataset.shInit){
         sec.dataset.shInit = '1';
-        sec.classList.add('collapsed');
+        if(isApp) sec.classList.add('collapsed');
       }
     });
   }
@@ -17271,6 +17425,153 @@ const MONTH_NL = ['januari','februari','maart','april','mei','juni','juli','augu
 function formatNlDate(d){ return `${d.getDate()} ${MONTH_NL[d.getMonth()]}`; }
 function formatNlDateFull(d){ return `${d.getDate()} ${MONTH_NL[d.getMonth()]} ${d.getFullYear()}`; }
 
+// s35bk-2: Agenda-view state + render
+let agendaSpan = 1;      // 1 / 3 / 7 dagen
+let agendaDayOffset = 0; // 0 = vandaag
+function agendaLeeftijdClass(l){
+  if(!l) return '';
+  const m = String(l).match(/O\.?(\d+)/i);
+  if(!m) return '';
+  return 'O' + m[1];
+}
+function renderAgenda(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const start = new Date(today); start.setDate(start.getDate() + agendaDayOffset);
+  const days = [];
+  for(let i=0; i<agendaSpan; i++){
+    const d = new Date(start); d.setDate(d.getDate()+i);
+    days.push(d);
+  }
+  const last = days[days.length-1];
+
+  // Label
+  const fmt = d => `${DAY_NAMES_NL[(d.getDay()+6)%7].slice(0,3)} ${d.getDate()} ${MONTH_NL[d.getMonth()].slice(0,3)}`;
+  const lbl = agendaSpan === 1
+    ? `${DAY_NAMES_NL[(start.getDay()+6)%7]} ${start.getDate()} ${MONTH_NL[start.getMonth()]} ${start.getFullYear()}`
+    : `${fmt(start)} — ${fmt(last)} ${last.getFullYear()}`;
+  const lblEl = $('#agenda-range-label'); if(lblEl) lblEl.textContent = lbl;
+
+  // Items per dag
+  const rangeItems = programmaCache.filter(p => {
+    if(!p.datum) return false;
+    const d = parseIsoDate(p.datum);
+    if(!d) return false;
+    return d >= start && d <= last;
+  });
+
+  const grid = $('#agenda-grid');
+  if(!grid) return;
+
+  if(rangeItems.length === 0){
+    grid.innerHTML = `<div class="agenda-empty">Geen wedstrijden in deze periode.<br><span style="font-size:11.5px;opacity:.7">Voeg toe via Programma.</span></div>`;
+    return;
+  }
+
+  grid.innerHTML = days.map(d => {
+    const dStr = isoDateStr(d);
+    const isToday = d.getTime() === today.getTime();
+    const dayItems = rangeItems
+      .filter(p => p.datum === dStr)
+      .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
+
+    // Heeft de dag events na 17:00? -> avond auto-uitklappen
+    const hasEvening = dayItems.some(it => {
+      const t = String(it.tijd||''); const h = parseInt(t.split(':')[0], 10);
+      return !isNaN(h) && h >= 17;
+    });
+
+    // Web: uur-rijen 08-22, avond ingeklapt tenzij hasEvening
+    const morningEnd = 17;
+    const eveningStart = 17, eveningEnd = 23;
+    const morningRows = [];
+    for(let h=8; h<morningEnd; h++){
+      const hourItems = dayItems.filter(it => parseInt((it.tijd||'').split(':')[0],10) === h);
+      morningRows.push(renderAgendaHourRow(h, hourItems));
+    }
+    const eveningRows = [];
+    for(let h=eveningStart; h<eveningEnd; h++){
+      const hourItems = dayItems.filter(it => parseInt((it.tijd||'').split(':')[0],10) === h);
+      eveningRows.push(renderAgendaHourRow(h, hourItems));
+    }
+    const eveningId = `agenda-evening-${dStr}`;
+    const eveningHtml = hasEvening
+      ? eveningRows.join('')
+      : `<button class="agenda-evening-toggle" data-agenda-evening="${eveningId}"><span><strong>Avond 17:00 — 22:00</strong> &middot; geen wedstrijden</span><span>uitklappen ▾</span></button><div id="${eveningId}" style="display:none">${eveningRows.join('')}</div>`;
+
+    // App: dichte lijst — alleen blokken met events
+    const blockDefs = [
+      {label:'Ochtend',   range:'08-11', from:8,  to:11},
+      {label:'Middag',    range:'11-14', from:11, to:14},
+      {label:'Vroeg-mid', range:'14-17', from:14, to:17},
+      {label:'Eind-mid',  range:'17-20', from:17, to:20},
+      {label:'Avond',     range:'20-23', from:20, to:23}
+    ];
+    const mobileBlocks = blockDefs.map(b => {
+      const items = dayItems.filter(it => {
+        const h = parseInt((it.tijd||'').split(':')[0], 10);
+        return !isNaN(h) && h >= b.from && h < b.to;
+      });
+      if(items.length === 0) return '';
+      return `
+        <div class="agenda-mobile-block">
+          <div class="agenda-mobile-block-time">${b.label} &middot; ${b.range}</div>
+          ${items.map(it => {
+            const cls = agendaLeeftijdClass(it.leeftijd);
+            const dur = getMatchDurationMin(it.leeftijd);
+            const title = `${(it.thuis||'?')} — ${(it.uit||'?')}${it.leeftijd? ' ('+it.leeftijd+')':''}`;
+            return `<div class="agenda-mobile-evt" data-agenda-progid="${it.id||''}"><span class="t">${escapeHTML(it.tijd||'')}</span><span class="lbl">${escapeHTML(title)}</span><span class="dur">${dur}m</span></div>`;
+          }).join('')}
+        </div>`;
+    }).join('');
+    const mobileHtml = mobileBlocks || `<div class="agenda-empty" style="padding:14px">Geen wedstrijden.</div>`;
+
+    return `
+      <div class="agenda-day-col">
+        <div class="agenda-day-head">
+          <div class="agenda-day-name${isToday?' today':''}">${DAY_NAMES_NL[(d.getDay()+6)%7]} ${d.getDate()} ${MONTH_NL[d.getMonth()].slice(0,3)}${isToday?' &middot; vandaag':''}</div>
+          <div class="agenda-day-count">${dayItems.length} wedstrijd${dayItems.length===1?'':'en'}</div>
+        </div>
+        ${morningRows.join('')}
+        ${eveningHtml}
+        ${mobileHtml}
+      </div>`;
+  }).join('');
+
+  // Avond uitklap-handlers
+  grid.querySelectorAll('[data-agenda-evening]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tgt = document.getElementById(btn.dataset.agendaEvening);
+      if(tgt){ tgt.style.display = (tgt.style.display === 'none' ? '' : 'none'); btn.style.display='none'; }
+    });
+  });
+  // Match-klik -> detail-modal (zelfde als programma)
+  grid.querySelectorAll('[data-agenda-progid]').forEach(el => {
+    el.addEventListener('click', () => {
+      const pid = el.dataset.agendaProgid;
+      if(pid && typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(pid);
+    });
+  });
+}
+function renderAgendaHourRow(hour, items){
+  const hh = String(hour).padStart(2,'0') + ':00';
+  if(items.length === 0){
+    return `<div class="agenda-hour-row empty"><div class="agenda-hour-label">${hh}</div><div class="agenda-hour-cell"></div></div>`;
+  }
+  const evts = items.map(it => {
+    const cls = agendaLeeftijdClass(it.leeftijd);
+    const dur = getMatchDurationMin(it.leeftijd);
+    const title = `${(it.thuis||'?')} — ${(it.uit||'?')}${it.leeftijd? ' ('+it.leeftijd+')':''}`;
+    const loc = it.locatie || it.adres || '';
+    const meta = [loc].filter(Boolean).join(' &middot; ');
+    return `<div class="agenda-evt ${cls}" data-agenda-progid="${it.id||''}">
+      <span class="agenda-evt-dur">${dur}m</span>
+      <div class="agenda-evt-title">${escapeHTML(it.tijd||'')} &middot; ${escapeHTML(title)}</div>
+      ${meta? `<div class="agenda-evt-meta">${escapeHTML(meta)}</div>`:''}
+    </div>`;
+  }).join('');
+  return `<div class="agenda-hour-row"><div class="agenda-hour-label">${hh}</div><div class="agenda-hour-cell">${evts}</div></div>`;
+}
+
 function renderProgramma(){
   const monday = getCurrentDisplayMonday();
   const sunday = new Date(monday); sunday.setDate(sunday.getDate()+6);
@@ -17393,9 +17694,8 @@ function progDetailHTML(it){
           </div>
         </div>
         <div class="prog-detail-actions">
-          ${routeBtnHTML}
+          ${/* s35bj: Route + Verwerken weg uit programma-uitklap; Bewerken blijft */''}
           ${isV ? '' : `<button class="btn btn-secondary" data-prog-edit>Bewerken</button>`}
-          ${isV ? '' : `<button class="btn btn-primary" data-prog-verwerk title="Verwerk naar wedstrijden + spelers">Verwerken</button>`}
           <button class="btn" data-prog-collapse>Sluiten</button>
         </div>
       </div>
@@ -18239,6 +18539,18 @@ function wireProgrammaUI(){
   $('#programma-today-btn')?.addEventListener('click', () => { progWeekOffset = 0; renderProgramma(); });
   $('#prog-prev-week')?.addEventListener('click', () => { progWeekOffset--; renderProgramma(); });
   $('#prog-next-week')?.addEventListener('click', () => { progWeekOffset++; renderProgramma(); });
+
+  // s35bk-2: Agenda-view bindings
+  $('#agenda-today-btn')?.addEventListener('click', () => { agendaDayOffset = 0; renderAgenda(); });
+  $('#agenda-prev')?.addEventListener('click', () => { agendaDayOffset -= agendaSpan; renderAgenda(); });
+  $('#agenda-next')?.addEventListener('click', () => { agendaDayOffset += agendaSpan; renderAgenda(); });
+  document.querySelectorAll('[data-agenda-span]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      agendaSpan = parseInt(btn.dataset.agendaSpan, 10) || 1;
+      document.querySelectorAll('[data-agenda-span]').forEach(b => b.classList.toggle('active', b === btn));
+      renderAgenda();
+    });
+  });
 
   // s35r: read-only wedstrijd-detail modal
   $('#prog-match-detail-close')?.addEventListener('click', closeProgMatchDetailModal);

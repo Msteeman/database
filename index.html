@@ -4935,6 +4935,185 @@ tbody tr:last-child td { border-bottom: none; }
   margin-bottom: 4px;
 }
 .match-group-header:first-child { padding-top: 0; }
+/* ===== s35br: Wedstrijd-koppeling + verwerken-modal ===== */
+.m-snel-banner {
+  background: rgba(245,200,66,0.08);
+  border: 1px solid rgba(245,200,66,0.28);
+  border-radius: 8px;
+  padding: 8px 10px 10px;
+  margin-top: 10px;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.m-snel-banner-head {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: #f5c842;
+}
+.m-snel-banner-head svg { flex-shrink: 0; }
+.m-snel-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.m-snel-chip {
+  background: rgba(245,200,66,0.12);
+  border: 1px solid rgba(245,200,66,0.4);
+  color: var(--text);
+  border-radius: 999px; padding: 4px 10px 4px 8px;
+  font-size: 11.5px; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; gap: 5px;
+  transition: all 0.15s; user-select: none;
+}
+.m-snel-chip:hover {
+  background: rgba(245,200,66,0.22);
+  border-color: #f5c842;
+}
+.m-snel-chip-arrow {
+  display: inline-flex; opacity: 0.7;
+}
+.m-snel-chip:hover .m-snel-chip-arrow { opacity: 1; }
+
+.m-wstrnote-banner {
+  background: rgba(78,161,255,0.06);
+  border: 1px solid rgba(78,161,255,0.24);
+  border-radius: 8px;
+  padding: 8px 10px;
+  margin-top: 8px;
+  font-size: 12px; color: var(--text-2);
+  display: flex; align-items: flex-start; gap: 8px;
+}
+.m-wstrnote-banner svg { flex-shrink: 0; color: #4ea1ff; margin-top: 1px; }
+.m-wstrnote-banner-text { line-height: 1.45; }
+.m-wstrnote-banner-text strong { color: #4ea1ff; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 2px; font-weight: 700; }
+
+/* Indienen-actie op concept-chip */
+.match-player-chip.is-concept {
+  border-style: dashed;
+  border-color: rgba(245,200,66,0.55);
+  background: rgba(245,200,66,0.08);
+}
+.match-dropdown-row .mdr-submit {
+  background: var(--primary); color: #fff;
+  border: 0; padding: 4px 9px; border-radius: 5px;
+  font-size: 10.5px; font-weight: 700; cursor: pointer;
+  letter-spacing: 0.03em;
+  display: inline-flex; align-items: center; gap: 3px;
+  transition: filter .15s;
+  margin-left: 6px;
+}
+.match-dropdown-row .mdr-submit:hover { filter: brightness(1.15); }
+.match-dropdown-row .mdr-concept-badge {
+  background: rgba(245,200,66,0.18); color: #f5c842;
+  border: 1px solid rgba(245,200,66,0.45);
+  font-size: 9.5px; font-weight: 800;
+  padding: 2px 6px; border-radius: 4px;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  margin-left: 6px;
+}
+
+/* Verwerk-toggle (lock pill) */
+.match-verwerk-toggle {
+  position: absolute; top: 10px; right: 12px;
+  display: inline-flex; align-items: center; gap: 4px;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-3); cursor: pointer;
+  padding: 4px 9px; border-radius: 6px;
+  font-size: 11px; font-weight: 700;
+  transition: all 0.15s;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.match-verwerk-toggle:hover {
+  border-color: var(--primary); color: var(--primary);
+}
+.match-verwerk-toggle.is-locked {
+  background: rgba(127,217,158,0.14);
+  border-color: #7fd99e; color: #7fd99e;
+}
+.match-verwerk-toggle.is-locked:hover {
+  filter: brightness(1.1);
+}
+/* Report-card heeft al een edit-toggle rechtsboven → verwerk-toggle links daarvan */
+.match-report-card .match-verwerk-toggle { right: auto; left: 12px; }
+.match-card.locked { opacity: 0.85; }
+.match-card.locked .match-team-home,
+.match-card.locked .match-team-away { opacity: 0.85; }
+
+/* Verwerken modal */
+.wstr-verwerk-backdrop {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.72);
+  display: none; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.wstr-verwerk-backdrop.show { display: flex; }
+.wstr-verwerk-modal {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 14px; max-width: 520px; width: 100%;
+  max-height: 90vh; overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+}
+.wstr-verwerk-head {
+  padding: 18px 22px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+}
+.wstr-verwerk-title { font-size: 16px; font-weight: 800; color: var(--text); }
+.wstr-verwerk-sub { font-size: 12px; color: var(--text-3); margin-top: 3px; }
+.wstr-verwerk-close {
+  background: transparent; border: none; color: var(--text-3);
+  font-size: 24px; line-height: 1; width: 32px; height: 32px;
+  border-radius: 6px; cursor: pointer;
+}
+.wstr-verwerk-close:hover { background: var(--bg-3); color: var(--text); }
+.wstr-verwerk-body { padding: 16px 22px 6px; }
+.wstr-verwerk-warn {
+  background: rgba(245,200,66,0.10);
+  border: 1px solid rgba(245,200,66,0.30);
+  border-radius: 8px; padding: 9px 12px;
+  font-size: 12px; color: var(--text-2);
+  display: flex; gap: 8px; align-items: flex-start;
+  margin-bottom: 14px; line-height: 1.45;
+}
+.wstr-verwerk-warn svg { flex-shrink: 0; color: #f5c842; margin-top: 1px; }
+.wstr-check-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 12px 0; border-top: 1px dashed var(--border);
+}
+.wstr-check-row:first-of-type { border-top: 0; padding-top: 4px; }
+.wstr-check-icon {
+  flex-shrink: 0; width: 22px; height: 22px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 1px;
+}
+.wstr-check-row.ok .wstr-check-icon {
+  background: rgba(127,217,158,0.18); color: #7fd99e;
+}
+.wstr-check-row.warn .wstr-check-icon {
+  background: rgba(245,200,66,0.18); color: #f5c842;
+}
+.wstr-check-main { flex: 1; }
+.wstr-check-label {
+  font-size: 13px; font-weight: 700; color: var(--text);
+  margin-bottom: 2px; line-height: 1.4;
+}
+.wstr-check-detail {
+  font-size: 11.5px; color: var(--text-3); line-height: 1.5;
+}
+.wstr-check-detail a, .wstr-check-detail .wstr-check-link {
+  color: #4ea1ff; cursor: pointer; text-decoration: none;
+  font-weight: 600;
+}
+.wstr-check-detail .wstr-check-link:hover { text-decoration: underline; }
+.wstr-verwerk-foot {
+  padding: 12px 22px 18px; display: flex; gap: 8px;
+  justify-content: flex-end; flex-wrap: wrap;
+  border-top: 1px solid var(--border); margin-top: 10px;
+}
+@media (max-width: 560px) {
+  .wstr-verwerk-modal { border-radius: 12px; }
+  .wstr-verwerk-head { padding: 14px 16px 12px; }
+  .wstr-verwerk-body { padding: 12px 16px 4px; }
+  .wstr-verwerk-foot { padding: 10px 16px 14px; }
+  .wstr-verwerk-foot .btn { flex: 1; justify-content: center; }
+}
+
 /* ===== s35bq: Wedstrijden redesign ===== */
 .m-stats {
   display: grid; grid-template-columns: repeat(4, 1fr);
@@ -7449,6 +7628,26 @@ algemeen:</textarea>
 
 <!-- =================== PROGRAMMA: PLAN MATCH MODAL =================== -->
 <!-- s35r: read-only wedstrijd-detail modal (dashboard / upcoming) -->
+<!-- s35br: Wedstrijd verwerken modal -->
+<div class="wstr-verwerk-backdrop" id="wstr-verwerk-backdrop" role="dialog" aria-modal="true" aria-labelledby="wstr-verwerk-title">
+  <div class="wstr-verwerk-modal">
+    <div class="wstr-verwerk-head">
+      <div>
+        <div class="wstr-verwerk-title" id="wstr-verwerk-title">Wedstrijd verwerken</div>
+        <div class="wstr-verwerk-sub" id="wstr-verwerk-sub">—</div>
+      </div>
+      <button class="wstr-verwerk-close" id="wstr-verwerk-close" aria-label="Sluiten">×</button>
+    </div>
+    <div class="wstr-verwerk-body" id="wstr-verwerk-body">
+      <!-- gevuld door JS -->
+    </div>
+    <div class="wstr-verwerk-foot">
+      <button type="button" class="btn btn-ghost" id="wstr-verwerk-cancel">Eerst afmaken</button>
+      <button type="button" class="btn btn-primary" id="wstr-verwerk-confirm">Markeer als verwerkt</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-backdrop" id="prog-match-detail-backdrop">
   <div class="modal" id="prog-match-detail-modal">
     <div class="modal-header">
@@ -13948,6 +14147,332 @@ let matchCheckedIds = [];
 // s35bq: extra filter-state
 let matchStatusFilter = "";  // "", "verwerkt", "toernooi", "info"
 let matchEditingIds = new Set();
+// s35br: wedstrijd-verwerken persistent state + helpers
+const SH_VERWERK_KEY = "sh_wedstrijd_verwerkt_v1";
+function _shLoadVerwerkt(){
+  try { return JSON.parse(localStorage.getItem(SH_VERWERK_KEY) || "[]"); }
+  catch(_){ return []; }
+}
+function _shSaveVerwerkt(arr){
+  try { localStorage.setItem(SH_VERWERK_KEY, JSON.stringify(arr || [])); } catch(_){}
+}
+function shIsWedstrijdVerwerkt(matchKey){
+  if(!matchKey) return false;
+  return _shLoadVerwerkt().indexOf(matchKey) >= 0;
+}
+function shMarkWedstrijdVerwerkt(matchKey, on){
+  if(!matchKey) return;
+  const arr = _shLoadVerwerkt();
+  const i = arr.indexOf(matchKey);
+  if(on && i < 0) arr.push(matchKey);
+  if(!on && i >= 0) arr.splice(i, 1);
+  _shSaveVerwerkt(arr);
+}
+function _shMatchKey(m){
+  if(!m) return "";
+  if(m.kind === "report") return "REPORT|" + (m.id || "");
+  if(m.toernooi) return ["TOERNOOI", m.datum, (m.toernooi_naam||"").toLowerCase()].join("|");
+  return [m.datum||"", (m.thuis||"").toLowerCase(), (m.uit||"").toLowerCase()].join("|");
+}
+// Vind programma-items die bij deze wedstrijd horen (datum + thuis/uit match)
+function _shFindLinkedPrograms(m){
+  const list = (typeof programmaCache !== "undefined" && Array.isArray(programmaCache)) ? programmaCache : [];
+  if(!m || !m.datum) return [];
+  const datum = m.datum;
+  const thuis = (m.thuis || "").toLowerCase().trim();
+  const uit = (m.uit || "").toLowerCase().trim();
+  return list.filter(p => {
+    if((p.datum||"") !== datum) return false;
+    const pt = (p.thuis||"").toLowerCase().trim();
+    const pu = (p.uit||"").toLowerCase().trim();
+    if(thuis && uit) return pt === thuis && pu === uit;
+    if(thuis) return pt === thuis;
+    if(uit) return pu === uit;
+    return false;
+  });
+}
+// Verzamel alle open snel-notities van gekoppelde programma-items
+function _shCollectSnelNotities(m){
+  const out = [];
+  _shFindLinkedPrograms(m).forEach(p => {
+    (p.snelnotities || []).forEach((sn, idx) => {
+      out.push({ progId: p.id, snIdx: idx, sn });
+    });
+  });
+  return out;
+}
+// Verzamel alle wedstrijdnotities
+function _shCollectWedstrijdNotities(m){
+  const out = [];
+  _shFindLinkedPrograms(m).forEach(p => {
+    (p.wedstrijdnotities || []).forEach((wn, idx) => {
+      out.push({ progId: p.id, wnIdx: idx, wn });
+    });
+  });
+  return out;
+}
+// Player heeft concept-status?
+function _shPlayerIsConcept(pl){
+  return !!(pl && (pl.concept === true || pl.status === "concept"));
+}
+// s35br: zoek aggregated match terug aan de hand van match-key
+function _shFindMatchByKey(key){
+  if(!key) return null;
+  // Reconstructie via aggregateMatches op players + report-cache
+  try {
+    const players = (typeof loadPlayers === "function") ? loadPlayers() : [];
+    const aggregated = (typeof aggregateMatches === "function") ? aggregateMatches(players) : [];
+    for(const m of aggregated){
+      m.kind = "aggregated";
+      if(_shMatchKey(m) === key) return m;
+    }
+  } catch(_){}
+  return null;
+}
+
+// s35br: open spelersrapport-modal met prefill uit een snel-notitie
+async function _shConvertSnelToRapport(progId, snIdx){
+  try {
+    const prog = (typeof programmaCache !== "undefined") ? programmaCache.find(p => p.id === progId) : null;
+    const sn = (prog && Array.isArray(prog.snelnotities)) ? prog.snelnotities[snIdx] : null;
+    if(!sn){ if(typeof toast === "function") toast("Snel-notitie niet gevonden", true); return; }
+    if(typeof openProgPlayerModal === "function"){
+      openProgPlayerModal(progId, null);
+      setTimeout(() => {
+        try {
+          const fullNaam = (sn.naam || "").trim();
+          let vn = "", an = "";
+          if(fullNaam){
+            if(typeof splitNaam === "function"){
+              const s = splitNaam(fullNaam);
+              vn = s.voornaam || ""; an = s.achternaam || "";
+            } else {
+              const parts = fullNaam.split(/\s+/);
+              vn = parts[0] || "";
+              an = parts.slice(1).join(" ");
+            }
+          }
+          const setVal = (id, v) => { const el = document.getElementById(id); if(el && v != null) el.value = v; };
+          setVal("pp-voornaam", vn);
+          setVal("pp-achternaam", an);
+          setVal("pp-naam", [vn, an].filter(Boolean).join(" "));
+          setVal("pp-rugnummer", sn.rugnummer || "");
+          setVal("pp-positie", sn.positie || "");
+          setVal("pp-notities", sn.tekst || "");
+          window.__shConvertingFromSnId = sn.id || null;
+          window.__shConvertingFromProgId = progId;
+        } catch(_){}
+      }, 80);
+      if(typeof toast === "function") toast("Snel-notitie geladen — vul aanvullende info in");
+    } else {
+      if(typeof toast === "function") toast("Spelersrapport-modal niet beschikbaar", true);
+    }
+  } catch(err){
+    console.warn("[s35br] convert snel failed", err);
+    if(typeof toast === "function") toast("Fout bij openen — zie console", true);
+  }
+}
+
+// s35br: direct concept-speler indienen (zet concept=false en sla op)
+async function _shSubmitConceptPlayer(playerId){
+  try {
+    const players = (typeof loadPlayers === "function") ? loadPlayers() : [];
+    const p = players.find(x => x.id === playerId);
+    if(!p){ if(typeof toast === "function") toast("Speler niet gevonden", true); return; }
+    if(!confirm(`"${p.naam}" indienen als volledig spelersrapport?`)) return;
+    p.concept = false;
+    if(p.status === "concept") delete p.status;
+    p.ingediend_op = Date.now();
+    if(typeof savePlayer === "function"){
+      await savePlayer(p);
+    }
+    if(typeof toast === "function") toast(`${p.naam} ingediend`);
+    if(typeof renderMatches === "function") renderMatches();
+  } catch(err){
+    console.warn("[s35br] submit concept failed", err);
+    if(typeof toast === "function") toast("Fout bij indienen — zie console", true);
+  }
+}
+
+// s35br: open verwerken-modal voor een wedstrijd
+function _shOpenVerwerkModal(m){
+  const back = document.getElementById("wstr-verwerk-backdrop");
+  if(!back) return;
+  const key = _shMatchKey(m);
+  const isLocked = shIsWedstrijdVerwerkt(key);
+  const players = m.players || [];
+  const conceptCount = players.filter(_shPlayerIsConcept).length;
+  const ingediendCount = players.length - conceptCount;
+  const sns = _shCollectSnelNotities(m);
+  const wns = _shCollectWedstrijdNotities(m);
+
+  const rapportenOk = players.length > 0 && conceptCount === 0;
+  const snOk = sns.length === 0;
+  const wnOk = wns.length > 0; // bestaan en bekeken; alleen waarschuwing als 0
+
+  const titleEl = document.getElementById("wstr-verwerk-title");
+  const subEl = document.getElementById("wstr-verwerk-sub");
+  const bodyEl = document.getElementById("wstr-verwerk-body");
+  const confirmBtn = document.getElementById("wstr-verwerk-confirm");
+  if(titleEl) titleEl.textContent = isLocked ? "Wedstrijd-status herzien" : "Wedstrijd verwerken";
+  const teamTxt = (m.thuis && m.uit) ? `${m.thuis} — ${m.uit}` : (m.toernooi_naam || "Wedstrijd");
+  if(subEl) subEl.textContent = `${teamTxt} · ${m.datum || ""}`;
+
+  const checkSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>`;
+  const warnSvg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>`;
+
+  const row = (state, label, detail) => `
+    <div class="wstr-check-row ${state}">
+      <div class="wstr-check-icon">${state === "ok" ? checkSvg : warnSvg}</div>
+      <div class="wstr-check-main">
+        <div class="wstr-check-label">${label}</div>
+        <div class="wstr-check-detail">${detail}</div>
+      </div>
+    </div>`;
+
+  let html = "";
+  if(isLocked){
+    html += `<div class="wstr-verwerk-warn"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><div>Deze wedstrijd staat op <strong>verwerkt</strong>. Open status opnieuw om wijzigingen aan te brengen.</div></div>`;
+  }
+
+  // 1) Spelersrapporten
+  if(m.kind === "report"){
+    html += row('warn', "Spelersrapporten ingediend", "Voor dit wedstrijdrapport zijn nog géén spelersrapporten ingediend. Voeg spelers toe via <span class=\"wstr-check-link\" data-act=\"add-player\">+ Speler rapporteren</span>.");
+  } else if(rapportenOk){
+    html += row('ok', "Spelersrapporten ingediend", `Alle ${players.length} rapport${players.length===1?"":"en"} zijn ingediend.`);
+  } else {
+    html += row('warn', "Spelersrapporten ingediend", `${ingediendCount} van ${players.length} ingediend — <strong>${conceptCount} nog concept</strong>. Klap de wedstrijd uit en gebruik <span class=\"wstr-check-link\" data-act=\"goto-list\">→ Indienen</span> per speler.`);
+  }
+
+  // 2) Snel-notities
+  if(snOk){
+    html += row('ok', "Snel-notities omgezet", "Geen openstaande snel-notities.");
+  } else {
+    html += row('warn', "Snel-notities omgezet", `<strong>${sns.length}</strong> open snel-notitie${sns.length===1?"":"s"} — klik op de gele chips bovenaan de wedstrijdkaart om om te zetten naar een volledig rapport.`);
+  }
+
+  // 3) Wedstrijdnotities
+  if(wnOk){
+    html += row('ok', "Wedstrijdnotities bekeken", `${wns.length} wedstrijdnotitie${wns.length===1?"":"s"} aanwezig.`);
+  } else {
+    html += row('warn', "Wedstrijdnotities bekeken", "Geen wedstrijdnotities — voeg er één toe vanuit Programma als je losse observaties wilt vastleggen.");
+  }
+
+  if(bodyEl) bodyEl.innerHTML = html;
+
+  if(confirmBtn){
+    confirmBtn.textContent = isLocked ? "Open status opnieuw" : "Markeer als verwerkt";
+    confirmBtn.dataset.key = key;
+    confirmBtn.dataset.locked = isLocked ? "1" : "0";
+  }
+
+  back.classList.add("show");
+  // Body lokaal: links naar in/uitklappen
+  if(bodyEl){
+    bodyEl.querySelectorAll('[data-act]').forEach(a => {
+      a.addEventListener('click', (e) => {
+        const act = a.dataset.act;
+        if(act === 'goto-list' || act === 'add-player'){
+          _shCloseVerwerkModal();
+          // Card uitklappen om Indienen-knoppen te tonen
+          try {
+            const matchKey = key;
+            const card = document.querySelector(`.match-card[data-match-key="${matchKey}"]`);
+            if(card){ card.classList.add('open'); card.classList.add('editing'); card.scrollIntoView({behavior:'smooth', block:'center'}); }
+          } catch(_){}
+        }
+      });
+    });
+  }
+}
+
+function _shCloseVerwerkModal(){
+  const back = document.getElementById("wstr-verwerk-backdrop");
+  if(back) back.classList.remove("show");
+}
+
+function _shConfirmVerwerk(){
+  const btn = document.getElementById("wstr-verwerk-confirm");
+  if(!btn) return;
+  const key = btn.dataset.key;
+  const wasLocked = btn.dataset.locked === "1";
+  if(!key){ _shCloseVerwerkModal(); return; }
+  shMarkWedstrijdVerwerkt(key, !wasLocked);
+  if(typeof toast === "function"){
+    toast(wasLocked ? "Status opnieuw open" : "Gemarkeerd als verwerkt");
+  }
+  _shCloseVerwerkModal();
+  if(typeof renderMatches === "function") renderMatches();
+}
+
+// One-time wiring van modal-buttons
+(function _shWireVerwerkModalOnce(){
+  if(window.__shVerwerkModalWired) return;
+  window.__shVerwerkModalWired = true;
+  document.addEventListener("DOMContentLoaded", () => {
+    const close = document.getElementById("wstr-verwerk-close");
+    const cancel = document.getElementById("wstr-verwerk-cancel");
+    const confirm = document.getElementById("wstr-verwerk-confirm");
+    const back = document.getElementById("wstr-verwerk-backdrop");
+    if(close) close.addEventListener("click", _shCloseVerwerkModal);
+    if(cancel) cancel.addEventListener("click", _shCloseVerwerkModal);
+    if(confirm) confirm.addEventListener("click", _shConfirmVerwerk);
+    if(back) back.addEventListener("click", (e) => { if(e.target === back) _shCloseVerwerkModal(); });
+    document.addEventListener("keydown", (e) => {
+      if(e.key === "Escape" && back && back.classList.contains("show")) _shCloseVerwerkModal();
+    });
+  });
+  // Fallback: als DOMContentLoaded al geweest is
+  if(document.readyState !== "loading"){
+    setTimeout(() => {
+      const close = document.getElementById("wstr-verwerk-close");
+      const cancel = document.getElementById("wstr-verwerk-cancel");
+      const confirm = document.getElementById("wstr-verwerk-confirm");
+      const back = document.getElementById("wstr-verwerk-backdrop");
+      if(close && !close.dataset.wired){ close.dataset.wired="1"; close.addEventListener("click", _shCloseVerwerkModal); }
+      if(cancel && !cancel.dataset.wired){ cancel.dataset.wired="1"; cancel.addEventListener("click", _shCloseVerwerkModal); }
+      if(confirm && !confirm.dataset.wired){ confirm.dataset.wired="1"; confirm.addEventListener("click", _shConfirmVerwerk); }
+      if(back && !back.dataset.wired){ back.dataset.wired="1"; back.addEventListener("click", (e) => { if(e.target === back) _shCloseVerwerkModal(); }); }
+    }, 0);
+  }
+})();
+
+// Render banner-HTML met snel-notities + wedstrijdnotities
+function _shBannerHTML(m){
+  const sns = _shCollectSnelNotities(m);
+  const wns = _shCollectWedstrijdNotities(m);
+  if(sns.length === 0 && wns.length === 0) return "";
+  let html = "";
+  if(sns.length){
+    const chips = sns.map(({progId, snIdx, sn}) => {
+      const naam = (sn.naam || "Onbenoemde speler").trim();
+      const num = sn.rugnummer ? "#" + escapeHtml(String(sn.rugnummer)) + " " : "";
+      return `<button type="button" class="m-snel-chip" data-snel-prog="${escapeHtml(progId)}" data-snel-idx="${snIdx}" title="Open in spelersrapport-modal">`
+        + `<span>💡 ${num}${escapeHtml(naam)}</span>`
+        + `<span class="m-snel-chip-arrow"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>`
+        + `</button>`;
+    }).join("");
+    html += `<div class="m-snel-banner" onclick="event.stopPropagation()">`
+      + `<div class="m-snel-banner-head"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.3v1h6v-1c0-1 .3-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>`
+      + `Open snel-notitie${sns.length===1?"":"s"} (${sns.length}) — klik om naar volledig rapport om te zetten</div>`
+      + `<div class="m-snel-chips">${chips}</div>`
+      + `</div>`;
+  }
+  if(wns.length){
+    const txt = wns.map(({wn}) => {
+      if(!wn) return "";
+      const t = (wn.tekst || wn.notitie || "").trim();
+      return t ? escapeHtml(t).replace(/\n/g, "<br>") : "";
+    }).filter(Boolean).join("<br><br>");
+    if(txt){
+      html += `<div class="m-wstrnote-banner" onclick="event.stopPropagation()">`
+        + `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`
+        + `<div class="m-wstrnote-banner-text"><strong>Wedstrijdnotitie</strong>${txt}</div>`
+        + `</div>`;
+    }
+  }
+  return html;
+}
 
 function cmpPlayerById(id){ return loadPlayers().find(p => p.id === id) || null; }
 function cmpGradeNum(g){ return CMP_GRADE_VAL[g] || 0; }
@@ -16209,8 +16734,10 @@ function renderMatches(){
         : '';
       const checked = matchCheckedIds.includes(m.id) ? 'checked' : '';
       const isEditing = matchEditingIds.has(m.id);
+      const _shKeyR = _shMatchKey(m);
+      const _shIsVerwerktR = shIsWedstrijdVerwerkt(_shKeyR);
       html += `
-        <div class="match-card match-report-card${isEditing?' editing':''}" data-report-id="${escapeHtml(m.id)}">
+        <div class="match-card match-report-card${isEditing?' editing':''}${_shIsVerwerktR?' locked':''}" data-report-id="${escapeHtml(m.id)}" data-match-key="${escapeHtml(_shKeyR)}">
           <div class="match-date">
             <div class="match-date-day">${d.day}</div>
             <div class="match-date-month">${d.month}</div>
@@ -16229,9 +16756,15 @@ function renderMatches(){
               <span class="match-status-pill info">Info</span>
               <span class="match-report-badge">Wedstrijdrapport</span>
               ${ageBadgeR}
+              ${_shIsVerwerktR ? '<span class="match-status-pill" style="background:rgba(127,217,158,0.18);color:#7fd99e;border:1px solid #7fd99e;">🔒 Verwerkt</span>' : ''}
             </div>
             ${m.opmerking ? `<div class="match-report-note">${escapeHtml(m.opmerking)}</div>` : ''}
+            ${_shBannerHTML(m)}
             <div class="match-report-actions">
+              <button type="button" class="btn btn-secondary match-verwerk-btn" data-match-key="${escapeHtml(_shMatchKey(m))}" data-report-id="${escapeHtml(m.id)}">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                ${_shIsVerwerktR ? 'Wedstrijd-status herzien' : 'Wedstrijd verwerken'}
+              </button>
               <button type="button" class="btn btn-secondary match-report-edit" data-report-id="${escapeHtml(m.id)}">
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                 Wedstrijdrapport bewerken
@@ -16263,9 +16796,10 @@ function renderMatches(){
       : (m.uitslag
           ? `<span class="match-score">${escapeHtml(m.uitslag)}</span>`
           : `<span class="match-vs">vs</span>`);
-    const playersChips = m.players.map(pl =>
-      `<span class="match-player-chip" data-player-id="${escapeHtml(pl.id)}" title="${escapeHtml(pl.club || '')}">${escapeHtml(pl.naam)}</span>`
-    ).join('');
+    const playersChips = m.players.map(pl => {
+      const isConcept = _shPlayerIsConcept(pl);
+      return `<span class="match-player-chip${isConcept?' is-concept':''}" data-player-id="${escapeHtml(pl.id)}" title="${escapeHtml((pl.club || '') + (isConcept?' (concept)':''))}">${escapeHtml(pl.naam)}${isConcept?' 📝':''}</span>`;
+    }).join('');
     const ageBadge = m.age
       ? `<span class="match-age-badge">${escapeHtml(m.age)}</span>`
       : '';
@@ -16283,17 +16817,21 @@ function renderMatches(){
       const sub = [posLabel, pl.club].filter(Boolean).join(' • ');
       const hg = pl.huidig_niveau || 'D';
       const pg = pl.potentieel_niveau || 'D';
+      const isConcept = _shPlayerIsConcept(pl);
+      const conceptBadge = isConcept ? `<span class="mdr-concept-badge">Concept</span>` : '';
+      const submitBtn = isConcept ? `<button type="button" class="mdr-submit" data-mdr-submit="${escapeHtml(pl.id)}" title="Direct indienen">→ Indienen</button>` : '';
       return `
         <button type="button" class="match-dropdown-row" data-player-id="${escapeHtml(pl.id)}">
           <span class="match-dropdown-avatar">${escapeHtml(initials || '?')}</span>
           <span class="match-dropdown-info">
-            <span class="match-dropdown-name">${escapeHtml(pl.naam || '—')}</span>
+            <span class="match-dropdown-name">${escapeHtml(pl.naam || '—')}${conceptBadge}</span>
             ${sub ? `<span class="match-dropdown-pos">${escapeHtml(sub)}</span>` : ''}
           </span>
           <span class="match-dropdown-grades" aria-label="Huidig en potentieel niveau">
             <span class="grade ${hg}" title="Huidig niveau">${escapeHtml(pl.huidig_niveau || '-')}</span>
             <span class="grade outline ${pg}" title="Potentieel niveau">${escapeHtml(pl.potentieel_niveau || '-')}</span>
           </span>
+          ${submitBtn}
           <svg class="match-dropdown-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       `;
@@ -16333,8 +16871,11 @@ function renderMatches(){
         </div>
       `;
     } else {
+      const _shKeyA = _shMatchKey(m);
+      const _shIsVerwerktA = shIsWedstrijdVerwerkt(_shKeyA);
+      const _shBan = _shBannerHTML(m);
       html += `
-        <div class="match-card expandable" data-match-id="${escapeHtml(m.id || (m.datum+'|'+m.thuis+'|'+m.uit))}">
+        <div class="match-card expandable${_shIsVerwerktA?' locked':''}" data-match-id="${escapeHtml(m.id || (m.datum+'|'+m.thuis+'|'+m.uit))}" data-match-key="${escapeHtml(_shKeyA)}">
           <div class="match-date match-toggle">
             <div class="match-date-day">${d.day}</div>
             <div class="match-date-month">${d.month}</div>
@@ -16352,13 +16893,21 @@ function renderMatches(){
               ${ageBadge}
               ${opstellingMeta}
               ${countMeta}
+              ${_shIsVerwerktA ? '<span class="match-status-pill" style="background:rgba(127,217,158,0.18);color:#7fd99e;border:1px solid #7fd99e;">🔒 Afgesloten</span>' : ''}
             </div>
+            ${_shBan}
           </div>
           <div class="match-players">${playersChips}</div>
           <div class="match-dropdown">
             <div class="match-dropdown-title">Rapporten — klik op een speler om te openen</div>
             <div class="match-dropdown-list">${dropdownRows}</div>
           </div>
+          <button type="button" class="match-verwerk-toggle${_shIsVerwerktA?' is-locked':''}" data-match-verwerk="${escapeHtml(_shKeyA)}" aria-label="${_shIsVerwerktA?'Wedstrijd-status herzien':'Wedstrijd verwerken'}" onclick="event.stopPropagation()">
+            ${_shIsVerwerktA
+              ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Verwerkt`
+              : `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>Verwerken`
+            }
+          </button>
         </div>
       `;
     }
@@ -16440,6 +16989,49 @@ function renderMatches(){
       if(cb.checked){ if(!matchCheckedIds.includes(id)) matchCheckedIds.push(id); }
       else { matchCheckedIds = matchCheckedIds.filter(x => x !== id); }
       renderMatchCompareBar();
+    });
+  });
+
+  // s35br: snel-notitie chip → open spelersrapport-modal met prefill
+  list.querySelectorAll('.m-snel-chip').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const progId = btn.dataset.snelProg;
+      const snIdx = parseInt(btn.dataset.snelIdx, 10);
+      _shConvertSnelToRapport(progId, snIdx);
+    });
+  });
+
+  // s35br: "Indienen"-mini-knop op concept-dropdown-row
+  list.querySelectorAll('.mdr-submit').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const pid = btn.dataset.mdrSubmit;
+      _shSubmitConceptPlayer(pid);
+    });
+  });
+
+  // s35br: Wedstrijd-verwerken toggle (aggregated cards)
+  list.querySelectorAll('[data-match-verwerk]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const key = btn.dataset.matchVerwerk;
+      const card = btn.closest('.match-card');
+      const m = _shFindMatchByKey(key);
+      if(m) _shOpenVerwerkModal(m);
+    });
+  });
+
+  // s35br: Verwerken-knop in report-card edit-actions
+  list.querySelectorAll('.match-verwerk-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const reportId = btn.dataset.reportId;
+      const r = matchReportsCache.find(x => x.id === reportId);
+      if(!r) return;
+      const pseudoMatch = { kind: 'report', id: r.id, datum: r.datum, thuis: r.thuis, uit: r.uit, opmerking: r.opmerking };
+      _shOpenVerwerkModal(pseudoMatch);
     });
   });
 

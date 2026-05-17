@@ -17200,12 +17200,10 @@ function renderMatches(){
       const ageBadgeR = m.age
         ? `<span class="match-age-badge">${escapeHtml(m.age)}</span>`
         : '';
-      const checked = matchCheckedIds.includes(m.id) ? 'checked' : '';
-      const isEditing = matchEditingIds.has(m.id);
       const _shKeyR = _shMatchKey(m);
       const _shIsVerwerktR = shIsWedstrijdVerwerkt(_shKeyR);
       html += `
-        <div class="match-card match-report-card${isEditing?' editing':''}${_shIsVerwerktR?' locked':''}" data-report-id="${escapeHtml(m.id)}" data-match-key="${escapeHtml(_shKeyR)}">
+        <div class="match-card match-report-card${_shIsVerwerktR?' locked':''}" data-report-id="${escapeHtml(m.id)}" data-match-key="${escapeHtml(_shKeyR)}">
           <div class="match-date">
             <div class="match-date-day">${d.day}</div>
             <div class="match-date-month">${d.month}</div>

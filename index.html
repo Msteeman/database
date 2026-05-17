@@ -952,6 +952,25 @@ a { color: var(--accent); text-decoration: none; }
 .td-actions .btn-route:active { transform: translateY(0); }
 .td-empty { font-size: 12px; color: var(--text-3); font-style: italic; padding: 6px 0; }
 
+/* ===== s35bo: Status-pills op match-cards ===== */
+.match-status-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 8px; border-radius: 11px;
+  font-size: 10.5px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: .04em;
+  line-height: 1.4; vertical-align: middle;
+  white-space: nowrap;
+}
+.match-status-pill::before {
+  content: ''; width: 6px; height: 6px;
+  border-radius: 50%; background: currentColor;
+  display: inline-block;
+}
+.match-status-pill.verwerkt { background: rgba(127,217,158,.16); color: #7fd99e; }
+.match-status-pill.concept   { background: rgba(243,156,18,.18); color: #f39c12; }
+.match-status-pill.info      { background: rgba(155,164,184,.16); color: #9aa3b7; }
+.match-status-pill.toernooi  { background: rgba(91,140,240,.18); color: #7da6ff; }
+
 /* Aankomende wedstrijden (3 dagen) — compact */
 .upcoming-matches {
   background: var(--bg-2);
@@ -6029,7 +6048,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bn (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35bo (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
       </div>
     </div>
   </div>
@@ -6608,9 +6627,9 @@ tbody tr:last-child td { border-bottom: none; }
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
           </button>
           <div class="prog-span-toggle" role="tablist" aria-label="Weergave">
-            <button type="button" data-prog-span="1">1 dag</button>
+            <button type="button" data-prog-span="1" class="active">1 dag</button>
             <button type="button" data-prog-span="3">3 dagen</button>
-            <button type="button" data-prog-span="7" class="active">Week</button>
+            <button type="button" data-prog-span="7">Week</button>
           </div>
         </div>
 
@@ -7888,8 +7907,20 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35bn &middot; 17 mei 2026</div>
+    <div class="changelog-ver">v70h-s35bo &middot; 17 mei 2026</div>
 
+    <div class="changelog-item">
+      <div class="changelog-item-title">Programma opent direct in agenda-modus (1 dag)</div>
+      <div class="changelog-item-detail">Bij openen van Programma zie je nu meteen de uur-as van vandaag, net als op het dashboard. Je kunt nog steeds wisselen naar 3 dagen of Week via de tabjes rechtsboven. De Week-modus blijft de mini-uur-as die je in s35bn kreeg.</div>
+    </div>
+    <div class="changelog-item">
+      <div class="changelog-item-title">Wedstrijden met status-pills</div>
+      <div class="changelog-item-detail">Wedstrijdkaarten tonen nu een gekleurd pilletje: <b>Verwerkt</b> (groen) voor wedstrijden met spelersrapporten, <b>Info</b> (grijs) voor losse wedstrijdrapporten zonder spelers, <b>Toernooi</b> (blauw) voor toernooi-blokken. Eén oogopslag, dezelfde stijl.</div>
+    </div>
+    <div class="changelog-item">
+      <div class="changelog-item-title">Verwijderen van wedstrijdrapporten met dubbele check</div>
+      <div class="changelog-item-detail">Bij het verwijderen van een wedstrijdrapport krijg je nu een Stripe-achtige bevestiging: type de thuisclub-naam over om het écht te verwijderen. Voorkomt per-ongeluk-wissen bij klikken in de sideline.</div>
+    </div>
     <div class="changelog-item">
       <div class="changelog-item-title">Programma week-view in agenda-look</div>
       <div class="changelog-item-detail">De Week-modus van Programma toont nu een mini-uur-as per dag (zoals 1-dag en 3-dagen al deden). Wedstrijden krijgen dezelfde kleur-codering (groen O.8–10, goud O.11–15, rood O.16+) en duur-badges (m). Vandaag-kolom met rode rand. Op mobiel valt het terug op één-kolom-per-dag onder elkaar.</div>
@@ -15847,6 +15878,57 @@ function groupKeyMonth(iso){
   const months = ['januari','februari','maart','april','mei','juni','juli','augustus','september','oktober','november','december'];
   return months[d.getMonth()] + ' ' + d.getFullYear();
 }
+/* ===== s35bo: Typed-confirm delete modal ===== */
+function showTypedDeleteConfirm(opts){
+  return new Promise((resolve) => {
+    const needle = String(opts.confirmWord || '').trim();
+    const title  = opts.title || 'Wedstrijdrapport verwijderen?';
+    const body   = opts.body  || '';
+    const label  = opts.label || 'Type de clubnaam om te bevestigen';
+
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;animation:fadeIn .15s ease;';
+    wrap.innerHTML = `
+      <div style="background:#11141c;border:1px solid #3a1f1f;border-radius:14px;max-width:480px;width:100%;box-shadow:0 8px 40px rgba(227,6,19,.18);font:14px/1.55 system-ui,sans-serif;color:#e5e9f5">
+        <div style="padding:14px 18px;border-bottom:1px solid #3a1f1f;display:flex;align-items:center;gap:10px">
+          <div style="width:36px;height:36px;border-radius:50%;background:rgba(227,6,19,.18);color:#ef4444;display:flex;align-items:center;justify-content:center;font-size:18px">⚠</div>
+          <div style="font-size:14.5px;font-weight:700;color:#ef4444">${title.replace(/</g,'&lt;')}</div>
+        </div>
+        <div style="padding:14px 18px;font-size:12.8px;line-height:1.65;color:#d8dceb">
+          ${body}
+          <label style="display:block;margin-top:10px;font-size:11.5px;color:#9aa3b7">${label.replace(/</g,'&lt;')} <b style="color:#f5c842">${needle.replace(/</g,'&lt;')}</b></label>
+          <input id="__td_input" type="text" autocomplete="off" spellcheck="false" style="margin-top:6px;width:100%;background:#0a0c12;border:1px solid #3a1f1f;color:#e5e9f5;padding:8px 10px;border-radius:6px;font-size:13px;font-family:inherit;outline:none">
+        </div>
+        <div style="padding:12px 18px;display:flex;gap:8px;border-top:1px solid #3a1f1f;background:rgba(0,0,0,.18)">
+          <button id="__td_cancel" type="button" style="background:transparent;border:1px solid #262b39;color:#9aa3b7;padding:7px 14px;border-radius:6px;font-size:12.5px;cursor:pointer">Annuleren</button>
+          <button id="__td_ok" type="button" disabled style="background:#e30613;color:#fff;border:0;padding:7px 18px;border-radius:6px;font-size:12.5px;font-weight:700;cursor:not-allowed;margin-left:auto;opacity:.4">Verwijderen</button>
+        </div>
+      </div>`;
+    document.body.appendChild(wrap);
+
+    const inp = wrap.querySelector('#__td_input');
+    const okB = wrap.querySelector('#__td_ok');
+    const cnB = wrap.querySelector('#__td_cancel');
+    const cleanup = (val) => { wrap.remove(); resolve(val); };
+
+    const norm = s => String(s||'').trim().toLowerCase();
+    inp.addEventListener('input', () => {
+      const m = norm(inp.value) === norm(needle);
+      okB.disabled = !m;
+      okB.style.cursor   = m ? 'pointer' : 'not-allowed';
+      okB.style.opacity  = m ? '1' : '.4';
+      inp.style.borderColor = m ? '#7fd99e' : '#3a1f1f';
+    });
+    okB.addEventListener('click', () => { if(!okB.disabled) cleanup(true); });
+    cnB.addEventListener('click', () => cleanup(false));
+    wrap.addEventListener('click', (e) => { if(e.target === wrap) cleanup(false); });
+    document.addEventListener('keydown', function onEsc(ev){
+      if(ev.key === 'Escape'){ document.removeEventListener('keydown', onEsc); cleanup(false); }
+    });
+    setTimeout(() => inp.focus(), 50);
+  });
+}
+
 function renderMatches(){
   const players = loadPlayers();
   let matches = aggregateMatches(players).map(m => ({...m, kind: 'aggregated'}));
@@ -15947,6 +16029,7 @@ function renderMatches(){
               <span class="match-team-away">${uitClean}</span>
             </div>
             <div class="match-meta">
+              <span class="match-status-pill info">Info</span>
               <span class="match-report-badge">Wedstrijdrapport</span>
               ${ageBadgeR}
             </div>
@@ -16023,6 +16106,7 @@ function renderMatches(){
               ${chevron}
             </div>
             <div class="match-meta">
+              <span class="match-status-pill toernooi">Toernooi</span>
               ${toernooiBadge}
               ${ageBadge}
               ${countMeta}
@@ -16052,6 +16136,7 @@ function renderMatches(){
               ${chevron}
             </div>
             <div class="match-meta">
+              <span class="match-status-pill verwerkt">Verwerkt</span>
               ${ageBadge}
               ${opstellingMeta}
               ${countMeta}
@@ -16116,8 +16201,23 @@ function renderMatches(){
   list.querySelectorAll('.match-report-delete').forEach(btn => {
     btn.addEventListener('click', async (e)=>{
       e.stopPropagation();
-      if(!confirm('Wedstrijdrapport verwijderen?')) return;
-      try { await deleteMatchReport(btn.dataset.reportId); toast('Verwijderd'); } catch(_){}
+      // s35bo: typed-confirm met thuis-club als bevestigings-woord
+      const rid = btn.dataset.reportId;
+      const r = matchReportsCache.find(x => x.id === rid);
+      const thuis = (r && r.thuis) ? String(r.thuis).trim() : '';
+      let okGo = false;
+      if(thuis){
+        okGo = await showTypedDeleteConfirm({
+          title: 'Wedstrijdrapport verwijderen?',
+          body: `Dit rapport van <b>${thuis.replace(/</g,'&lt;')}</b> wordt verwijderd. Spelersrapporten blijven bewaard.`,
+          label: 'Type de thuisclub om te bevestigen:',
+          confirmWord: thuis
+        });
+      } else {
+        okGo = confirm('Wedstrijdrapport verwijderen?');
+      }
+      if(!okGo) return;
+      try { await deleteMatchReport(rid); toast('Verwijderd'); } catch(_){}
     });
   });
 
@@ -17848,8 +17948,8 @@ function renderAgendaHourRow(hour, items){
   return `<div class="agenda-hour-row"><div class="agenda-hour-label">${hh}</div><div class="agenda-hour-cell">${evts}</div></div>`;
 }
 
-/* s35bk-3: span-toggle state for Programma (1/3/7 days) */
-let progSpan = 7;
+/* s35bk-3: span-toggle state for Programma (1/3/7 days) — s35bo: default 1-dag agenda */
+let progSpan = 1;
 let progDayOffset = 0; // 0 = today (used when progSpan !== 7)
 
 function renderProgrammaUur(){
@@ -20039,7 +20139,7 @@ onAuthStateChanged(auth, async (user)=>{
     // s35bk-3: push-up changelog, EXACT 1x per gebruiker per release
     setTimeout(() => {
       try {
-        const KEY = 'shown_changelog_v70h-s35bn';
+        const KEY = 'shown_changelog_v70h-s35bo';
         if(!localStorage.getItem(KEY)){
           const back = document.getElementById('changelog-backdrop');
           if(back){

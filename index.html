@@ -1871,48 +1871,30 @@ a { color: var(--accent); text-decoration: none; }
   color: var(--text-3); margin-right: 4px; align-self: center;
 }
 
-/* s35co (#291/#292): Dashboard A-D chips + advies-labels groter zodat ze
-   net zo "popt" als het oude demo-buttonblok, maar nu met juiste terminologie. */
-.recent-grades .grade {
-  min-width: 36px;
+/* s35cp (vervangt s35co): "groter" hoort bij Spelersdatabase, niet
+   dashboard. Dashboard-chips weer compact, Spelersdatabase-table-chips
+   en advies-kolom flink groter zodat ze "popt" (was Marcel's feedback). */
+#db-table-wrap td .grade {
+  min-width: 40px;
   height: 32px;
   padding: 0 12px;
   font-size: 15px;
   border-radius: 7px;
   letter-spacing: .4px;
 }
-.recent-grades .grade.outline { border-width: 2.5px; }
-
-.dist-row .grade {
-  min-width: 34px;
-  height: 28px;
-  font-size: 14px;
-  padding: 0 10px;
-}
-
-.advies-row { gap: 12px; align-items: center; }
-.advies-row .advies-label {
+#db-table-wrap td .grade.outline { border-width: 2.5px; }
+/* Advies-kolom (8e kolom: check, naam, pos, club, elftal, huidig, pot, advies) */
+#db-table-wrap table td:nth-child(8) {
   font-size: 14px;
   font-weight: 600;
   letter-spacing: .15px;
-  min-width: 170px;
 }
-.advies-row .advies-fill {
-  font-size: 13px;
-  font-weight: 700;
-  min-height: 22px;
-  line-height: 22px;
-}
-.advies-row .advies-count {
-  font-size: 16px;
-  font-weight: 700;
-  min-width: 28px;
-  text-align: right;
-}
+/* Iets meer ademruimte rond de grotere chips in de rij */
+#db-table-wrap tbody td { padding-top: 10px; padding-bottom: 10px; }
 
 @media (max-width: 720px) {
-  .recent-grades .grade { min-width: 32px; height: 28px; font-size: 13px; padding: 0 9px; }
-  .advies-row .advies-label { min-width: 130px; font-size: 13px; }
+  #db-table-wrap td .grade { min-width: 34px; height: 28px; font-size: 13px; padding: 0 10px; }
+  #db-table-wrap table td:nth-child(8) { font-size: 13px; }
 }
 
 /* Distribution bars */
@@ -10015,7 +9997,7 @@ const __SH_DEMO_REPORTS = [
     "naam": "Liam de Boer",
     "club": "Ajax",
     "datum": "2026-04-12",
-    "advies": "Top-talent — direct doorstromen",
+    "advies": "4",
     "beoordelingen": {
       "techniek_huidig": "A",
       "techniek_tekst": "Heel zuiver eerste contact, ziet ruimtes vóór ze ontstaan. Speelt vooruit als het kan, terug als het moet.",
@@ -10031,7 +10013,7 @@ const __SH_DEMO_REPORTS = [
     "naam": "Daan Visser",
     "club": "Feyenoord",
     "datum": "2026-04-18",
-    "advies": "Volgen — nog laat-rijp",
+    "advies": "2",
     "beoordelingen": {
       "techniek_huidig": "B",
       "techniek_tekst": "Snelle dribbel, kan 1v1 elke verdediger uitspelen. Voorzet moet beter geplaatst.",
@@ -10047,7 +10029,7 @@ const __SH_DEMO_REPORTS = [
     "naam": "Sam Janssen",
     "club": "PSV",
     "datum": "2026-04-20",
-    "advies": "Top-talent — direct doorstromen",
+    "advies": "4",
     "beoordelingen": {
       "techniek_huidig": "A",
       "techniek_tekst": "Rust aan de bal, kopkracht beide kanten van het veld. Past de bal scherp.",
@@ -10063,7 +10045,7 @@ const __SH_DEMO_REPORTS = [
     "naam": "Noah Bakker",
     "club": "AZ",
     "datum": "2026-04-22",
-    "advies": "Volgen",
+    "advies": "2",
     "beoordelingen": {
       "techniek_huidig": "B",
       "techniek_tekst": "Afmaken in de zestien is sterk, eerste contact wisselend.",
@@ -10079,7 +10061,7 @@ const __SH_DEMO_REPORTS = [
     "naam": "Lucas van Dijk",
     "club": "FC Twente",
     "datum": "2026-04-25",
-    "advies": "Top-talent — direct doorstromen",
+    "advies": "4",
     "beoordelingen": {
       "techniek_huidig": "A",
       "techniek_tekst": "Tweebenig, lange diepte-passes zitten erin. Verzorgde traptechniek.",
@@ -10095,7 +10077,7 @@ const __SH_DEMO_REPORTS = [
     "naam": "Tijn Hendriks",
     "club": "Heracles Almelo",
     "datum": "2026-05-06",
-    "advies": "Volgen",
+    "advies": "2",
     "beoordelingen": {
       "techniek_huidig": "B",
       "techniek_tekst": "Zuiver inspelend, korte bal en lange traptechniek goed.",
@@ -10111,7 +10093,7 @@ const __SH_DEMO_REPORTS = [
     "naam": "Mees Koster",
     "club": "IJsselmeervogels",
     "datum": "2026-05-11",
-    "advies": "Volgen — nog laat-rijp",
+    "advies": "2",
     "beoordelingen": {
       "techniek_huidig": "B",
       "techniek_tekst": "Sterke voorzet, voet-binnenkant zuiver. Eerste aanname moet vaker meteen mee voort.",
@@ -10127,7 +10109,7 @@ const __SH_DEMO_REPORTS = [
     "naam": "Sven Brouwer",
     "club": "Spakenburg",
     "datum": "2026-05-12",
-    "advies": "Top-talent — direct doorstromen",
+    "advies": "4",
     "beoordelingen": {
       "techniek_huidig": "A",
       "techniek_tekst": "Sterk afmaker, beide benen. Kopt scherp bij het tweede paaltje.",
@@ -10143,7 +10125,7 @@ const __SH_DEMO_REPORTS = [
     "naam": "Olivier Hoekstra",
     "club": "Jong Ajax",
     "datum": "2026-05-17",
-    "advies": "Top-talent — direct doorstromen",
+    "advies": "4",
     "beoordelingen": {
       "techniek_huidig": "A",
       "techniek_tekst": "Eredivisie-klasse passing, eerste aanname onder druk.",
@@ -10159,7 +10141,7 @@ const __SH_DEMO_REPORTS = [
     "naam": "Tobias Vermeer",
     "club": "PEC Zwolle",
     "datum": "2026-05-18",
-    "advies": "Volgen",
+    "advies": "2",
     "beoordelingen": {
       "techniek_huidig": "B",
       "techniek_tekst": "Zuiver passen tussen de linies, sterk in dekking.",
@@ -22070,7 +22052,7 @@ function initAuthForms(){
     }
   } catch(e){}
   const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const holdMs = prefersReduced ? 800 : 4200;
+  const holdMs = prefersReduced ? 800 : 6000;
   const outMs  = prefersReduced ? 200 : 1000;
   let dismissed = false;
   function dismiss(){

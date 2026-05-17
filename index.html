@@ -3410,18 +3410,34 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* ===== Programma weekview ===== */
 .prog-weekbar {
-  display: flex; align-items: center; gap: 12px;
+  display: flex; flex-direction: column; gap: 10px;
   margin: 4px 0 18px;
-  padding: 10px 14px;
+  padding: 12px 14px;
   background: var(--bg-2);
   border: 1px solid var(--border);
   border-radius: 12px;
 }
 .prog-weeklabel {
-  flex: 1; text-align: center;
+  width: 100%; text-align: center;
   font-weight: 700; font-size: 14px;
   letter-spacing: 0.02em;
   color: var(--text-1);
+  white-space: normal;
+  line-height: 1.35;
+}
+.prog-weekbar-controls {
+  display: flex; align-items: center; gap: 10px;
+  width: 100%;
+}
+.prog-weekbar-controls .prog-span-toggle {
+  margin-left: auto;
+}
+@media (max-width: 560px) {
+  .prog-weekbar { padding: 10px 12px; gap: 8px; }
+  .prog-weeklabel { font-size: 13px; }
+  .prog-weekbar-controls { gap: 6px; flex-wrap: wrap; }
+  .prog-weekbar-controls .prog-span-toggle { margin-left: auto; }
+  .prog-span-toggle button { padding: 6px 10px; font-size: 11.5px; }
 }
 .prog-grid {
   display: grid;
@@ -3673,7 +3689,6 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--panel-2, #161a25);
   border: 1px solid var(--border, #262b39);
   border-radius: 6px; overflow: hidden;
-  margin-left: 8px;
 }
 .prog-span-toggle button {
   background: transparent; border: 0; color: var(--muted, #9aa3b7);
@@ -6619,17 +6634,19 @@ tbody tr:last-child td { border-bottom: none; }
         </div>
 
         <div class="prog-weekbar">
-          <button class="btn btn-ghost" id="prog-prev-week" aria-label="Vorige">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
           <div class="prog-weeklabel" id="prog-weeklabel">Week —</div>
-          <button class="btn btn-ghost" id="prog-next-week" aria-label="Volgende">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
-          <div class="prog-span-toggle" role="tablist" aria-label="Weergave">
-            <button type="button" data-prog-span="1" class="active">1 dag</button>
-            <button type="button" data-prog-span="3">3 dagen</button>
-            <button type="button" data-prog-span="7">Week</button>
+          <div class="prog-weekbar-controls">
+            <button class="btn btn-ghost" id="prog-prev-week" aria-label="Vorige">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button class="btn btn-ghost" id="prog-next-week" aria-label="Volgende">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+            <div class="prog-span-toggle" role="tablist" aria-label="Weergave">
+              <button type="button" data-prog-span="1" class="active">1 dag</button>
+              <button type="button" data-prog-span="3">3 dagen</button>
+              <button type="button" data-prog-span="7">Week</button>
+            </div>
           </div>
         </div>
 
@@ -17895,7 +17912,7 @@ function renderAgenda(){
             const cls = agendaLeeftijdClass(it.leeftijd);
             const dur = getMatchDurationMin(it.leeftijd);
             const title = `${(it.thuis||'?')} — ${(it.uit||'?')}${it.leeftijd? ' ('+it.leeftijd+')':''}`;
-            return `<div class="agenda-mobile-evt" data-agenda-progid="${it.id||''}"><span class="t">${escapeHTML(it.tijd||'')}</span><span class="lbl">${escapeHTML(title)}</span><span class="dur">${dur}m</span></div>`;
+            return `<div class="agenda-mobile-evt" data-agenda-progid="${it.id||''}"><span class="t">${escapeHtml(it.tijd||'')}</span><span class="lbl">${escapeHtml(title)}</span><span class="dur">${dur}m</span></div>`;
           }).join('')}
         </div>`;
     }).join('');
@@ -17941,8 +17958,8 @@ function renderAgendaHourRow(hour, items){
     const meta = [loc].filter(Boolean).join(' &middot; ');
     return `<div class="agenda-evt ${cls}" data-agenda-progid="${it.id||''}">
       <span class="agenda-evt-dur">${dur}m</span>
-      <div class="agenda-evt-title">${escapeHTML(it.tijd||'')} &middot; ${escapeHTML(title)}</div>
-      ${meta? `<div class="agenda-evt-meta">${escapeHTML(meta)}</div>`:''}
+      <div class="agenda-evt-title">${escapeHtml(it.tijd||'')} &middot; ${escapeHtml(title)}</div>
+      ${meta? `<div class="agenda-evt-meta">${escapeHtml(meta)}</div>`:''}
     </div>`;
   }).join('');
   return `<div class="agenda-hour-row"><div class="agenda-hour-label">${hh}</div><div class="agenda-hour-cell">${evts}</div></div>`;
@@ -18030,7 +18047,7 @@ function renderProgrammaUur(){
           ${items.map(it => {
             const dur = getMatchDurationMin(it.leeftijd);
             const title = `${(it.thuis||'?')} — ${(it.uit||'?')}${it.leeftijd? ' ('+it.leeftijd+')':''}`;
-            return `<div class="agenda-mobile-evt" data-agenda-progid="${it.id||''}"><span class="t">${escapeHTML(it.tijd||'')}</span><span class="lbl">${escapeHTML(title)}</span><span class="dur">${dur}m</span></div>`;
+            return `<div class="agenda-mobile-evt" data-agenda-progid="${it.id||''}"><span class="t">${escapeHtml(it.tijd||'')}</span><span class="lbl">${escapeHtml(title)}</span><span class="dur">${dur}m</span></div>`;
           }).join('')}
         </div>`;
     }).join('');
@@ -18127,11 +18144,11 @@ function renderProgramma(){
     const evtChip = it => {
       const cls = agendaLeeftijdClass(it.leeftijd);
       const dur = getMatchDurationMin(it.leeftijd);
-      const t = escapeHTML(it.tijd||'');
+      const t = escapeHtml(it.tijd||'');
       const teams = `${(it.thuis||'?')} — ${(it.uit||'?')}`;
       return `<div class="pwg-evt ${cls}" data-prog-week-evt="${it.id||''}">
         <span class="pwg-evt-dur">${dur}m</span>
-        <div class="pwg-evt-title">${t} ${escapeHTML(teams)}</div>
+        <div class="pwg-evt-title">${t} ${escapeHtml(teams)}</div>
       </div>`;
     };
 

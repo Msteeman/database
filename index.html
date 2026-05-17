@@ -21997,7 +21997,8 @@ async function loadUserRole(){
     if(usnap.exists()){
       const d = usnap.data() || {};
       role = (d.role || 'scout').toLowerCase();
-      teamId = d.teamId || 'demo_team';
+      /* s35cj: lege teamId blijft leeg (was 'demo_team') */
+      teamId = (typeof d.teamId === 'string') ? d.teamId : '';
       displayName = d.displayName || displayName;
     } else {
       /* Eerste login: stamp user-doc */
@@ -22031,7 +22032,24 @@ async function loadUserRole(){
     if(sr) sr.textContent = role.charAt(0).toUpperCase()+role.slice(1);
     const st = document.getElementById('settings-team');
     if(st) st.textContent = teamId || 'Individueel (geen team)';
-    console.log('[s35cg] role=' + role + ' team=' + teamId);
+    /* s35cj: sidebar-naam dynamisch zetten op basis van ingelogde user.
+       Volgorde: user-doc displayName > Firebase Auth displayName >
+       email local-part (prettified) > fallback 'Scout'.                       */
+    try {
+      let _label = (displayName || '').trim();
+      if(!_label && currentUser && currentUser.email){
+        const local = currentUser.email.split('@')[0] || '';
+        _label = local.replace(/[._-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
+      }
+      if(!_label) _label = 'Scout';
+      const nameEl = document.querySelector('.scout-name');
+      if(nameEl && nameEl.textContent !== _label) nameEl.textContent = _label;
+      /* Initialen + avatar verversen via bestaande helper (rebuildt 'MS' uit nieuwe naam) */
+      if(typeof applyPhotoEverywhere === 'function' && typeof readPhoto === 'function'){
+        try { applyPhotoEverywhere(readPhoto()); } catch(_){}
+      }
+    } catch(e){ console.warn('[s35cj] sidebar-name update failed:', e); }
+    console.log('[s35cj] role=' + role + ' team=' + teamId + ' name=' + (displayName||currentUser?.email||''));
   } catch(e){
     console.warn('[s35cg] loadUserRole failed:', e);
   }

@@ -6939,7 +6939,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35cu (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35cv (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
         <!-- s35cr: juridische links onderin de Instellingen-modal -->
         <div class="settings-meta" style="margin-top:6px; font-size:11px;">
           <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('privacy');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Privacyverklaring</a>
@@ -9107,8 +9107,12 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35cu &middot; 18 mei 2026</div>
+    <div class="changelog-ver">v70h-s35cv &middot; 18 mei 2026</div>
 
+    <div class="changelog-item">
+      <div class="changelog-item-title">Agenda in app-versie — eindelijk betrouwbaar</div>
+      <div class="changelog-item-detail">De Programma-/agendapagina was in de geïnstalleerde app-versie soms leeg bij het openen — de wedstrijden waren er wel, maar de view tekende ze pas na een handmatige refresh. Drie oorzaken aangepakt: (1) service-worker cache geforceerd ververst zodat oude JS niet meer blijft hangen, (2) bij elk app-resume (terug uit achtergrond, switch terug naar Scouting Hub) wordt de agenda automatisch opnieuw getekend, en (3) zodra de eerste wedstrijden uit de cloud binnenkomen tekent de agenda direct opnieuw — geen race-condition meer waarbij je een leeg grid zag.</div>
+    </div>
     <div class="changelog-item">
       <div class="changelog-item-title">Demo-omgeving — duidelijke balk bovenaan</div>
       <div class="changelog-item-detail">Wie inlogt met een demo-account ziet nu een kleine, oranje balk bovenaan de pagina: <i>"Demo-omgeving · fictieve data"</i>. De balk is bewust compact gehouden, maar blijft altijd in beeld dankzij een lichte puls op het bolletje. Voor reguliere accounts blijft alles ongewijzigd. Detectie werkt voor het hoofd-demo-account én voor demo-varianten zoals coördinator-demo.</div>
@@ -11400,7 +11404,12 @@ function subscribeData(){
     const hasOpenSnelForm = !!document.querySelector(
       '.sa-snel-form[style*="display: block"], .sa-snel-wstr-form[style*="display: block"]'
     );
-    if(currentView === 'programma') renderProgramma();
+    // s35cv: forceer ook een tweede render via rAF zodat de PWA-DOM
+    //        de eerste snapshot zeker oppikt (was: blank agenda in app).
+    if(currentView === 'programma'){
+      renderProgramma();
+      requestAnimationFrame(() => { try{ renderProgramma(); }catch(_){ } });
+    }
     if(currentView === 'agenda') renderAgenda();
     if(currentView === 'dashboard' && !hasOpenSnelForm){
       renderActiveScouting(); renderTodayMatches(); renderUpcomingMatches();
@@ -12445,6 +12454,33 @@ function showApp(){
   document.addEventListener('visibilitychange', () => {
     if(document.visibilityState === 'hidden') flush('vis-hidden');
   });
+})();
+
+/* s35cv — PWA agenda fix: re-render Programma als de app weer zichtbaar wordt.
+   In standalone-modus (home-screen app) blijft de DOM tussen sessies hangen.
+   Als programmaCache pas binnenkomt nadat de gebruiker al op Programma stond
+   krijg je een leeg grid totdat hij hard scrolt of switcht. Deze re-render
+   triggert op visibility-resume én op pageshow (iOS bfcache). */
+(function(){
+  function refreshProgrammaIfVisible(){
+    try{
+      if(typeof currentView !== 'undefined' && currentView === 'programma'
+         && typeof renderProgramma === 'function'){
+        renderProgramma();
+      }
+    }catch(_){ }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible') refreshProgrammaIfVisible();
+  });
+  window.addEventListener('pageshow', refreshProgrammaIfVisible);
+  // Tweede defensieve re-render 800ms na DOMContentLoaded zodat de
+  // eerste firestore-snapshot zeker binnen is voordat de gebruiker tikt.
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(refreshProgrammaIfVisible, 800);
+    setTimeout(refreshProgrammaIfVisible, 2200);
+  });
+  window.__shRefreshProgramma = refreshProgrammaIfVisible;
 })();
 function openConceptDebug(){
   const m = document.getElementById('debug-modal');

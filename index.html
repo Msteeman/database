@@ -978,18 +978,37 @@ a { color: var(--accent); text-decoration: none; }
   border-radius: 12px;
   padding: 14px 16px;
 }
+/* s35ct: inklapbaar — header klikbaar, body verbergt zich */
 .upcoming-matches-head {
-  display: flex; justify-content: space-between; align-items: baseline;
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
   margin-bottom: 10px;
 }
+.upcoming-matches.collapsed .upcoming-matches-head { margin-bottom: 0; }
+.upcoming-matches.collapsed .upcoming-matches-body { display: none; }
 .upcoming-matches-title {
   font-size: 13px; font-weight: 700;
   letter-spacing: .4px; text-transform: uppercase;
   color: var(--text-2);
+  flex: 1; min-width: 0;
+}
+.upcoming-matches-right {
+  display: flex; align-items: center; gap: 10px;
+  flex-shrink: 0;
 }
 .upcoming-matches-count {
   font-size: 11px; color: var(--text-3);
 }
+.upcoming-matches-chev {
+  width: 18px; height: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--text-3);
+  transition: transform .18s ease;
+}
+.upcoming-matches.collapsed .upcoming-matches-chev { transform: rotate(-90deg); }
+.upcoming-matches-chev svg { width: 12px; height: 12px; }
 .up-row {
   display: flex; align-items: center; gap: 12px;
   padding: 8px 0;
@@ -1553,6 +1572,35 @@ a { color: var(--accent); text-decoration: none; }
 .sync-dot.syncing { background: var(--orange); animation: pulse 1s infinite; }
 .sync-dot.offline { background: var(--red); }
 @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:.3;} }
+
+/* s35cu: demo-omgeving banner (klein, duidelijk, niet dominant) */
+.demo-strip {
+  display: none; /* JS: __shApplyDemoChrome zet display:flex bij demo-account */
+  align-items: center; justify-content: center; gap: 8px;
+  background: linear-gradient(90deg, rgba(243,156,18,.20), rgba(243,156,18,.10));
+  border-bottom: 1px solid rgba(243,156,18,.45);
+  color: #f5b042;
+  font-size: 11.5px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
+  padding: 5px 12px;
+  position: sticky; top: 0; z-index: 50;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.demo-strip-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #f39c12;
+  box-shadow: 0 0 0 0 rgba(243,156,18,.6);
+  animation: demoStripPulse 2.2s infinite;
+  flex-shrink: 0;
+}
+@keyframes demoStripPulse {
+  0%   { box-shadow: 0 0 0 0   rgba(243,156,18,.55); }
+  70%  { box-shadow: 0 0 0 6px rgba(243,156,18,0); }
+  100% { box-shadow: 0 0 0 0   rgba(243,156,18,0); }
+}
+@media (max-width: 760px){
+  .demo-strip { font-size: 10.5px; letter-spacing: .08em; padding: 4px 10px; }
+}
 
 /* Main */
 .main { padding: 24px 32px 48px 32px; max-width: 1500px; grid-column: 2; }
@@ -6891,7 +6939,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35cs (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35cu (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
         <!-- s35cr: juridische links onderin de Instellingen-modal -->
         <div class="settings-meta" style="margin-top:6px; font-size:11px;">
           <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('privacy');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Privacyverklaring</a>
@@ -7104,7 +7152,11 @@ tbody tr:last-child td { border-bottom: none; }
     <!-- ============ MAIN ============ -->
     <main class="main">
 
-      <!-- s35bg: demo-strip definitief verwijderd (CSS bug + niet gewenst in eigen omgeving) -->
+      <!-- s35cu: demo-omgeving strip (klein, gepind boven) — alleen zichtbaar voor demo-accounts -->
+      <div id="demo-strip" class="demo-strip" role="status" aria-label="Demo-omgeving">
+        <span class="demo-strip-dot" aria-hidden="true"></span>
+        <span>Demo-omgeving · fictieve data</span>
+      </div>
 
       <!-- ====== DASHBOARD ====== -->
       <section class="view active" id="view-dashboard">
@@ -9055,8 +9107,16 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35cs &middot; 18 mei 2026</div>
+    <div class="changelog-ver">v70h-s35cu &middot; 18 mei 2026</div>
 
+    <div class="changelog-item">
+      <div class="changelog-item-title">Demo-omgeving — duidelijke balk bovenaan</div>
+      <div class="changelog-item-detail">Wie inlogt met een demo-account ziet nu een kleine, oranje balk bovenaan de pagina: <i>"Demo-omgeving · fictieve data"</i>. De balk is bewust compact gehouden, maar blijft altijd in beeld dankzij een lichte puls op het bolletje. Voor reguliere accounts blijft alles ongewijzigd. Detectie werkt voor het hoofd-demo-account én voor demo-varianten zoals coördinator-demo.</div>
+    </div>
+    <div class="changelog-item">
+      <div class="changelog-item-title">Aankomende wedstrijden — inklapbaar</div>
+      <div class="changelog-item-detail">Het blok "Aankomende wedstrijden" op het dashboard is nu in te klappen. Klik op de header en de drie aankomende wedstrijden vouwen weg — alleen de titel en de teller ("3 de komende 3 dagen") blijven zichtbaar. Een chevron rechts laat zien of het ingeklapt of uitgeklapt is. Je voorkeur wordt onthouden tussen sessies.</div>
+    </div>
     <div class="changelog-item">
       <div class="changelog-item-title">Privacy + Voorwaarden — hybride leesbare versie</div>
       <div class="changelog-item-detail">Beide juridische teksten herschreven naar een rustigere, beter leesbare versie zonder juridisch overschot. <b>Privacy:</b> bewaartermijn is nu eenvoudig "zolang het account of het team actief is" (geen harde 2-jaars-grens meer), data blijft <b>binnen de Europese Unie</b> opgeslagen, en de verwijzing naar de Autoriteit Persoonsgegevens is direct aanklikbaar. <b>Voorwaarden:</b> de AVG-zin in artikel 4 (toestemming voor minderjarige spelers) blijft expliciet staan, aansprakelijkheid is samengevat in één heldere zin, en bij geschillen geldt de bevoegde rechter in <b>Midden-Nederland</b>. Officiële entiteit (KvK + adres) wordt later toegevoegd zodra ScoutingHub als rechtspersoon staat ingeschreven.</div>
@@ -10872,7 +10932,23 @@ setTimeout(() => {
 
 // ============ s35aw: DEMO-account detectie + seed ============
 const __SH_DEMO_EMAIL = 'demo@scoutinghub.nl';
+// s35cu: pattern-match alle demo-accounts onder @scoutinghub.nl (incl. coordinator-demo)
+// Strip-detectie (banner bovenaan) gebruikt de bredere check; seed-functies blijven gekoppeld
+// aan het primaire demo-account via __SH_DEMO_EMAIL.
+function __shIsDemoEmail(em){
+  if(!em || typeof em !== 'string') return false;
+  const e = em.toLowerCase().trim();
+  // Match: demo@scoutinghub.nl, demo-coord@scoutinghub.nl, coordinator-demo@scoutinghub.nl, etc.
+  return /^([a-z0-9._-]*demo[a-z0-9._-]*)@scoutinghub\.nl$/.test(e);
+}
 function __shIsDemoUser(){
+  try {
+    return (typeof currentUser !== 'undefined' && currentUser && currentUser.email
+            && __shIsDemoEmail(currentUser.email));
+  } catch(_){ return false; }
+}
+// Primaire demo (alleen demo@scoutinghub.nl) — voor seed/autosed-knop in instellingen
+function __shIsPrimaryDemoUser(){
   try {
     return (typeof currentUser !== 'undefined' && currentUser && currentUser.email
             && currentUser.email.toLowerCase() === __SH_DEMO_EMAIL);
@@ -10880,11 +10956,14 @@ function __shIsDemoUser(){
 }
 function __shApplyDemoChrome(){
   try {
+    // s35cu: strip toont op ALLE demo-accounts (demo@... + coordinator-demo@...)
+    // Seed-rij blijft beperkt tot het primaire demo-account.
     const isDemo = __shIsDemoUser();
+    const isPrimary = __shIsPrimaryDemoUser();
     const strip = document.getElementById('demo-strip');
     const seedRow = document.getElementById('settings-seed-row');
     if(strip) strip.style.display = isDemo ? 'flex' : 'none';
-    if(seedRow) seedRow.style.display = isDemo ? 'flex' : 'none';
+    if(seedRow) seedRow.style.display = isPrimary ? 'flex' : 'none';
   } catch(_){}
 }
 window.__shApplyDemoChrome = __shApplyDemoChrome;
@@ -13921,20 +14000,41 @@ function renderTodayMatches(){
   });
 }
 
+function bindUpcomingToggle(wrap){
+  // s35ct: maak header klikbaar om hele blok in/uit te klappen
+  const head = wrap.querySelector('.upcoming-matches-head[data-toggle-upcoming]');
+  const block = wrap.querySelector('.upcoming-matches');
+  if(!head || !block) return;
+  head.addEventListener('click', () => {
+    const nowCollapsed = block.classList.toggle('collapsed');
+    try { localStorage.setItem('upcomingMatchesCollapsed', nowCollapsed ? '1' : '0'); } catch(_){}
+  });
+}
+
 function renderUpcomingMatches(){
   const wrap = document.getElementById('upcoming-matches-wrap');
   if(!wrap) return;
+  // s35ct: voorkeur ingeklapt/uitgeklapt onthouden
+  const collapsedPref = (function(){ try { return localStorage.getItem('upcomingMatchesCollapsed') === '1'; } catch(_){ return false; } })();
+  const cls = collapsedPref ? 'upcoming-matches collapsed' : 'upcoming-matches';
+  const chev = '<span class="upcoming-matches-chev" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2 4 L6 8 L10 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
   if(typeof programmaCache === 'undefined' || !Array.isArray(programmaCache) || programmaCache.length === 0){
     // v70g: altijd tonen, ook bij lege cache
     wrap.style.display = 'block';
     wrap.innerHTML = `
-      <div class="upcoming-matches">
-        <div class="upcoming-matches-head">
+      <div class="${cls}">
+        <div class="upcoming-matches-head" data-toggle-upcoming="1">
           <div class="upcoming-matches-title">Aankomende wedstrijden</div>
-          <div class="upcoming-matches-count">geen ingepland</div>
+          <div class="upcoming-matches-right">
+            <div class="upcoming-matches-count">geen ingepland</div>
+            ${chev}
+          </div>
         </div>
-        <div class="up-empty">Plan een wedstrijd in via Programma of via "+ Nieuw rapport".</div>
+        <div class="upcoming-matches-body">
+          <div class="up-empty">Plan een wedstrijd in via Programma of via "+ Nieuw rapport".</div>
+        </div>
       </div>`;
+    bindUpcomingToggle(wrap);
     return;
   }
   const now = new Date();
@@ -13949,13 +14049,19 @@ function renderUpcomingMatches(){
     // v70g: altijd tonen, ook zonder wedstrijden in de komende 3 dagen
     wrap.style.display = 'block';
     wrap.innerHTML = `
-      <div class="upcoming-matches">
-        <div class="upcoming-matches-head">
+      <div class="${cls}">
+        <div class="upcoming-matches-head" data-toggle-upcoming="1">
           <div class="upcoming-matches-title">Aankomende wedstrijden</div>
-          <div class="upcoming-matches-count">geen in de komende 3 dagen</div>
+          <div class="upcoming-matches-right">
+            <div class="upcoming-matches-count">geen in de komende 3 dagen</div>
+            ${chev}
+          </div>
         </div>
-        <div class="up-empty">Geen wedstrijden ingepland voor de komende 3 dagen.</div>
+        <div class="upcoming-matches-body">
+          <div class="up-empty">Geen wedstrijden ingepland voor de komende 3 dagen.</div>
+        </div>
       </div>`;
+    bindUpcomingToggle(wrap);
     return;
   }
   items.sort((a,b) => {
@@ -13999,15 +14105,21 @@ function renderUpcomingMatches(){
       </div>`;
   }).join('');
   wrap.innerHTML = `
-    <div class="upcoming-matches">
-      <div class="upcoming-matches-head">
+    <div class="${cls}">
+      <div class="upcoming-matches-head" data-toggle-upcoming="1">
         <div class="upcoming-matches-title">Aankomende wedstrijden</div>
-        <div class="upcoming-matches-count">${items.length} de komende 3 dagen</div>
+        <div class="upcoming-matches-right">
+          <div class="upcoming-matches-count">${items.length} de komende 3 dagen</div>
+          ${chev}
+        </div>
       </div>
-      ${lines}
+      <div class="upcoming-matches-body">
+        ${lines}
+      </div>
     </div>
   `;
   wrap.style.display = 'block';
+  bindUpcomingToggle(wrap);
   // s35aj (#2): klik op regel -> direct naar programma met deze match uitgeklapt. Geen tussenmodal.
   wrap.querySelectorAll('.up-row').forEach(row => {
     row.addEventListener('click', e => {

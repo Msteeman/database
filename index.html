@@ -4043,6 +4043,149 @@ tbody tr:last-child td { border-bottom: none; }
   }
 }
 
+/* ===== s35cw: Optie B (full-bleed sectie) — 1 dag + 3 dagen op mobile =====
+   Marcel koos uit demo-s35cv-layouts.html voor Optie B (1d + 3d) + Optie D (Week).
+   In plaats van een "card met rand" wordt de dag-sectie nu écht edge-to-edge:
+   - day-head krijgt rood-getinte achtergrond, loopt door tot de schermrand
+   - geen kaartrand meer rondom, alleen subtiele scheidingslijn tussen dagen
+   - mobile-blocks binnen de sectie houden hun lucht (14px) en blijven cards
+   Dit lost zowel de ~20px dode strook rechts op als de "smal kaartje" look.   */
+@media (max-width: 900px) {
+  #view-programma #programma-grid.prog-grid-uur > .agenda-day-col {
+    background: rgba(20, 24, 34, 0.55) !important;
+    border: 0 !important;
+    border-top: 1px solid var(--border, #262b39) !important;
+    border-bottom: 1px solid var(--border, #262b39) !important;
+    border-radius: 0 !important;
+    margin: 0 0 14px 0 !important;
+    padding: 0 !important;
+  }
+  #view-programma #programma-grid.prog-grid-uur > .agenda-day-col > .agenda-day-head {
+    background: rgba(227, 6, 19, 0.08) !important;
+    border-bottom: 1px solid rgba(227, 6, 19, 0.18) !important;
+    margin: 0 !important;
+    padding: 10px 16px !important;
+  }
+  /* Override van s35cl: directe kinderen NIET meer met 4px padding (was hack
+     toen sectie zelf 20px had). Nu sectie 0 padding heeft, geven we elk
+     content-blok zelf de juiste lucht.                                       */
+  #view-programma #programma-grid.prog-grid-uur > .agenda-day-col > * {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    box-sizing: border-box;
+  }
+  /* day-head zelf gebruikt 16px hierboven (was via *). */
+  #view-programma #programma-grid.prog-grid-uur > .agenda-day-col > .agenda-day-head {
+    padding-left: 16px !important;
+    padding-right: 16px !important;
+  }
+  /* Mobile-blocks binnen de sectie: card-stijl met lucht aan boven/onder. */
+  #view-programma #programma-grid.prog-grid-uur > .agenda-day-col > .agenda-mobile-block,
+  #view-programma #programma-grid.prog-grid-uur > .agenda-day-col > .agenda-empty {
+    margin: 8px 14px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+  }
+  /* "+ Wedstrijd" knop ook met buiten-padding zoals de blocks. */
+  #view-programma #programma-grid.prog-grid-uur > .agenda-day-col > .prog-add-btn {
+    margin: 10px 14px 12px !important;
+    padding-left: 12px !important;
+    padding-right: 12px !important;
+    width: calc(100% - 28px) !important;
+  }
+}
+
+/* ===== s35cw: Optie D (week-swiper) — Week-view op mobile =====
+   7-koloms grid is op mobile onleesbaar (~50px per kolom). Op mobile tonen we
+   day-tabs Ma/Di/Wo/Do/Vr/Za/Zo bovenaan en één dag tegelijk in volle breedte.
+   Op desktop blijft het 7-koloms overzicht ongewijzigd.                       */
+.prog-week-daytabs { display: none; }
+@media (max-width: 900px) {
+  .prog-week-daytabs {
+    display: flex !important;
+    gap: 4px;
+    padding: 8px 10px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border, #262b39);
+    background: rgba(20, 24, 34, 0.4);
+    margin: 0 -14px 0 -14px;
+    width: calc(100% + 28px);
+    box-sizing: border-box;
+    scrollbar-width: none;
+  }
+  .prog-week-daytabs::-webkit-scrollbar { display: none; }
+  .prog-week-daytab {
+    flex: 1 0 auto;
+    min-width: 44px;
+    padding: 7px 6px 5px;
+    text-align: center;
+    background: var(--panel, #11141c);
+    border: 1px solid var(--border, #262b39);
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 10.5px;
+    color: var(--muted, #9aa3b7);
+    line-height: 1.1;
+    user-select: none;
+  }
+  .prog-week-daytab .num {
+    display: block;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text-1, #e5e9f5);
+    margin-bottom: 1px;
+  }
+  .prog-week-daytab .dot {
+    display: inline-block;
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: var(--accent, #f5c842);
+    margin-top: 3px;
+  }
+  .prog-week-daytab.today {
+    border-color: var(--red, #e30613);
+  }
+  .prog-week-daytab.today .num { color: var(--red, #e30613); }
+  .prog-week-daytab.active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #fff;
+  }
+  .prog-week-daytab.active .num { color: #fff; }
+  .prog-week-daytab.active.today {
+    background: var(--red, #e30613);
+    border-color: var(--red, #e30613);
+  }
+  /* Op mobile: verberg alle pwg-day behalve degene met .active.
+     Op desktop blijft het 7-koloms grid intact (deze regel pakt niet).        */
+  #view-programma #programma-grid.prog-week-grid > .pwg-day:not(.active) {
+    display: none !important;
+  }
+  /* De actieve dag krijgt full-bleed sectie-look, vergelijkbaar met Optie B. */
+  #view-programma #programma-grid.prog-week-grid > .pwg-day.active {
+    background: rgba(20, 24, 34, 0.55) !important;
+    border: 0 !important;
+    border-top: 1px solid var(--border, #262b39) !important;
+    border-bottom: 1px solid var(--border, #262b39) !important;
+    border-radius: 0 !important;
+    padding: 0 !important;
+    min-height: auto;
+  }
+  #view-programma #programma-grid.prog-week-grid > .pwg-day.active > .pwg-day-head {
+    background: rgba(227, 6, 19, 0.08) !important;
+    border-bottom: 1px solid rgba(227, 6, 19, 0.18) !important;
+    padding: 10px 16px !important;
+    margin: 0 !important;
+  }
+  #view-programma #programma-grid.prog-week-grid > .pwg-day.active > .pwg-hour-row {
+    padding: 4px 14px !important;
+  }
+  #view-programma #programma-grid.prog-week-grid > .pwg-day.active > .pwg-add-btn {
+    margin: 10px 14px 12px !important;
+    width: calc(100% - 28px) !important;
+  }
+}
+
 /* ===== s35bk-3: Push-up changelog modal ===== */
 .changelog-backdrop {
   position: fixed; inset: 0; z-index: 9999;
@@ -6939,7 +7082,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35cv (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35cw (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
         <!-- s35cr: juridische links onderin de Instellingen-modal -->
         <div class="settings-meta" style="margin-top:6px; font-size:11px;">
           <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('privacy');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Privacyverklaring</a>
@@ -9107,11 +9250,19 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35cv &middot; 18 mei 2026</div>
+    <div class="changelog-ver">v70h-s35cw &middot; 18 mei 2026</div>
 
     <div class="changelog-item">
-      <div class="changelog-item-title">Agenda in app-versie — eindelijk betrouwbaar</div>
-      <div class="changelog-item-detail">De Programma-/agendapagina was in de geïnstalleerde app-versie soms leeg bij het openen — de wedstrijden waren er wel, maar de view tekende ze pas na een handmatige refresh. Drie oorzaken aangepakt: (1) service-worker cache geforceerd ververst zodat oude JS niet meer blijft hangen, (2) bij elk app-resume (terug uit achtergrond, switch terug naar Scouting Hub) wordt de agenda automatisch opnieuw getekend, en (3) zodra de eerste wedstrijden uit de cloud binnenkomen tekent de agenda direct opnieuw — geen race-condition meer waarbij je een leeg grid zag.</div>
+      <div class="changelog-item-title">Programma — sectie loopt nu door tot de schermrand</div>
+      <div class="changelog-item-detail">In de app-versie liet de agenda rechts een dode strook van zo'n 20 px open — een restje van de oude kader-layout. De 1-dag- en 3-dagen-weergave is nu opgebouwd als een <b>full-bleed sectie</b> (Apple/Outlook-stijl): de dagkop met rode tint loopt edge-to-edge over de hele breedte, en de wedstrijd-kaartjes ín de sectie houden hun lucht zodat de tekst goed leesbaar blijft. Geen verloren ruimte meer aan de rechterkant.</div>
+    </div>
+    <div class="changelog-item">
+      <div class="changelog-item-title">Week-view — geen 7 onleesbare kolommen meer</div>
+      <div class="changelog-item-detail">De Week-modus op mobiel was nauwelijks bruikbaar: 7 kolommen op één scherm betekent één regel per dag. Nu zit er bovenaan een <b>dag-strip</b> (Ma · Di · Wo · …) met datum en een bolletje wanneer er wedstrijden zijn. Je tikt op een dag en die ene dag vult het scherm in de bekende sectie-stijl. Vandaag wordt rood gemarkeerd, de actieve dag blauw — en als je vandaag actief hebt, beide. Op desktop blijft het vertrouwde 7-koloms-rooster ongewijzigd.</div>
+    </div>
+    <div class="changelog-item">
+      <div class="changelog-item-title">Agenda in app-versie — betrouwbaar bij hervatten</div>
+      <div class="changelog-item-detail">De Programma-pagina was in de geïnstalleerde app-versie soms leeg bij het openen — de wedstrijden waren er wel, maar de view tekende ze pas na een handmatige refresh. Drie oorzaken aangepakt: (1) service-worker cache geforceerd ververst zodat oude JS niet meer blijft hangen, (2) bij elk app-resume (terug uit achtergrond, switch terug naar de app) wordt de agenda automatisch opnieuw getekend, en (3) zodra de eerste wedstrijden uit de cloud binnenkomen tekent de agenda direct opnieuw — geen race-condition meer waarbij je een leeg grid zag.</div>
     </div>
     <div class="changelog-item">
       <div class="changelog-item-title">Demo-omgeving — duidelijke balk bovenaan</div>
@@ -20337,6 +20488,9 @@ function renderAgendaHourRow(hour, items){
 /* s35bk-3: span-toggle state for Programma (1/3/7 days) — s35bo: default 1-dag agenda */
 let progSpan = 1;
 let progDayOffset = 0; // 0 = today (used when progSpan !== 7)
+/* s35cw: actieve dag in Week-view op mobile (0=Ma … 6=Zo). Default = vandaag als
+   die in de zichtbare week valt, anders maandag (0). Wordt gezet bij render.   */
+let progWeekActiveDay = 0;
 
 function renderProgrammaUur(){
   const today = new Date(); today.setHours(0,0,0,0);
@@ -20514,12 +20668,34 @@ function renderProgramma(){
     return d >= monday && d <= sunday;
   });
 
+  // s35cw: bepaal actieve dag (0-6) voor mobile day-tabs. Vandaag heeft prioriteit
+  //        als die in de zichtbare week valt, anders blijft bestaande keuze
+  //        (of valt terug op maandag).
+  let activeDayIdx = (typeof progWeekActiveDay === 'number') ? progWeekActiveDay : 0;
+  const todayIdxInWeek = days.findIndex(d => d.getTime() === today.getTime());
+  if(progWeekOffset === 0 && todayIdxInWeek >= 0){
+    activeDayIdx = todayIdxInWeek;
+  }
+  if(activeDayIdx < 0 || activeDayIdx > 6) activeDayIdx = 0;
+  progWeekActiveDay = activeDayIdx;
+
   // Vaste anchor-uren (08, 10, 12, 14, 16) + extra rij voor élk event-uur dat er nog niet bij zit.
   const ANCHOR_HOURS = [8, 10, 12, 14, 16];
 
-  grid.innerHTML = days.map(d => {
+  // s35cw: render day-tabs voor mobile week-swiper (Optie D). Op desktop verstopt
+  //        via CSS (.prog-week-daytabs { display:none }), op mobile flex.
+  const dayTabsHtml = `<div class="prog-week-daytabs">${days.map((d,i) => {
+    const cnt = weekItems.filter(p => datumToIsoStr(p.datum) === isoDateStr(d)).length;
+    const isTd = d.getTime() === today.getTime();
+    const isAct = i === activeDayIdx;
+    const cls = ['prog-week-daytab', isTd?'today':'', isAct?'active':''].filter(Boolean).join(' ');
+    return `<div class="${cls}" data-pw-tab="${i}"><span class="num">${d.getDate()}</span>${DAY_NAMES_NL[(d.getDay()+6)%7].slice(0,2)}${cnt>0?'<br><span class="dot"></span>':''}</div>`;
+  }).join('')}</div>`;
+
+  const dayCellsHtml = days.map((d, idx) => {
     const dStr = isoDateStr(d);
     const isToday = d.getTime() === today.getTime();
+    const isActive = idx === activeDayIdx;
     const dayItems = weekItems.filter(p => datumToIsoStr(p.datum) === dStr)
       .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
 
@@ -20563,11 +20739,15 @@ function renderProgramma(){
       }).join('');
     }
 
+    // s35cw: in mobile-swiper de actieve dag krijgt volle dag-naam + datum;
+    //        in desktop 7-koloms grid blijft het compact "Ma 11" gevoel maar via
+    //        dezelfde markup (afgeknipt met text-overflow via bestaande CSS).
+    const fullDayName = `${DAY_NAMES_NL[(d.getDay()+6)%7]} ${d.getDate()} ${MONTH_NL[d.getMonth()].slice(0,3)}${isToday ? ' &middot; vandaag' : ''}`;
     return `
-      <div class="pwg-day${isToday ? ' today' : ''}">
+      <div class="pwg-day${isToday ? ' today' : ''}${isActive ? ' active' : ''}" data-pw-day-idx="${idx}">
         <div class="pwg-day-head">
-          <div class="pwg-day-name">${DAY_NAMES_NL[(d.getDay()+6)%7].slice(0,3)} ${d.getDate()}</div>
-          <div class="pwg-day-count">${dayItems.length}</div>
+          <div class="pwg-day-name">${fullDayName}</div>
+          <div class="pwg-day-count">${dayItems.length} wedstrijd${dayItems.length===1?'':'en'}</div>
         </div>
         ${ochtendRows}
         ${avondHtml}
@@ -20575,6 +20755,18 @@ function renderProgramma(){
       </div>
     `;
   }).join('');
+
+  grid.innerHTML = dayTabsHtml + dayCellsHtml;
+
+  // s35cw: day-tab click → wissel actieve dag in mobile week-swiper.
+  grid.querySelectorAll('[data-pw-tab]').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const idx = parseInt(tab.dataset.pwTab, 10);
+      if(isNaN(idx)) return;
+      progWeekActiveDay = idx;
+      renderProgramma();
+    });
+  });
 
   $('#programma-empty').style.display = weekItems.length === 0 ? 'block' : 'none';
 

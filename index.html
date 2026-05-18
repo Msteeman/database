@@ -1520,6 +1520,23 @@ a { color: var(--accent); text-decoration: none; }
 .scout-club-badge .club-sep { color: var(--primary); margin: 0 2px; }
 .scout-club-prev { font-size: 10px; color: var(--text-3); margin-top: 5px; }
 /* v70h-s30: .scout-email verwijderd — adres staat nu in Instellingen-venster */
+/* s35cr: juridische footer-links in sidebar */
+.sidebar-legal-links {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  text-align: center;
+  color: var(--text-3, #6b7280);
+  line-height: 1.5;
+}
+.sidebar-legal-links a {
+  color: var(--text-3, #9aa3b7);
+  text-decoration: none;
+  transition: color .15s ease;
+}
+.sidebar-legal-links a:hover { color: var(--accent, #e30613); text-decoration: underline; }
+.sidebar-legal-links .legal-sep { margin: 0 4px; opacity: .5; }
 .logout-btn {
   margin-top: 10px; width: 100%;
   background: transparent; color: var(--text-3); border: 1px solid var(--border-2);
@@ -6874,7 +6891,13 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35cq (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35cs (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <!-- s35cr: juridische links onderin de Instellingen-modal -->
+        <div class="settings-meta" style="margin-top:6px; font-size:11px;">
+          <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('privacy');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Privacyverklaring</a>
+          &middot;
+          <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('voorwaarden');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Algemene voorwaarden</a>
+        </div>
       </div>
     </div>
   </div>
@@ -7067,6 +7090,14 @@ tbody tr:last-child td { border-bottom: none; }
         </button>
         <!-- v70h-s30: install-btn verplaatst naar Instellingen-modal -->
         <button class="logout-btn" id="logout-btn">Uitloggen</button>
+        <!-- s35cr: juridische footer-links -->
+        <div class="sidebar-legal-links" id="sidebar-legal-links">
+          <a href="#" onclick="event.preventDefault(); window.go && window.go('privacy');">Privacy</a>
+          <span class="legal-sep">·</span>
+          <a href="#" onclick="event.preventDefault(); window.go && window.go('voorwaarden');">Voorwaarden</a>
+          <span class="legal-sep">·</span>
+          <a href="mailto:contact@scoutinghub.nl">Contact</a>
+        </div>
       </div>
     </aside>
 
@@ -8131,6 +8162,159 @@ algemeen:</textarea>
         </div>
       </section>
 
+      <!-- ====== s35cr: PRIVACYVERKLARING ====== -->
+      <section class="view" id="view-privacy">
+        <div class="topbar">
+          <div>
+            <div class="page-title">Privacyverklaring</div>
+            <div class="page-sub">Hoe ScoutingHub omgaat met persoonsgegevens</div>
+          </div>
+        </div>
+        <div class="panel" style="max-width:820px; line-height:1.65;">
+          <p style="color:var(--text-2); margin-top:0;"><em>Laatst bijgewerkt: 18 mei 2026</em></p>
+
+          <p>ScoutingHub is een platform voor scouting binnen sportorganisaties. Wij respecteren je privacy en gaan zorgvuldig om met persoonsgegevens. In deze verklaring leggen wij uit welke gegevens wij verzamelen, waarom, hoe lang en wat jouw rechten zijn.</p>
+
+          <h3>1. Verwerkingsverantwoordelijke</h3>
+          <!-- s35cs: TODO bij eerste echte productie-gebruikers — vervang "ScoutingHub" door de officiële rechtspersoon (eenmanszaak/bv/stichting + KvK-nummer + vestigingsadres) -->
+          <p>ScoutingHub is verantwoordelijk voor de verwerking van persoonsgegevens zoals beschreven in deze verklaring. Voor vragen kun je contact opnemen via <strong>contact@scoutinghub.nl</strong>.</p>
+
+          <h3>2. Welke gegevens wij verwerken</h3>
+          <p><strong>Van gebruikers (scouts, coördinatoren, beheerders):</strong></p>
+          <ul>
+            <li>Naam en e-mailadres</li>
+            <li>Accountgegevens (zoals rol binnen team, profielfoto, voorkeuren)</li>
+            <li>Inhoudelijke bijdragen (rapporten, notities, beoordelingen)</li>
+          </ul>
+          <p><strong>Van gescoute spelers:</strong></p>
+          <ul>
+            <li>Naam, geboortedatum, club, elftal en positie</li>
+            <li>Adresgegevens van de speler of zijn/haar vereniging</li>
+            <li>Scoutinginformatie (beoordelingen, sterktes en zwaktes, wedstrijdcontext)</li>
+            <li>Indien beschikbaar: profielfoto</li>
+          </ul>
+
+          <h3>3. Minderjarige spelers</h3>
+          <p>Een belangrijk deel van de gescoute spelers is minderjarig. Scouts en coördinatoren die gegevens invoeren in ScoutingHub bevestigen dat zij gerechtigd zijn deze gegevens te verwerken binnen hun scoutingsfunctie en organisatie.</p>
+          <p>De verantwoordelijkheid voor rechtmatige verwerking van persoonsgegevens van minderjarigen ligt bij de invoerende gebruiker en de organisatie waarvoor hij of zij werkt.</p>
+          <p>Ouders of voogden kunnen op elk moment verzoeken om inzage, correctie of verwijdering van gegevens via <strong>contact@scoutinghub.nl</strong>.</p>
+
+          <h3>4. Doel van verwerking</h3>
+          <p>Wij verwerken gegevens uitsluitend om:</p>
+          <ul>
+            <li>Toegang tot het platform mogelijk te maken</li>
+            <li>Scoutingactiviteiten binnen sportorganisaties te ondersteunen</li>
+            <li>Rapporten op te bouwen en te delen binnen teams</li>
+            <li>Het platform technisch te laten functioneren</li>
+          </ul>
+          <p>Wij gebruiken gegevens niet voor commerciële profilering of advertentiedoeleinden.</p>
+
+          <h3>5. Rechtsgrond</h3>
+          <p>De verwerking is gebaseerd op het <strong>gerechtvaardigd belang</strong> van scoutingactiviteiten binnen sportorganisaties. Waar nodig wordt aanvullende toestemming gevraagd van gebruikers.</p>
+
+          <h3>6. Bewaartermijn</h3>
+          <p>Gegevens worden bewaard zolang het account of het team actief is. Wanneer een individuele gebruiker zijn of haar account opheft, vervalt persoonlijke toegang tot ScoutingHub. <strong>Door de gebruiker gemaakte scoutingrapporten blijven echter onderdeel van het team-archief en zichtbaar voor de team-coördinator</strong>, omdat deze rapporten deel uitmaken van de scoutingshistorie van de organisatie.</p>
+          <p>Spelers, ouders of voogden kunnen verzoeken dat alle gegevens van een speler volledig worden verwijderd uit het systeem. Een dergelijk verzoek wordt binnen 30 dagen verwerkt.</p>
+
+          <h3>7. Toegang tot gegevens</h3>
+          <p>Gegevens zijn alleen zichtbaar voor:</p>
+          <ul>
+            <li>De gebruiker die de gegevens heeft ingevoerd</li>
+            <li>Gebruikers binnen hetzelfde team</li>
+            <li>De team-coördinator</li>
+            <li>De beheerder (technisch onderhoud)</li>
+          </ul>
+          <p>Gegevens zijn niet zichtbaar buiten het eigen team.</p>
+
+          <h3>8. Opslag en beveiliging</h3>
+          <p>ScoutingHub maakt gebruik van Firebase (Google Cloud) voor opslag en authenticatie. Gegevens worden <strong>binnen de Europese Unie</strong> opgeslagen en verwerkt via versleutelde verbindingen (HTTPS) en toegangscontrole. Wij hebben met Google een verwerkers­overeenkomst gesloten conform de AVG.</p>
+
+          <h3>9. Delen met derden</h3>
+          <p>Wij delen geen persoonsgegevens met derden, behalve wanneer dit technisch noodzakelijk is voor het functioneren van het platform (zoals Firebase als hosting- en authenticatieprovider). Wij verkopen nooit gegevens.</p>
+
+          <h3>10. Datalekken</h3>
+          <p>Bij een datalek waarbij persoonsgegevens betrokken zijn, melden wij dit binnen 72 uur bij de Autoriteit Persoonsgegevens en — indien nodig — bij de betrokkenen zelf.</p>
+
+          <h3>11. Jouw rechten</h3>
+          <p>Je hebt het recht om:</p>
+          <ul>
+            <li>Je gegevens in te zien</li>
+            <li>Gegevens te corrigeren</li>
+            <li>Gegevens te laten verwijderen</li>
+            <li>Bezwaar te maken tegen verwerking</li>
+            <li>Een kopie van je gegevens op te vragen</li>
+          </ul>
+          <p>Je kunt ook een klacht indienen bij de <a href="https://www.autoriteitpersoonsgegevens.nl/" target="_blank" rel="noopener" style="color:var(--accent);">Autoriteit Persoonsgegevens</a>. Verzoeken kun je sturen naar <strong>contact@scoutinghub.nl</strong>.</p>
+
+          <h3>12. Cookies en opslag</h3>
+          <p>ScoutingHub gebruikt geen trackingcookies. Wel gebruiken wij functionele opslag op je apparaat (zoals LocalStorage en Service Worker) voor de werking van de app. Voor deze functionele opslag is geen toestemming vereist onder de AVG.</p>
+
+          <h3>13. Wijzigingen</h3>
+          <p>Wij kunnen deze verklaring aanpassen. Belangrijke wijzigingen communiceren wij via het platform.</p>
+
+          <p style="margin-top:24px; font-size:13px; color:var(--text-3);"><em>Vragen? Neem contact op via contact@scoutinghub.nl.</em></p>
+        </div>
+      </section>
+
+      <!-- ====== s35cr: ALGEMENE VOORWAARDEN ====== -->
+      <section class="view" id="view-voorwaarden">
+        <div class="topbar">
+          <div>
+            <div class="page-title">Algemene voorwaarden</div>
+            <div class="page-sub">Gebruiksvoorwaarden van het ScoutingHub-platform</div>
+          </div>
+        </div>
+        <div class="panel" style="max-width:820px; line-height:1.65;">
+          <p style="color:var(--text-2); margin-top:0;"><em>Laatst bijgewerkt: 18 mei 2026</em></p>
+
+          <h3>1. Toepasselijkheid</h3>
+          <p>Deze voorwaarden zijn van toepassing op alle gebruikers van ScoutingHub. Door gebruik te maken van het platform ga je akkoord met deze voorwaarden.</p>
+
+          <h3>2. Doel van het platform</h3>
+          <p>ScoutingHub is een applicatie voor scoutingactiviteiten binnen sportorganisaties. Het platform ondersteunt het registreren en analyseren van spelers en wedstrijden.</p>
+
+          <h3>3. Account</h3>
+          <p>Een account is persoonlijk en niet overdraagbaar. Gebruikers zijn verantwoordelijk voor het veilig houden van hun inloggegevens. Misbruik dient direct gemeld te worden via <strong>contact@scoutinghub.nl</strong>.</p>
+
+          <h3>4. Verantwoordelijkheid voor gegevens</h3>
+          <p>Gebruikers zijn verantwoordelijk voor alle ingevoerde gegevens. Door gegevens te registreren bevestigt de gebruiker dat hij of zij gerechtigd is deze persoonsgegevens te verwerken, en dat de verwerking voldoet aan toepasselijke wet- en regelgeving (waaronder de AVG).</p>
+
+          <h3>5. Minderjarigen</h3>
+          <p>De gebruiker is verantwoordelijk voor de rechtmatige verwerking van persoonsgegevens van minderjarigen binnen zijn of haar organisatie. ScoutingHub fungeert uitsluitend als technisch platform.</p>
+
+          <h3>6. Gebruik van het platform</h3>
+          <p>Het is niet toegestaan om:</p>
+          <ul>
+            <li>Onrechtmatige of kwetsende content te plaatsen</li>
+            <li>Het platform voor andere doeleinden te gebruiken</li>
+            <li>De beveiliging van het platform te ondermijnen</li>
+          </ul>
+
+          <h3>7. Eigendom van gegevens</h3>
+          <p>Rapporten en gegevens maken onderdeel uit van het team-archief. Bij het verwijderen van een account blijven deze gegevens beschikbaar voor het team.</p>
+
+          <h3>8. Beschikbaarheid</h3>
+          <p>Wij streven naar een stabiele werking, maar geven geen garantie op continue beschikbaarheid.</p>
+
+          <h3>9. Aansprakelijkheid</h3>
+          <p>ScoutingHub is niet aansprakelijk voor schade ontstaan door gebruik van het platform, beslissingen op basis van data, of onjuist ingevoerde gegevens.</p>
+
+          <h3>10. Beëindiging</h3>
+          <p>Gebruikers kunnen hun account op elk moment beëindigen. Wij kunnen accounts beëindigen bij overtreding van deze voorwaarden.</p>
+
+          <h3>11. Wijzigingen</h3>
+          <p>Wij behouden het recht om deze voorwaarden en het platform aan te passen.</p>
+
+          <h3>12. Toepasselijk recht</h3>
+          <p>Op deze voorwaarden is Nederlands recht van toepassing. Geschillen worden voorgelegd aan de bevoegde rechter in Midden-Nederland.</p>
+
+          <h3>13. Contact</h3>
+          <p>Voor vragen kun je contact opnemen via <strong>contact@scoutinghub.nl</strong>.</p>
+
+          <p style="margin-top:24px; font-size:13px; color:var(--text-3);"><em>Door gebruik te maken van ScoutingHub ga je akkoord met deze voorwaarden en met de <a href="#" onclick="event.preventDefault(); window.go && window.go('privacy');" style="color:var(--accent);">privacyverklaring</a>.</em></p>
+        </div>
+      </section>
+
       <!-- ====== s35cg: TEAM-OVERZICHT (coord/admin) ====== -->
       <section class="view" id="view-team-overzicht">
         <div class="view-header">
@@ -8871,8 +9055,20 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35cq &middot; 18 mei 2026</div>
+    <div class="changelog-ver">v70h-s35cs &middot; 18 mei 2026</div>
 
+    <div class="changelog-item">
+      <div class="changelog-item-title">Privacy + Voorwaarden — hybride leesbare versie</div>
+      <div class="changelog-item-detail">Beide juridische teksten herschreven naar een rustigere, beter leesbare versie zonder juridisch overschot. <b>Privacy:</b> bewaartermijn is nu eenvoudig "zolang het account of het team actief is" (geen harde 2-jaars-grens meer), data blijft <b>binnen de Europese Unie</b> opgeslagen, en de verwijzing naar de Autoriteit Persoonsgegevens is direct aanklikbaar. <b>Voorwaarden:</b> de AVG-zin in artikel 4 (toestemming voor minderjarige spelers) blijft expliciet staan, aansprakelijkheid is samengevat in één heldere zin, en bij geschillen geldt de bevoegde rechter in <b>Midden-Nederland</b>. Officiële entiteit (KvK + adres) wordt later toegevoegd zodra ScoutingHub als rechtspersoon staat ingeschreven.</div>
+    </div>
+    <div class="changelog-item">
+      <div class="changelog-item-title">Privacyverklaring + Algemene voorwaarden</div>
+      <div class="changelog-item-detail">Twee nieuwe in-app pagina's met de juridische basis voor ScoutingHub. <b>Privacy</b> dekt AVG-vereisten: welke persoonsgegevens worden verwerkt (van scouts én van minderjarige spelers), rechtsgrond, bewaartermijn, recht op inzage/correctie/vergetelheid, datalek-procedure (72u melding AP), en de bevestiging dat er géén tracking-cookies of analytics worden gebruikt. <b>Voorwaarden</b> beschrijft verantwoordelijk gebruik, eigendom van rapporten als team-archief, aansprakelijkheid en Nederlands recht. Contact: contact@scoutinghub.nl.</div>
+    </div>
+    <div class="changelog-item">
+      <div class="changelog-item-title">Footer-links — Privacy · Voorwaarden · Contact</div>
+      <div class="changelog-item-detail">Onderin de zijbalk en in de Instellingen-modal staan nu discrete links naar de Privacyverklaring, Algemene voorwaarden en het contact-mailadres. Eén klik en je leest precies wat er met je gegevens gebeurt — geen modal, gewoon een eigen pagina binnen de app.</div>
+    </div>
     <div class="changelog-item">
       <div class="changelog-item-title">Intro-video nieuwe termen — Scouten / Vastleggen / Analyseren / Vergelijken</div>
       <div class="changelog-item-detail">De 4 woorden in de intro sluiten nu 1-op-1 aan op de modules: <b>Scouten</b> (dashboard + wedstrijden), <b>Vastleggen</b> (spelersrapport + snel-notitie), <b>Analyseren</b> (spelerdetail + elftal-analyse), <b>Vergelijken</b> (vergelijken-pagina). Iets krachtigere animatie — scale-overshoot, gele highlight, onderlijn-onthulling per woord, subtiele goud-glow rond het laatste woord. Totale duur blijft gelijk.</div>
@@ -12410,6 +12606,7 @@ function go(view){
   }
   if(view === 'tips')      renderTips();
   if(view === 'player')    renderPlayer();
+  // s35cr: privacy + voorwaarden zijn statische views — geen render-functie nodig
   window.scrollTo({top:0});
 }
 

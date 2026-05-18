@@ -7082,7 +7082,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35cw (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35cx (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
         <!-- s35cr: juridische links onderin de Instellingen-modal -->
         <div class="settings-meta" style="margin-top:6px; font-size:11px;">
           <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('privacy');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Privacyverklaring</a>
@@ -9250,8 +9250,12 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35cw &middot; 18 mei 2026</div>
+    <div class="changelog-ver">v70h-s35cx &middot; 18 mei 2026</div>
 
+    <div class="changelog-item">
+      <div class="changelog-item-title">Demo-omgeving — volledig gevuld met realistische data</div>
+      <div class="changelog-item-detail">De demo-omgeving (demo@scoutinghub.nl) is uitgebreid van een handvol losse records naar een complete, samenhangende dataset: <b>30 NL jeugdspelers</b> (BVO én amateur-top), <b>35 rapporten</b> waarvan vijf spelers er twee of drie hebben (zodat de rapport-historie en radar-evolutie zichtbaar wordt), <b>10 wedstrijden</b> over twee weken inclusief een <b>Pinkstertoernooi op zondag 31 mei</b> met vier deels gelijktijdige wedstrijden, <b>3 elftal-analyses</b> (Ajax O.18 4-3-3, Feyenoord O.17 4-2-3-1, PSV O.18 4-4-2) met open posities die zowel een gekoppelde huidige speler als een volledig profiel-gezocht beschrijven, <b>13 contacten</b> (scouts, trainers, fysio's, zaakwaarnemers, jeugdcoördinatoren) en <b>6 tips</b> met de hele status-cyclus (van "nog te bekijken" tot "gerapporteerd"). Alle velden gevuld, geen lege radars meer, charts en dashboards laten direct nuttig beeld zien.</div>
+    </div>
     <div class="changelog-item">
       <div class="changelog-item-title">Programma — sectie loopt nu door tot de schermrand</div>
       <div class="changelog-item-detail">In de app-versie liet de agenda rechts een dode strook van zo'n 20 px open — een restje van de oude kader-layout. De 1-dag- en 3-dagen-weergave is nu opgebouwd als een <b>full-bleed sectie</b> (Apple/Outlook-stijl): de dagkop met rode tint loopt edge-to-edge over de hele breedte, en de wedstrijd-kaartjes ín de sectie houden hun lucht zodat de tekst goed leesbaar blijft. Geen verloren ruimte meer aan de rechterkant.</div>
@@ -10073,407 +10077,555 @@ let tipsCache = [];
 let programmaCache = [];
 let unsubProgramma = null;
 
-/* =============== DEMO-DATA s35av =============== */
-/* JS-array fallback: laadt fictieve spelers/rapporten/wedstrijden/teams
-   ALLEEN als caches leeg zijn na 1.5s (geen Firestore-data). */
+/* =============== DEMO-DATA s35cx (auto-generated) =============== */
+/* JS-array fallback: laadt fictieve spelers/rapporten/wedstrijden/teams/
+   contacten/tips. Alleen actief voor demo@scoutinghub.nl. */
 const __SH_DEMO_PLAYERS = [
   {
     "id": "demo_p01",
     "naam": "Liam de Boer",
     "voornaam": "Liam",
     "achternaam": "de Boer",
-    "geboorte": "2009-03-12",
+    "geboorte": "2008-04-12",
     "club": "Ajax",
     "plaats": "Amsterdam",
     "rugnummer": "10",
-    "elftal": "O.17",
-    "positie": "AM",
-    "linie": "M",
-    "been": "Rechts",
-    "leeftijd": "O.17",
-    "huidig_niveau": "B",
+    "elftal": "O.18",
+    "positie": "cs",
+    "linie": "Aanval",
+    "been": "Links",
+    "leeftijd": "18",
+    "huidig_niveau": "A",
     "potentieel_niveau": "A",
-    "datum": "2026-04-12"
+    "datum": "2026-05-16"
   },
   {
     "id": "demo_p02",
     "naam": "Daan Visser",
     "voornaam": "Daan",
     "achternaam": "Visser",
-    "geboorte": "2010-07-05",
+    "geboorte": "2009-03-08",
     "club": "Feyenoord",
     "plaats": "Rotterdam",
     "rugnummer": "7",
-    "elftal": "O.16",
-    "positie": "RV",
-    "linie": "A",
+    "elftal": "O.17",
+    "positie": "rv",
+    "linie": "Aanval",
     "been": "Rechts",
-    "leeftijd": "O.16",
+    "leeftijd": "17",
     "huidig_niveau": "B",
-    "potentieel_niveau": "B",
-    "datum": "2026-04-18"
+    "potentieel_niveau": "A",
+    "datum": "2026-05-14"
   },
   {
     "id": "demo_p03",
     "naam": "Sam Janssen",
     "voornaam": "Sam",
     "achternaam": "Janssen",
-    "geboorte": "2008-11-21",
+    "geboorte": "2008-09-22",
     "club": "PSV",
     "plaats": "Eindhoven",
     "rugnummer": "5",
     "elftal": "O.18",
-    "positie": "CV",
-    "linie": "V",
+    "positie": "lcv",
+    "linie": "Verdediging",
     "been": "Links",
-    "leeftijd": "O.18",
-    "huidig_niveau": "B",
+    "leeftijd": "17",
+    "huidig_niveau": "A",
     "potentieel_niveau": "A",
-    "datum": "2026-04-20"
+    "datum": "2026-05-12"
   },
   {
     "id": "demo_p04",
     "naam": "Noah Bakker",
     "voornaam": "Noah",
     "achternaam": "Bakker",
-    "geboorte": "2011-02-08",
+    "geboorte": "2009-06-15",
     "club": "AZ",
     "plaats": "Alkmaar",
     "rugnummer": "9",
-    "elftal": "O.15",
-    "positie": "CS",
-    "linie": "A",
+    "elftal": "O.17",
+    "positie": "cs",
+    "linie": "Aanval",
     "been": "Rechts",
-    "leeftijd": "O.15",
-    "huidig_niveau": "C",
+    "leeftijd": "16",
+    "huidig_niveau": "B",
     "potentieel_niveau": "B",
-    "datum": "2026-04-22"
+    "datum": "2026-05-10"
   },
   {
     "id": "demo_p05",
     "naam": "Lucas van Dijk",
     "voornaam": "Lucas",
     "achternaam": "van Dijk",
-    "geboorte": "2009-09-15",
+    "geboorte": "2008-11-30",
     "club": "FC Twente",
     "plaats": "Enschede",
-    "rugnummer": "8",
-    "elftal": "O.17",
-    "positie": "CM",
-    "linie": "M",
-    "been": "Beide",
-    "tweebenig": "Ja",
-    "leeftijd": "O.17",
-    "huidig_niveau": "C",
-    "potentieel_niveau": "B",
-    "datum": "2026-04-25"
+    "rugnummer": "6",
+    "elftal": "O.18",
+    "positie": "vm",
+    "linie": "Middenveld",
+    "been": "Tweebenig",
+    "leeftijd": "17",
+    "huidig_niveau": "A",
+    "potentieel_niveau": "A",
+    "datum": "2026-05-08",
+    "tweebenig": true
   },
   {
     "id": "demo_p06",
-    "naam": "Finn de Vries",
-    "voornaam": "Finn",
-    "achternaam": "de Vries",
-    "geboorte": "2010-12-03",
-    "club": "FC Utrecht",
-    "plaats": "Utrecht",
-    "rugnummer": "4",
-    "elftal": "O.16",
-    "positie": "LCV",
-    "linie": "V",
-    "been": "Links",
-    "leeftijd": "O.16",
-    "huidig_niveau": "C",
-    "potentieel_niveau": "B",
-    "datum": "2026-04-27"
-  },
-  {
-    "id": "demo_p07",
-    "naam": "Milan Smit",
-    "voornaam": "Milan",
-    "achternaam": "Smit",
-    "geboorte": "2008-06-19",
-    "club": "Vitesse",
-    "plaats": "Arnhem",
-    "rugnummer": "11",
-    "elftal": "O.18",
-    "positie": "LV",
-    "linie": "A",
-    "been": "Links",
-    "leeftijd": "O.18",
-    "huidig_niveau": "C",
-    "potentieel_niveau": "B",
-    "datum": "2026-04-29"
-  },
-  {
-    "id": "demo_p08",
     "naam": "Bram Mulder",
     "voornaam": "Bram",
     "achternaam": "Mulder",
-    "geboorte": "2011-04-30",
-    "club": "sc Heerenveen",
-    "plaats": "Heerenveen",
-    "rugnummer": "2",
-    "elftal": "O.15",
-    "positie": "RB",
-    "linie": "V",
+    "geboorte": "2009-07-04",
+    "club": "Vitesse",
+    "plaats": "Arnhem",
+    "rugnummer": "8",
+    "elftal": "O.17",
+    "positie": "cm_l",
+    "linie": "Middenveld",
     "been": "Rechts",
-    "leeftijd": "O.15",
+    "leeftijd": "16",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "B",
+    "datum": "2026-05-06"
+  },
+  {
+    "id": "demo_p07",
+    "naam": "Finn Smit",
+    "voornaam": "Finn",
+    "achternaam": "Smit",
+    "geboorte": "2010-01-19",
+    "club": "FC Utrecht",
+    "plaats": "Utrecht",
+    "rugnummer": "11",
+    "elftal": "O.16",
+    "positie": "lv",
+    "linie": "Aanval",
+    "been": "Links",
+    "leeftijd": "16",
     "huidig_niveau": "C",
-    "potentieel_niveau": "C",
+    "potentieel_niveau": "B",
+    "datum": "2026-05-04"
+  },
+  {
+    "id": "demo_p08",
+    "naam": "Ruben Kuijer",
+    "voornaam": "Ruben",
+    "achternaam": "Kuijer",
+    "geboorte": "2008-05-25",
+    "club": "FC Groningen",
+    "plaats": "Groningen",
+    "rugnummer": "4",
+    "elftal": "O.18",
+    "positie": "rb",
+    "linie": "Verdediging",
+    "been": "Rechts",
+    "leeftijd": "17",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
     "datum": "2026-05-02"
   },
   {
     "id": "demo_p09",
-    "naam": "Lars de Wit",
-    "voornaam": "Lars",
-    "achternaam": "de Wit",
-    "geboorte": "2009-01-22",
-    "club": "NEC",
-    "plaats": "Nijmegen",
-    "rugnummer": "6",
+    "naam": "Stijn de Vries",
+    "voornaam": "Stijn",
+    "achternaam": "de Vries",
+    "geboorte": "2009-10-11",
+    "club": "Heerenveen",
+    "plaats": "Heerenveen",
+    "rugnummer": "3",
     "elftal": "O.17",
-    "positie": "DM",
-    "linie": "M",
-    "been": "Rechts",
-    "leeftijd": "O.17",
+    "positie": "lb",
+    "linie": "Verdediging",
+    "been": "Links",
+    "leeftijd": "16",
     "huidig_niveau": "C",
-    "potentieel_niveau": "C",
-    "datum": "2026-05-04"
+    "potentieel_niveau": "B",
+    "datum": "2026-04-30"
   },
   {
     "id": "demo_p10",
     "naam": "Tijn Hendriks",
     "voornaam": "Tijn",
     "achternaam": "Hendriks",
-    "geboorte": "2010-10-17",
+    "geboorte": "2008-02-28",
     "club": "Heracles Almelo",
     "plaats": "Almelo",
     "rugnummer": "1",
-    "elftal": "O.16",
-    "positie": "K",
-    "linie": "K",
+    "elftal": "O.18",
+    "positie": "gk",
+    "linie": "Doel",
     "been": "Rechts",
-    "leeftijd": "O.16",
-    "huidig_niveau": "C",
-    "potentieel_niveau": "B",
-    "datum": "2026-05-06"
+    "leeftijd": "18",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "A",
+    "datum": "2026-04-28"
   },
   {
     "id": "demo_p11",
-    "naam": "Jens Kramer",
-    "voornaam": "Jens",
-    "achternaam": "Kramer",
-    "geboorte": "2008-08-14",
-    "club": "Sparta Rotterdam",
-    "plaats": "Rotterdam",
-    "rugnummer": "3",
-    "elftal": "O.18",
-    "positie": "LB",
-    "linie": "V",
-    "been": "Links",
-    "leeftijd": "O.18",
-    "huidig_niveau": "C",
-    "potentieel_niveau": "C",
-    "datum": "2026-05-08"
-  },
-  {
-    "id": "demo_p12",
-    "naam": "Senna Peters",
-    "voornaam": "Senna",
-    "achternaam": "Peters",
-    "geboorte": "2011-05-28",
-    "club": "Quick Boys",
-    "plaats": "Katwijk",
-    "rugnummer": "14",
-    "elftal": "O.15",
-    "positie": "CM",
-    "linie": "M",
-    "been": "Rechts",
-    "leeftijd": "O.15",
-    "huidig_niveau": "D",
-    "potentieel_niveau": "C",
-    "datum": "2026-05-10"
-  },
-  {
-    "id": "demo_p13",
     "naam": "Mees Koster",
     "voornaam": "Mees",
     "achternaam": "Koster",
-    "geboorte": "2009-11-09",
-    "club": "IJsselmeervogels",
-    "plaats": "Spakenburg",
-    "rugnummer": "17",
+    "geboorte": "2009-08-17",
+    "club": "NEC Nijmegen",
+    "plaats": "Nijmegen",
+    "rugnummer": "20",
     "elftal": "O.17",
-    "positie": "RM",
-    "linie": "M",
+    "positie": "rm",
+    "linie": "Middenveld",
     "been": "Rechts",
-    "leeftijd": "O.17",
-    "huidig_niveau": "D",
-    "potentieel_niveau": "C",
-    "datum": "2026-05-11"
+    "leeftijd": "16",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "B",
+    "datum": "2026-04-26"
   },
   {
-    "id": "demo_p14",
+    "id": "demo_p12",
     "naam": "Sven Brouwer",
     "voornaam": "Sven",
     "achternaam": "Brouwer",
-    "geboorte": "2010-03-25",
+    "geboorte": "2008-12-03",
     "club": "Spakenburg",
     "plaats": "Spakenburg",
     "rugnummer": "9",
-    "elftal": "O.16",
-    "positie": "CS",
-    "linie": "A",
+    "elftal": "O.18",
+    "positie": "cs_l",
+    "linie": "Aanval",
+    "been": "Tweebenig",
+    "leeftijd": "17",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "A",
+    "datum": "2026-04-24",
+    "tweebenig": true
+  },
+  {
+    "id": "demo_p13",
+    "naam": "Olivier Hoekstra",
+    "voornaam": "Olivier",
+    "achternaam": "Hoekstra",
+    "geboorte": "2008-06-09",
+    "club": "Jong Ajax",
+    "plaats": "Amsterdam",
+    "rugnummer": "6",
+    "elftal": "O.21",
+    "positie": "cm_r",
+    "linie": "Middenveld",
     "been": "Rechts",
-    "leeftijd": "O.16",
-    "huidig_niveau": "D",
-    "potentieel_niveau": "C",
-    "datum": "2026-05-12"
+    "leeftijd": "17",
+    "huidig_niveau": "A",
+    "potentieel_niveau": "A",
+    "datum": "2026-04-22"
+  },
+  {
+    "id": "demo_p14",
+    "naam": "Tobias Vermeer",
+    "voornaam": "Tobias",
+    "achternaam": "Vermeer",
+    "geboorte": "2009-04-21",
+    "club": "PEC Zwolle",
+    "plaats": "Zwolle",
+    "rugnummer": "5",
+    "elftal": "O.17",
+    "positie": "rcv",
+    "linie": "Verdediging",
+    "been": "Rechts",
+    "leeftijd": "17",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "B",
+    "datum": "2026-04-20"
   },
   {
     "id": "demo_p15",
-    "naam": "Joep van Leeuwen",
-    "voornaam": "Joep",
-    "achternaam": "van Leeuwen",
-    "geboorte": "2008-02-11",
+    "naam": "Quinten Dekker",
+    "voornaam": "Quinten",
+    "achternaam": "Dekker",
+    "geboorte": "2010-02-14",
+    "club": "Sparta Rotterdam",
+    "plaats": "Rotterdam-West",
+    "rugnummer": "17",
+    "elftal": "O.16",
+    "positie": "am",
+    "linie": "Middenveld",
+    "been": "Tweebenig",
+    "leeftijd": "16",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "datum": "2026-04-18",
+    "tweebenig": true
+  },
+  {
+    "id": "demo_p16",
+    "naam": "Thomas Peters",
+    "voornaam": "Thomas",
+    "achternaam": "Peters",
+    "geboorte": "2009-09-05",
+    "club": "IJsselmeervogels",
+    "plaats": "Spakenburg",
+    "rugnummer": "7",
+    "elftal": "O.17",
+    "positie": "rv",
+    "linie": "Aanval",
+    "been": "Rechts",
+    "leeftijd": "16",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "datum": "2026-04-16"
+  },
+  {
+    "id": "demo_p17",
+    "naam": "Daley van Loon",
+    "voornaam": "Daley",
+    "achternaam": "van Loon",
+    "geboorte": "2008-07-19",
+    "club": "Quick Boys",
+    "plaats": "Katwijk",
+    "rugnummer": "10",
+    "elftal": "O.18",
+    "positie": "vm",
+    "linie": "Middenveld",
+    "been": "Links",
+    "leeftijd": "17",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "datum": "2026-04-14"
+  },
+  {
+    "id": "demo_p18",
+    "naam": "Jaden de Jong",
+    "voornaam": "Jaden",
+    "achternaam": "de Jong",
+    "geboorte": "2010-05-30",
+    "club": "ADO Den Haag",
+    "plaats": "Den Haag",
+    "rugnummer": "11",
+    "elftal": "O.16",
+    "positie": "lv",
+    "linie": "Aanval",
+    "been": "Rechts",
+    "leeftijd": "15",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "datum": "2026-04-12"
+  },
+  {
+    "id": "demo_p19",
+    "naam": "Romeo Vink",
+    "voornaam": "Romeo",
+    "achternaam": "Vink",
+    "geboorte": "2009-01-12",
+    "club": "Excelsior",
+    "plaats": "Rotterdam-Kralingen",
+    "rugnummer": "14",
+    "elftal": "O.17",
+    "positie": "cm_l",
+    "linie": "Middenveld",
+    "been": "Tweebenig",
+    "leeftijd": "17",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "datum": "2026-04-10",
+    "tweebenig": true
+  },
+  {
+    "id": "demo_p20",
+    "naam": "Faisal El Amrani",
+    "voornaam": "Faisal",
+    "achternaam": "El Amrani",
+    "geboorte": "2008-08-08",
+    "club": "NAC Breda",
+    "plaats": "Breda",
+    "rugnummer": "23",
+    "elftal": "O.18",
+    "positie": "rb",
+    "linie": "Verdediging",
+    "been": "Rechts",
+    "leeftijd": "17",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "datum": "2026-04-08"
+  },
+  {
+    "id": "demo_p21",
+    "naam": "Anwar Boutaybi",
+    "voornaam": "Anwar",
+    "achternaam": "Boutaybi",
+    "geboorte": "2009-11-22",
+    "club": "Willem II",
+    "plaats": "Tilburg",
+    "rugnummer": "8",
+    "elftal": "O.17",
+    "positie": "vm_l",
+    "linie": "Middenveld",
+    "been": "Rechts",
+    "leeftijd": "16",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "datum": "2026-04-06"
+  },
+  {
+    "id": "demo_p22",
+    "naam": "Yusuf Ozcan",
+    "voornaam": "Yusuf",
+    "achternaam": "Ozcan",
+    "geboorte": "2008-03-15",
+    "club": "FC Den Bosch",
+    "plaats": "Den Bosch",
+    "rugnummer": "9",
+    "elftal": "O.18",
+    "positie": "cs",
+    "linie": "Aanval",
+    "been": "Rechts",
+    "leeftijd": "18",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "datum": "2026-04-04"
+  },
+  {
+    "id": "demo_p23",
+    "naam": "Mo Idrissi",
+    "voornaam": "Mo",
+    "achternaam": "Idrissi",
+    "geboorte": "2010-04-08",
+    "club": "Ajax",
+    "plaats": "Amsterdam",
+    "rugnummer": "14",
+    "elftal": "O.16",
+    "positie": "vm",
+    "linie": "Middenveld",
+    "been": "Tweebenig",
+    "leeftijd": "16",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "A",
+    "datum": "2026-04-02",
+    "tweebenig": true
+  },
+  {
+    "id": "demo_p24",
+    "naam": "Levi Schouten",
+    "voornaam": "Levi",
+    "achternaam": "Schouten",
+    "geboorte": "2009-12-01",
+    "club": "Telstar",
+    "plaats": "Velsen",
+    "rugnummer": "2",
+    "elftal": "O.17",
+    "positie": "rb",
+    "linie": "Verdediging",
+    "been": "Rechts",
+    "leeftijd": "16",
+    "huidig_niveau": "D",
+    "potentieel_niveau": "C",
+    "datum": "2026-03-31"
+  },
+  {
+    "id": "demo_p25",
+    "naam": "Senna Kraan",
+    "voornaam": "Senna",
+    "achternaam": "Kraan",
+    "geboorte": "2008-10-26",
+    "club": "Cambuur",
+    "plaats": "Leeuwarden",
+    "rugnummer": "16",
+    "elftal": "O.18",
+    "positie": "cm_r",
+    "linie": "Middenveld",
+    "been": "Rechts",
+    "leeftijd": "17",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "C",
+    "datum": "2026-03-29"
+  },
+  {
+    "id": "demo_p26",
+    "naam": "Niels Postma",
+    "voornaam": "Niels",
+    "achternaam": "Postma",
+    "geboorte": "2010-06-07",
+    "club": "Spakenburg",
+    "plaats": "Spakenburg",
+    "rugnummer": "5",
+    "elftal": "O.16",
+    "positie": "lcv",
+    "linie": "Verdediging",
+    "been": "Links",
+    "leeftijd": "15",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "datum": "2026-03-27"
+  },
+  {
+    "id": "demo_p27",
+    "naam": "Pim van Beek",
+    "voornaam": "Pim",
+    "achternaam": "van Beek",
+    "geboorte": "2009-02-18",
+    "club": "IJsselmeervogels",
+    "plaats": "Spakenburg",
+    "rugnummer": "10",
+    "elftal": "O.17",
+    "positie": "am",
+    "linie": "Middenveld",
+    "been": "Tweebenig",
+    "leeftijd": "17",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "datum": "2026-03-25",
+    "tweebenig": true
+  },
+  {
+    "id": "demo_p28",
+    "naam": "Cas Hofman",
+    "voornaam": "Cas",
+    "achternaam": "Hofman",
+    "geboorte": "2008-04-01",
     "club": "Katwijk",
     "plaats": "Katwijk",
     "rugnummer": "8",
     "elftal": "O.18",
-    "positie": "AM",
-    "linie": "M",
-    "been": "Beide",
-    "tweebenig": "Ja",
-    "leeftijd": "O.18",
+    "positie": "vm",
+    "linie": "Middenveld",
+    "been": "Rechts",
+    "leeftijd": "18",
     "huidig_niveau": "D",
-    "potentieel_niveau": "D",
-    "datum": "2026-05-13"
-  },
-  {
-    "id": "demo_p16",
-    "naam": "Stijn Verhoeven",
-    "voornaam": "Stijn",
-    "achternaam": "Verhoeven",
-    "geboorte": "2011-07-19",
-    "club": "Excelsior",
-    "plaats": "Rotterdam",
-    "rugnummer": "15",
-    "elftal": "O.15",
-    "positie": "LM",
-    "linie": "M",
-    "been": "Links",
-    "leeftijd": "O.15",
-    "huidig_niveau": "C",
-    "potentieel_niveau": "B",
-    "datum": "2026-05-14"
-  },
-  {
-    "id": "demo_p17",
-    "naam": "Ruben Dijkstra",
-    "voornaam": "Ruben",
-    "achternaam": "Dijkstra",
-    "geboorte": "2009-04-04",
-    "club": "Cambuur",
-    "plaats": "Leeuwarden",
-    "rugnummer": "19",
-    "elftal": "O.17",
-    "positie": "RV",
-    "linie": "A",
-    "been": "Rechts",
-    "leeftijd": "O.17",
-    "huidig_niveau": "C",
     "potentieel_niveau": "C",
-    "datum": "2026-05-15"
+    "datum": "2026-03-23"
   },
   {
-    "id": "demo_p18",
-    "naam": "Thomas de Jong",
-    "voornaam": "Thomas",
-    "achternaam": "de Jong",
-    "geboorte": "2010-09-30",
-    "club": "Telstar",
-    "plaats": "Velsen",
-    "rugnummer": "22",
+    "id": "demo_p29",
+    "naam": "Jens Verhoeven",
+    "voornaam": "Jens",
+    "achternaam": "Verhoeven",
+    "geboorte": "2010-09-13",
+    "club": "PSV",
+    "plaats": "Eindhoven",
+    "rugnummer": "3",
     "elftal": "O.16",
-    "positie": "CV",
-    "linie": "V",
-    "been": "Rechts",
-    "leeftijd": "O.16",
-    "huidig_niveau": "C",
-    "potentieel_niveau": "B",
-    "datum": "2026-05-16"
-  },
-  {
-    "id": "demo_p19",
-    "naam": "Olivier Hoekstra",
-    "voornaam": "Olivier",
-    "achternaam": "Hoekstra",
-    "geboorte": "2008-12-12",
-    "club": "Jong Ajax",
-    "plaats": "Amsterdam",
-    "rugnummer": "24",
-    "elftal": "O.21",
-    "positie": "CM",
-    "linie": "M",
-    "been": "Rechts",
-    "leeftijd": "O.21",
+    "positie": "lb",
+    "linie": "Verdediging",
+    "been": "Links",
+    "leeftijd": "15",
     "huidig_niveau": "B",
     "potentieel_niveau": "A",
-    "datum": "2026-05-17"
+    "datum": "2026-03-21"
   },
   {
-    "id": "demo_p20",
-    "naam": "Tobias Vermeer",
-    "voornaam": "Tobias",
-    "achternaam": "Vermeer",
-    "geboorte": "2009-06-22",
-    "club": "PEC Zwolle",
-    "plaats": "Zwolle",
-    "rugnummer": "21",
+    "id": "demo_p30",
+    "naam": "Bart Klaassen",
+    "voornaam": "Bart",
+    "achternaam": "Klaassen",
+    "geboorte": "2009-05-04",
+    "club": "FC Twente",
+    "plaats": "Enschede",
+    "rugnummer": "1",
     "elftal": "O.17",
-    "positie": "DM",
-    "linie": "M",
+    "positie": "gk",
+    "linie": "Doel",
     "been": "Rechts",
-    "leeftijd": "O.17",
-    "huidig_niveau": "C",
+    "leeftijd": "17",
+    "huidig_niveau": "B",
     "potentieel_niveau": "B",
     "datum": "2026-05-18"
-  },
-  {
-    "id": "demo_p21",
-    "naam": "Pim Schreuder",
-    "voornaam": "Pim",
-    "achternaam": "Schreuder",
-    "geboorte": "2010-11-11",
-    "club": "Go Ahead Eagles",
-    "plaats": "Deventer",
-    "rugnummer": "13",
-    "elftal": "O.16",
-    "positie": "LB",
-    "linie": "V",
-    "been": "Links",
-    "leeftijd": "O.16",
-    "huidig_niveau": "C",
-    "potentieel_niveau": "B",
-    "datum": "2026-05-19"
-  },
-  {
-    "id": "demo_p22",
-    "naam": "Bas Willems",
-    "voornaam": "Bas",
-    "achternaam": "Willems",
-    "geboorte": "2011-08-08",
-    "club": "FC Volendam",
-    "plaats": "Volendam",
-    "rugnummer": "18",
-    "elftal": "O.15",
-    "positie": "RB",
-    "linie": "V",
-    "been": "Rechts",
-    "leeftijd": "O.15",
-    "huidig_niveau": "C",
-    "potentieel_niveau": "C",
-    "datum": "2026-05-20"
   }
 ];
 const __SH_DEMO_REPORTS = [
@@ -10482,572 +10634,2555 @@ const __SH_DEMO_REPORTS = [
     "player_id": "demo_p01",
     "naam": "Liam de Boer",
     "club": "Ajax",
-    "datum": "2026-04-12",
-    "advies": "4",
+    "datum": "2026-02-21",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "advies": "3",
+    "wapen": "Kopkracht bij voorzetten",
+    "notities": "Trainer geeft aan dat hij ook als 8 inzetbaar is — flexibele profielspeler.",
+    "wedstrijd": {
+      "datum": "2026-02-21",
+      "thuis": "Ajax O.18",
+      "uit": "FC Utrecht O.18",
+      "uitslag": "2-1",
+      "opstelling": "1-4-3-3",
+      "context": "Eerste keer live gezien, sterke wedstrijd ondanks koud weer. Speelde 80 min.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Krachtig postuur — gespierd, goed getraind lichaam",
+    "lengte": "Lang voor leeftijd",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk al ver — ontwikkelt zich relatief vroeg",
+    "huidig_niveau": "A",
+    "potentieel_niveau": "A",
     "beoordelingen": {
-      "techniek_huidig": "A",
-      "techniek_tekst": "Heel zuiver eerste contact, ziet ruimtes vóór ze ontstaan. Speelt vooruit als het kan, terug als het moet.",
+      "techniek_huidig": "B",
+      "techniek_tekst": "Eerste contact wisselend — bij hoge druk valt het gemak weg. Werkpunt voor de komende maanden.",
       "inzicht_huidig": "A",
-      "inzicht_tekst": "Leest het spel uitstekend voor zijn leeftijd. Maakt slimme rotaties met de spits.",
+      "inzicht_tekst": "Twee acties vooruit denken — speelt al af voordat de tegenstander komt.",
       "grit_huidig": "B",
-      "grit_tekst": "Soms te beleefd in duels — kan harder werken in de omschakelingsfase."
+      "grit_tekst": "Soms te beleefd in duels — kan harder werken in de omschakelingsfase.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Goede momentopbouw, vlotte eerste twee passen.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Goede sprint over korte afstand, langere sprint nog niet maximaal.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Goede duelkracht, vooral met het lichaam. Spelbeeld bij duel mag rustiger.",
+      "wendbaarheid_huidig": "A",
+      "wendbaarheid_tekst": "Soepel in kleine ruimte, draait beide kanten op zonder snelheidsverlies."
     }
   },
   {
     "id": "demo_r02",
-    "player_id": "demo_p02",
-    "naam": "Daan Visser",
-    "club": "Feyenoord",
-    "datum": "2026-04-18",
-    "advies": "2",
+    "player_id": "demo_p01",
+    "naam": "Liam de Boer",
+    "club": "Ajax",
+    "datum": "2026-04-12",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "advies": "4",
+    "wapen": "Tempo in omschakeling",
+    "notities": "Komt uit een familie met 2 oudere broers bij dezelfde club.",
+    "wedstrijd": {
+      "datum": "2026-04-12",
+      "thuis": "Ajax O.18",
+      "uit": "PSV O.18",
+      "uitslag": "3-2",
+      "opstelling": "1-4-3-3",
+      "context": "Tweede observatie — duidelijk verder in fysiek én leiderschap. Dik wedstrijd-dragend.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Krachtig postuur — gespierd, goed getraind lichaam",
+    "lengte": "Lang voor leeftijd",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk al ver — ontwikkelt zich relatief vroeg",
+    "huidig_niveau": "A",
+    "potentieel_niveau": "A",
     "beoordelingen": {
-      "techniek_huidig": "B",
-      "techniek_tekst": "Snelle dribbel, kan 1v1 elke verdediger uitspelen. Voorzet moet beter geplaatst.",
-      "inzicht_huidig": "B",
-      "inzicht_tekst": "Soms te gehaast — wacht niet altijd op extra tijd. Komt door speeltijd.",
-      "grit_huidig": "A",
-      "grit_tekst": "Werkt heel hard naar achteren, sprint terug bij balverlies. Mooie mentaliteit."
+      "techniek_huidig": "A",
+      "techniek_tekst": "Eerste aanname zorgt zelf voor de volgende actie — bal komt altijd in de goede richting mee.",
+      "inzicht_huidig": "A",
+      "inzicht_tekst": "Leest het spel uitstekend voor zijn leeftijd. Maakt slimme rotaties met de spits.",
+      "grit_huidig": "B",
+      "grit_tekst": "Goede werkethiek, kan nog meer initiatief nemen tegen lastige tegenstanders.",
+      "explosiviteit_huidig": "A",
+      "explosiviteit_tekst": "Sterke beenstrekking, eerste meters maken het verschil.",
+      "sprinten_huidig": "A",
+      "sprinten_tekst": "Lange sprint geen probleem — kan diepte halen tot in de tweede helft.",
+      "duelleren_huidig": "A",
+      "duelleren_tekst": "Kopt scherp bij het tweede paaltje. Lijfelijk sterk.",
+      "wendbaarheid_huidig": "A",
+      "wendbaarheid_tekst": "Voet- en heupwerk uitstekend — kapt aan beide kanten met evenveel gemak."
     }
   },
   {
     "id": "demo_r03",
-    "player_id": "demo_p03",
-    "naam": "Sam Janssen",
-    "club": "PSV",
-    "datum": "2026-04-20",
+    "player_id": "demo_p01",
+    "naam": "Liam de Boer",
+    "club": "Ajax",
+    "datum": "2026-05-10",
+    "leeftijd": "O.18",
+    "methode": "Live",
     "advies": "4",
+    "wapen": "Leiderschap in de zestien",
+    "notities": "Speler woont in pleeggezin, sportief begeleider via stichting Move on Top.",
+    "wedstrijd": {
+      "datum": "2026-05-10",
+      "thuis": "Ajax O.18",
+      "uit": "Feyenoord O.18",
+      "uitslag": "1-1",
+      "opstelling": "1-4-3-3 offensive",
+      "context": "Topwedstrijd voor hem, twee assists en een doelpunt. Definitief vervolg-rapport waardig.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Krachtig postuur — gespierd, goed getraind lichaam",
+    "lengte": "Lang voor leeftijd",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk al ver — ontwikkelt zich relatief vroeg",
+    "huidig_niveau": "A",
+    "potentieel_niveau": "A",
     "beoordelingen": {
       "techniek_huidig": "A",
-      "techniek_tekst": "Rust aan de bal, kopkracht beide kanten van het veld. Past de bal scherp.",
+      "techniek_tekst": "Heel zuiver eerste contact, ziet ruimtes vóór ze ontstaan. Speelt vooruit als het kan, terug als het moet.",
       "inzicht_huidig": "A",
       "inzicht_tekst": "Coacht zijn medeverdedigers, leidt de linie. Stappenwerk uitstekend.",
       "grit_huidig": "A",
-      "grit_tekst": "Geeft nooit op, blijft tot de laatste minuut alert. Leider."
+      "grit_tekst": "Heel goede mentaliteit, blijft assertief ook bij 0-2 achterstand.",
+      "explosiviteit_huidig": "A",
+      "explosiviteit_tekst": "Diepe sprong en korte sprint horen bij zijn sterkste wapens.",
+      "sprinten_huidig": "A",
+      "sprinten_tekst": "Sprintkracht zit goed, kan herstellen tussen twee acties door.",
+      "duelleren_huidig": "A",
+      "duelleren_tekst": "Sterk bij standaardsituaties, niet bang voor lichamelijk contact in de zestien.",
+      "wendbaarheid_huidig": "A",
+      "wendbaarheid_tekst": "Soepel in kleine ruimte, draait beide kanten op zonder snelheidsverlies."
     }
   },
   {
     "id": "demo_r04",
-    "player_id": "demo_p04",
-    "naam": "Noah Bakker",
-    "club": "AZ",
-    "datum": "2026-04-22",
-    "advies": "2",
+    "player_id": "demo_p03",
+    "naam": "Sam Janssen",
+    "club": "PSV",
+    "datum": "2026-03-15",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "advies": "4",
+    "wapen": "Tweebenig afronden",
+    "notities": "Internationale interesse: zaakwaarnemer noemt België (Genk) en Duitsland (Schalke).",
+    "wedstrijd": {
+      "datum": "2026-03-15",
+      "thuis": "PSV O.18",
+      "uit": "Vitesse O.18",
+      "uitslag": "4-0",
+      "opstelling": "1-4-3-3",
+      "context": "Eerste observatie — torenhoge centrale verdediger met leesvermogen.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "A",
+    "potentieel_niveau": "A",
     "beoordelingen": {
-      "techniek_huidig": "B",
-      "techniek_tekst": "Afmaken in de zestien is sterk, eerste contact wisselend.",
-      "inzicht_huidig": "B",
-      "inzicht_tekst": "Loopt de juiste lijnen maar moet sneller leren beslissen.",
-      "grit_huidig": "B",
-      "grit_tekst": "Goede werkethiek, kan nog meer initiatief nemen tegen lastige tegenstanders."
+      "techniek_huidig": "A",
+      "techniek_tekst": "Tweebenig op een natuurlijke manier — beide voeten gelijkwaardig in pass en afronding.",
+      "inzicht_huidig": "A",
+      "inzicht_tekst": "Snapt het positionele spel, kan vanuit zes en acht spelen.",
+      "grit_huidig": "A",
+      "grit_tekst": "Topmentaliteit, eerste die loopt na balverlies.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Voldoende explosiviteit, eerste vier meters mag scherper.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Tempo voldoende, mag iets eerder versnellen.",
+      "duelleren_huidig": "A",
+      "duelleren_tekst": "Wint zijn 1v1's met het lichaam én met timing. Echte duel-winnaar.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Goede heupbeweging, mag in kleine ruimte iets sneller."
     }
   },
   {
     "id": "demo_r05",
-    "player_id": "demo_p05",
-    "naam": "Lucas van Dijk",
-    "club": "FC Twente",
-    "datum": "2026-04-25",
+    "player_id": "demo_p03",
+    "naam": "Sam Janssen",
+    "club": "PSV",
+    "datum": "2026-04-20",
+    "leeftijd": "O.18",
+    "methode": "Live",
     "advies": "4",
+    "wapen": "Slimme rotatie met de spits",
+    "notities": "Voor de wedstrijd 25 minuten op de fysiobank gezien — kleine hamstring-klacht.",
+    "wedstrijd": {
+      "datum": "2026-04-20",
+      "thuis": "PSV O.18",
+      "uit": "AZ O.18",
+      "uitslag": "2-1",
+      "opstelling": "1-4-3-3",
+      "context": "Tweede live observatie. Coachen van linie nog verbeterd. Klaar voor Jong PSV.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "A",
+    "potentieel_niveau": "A",
     "beoordelingen": {
       "techniek_huidig": "A",
-      "techniek_tekst": "Tweebenig, lange diepte-passes zitten erin. Verzorgde traptechniek.",
+      "techniek_tekst": "Rust aan de bal in elke zone, ook bij hoge druk. Schermen met het lichaam goed ontwikkeld.",
       "inzicht_huidig": "A",
-      "inzicht_tekst": "Snapt het positionele spel, kan vanuit zes en acht spelen.",
-      "grit_huidig": "B",
-      "grit_tekst": "Mentaal soms wisselvallig — bij druk valt het level kort terug."
+      "inzicht_tekst": "Twee acties vooruit denken — speelt al af voordat de tegenstander komt.",
+      "grit_huidig": "A",
+      "grit_tekst": "Geeft nooit op, blijft tot de laatste minuut alert. Leider.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Goede momentopbouw, vlotte eerste twee passen.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Goede sprint over korte afstand, langere sprint nog niet maximaal.",
+      "duelleren_huidig": "A",
+      "duelleren_tekst": "Kopt scherp bij het tweede paaltje. Lijfelijk sterk.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Wendbaarheid in orde, bij hoge snelheid mag draaibeweging strakker."
     }
   },
   {
     "id": "demo_r06",
-    "player_id": "demo_p10",
-    "naam": "Tijn Hendriks",
-    "club": "Heracles Almelo",
-    "datum": "2026-05-06",
-    "advies": "2",
+    "player_id": "demo_p05",
+    "naam": "Lucas van Dijk",
+    "club": "FC Twente",
+    "datum": "2026-03-08",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "advies": "3",
+    "wapen": "Kopkracht bij voorzetten",
+    "notities": "Pas in januari overgekomen van amateurclub Hercules — past al goed.",
+    "wedstrijd": {
+      "datum": "2026-03-08",
+      "thuis": "FC Twente O.18",
+      "uit": "FC Groningen O.18",
+      "uitslag": "1-1",
+      "opstelling": "1-4-2-3-1",
+      "context": "Eerste indruk: tweebenige zes met visie. Werkpunt fysiek bij duel.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Rank postuur — dun en fijn gebouwd, niet mager",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk nog jong — ontwikkelt zich relatief laat",
+    "huidig_niveau": "A",
+    "potentieel_niveau": "A",
     "beoordelingen": {
-      "techniek_huidig": "B",
-      "techniek_tekst": "Zuiver inspelend, korte bal en lange traptechniek goed.",
+      "techniek_huidig": "A",
+      "techniek_tekst": "Eerste aanname zorgt zelf voor de volgende actie — bal komt altijd in de goede richting mee.",
       "inzicht_huidig": "A",
-      "inzicht_tekst": "Coacht de verdediging, leest spelsituaties vroeg.",
-      "grit_huidig": "A",
-      "grit_tekst": "Sterk bij standaardsituaties, niet bang voor lichamelijk contact in de zestien."
+      "inzicht_tekst": "Leest het spel uitstekend voor zijn leeftijd. Maakt slimme rotaties met de spits.",
+      "grit_huidig": "B",
+      "grit_tekst": "Goede werkethiek, kan nog meer initiatief nemen tegen lastige tegenstanders.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Voldoende explosiviteit, eerste vier meters mag scherper.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Tempo voldoende, mag iets eerder versnellen.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Wint zijn duels grotendeels, mag iets agressiever bij hoge ballen.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Goede heupbeweging, mag in kleine ruimte iets sneller."
     }
   },
   {
     "id": "demo_r07",
-    "player_id": "demo_p13",
-    "naam": "Mees Koster",
-    "club": "IJsselmeervogels",
-    "datum": "2026-05-11",
-    "advies": "2",
+    "player_id": "demo_p05",
+    "naam": "Lucas van Dijk",
+    "club": "FC Twente",
+    "datum": "2026-04-25",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "advies": "4",
+    "wapen": "Strakke ingooi langs de zijlijn",
+    "notities": "Heeft assessment gedaan bij sportpsycholoog, score sterke focus.",
+    "wedstrijd": {
+      "datum": "2026-04-25",
+      "thuis": "FC Twente O.18",
+      "uit": "Heerenveen O.18",
+      "uitslag": "3-1",
+      "opstelling": "1-4-3-3",
+      "context": "Tweede rapport — fysiek beter, mentaal stabieler. Tweebenigheid blijft uniek.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Rank postuur — dun en fijn gebouwd, niet mager",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk nog jong — ontwikkelt zich relatief laat",
+    "huidig_niveau": "A",
+    "potentieel_niveau": "A",
     "beoordelingen": {
-      "techniek_huidig": "B",
-      "techniek_tekst": "Sterke voorzet, voet-binnenkant zuiver. Eerste aanname moet vaker meteen mee voort.",
-      "inzicht_huidig": "B",
-      "inzicht_tekst": "Kiest goede momenten om in te zakken, soms te laat bij omschakeling.",
-      "grit_huidig": "A",
-      "grit_tekst": "Topmentaliteit, eerste die loopt na balverlies. BVO-waardig in karakter."
+      "techniek_huidig": "A",
+      "techniek_tekst": "Heel zuiver eerste contact, ziet ruimtes vóór ze ontstaan. Speelt vooruit als het kan, terug als het moet.",
+      "inzicht_huidig": "A",
+      "inzicht_tekst": "Coacht zijn medeverdedigers, leidt de linie. Stappenwerk uitstekend.",
+      "grit_huidig": "B",
+      "grit_tekst": "Stabiel in elk duel, kan emotioneel sterker worden bij tegenslag.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Goede momentopbouw, vlotte eerste twee passen.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Goede sprint over korte afstand, langere sprint nog niet maximaal.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Goede duelkracht, vooral met het lichaam. Spelbeeld bij duel mag rustiger.",
+      "wendbaarheid_huidig": "A",
+      "wendbaarheid_tekst": "Soepel in kleine ruimte, draait beide kanten op zonder snelheidsverlies."
     }
   },
   {
     "id": "demo_r08",
-    "player_id": "demo_p14",
-    "naam": "Sven Brouwer",
-    "club": "Spakenburg",
-    "datum": "2026-05-12",
-    "advies": "4",
+    "player_id": "demo_p13",
+    "naam": "Olivier Hoekstra",
+    "club": "Jong Ajax",
+    "datum": "2026-03-22",
+    "leeftijd": "O.21",
+    "methode": "Live",
+    "advies": "3",
+    "wapen": "Eén-tweetjes op snelheid",
+    "notities": "Trainer benadrukt mentale weerbaarheid en coachbaarheid.",
+    "wedstrijd": {
+      "datum": "2026-03-22",
+      "thuis": "Jong Ajax",
+      "uit": "Jong PSV",
+      "uitslag": "2-2",
+      "opstelling": "1-4-3-3",
+      "context": "Eerste observatie als beoogd Eredivisie-talent. Past in selectie.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Klein voor leeftijd",
+    "motoriek": "Gemiddelde coördinatie",
+    "rijping": "Lichamelijk nog jong — ontwikkelt zich relatief laat",
+    "huidig_niveau": "A",
+    "potentieel_niveau": "A",
     "beoordelingen": {
       "techniek_huidig": "A",
-      "techniek_tekst": "Sterk afmaker, beide benen. Kopt scherp bij het tweede paaltje.",
-      "inzicht_huidig": "B",
-      "inzicht_tekst": "Bewegingen achter de laatste lijn nog te voorspelbaar — kan slimmer.",
+      "techniek_tekst": "Tweebenig op een natuurlijke manier — beide voeten gelijkwaardig in pass en afronding.",
+      "inzicht_huidig": "A",
+      "inzicht_tekst": "Snapt het positionele spel, kan vanuit zes en acht spelen.",
       "grit_huidig": "A",
-      "grit_tekst": "Geeft 100% elke actie, sprint terug bij balverlies. Echte werkpaard-spits."
+      "grit_tekst": "Topmentaliteit, eerste die loopt na balverlies.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Voldoende explosiviteit, eerste vier meters mag scherper.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Tempo voldoende, mag iets eerder versnellen.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Wint zijn duels grotendeels, mag iets agressiever bij hoge ballen.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Goede heupbeweging, mag in kleine ruimte iets sneller."
     }
   },
   {
     "id": "demo_r09",
-    "player_id": "demo_p19",
+    "player_id": "demo_p13",
     "naam": "Olivier Hoekstra",
     "club": "Jong Ajax",
     "datum": "2026-05-17",
+    "leeftijd": "O.21",
+    "methode": "Live",
     "advies": "4",
+    "wapen": "Diepte-pass linkerbeen",
+    "notities": "Heeft basisschool nog 1 jaar, daarna VWO — academisch sterk.",
+    "wedstrijd": {
+      "datum": "2026-05-17",
+      "thuis": "Jong Ajax",
+      "uit": "Jong AZ",
+      "uitslag": "3-0",
+      "opstelling": "1-4-3-3 offensive",
+      "context": "Vandaag bij oefenwedstrijd — eredivisie-klasse passing, dwingt twee assists af.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Krachtig postuur — gespierd, goed getraind lichaam",
+    "lengte": "Lang voor leeftijd",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk al ver — ontwikkelt zich relatief vroeg",
+    "huidig_niveau": "A",
+    "potentieel_niveau": "A",
     "beoordelingen": {
       "techniek_huidig": "A",
-      "techniek_tekst": "Eredivisie-klasse passing, eerste aanname onder druk.",
+      "techniek_tekst": "Rust aan de bal in elke zone, ook bij hoge druk. Schermen met het lichaam goed ontwikkeld.",
       "inzicht_huidig": "A",
-      "inzicht_tekst": "Leest spelsituaties 2 acties vooruit. Coacht actief.",
+      "inzicht_tekst": "Twee acties vooruit denken — speelt al af voordat de tegenstander komt.",
       "grit_huidig": "A",
-      "grit_tekst": "Heel goede mentaliteit, blijft assertief ook bij 0-2 achterstand."
+      "grit_tekst": "Geeft nooit op, blijft tot de laatste minuut alert. Leider.",
+      "explosiviteit_huidig": "A",
+      "explosiviteit_tekst": "Diepe sprong en korte sprint horen bij zijn sterkste wapens.",
+      "sprinten_huidig": "A",
+      "sprinten_tekst": "Sprintkracht zit goed, kan herstellen tussen twee acties door.",
+      "duelleren_huidig": "A",
+      "duelleren_tekst": "Sterk bij standaardsituaties, niet bang voor lichamelijk contact in de zestien.",
+      "wendbaarheid_huidig": "A",
+      "wendbaarheid_tekst": "Soepel in kleine ruimte, draait beide kanten op zonder snelheidsverlies."
     }
   },
   {
     "id": "demo_r10",
-    "player_id": "demo_p20",
-    "naam": "Tobias Vermeer",
-    "club": "PEC Zwolle",
-    "datum": "2026-05-18",
+    "player_id": "demo_p02",
+    "naam": "Daan Visser",
+    "club": "Feyenoord",
+    "datum": "2026-04-18",
+    "leeftijd": "O.17",
+    "methode": "Live",
     "advies": "2",
+    "wapen": "Lichaamsgebruik in duel",
+    "notities": "Naast voetbal ook clubzwemmen — sterk uithoudingsvermogen.",
+    "wedstrijd": {
+      "datum": "2026-04-18",
+      "thuis": "Feyenoord O.17",
+      "uit": "FC Twente O.17",
+      "uitslag": "1-1",
+      "opstelling": "1-4-3-3 offensive",
+      "context": "Snelle vleugel-aanvaller, eerste 30 min top, daarna inzakkend tempo.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "A",
     "beoordelingen": {
       "techniek_huidig": "B",
-      "techniek_tekst": "Zuiver passen tussen de linies, sterk in dekking.",
+      "techniek_tekst": "Mooie passing op de korte ruimte, langere bal mag wat directer.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Soms te gehaast — wacht niet altijd op extra tijd. Komt door speeltijd.",
+      "grit_huidig": "A",
+      "grit_tekst": "Werkt heel hard naar achteren, sprint terug bij balverlies. Mooie mentaliteit.",
+      "explosiviteit_huidig": "A",
+      "explosiviteit_tekst": "Vanuit stand erg explosief — duels in de zestien zijn van hem.",
+      "sprinten_huidig": "A",
+      "sprinten_tekst": "Topsnelheid is duidelijk bovengemiddeld voor zijn leeftijd, houdt sprint vol over 30+ meter.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Wint zijn duels grotendeels, mag iets agressiever bij hoge ballen.",
+      "wendbaarheid_huidig": "A",
+      "wendbaarheid_tekst": "Voet- en heupwerk uitstekend — kapt aan beide kanten met evenveel gemak."
+    }
+  },
+  {
+    "id": "demo_r11",
+    "player_id": "demo_p04",
+    "naam": "Noah Bakker",
+    "club": "AZ",
+    "datum": "2026-04-22",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Werkkracht over 90 minuten",
+    "notities": "Ouder is fysio bij dezelfde club — gezonde sportieve omgeving.",
+    "wedstrijd": {
+      "datum": "2026-04-22",
+      "thuis": "AZ O.17",
+      "uit": "PSV O.17",
+      "uitslag": "0-0",
+      "opstelling": "1-4-3-3",
+      "context": "Afmaker in zestien sterk, eerste contact wisselend.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Krachtig postuur — gespierd, goed getraind lichaam",
+    "lengte": "Lang voor leeftijd",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk al ver — ontwikkelt zich relatief vroeg",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "B",
+      "techniek_tekst": "Snelle dribbel, kan 1v1 elke verdediger uitspelen. Voorzet moet beter geplaatst worden.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Loopt de juiste lijnen maar moet sneller leren beslissen.",
+      "grit_huidig": "B",
+      "grit_tekst": "Stabiel in elk duel, kan emotioneel sterker worden bij tegenslag.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Goede momentopbouw, vlotte eerste twee passen.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Goede sprint over korte afstand, langere sprint nog niet maximaal.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Goede duelkracht, vooral met het lichaam. Spelbeeld bij duel mag rustiger.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Wendbaarheid in orde, bij hoge snelheid mag draaibeweging strakker."
+    }
+  },
+  {
+    "id": "demo_r12",
+    "player_id": "demo_p06",
+    "naam": "Bram Mulder",
+    "club": "Vitesse",
+    "datum": "2026-03-29",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "advies": "3",
+    "wapen": "Diep met de bal lopen",
+    "notities": "Doublure: ook eerder gezien tegen Vitesse-O.17 (15-03), zelfde indruk.",
+    "wedstrijd": {
+      "datum": "2026-03-29",
+      "thuis": "Vitesse O.17",
+      "uit": "NEC O.17",
+      "uitslag": "2-1",
+      "opstelling": "1-4-3-3",
+      "context": "Box-to-box achter, sterk in onderscheppen.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "B",
+      "techniek_tekst": "Zuiver passen tussen de linies, sterk in dekking. Lange pass mag wat scherper.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Bewegingen achter de laatste lijn nog te voorspelbaar — kan slimmer.",
+      "grit_huidig": "A",
+      "grit_tekst": "Topmentaliteit, eerste die loopt na balverlies.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Voldoende explosiviteit, eerste vier meters mag scherper.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Tempo voldoende, mag iets eerder versnellen.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Wint zijn duels grotendeels, mag iets agressiever bij hoge ballen.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Goede heupbeweging, mag in kleine ruimte iets sneller."
+    }
+  },
+  {
+    "id": "demo_r13",
+    "player_id": "demo_p07",
+    "naam": "Finn Smit",
+    "club": "FC Utrecht",
+    "datum": "2026-04-05",
+    "leeftijd": "O.16",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Standaardsituaties als verdediger",
+    "notities": "Trainer geeft aan dat hij ook als 8 inzetbaar is — flexibele profielspeler.",
+    "wedstrijd": {
+      "datum": "2026-04-05",
+      "thuis": "FC Utrecht O.16",
+      "uit": "Ajax O.16",
+      "uitslag": "1-3",
+      "opstelling": "1-4-3-3 offensive",
+      "context": "Veelbelovende linksbuiten, 16 jaar — moet fysiek nog inhalen.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Rank postuur — dun en fijn gebouwd, niet mager",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk nog jong — ontwikkelt zich relatief laat",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "B",
+      "techniek_tekst": "Eerste contact wisselend — bij hoge druk valt het gemak weg. Werkpunt voor de komende maanden.",
+      "inzicht_huidig": "C",
+      "inzicht_tekst": "Basisinzicht voldoende, maar bij hogere snelheid wordt het ad-hoc.",
+      "grit_huidig": "B",
+      "grit_tekst": "Soms te beleefd in duels — kan harder werken in de omschakelingsfase.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Goede momentopbouw, vlotte eerste twee passen.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Goede sprint over korte afstand, langere sprint nog niet maximaal.",
+      "duelleren_huidig": "C",
+      "duelleren_tekst": "Duel-kracht ontwikkelt zich — fysieke groei moet nog komen.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Wendbaarheid in orde, bij hoge snelheid mag draaibeweging strakker."
+    }
+  },
+  {
+    "id": "demo_r14",
+    "player_id": "demo_p08",
+    "naam": "Ruben Kuijer",
+    "club": "FC Groningen",
+    "datum": "2026-04-12",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Lichaamsgebruik in duel",
+    "notities": "Komt uit een familie met 2 oudere broers bij dezelfde club.",
+    "wedstrijd": {
+      "datum": "2026-04-12",
+      "thuis": "FC Groningen O.18",
+      "uit": "Cambuur O.18",
+      "uitslag": "2-0",
+      "opstelling": "1-4-4-2",
+      "context": "Rechtsback met goede voorzet, duelkracht oké.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "C",
+      "techniek_tekst": "Basis is in orde, eerste aanname onder druk soms hoekig. Coachbaar.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Soms te gehaast — wacht niet altijd op extra tijd. Komt door speeltijd.",
+      "grit_huidig": "B",
+      "grit_tekst": "Goede werkethiek, kan nog meer initiatief nemen tegen lastige tegenstanders.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Voldoende explosiviteit, eerste vier meters mag scherper.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Tempo voldoende, mag iets eerder versnellen.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Wint zijn duels grotendeels, mag iets agressiever bij hoge ballen.",
+      "wendbaarheid_huidig": "C",
+      "wendbaarheid_tekst": "Loopwerk wat hoekig — werkt met coördinatietraining."
+    }
+  },
+  {
+    "id": "demo_r15",
+    "player_id": "demo_p09",
+    "naam": "Stijn de Vries",
+    "club": "Heerenveen",
+    "datum": "2026-04-08",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Werkkracht over 90 minuten",
+    "notities": "Speler woont in pleeggezin, sportief begeleider via stichting Move on Top.",
+    "wedstrijd": {
+      "datum": "2026-04-08",
+      "thuis": "Heerenveen O.17",
+      "uit": "PEC Zwolle O.17",
+      "uitslag": "1-2",
+      "opstelling": "1-4-3-3",
+      "context": "Linksback met intelligentie, op het oog rustige speler.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Krachtig postuur — gespierd, goed getraind lichaam",
+    "lengte": "Lang voor leeftijd",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk al ver — ontwikkelt zich relatief vroeg",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "C",
+      "techniek_tekst": "Eerlijke voet, ziet de bal goed komen. Onder hoge druk kiest hij vaker veilig dan vooruit.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Loopt de juiste lijnen maar moet sneller leren beslissen.",
+      "grit_huidig": "B",
+      "grit_tekst": "Stabiel in elk duel, kan emotioneel sterker worden bij tegenslag.",
+      "explosiviteit_huidig": "C",
+      "explosiviteit_tekst": "Heeft tijd nodig om op snelheid te komen.",
+      "sprinten_huidig": "C",
+      "sprinten_tekst": "Sprint op niveau, geen excessieve uitschieters.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Goede duelkracht, vooral met het lichaam. Spelbeeld bij duel mag rustiger.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Wendbaarheid in orde, bij hoge snelheid mag draaibeweging strakker."
+    }
+  },
+  {
+    "id": "demo_r16",
+    "player_id": "demo_p10",
+    "naam": "Tijn Hendriks",
+    "club": "Heracles Almelo",
+    "datum": "2026-05-06",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Stabiele eerste pass",
+    "notities": "Internationale interesse: zaakwaarnemer noemt België (Genk) en Duitsland (Schalke).",
+    "wedstrijd": {
+      "datum": "2026-05-06",
+      "thuis": "Heracles Almelo O.18",
+      "uit": "Telstar O.18",
+      "uitslag": "3-1",
+      "opstelling": "1-4-3-3",
+      "context": "Vaste keeper, sterk in standaardsituaties.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Krachtig postuur — gespierd, goed getraind lichaam",
+    "lengte": "Lang voor leeftijd",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk al ver — ontwikkelt zich relatief vroeg",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "A",
+    "beoordelingen": {
+      "techniek_huidig": "B",
+      "techniek_tekst": "Zuiver passen tussen de linies, sterk in dekking. Lange pass mag wat scherper.",
       "inzicht_huidig": "A",
+      "inzicht_tekst": "Snapt het positionele spel, kan vanuit zes en acht spelen.",
+      "grit_huidig": "A",
+      "grit_tekst": "Topmentaliteit, eerste die loopt na balverlies.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Voldoende explosiviteit, eerste vier meters mag scherper.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Tempo voldoende, mag iets eerder versnellen.",
+      "duelleren_huidig": "A",
+      "duelleren_tekst": "Wint zijn 1v1's met het lichaam én met timing. Echte duel-winnaar.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Goede heupbeweging, mag in kleine ruimte iets sneller."
+    }
+  },
+  {
+    "id": "demo_r17",
+    "player_id": "demo_p11",
+    "naam": "Mees Koster",
+    "club": "NEC Nijmegen",
+    "datum": "2026-04-15",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "advies": "3",
+    "wapen": "Diep met de bal lopen",
+    "notities": "Voor de wedstrijd 25 minuten op de fysiobank gezien — kleine hamstring-klacht.",
+    "wedstrijd": {
+      "datum": "2026-04-15",
+      "thuis": "NEC O.17",
+      "uit": "Vitesse O.17",
+      "uitslag": "1-1",
+      "opstelling": "1-4-4-2",
+      "context": "Rechtsmidden met loopvermogen, mag scorend bijdragen.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "B",
+      "techniek_tekst": "Eerste contact wisselend — bij hoge druk valt het gemak weg. Werkpunt voor de komende maanden.",
+      "inzicht_huidig": "B",
       "inzicht_tekst": "Komt vroeg in de schaduw van de tegenstander, anticipeert goed.",
       "grit_huidig": "B",
-      "grit_tekst": "Stabiel in elk duel, kan emotioneel sterker worden bij tegenslag."
+      "grit_tekst": "Soms te beleefd in duels — kan harder werken in de omschakelingsfase.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Goede momentopbouw, vlotte eerste twee passen.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Goede sprint over korte afstand, langere sprint nog niet maximaal.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Goede duelkracht, vooral met het lichaam. Spelbeeld bij duel mag rustiger.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Wendbaarheid in orde, bij hoge snelheid mag draaibeweging strakker."
+    }
+  },
+  {
+    "id": "demo_r18",
+    "player_id": "demo_p12",
+    "naam": "Sven Brouwer",
+    "club": "Spakenburg",
+    "datum": "2026-05-12",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "advies": "4",
+    "wapen": "Diepte-pass linkerbeen",
+    "notities": "Pas in januari overgekomen van amateurclub Hercules — past al goed.",
+    "wedstrijd": {
+      "datum": "2026-05-12",
+      "thuis": "Spakenburg O.18",
+      "uit": "IJsselmeervogels O.18",
+      "uitslag": "2-2",
+      "opstelling": "1-4-4-2",
+      "context": "Sterk afmaker, beide benen. Klaar voor stap naar BVO.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Krachtig postuur — gespierd, goed getraind lichaam",
+    "lengte": "Lang voor leeftijd",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk al ver — ontwikkelt zich relatief vroeg",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "A",
+    "beoordelingen": {
+      "techniek_huidig": "A",
+      "techniek_tekst": "Eerste aanname zorgt zelf voor de volgende actie — bal komt altijd in de goede richting mee.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Soms te gehaast — wacht niet altijd op extra tijd. Komt door speeltijd.",
+      "grit_huidig": "A",
+      "grit_tekst": "Werkt heel hard naar achteren, sprint terug bij balverlies. Mooie mentaliteit.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Voldoende explosiviteit, eerste vier meters mag scherper.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Tempo voldoende, mag iets eerder versnellen.",
+      "duelleren_huidig": "A",
+      "duelleren_tekst": "Sterk bij standaardsituaties, niet bang voor lichamelijk contact in de zestien.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Goede heupbeweging, mag in kleine ruimte iets sneller."
+    }
+  },
+  {
+    "id": "demo_r19",
+    "player_id": "demo_p14",
+    "naam": "Tobias Vermeer",
+    "club": "PEC Zwolle",
+    "datum": "2026-04-30",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "advies": "3",
+    "wapen": "Korte combinatie in de zestien",
+    "notities": "Heeft assessment gedaan bij sportpsycholoog, score sterke focus.",
+    "wedstrijd": {
+      "datum": "2026-04-30",
+      "thuis": "PEC Zwolle O.17",
+      "uit": "Heerenveen O.17",
+      "uitslag": "0-1",
+      "opstelling": "1-4-3-3",
+      "context": "Rechtscentrale verdediger, sterk in opbouw.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "B",
+      "techniek_tekst": "Snelle dribbel, kan 1v1 elke verdediger uitspelen. Voorzet moet beter geplaatst worden.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Loopt de juiste lijnen maar moet sneller leren beslissen.",
+      "grit_huidig": "B",
+      "grit_tekst": "Stabiel in elk duel, kan emotioneel sterker worden bij tegenslag.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Goede momentopbouw, vlotte eerste twee passen.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Goede sprint over korte afstand, langere sprint nog niet maximaal.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Goede duelkracht, vooral met het lichaam. Spelbeeld bij duel mag rustiger.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Wendbaarheid in orde, bij hoge snelheid mag draaibeweging strakker."
+    }
+  },
+  {
+    "id": "demo_r20",
+    "player_id": "demo_p15",
+    "naam": "Quinten Dekker",
+    "club": "Sparta Rotterdam",
+    "datum": "2026-04-10",
+    "leeftijd": "O.16",
+    "methode": "Live",
+    "advies": "3",
+    "wapen": "Voorzet rechterbeen",
+    "notities": "Trainer benadrukt mentale weerbaarheid en coachbaarheid.",
+    "wedstrijd": {
+      "datum": "2026-04-10",
+      "thuis": "Sparta O.16",
+      "uit": "Excelsior O.16",
+      "uitslag": "2-1",
+      "opstelling": "1-4-2-3-1",
+      "context": "Aanvallende middenvelder, technisch begaafd. Werkpunt fysiek.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Rank postuur — dun en fijn gebouwd, niet mager",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk nog jong — ontwikkelt zich relatief laat",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "B",
+      "techniek_tekst": "Zuiver passen tussen de linies, sterk in dekking. Lange pass mag wat scherper.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Bewegingen achter de laatste lijn nog te voorspelbaar — kan slimmer.",
+      "grit_huidig": "C",
+      "grit_tekst": "Goede inzet, maar bij 0-2 achter zakt het tempo.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Voldoende explosiviteit, eerste vier meters mag scherper.",
+      "sprinten_huidig": "C",
+      "sprinten_tekst": "Voldoende snelheid, het is geen wapen.",
+      "duelleren_huidig": "C",
+      "duelleren_tekst": "Niet zwak maar niet bovengemiddeld in duel. Werkpunt schouder/lichaam.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Goede heupbeweging, mag in kleine ruimte iets sneller."
+    }
+  },
+  {
+    "id": "demo_r21",
+    "player_id": "demo_p16",
+    "naam": "Thomas Peters",
+    "club": "IJsselmeervogels",
+    "datum": "2026-04-26",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Standaardsituaties als verdediger",
+    "notities": "Heeft basisschool nog 1 jaar, daarna VWO — academisch sterk.",
+    "wedstrijd": {
+      "datum": "2026-04-26",
+      "thuis": "IJsselmeervogels O.17",
+      "uit": "Quick Boys O.17",
+      "uitslag": "1-2",
+      "opstelling": "1-4-3-3",
+      "context": "Wingerprofiel met voorzetkwaliteiten.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "C",
+      "techniek_tekst": "Eerlijke voet, ziet de bal goed komen. Onder hoge druk kiest hij vaker veilig dan vooruit.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Komt vroeg in de schaduw van de tegenstander, anticipeert goed.",
+      "grit_huidig": "B",
+      "grit_tekst": "Soms te beleefd in duels — kan harder werken in de omschakelingsfase.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Goede momentopbouw, vlotte eerste twee passen.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Goede sprint over korte afstand, langere sprint nog niet maximaal.",
+      "duelleren_huidig": "C",
+      "duelleren_tekst": "Duel-kracht ontwikkelt zich — fysieke groei moet nog komen.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Wendbaarheid in orde, bij hoge snelheid mag draaibeweging strakker."
+    }
+  },
+  {
+    "id": "demo_r22",
+    "player_id": "demo_p17",
+    "naam": "Daley van Loon",
+    "club": "Quick Boys",
+    "datum": "2026-04-19",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Lichaamsgebruik in duel",
+    "notities": "Naast voetbal ook clubzwemmen — sterk uithoudingsvermogen.",
+    "wedstrijd": {
+      "datum": "2026-04-19",
+      "thuis": "Quick Boys O.18",
+      "uit": "Katwijk O.18",
+      "uitslag": "2-2",
+      "opstelling": "1-4-3-3",
+      "context": "Middenvelder met loopkracht, eerste pass oké.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "C",
+      "techniek_tekst": "Techniek op niveau van groep, mag verfijnder in kleine ruimte.",
+      "inzicht_huidig": "C",
+      "inzicht_tekst": "Basisinzicht voldoende, maar bij hogere snelheid wordt het ad-hoc.",
+      "grit_huidig": "B",
+      "grit_tekst": "Goede werkethiek, kan nog meer initiatief nemen tegen lastige tegenstanders.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Voldoende explosiviteit, eerste vier meters mag scherper.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Tempo voldoende, mag iets eerder versnellen.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Wint zijn duels grotendeels, mag iets agressiever bij hoge ballen.",
+      "wendbaarheid_huidig": "C",
+      "wendbaarheid_tekst": "Loopwerk wat hoekig — werkt met coördinatietraining."
+    }
+  },
+  {
+    "id": "demo_r23",
+    "player_id": "demo_p18",
+    "naam": "Jaden de Jong",
+    "club": "ADO Den Haag",
+    "datum": "2026-04-14",
+    "leeftijd": "O.16",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Werkkracht over 90 minuten",
+    "notities": "Ouder is fysio bij dezelfde club — gezonde sportieve omgeving.",
+    "wedstrijd": {
+      "datum": "2026-04-14",
+      "thuis": "ADO Den Haag O.16",
+      "uit": "Sparta O.16",
+      "uitslag": "0-2",
+      "opstelling": "1-4-3-3 offensive",
+      "context": "Linksbuiten, eerste contact mag rustiger.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Rank postuur — dun en fijn gebouwd, niet mager",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk nog jong — ontwikkelt zich relatief laat",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "C",
+      "techniek_tekst": "Basis is in orde, eerste aanname onder druk soms hoekig. Coachbaar.",
+      "inzicht_huidig": "C",
+      "inzicht_tekst": "Kiest goede momenten om in te zakken, soms te laat bij omschakeling.",
+      "grit_huidig": "B",
+      "grit_tekst": "Stabiel in elk duel, kan emotioneel sterker worden bij tegenslag.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Goede momentopbouw, vlotte eerste twee passen.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Goede sprint over korte afstand, langere sprint nog niet maximaal.",
+      "duelleren_huidig": "C",
+      "duelleren_tekst": "Duel-kracht ontwikkelt zich — fysieke groei moet nog komen.",
+      "wendbaarheid_huidig": "C",
+      "wendbaarheid_tekst": "Wendt voldoende, geen uitschieter."
+    }
+  },
+  {
+    "id": "demo_r24",
+    "player_id": "demo_p19",
+    "naam": "Romeo Vink",
+    "club": "Excelsior",
+    "datum": "2026-04-28",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Stabiele eerste pass",
+    "notities": "Doublure: ook eerder gezien tegen Vitesse-O.17 (15-03), zelfde indruk.",
+    "wedstrijd": {
+      "datum": "2026-04-28",
+      "thuis": "Excelsior O.17",
+      "uit": "FC Volendam O.17",
+      "uitslag": "1-1",
+      "opstelling": "1-4-3-3",
+      "context": "Box-to-box, tweebenig, mag scherper bij afronding.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "C",
+      "techniek_tekst": "Eerlijke voet, ziet de bal goed komen. Onder hoge druk kiest hij vaker veilig dan vooruit.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Bewegingen achter de laatste lijn nog te voorspelbaar — kan slimmer.",
+      "grit_huidig": "B",
+      "grit_tekst": "Mentaal soms wisselvallig — bij druk valt het level kort terug.",
+      "explosiviteit_huidig": "C",
+      "explosiviteit_tekst": "Gemiddelde startsnelheid — kan met krachttraining verbeteren.",
+      "sprinten_huidig": "C",
+      "sprinten_tekst": "Voldoende snelheid, het is geen wapen.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Wint zijn duels grotendeels, mag iets agressiever bij hoge ballen.",
+      "wendbaarheid_huidig": "C",
+      "wendbaarheid_tekst": "Loopwerk wat hoekig — werkt met coördinatietraining."
+    }
+  },
+  {
+    "id": "demo_r25",
+    "player_id": "demo_p20",
+    "naam": "Faisal El Amrani",
+    "club": "NAC Breda",
+    "datum": "2026-04-17",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Standaardsituaties als verdediger",
+    "notities": "Trainer geeft aan dat hij ook als 8 inzetbaar is — flexibele profielspeler.",
+    "wedstrijd": {
+      "datum": "2026-04-17",
+      "thuis": "NAC Breda O.18",
+      "uit": "Willem II O.18",
+      "uitslag": "1-1",
+      "opstelling": "1-4-4-2",
+      "context": "Rechtsback met fysiek profiel, voorzet kan beter.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "C",
+      "techniek_tekst": "Techniek op niveau van groep, mag verfijnder in kleine ruimte.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Komt vroeg in de schaduw van de tegenstander, anticipeert goed.",
+      "grit_huidig": "C",
+      "grit_tekst": "Doet wat hij moet doen, mag nog meer leiderschap tonen.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Goede momentopbouw, vlotte eerste twee passen.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Goede sprint over korte afstand, langere sprint nog niet maximaal.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Goede duelkracht, vooral met het lichaam. Spelbeeld bij duel mag rustiger.",
+      "wendbaarheid_huidig": "C",
+      "wendbaarheid_tekst": "Wendt voldoende, geen uitschieter."
+    }
+  },
+  {
+    "id": "demo_r26",
+    "player_id": "demo_p21",
+    "naam": "Anwar Boutaybi",
+    "club": "Willem II",
+    "datum": "2026-04-21",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Lichaamsgebruik in duel",
+    "notities": "Komt uit een familie met 2 oudere broers bij dezelfde club.",
+    "wedstrijd": {
+      "datum": "2026-04-21",
+      "thuis": "Willem II O.17",
+      "uit": "NAC Breda O.17",
+      "uitslag": "2-0",
+      "opstelling": "1-4-3-3",
+      "context": "Box-to-box met loopkracht.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "C",
+      "techniek_tekst": "Basis is in orde, eerste aanname onder druk soms hoekig. Coachbaar.",
+      "inzicht_huidig": "C",
+      "inzicht_tekst": "Kiest goede momenten om in te zakken, soms te laat bij omschakeling.",
+      "grit_huidig": "B",
+      "grit_tekst": "Goede werkethiek, kan nog meer initiatief nemen tegen lastige tegenstanders.",
+      "explosiviteit_huidig": "C",
+      "explosiviteit_tekst": "Gemiddelde startsnelheid — kan met krachttraining verbeteren.",
+      "sprinten_huidig": "C",
+      "sprinten_tekst": "Voldoende snelheid, het is geen wapen.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Wint zijn duels grotendeels, mag iets agressiever bij hoge ballen.",
+      "wendbaarheid_huidig": "C",
+      "wendbaarheid_tekst": "Loopwerk wat hoekig — werkt met coördinatietraining."
+    }
+  },
+  {
+    "id": "demo_r27",
+    "player_id": "demo_p22",
+    "naam": "Yusuf Ozcan",
+    "club": "FC Den Bosch",
+    "datum": "2026-04-24",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Werkkracht over 90 minuten",
+    "notities": "Speler woont in pleeggezin, sportief begeleider via stichting Move on Top.",
+    "wedstrijd": {
+      "datum": "2026-04-24",
+      "thuis": "FC Den Bosch O.18",
+      "uit": "Helmond Sport O.18",
+      "uitslag": "1-0",
+      "opstelling": "1-4-4-2",
+      "context": "Echte negen, hardloper, mag rustiger met de bal.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Krachtig postuur — gespierd, goed getraind lichaam",
+    "lengte": "Lang voor leeftijd",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk al ver — ontwikkelt zich relatief vroeg",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "C",
+      "techniek_tekst": "Eerlijke voet, ziet de bal goed komen. Onder hoge druk kiest hij vaker veilig dan vooruit.",
+      "inzicht_huidig": "C",
+      "inzicht_tekst": "Volgt de wedstrijd goed, neemt zelf nog weinig leiding.",
+      "grit_huidig": "B",
+      "grit_tekst": "Stabiel in elk duel, kan emotioneel sterker worden bij tegenslag.",
+      "explosiviteit_huidig": "C",
+      "explosiviteit_tekst": "Heeft tijd nodig om op snelheid te komen.",
+      "sprinten_huidig": "C",
+      "sprinten_tekst": "Sprint op niveau, geen excessieve uitschieters.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Goede duelkracht, vooral met het lichaam. Spelbeeld bij duel mag rustiger.",
+      "wendbaarheid_huidig": "C",
+      "wendbaarheid_tekst": "Wendt voldoende, geen uitschieter."
+    }
+  },
+  {
+    "id": "demo_r28",
+    "player_id": "demo_p23",
+    "naam": "Mo Idrissi",
+    "club": "Ajax",
+    "datum": "2026-05-09",
+    "leeftijd": "O.16",
+    "methode": "Live",
+    "advies": "3",
+    "wapen": "Eén-tweetjes op snelheid",
+    "notities": "Internationale interesse: zaakwaarnemer noemt België (Genk) en Duitsland (Schalke).",
+    "wedstrijd": {
+      "datum": "2026-05-09",
+      "thuis": "Ajax O.16",
+      "uit": "PSV O.16",
+      "uitslag": "1-1",
+      "opstelling": "1-4-3-3",
+      "context": "Lichtgewicht middenvelder met visie, één voor de toekomst.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Rank postuur — dun en fijn gebouwd, niet mager",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk nog jong — ontwikkelt zich relatief laat",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "A",
+    "beoordelingen": {
+      "techniek_huidig": "B",
+      "techniek_tekst": "Zuiver passen tussen de linies, sterk in dekking. Lange pass mag wat scherper.",
+      "inzicht_huidig": "A",
+      "inzicht_tekst": "Snapt het positionele spel, kan vanuit zes en acht spelen.",
+      "grit_huidig": "C",
+      "grit_tekst": "Goede inzet, maar bij 0-2 achter zakt het tempo.",
+      "explosiviteit_huidig": "C",
+      "explosiviteit_tekst": "Gemiddelde startsnelheid — kan met krachttraining verbeteren.",
+      "sprinten_huidig": "C",
+      "sprinten_tekst": "Voldoende snelheid, het is geen wapen.",
+      "duelleren_huidig": "C",
+      "duelleren_tekst": "Niet zwak maar niet bovengemiddeld in duel. Werkpunt schouder/lichaam.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Goede heupbeweging, mag in kleine ruimte iets sneller."
+    }
+  },
+  {
+    "id": "demo_r29",
+    "player_id": "demo_p24",
+    "naam": "Levi Schouten",
+    "club": "Telstar",
+    "datum": "2026-04-11",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Standaardsituaties als verdediger",
+    "notities": "Voor de wedstrijd 25 minuten op de fysiobank gezien — kleine hamstring-klacht.",
+    "wedstrijd": {
+      "datum": "2026-04-11",
+      "thuis": "Telstar O.17",
+      "uit": "Jong Almere City",
+      "uitslag": "0-3",
+      "opstelling": "1-4-4-2",
+      "context": "Rechtsback met basis, mag fysieker.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Rank postuur — dun en fijn gebouwd, niet mager",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk nog jong — ontwikkelt zich relatief laat",
+    "huidig_niveau": "D",
+    "potentieel_niveau": "C",
+    "beoordelingen": {
+      "techniek_huidig": "D",
+      "techniek_tekst": "Techniek nog erg in ontwikkeling — pass komt vaak hard aan, aanname springt regelmatig terug.",
+      "inzicht_huidig": "C",
+      "inzicht_tekst": "Kiest goede momenten om in te zakken, soms te laat bij omschakeling.",
+      "grit_huidig": "C",
+      "grit_tekst": "Doet wat hij moet doen, mag nog meer leiderschap tonen.",
+      "explosiviteit_huidig": "C",
+      "explosiviteit_tekst": "Heeft tijd nodig om op snelheid te komen.",
+      "sprinten_huidig": "C",
+      "sprinten_tekst": "Sprint op niveau, geen excessieve uitschieters.",
+      "duelleren_huidig": "C",
+      "duelleren_tekst": "Duel-kracht ontwikkelt zich — fysieke groei moet nog komen.",
+      "wendbaarheid_huidig": "C",
+      "wendbaarheid_tekst": "Wendt voldoende, geen uitschieter."
+    }
+  },
+  {
+    "id": "demo_r30",
+    "player_id": "demo_p25",
+    "naam": "Senna Kraan",
+    "club": "Cambuur",
+    "datum": "2026-04-16",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Lichaamsgebruik in duel",
+    "notities": "Pas in januari overgekomen van amateurclub Hercules — past al goed.",
+    "wedstrijd": {
+      "datum": "2026-04-16",
+      "thuis": "Cambuur O.18",
+      "uit": "FC Groningen O.18",
+      "uitslag": "2-3",
+      "opstelling": "1-4-3-3",
+      "context": "Speelt op rechtshalf, mag scorend bijdragen.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "C",
+    "beoordelingen": {
+      "techniek_huidig": "C",
+      "techniek_tekst": "Eerlijke voet, ziet de bal goed komen. Onder hoge druk kiest hij vaker veilig dan vooruit.",
+      "inzicht_huidig": "C",
+      "inzicht_tekst": "Volgt de wedstrijd goed, neemt zelf nog weinig leiding.",
+      "grit_huidig": "C",
+      "grit_tekst": "Goede inzet, maar bij 0-2 achter zakt het tempo.",
+      "explosiviteit_huidig": "C",
+      "explosiviteit_tekst": "Gemiddelde startsnelheid — kan met krachttraining verbeteren.",
+      "sprinten_huidig": "C",
+      "sprinten_tekst": "Voldoende snelheid, het is geen wapen.",
+      "duelleren_huidig": "C",
+      "duelleren_tekst": "Niet zwak maar niet bovengemiddeld in duel. Werkpunt schouder/lichaam.",
+      "wendbaarheid_huidig": "C",
+      "wendbaarheid_tekst": "Loopwerk wat hoekig — werkt met coördinatietraining."
+    }
+  },
+  {
+    "id": "demo_r31",
+    "player_id": "demo_p26",
+    "naam": "Niels Postma",
+    "club": "Spakenburg",
+    "datum": "2026-05-01",
+    "leeftijd": "O.16",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Werkkracht over 90 minuten",
+    "notities": "Heeft assessment gedaan bij sportpsycholoog, score sterke focus.",
+    "wedstrijd": {
+      "datum": "2026-05-01",
+      "thuis": "Spakenburg O.16",
+      "uit": "IJsselmeervogels O.16",
+      "uitslag": "1-1",
+      "opstelling": "1-4-3-3",
+      "context": "Centrale verdediger met goede stappen.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "C",
+      "techniek_tekst": "Techniek op niveau van groep, mag verfijnder in kleine ruimte.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Loopt de juiste lijnen maar moet sneller leren beslissen.",
+      "grit_huidig": "B",
+      "grit_tekst": "Stabiel in elk duel, kan emotioneel sterker worden bij tegenslag.",
+      "explosiviteit_huidig": "C",
+      "explosiviteit_tekst": "Heeft tijd nodig om op snelheid te komen.",
+      "sprinten_huidig": "C",
+      "sprinten_tekst": "Sprint op niveau, geen excessieve uitschieters.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Goede duelkracht, vooral met het lichaam. Spelbeeld bij duel mag rustiger.",
+      "wendbaarheid_huidig": "C",
+      "wendbaarheid_tekst": "Wendt voldoende, geen uitschieter."
+    }
+  },
+  {
+    "id": "demo_r32",
+    "player_id": "demo_p27",
+    "naam": "Pim van Beek",
+    "club": "IJsselmeervogels",
+    "datum": "2026-04-29",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "advies": "3",
+    "wapen": "Diep met de bal lopen",
+    "notities": "Trainer benadrukt mentale weerbaarheid en coachbaarheid.",
+    "wedstrijd": {
+      "datum": "2026-04-29",
+      "thuis": "IJsselmeervogels O.17",
+      "uit": "Spakenburg O.17",
+      "uitslag": "0-1",
+      "opstelling": "1-4-2-3-1",
+      "context": "Tweebenige tien, kan aanvallen creëren.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Rank postuur — dun en fijn gebouwd, niet mager",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk nog jong — ontwikkelt zich relatief laat",
+    "huidig_niveau": "C",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "B",
+      "techniek_tekst": "Zuiver passen tussen de linies, sterk in dekking. Lange pass mag wat scherper.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Bewegingen achter de laatste lijn nog te voorspelbaar — kan slimmer.",
+      "grit_huidig": "B",
+      "grit_tekst": "Mentaal soms wisselvallig — bij druk valt het level kort terug.",
+      "explosiviteit_huidig": "C",
+      "explosiviteit_tekst": "Gemiddelde startsnelheid — kan met krachttraining verbeteren.",
+      "sprinten_huidig": "C",
+      "sprinten_tekst": "Voldoende snelheid, het is geen wapen.",
+      "duelleren_huidig": "C",
+      "duelleren_tekst": "Niet zwak maar niet bovengemiddeld in duel. Werkpunt schouder/lichaam.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Goede heupbeweging, mag in kleine ruimte iets sneller."
+    }
+  },
+  {
+    "id": "demo_r33",
+    "player_id": "demo_p28",
+    "naam": "Cas Hofman",
+    "club": "Katwijk",
+    "datum": "2026-04-23",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "advies": "1",
+    "wapen": "Bezig blijven, basis aanwezig",
+    "notities": "Heeft basisschool nog 1 jaar, daarna VWO — academisch sterk.",
+    "wedstrijd": {
+      "datum": "2026-04-23",
+      "thuis": "Katwijk O.18",
+      "uit": "Quick Boys O.18",
+      "uitslag": "1-3",
+      "opstelling": "1-4-4-2",
+      "context": "Werkpaard maar mist tempo.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Klein voor leeftijd",
+    "motoriek": "Gemiddelde coördinatie",
+    "rijping": "Lichamelijk nog jong — ontwikkelt zich relatief laat",
+    "huidig_niveau": "D",
+    "potentieel_niveau": "C",
+    "beoordelingen": {
+      "techniek_huidig": "D",
+      "techniek_tekst": "Techniek nog erg in ontwikkeling — pass komt vaak hard aan, aanname springt regelmatig terug.",
+      "inzicht_huidig": "D",
+      "inzicht_tekst": "Mist soms de balans tussen druk zetten en knijpen.",
+      "grit_huidig": "C",
+      "grit_tekst": "Doet wat hij moet doen, mag nog meer leiderschap tonen.",
+      "explosiviteit_huidig": "D",
+      "explosiviteit_tekst": "Eerste meters trager dan tegenstander, mag explosiever.",
+      "sprinten_huidig": "D",
+      "sprinten_tekst": "Sprint blijft een werkpunt — vrijwel altijd 2e in een duel om snelheid.",
+      "duelleren_huidig": "C",
+      "duelleren_tekst": "Duel-kracht ontwikkelt zich — fysieke groei moet nog komen.",
+      "wendbaarheid_huidig": "D",
+      "wendbaarheid_tekst": "Draaien onder druk is een werkpunt — verliest snelheid in de wending."
+    }
+  },
+  {
+    "id": "demo_r34",
+    "player_id": "demo_p29",
+    "naam": "Jens Verhoeven",
+    "club": "PSV",
+    "datum": "2026-05-04",
+    "leeftijd": "O.16",
+    "methode": "Live",
+    "advies": "3",
+    "wapen": "Korte combinatie in de zestien",
+    "notities": "Naast voetbal ook clubzwemmen — sterk uithoudingsvermogen.",
+    "wedstrijd": {
+      "datum": "2026-05-04",
+      "thuis": "PSV O.16",
+      "uit": "Ajax O.16",
+      "uitslag": "1-1",
+      "opstelling": "1-4-3-3",
+      "context": "Jonge linksback, agressieve duelkracht.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Krachtig postuur — gespierd, goed getraind lichaam",
+    "lengte": "Lang voor leeftijd",
+    "motoriek": "Uitstekende coördinatie — soepel en lichtvoetig",
+    "rijping": "Lichamelijk al ver — ontwikkelt zich relatief vroeg",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "A",
+    "beoordelingen": {
+      "techniek_huidig": "B",
+      "techniek_tekst": "Mooie passing op de korte ruimte, langere bal mag wat directer.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Soms te gehaast — wacht niet altijd op extra tijd. Komt door speeltijd.",
+      "grit_huidig": "A",
+      "grit_tekst": "Werkt heel hard naar achteren, sprint terug bij balverlies. Mooie mentaliteit.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Voldoende explosiviteit, eerste vier meters mag scherper.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Tempo voldoende, mag iets eerder versnellen.",
+      "duelleren_huidig": "A",
+      "duelleren_tekst": "Wint zijn 1v1's met het lichaam én met timing. Echte duel-winnaar.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Goede heupbeweging, mag in kleine ruimte iets sneller."
+    }
+  },
+  {
+    "id": "demo_r35",
+    "player_id": "demo_p30",
+    "naam": "Bart Klaassen",
+    "club": "FC Twente",
+    "datum": "2026-05-08",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "advies": "2",
+    "wapen": "Werkkracht over 90 minuten",
+    "notities": "Ouder is fysio bij dezelfde club — gezonde sportieve omgeving.",
+    "wedstrijd": {
+      "datum": "2026-05-08",
+      "thuis": "FC Twente O.17",
+      "uit": "Heracles O.17",
+      "uitslag": "0-0",
+      "opstelling": "1-4-3-3",
+      "context": "Stabiele jonge keeper, mag uitvoetballen verfijnen.",
+      "toernooi": false,
+      "toernooi_naam": ""
+    },
+    "bouw": "Stevig postuur — fors gebouwd, robuust, niet dik",
+    "lengte": "Gemiddelde lengte",
+    "motoriek": "Goede coördinatie — vloeiende bewegingen",
+    "rijping": "Ontwikkelt zich op leeftijd — geen bijzonderheden",
+    "huidig_niveau": "B",
+    "potentieel_niveau": "B",
+    "beoordelingen": {
+      "techniek_huidig": "B",
+      "techniek_tekst": "Snelle dribbel, kan 1v1 elke verdediger uitspelen. Voorzet moet beter geplaatst worden.",
+      "inzicht_huidig": "B",
+      "inzicht_tekst": "Loopt de juiste lijnen maar moet sneller leren beslissen.",
+      "grit_huidig": "B",
+      "grit_tekst": "Stabiel in elk duel, kan emotioneel sterker worden bij tegenslag.",
+      "explosiviteit_huidig": "B",
+      "explosiviteit_tekst": "Goede momentopbouw, vlotte eerste twee passen.",
+      "sprinten_huidig": "B",
+      "sprinten_tekst": "Goede sprint over korte afstand, langere sprint nog niet maximaal.",
+      "duelleren_huidig": "B",
+      "duelleren_tekst": "Goede duelkracht, vooral met het lichaam. Spelbeeld bij duel mag rustiger.",
+      "wendbaarheid_huidig": "B",
+      "wendbaarheid_tekst": "Wendbaarheid in orde, bij hoge snelheid mag draaibeweging strakker."
     }
   }
 ];
 const __SH_DEMO_MATCHES = [
   {
-    "id": "demo_m-7",
-    "datum": "2026-05-09",
-    "tijd": "10:30",
+    "id": "demo_m01",
+    "datum": "2026-05-18",
+    "tijd": "13:00",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "thuis": "Telstar O.16",
+    "uit": "FC Volendam O.16",
+    "locatie": "Sportpark Schoonenberg",
+    "plaats": "Velsen-Zuid",
+    "veld": "1",
+    "info": "Vooruit-scout: focus op Levi Schouten (rugnummer 2).",
+    "notities": "",
+    "spelers": [
+      {
+        "id": "demo_p24",
+        "naam": "Levi Schouten",
+        "club": "Telstar",
+        "positie": "rb"
+      }
+    ],
+    "status": "gepland",
+    "created": 1779055200000,
+    "modified": 1779055200000,
+    "toernooi": false,
+    "toernooi_naam": ""
+  },
+  {
+    "id": "demo_m02",
+    "datum": "2026-05-18",
+    "tijd": "tba",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "thuis": "'s-Gravenzandse SV",
+    "uit": "AAC-Olympia",
+    "locatie": "Sportpark Juliana",
+    "plaats": "'s-Gravenzande",
+    "veld": "",
+    "info": "Aanvangstijd nog onbekend — KNVB-update afwachten.",
+    "notities": "",
+    "spelers": [],
+    "status": "gepland",
+    "created": 1779055200000,
+    "modified": 1779055200000,
+    "toernooi": false,
+    "toernooi_naam": ""
+  },
+  {
+    "id": "demo_m03",
+    "datum": "2026-05-19",
+    "tijd": "19:30",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "thuis": "Ajax O.18",
+    "uit": "PSV O.18",
+    "locatie": "Sportpark De Toekomst",
+    "plaats": "Amsterdam",
+    "veld": "Veld 7",
+    "info": "Topper. Liam de Boer + Sam Janssen + Mo Idrissi.",
+    "notities": "Camera achter doel, opname aanvragen bij Ajax media.",
+    "spelers": [
+      {
+        "id": "demo_p01",
+        "naam": "Liam de Boer",
+        "club": "Ajax",
+        "positie": "cs"
+      },
+      {
+        "id": "demo_p03",
+        "naam": "Sam Janssen",
+        "club": "PSV",
+        "positie": "lcv"
+      },
+      {
+        "id": "demo_p23",
+        "naam": "Mo Idrissi",
+        "club": "Ajax",
+        "positie": "vm"
+      }
+    ],
+    "status": "gepland",
+    "created": 1779055200000,
+    "modified": 1779055200000,
+    "toernooi": false,
+    "toernooi_naam": ""
+  },
+  {
+    "id": "demo_m04",
+    "datum": "2026-05-23",
+    "tijd": "14:30",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "thuis": "Spakenburg O.18",
+    "uit": "IJsselmeervogels O.18",
+    "locatie": "Sportpark De Westmaat",
+    "plaats": "Spakenburg",
+    "veld": "Hoofdveld",
+    "info": "Spakenburgse derby. Sven Brouwer + Pim van Beek + Niels Postma.",
+    "notities": "",
+    "spelers": [
+      {
+        "id": "demo_p12",
+        "naam": "Sven Brouwer",
+        "club": "Spakenburg",
+        "positie": "cs_l"
+      },
+      {
+        "id": "demo_p26",
+        "naam": "Niels Postma",
+        "club": "Spakenburg",
+        "positie": "lcv"
+      },
+      {
+        "id": "demo_p27",
+        "naam": "Pim van Beek",
+        "club": "IJsselmeervogels",
+        "positie": "am"
+      }
+    ],
+    "status": "gepland",
+    "created": 1779055200000,
+    "modified": 1779055200000,
+    "toernooi": false,
+    "toernooi_naam": ""
+  },
+  {
+    "id": "demo_m05",
+    "datum": "2026-05-26",
+    "tijd": "18:30",
+    "leeftijd": "O.17",
+    "methode": "Video",
+    "thuis": "FC Twente O.17",
+    "uit": "Heracles O.17",
+    "locatie": "De Grolsch Veste — Trainingscomplex",
+    "plaats": "Hengelo",
+    "veld": "Veld 2",
+    "info": "Bart Klaassen onder de lat — video-analyse van Heracles-aanval.",
+    "notities": "",
+    "spelers": [
+      {
+        "id": "demo_p30",
+        "naam": "Bart Klaassen",
+        "club": "FC Twente",
+        "positie": "gk"
+      }
+    ],
+    "status": "gepland",
+    "created": 1779055200000,
+    "modified": 1779055200000,
+    "toernooi": false,
+    "toernooi_naam": ""
+  },
+  {
+    "id": "demo_m06",
+    "datum": "2026-05-30",
+    "tijd": "15:00",
+    "leeftijd": "O.18",
+    "methode": "Live",
+    "thuis": "Quick Boys O.18",
+    "uit": "Katwijk O.18",
+    "locatie": "Sportpark Nieuw Zuid",
+    "plaats": "Katwijk",
+    "veld": "1",
+    "info": "Klassieker — Daley van Loon + Cas Hofman.",
+    "notities": "",
+    "spelers": [
+      {
+        "id": "demo_p17",
+        "naam": "Daley van Loon",
+        "club": "Quick Boys",
+        "positie": "vm"
+      },
+      {
+        "id": "demo_p28",
+        "naam": "Cas Hofman",
+        "club": "Katwijk",
+        "positie": "vm"
+      }
+    ],
+    "status": "gepland",
+    "created": 1779055200000,
+    "modified": 1779055200000,
+    "toernooi": false,
+    "toernooi_naam": ""
+  },
+  {
+    "id": "demo_m07a",
+    "datum": "2026-05-31",
+    "tijd": "09:30",
     "leeftijd": "O.17",
     "methode": "Live",
     "thuis": "Ajax O.17",
     "uit": "Feyenoord O.17",
-    "locatie": "Sportpark De Toekomst",
-    "plaats": "Amsterdam",
-    "veld": "1",
-    "info": "",
-    "notities": "",
-    "spelers": [],
-    "status": "gepland",
-    "created": 1774994400000,
-    "modified": 1777586400000
-  },
-  {
-    "id": "demo_m-6",
-    "datum": "2026-05-10",
-    "tijd": "13:00",
-    "leeftijd": "O.18",
-    "methode": "Live",
-    "thuis": "PSV O.18",
-    "uit": "AZ O.18",
-    "locatie": "Varkenoord",
-    "plaats": "Rotterdam",
-    "veld": "2",
-    "info": "",
-    "notities": "",
-    "spelers": [],
-    "status": "gepland",
-    "created": 1774994400000,
-    "modified": 1777586400000
-  },
-  {
-    "id": "demo_m-5",
-    "datum": "2026-05-11",
-    "tijd": "10:30",
-    "leeftijd": "O.17",
-    "methode": "Live",
-    "thuis": "FC Twente O.17",
-    "uit": "Vitesse O.17",
-    "locatie": "De Herdgang",
-    "plaats": "Eindhoven",
-    "veld": "3",
-    "info": "",
-    "notities": "",
-    "spelers": [],
-    "status": "gepland",
-    "created": 1774994400000,
-    "modified": 1777586400000
-  },
-  {
-    "id": "demo_m-4",
-    "datum": "2026-05-12",
-    "tijd": "13:00",
-    "leeftijd": "O.16",
-    "methode": "Live",
-    "thuis": "FC Utrecht O.16",
-    "uit": "sc Heerenveen O.16",
-    "locatie": "AFAS Trainingscomplex",
-    "plaats": "Wijdewormer",
-    "veld": "2a",
-    "info": "",
-    "notities": "",
-    "spelers": [],
-    "status": "gepland",
-    "created": 1774994400000,
-    "modified": 1777586400000
-  },
-  {
-    "id": "demo_m-3",
-    "datum": "2026-05-13",
-    "tijd": "10:30",
-    "leeftijd": "O.17",
-    "methode": "Live",
-    "thuis": "NEC O.17",
-    "uit": "Heracles O.17",
-    "locatie": "Trainingscomplex Hengelo",
-    "plaats": "Hengelo",
-    "veld": "1",
-    "info": "",
-    "notities": "",
-    "spelers": [],
-    "status": "gepland",
-    "created": 1774994400000,
-    "modified": 1777586400000
-  },
-  {
-    "id": "demo_m-2",
-    "datum": "2026-05-14",
-    "tijd": "13:00",
-    "leeftijd": "O.18",
-    "methode": "Live",
-    "thuis": "Sparta O.18",
-    "uit": "Excelsior O.18",
-    "locatie": "Sportpark Zoudenbalch",
-    "plaats": "Utrecht",
-    "veld": "4",
-    "info": "",
-    "notities": "",
-    "spelers": [],
-    "status": "gepland",
-    "created": 1774994400000,
-    "modified": 1777586400000
-  },
-  {
-    "id": "demo_m-1",
-    "datum": "2026-05-15",
-    "tijd": "10:30",
-    "leeftijd": "O.15",
-    "methode": "Live",
-    "thuis": "Quick Boys O.15",
-    "uit": "IJsselmeervogels O.15",
-    "locatie": "Papendal",
-    "plaats": "Arnhem",
-    "veld": "3b",
-    "info": "",
-    "notities": "",
-    "spelers": [],
-    "status": "gepland",
-    "created": 1774994400000,
-    "modified": 1777586400000
-  },
-  {
-    "id": "demo_m+0",
-    "datum": "2026-05-16",
-    "tijd": "13:00",
-    "leeftijd": "O.16",
-    "methode": "Live",
-    "thuis": "Spakenburg O.16",
-    "uit": "Katwijk O.16",
-    "locatie": "Sportpark Skoatterwâld",
-    "plaats": "Heerenveen",
-    "veld": "1",
-    "info": "",
-    "notities": "",
-    "spelers": [],
-    "status": "gepland",
-    "created": 1774994400000,
-    "modified": 1777586400000
-  },
-  {
-    "id": "demo_m+1",
-    "datum": "2026-05-17",
-    "tijd": "10:30",
-    "leeftijd": "O.17",
-    "methode": "Live",
-    "thuis": "Cambuur O.17",
-    "uit": "PEC Zwolle O.17",
-    "locatie": "Sportpark De Goffert",
-    "plaats": "Nijmegen",
-    "veld": "2",
-    "info": "",
-    "notities": "",
-    "spelers": [],
-    "status": "gepland",
-    "created": 1774994400000,
-    "modified": 1777586400000
-  },
-  {
-    "id": "demo_m+2",
-    "datum": "2026-05-18",
-    "tijd": "13:00",
-    "leeftijd": "O.16",
-    "methode": "Live",
-    "thuis": "Telstar O.16",
-    "uit": "FC Volendam O.16",
-    "locatie": "Erve Asito",
-    "plaats": "Almelo",
-    "veld": "1a",
-    "info": "",
-    "notities": "",
-    "spelers": [],
-    "status": "gepland",
-    "created": 1774994400000,
-    "modified": 1777586400000
-  },
-  {
-    "id": "demo_m+3",
-    "datum": "2026-05-19",
-    "tijd": "10:30",
-    "leeftijd": "O.21",
-    "methode": "Live",
-    "thuis": "Jong Ajax",
-    "uit": "Jong AZ",
-    "locatie": "Sportpark De Toekomst",
-    "plaats": "Amsterdam",
-    "veld": "1",
-    "info": "",
-    "notities": "",
-    "spelers": [],
-    "status": "gepland",
-    "created": 1774994400000,
-    "modified": 1777586400000
-  },
-  {
-    "id": "demo_m+4",
-    "datum": "2026-05-20",
-    "tijd": "13:00",
-    "leeftijd": "O.16",
-    "methode": "Live",
-    "thuis": "Go Ahead O.16",
-    "uit": "PEC Zwolle O.16",
-    "locatie": "Sportpark Krommerijn",
-    "plaats": "Utrecht",
-    "veld": "3",
-    "info": "",
-    "notities": "",
-    "spelers": [],
-    "status": "gepland",
-    "created": 1774994400000,
-    "modified": 1777586400000
-  },
-  {
-    "id": "demo_m+5",
-    "datum": "2026-05-21",
-    "tijd": "10:30",
-    "leeftijd": "O.18",
-    "methode": "Live",
-    "thuis": "Spakenburg O.18",
-    "uit": "Quick Boys O.18",
-    "locatie": "Sportpark Bonkelaar",
+    "locatie": "Sportpark De Westmaat — Veld 1",
     "plaats": "Spakenburg",
     "veld": "1",
-    "info": "",
+    "info": "Toernooi-poule A — openingswedstrijd.",
     "notities": "",
-    "spelers": [],
+    "spelers": [
+      {
+        "id": "demo_p23",
+        "naam": "Mo Idrissi",
+        "club": "Ajax",
+        "positie": "vm"
+      }
+    ],
     "status": "gepland",
-    "created": 1774994400000,
-    "modified": 1777586400000
+    "created": 1779055200000,
+    "modified": 1779055200000,
+    "toernooi": true,
+    "toernooi_naam": "Pinkstertoernooi Spakenburg O.17"
   },
   {
-    "id": "demo_m+6",
-    "datum": "2026-05-22",
-    "tijd": "13:00",
+    "id": "demo_m07b",
+    "datum": "2026-05-31",
+    "tijd": "09:30",
     "leeftijd": "O.17",
     "methode": "Live",
-    "thuis": "Katwijk O.17",
-    "uit": "Noordwijk O.17",
-    "locatie": "Sportpark De Krom",
-    "plaats": "Katwijk",
-    "veld": "4a",
-    "info": "",
-    "notities": "",
+    "thuis": "PSV O.17",
+    "uit": "AZ O.17",
+    "locatie": "Sportpark De Westmaat — Veld 2",
+    "plaats": "Spakenburg",
+    "veld": "2",
+    "info": "Toernooi-poule B — gelijktijdig met poule A.",
+    "notities": "Loopt parallel met m07a, schoutkeuze afhankelijk van eindstand.",
     "spelers": [],
     "status": "gepland",
-    "created": 1774994400000,
-    "modified": 1777586400000
+    "created": 1779055200000,
+    "modified": 1779055200000,
+    "toernooi": true,
+    "toernooi_naam": "Pinkstertoernooi Spakenburg O.17"
+  },
+  {
+    "id": "demo_m07c",
+    "datum": "2026-05-31",
+    "tijd": "12:00",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "thuis": "Ajax O.17",
+    "uit": "PSV O.17",
+    "locatie": "Sportpark De Westmaat — Veld 1",
+    "plaats": "Spakenburg",
+    "veld": "1",
+    "info": "Toernooi-kruisfinale (uitgaande van winnaars poule A en B).",
+    "notities": "",
+    "spelers": [
+      {
+        "id": "demo_p23",
+        "naam": "Mo Idrissi",
+        "club": "Ajax",
+        "positie": "vm"
+      }
+    ],
+    "status": "gepland",
+    "created": 1779055200000,
+    "modified": 1779055200000,
+    "toernooi": true,
+    "toernooi_naam": "Pinkstertoernooi Spakenburg O.17"
+  },
+  {
+    "id": "demo_m07d",
+    "datum": "2026-05-31",
+    "tijd": "15:00",
+    "leeftijd": "O.17",
+    "methode": "Live",
+    "thuis": "Spakenburg O.17",
+    "uit": "IJsselmeervogels O.17",
+    "locatie": "Sportpark De Westmaat — Hoofdveld",
+    "plaats": "Spakenburg",
+    "veld": "Hoofdveld",
+    "info": "Sluitwedstrijd toernooi — lokale derby als finale.",
+    "notities": "",
+    "spelers": [
+      {
+        "id": "demo_p27",
+        "naam": "Pim van Beek",
+        "club": "IJsselmeervogels",
+        "positie": "am"
+      }
+    ],
+    "status": "gepland",
+    "created": 1779055200000,
+    "modified": 1779055200000,
+    "toernooi": true,
+    "toernooi_naam": "Pinkstertoernooi Spakenburg O.17"
   }
 ];
 const __SH_DEMO_TEAMS = [
   {
-    "id": "demo_t01",
-    "naam": "Demo Team O.17 — Scout-shortlist West",
-    "datum": "2026-05-10",
-    "opstelling": "1-4-3-3",
-    "spelers": [
-      {
-        "positie": "K",
-        "naam": "Tijn Hendriks",
-        "rugnummer": "1",
-        "club": "Heracles Almelo"
+    "id": "demo_an01",
+    "club": "Ajax",
+    "leeftijd": "O.18",
+    "seizoen": "2025/2026",
+    "datum": "2026-05-12",
+    "formation": "1-4-3-3",
+    "slots": {
+      "gk": {
+        "huidig": "A",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Robin Veen",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [],
+        "linked_kandidaat": []
       },
-      {
-        "positie": "RB",
-        "naam": "Bram Mulder",
-        "rugnummer": "2",
-        "club": "sc Heerenveen"
+      "lb": {
+        "huidig": "C",
+        "gewenst": "A",
+        "gap": true,
+        "huidige_speler_1": "Jens Verhoeven",
+        "huidige_speler_2": "",
+        "gezochte_speler": "Snelle, tweebenige linksback (O.17/O.18) met sterke voorzet en duelkracht. Bij voorkeur al BVO-opleiding.",
+        "missende": "Tempo en voorzetkwaliteit — huidige optie is jong (O.16) en mist nog ervaring tegen O.18-aanvallers.",
+        "linked_huidig": [
+          "demo_p29"
+        ],
+        "linked_kandidaat": [
+          "demo_p09"
+        ]
       },
-      {
-        "positie": "RCV",
-        "naam": "Sam Janssen",
-        "rugnummer": "5",
-        "club": "PSV"
+      "lcv": {
+        "huidig": "A",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Sam Janssen",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p03"
+        ],
+        "linked_kandidaat": []
       },
-      {
-        "positie": "LCV",
-        "naam": "Finn de Vries",
-        "rugnummer": "4",
-        "club": "FC Utrecht"
+      "rcv": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Joep Hartman",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [],
+        "linked_kandidaat": []
       },
-      {
-        "positie": "LB",
-        "naam": "Jens Kramer",
-        "rugnummer": "3",
-        "club": "Sparta Rotterdam"
+      "rb": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Mick Dorenbos",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [],
+        "linked_kandidaat": []
       },
-      {
-        "positie": "DM",
-        "naam": "Lars de Wit",
-        "rugnummer": "6",
-        "club": "NEC"
+      "vm": {
+        "huidig": "C",
+        "gewenst": "A",
+        "gap": true,
+        "huidige_speler_1": "Mo Idrissi",
+        "huidige_speler_2": "",
+        "gezochte_speler": "Box-to-box zes met leesvermogen, eerste pass A-niveau, en mentaliteit om de linie te coachen. Tweebenig is een plus.",
+        "missende": "Leiderschap en eerste pass onder druk — Mo is technisch op niveau maar nog te jong om de zes-rol leidend in te vullen.",
+        "linked_huidig": [
+          "demo_p23"
+        ],
+        "linked_kandidaat": [
+          "demo_p13"
+        ]
       },
-      {
-        "positie": "CM",
-        "naam": "Lucas van Dijk",
-        "rugnummer": "8",
-        "club": "FC Twente"
+      "cm_l": {
+        "huidig": "A",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Lucas van Dijk",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p05"
+        ],
+        "linked_kandidaat": []
       },
-      {
-        "positie": "AM",
-        "naam": "Liam de Boer",
-        "rugnummer": "10",
-        "club": "Ajax"
+      "cm_r": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Olivier Hoekstra",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p13"
+        ],
+        "linked_kandidaat": []
       },
-      {
-        "positie": "RV",
-        "naam": "Daan Visser",
-        "rugnummer": "7",
-        "club": "Feyenoord"
+      "lv": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Finn Smit",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p07"
+        ],
+        "linked_kandidaat": []
       },
-      {
-        "positie": "CS",
-        "naam": "Noah Bakker",
-        "rugnummer": "9",
-        "club": "AZ"
+      "cs": {
+        "huidig": "A",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Liam de Boer",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p01"
+        ],
+        "linked_kandidaat": []
       },
-      {
-        "positie": "LV",
-        "naam": "Milan Smit",
-        "rugnummer": "11",
-        "club": "Vitesse"
+      "rv": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Daan Visser",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p02"
+        ],
+        "linked_kandidaat": []
       }
-    ]
+    },
+    "createdAt": 1778536800000
+  },
+  {
+    "id": "demo_an02",
+    "club": "Feyenoord",
+    "leeftijd": "O.17",
+    "seizoen": "2025/2026",
+    "datum": "2026-05-14",
+    "formation": "1-4-2-3-1",
+    "slots": {
+      "gk": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Sven Brinks",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [],
+        "linked_kandidaat": []
+      },
+      "lb": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Stijn de Vries",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p09"
+        ],
+        "linked_kandidaat": []
+      },
+      "lcv": {
+        "huidig": "A",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Tobias Vermeer",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p14"
+        ],
+        "linked_kandidaat": []
+      },
+      "rcv": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": true,
+        "huidige_speler_1": "Niels Postma",
+        "huidige_speler_2": "",
+        "gezochte_speler": "Rechtscentrale verdediger met lengte (≥185cm), sterke opbouw vanuit achteruit, leesvermogen op A-niveau.",
+        "missende": "Lengte en luchtspel — huidige optie is fysiek nog niet rijp en mist coachvermogen bij de tegenstanders' vleugel.",
+        "linked_huidig": [
+          "demo_p26"
+        ],
+        "linked_kandidaat": [
+          "demo_p03"
+        ]
+      },
+      "rb": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Faisal El Amrani",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p20"
+        ],
+        "linked_kandidaat": []
+      },
+      "vm_l": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Bram Mulder",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p06"
+        ],
+        "linked_kandidaat": []
+      },
+      "vm_r": {
+        "huidig": "C",
+        "gewenst": "A",
+        "gap": true,
+        "huidige_speler_1": "Anwar Boutaybi",
+        "huidige_speler_2": "",
+        "gezochte_speler": "Rechtshalf met box-to-box loopvermogen, scorend bijdragen ≥6 doelpunten per seizoen, sterk in omschakeling.",
+        "missende": "Scoringskracht en eerste pass — Anwar is werkkracht op niveau maar mist offensieve output.",
+        "linked_huidig": [
+          "demo_p21"
+        ],
+        "linked_kandidaat": [
+          "demo_p06"
+        ]
+      },
+      "lm": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Jaden de Jong",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p18"
+        ],
+        "linked_kandidaat": []
+      },
+      "am": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Quinten Dekker",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p15"
+        ],
+        "linked_kandidaat": []
+      },
+      "rm": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Mees Koster",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p11"
+        ],
+        "linked_kandidaat": []
+      },
+      "cs": {
+        "huidig": "A",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Daan Visser",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p02"
+        ],
+        "linked_kandidaat": []
+      }
+    },
+    "createdAt": 1778709600000
+  },
+  {
+    "id": "demo_an03",
+    "club": "PSV",
+    "leeftijd": "O.18",
+    "seizoen": "2025/2026",
+    "datum": "2026-05-16",
+    "formation": "1-4-4-2",
+    "slots": {
+      "gk": {
+        "huidig": "A",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Tijn Hendriks",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p10"
+        ],
+        "linked_kandidaat": []
+      },
+      "lb": {
+        "huidig": "C",
+        "gewenst": "A",
+        "gap": true,
+        "huidige_speler_1": "Jens Verhoeven",
+        "huidige_speler_2": "",
+        "gezochte_speler": "Tweebenige linksback met sterk voorzet-been en duelkracht; idealiter O.18 met ervaring tegen amateur-toptegenstanders.",
+        "missende": "Volwassen lichaamskracht en voorzet-precisie — huidige speler is technisch goed maar nog te jong fysiek.",
+        "linked_huidig": [
+          "demo_p29"
+        ],
+        "linked_kandidaat": [
+          "demo_p09"
+        ]
+      },
+      "lcv": {
+        "huidig": "A",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Sam Janssen",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p03"
+        ],
+        "linked_kandidaat": []
+      },
+      "rcv": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Ruben Kuijer",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p08"
+        ],
+        "linked_kandidaat": []
+      },
+      "rb": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Faisal El Amrani",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p20"
+        ],
+        "linked_kandidaat": []
+      },
+      "lm": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Finn Smit",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p07"
+        ],
+        "linked_kandidaat": []
+      },
+      "cm_l": {
+        "huidig": "A",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Lucas van Dijk",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p05"
+        ],
+        "linked_kandidaat": []
+      },
+      "cm_r": {
+        "huidig": "C",
+        "gewenst": "A",
+        "gap": true,
+        "huidige_speler_1": "Senna Kraan",
+        "huidige_speler_2": "",
+        "gezochte_speler": "Box-to-box achtervoetbal met scorend vermogen (≥4 goals/seizoen), tweebenig, sterk in 1v1 verdedigend.",
+        "missende": "Offensieve output — Senna brengt rust maar levert weinig in de eindfase.",
+        "linked_huidig": [
+          "demo_p25"
+        ],
+        "linked_kandidaat": [
+          "demo_p06"
+        ]
+      },
+      "rm": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Mees Koster",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p11"
+        ],
+        "linked_kandidaat": []
+      },
+      "cs_l": {
+        "huidig": "A",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Liam de Boer",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p01"
+        ],
+        "linked_kandidaat": []
+      },
+      "cs_r": {
+        "huidig": "B",
+        "gewenst": "A",
+        "gap": false,
+        "huidige_speler_1": "Sven Brouwer",
+        "huidige_speler_2": "",
+        "gezochte_speler": "",
+        "missende": "",
+        "linked_huidig": [
+          "demo_p12"
+        ],
+        "linked_kandidaat": []
+      }
+    },
+    "createdAt": 1778882400000
+  }
+];
+const __SH_DEMO_CONTACTS = [
+  {
+    "id": "demo_c01",
+    "naam": "Marco van Basten Jr.",
+    "tel": "06 12345678",
+    "email": "mvanbasten@scoutbureau.nl",
+    "club": "Onafhankelijk",
+    "functie": "Senior scout",
+    "notes": "Specialist O.17 BVO Noord-Holland. Wisselt tips uit op zaterdagavond.",
+    "created_at": 1776463200000,
+    "updated_at": 1778623200000
+  },
+  {
+    "id": "demo_c02",
+    "naam": "Frank de Wit",
+    "tel": "06 23456789",
+    "email": "frank.dewit@ajax.nl",
+    "club": "Ajax",
+    "functie": "Hoofd Jeugdopleiding O.17/O.18",
+    "notes": "Open voor wedstrijden bekijken bij Ajax-jeugd. Mail eerst om bevestiging.",
+    "created_at": 1775167200000,
+    "updated_at": 1778191200000
+  },
+  {
+    "id": "demo_c03",
+    "naam": "Mark Janssen",
+    "tel": "06 34567890",
+    "email": "mark@spakenburg.nl",
+    "club": "Spakenburg",
+    "functie": "Trainer O.18",
+    "notes": "Goede contactpersoon voor toptalenten amateurniveau. Belt zelf bij interessante spelers.",
+    "created_at": 1773871200000,
+    "updated_at": 1778882400000
+  },
+  {
+    "id": "demo_c04",
+    "naam": "Petra van Leeuwen",
+    "tel": "06 45678901",
+    "email": "petra@kndvfysio.nl",
+    "club": "KNVB",
+    "functie": "Fysio jeugdopleiding",
+    "notes": "Vraagbaak voor blessure-historie en belastbaarheid jonge spelers.",
+    "created_at": 1772143200000,
+    "updated_at": 1777759200000
+  },
+  {
+    "id": "demo_c05",
+    "naam": "Ahmed El-Bouazzati",
+    "tel": "06 56789012",
+    "email": "ahmed@youthscout.eu",
+    "club": "Onafhankelijk",
+    "functie": "Zaakwaarnemer / agent",
+    "notes": "Vertegenwoordigt enkele talenten uit Rotterdam-regio. Onderhandelbaar maar correct.",
+    "created_at": 1776895200000,
+    "updated_at": 1778796000000
+  },
+  {
+    "id": "demo_c06",
+    "naam": "Jan Bosveld",
+    "tel": "06 67890123",
+    "email": "j.bosveld@psv.nl",
+    "club": "PSV",
+    "functie": "Coördinator scouting",
+    "notes": "Tweemaandelijks bijpraten over de regionale lichting.",
+    "created_at": 1773007200000,
+    "updated_at": 1778450400000
+  },
+  {
+    "id": "demo_c07",
+    "naam": "Esther Mol",
+    "tel": "06 78901234",
+    "email": "esther.mol@feyenoord.nl",
+    "club": "Feyenoord",
+    "functie": "Hoofd Talent Identificatie",
+    "notes": "Tipgever voor zuidwest-NL en Zuid-Holland zuid.",
+    "created_at": 1771279200000,
+    "updated_at": 1778018400000
+  },
+  {
+    "id": "demo_c08",
+    "naam": "Lars Veenstra",
+    "tel": "06 89012345",
+    "email": "l.veenstra@ijsselmeervogels.nl",
+    "club": "IJsselmeervogels",
+    "functie": "Trainer O.17",
+    "notes": "Belt op zondagavond na de wedstrijd met snelle observaties.",
+    "created_at": 1774735200000,
+    "updated_at": 1778968800000
+  },
+  {
+    "id": "demo_c09",
+    "naam": "Sophie Mahieu",
+    "tel": "06 90123456",
+    "email": "sophie@fctwente.nl",
+    "club": "FC Twente",
+    "functie": "Talentcoach O.16/O.17",
+    "notes": "Sterke band met regionale amateurclubs Oost-Nederland.",
+    "created_at": 1775599200000,
+    "updated_at": 1778364000000
+  },
+  {
+    "id": "demo_c10",
+    "naam": "Robin Tholens",
+    "tel": "06 11223344",
+    "email": "r.tholens@scoutnetwork.nl",
+    "club": "Onafhankelijk",
+    "functie": "Onafhankelijk scout",
+    "notes": "Specialist amateurtop randstad. Heeft eigen netwerk van trainers.",
+    "created_at": 1776031200000,
+    "updated_at": 1778709600000
+  },
+  {
+    "id": "demo_c11",
+    "naam": "Maaike de Groot",
+    "tel": "06 22334455",
+    "email": "maaike@aznoord.nl",
+    "club": "AZ",
+    "functie": "Scout Noord-Holland",
+    "notes": "Werkt parttime, wisselt rapporten uit op woensdag.",
+    "created_at": 1774303200000,
+    "updated_at": 1778277600000
+  },
+  {
+    "id": "demo_c12",
+    "naam": "Bob Hendriks",
+    "tel": "06 33445566",
+    "email": "b.hendriks@nec-nijmegen.nl",
+    "club": "NEC Nijmegen",
+    "functie": "Sportief manager jeugd",
+    "notes": "Beslist over uitnodigingen voor stages. Beslist niet de hoofdscout.",
+    "created_at": 1773439200000,
+    "updated_at": 1778536800000
+  },
+  {
+    "id": "demo_c13",
+    "naam": "Linda van der Linden",
+    "tel": "06 44556677",
+    "email": "linda@quickboys.nl",
+    "club": "Quick Boys",
+    "functie": "Bestuurslid jeugd",
+    "notes": "Eerste aanspreekpunt voor toestemming wedstrijden bezoeken Quick Boys-jeugd.",
+    "created_at": 1772575200000,
+    "updated_at": 1778104800000
+  }
+];
+const __SH_DEMO_TIPS = [
+  {
+    "id": "demo_t01",
+    "datum": "2026-05-05",
+    "tipgever": "Marco van Basten Jr.",
+    "tipgever_contact": "demo_c01",
+    "speler": "Joep van Hees",
+    "elftal": "O.16",
+    "leeftijd": "15",
+    "positie": "vm",
+    "regio": "Noord-Holland",
+    "prioriteit": "Hoog",
+    "status": "Wedstrijd ingepland",
+    "bijzonderheden": "Volgens Marco een van de twee beste box-to-box-spelers uit de O.16-lichting NH. Wedstrijd zaterdag 23-05 tegen HVCH.",
+    "created_at": 1777932000000,
+    "updated_at": 1778882400000
   },
   {
     "id": "demo_t02",
-    "naam": "Demo Team O.16 — Doorstroom amateur->BVO",
-    "datum": "2026-05-14",
-    "opstelling": "1-4-4-2",
-    "spelers": [
-      {
-        "positie": "K",
-        "naam": "Bas Willems",
-        "rugnummer": "18",
-        "club": "FC Volendam"
-      },
-      {
-        "positie": "RB",
-        "naam": "Pim Schreuder",
-        "rugnummer": "13",
-        "club": "Go Ahead Eagles"
-      },
-      {
-        "positie": "RCV",
-        "naam": "Thomas de Jong",
-        "rugnummer": "22",
-        "club": "Telstar"
-      },
-      {
-        "positie": "LCV",
-        "naam": "Senna Peters",
-        "rugnummer": "14",
-        "club": "Quick Boys"
-      },
-      {
-        "positie": "LB",
-        "naam": "Stijn Verhoeven",
-        "rugnummer": "15",
-        "club": "Excelsior"
-      },
-      {
-        "positie": "RM",
-        "naam": "Mees Koster",
-        "rugnummer": "17",
-        "club": "IJsselmeervogels"
-      },
-      {
-        "positie": "CM",
-        "naam": "Lucas van Dijk",
-        "rugnummer": "8",
-        "club": "FC Twente"
-      },
-      {
-        "positie": "CM",
-        "naam": "Tobias Vermeer",
-        "rugnummer": "21",
-        "club": "PEC Zwolle"
-      },
-      {
-        "positie": "LM",
-        "naam": "Joep van Leeuwen",
-        "rugnummer": "8",
-        "club": "Katwijk"
-      },
-      {
-        "positie": "CS",
-        "naam": "Sven Brouwer",
-        "rugnummer": "9",
-        "club": "Spakenburg"
-      },
-      {
-        "positie": "CS",
-        "naam": "Ruben Dijkstra",
-        "rugnummer": "19",
-        "club": "Cambuur"
-      }
-    ]
+    "datum": "2026-04-28",
+    "tipgever": "Mark Janssen",
+    "tipgever_contact": "demo_c03",
+    "speler": "Yoran Veldkamp",
+    "elftal": "O.17",
+    "leeftijd": "16",
+    "positie": "lv",
+    "regio": "Utrecht",
+    "prioriteit": "Midden",
+    "status": "Nog te bekijken",
+    "bijzonderheden": "Linksbuiten Hercules O.17 — Mark zegt dat hij elke wedstrijd 1+ goal maakt. Geboren 2009, ouder is gymtrainer.",
+    "created_at": 1777327200000,
+    "updated_at": 1778450400000
+  },
+  {
+    "id": "demo_t03",
+    "datum": "2026-04-15",
+    "tipgever": "Esther Mol",
+    "tipgever_contact": "demo_c07",
+    "speler": "Karim Boudali",
+    "elftal": "O.18",
+    "leeftijd": "17",
+    "positie": "cs",
+    "regio": "Zuid-Holland",
+    "prioriteit": "Hoog",
+    "status": "Bekeken",
+    "bijzonderheden": "Spits ASWH O.18, fysiek volwassen al. Klassieke targetman, kopkracht op niveau. Esther kent vader (oud-prof).",
+    "created_at": 1776204000000,
+    "updated_at": 1778277600000
+  },
+  {
+    "id": "demo_t04",
+    "datum": "2026-05-12",
+    "tipgever": "Lars Veenstra",
+    "tipgever_contact": "demo_c08",
+    "speler": "Wessel Stoop",
+    "elftal": "O.17",
+    "leeftijd": "15",
+    "positie": "cm_l",
+    "regio": "Utrecht",
+    "prioriteit": "Midden",
+    "status": "Wedstrijd ingepland",
+    "bijzonderheden": "Centrale middenvelder IJsselmeervogels O.17 — vooral inzicht valt op. Wedstrijd 24-05 toernooi.",
+    "created_at": 1778536800000,
+    "updated_at": 1778968800000
+  },
+  {
+    "id": "demo_t05",
+    "datum": "2026-03-18",
+    "tipgever": "Robin Tholens",
+    "tipgever_contact": "demo_c10",
+    "speler": "Sem Tieleman",
+    "elftal": "O.16",
+    "leeftijd": "15",
+    "positie": "rcv",
+    "regio": "Randstad",
+    "prioriteit": "Laag",
+    "status": "Afgevallen",
+    "bijzonderheden": "Robin schatte deze speler hoog in, na bekijken viel het tegen — eerste contact te wisselvallig voor BVO-niveau.",
+    "created_at": 1773784800000,
+    "updated_at": 1777327200000
+  },
+  {
+    "id": "demo_t06",
+    "datum": "2026-05-08",
+    "tipgever": "Sophie Mahieu",
+    "tipgever_contact": "demo_c09",
+    "speler": "Diego Caetano",
+    "elftal": "O.18",
+    "leeftijd": "17",
+    "positie": "rv",
+    "regio": "Oost-Nederland",
+    "prioriteit": "Hoog",
+    "status": "Gerapporteerd",
+    "bijzonderheden": "Rechtsbuiten FC Twente O.18. Sophie zag hem 2x — past in de aanvalslinie van Ajax O.18. Rapport ingediend, advies 3.",
+    "created_at": 1778191200000,
+    "updated_at": 1778882400000
   }
 ];
 function __shLoadDemoData(){
   try {
     if(!Array.isArray(playersCache) || playersCache.length === 0){
       playersCache = __SH_DEMO_PLAYERS.map(p => ({...p}));
-      // Voeg rapport-data toe aan de spelerrecord van bijbehorend rapport
+      // s35cx: speler krijgt beoordelingen+advies van zijn MEEST RECENTE rapport
+      // (sommige spelers hebben meerdere rapporten — radar/score moet laatste tonen)
+      const latestByPlayer = {};
       __SH_DEMO_REPORTS.forEach(r => {
+        const prev = latestByPlayer[r.player_id];
+        if(!prev || (r.datum || '') > (prev.datum || '')){
+          latestByPlayer[r.player_id] = r;
+        }
+      });
+      Object.values(latestByPlayer).forEach(r => {
         const idx = playersCache.findIndex(p => p.id === r.player_id);
         if(idx >= 0){
           playersCache[idx] = {...playersCache[idx], beoordelingen: r.beoordelingen, advies: r.advies};
@@ -11063,10 +13198,25 @@ function __shLoadDemoData(){
       analysesCache = __SH_DEMO_TEAMS.map(t => ({...t}));
       if(typeof __shTrace === 'function') __shTrace('demo-data-teams', {count: analysesCache.length});
     }
+    // s35cx: contacten, tips, rapport-historie (matchReports)
+    if(!Array.isArray(contactsCache) || contactsCache.length === 0){
+      contactsCache = __SH_DEMO_CONTACTS.map(c => ({...c}));
+      if(typeof __shTrace === 'function') __shTrace('demo-data-contacts', {count: contactsCache.length});
+    }
+    if(!Array.isArray(tipsCache) || tipsCache.length === 0){
+      tipsCache = __SH_DEMO_TIPS.map(t => ({...t}));
+      if(typeof __shTrace === 'function') __shTrace('demo-data-tips', {count: tipsCache.length});
+    }
+    if(!Array.isArray(matchReportsCache) || matchReportsCache.length === 0){
+      matchReportsCache = __SH_DEMO_REPORTS.map(r => ({...r}));
+      if(typeof __shTrace === 'function') __shTrace('demo-data-reports', {count: matchReportsCache.length});
+    }
     // Re-render dashboard/lijsten als gebruiker al op een view zit
     try { if(typeof renderDashboard === 'function') renderDashboard(); } catch(_){}
     try { if(typeof renderPlayers === 'function') renderPlayers(); } catch(_){}
     try { if(typeof renderProgramma === 'function') renderProgramma(); } catch(_){}
+    try { if(typeof renderContacts === 'function') renderContacts(); } catch(_){}
+    try { if(typeof renderTips === 'function') renderTips(); } catch(_){}
   } catch(e){
     if(typeof __shTrace === 'function') __shTrace('demo-data-error', {msg: String(e)});
   }
@@ -11078,8 +13228,11 @@ setTimeout(() => {
   try {
     if(typeof currentUser === 'undefined' || !currentUser || !currentUser.email) return;
     if(currentUser.email.toLowerCase() !== 'demo@scoutinghub.nl') return;
+    // s35cx: trigger zodra een van de hoofd-caches leeg is (contacten/tips horen er nu ook bij)
     if((!playersCache || playersCache.length === 0)
-       && (!programmaCache || programmaCache.length === 0)){
+       && (!programmaCache || programmaCache.length === 0)
+       && (!contactsCache || contactsCache.length === 0)
+       && (!tipsCache || tipsCache.length === 0)){
       __shLoadDemoData();
     }
   } catch(_){}
@@ -11136,15 +13289,26 @@ async function __shSeedDemoToFirestore(){
     return;
   }
   if(!confirm('Demo-data nu in dit account zetten? Bestaande demo-records (demo_*) worden overschreven.')) return;
-  let okP=0, okR=0, okM=0, okT=0, fail=0;
-  // Spelers (incl. ingebakken rapport-data)
+  let okP=0, okR=0, okM=0, okT=0, okC=0, okTi=0, fail=0;
+  // Spelers — krijgen beoordelingen+advies van hun MEEST RECENTE rapport
   try {
+    const latestByPlayer = {};
+    __SH_DEMO_REPORTS.forEach(r => {
+      const prev = latestByPlayer[r.player_id];
+      if(!prev || (r.datum || '') > (prev.datum || '')) latestByPlayer[r.player_id] = r;
+    });
     for(const p of __SH_DEMO_PLAYERS){
-      const rep = __SH_DEMO_REPORTS.find(r => r.player_id === p.id);
+      const rep = latestByPlayer[p.id];
       const rec = rep ? {...p, beoordelingen: rep.beoordelingen, advies: rep.advies} : {...p};
       try { await savePlayer(rec); okP++; } catch(e){ fail++; console.error('seed player', e); }
     }
   } catch(e){ console.error('seed players block', e); }
+  // Rapport-historie (matchReports) — alle rapporten incl. duplicaten per speler
+  try {
+    for(const r of __SH_DEMO_REPORTS){
+      try { await saveMatchReport({...r}); okR++; } catch(e){ fail++; console.error('seed report', e); }
+    }
+  } catch(e){ console.error('seed reports block', e); }
   // Wedstrijden (programma)
   try {
     for(const m of __SH_DEMO_MATCHES){
@@ -11157,10 +13321,22 @@ async function __shSeedDemoToFirestore(){
       try { await saveAnalysis({...t}); okT++; } catch(e){ fail++; console.error('seed team', e); }
     }
   } catch(e){ console.error('seed teams block', e); }
-  const msg = `Demo-data geladen: ${okP} spelers, ${okM} wedstrijden, ${okT} teams` + (fail ? ` (${fail} fouten)` : '');
+  // Contacten
+  try {
+    for(const c of __SH_DEMO_CONTACTS){
+      try { await saveContact({...c}); okC++; } catch(e){ fail++; console.error('seed contact', e); }
+    }
+  } catch(e){ console.error('seed contacts block', e); }
+  // Tips
+  try {
+    for(const tp of __SH_DEMO_TIPS){
+      try { await saveTip({...tp}); okTi++; } catch(e){ fail++; console.error('seed tip', e); }
+    }
+  } catch(e){ console.error('seed tips block', e); }
+  const msg = `Demo-data geladen: ${okP} spelers, ${okR} rapporten, ${okM} wedstrijden, ${okT} teams, ${okC} contacten, ${okTi} tips` + (fail ? ` (${fail} fouten)` : '');
   if(typeof toast === 'function') toast(msg);
   else alert(msg);
-  if(typeof __shTrace === 'function') __shTrace('demo-seed-done', {okP, okM, okT, fail});
+  if(typeof __shTrace === 'function') __shTrace('demo-seed-done', {okP, okR, okM, okT, okC, okTi, fail});
 }
 window.__shSeedDemoToFirestore = __shSeedDemoToFirestore;
 // Wire seed-knop wanneer DOM klaar is
@@ -11194,11 +13370,20 @@ setTimeout(async () => {
       // Caches gevuld met demo-IDs maar mogelijk alleen in-memory; seed alsnog
     }
     if(typeof __shTrace === 'function') __shTrace('demo-autoseed-start', {uid: currentUser.uid});
-    let okP=0, okM=0, okT=0, fail=0;
+    let okP=0, okR=0, okM=0, okT=0, okC=0, okTi=0, fail=0;
+    // s35cx: meest-recente rapport per speler bepalen
+    const latestByPlayer = {};
+    __SH_DEMO_REPORTS.forEach(r => {
+      const prev = latestByPlayer[r.player_id];
+      if(!prev || (r.datum || '') > (prev.datum || '')) latestByPlayer[r.player_id] = r;
+    });
     for(const p of __SH_DEMO_PLAYERS){
-      const rep = __SH_DEMO_REPORTS.find(r => r.player_id === p.id);
+      const rep = latestByPlayer[p.id];
       const rec = rep ? {...p, beoordelingen: rep.beoordelingen, advies: rep.advies} : {...p};
       try { await savePlayer(rec); okP++; } catch(e){ fail++; }
+    }
+    for(const r of __SH_DEMO_REPORTS){
+      try { await saveMatchReport({...r}); okR++; } catch(e){ fail++; }
     }
     for(const m of __SH_DEMO_MATCHES){
       try { await saveProgrammaItem({...m}); okM++; } catch(e){ fail++; }
@@ -11206,10 +13391,16 @@ setTimeout(async () => {
     for(const t of __SH_DEMO_TEAMS){
       try { await saveAnalysis({...t}); okT++; } catch(e){ fail++; }
     }
+    for(const c of __SH_DEMO_CONTACTS){
+      try { await saveContact({...c}); okC++; } catch(e){ fail++; }
+    }
+    for(const tp of __SH_DEMO_TIPS){
+      try { await saveTip({...tp}); okTi++; } catch(e){ fail++; }
+    }
     localStorage.setItem(seenKey, new Date().toISOString());
     __shAutoSeedDone = true;
-    if(typeof __shTrace === 'function') __shTrace('demo-autoseed-done', {okP, okM, okT, fail});
-    if(typeof toast === 'function') toast(`Demo-data geladen (${okP} spelers, ${okM} wedstrijden, ${okT} teams)`);
+    if(typeof __shTrace === 'function') __shTrace('demo-autoseed-done', {okP, okR, okM, okT, okC, okTi, fail});
+    if(typeof toast === 'function') toast(`Demo-data geladen (${okP} spelers, ${okR} rapporten, ${okM} wedstrijden, ${okT} teams, ${okC} contacten, ${okTi} tips)`);
   } catch(e){
     console.error('auto-seed error:', e);
   }

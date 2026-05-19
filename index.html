@@ -4368,45 +4368,39 @@ tbody tr:last-child td { border-bottom: none; }
   }
 }
 
-/* ===== s35db: NUCLEAR edge-to-edge + 3-dagen pills (def. fix) =====
-   Marcel: "van zijkant telefoon tot andere zijkant telefoon". Eerdere pogingen
-   (s35cc/cb/ck/cw) bleven achter door competing rules en .main padding (14px).
-   Nu: één bron-van-waarheid — .main padding wordt lokaal weggehaald voor de
-   programma-view, topbar/weekbar krijgen hun padding terug, grid is 100% breed.
+/* ===== s35dc: edge-to-edge ALLEEN op agenda-grid (header blijft netjes binnen padding) =====
+   Geleerd van s35db: negatieve margin op #view-programma duwt ook de topbar
+   (incl. Vandaag-knop) over de viewport-rand. Fix: laat .main padding intact,
+   en pas de bleed uitsluitend toe op #programma-grid zelf. Pills binnen het
+   grid krijgen eigen interne padding zodat ze niet flush tegen de rand staan.
+   Getest in standalone /output/programma-test.html — werkend bevonden door Marcel.
 */
 @media (max-width: 900px) {
-  /* 1. Reset .main padding voor #view-programma — geen bleed-trucs meer nodig. */
-  body .app-grid .main #view-programma {
+  /* 1. Agenda-grid loopt edge-to-edge: negatieve margin over .main's 14px heen. */
+  #view-programma #programma-grid {
     margin-left: -14px !important;
     margin-right: -14px !important;
     width: calc(100% + 28px) !important;
     max-width: calc(100% + 28px) !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    box-sizing: border-box;
   }
-  /* 2. Topbar / weekbar / empty-state krijgen hun eigen padding terug. */
-  #view-programma > .topbar,
-  #view-programma > .prog-weekbar,
-  #view-programma > .panel,
-  #view-programma > #programma-empty,
-  #view-programma > #programma-sub {
+  /* 2. Pills binnen het grid hebben eigen padding zodat ze niet tegen rand plakken. */
+  #view-programma #programma-grid .prog-uur-daytabs {
+    padding-left: 14px !important;
+    padding-right: 14px !important;
+    width: 100% !important;
+    box-sizing: border-box;
+    margin: 0 !important;
+  }
+  /* 3. Day-cols krijgen interne padding zodat content niet flush tegen rand komt. */
+  #view-programma #programma-grid.prog-grid-uur > .agenda-day-col {
     padding-left: 14px !important;
     padding-right: 14px !important;
     box-sizing: border-box;
   }
-  /* 3. #programma-grid is écht edge-to-edge: 0 margin, volle breedte. */
-  #view-programma #programma-grid {
-    margin-left: 0 !important;
-    margin-right: 0 !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    padding-left: 0 !important;
-    padding-right: 0 !important;
-  }
-  /* 4. day-tabs (pills) van uur-mode: zelfde look als week, geen bleed nodig. */
-  .prog-uur-daytabs {
-    margin: 0 !important;
-    width: 100% !important;
-  }
-  /* 5. In 3-dagen mode: verberg niet-actieve dagen op mobile (pill-selectie). */
+  /* 4. In 3-dagen mode: verberg niet-actieve dagen op mobile (pill-selectie). */
   #view-programma #programma-grid.prog-grid-uur.prog-uur-multi > .agenda-day-col:not(.active) {
     display: none !important;
   }
@@ -7386,7 +7380,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35db (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35dc (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
         <!-- s35cr: juridische links onderin de Instellingen-modal -->
         <div class="settings-meta" style="margin-top:6px; font-size:11px;">
           <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('privacy');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Privacyverklaring</a>
@@ -9554,7 +9548,7 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35db &middot; 19 mei 2026</div>
+    <div class="changelog-ver">v70h-s35dc &middot; 19 mei 2026</div>
 
     <div class="changelog-item">
       <div class="changelog-item-title">Spelersdatabase op mobiel — kaart-weergave i.p.v. horizontaal scrollen</div>

@@ -32674,7 +32674,7 @@ function renderProgramma(){
   // s35bn: detail-card legacy host wegruimen (modal heeft voorrang in week-view)
   const expandedHost = document.querySelector('#programma-grid + .prog-detail-card');
   if(expandedHost) expandedHost.remove();
-  } // einde if(false) dead-code block (s35de)
+  // s35df-hotfix: stray '}' verwijderd die de hele JS-module brak
 }
 
 function progMatchCardHTML(it){

@@ -405,7 +405,8 @@ a { color: var(--accent); text-decoration: none; }
   overflow: hidden;
 }
 #login-overlay {
-  gap: 64px;
+  gap: 0;
+  padding: 24px;
 }
 /* Apple-style: cubic-bezier(.16,1,.3,1) = ease-out-expo. Geen bounce, geen rotatie. */
 .login-hero {
@@ -663,17 +664,17 @@ a { color: var(--accent); text-decoration: none; }
   pointer-events: none;
 }
 .login-card {
-  width: 100%; max-width: 420px;
-  background: rgba(18,24,36,.78);
-  backdrop-filter: blur(20px) saturate(140%);
-  -webkit-backdrop-filter: blur(20px) saturate(140%);
+  width: 100%; max-width: 460px;
+  background: rgba(18,24,36,.62);
+  backdrop-filter: blur(22px) saturate(140%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
   border: 1px solid var(--border);
-  border-radius: 18px;
-  padding: 42px 36px 32px 36px;
+  border-radius: 22px;
+  padding: 36px 38px 28px 38px;
   box-shadow: 0 30px 80px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.02) inset;
   position: relative;
   z-index: 1;
-  animation: appleCardIn 1.3s cubic-bezier(.16,1,.3,1) .55s both;
+  animation: appleCardIn 1.3s cubic-bezier(.16,1,.3,1) .25s both;
   will-change: transform, opacity, filter;
 }
 @keyframes appleCardIn {
@@ -688,13 +689,16 @@ a { color: var(--accent); text-decoration: none; }
 .login-card .login-field:nth-of-type(2) { animation-delay: 1.54s; }
 .login-card .login-btn       { opacity: 0; animation: appleFadeUp .85s cubic-bezier(.16,1,.3,1) 1.66s both; }
 .login-logo {
-  display: flex; flex-direction: column; align-items: center; gap: 14px;
-  margin-bottom: 28px;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  margin-bottom: 22px;
 }
 .login-logo-mark {
-  width: 72px; height: 72px;
+  width: 140px; height: 140px;
   display: flex; align-items: center; justify-content: center;
-  filter: drop-shadow(0 18px 50px rgba(227,6,19,0.45)) drop-shadow(0 0 30px rgba(78,161,255,0.18));
+  filter: drop-shadow(0 20px 50px rgba(227,6,19,0.45)) drop-shadow(0 0 32px rgba(78,161,255,0.16));
+}
+@media (max-width: 520px) {
+  .login-logo-mark { width: 116px; height: 116px; }
 }
 .login-logo-mark svg { width: 100%; height: 100%; display: block; position: relative; z-index: 1; }
 
@@ -1337,13 +1341,13 @@ a { color: var(--accent); text-decoration: none; }
   color: transparent;
 }
 .login-title {
-  font-size: 22px; font-weight: 800; letter-spacing: -.3px;
+  font-size: 30px; font-weight: 800; letter-spacing: -.5px;
   text-align: center;
 }
 .login-sub {
-  color: var(--text-3); font-size: 11px;
-  letter-spacing: 2px; text-transform: uppercase;
-  margin-top: 4px; margin-bottom: 0;
+  color: var(--text-3); font-size: 12px;
+  letter-spacing: 3px; text-transform: uppercase;
+  margin-top: 6px; margin-bottom: 0;
   text-align: center;
   font-weight: 500;
 }
@@ -1354,20 +1358,18 @@ a { color: var(--accent); text-decoration: none; }
 }
 /* s35bc: korte intro in login-card (zichtbaar op mobile) */
 .login-card-intro {
-  margin: 16px 0 8px;
-  padding: 14px 12px;
-  border-top: 1px solid var(--border);
-  border-bottom: 1px solid var(--border);
+  margin: 4px 0 22px;
+  padding: 0;
   text-align: center;
 }
 .lci-pillars {
-  display: flex; gap: 8px; align-items: center; justify-content: center;
-  font-size: 11px; font-weight: 700;
-  letter-spacing: 0.18em; text-transform: uppercase;
-  color: rgba(255,255,255,0.78);
-  margin-bottom: 8px;
+  display: flex; gap: 10px; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  color: rgba(255,255,255,0.82);
+  margin-bottom: 0;
 }
-.lci-pillars i { font-style: normal; color: var(--primary); opacity: .85; }
+.lci-pillars i { font-style: normal; color: var(--primary); opacity: .9; }
 .lci-blurb {
   font-size: 12.5px; line-height: 1.5;
   color: var(--text-3); font-weight: 400;
@@ -1398,6 +1400,19 @@ a { color: var(--accent); text-decoration: none; }
   margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border);
   font-size: 11px; color: var(--text-3); text-align: center;
 }
+.login-legal {
+  margin-top: 18px;
+  display: flex; gap: 10px; align-items: center; justify-content: center;
+  font-size: 11px; color: var(--text-3);
+  letter-spacing: .3px;
+}
+.login-legal a {
+  color: var(--text-3);
+  text-decoration: none;
+  transition: color .15s;
+}
+.login-legal a:hover { color: var(--text); text-decoration: underline; }
+.login-legal span { opacity: .5; }
 .login-toggle {
   margin-top: 14px; text-align: center; font-size: 12px; color: var(--text-3);
 }
@@ -7036,70 +7051,6 @@ tbody tr:last-child td { border-bottom: none; }
 
 <!-- =================== LOGIN OVERLAY =================== -->
 <div id="login-overlay" style="display:none;">
-  <div class="login-hero">
-    <div class="login-hero-mark">
-      <div class="login-hero-particles" aria-hidden="true">
-        <span></span><span></span><span></span><span></span><span></span>
-        <span></span><span></span><span></span><span></span><span></span>
-      </div>
-      <div class="login-hero-beam" aria-hidden="true"></div>
-      <svg viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="heroGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ff4757"/>
-            <stop offset="55%" stop-color="#e30613"/>
-            <stop offset="100%" stop-color="#7a0410"/>
-          </linearGradient>
-          <linearGradient id="heroShine" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%"  stop-color="#ffffff" stop-opacity="0.55"/>
-            <stop offset="40%" stop-color="#ffffff" stop-opacity="0.18"/>
-            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-          </linearGradient>
-          <radialGradient id="heroSpec" cx="32%" cy="22%" r="38%">
-            <stop offset="0%"  stop-color="#ffffff" stop-opacity="0.55"/>
-            <stop offset="60%" stop-color="#ffffff" stop-opacity="0.08"/>
-            <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
-          </radialGradient>
-          <linearGradient id="heroEdge" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%"  stop-color="rgba(255,255,255,0.95)"/>
-            <stop offset="50%" stop-color="rgba(255,255,255,0.55)"/>
-            <stop offset="100%" stop-color="rgba(255,255,255,0.25)"/>
-          </linearGradient>
-        </defs>
-        <!-- Base shield -->
-        <path d="M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z"
-              fill="url(#heroGrad)" stroke="url(#heroEdge)" stroke-width="1.3"/>
-        <!-- Top glossy band (subtle, niet te veel) -->
-        <path d="M40 4 L70 14 L70 32 Q55 36 40 32 Q25 36 10 32 L10 14 Z"
-              fill="url(#heroShine)" opacity="0.85"/>
-        <!-- Specular highlight (zachte glans linksboven) -->
-        <ellipse cx="28" cy="22" rx="14" ry="9" fill="url(#heroSpec)" opacity="0.7"/>
-        <!-- SH text -->
-        <text x="40" y="51" text-anchor="middle" font-family="Arial,sans-serif"
-              font-size="26" font-weight="900" fill="white" letter-spacing="-1.5"
-              style="filter:drop-shadow(0 1px 0 rgba(0,0,0,0.18));">SH</text>
-        <!-- Gold pin -->
-        <circle cx="40" cy="13" r="2.8" fill="#f5c518"/>
-        <circle cx="40" cy="13" r="2.8" fill="url(#heroSpec)" opacity="0.6"/>
-      </svg>
-    </div>
-    <h1 class="login-hero-title film-text"><span class="word">ScoutingHub</span></h1>
-    <div class="login-hero-tag">Door een scout<span>•</span>voor scouts</div>
-    <div class="login-hero-pillars" aria-hidden="true">
-      <span>Laagdrempelig</span><i>·</i>
-      <span>Snel</span><i>·</i>
-      <span>Intuïtief</span>
-    </div>
-    <p class="login-hero-blurb">
-      Vul beoordelingen razendsnel in. Bekijk overzichten in één blik.
-      Vergelijk spelers op de criteria die <em>jij</em> belangrijk vindt.
-    </p>
-    <!-- s35bi: CTA-pill onder hero-blurb -->
-    <div class="login-hero-cta" aria-hidden="true">
-      <span class="login-hero-cta-bolt">&#9889;</span>
-      <span>Binnen 2 minuten je eerste rapport</span>
-    </div>
-  </div>
   <div class="login-card">
     <div class="login-logo">
       <div class="login-logo-mark login-logo-mark-anim">
@@ -7131,8 +7082,7 @@ tbody tr:last-child td { border-bottom: none; }
     </div>
 
     <div class="login-card-intro">
-      <div class="lci-pillars"><span>Laagdrempelig</span><i>·</i><span>Snel</span><i>·</i><span>Intuïtief</span></div>
-      <div class="lci-blurb">Door een scout, voor scouts. Razendsnel beoordelingen invullen, in één blik overzicht, en spelers vergelijken op jouw criteria.</div>
+      <div class="lci-pillars"><span>Overzicht</span><i>•</i><span>Inzicht</span><i>•</i><span>Controle</span></div>
     </div>
 
     <!-- Login screen -->
@@ -7148,8 +7098,10 @@ tbody tr:last-child td { border-bottom: none; }
       </div>
       <button id="login-btn" type="submit" class="login-btn">Inloggen</button>
       <div id="login-error" class="login-error"></div>
-      <div class="login-footer">
-        Je gegevens worden veilig opgeslagen in de cloud en zijn op elk apparaat beschikbaar.
+      <div class="login-legal">
+        <a href="#" onclick="event.preventDefault(); window.go && window.go('voorwaarden');">Voorwaarden</a>
+        <span aria-hidden="true">•</span>
+        <a href="#" onclick="event.preventDefault(); window.go && window.go('privacy');">Privacy</a>
       </div>
     </form>
   </div>
@@ -7374,6 +7326,10 @@ tbody tr:last-child td { border-bottom: none; }
           <div class="settings-row">
             <span class="settings-row-label">App-cache wissen en opnieuw laden</span>
             <button type="button" class="settings-btn ghost" id="settings-clear-cache">Cache wissen</button>
+          </div>
+          <div class="settings-row">
+            <span class="settings-row-label">Demo-rondleiding bekijken (wat is nieuw)</span>
+            <button type="button" class="settings-btn" id="settings-open-tour">Rondleiding starten</button>
           </div>
           <div class="settings-row" id="settings-seed-row" style="display:none;">
             <span class="settings-row-label">Demo-data laden in dit account</span>
@@ -34107,7 +34063,7 @@ function initAuthForms(){
   const overlay = document.getElementById('intro-overlay');
   if(!overlay) return;
   try {
-    if(sessionStorage.getItem('sh_intro_done') === '1'){
+    if(localStorage.getItem('sh_intro_seen') === '1'){
       overlay.classList.add('intro-hide','intro-gone');
       return;
     }
@@ -34125,7 +34081,7 @@ function initAuthForms(){
     }, Math.max(0, outMs - 250));
     setTimeout(() => {
       overlay.classList.add('intro-gone');
-      try { sessionStorage.setItem('sh_intro_done', '1'); } catch(e){}
+      try { localStorage.setItem('sh_intro_seen', '1'); } catch(e){}
     }, outMs + 600);
   }
   document.addEventListener('keydown', function onKey(e){

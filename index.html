@@ -4368,14 +4368,23 @@ tbody tr:last-child td { border-bottom: none; }
   }
 }
 
-/* ===== s35dc: edge-to-edge ALLEEN op agenda-grid (header blijft netjes binnen padding) =====
-   Geleerd van s35db: negatieve margin op #view-programma duwt ook de topbar
-   (incl. Vandaag-knop) over de viewport-rand. Fix: laat .main padding intact,
-   en pas de bleed uitsluitend toe op #programma-grid zelf. Pills binnen het
-   grid krijgen eigen interne padding zodat ze niet flush tegen de rand staan.
-   Getest in standalone /output/programma-test.html — werkend bevonden door Marcel.
+/* ===== s35dd: échte fix — overflow-clip op #view-programma cliped de bleed weg =====
+   Wat in s35cc/db/dc niet werkte: regel 4123-4126 zet `overflow-x: hidden !important`
+   op #view-programma. Daardoor wordt de negatieve margin van #programma-grid (-14px)
+   geclipt op de content-edge van #view-programma. In de standalone test bestond die
+   regel niet, daarom werkte bleed daar wel. Fix:
+   1) Op mobile: zet #view-programma op `overflow-x: visible` zodat het kind kan bleeden.
+      Body / .main hebben al overflow-x: hidden (regel 5282) als safety net.
+   2) Header (topbar, weekbar, day-header) blijft binnen .main's 14px padding — gegarandeerd
+      omdat we GEEN negatieve margin meer op #view-programma zetten (zoals s35db wel deed).
+   3) Pills + day-cols binnen het edge-to-edge grid krijgen eigen 14px interne padding.
 */
 @media (max-width: 900px) {
+  /* 0. KRITIEK: #view-programma mag NIET clippen — anders sneuvelt elke bleed. */
+  #view-programma {
+    overflow-x: visible !important;
+    max-width: 100% !important;
+  }
   /* 1. Agenda-grid loopt edge-to-edge: negatieve margin over .main's 14px heen. */
   #view-programma #programma-grid {
     margin-left: -14px !important;
@@ -7380,7 +7389,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35dc (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35dd (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
         <!-- s35cr: juridische links onderin de Instellingen-modal -->
         <div class="settings-meta" style="margin-top:6px; font-size:11px;">
           <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('privacy');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Privacyverklaring</a>
@@ -9548,7 +9557,7 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35dc &middot; 19 mei 2026</div>
+    <div class="changelog-ver">v70h-s35dd &middot; 19 mei 2026</div>
 
     <div class="changelog-item">
       <div class="changelog-item-title">Spelersdatabase op mobiel — kaart-weergave i.p.v. horizontaal scrollen</div>

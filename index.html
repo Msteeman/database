@@ -4415,6 +4415,130 @@ tbody tr:last-child td { border-bottom: none; }
   }
 }
 
+/* ===== s35de: lijst-per-dag Programma weergave =====
+   Vervangt het uur-grid. Geen edge-to-edge bleed meer — past gewoon in .main padding.
+   Layout: controls (toggle links, kleine pijlen rechts) -> dateline (label of pills) -> lijst dag-groepen.
+*/
+.prog-controls {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin: 8px 0 10px; flex-wrap: wrap;
+}
+.prog-controls .prog-span-toggle {
+  display: inline-flex; gap: 0;
+  background: var(--panel-2, #161a24);
+  border: 1px solid var(--border, #262b39);
+  border-radius: 10px; padding: 3px;
+}
+.prog-controls .prog-span-toggle button {
+  background: transparent; color: var(--text-2, #9aa3b2);
+  border: 0; padding: 6px 12px; border-radius: 7px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  transition: all .15s ease;
+}
+.prog-controls .prog-span-toggle button:hover { color: var(--text, #e8ecf4); }
+.prog-controls .prog-span-toggle button.active {
+  background: var(--accent, #4a89ff); color: #fff;
+}
+.prog-arrows { display: inline-flex; gap: 6px; }
+.prog-arrow-btn {
+  width: 28px; height: 28px; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--panel-2, #161a24);
+  border: 1px solid var(--border, #262b39);
+  border-radius: 8px; color: var(--text-2, #9aa3b2);
+  cursor: pointer; transition: all .15s ease;
+}
+.prog-arrow-btn:hover {
+  color: var(--text, #e8ecf4); border-color: var(--accent, #4a89ff);
+}
+.prog-arrow-btn svg { display: block; }
+
+.prog-dateline { margin: 0 0 12px; }
+.prog-dateline-label {
+  font-size: 15px; font-weight: 700; color: var(--text, #e8ecf4);
+  letter-spacing: .2px;
+}
+.prog-dateline-label .sub {
+  font-size: 12px; font-weight: 500; color: var(--text-3, #6b7280);
+  margin-left: 8px;
+}
+.prog-dateline-pills {
+  display: grid; gap: 6px;
+}
+.prog-dateline-pills.span-3 { grid-template-columns: repeat(3, 1fr); }
+.prog-dateline-pills.span-7 { grid-template-columns: repeat(7, 1fr); }
+.prog-pill {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; padding: 8px 4px; min-height: 48px;
+  background: var(--panel-2, #161a24);
+  border: 1px solid var(--border, #262b39);
+  border-radius: 10px; cursor: pointer;
+  transition: all .15s ease;
+  text-align: center;
+}
+.prog-pill:hover { border-color: var(--accent, #4a89ff); }
+.prog-pill .dn { font-size: 10px; font-weight: 600; color: var(--text-3, #6b7280); text-transform: uppercase; letter-spacing: .4px; }
+.prog-pill .dd { font-size: 15px; font-weight: 700; color: var(--text, #e8ecf4); line-height: 1; }
+.prog-pill .dot { width: 4px; height: 4px; border-radius: 50%; background: var(--accent, #4a89ff); margin-top: 2px; opacity: 0; }
+.prog-pill.has-matches .dot { opacity: 1; }
+.prog-pill.today { border-color: var(--accent, #4a89ff); }
+.prog-pill.today .dn { color: var(--accent, #4a89ff); }
+.prog-pill.active {
+  background: var(--accent, #4a89ff); border-color: var(--accent, #4a89ff);
+}
+.prog-pill.active .dn,
+.prog-pill.active .dd { color: #fff; }
+.prog-pill.active .dot { background: #fff; opacity: 1; }
+
+.prog-list { display: flex; flex-direction: column; gap: 16px; }
+.prog-day-group {
+  background: var(--panel, #11141c);
+  border: 1px solid var(--border, #262b39);
+  border-radius: 12px; padding: 12px 12px 14px;
+}
+.prog-day-group.today { border-color: var(--accent, #4a89ff); }
+.prog-day-group-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 8px; margin: 0 0 10px;
+}
+.prog-day-group-name {
+  font-size: 14px; font-weight: 700; color: var(--text, #e8ecf4);
+}
+.prog-day-group.today .prog-day-group-name { color: var(--accent, #4a89ff); }
+.prog-day-group-count {
+  font-size: 11px; font-weight: 600; color: var(--text-3, #6b7280);
+}
+.prog-day-cards { display: flex; flex-direction: column; gap: 8px; }
+.prog-day-empty {
+  font-size: 12px; color: var(--text-3, #6b7280);
+  padding: 8px 4px;
+}
+.prog-day-add {
+  align-self: flex-start;
+  background: transparent;
+  border: 1px dashed var(--border, #262b39);
+  color: var(--text-3, #6b7280);
+  border-radius: 8px; padding: 6px 10px;
+  font-size: 12px; font-weight: 600; cursor: pointer;
+  margin-top: 4px;
+  transition: all .15s ease;
+}
+.prog-day-add:hover {
+  color: var(--accent, #4a89ff); border-color: var(--accent, #4a89ff);
+}
+
+@media (max-width: 900px) {
+  .prog-controls { gap: 8px; margin: 6px 0 8px; }
+  .prog-controls .prog-span-toggle button { padding: 5px 10px; font-size: 11px; }
+  .prog-arrow-btn { width: 26px; height: 26px; }
+  .prog-dateline-pills { gap: 4px; }
+  .prog-dateline-pills.span-7 { gap: 3px; }
+  .prog-pill { padding: 6px 2px; min-height: 44px; }
+  .prog-pill .dn { font-size: 9px; }
+  .prog-pill .dd { font-size: 13px; }
+  .prog-day-group { padding: 10px 10px 12px; }
+}
+
 /* ===== s35bk-3: Push-up changelog modal ===== */
 .changelog-backdrop {
   position: fixed; inset: 0; z-index: 9999;
@@ -7389,7 +7513,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35dd (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35de (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
         <!-- s35cr: juridische links onderin de Instellingen-modal -->
         <div class="settings-meta" style="margin-top:6px; font-size:11px;">
           <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('privacy');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Privacyverklaring</a>
@@ -8007,24 +8131,30 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="prog-weekbar">
-          <div class="prog-weeklabel" id="prog-weeklabel">Week —</div>
-          <div class="prog-weekbar-controls">
-            <button class="btn btn-ghost" id="prog-prev-week" aria-label="Vorige">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        <!-- s35de: controle-balk — toggle + kleine pijlen -->
+        <div class="prog-controls">
+          <div class="prog-span-toggle" role="tablist" aria-label="Weergave">
+            <button type="button" data-prog-span="1" class="active">1 dag</button>
+            <button type="button" data-prog-span="3">3 dagen</button>
+            <button type="button" data-prog-span="7">Week</button>
+          </div>
+          <div class="prog-arrows">
+            <button class="prog-arrow-btn" id="prog-prev-week" aria-label="Vorige">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
-            <button class="btn btn-ghost" id="prog-next-week" aria-label="Volgende">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            <button class="prog-arrow-btn" id="prog-next-week" aria-label="Volgende">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
             </button>
-            <div class="prog-span-toggle" role="tablist" aria-label="Weergave">
-              <button type="button" data-prog-span="1" class="active">1 dag</button>
-              <button type="button" data-prog-span="3">3 dagen</button>
-              <button type="button" data-prog-span="7">Week</button>
-            </div>
           </div>
         </div>
 
-        <div id="programma-grid" class="prog-grid"></div>
+        <!-- s35de: datum-aanduiding — label (1d) of klikbare pills (3d/Week) -->
+        <div class="prog-dateline" id="prog-dateline"></div>
+
+        <!-- legacy weeklabel houder; nu verborgen maar JS verwacht hem nog -->
+        <div id="prog-weeklabel" style="display:none"></div>
+
+        <div id="programma-grid" class="prog-list"></div>
 
         <div id="programma-empty" style="display:none; text-align:center; padding:40px 20px; color:var(--text-3);">
           <div style="font-size:14px; margin-bottom:8px;">Geen wedstrijden ingepland deze week.</div>
@@ -9557,7 +9687,7 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35dd &middot; 19 mei 2026</div>
+    <div class="changelog-ver">v70h-s35de &middot; 19 mei 2026</div>
 
     <div class="changelog-item">
       <div class="changelog-item-title">Spelersdatabase op mobiel — kaart-weergave i.p.v. horizontaal scrollen</div>
@@ -32176,6 +32306,7 @@ function renderProgramma(){
   // s35bn: detail-card legacy host wegruimen (modal heeft voorrang in week-view)
   const expandedHost = document.querySelector('#programma-grid + .prog-detail-card');
   if(expandedHost) expandedHost.remove();
+  } // einde if(false) dead-code block (s35de)
 }
 
 function progMatchCardHTML(it){

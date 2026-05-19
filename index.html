@@ -3104,6 +3104,71 @@ tbody tr:last-child td { border-bottom: none; }
   font-variant-numeric: tabular-nums;
 }
 
+/* ---- s35df: Spelersoverzicht titel + rapportenlijst ---- */
+.spelersoverzicht-title-row {
+  display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  margin: 4px 0 14px;
+}
+.spelersoverzicht-title {
+  font-size: 22px; font-weight: 800; letter-spacing: -0.2px;
+  color: var(--text-1);
+}
+.spelersoverzicht-subtitle {
+  font-size: 13px; color: var(--text-3); font-weight: 500;
+}
+.dtl-avg-pill {
+  font-size: 11px; font-weight: 700; letter-spacing: .5px;
+  text-transform: uppercase;
+  padding: 4px 10px; border-radius: 999px;
+  background: rgba(99, 102, 241, .12);
+  color: var(--primary-2);
+  border: 1px solid rgba(99, 102, 241, .35);
+  margin-left: auto;
+}
+.dtl-reports-card { padding: 16px 18px; }
+.dtl-reports-card.flash {
+  animation: dtl-reports-flash 1.2s ease;
+}
+@keyframes dtl-reports-flash {
+  0%   { box-shadow: 0 0 0 0 rgba(99, 102, 241, .55); }
+  40%  { box-shadow: 0 0 0 8px rgba(99, 102, 241, .15); }
+  100% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0); }
+}
+.dtl-reports-list {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-top: 8px;
+}
+.dtl-report-row {
+  display: grid;
+  grid-template-columns: 110px 1fr auto auto 20px;
+  gap: 12px; align-items: center;
+  padding: 10px 12px;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, transform .15s ease;
+}
+.dtl-report-row:hover {
+  border-color: var(--primary-2);
+  background: var(--bg-2);
+  transform: translateX(2px);
+}
+.dtl-report-row.active {
+  border-color: var(--primary-2);
+  background: rgba(99, 102, 241, .08);
+}
+.dtl-rr-date { font-size: 12px; color: var(--text-2); font-weight: 600; font-variant-numeric: tabular-nums; }
+.dtl-rr-match { font-size: 13px; color: var(--text-1); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dtl-rr-grade, .dtl-rr-advies { display: flex; align-items: center; }
+.dtl-rr-chev { color: var(--text-3); display: flex; align-items: center; }
+@media (max-width: 640px){
+  .dtl-report-row {
+    grid-template-columns: 80px 1fr auto 18px;
+  }
+  .dtl-rr-advies { display: none; }
+}
+
 /* ---- Sterktes & zwaktes pills ---- */
 .dtl-sw-card {
   margin-top: 16px;
@@ -6968,6 +7033,78 @@ tbody tr:last-child td { border-bottom: none; }
 .db-check-col { width: 36px; text-align: center; }
 .db-row-checked { background: rgba(227,6,19,0.07) !important; }
 .db-row-checked td { border-color: rgba(227,6,19,0.18) !important; }
+/* s35df: uitklapbare rij met rapportenlijst */
+.db-expand-col { width: 52px; text-align: center; padding: 0 4px !important; }
+.db-expand-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 8px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 999px;
+  color: var(--text-2, #c9c9c9);
+  font-size: 11px; font-weight: 600;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+.db-expand-btn:hover {
+  background: rgba(227,6,19,0.12);
+  border-color: rgba(227,6,19,0.45);
+  color: #fff;
+}
+.db-expand-btn .db-expand-chev {
+  display: inline-block;
+  transition: transform .2s ease;
+  font-size: 12px;
+  line-height: 1;
+}
+.db-expand-btn.open .db-expand-chev { transform: rotate(90deg); }
+.db-expand-btn .db-expand-count { display: inline-block; min-width: 14px; text-align: center; }
+.db-expanded-row td.db-expanded-cell {
+  background: rgba(255,255,255,0.03);
+  padding: 0 !important;
+  border-top: 1px solid rgba(227,6,19,0.20);
+}
+.db-expanded-inner { padding: 12px 16px 14px; animation: dbExpandIn .22s ease; }
+@keyframes dbExpandIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+.db-expanded-title {
+  font-size: 11px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  color: var(--text-3, #8a8a8a); margin-bottom: 8px;
+}
+.db-expanded-list { display: flex; flex-direction: column; gap: 6px; }
+.db-expanded-row-item {
+  display: grid;
+  grid-template-columns: 100px 1fr auto auto 18px;
+  align-items: center; gap: 12px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  color: var(--text-1, #fff);
+  font-size: 13px; text-align: left; cursor: pointer;
+  transition: background .15s ease, border-color .15s ease, transform .12s ease;
+}
+.db-expanded-row-item:hover {
+  background: rgba(227,6,19,0.10);
+  border-color: rgba(227,6,19,0.45);
+  transform: translateX(2px);
+}
+.db-expanded-row-item .db-er-date { font-weight: 600; color: var(--text-2, #c9c9c9); }
+.db-expanded-row-item .db-er-match { color: var(--text-1, #fff); }
+.db-expanded-row-item .db-er-advies { color: var(--text-3, #8a8a8a); font-size: 12px; }
+.db-expanded-row-item .db-er-grade { min-width: 32px; text-align: center; }
+.db-expanded-row-item .db-er-chev { color: var(--text-3, #8a8a8a); font-size: 16px; text-align: right; }
+@media (max-width: 640px) {
+  .db-expanded-row-item {
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    gap: 4px 10px;
+  }
+  .db-expanded-row-item .db-er-date { grid-column: 1; grid-row: 1; }
+  .db-expanded-row-item .db-er-match { grid-column: 1; grid-row: 2; }
+  .db-expanded-row-item .db-er-advies { display: none; }
+  .db-expanded-row-item .db-er-grade { grid-column: 2; grid-row: 1; }
+  .db-expanded-row-item .db-er-chev { grid-column: 2; grid-row: 2; }
+}
 .db-compare-bar {
   position: sticky; bottom: 12px;
   margin-top: 14px;
@@ -7513,7 +7650,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35de (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35df (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
         <!-- s35cr: juridische links onderin de Instellingen-modal -->
         <div class="settings-meta" style="margin-top:6px; font-size:11px;">
           <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('privacy');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Privacyverklaring</a>
@@ -9687,7 +9824,7 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35de &middot; 19 mei 2026</div>
+    <div class="changelog-ver">v70h-s35df &middot; 19 mei 2026</div>
 
     <div class="changelog-item">
       <div class="changelog-item-title">Spelersdatabase op mobiel — kaart-weergave i.p.v. horizontaal scrollen</div>
@@ -26528,6 +26665,7 @@ function applyFilters(){
       <thead>
         <tr>
           <th class="db-check-col"><input type="checkbox" class="db-check-all" id="db-check-all" ${allChecked?'checked':''} aria-label="Selecteer alles"/></th>
+          <th class="db-expand-col" aria-label=""></th>
           <th data-sort="naam">Speler</th>
           <th data-sort="positie">Positie</th>
           <th data-sort="club">Club</th>
@@ -26539,9 +26677,16 @@ function applyFilters(){
         </tr>
       </thead>
       <tbody>
-        ${pageItems.map(p=>`
+        ${pageItems.map(p=>{
+          const _rpts = reportsForPlayer(p.id);
+          const _rcount = _rpts.length;
+          const _expandCell = (_rcount >= 2)
+            ? `<button type="button" class="db-expand-btn" data-id="${escapeAttr(p.id)}" aria-label="Toon ${_rcount} rapporten" aria-expanded="false" title="${_rcount} rapporten"><span class="db-expand-chev">▸</span><span class="db-expand-count">${_rcount}</span></button>`
+            : '';
+          return `
           <tr data-id="${p.id}" class="${dbCheckedIds.includes(p.id)?'db-row-checked':''}">
             <td class="db-check-col"><input type="checkbox" class="db-check" data-id="${escapeAttr(p.id)}" ${dbCheckedIds.includes(p.id)?'checked':''} aria-label="Selecteer ${escapeAttr(p.naam||'speler')}"/></td>
+            <td class="db-expand-col">${_expandCell}</td>
             <td>
               <div style="display:flex; align-items:center; gap:10px;">
                 <div class="recent-avatar" style="width:30px;height:30px;font-size:11px;">${initials(p.naam)}</div>
@@ -26559,7 +26704,7 @@ function applyFilters(){
             <td>${adviesLabel(p.advies)||'—'}</td>
             <td>${formatDate(p.datum)}</td>
           </tr>
-        `).join('')}
+        `;}).join('')}
       </tbody>
     </table>
     ${_paginatorBot}
@@ -26592,11 +26737,77 @@ function applyFilters(){
     }
   });
   wireDraftCard();
-  // Row click → detail (but ignore clicks on the checkbox column)
+  // Row click → detail (but ignore clicks on de checkbox- en expand-kolommen)
   $$('tbody tr', wrap).forEach(tr=>{
     tr.addEventListener('click', (ev)=>{
       if(ev.target.closest('.db-check-col')) return;
+      if(ev.target.closest('.db-expand-col')) return;
+      if(tr.classList.contains('db-expanded-row')) return;
       openDetail(tr.dataset.id);
+    });
+  });
+  // s35df: expand-arrow → toon rapportenlijst onder de rij
+  $$('.db-expand-btn', wrap).forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      const pid = btn.dataset.id;
+      const tr = btn.closest('tr');
+      if(!tr) return;
+      const next = tr.nextElementSibling;
+      const isOpen = next && next.classList && next.classList.contains('db-expanded-row') && next.dataset.for === pid;
+      // Sluit eerst alle andere expansies
+      $$('.db-expanded-row', wrap).forEach(r => r.remove());
+      $$('.db-expand-btn', wrap).forEach(b => {
+        b.setAttribute('aria-expanded', 'false');
+        b.classList.remove('open');
+      });
+      if(isOpen) return; // klik op open knop = sluiten
+      const rpts = reportsForPlayer(pid).slice().sort((a,b)=>{
+        const da = (a.datum||a.created_at||0); const db = (b.datum||b.created_at||0);
+        return (db>da?1:db<da?-1:0);
+      });
+      if(!rpts.length) return;
+      btn.setAttribute('aria-expanded', 'true');
+      btn.classList.add('open');
+      const colCount = tr.children.length;
+      const exTr = document.createElement('tr');
+      exTr.className = 'db-expanded-row';
+      exTr.dataset.for = pid;
+      const td = document.createElement('td');
+      td.colSpan = colCount;
+      td.className = 'db-expanded-cell';
+      td.innerHTML = `
+        <div class="db-expanded-inner">
+          <div class="db-expanded-title">Rapporten (${rpts.length}) — klik om direct te openen</div>
+          <div class="db-expanded-list">
+            ${rpts.map(r => {
+              const dat = formatDate(r.datum || r.created_at || '');
+              const tegen = (r.tegenstander || r.opponent || r.match_opponent || '').toString().trim();
+              const grade = r.huidig_niveau || r.advies_letter || '';
+              const adv = adviesLabel(r.advies) || '';
+              return `
+                <button type="button" class="db-expanded-row-item" data-pid="${escapeAttr(pid)}" data-rid="${escapeAttr(r.id)}">
+                  <span class="db-er-date">${escapeHtml(dat||'—')}</span>
+                  <span class="db-er-match">${tegen ? 'vs ' + escapeHtml(tegen) : '<span style="color:var(--text-3);">geen tegenstander</span>'}</span>
+                  <span class="db-er-advies">${escapeHtml(adv)}</span>
+                  <span class="db-er-grade">${grade ? `<span class="grade ${escapeAttr(grade)}">${escapeHtml(grade)}</span>` : ''}</span>
+                  <span class="db-er-chev">›</span>
+                </button>
+              `;
+            }).join('')}
+          </div>
+        </div>`;
+      exTr.appendChild(td);
+      tr.parentNode.insertBefore(exTr, tr.nextSibling);
+      // Wire report-row clicks
+      $$('.db-expanded-row-item', exTr).forEach(item => {
+        item.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const pidx = item.dataset.pid;
+          const ridx = item.dataset.rid;
+          if(pidx && ridx) openDetail(pidx, { reportId: ridx });
+        });
+      });
     });
   });
   // Per-row checkbox — v70h-s29: hard cap op CMP_MAX (6)
@@ -28374,12 +28585,17 @@ function renderCompareTable(players){
 /* =============== PLAYER DETAIL (full-page) =============== */
 let currentPlayerId = null;
 let previousViewBeforePlayer = 'database';
+/* s35df: rapport-selectie voor Spelersoverzicht.
+   null  = auto (gemiddelde bij ≥2 rapporten, anders spelerrecord)
+   '<id>'= toon dit specifieke rapport */
+let currentReportSelection = null;
 
-function openDetail(id){
+function openDetail(id, opts){
   const players = loadPlayers();
   const p = players.find(x=>x.id===id);
   if(!p) return;
   currentPlayerId = id;
+  currentReportSelection = (opts && opts.reportId) ? opts.reportId : null;
   if(currentView !== 'player') previousViewBeforePlayer = currentView || 'database';
   go('player');
 }
@@ -28400,9 +28616,70 @@ function renderDetailOverview(p){
                   : previousViewBeforePlayer === 'dashboard' ? 'Terug naar dashboard'
                   : previousViewBeforePlayer === 'pitch' ? 'Terug naar elftal analyse'
                   : 'Terug naar spelers';
-  // s35cz: gemiddelde over meerdere rapporten (alleen tonen bij ≥2)
+  /* s35df: bepaal modus en bouw "view player" (vp) waarop sub-renders draaien */
+  const allReports = reportsForPlayer(p.id);
+  const reportCount = allReports.length;
+  const selectedReport = currentReportSelection
+    ? allReports.find(r => r.id === currentReportSelection)
+    : null;
+  const mode = selectedReport ? 'single-report'
+             : (reportCount >= 2 ? 'average' : 'player-record');
+  let vp = p;
+  if(mode === 'single-report') vp = buildPlayerFromReport(p, selectedReport);
+  else if(mode === 'average')  vp = buildAvgPlayer(p);
+  let pageSubtitle = '';
+  if(mode === 'average') {
+    pageSubtitle = `Gemiddelde over ${reportCount} rapporten`;
+  } else if(mode === 'single-report') {
+    const teams = selectedReport.wedstrijd
+      ? [selectedReport.wedstrijd.thuis, selectedReport.wedstrijd.uit].filter(Boolean).join(' – ')
+      : '';
+    const dt = selectedReport.datum ? formatDate(selectedReport.datum) : '';
+    pageSubtitle = [teams, dt].filter(Boolean).join(' · ') || 'Rapport';
+  } else if(reportCount === 1) {
+    pageSubtitle = '1 rapport';
+  } else {
+    pageSubtitle = 'Spelerprofiel';
+  }
+  const topBtnLabel = (mode === 'average')
+    ? `Bekijk alle rapporten (${reportCount})`
+    : 'Bekijk volledig rapport';
+  const reportsListHtml = reportCount >= 2 ? (() => {
+    const rows = allReports.map(r => {
+      const teams = r.wedstrijd
+        ? [r.wedstrijd.thuis, r.wedstrijd.uit].filter(Boolean).join(' – ')
+        : '';
+      const dt = r.datum ? formatDate(r.datum) : '—';
+      const advLet = gradeForAdvies(r.advies);
+      const advLab = adviesLabel(r.advies) || '–';
+      const hn = r.huidig_niveau || '–';
+      const isActive = (mode === 'single-report' && r.id === selectedReport?.id);
+      return `<div class="dtl-report-row${isActive?' active':''}" data-rid="${escapeAttr(r.id)}">
+        <div class="dtl-rr-date">${escapeHtml(dt)}</div>
+        <div class="dtl-rr-match">${escapeHtml(teams || 'Wedstrijd')}</div>
+        <div class="dtl-rr-grade"><span class="grade ${hn==='–'?'D':hn}" style="min-width:28px;text-align:center;">${escapeHtml(hn)}</span></div>
+        <div class="dtl-rr-advies"><span class="grade ${advLet}" style="min-width:28px;text-align:center;">${escapeHtml(advLab)}</span></div>
+        <div class="dtl-rr-chev"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></div>
+      </div>`;
+    }).join('');
+    const switchBack = (mode === 'single-report')
+      ? `<button class="btn btn-sm" id="dtl-show-avg" style="margin-bottom:10px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><polyline points="15 18 9 12 15 6"/></svg>
+          Toon gemiddelde over ${reportCount} rapporten
+        </button>` : '';
+    return `
+      <div class="card compare-card dtl-reports-card" id="dtl-reports-card" style="margin-top:16px;">
+        <div class="compare-card-title">
+          <span>Alle rapporten (${reportCount})</span>
+          <span class="compare-card-sub">Klik op een rapport om dat specifieke rapport te openen</span>
+        </div>
+        ${switchBack}
+        <div class="dtl-reports-list">${rows}</div>
+      </div>`;
+  })() : '';
+  // s35cz: gemiddelde over meerdere rapporten (alleen tonen bij ≥2 in avg-mode)
   const stats = avgPlayerStats(p.id);
-  const showAvg = stats && stats.count >= 2;
+  const showAvg = stats && stats.count >= 2 && mode === 'average';
   const avgHtml = showAvg ? (() => {
     const rows = CMP_CRITERIA.map(c => {
       const a = stats.criteria[c.key];
@@ -28431,8 +28708,14 @@ function renderDetailOverview(p){
       </button>
       <button class="btn btn-sm" id="dtl-show-report-top" style="background:var(--primary-2);color:#fff;border-color:var(--primary-2);margin-left:auto;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        Bekijk volledig rapport
+        ${escapeHtml(topBtnLabel)}
       </button>
+    </div>
+    <div class="spelersoverzicht-title-row">
+      <div class="spelersoverzicht-title">Spelersoverzicht</div>
+      <div class="spelersoverzicht-subtitle">${escapeHtml(pageSubtitle)}</div>
+      ${mode === 'average' ? `<span class="dtl-avg-pill">Gemiddelde · ${reportCount} rapporten</span>` : ''}
+      ${mode === 'single-report' ? `<span class="dtl-avg-pill">Eén rapport</span>` : ''}
     </div>
     <div class="detail-header">
       <div class="detail-avatar">${initials(p.naam)}</div>
@@ -28443,9 +28726,9 @@ function renderDetailOverview(p){
         </div>
         ${p.tweebenig ? `<div class="detail-meta" style="margin-top:2px;font-style:italic;">${escapeHtml(p.tweebenig)}</div>` : ''}
         <div class="detail-grade-row">
-          <div><span class="grade-label">Huidig</span> <span class="grade ${p.huidig_niveau||'D'}">${p.huidig_niveau||'-'}</span></div>
-          <div><span class="grade-label">Potentieel</span> <span class="grade outline ${p.potentieel_niveau||'D'}">${p.potentieel_niveau||'-'}</span></div>
-          <div><span class="grade-label">Advies</span> <span class="grade ${gradeForAdvies(p.advies)}">${adviesLabel(p.advies)||'-'}</span></div>
+          <div><span class="grade-label">Huidig</span> <span class="grade ${vp.huidig_niveau||'D'}">${vp.huidig_niveau||'-'}</span></div>
+          <div><span class="grade-label">Potentieel</span> <span class="grade outline ${vp.potentieel_niveau||'D'}">${vp.potentieel_niveau||'-'}</span></div>
+          <div><span class="grade-label">Advies</span> <span class="grade ${gradeForAdvies(vp.advies)}">${adviesLabel(vp.advies)||'-'}</span></div>
         </div>
       </div>
     </div>
@@ -28488,10 +28771,12 @@ function renderDetailOverview(p){
       </div>
     </div>
 
+    ${reportsListHtml}
+
     <div class="form-actions" style="margin-top:24px;">
       <button class="btn" id="dtl-show-report" style="background:var(--primary-2);color:#fff;border-color:var(--primary-2);">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        Bekijk volledig rapport
+        ${escapeHtml(topBtnLabel)}
       </button>
       <button class="btn btn-sm" id="dtl-pdf">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
@@ -28501,15 +28786,41 @@ function renderDetailOverview(p){
       <button class="btn btn-danger btn-sm" id="dtl-del">Verwijder rapport</button>
     </div>
   `;
-  renderDetailKPIs(p);
-  renderDetailStrengthsWeaknesses(p);
-  renderDetailGauge(p);
-  renderDetailPizza(p);
-  renderDetailBars(p);
+  renderDetailKPIs(vp);
+  renderDetailStrengthsWeaknesses(vp);
+  renderDetailGauge(vp);
+  renderDetailPizza(vp);
+  renderDetailBars(vp);
   $('#dtl-back-prev').addEventListener('click', () => go(previousViewBeforePlayer || 'database'));
-  $('#dtl-show-report').addEventListener('click', () => renderDetailFullReport(p));
+  /* s35df: knop-gedrag — in avg-modus scroll naar rapportenlijst; anders open volledig rapport voor huidige vp */
+  const flashReports = () => {
+    const card = document.getElementById('dtl-reports-card');
+    if(!card) return;
+    card.scrollIntoView({behavior:'smooth', block:'start'});
+    card.classList.remove('flash');
+    void card.offsetWidth;
+    card.classList.add('flash');
+  };
+  const handleShowReport = () => {
+    if(mode === 'average') flashReports();
+    else renderDetailFullReport(vp);
+  };
+  $('#dtl-show-report').addEventListener('click', handleShowReport);
   const topBtn = document.getElementById('dtl-show-report-top');
-  if(topBtn) topBtn.addEventListener('click', () => renderDetailFullReport(p));
+  if(topBtn) topBtn.addEventListener('click', handleShowReport);
+  const showAvgBtn = document.getElementById('dtl-show-avg');
+  if(showAvgBtn) showAvgBtn.addEventListener('click', () => {
+    currentReportSelection = null;
+    renderDetailOverview(p);
+  });
+  document.querySelectorAll('#dtl-reports-card .dtl-report-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const rid = row.getAttribute('data-rid');
+      const rep = allReports.find(x => x.id === rid);
+      if(!rep) return;
+      renderDetailFullReport(buildPlayerFromReport(p, rep));
+    });
+  });
   $('#dtl-pdf').addEventListener('click', () => generatePlayerPDF(p));
   $('#dtl-edit').addEventListener('click', () => {
     go('report');
@@ -30654,6 +30965,63 @@ function avgPlayerStats(playerId){
     out.criteria[c.key] = avgLetterForCriterium(reports, c.key);
   }
   return out;
+}
+
+/* s35df: gemiddelde letter voor een top-level rapportveld (huidig_niveau, potentieel_niveau) */
+function avgLetterField(reports, fieldName){
+  if(!Array.isArray(reports) || reports.length === 0) return null;
+  const vals = [];
+  for(const r of reports){
+    const v = r?.[fieldName];
+    if(v && CMP_GRADE_VAL[v] != null) vals.push(CMP_GRADE_VAL[v]);
+  }
+  if(vals.length === 0) return null;
+  const avg = vals.reduce((a,b)=>a+b,0) / vals.length;
+  return { letter: _avgScoreToLetter(avg), score: avg, n: vals.length };
+}
+
+/* s35df: bouw een synthetische "gemiddelde speler" voor de Spelersoverzicht-weergave
+   wanneer er ≥2 rapporten zijn. Alle bestaande sub-renders gebruiken deze record. */
+function buildAvgPlayer(p){
+  if(!p) return p;
+  const reports = reportsForPlayer(p.id);
+  if(reports.length < 2) return p;
+  const stats = avgPlayerStats(p.id);
+  const hAvg = avgLetterField(reports, 'huidig_niveau');
+  const pAvg = avgLetterField(reports, 'potentieel_niveau');
+  const beoordelingen = {};
+  for(const c of CMP_CRITERIA){
+    const a = stats?.criteria?.[c.key];
+    if(a?.letter && a.letter !== '-') beoordelingen[c.key] = a.letter;
+  }
+  return {
+    ...p,
+    beoordelingen,
+    huidig_niveau:     hAvg?.letter || p.huidig_niveau,
+    potentieel_niveau: pAvg?.letter || p.potentieel_niveau,
+    advies: stats?.advies?.rounded ? String(stats.advies.rounded) : p.advies,
+    _isAverage: true,
+    _reportCount: reports.length
+  };
+}
+
+/* s35df: overlay een specifiek rapport op de spelerrecord — voor 'open dit rapport' flow */
+function buildPlayerFromReport(p, report){
+  if(!p || !report) return p;
+  return {
+    ...p,
+    beoordelingen:     report.beoordelingen     || p.beoordelingen || {},
+    huidig_niveau:     report.huidig_niveau     || p.huidig_niveau,
+    potentieel_niveau: report.potentieel_niveau || p.potentieel_niveau,
+    advies:            (report.advies != null && report.advies !== '') ? report.advies : p.advies,
+    wedstrijd:         report.wedstrijd         || p.wedstrijd,
+    datum:             report.datum             || p.datum,
+    opmerkingen:       report.opmerkingen       || p.opmerkingen,
+    sterke_punten:     report.sterke_punten     || p.sterke_punten,
+    ontwikkelpunten:   report.ontwikkelpunten   || p.ontwikkelpunten,
+    _fromReportId: report.id,
+    _isAverage: false
+  };
 }
 
 function positionLabel(code){

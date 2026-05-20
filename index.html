@@ -6067,6 +6067,20 @@ tbody tr:last-child td { border-bottom: none; }
 .m-wstrnote-banner-text { line-height: 1.45; }
 .m-wstrnote-banner-text strong { color: #4ea1ff; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; display: block; margin-bottom: 2px; font-weight: 700; }
 
+/* s35dg Fase E: concept-banner voor wedstrijdrapport (geel ipv blauw) */
+.m-wstrnote-banner.is-concept {
+  background: rgba(245,200,66,0.08);
+  border: 1px dashed rgba(245,200,66,0.55);
+}
+.m-wstrnote-banner.is-concept svg { color: #f5c842; }
+.m-wstrnote-banner.is-concept .m-wstrnote-banner-text strong { color: #f5c842; }
+.m-wstrnote-banner.is-concept .m-wstrnote-banner-open {
+  display: inline-block; margin-top: 6px; font-size: 11.5px; color: #f5c842;
+  background: rgba(245,200,66,0.10); border: 1px solid rgba(245,200,66,0.40);
+  padding: 3px 8px; border-radius: 6px; cursor: pointer; font-weight: 600;
+}
+.m-wstrnote-banner.is-concept .m-wstrnote-banner-open:hover { background: rgba(245,200,66,0.18); }
+
 /* Indienen-actie op concept-chip */
 .match-player-chip.is-concept {
   border-style: dashed;
@@ -7650,7 +7664,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35df (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35dg-hotfix1 (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
         <!-- s35cr: juridische links onderin de Instellingen-modal -->
         <div class="settings-meta" style="margin-top:6px; font-size:11px;">
           <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('privacy');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Privacyverklaring</a>
@@ -8470,6 +8484,21 @@ algemeen:</textarea>
               <div class="field">
                 <label>Uitspelende ploeg</label>
                 <input id="f-w-uit" type="text" placeholder="Bijv. Sparta Rotterdam O15" autocomplete="off" data-picker="club" />
+              </div>
+            </div>
+            <!-- s35dg Fase H: locatie-velden, prefilled vanuit programma -->
+            <div class="field-row three">
+              <div class="field">
+                <label>Plaats</label>
+                <input id="f-w-plaats" type="text" placeholder="Bijv. Enschede" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label>Sportpark</label>
+                <input id="f-w-sportpark" type="text" placeholder="Bijv. Sportpark De Diekman" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label>Veld</label>
+                <input id="f-w-veld" type="text" placeholder="Bijv. Veld 3 / Hoofdveld" autocomplete="off" />
               </div>
             </div>
             <div class="field-row">
@@ -9350,6 +9379,26 @@ algemeen:</textarea>
           <label>Notities (optioneel)</label>
           <textarea id="pm-notities" rows="2" placeholder="Bijv. focus op #10 thuis, mogelijke transferdoel..."></textarea>
         </div>
+        <!-- s35dg Fase A: spelers direct koppelen aan plan -->
+        <details id="pm-pp-details" style="margin-top:14px; border:1px solid var(--border); border-radius:10px; background:var(--bg-2); padding:10px 12px;">
+          <summary style="font-weight:600; font-size:13px; cursor:pointer; user-select:none;">Spelers koppelen <span style="color:var(--text-3); font-weight:400;">(optioneel — kan ook later)</span></summary>
+          <div style="margin-top:10px;">
+            <div class="field-row" style="margin-top:0;">
+              <div class="field"><label>Voornaam</label><input id="pmpp-voornaam" type="text" placeholder="Voornaam" autocomplete="off" /></div>
+              <div class="field"><label>Achternaam</label><input id="pmpp-achternaam" type="text" placeholder="Achternaam" autocomplete="off" /></div>
+            </div>
+            <div class="field-row" style="margin-top:8px;">
+              <div class="field"><label>Geboortedatum</label><input id="pmpp-geboorte" type="date" /></div>
+              <div class="field"><label>Club</label><input id="pmpp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" /></div>
+            </div>
+            <div id="pmpp-suggestion-wrap" class="pp-suggestion-wrap" style="display:none; margin-top:8px;"></div>
+            <div id="pmpp-known-banner" style="display:none; margin-top:8px; padding:10px 12px; border-radius:10px; background:rgba(59,130,246,0.10); border:1px solid rgba(59,130,246,0.40); font-size:12.5px; color:#bfdbfe; line-height:1.4;"></div>
+            <div style="display:flex; justify-content:flex-end; margin-top:10px;">
+              <button type="button" class="btn btn-primary" id="pmpp-add" style="font-size:12.5px;">+ Toevoegen aan plan</button>
+            </div>
+            <div id="pmpp-list" style="margin-top:10px;"></div>
+          </div>
+        </details>
         <div class="form-actions" style="margin-top:18px; justify-content:space-between;">
           <button type="button" class="btn" id="pm-delete" style="display:none; color:#ef4444;">Verwijderen</button>
           <div style="display:flex; gap:10px; margin-left:auto;">
@@ -9375,6 +9424,8 @@ algemeen:</textarea>
         <input type="hidden" id="pp-spelerid" />
         <!-- s35t: suggestie-strip uit spelersdatabase op basis van naam/club/geboorte -->
         <div id="pp-suggestion-wrap" class="pp-suggestion-wrap" style="display:none;"></div>
+        <!-- s35dg Fase B: bekende-speler banner met rapport-teller -->
+        <div id="pp-known-banner" style="display:none; margin-top:8px; padding:10px 12px; border-radius:10px; background:rgba(59,130,246,0.10); border:1px solid rgba(59,130,246,0.40); font-size:12.5px; color:#bfdbfe; line-height:1.4;"></div>
         <!-- s35q: voornaam + achternaam losse velden, geboorte ook hier. -->
         <div class="field-row" style="margin-top:0;">
           <div class="field">
@@ -9824,7 +9875,17 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35df &middot; 19 mei 2026</div>
+    <div class="changelog-ver">v70h-s35dg-hotfix1 &middot; 20 mei 2026</div>
+
+    <div class="changelog-item">
+      <div class="changelog-item-title">Losse spelersnotities worden automatisch concept-spelersrapporten (s35dg-hotfix1)</div>
+      <div class="changelog-item-detail">Een spelersnotitie die je tijdens een live wedstrijd invult <b>zonder gekoppelde speler</b> (via "+ Nieuwe spelersnotitie") wordt na fluitje+15 automatisch een <b>concept-spelersrapport</b> in de spelersdatabase. Volledige prefill van wedstrijdgegevens (datum, thuis, uit, plaats, sportpark, veld) zit er meteen in. Het verwerken-blok (Fase G) telt deze concepten nu ook mee — je kunt de wedstrijd pas verwerken als alle concepten zijn ingediend of verwijderd.</div>
+    </div>
+
+    <div class="changelog-item">
+      <div class="changelog-item-title">Wedstrijd-flow herstructurering (s35dg)</div>
+      <div class="changelog-item-detail">Eén samenhangende pipeline van programma → live wedstrijd → concept-rapporten → verwerken. <b>Wedstrijd aanmaken</b>: spelers direct koppelen in het aanmaak-formulier (geen tweede stap meer). <b>Bekende speler</b>: bij koppelen toont een banner direct hoeveelste spelersrapport dit wordt. <b>Dashboard live-tile</b>: spelernaam aanklikken opent direct een spelersnotitie (geen volledig rapport meer). <b>Knop-labels</b>: "+ Nieuwe spelersnotitie" en "+ Wedstrijdrapport". <b>Na fluitje+15</b>: spelersnotities en wedstrijdnotities worden automatisch concept-rapporten — gele concept-banner in de Wedstrijden-pagina met "Open wedstrijdrapport"-knop. <b>Wedstrijd-detail modal</b>: "Wedstrijdrapport"-sectie met één concept-record i.p.v. losse notitie-rijen. <b>Verwerken</b>: harde blokkade zolang er nog spelersrapporten in concept staan — gebruik "Alle concepten indienen + verwerken" om in één keer af te ronden. <b>Prefill</b>: plaats, sportpark en veld vloeien door van programma naar concept-rapport.</div>
+    </div>
 
     <div class="changelog-item">
       <div class="changelog-item-title">Spelersdatabase op mobiel — kaart-weergave i.p.v. horizontaal scrollen</div>
@@ -24550,6 +24611,43 @@ function findPlayerMatch(speler){
 }
 window.findPlayerMatch = findPlayerMatch;
 
+/* s35dg Fase B: strikte match op voornaam+achternaam(+geboorte) — uitsluitend echte spelers (geen concepten).
+   Retourneert {player, mode} of {player:null, mode:null}.
+   - mode 'exact'  = vn+an+gb match
+   - mode 'naam'   = vn+an match (zonder gb of niet ingevuld)
+*/
+function findExistingPlayer(voornaam, achternaam, geboorte){
+  const norm = s => String(s||'').trim().toLowerCase();
+  const vn = norm(voornaam), an = norm(achternaam), gb = norm(geboorte);
+  if(!vn || !an) return { player:null, mode:null };
+  const allPlayers = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+  const players = allPlayers.filter(p => !p.concept);
+  function namen(p){
+    let pvn = norm(p.voornaam), pan = norm(p.achternaam);
+    if((!pvn || !pan) && p.naam && typeof splitNaam === 'function'){
+      const s = splitNaam(p.naam);
+      if(!pvn) pvn = norm(s.voornaam);
+      if(!pan) pan = norm(s.achternaam);
+    }
+    return { pvn, pan };
+  }
+  if(gb){
+    const hits = players.filter(p => {
+      const {pvn, pan} = namen(p);
+      return pvn===vn && pan===an && norm(p.geboorte)===gb;
+    });
+    if(hits.length === 1) return { player: hits[0], mode:'exact' };
+    if(hits.length > 1) return { player: hits[0], mode:'exact' };
+  }
+  const hits = players.filter(p => {
+    const {pvn, pan} = namen(p);
+    return pvn===vn && pan===an;
+  });
+  if(hits.length === 1) return { player: hits[0], mode:'naam' };
+  return { player:null, mode:null };
+}
+window.findExistingPlayer = findExistingPlayer;
+
 // Auto-create wedstrijdrapport voor een wedstrijd in venster (idempotent).
 // ID = mr_prog_<progId>. Bestaat 'm al? Niets doen.
 async function ensureActiveMatchReport(prog){
@@ -24698,13 +24796,41 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
         if($('#f-w-datum')) $('#f-w-datum').value = prog.datum || '';
         if($('#f-w-thuis')) $('#f-w-thuis').value = prog.thuis || '';
         if($('#f-w-uit')) $('#f-w-uit').value = prog.uit || '';
+        /* s35dg Fase H: plaats/sportpark/veld doortrekken uit programma */
+        try {
+          const __sp = (prog.locatie || '').trim();
+          const __vd = (prog.veld || '').trim();
+          let __pl = '';
+          if(typeof window.findClubInfo === 'function' && prog.thuis){
+            const __ci = window.findClubInfo(prog.thuis);
+            if(__ci && __ci.plaats) __pl = __ci.plaats;
+          }
+          if($('#f-w-sportpark') && !$('#f-w-sportpark').value) $('#f-w-sportpark').value = __sp;
+          if($('#f-w-veld') && !$('#f-w-veld').value) $('#f-w-veld').value = __vd;
+          if($('#f-w-plaats') && !$('#f-w-plaats').value) $('#f-w-plaats').value = __pl;
+        } catch(_){}
       }
       // s35ak (#4): markeer wedstrijd-velden visueel als auto-ingevuld vanuit programma
       try {
         if(!__sh_autofill_ok) throw new Error('skip-autofill-marking');
         const strip = document.getElementById('rep-prog-autofill-strip');
         if(strip) strip.hidden = false;
-        const autoMap = { 'f-w-datum': prog.datum||'', 'f-w-thuis': prog.thuis||'', 'f-w-uit': prog.uit||'' };
+        let __pl2 = '';
+        try {
+          if(typeof window.findClubInfo === 'function' && prog.thuis){
+            const __ci2 = window.findClubInfo(prog.thuis);
+            if(__ci2 && __ci2.plaats) __pl2 = __ci2.plaats;
+          }
+        } catch(_){}
+        const autoMap = {
+          'f-w-datum': prog.datum||'',
+          'f-w-thuis': prog.thuis||'',
+          'f-w-uit': prog.uit||'',
+          /* s35dg Fase H */
+          'f-w-plaats': __pl2,
+          'f-w-sportpark': prog.locatie||'',
+          'f-w-veld': prog.veld||''
+        };
         Object.keys(autoMap).forEach(id => {
           const inp = document.getElementById(id); if(!inp) return;
           const fld = inp.closest('.field'); if(fld) fld.classList.add('rep-auto-field');
@@ -24839,10 +24965,11 @@ function renderActiveScouting(){
           sp.club || ''
         ].filter(Boolean).join(' · ');
         const conceptTag = concept ? `<div class="sa-tile-concept-tag">concept</div>` : '';
-        // s35ca-1: voor-rapport sa-tile-blok + edit-voorrap knop verwijderd
-        const primaryLabel = concept ? 'Concept verder invullen' : 'Open spelersrapport';
+        // s35dg Fase C+D: tijdens live alleen spelersnotitie — geen volledig rapport meer
+        const matchedId = player ? player.id : '';
         const actsHtml = `<div class="sa-tile-acts">
-          <button type="button" class="primary" data-tile-act="open-report">${primaryLabel}</button>
+          <button type="button" class="primary" data-tile-act="new-snel-notitie">+ Nieuwe spelersnotitie</button>
+          ${matchedId ? `<button type="button" data-tile-act="open-player" data-player-id="${escapeHtml(matchedId)}">Open speler</button>` : ''}
         </div>`;
         return `<div class="${cls}" data-prog-id="${escapeHtml(prog.id)}" data-sp-idx="${i}" data-player-id="${player ? escapeHtml(player.id) : ''}" title="Klik om uit te klappen">
           <button type="button" class="sa-tile-close" data-tile-act="close" aria-label="Sluiten" style="display:none">×</button>
@@ -24883,7 +25010,7 @@ function renderActiveScouting(){
         <div class="sa-snel-form" data-progid="${escapeHtml(prog.id)}" style="display:none; margin-top:10px; padding:12px; background:rgba(245,200,66,0.06); border:1px solid rgba(245,200,66,0.25); border-radius:10px;">
           <!-- s35bg: heading werkt als sluit-knop -->
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:10px;">
-            <div class="sa-snel-close-head" data-progid="${escapeHtml(prog.id)}" style="font-size:11px; color:var(--gold,#f5c842); text-transform:uppercase; letter-spacing:.6px; font-weight:700; cursor:pointer; user-select:none;" title="Klik om te sluiten">+ Snel spelersnotitie — sluiten &times;</div>
+            <div class="sa-snel-close-head" data-progid="${escapeHtml(prog.id)}" style="font-size:11px; color:var(--gold,#f5c842); text-transform:uppercase; letter-spacing:.6px; font-weight:700; cursor:pointer; user-select:none;" title="Klik om te sluiten">+ Nieuwe spelersnotitie — sluiten &times;</div>
             <div class="sa-snel-status" data-progid="${escapeHtml(prog.id)}" style="font-size:11px; color:var(--text-3,#8b93a8); font-style:italic;">&nbsp;</div>
           </div>
           <div style="display:grid; grid-template-columns:1fr 70px; gap:8px; margin-bottom:8px;">
@@ -24939,15 +25066,15 @@ function renderActiveScouting(){
         <div class="sa-snel-wstr-form" data-progid="${escapeHtml(prog.id)}" style="display:none;">
           <!-- s35bg: heading werkt als sluit-knop -->
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:10px;">
-            <div class="sa-snel-wstr-close-head" data-progid="${escapeHtml(prog.id)}" style="font-size:11px; color:#ff8189; text-transform:uppercase; letter-spacing:.6px; font-weight:700; cursor:pointer; user-select:none;" title="Klik om te sluiten">+ Snel wedstrijdnotitie — sluiten &times;</div>
+            <div class="sa-snel-wstr-close-head" data-progid="${escapeHtml(prog.id)}" style="font-size:11px; color:#ff8189; text-transform:uppercase; letter-spacing:.6px; font-weight:700; cursor:pointer; user-select:none;" title="Klik om te sluiten">+ Wedstrijdrapport — sluiten &times;</div>
             <div class="sa-snel-wstr-status" style="font-size:11px; color:var(--text-3,#8b93a8); font-style:italic;">&nbsp;</div>
           </div>
           <textarea class="sa-snel-wstr-tekst" placeholder="Tactiek, score, weer, opvallende momenten..."></textarea>
           <!-- s35bg: onderaan-instructie weg (heading is nu close-trigger) -->
         </div>
         <div class="sa-actions">
-          <button class="btn-ghost sa-grad sa-trigger-snel" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}">+ Snel spelersnotitie</button>
-          <button class="btn-ghost sa-grad sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}">+ Snel wedstrijdnotitie</button>
+          <button class="btn-ghost sa-grad sa-trigger-snel" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}">+ Nieuwe spelersnotitie</button>
+          <button class="btn-ghost sa-grad sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}">+ Wedstrijdrapport</button>
           <button class="btn-ghost sa-grad" data-sa-act="add-player" data-progid="${escapeHtml(prog.id)}">+ Speler toevoegen</button>
         </div>
       </div>`;
@@ -25001,6 +25128,40 @@ function renderActiveScouting(){
       ? findSlotConcept(prog.id, sp.id) : null;
     openScoutingPlayerForm(prog, sp, matched, slotConcept);
   }
+  // s35dg Fase C+D: open snel-notitie pre-filled voor deze tile-speler
+  function __saOpenSnelForPlayer(tile){
+    const progId = tile.dataset.progId;
+    const spIdx = parseInt(tile.dataset.spIdx, 10);
+    const prog = programmaCache.find(p => p.id === progId);
+    if(!prog) return;
+    const sp = (prog.spelers||[])[spIdx];
+    if(!sp) return;
+    const card = tile.closest('.sa-card');
+    if(!card) return;
+    const form = card.querySelector(`.sa-snel-form[data-progid="${progId}"]`);
+    if(!form) return;
+    // Trigger open via bestaande handler (zet wiring + click-outside)
+    const trigger = card.querySelector(`.sa-trigger-snel[data-progid="${progId}"]`);
+    if(trigger) trigger.click();
+    // Pre-fill na een tick zodat handler form heeft geopend
+    setTimeout(() => {
+      try {
+        const naam = sp.naam || [sp.voornaam, sp.achternaam].filter(Boolean).join(' ') || '';
+        const naamIn = form.querySelector('.sa-snel-naam');
+        const rugIn  = form.querySelector('.sa-snel-rug');
+        const posIn  = form.querySelector('.sa-snel-positie');
+        if(naamIn && !naamIn.value) naamIn.value = naam;
+        if(rugIn && !rugIn.value && sp.rugnummer) rugIn.value = sp.rugnummer;
+        if(posIn && !posIn.value && sp.positie) posIn.value = sp.positie;
+        // Trigger input event zodat auto-save de prefill oppikt
+        if(naamIn && naam) naamIn.dispatchEvent(new Event('input', {bubbles:true}));
+        // Focus op eerste term-input (techniek) want naam staat al
+        const firstTerm = form.querySelector('.sa-snel-term-input');
+        if(firstTerm) firstTerm.focus();
+        try { form.scrollIntoView({behavior:'smooth', block:'center'}); } catch(_){}
+      } catch(_){}
+    }, 60);
+  }
   wrap.querySelectorAll('.sa-tile').forEach(tile => {
     tile.addEventListener('click', (e) => {
       // klik op actie-knop binnen panel
@@ -25016,6 +25177,15 @@ function renderActiveScouting(){
         }
         if(act === 'open-report'){
           __saOpenReport(tile);
+          return;
+        }
+        if(act === 'new-snel-notitie'){
+          __saOpenSnelForPlayer(tile);
+          return;
+        }
+        if(act === 'open-player'){
+          const pid = actBtn.dataset.playerId;
+          if(pid && typeof openDetail === 'function') openDetail(pid);
           return;
         }
         // s35ca-1: 'edit-voorrap' handler verwijderd — voor-rapport flow weg
@@ -25476,7 +25646,6 @@ function renderTodayMatches(){
             <div class="td-player-name">${escapeHtml(naam)}${sp.rugnummer ? ` <span class="td-player-num">#${escapeHtml(String(sp.rugnummer))}</span>` : ''}${sp.positie ? ` <span class="td-player-pos">${escapeHtml(sp.positie)}</span>` : ''}</div>
             <div class="td-player-acts">
               ${opts}
-              <button class="td-chip-act" data-act="open-prog-player" data-progid="${sp.__progId}" data-spid="${sp.id||''}">Rapport invullen</button>
             </div>
           </div>`;
       }
@@ -27089,6 +27258,167 @@ function _shCollectWedstrijdNotities(m){
   });
   return out;
 }
+/* s35dg Fase E: na fluitje+15 worden losse notities één keer omgezet naar
+   concept-rapporten. `prog.wedstrijdrapport` houdt het concept-wedstrijdrapport
+   bij. Idempotent via `__notesConverted` flag. */
+function _shCollectWedstrijdTekst(prog){
+  if(!prog) return '';
+  const parts = [];
+  (prog.wedstrijdnotities || []).forEach(wn => {
+    const t = ((wn && (wn.tekst || wn.notitie)) || '').trim();
+    if(t){
+      const titel = (wn && wn.titel) ? (wn.titel + ': ') : '';
+      parts.push(titel + t);
+    }
+  });
+  const sc = (prog && typeof prog.notities === 'string') ? prog.notities.trim() : '';
+  if(sc) parts.push(sc);
+  return parts.join('\n\n');
+}
+function _shConvertNotesToDrafts(prog){
+  if(!prog) return false;
+  if(prog.__notesConverted === true) return false;
+  // Alleen omzetten als de wedstrijd echt op slot staat (fluitje+15 voorbij).
+  if(typeof _shIsMatchLocked === 'function' && !_shIsMatchLocked(prog)) return false;
+  const tekst = _shCollectWedstrijdTekst(prog);
+  const hasSnel = Array.isArray(prog.snelnotities) && prog.snelnotities.length > 0;
+  if(!tekst && !hasSnel) return false;
+  let plaats = '';
+  try {
+    if(typeof findClubInfo === 'function'){
+      const info = findClubInfo(prog.thuis || prog.uit || '');
+      if(info && info.plaats) plaats = info.plaats;
+    }
+  } catch(_){}
+  const wr = prog.wedstrijdrapport || {};
+  prog.wedstrijdrapport = {
+    status: 'concept',
+    tekst: tekst,
+    datum: prog.datum || wr.datum || '',
+    thuis: prog.thuis || wr.thuis || '',
+    uit:   prog.uit   || wr.uit   || '',
+    plaats: plaats || wr.plaats || '',
+    sportpark: prog.locatie || wr.sportpark || '',
+    veld: prog.veld || wr.veld || '',
+    updated_at: Date.now()
+  };
+  // s35dg-hotfix1: óók losse snel-notities (zonder gekoppelde speler) omzetten
+  // naar concept-spelersrapporten in playersCache. Fire-and-forget, idempotent.
+  try { _shConvertSnelToConceptPlayers(prog); } catch(e){
+    try { if(typeof __shTrace === 'function') __shTrace('hotfix1-convert-fail', { msg: String(e) }); } catch(_){}
+  }
+  prog.__notesConverted = true;
+  prog.modified = Date.now();
+  try {
+    if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog);
+  } catch(_){}
+  return true;
+}
+window._shConvertNotesToDrafts = _shConvertNotesToDrafts;
+
+// s35dg-hotfix1: zet `prog.snelnotities[]` om naar concept-spelersrapporten in
+// playersCache zodat ze in de spelersdatabase verschijnen en het verwerken-blok
+// (Fase G) er hard op kan blokkeren. Idempotent: per snel-notitie wordt
+// `sn.__convertedToPlayerId` gezet zodra het concept is aangemaakt. Re-runs
+// slaan reeds-omgezette notities over en updaten bestaande concept-records
+// alleen als de tekst gewijzigd is.
+function _shConvertSnelToConceptPlayers(prog){
+  if(!prog || !Array.isArray(prog.snelnotities) || !prog.snelnotities.length) return 0;
+  const sns = prog.snelnotities;
+  let count = 0;
+  for(let i=0; i<sns.length; i++){
+    const sn = sns[i];
+    if(!sn || !sn.id) continue;
+    try {
+      // Stap 1: kijk of er al een slot-concept bestaat (s35s heeft die mogelijk
+      // al gemaakt voor gekoppelde spelers — dan alleen tekst aanvullen).
+      const existing = (typeof findSlotConcept === 'function')
+        ? findSlotConcept(prog.id, sn.id)
+        : null;
+      if(existing){
+        // Slot-concept bestaat al — alleen opmerkingen aanvullen als nieuwe tekst
+        const newTekst = String(sn.tekst || '').trim();
+        const curTekst = String(existing.opmerkingen || '').trim();
+        if(newTekst && newTekst !== curTekst){
+          existing.opmerkingen = newTekst;
+          existing.updated_at = new Date().toISOString();
+          if(typeof window.__shScoutingSave === 'function'){
+            window.__shScoutingSave(existing).catch(()=>{});
+          } else if(typeof savePlayer === 'function'){
+            savePlayer(existing).catch(()=>{});
+          }
+        }
+        sn.__convertedToPlayerId = existing.id;
+        continue;
+      }
+      // Stap 2: skip als deze notitie eerder al is omgezet
+      if(sn.__convertedToPlayerId) continue;
+      // Stap 3: bouw nieuw concept-spelersrapport
+      const fullNaam = String(sn.naam || '').trim();
+      let vn = '', an = '';
+      if(fullNaam){
+        if(typeof splitNaam === 'function'){
+          const s = splitNaam(fullNaam);
+          vn = s.voornaam || ''; an = s.achternaam || '';
+        } else {
+          const parts = fullNaam.split(/\s+/);
+          vn = parts[0] || ''; an = parts.slice(1).join(' ');
+        }
+      }
+      // Plaats afleiden uit thuisclub-adresboek (zoals wedstrijdrapport hierboven)
+      let plaats = '';
+      try {
+        if(typeof findClubInfo === 'function'){
+          const info = findClubInfo(prog.thuis || prog.uit || '');
+          if(info && info.plaats) plaats = info.plaats;
+        }
+      } catch(_){}
+      const detId = 'concept_' + String(prog.id).replace(/[^a-z0-9_-]/gi,'')
+                  + '__' + String(sn.id).replace(/[^a-z0-9_-]/gi,'');
+      const nowIso = new Date().toISOString();
+      const concept = {
+        id: detId,
+        concept: true,
+        status: 'concept',
+        voornaam: vn,
+        achternaam: an,
+        naam: fullNaam,
+        rugnummer: sn.rugnummer || '',
+        positie: sn.positie || '',
+        club: prog.thuis || '',
+        opmerkingen: String(sn.tekst || '').trim(),
+        rapport: {
+          wedstrijd: {
+            datum: prog.datum || '',
+            thuis: prog.thuis || '',
+            uit:   prog.uit   || '',
+            plaats: plaats || '',
+            sportpark: prog.locatie || '',
+            veld: prog.veld || ''
+          }
+        },
+        datum: prog.datum || '',
+        programma_link: { progId: prog.id, spelerKey: sn.id },
+        created_at: nowIso,
+        updated_at: nowIso,
+        _meta: { ts: Date.now(), source: 's35dg-hotfix1' }
+      };
+      // Fire-and-forget save via module-bridge (sync cache-upsert + async write).
+      if(typeof window.__shScoutingSave === 'function'){
+        window.__shScoutingSave(concept).catch(()=>{});
+      } else if(typeof savePlayer === 'function'){
+        try { playersCache.push(concept); } catch(_){}
+        savePlayer(concept).catch(()=>{});
+      }
+      sn.__convertedToPlayerId = detId;
+      count++;
+    } catch(err){
+      try { if(typeof __shTrace === 'function') __shTrace('hotfix1-snel-fail', { idx: i, msg: String(err) }); } catch(_){}
+    }
+  }
+  return count;
+}
+window._shConvertSnelToConceptPlayers = _shConvertSnelToConceptPlayers;
 // Player heeft concept-status?
 function _shPlayerIsConcept(pl){
   return !!(pl && (pl.concept === true || pl.status === "concept"));
@@ -27184,15 +27514,15 @@ function _shOpenEditModal(m){
   }
   html += `</div>`;
 
-  // Sectie: Snel-spelersnotities
+  // Sectie: Nieuwe spelersnotities (s35dg Fase F)
   html += `<div class="wstr-edit-section">
     <div class="wstr-edit-section-head">
       <div class="wstr-edit-section-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.3v1h6v-1c0-1 .3-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg></div>
-      <div class="wstr-edit-section-title">Snel-spelersnotities</div>
+      <div class="wstr-edit-section-title">Nieuwe spelersnotities</div>
       <div class="wstr-edit-section-count">${sns.length}</div>
     </div>`;
   if(sns.length === 0){
-    html += `<div class="wstr-edit-empty">Geen openstaande snel-notities.</div>`;
+    html += `<div class="wstr-edit-empty">Geen openstaande spelersnotities.</div>`;
   } else {
     html += sns.map(({progId, snIdx, sn}) => {
       const naam = (sn.naam || "Onbenoemde speler").trim();
@@ -27204,21 +27534,35 @@ function _shOpenEditModal(m){
           <div class="wstr-edit-note-title">${num}${escapeHtml(naam)}</div>
           ${tekst ? `<div class="wstr-edit-note-text">${escapeHtml(tekst)}</div>` : '<div class="wstr-edit-note-text" style="font-style:italic;opacity:0.7;">(geen tekst)</div>'}
         </div>
-        <button type="button" class="wstr-edit-note-action" data-edit-snel-prog="${escapeHtml(progId)}" data-edit-snel-idx="${snIdx}">Open & omzetten →</button>
+        <button type="button" class="wstr-edit-note-action" data-edit-snel-prog="${escapeHtml(progId)}" data-edit-snel-idx="${snIdx}">Openen</button>
       </div>`;
     }).join('');
   }
   html += `</div>`;
 
-  // Sectie: Wedstrijdnotities
+  // Sectie: Wedstrijdrapport (s35dg Fase F)
+  // Bij voorkeur: één concept-record uit prog.wedstrijdrapport. Fallback: ruwe wedstrijdnotities.
+  const linkedProgs = (typeof _shFindLinkedPrograms === 'function') ? _shFindLinkedPrograms(m) : [];
+  const wrConceptProg = linkedProgs.find(p => p && p.wedstrijdrapport && p.wedstrijdrapport.status === 'concept');
   html += `<div class="wstr-edit-section">
     <div class="wstr-edit-section-head">
       <div class="wstr-edit-section-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
-      <div class="wstr-edit-section-title">Wedstrijdnotities</div>
-      <div class="wstr-edit-section-count">${wns.length}</div>
+      <div class="wstr-edit-section-title">Wedstrijdrapport</div>
+      <div class="wstr-edit-section-count">${wrConceptProg ? 1 : wns.length}</div>
     </div>`;
-  if(wns.length === 0){
-    html += `<div class="wstr-edit-empty">Geen wedstrijdnotities — voeg er één toe vanuit Programma.</div>`;
+  if(wrConceptProg){
+    const wr = wrConceptProg.wedstrijdrapport || {};
+    const tekst = (wr.tekst || "").trim();
+    html += `<div class="wstr-edit-note wstr">
+      <div class="wstr-edit-note-icon">📝</div>
+      <div class="wstr-edit-note-main">
+        <div class="wstr-edit-note-title">Concept</div>
+        ${tekst ? `<div class="wstr-edit-note-text">${escapeHtml(tekst).replace(/\n/g,'<br>')}</div>` : '<div class="wstr-edit-note-text" style="font-style:italic;opacity:0.7;">(nog geen tekst — open om in te vullen)</div>'}
+      </div>
+      <button type="button" class="wstr-edit-note-action" data-wr-open-modal="${escapeHtml(wrConceptProg.id)}">Open wedstrijdrapport</button>
+    </div>`;
+  } else if(wns.length === 0){
+    html += `<div class="wstr-edit-empty">Nog geen wedstrijdrapport — voeg notities toe vanuit Programma of dashboard.</div>`;
   } else {
     html += wns.map(({progId, wnIdx, wn}) => {
       const tekst = ((wn && (wn.tekst || wn.notitie)) || "").trim();
@@ -27229,7 +27573,7 @@ function _shOpenEditModal(m){
           <div class="wstr-edit-note-title">${escapeHtml(titel)}</div>
           ${tekst ? `<div class="wstr-edit-note-text">${escapeHtml(tekst)}</div>` : '<div class="wstr-edit-note-text" style="font-style:italic;opacity:0.7;">(geen tekst)</div>'}
         </div>
-        <button type="button" class="wstr-edit-note-action" data-edit-wstr-prog="${escapeHtml(progId)}" data-edit-wstr-idx="${wnIdx}">Open & omzetten →</button>
+        <button type="button" class="wstr-edit-note-action" data-edit-wstr-prog="${escapeHtml(progId)}" data-edit-wstr-idx="${wnIdx}">Openen</button>
       </div>`;
     }).join('');
   }
@@ -27296,6 +27640,29 @@ function _shOpenEditModal(m){
       _shCloseEditModal();
       // s35bu: open Wedstrijdrapport-modal met prefill uit (snel-)wedstrijdnotitie
       _shConvertWstrNotitieToRapport(progId, wnIdx);
+    });
+  });
+  // s35dg Fase F: "Open wedstrijdrapport"-knop op concept-record
+  bodyEl.querySelectorAll('[data-wr-open-modal]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault(); e.stopPropagation();
+      const progId = btn.dataset.wrOpenModal;
+      const prog = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === progId) : null;
+      if(!prog){ if(typeof toast === 'function') toast('Wedstrijd niet gevonden', true); return; }
+      // Probeer eerst de speciale wedstrijdrapport-modal; val terug op snel-notitie-conversie van eerste wn
+      if(typeof _shOpenWedstrijdrapportModal === 'function'){
+        _shCloseEditModal();
+        _shOpenWedstrijdrapportModal(prog);
+        return;
+      }
+      // Fallback: open eerste wedstrijdnotitie via bestaande converter
+      const wns = Array.isArray(prog.wedstrijdnotities) ? prog.wedstrijdnotities : [];
+      if(wns.length > 0){
+        _shCloseEditModal();
+        _shConvertWstrNotitieToRapport(prog.id, 0);
+      } else {
+        if(typeof toast === 'function') toast('Geen bewerker beschikbaar — wedstrijdrapport opent in volgende update', true);
+      }
     });
   });
 
@@ -27610,12 +27977,16 @@ function _shConfirmVerwerk(){
   const key = btn.dataset.key;
   const wasLocked = btn.dataset.locked === "1";
   if(!key){ _shCloseVerwerkModal(); return; }
-  // s35ca-3: bij verwerken (niet bij heropenen) waarschuwen voor open concepten
+  // s35dg Fase G: bij verwerken (niet bij heropenen) HARD blokkeren als er nog concepten zijn
   if(!wasLocked){
     const cc = parseInt(btn.dataset.concepts || "0", 10) || 0;
     if(cc > 0){
-      const ok = window.confirm("Er " + (cc===1 ? "is nog 1 concept" : "zijn nog " + cc + " concepten") + " open.\nToch markeren als verwerkt?");
-      if(!ok) return;
+      const msg = "Er " + (cc===1 ? "staat nog 1 spelersrapport" : "staan nog " + cc + " spelersrapporten")
+        + " in concept. Elk concept moet eerst worden ingediend of verwijderd.\n\n"
+        + "Gebruik de knop 'Alle concepten indienen + verwerken' om alles in één keer af te ronden.";
+      if(typeof window.alert === 'function') window.alert(msg);
+      else if(typeof toast === 'function') toast(msg, true);
+      return;
     }
   }
   shMarkWedstrijdVerwerkt(key, !wasLocked);
@@ -27658,28 +28029,45 @@ function _shConfirmVerwerk(){
   }
 })();
 
-// Render banner-HTML met snel-notities + wedstrijdnotities
+// Render banner-HTML met spelersnotities + wedstrijdrapport (concept/notitie)
 function _shBannerHTML(m){
+  // Fase E: trigger auto-conversie notities → concept-wedstrijdrapport bij elke render
+  try {
+    if(typeof _shConvertNotesToDrafts === 'function'){
+      _shFindLinkedPrograms(m).forEach(p => { _shConvertNotesToDrafts(p); });
+    }
+  } catch(_){}
   const sns = _shCollectSnelNotities(m);
   const wns = _shCollectWedstrijdNotities(m);
-  if(sns.length === 0 && wns.length === 0) return "";
+  const linked = _shFindLinkedPrograms(m);
+  const conceptProg = linked.find(p => p && p.wedstrijdrapport && p.wedstrijdrapport.status === 'concept');
+  if(sns.length === 0 && wns.length === 0 && !conceptProg) return "";
   let html = "";
   if(sns.length){
     const chips = sns.map(({progId, snIdx, sn}) => {
       const naam = (sn.naam || "Onbenoemde speler").trim();
       const num = sn.rugnummer ? "#" + escapeHtml(String(sn.rugnummer)) + " " : "";
-      return `<button type="button" class="m-snel-chip" data-snel-prog="${escapeHtml(progId)}" data-snel-idx="${snIdx}" title="Open in spelersrapport-modal">`
+      return `<button type="button" class="m-snel-chip" data-snel-prog="${escapeHtml(progId)}" data-snel-idx="${snIdx}" title="Open spelersnotitie">`
         + `<span>💡 ${num}${escapeHtml(naam)}</span>`
         + `<span class="m-snel-chip-arrow"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>`
         + `</button>`;
     }).join("");
     html += `<div class="m-snel-banner" onclick="event.stopPropagation()">`
       + `<div class="m-snel-banner-head"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.3v1h6v-1c0-1 .3-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>`
-      + `Open snel-notitie${sns.length===1?"":"s"} (${sns.length}) — klik om naar volledig rapport om te zetten</div>`
+      + `Open spelersnotitie${sns.length===1?"":"s"} (${sns.length}) — klik om naar volledig rapport om te zetten</div>`
       + `<div class="m-snel-chips">${chips}</div>`
       + `</div>`;
   }
-  if(wns.length){
+  if(conceptProg){
+    const wr = conceptProg.wedstrijdrapport || {};
+    const t = (wr.tekst || "").trim();
+    const txt = t ? escapeHtml(t).replace(/\n/g, "<br>") : "<em>(nog geen tekst — open om in te vullen)</em>";
+    html += `<div class="m-wstrnote-banner is-concept" onclick="event.stopPropagation()">`
+      + `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`
+      + `<div class="m-wstrnote-banner-text"><strong>Wedstrijdrapport (concept)</strong>${txt}`
+      + `<br><button type="button" class="m-wstrnote-banner-open" data-wr-open="${escapeHtml(conceptProg.id)}">Open wedstrijdrapport</button></div>`
+      + `</div>`;
+  } else if(wns.length){
     const txt = wns.map(({wn}) => {
       if(!wn) return "";
       const t = (wn.tekst || wn.notitie || "").trim();
@@ -29756,6 +30144,10 @@ function loadIntoForm(p){
   $('#f-w-context').value = w.context || '';
   if($('#f-w-toernooi')) $('#f-w-toernooi').checked = !!w.toernooi;
   if($('#f-w-toernooi-naam')) $('#f-w-toernooi-naam').value = w.toernooi_naam || '';
+  /* s35dg Fase H: locatie-velden bij reload van concept */
+  if($('#f-w-plaats')) $('#f-w-plaats').value = w.plaats || '';
+  if($('#f-w-sportpark')) $('#f-w-sportpark').value = w.sportpark || '';
+  if($('#f-w-veld')) $('#f-w-veld').value = w.veld || '';
 
   $('#f-bouw').value = p.bouw || '';
   $('#f-lengte').value = p.lengte || '';
@@ -29856,7 +30248,11 @@ async function submitReport(e){
       opstelling: $('#f-w-opstelling').value,
       context: $('#f-w-context').value.trim(),
       toernooi: $('#f-w-toernooi') ? !!$('#f-w-toernooi').checked : false,
-      toernooi_naam: $('#f-w-toernooi-naam') ? $('#f-w-toernooi-naam').value.trim() : ''
+      toernooi_naam: $('#f-w-toernooi-naam') ? $('#f-w-toernooi-naam').value.trim() : '',
+      /* s35dg Fase H */
+      plaats: $('#f-w-plaats') ? $('#f-w-plaats').value.trim() : '',
+      sportpark: $('#f-w-sportpark') ? $('#f-w-sportpark').value.trim() : '',
+      veld: $('#f-w-veld') ? $('#f-w-veld').value.trim() : ''
     },
     bouw: $('#f-bouw').value,
     lengte: $('#f-lengte').value,
@@ -30423,6 +30819,19 @@ function renderMatches(){
       const progId = btn.dataset.snelProg;
       const snIdx = parseInt(btn.dataset.snelIdx, 10);
       _shConvertSnelToRapport(progId, snIdx);
+    });
+  });
+
+  // s35dg Fase E: "Open wedstrijdrapport"-knop op concept-banner → open wedstrijd-edit modal
+  list.querySelectorAll('[data-wr-open]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const progId = btn.dataset.wrOpen;
+      if(!progId) return;
+      const prog = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === progId) : null;
+      if(!prog){ if(typeof toast === 'function') toast('Wedstrijd niet gevonden', true); return; }
+      _shOpenEditModal({ kind: 'prog', id: prog.id, datum: prog.datum, thuis: prog.thuis, uit: prog.uit });
     });
   });
 
@@ -31016,6 +31425,10 @@ function buildPlayerFromReport(p, report){
     advies:            (report.advies != null && report.advies !== '') ? report.advies : p.advies,
     wedstrijd:         report.wedstrijd         || p.wedstrijd,
     datum:             report.datum             || p.datum,
+    /* s35dg Fase H: prefill wedstrijd-locatie velden */
+    plaats:            report.plaats            || p.plaats,
+    sportpark:         report.sportpark         || p.sportpark,
+    veld:              report.veld              || p.veld,
     opmerkingen:       report.opmerkingen       || p.opmerkingen,
     sterke_punten:     report.sterke_punten     || p.sterke_punten,
     ontwikkelpunten:   report.ontwikkelpunten   || p.ontwikkelpunten,
@@ -32954,6 +33367,8 @@ function openProgMatchModal(progId, defaultDate){
       populateScoutDropdown(it && it._targetScoutUid ? it._targetScoutUid : '');
     }
   } catch(_){}
+  // s35dg Fase A: reset speler-koppel buffer + UI bij elke open
+  try { if(typeof pmppResetUI === 'function') pmppResetUI(); } catch(_){}
   showModal('prog-match-backdrop');
   // v70h-s35a: auto-fill sportpark + plaats uit CLUB_ADRESSEN zodra thuisclub gekozen wordt.
   (function(){
@@ -33028,6 +33443,19 @@ async function saveProgMatchFromForm(e){
   /* s35cg: scout-dropdown uitlezen (lege string = mijzelf) */
   const _scoutSel = $('#pm-scout');
   const _targetScoutUid = (_scoutSel && _scoutSel.value) ? _scoutSel.value : '';
+  // s35dg Fase A: merge pending koppelingen uit het aanmaak-formulier.
+  const existingSpelers = existing ? (existing.spelers || []) : [];
+  const pendingSpelers = Array.isArray(__pmPendingPlayers) ? __pmPendingPlayers.slice() : [];
+  // Filter dubbele namen (zelfde voornaam+achternaam+geboorte) tov bestaande lijst
+  const seen = new Set(existingSpelers.map(s =>
+    ((s.voornaam||'')+'|'+(s.achternaam||'')+'|'+(s.geboorte||'')).toLowerCase()
+  ));
+  const mergedPending = pendingSpelers.filter(s => {
+    const k = ((s.voornaam||'')+'|'+(s.achternaam||'')+'|'+(s.geboorte||'')).toLowerCase();
+    if(seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
   const item = {
     id,
     datum,
@@ -33039,7 +33467,7 @@ async function saveProgMatchFromForm(e){
     thuis_elftal, uit_elftal,
     veld: ($('#pm-veld')?.value || '').trim(),
     notities: $('#pm-notities').value.trim(),
-    spelers: existing ? (existing.spelers || []) : [],
+    spelers: existingSpelers.concat(mergedPending),
     status: existing ? (existing.status || 'gepland') : 'gepland',
     verwerkt_op: existing ? (existing.verwerkt_op || null) : null,
     verwerkt_player_ids: existing ? (existing.verwerkt_player_ids || []) : [],
@@ -33050,9 +33478,12 @@ async function saveProgMatchFromForm(e){
   };
   try {
     await saveProgrammaItem(item);
+    // s35dg Fase A: buffer leeg na succesvolle save
+    __pmPendingPlayers = [];
     closeProgMatchModal();
     progExpandedId = id;
-    toast('Wedstrijd ingepland');
+    const nAdded = mergedPending.length;
+    toast(nAdded ? `Wedstrijd ingepland + ${nAdded} speler${nAdded===1?'':'s'} gekoppeld` : 'Wedstrijd ingepland');
   } catch(e){ /* toast in saveProgrammaItem */ }
   finally {
     __savingProgMatch = false;
@@ -33081,7 +33512,10 @@ async function deleteProgMatchFromForm(){
 let __ppSugTimer = null;
 function schedulePpSuggestionRefresh(){
   if(__ppSugTimer) clearTimeout(__ppSugTimer);
-  __ppSugTimer = setTimeout(renderPpSuggestions, 180);
+  __ppSugTimer = setTimeout(() => {
+    try { renderPpSuggestions(); } catch(_){}
+    try { renderKnownPlayerBanner(); } catch(_){}
+  }, 180);
 }
 // Zoek matchende spelers in playersCache met scoring.
 // Retourneer top 5 (score >= 3).
@@ -33184,6 +33618,8 @@ function applyPpSuggestion(playerId){
   // Verberg suggestie-strip na keuze
   const wrap = document.getElementById('pp-suggestion-wrap');
   if(wrap){ wrap.style.display = 'none'; wrap.innerHTML = ''; }
+  // s35dg Fase B: refresh bekende-speler banner (toont nu zeker een match)
+  try { renderKnownPlayerBanner(); } catch(_){}
   // s35v: laat zien wat er allemaal ingevuld is (incl. hidden fields)
   const naam = [vn, an].filter(Boolean).join(' ');
   const bits = [];
@@ -33200,6 +33636,290 @@ function applyPpSuggestion(playerId){
 window.getPpSuggestions = getPpSuggestions;
 window.renderPpSuggestions = renderPpSuggestions;
 window.applyPpSuggestion = applyPpSuggestion;
+
+/* s35dg Fase B: toon banner als de naam matcht met een bestaande speler in de database.
+   Telt rapporten via reportsForPlayer() en toont "Dit wordt het Ne spelersrapport van [Naam]."
+*/
+function renderKnownPlayerBanner(){
+  const el = document.getElementById('pp-known-banner');
+  if(!el) return;
+  // Niet tonen bij bewerken van bestaande speler-koppeling
+  const editing = !!($('#pp-spelerid')?.value);
+  if(editing){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  const vn = ($('#pp-voornaam')?.value || '').trim();
+  const an = ($('#pp-achternaam')?.value || '').trim();
+  const gb = ($('#pp-geboorte')?.value || '').trim();
+  if(!vn || !an){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  let match = null;
+  try { match = findExistingPlayer(vn, an, gb); } catch(_){}
+  if(!match || !match.player){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  const p = match.player;
+  let n = 0;
+  try { n = (reportsForPlayer(p.id) || []).length; } catch(_){}
+  const next = n + 1;
+  const nth = (next === 1) ? '1e' : (next === 2) ? '2e' : (next === 3) ? '3e' : (next + 'e');
+  const naam = p.naam || [p.voornaam, p.achternaam].filter(Boolean).join(' ');
+  const safeName = escapeHtml(naam);
+  el.innerHTML = `<div style="display:flex; align-items:flex-start; gap:8px;">
+    <span style="font-size:14px; line-height:1;">ℹ️</span>
+    <div>
+      <div style="font-weight:600; color:#dbeafe;">Deze speler is al bekend</div>
+      <div style="margin-top:2px;">Dit wordt het <strong>${nth} spelersrapport</strong> van ${safeName}${n>0 ? ` (${n} eerder)` : ''}.</div>
+    </div>
+  </div>`;
+  el.style.display = '';
+}
+window.renderKnownPlayerBanner = renderKnownPlayerBanner;
+
+/* ============================================================
+   s35dg Fase A — Spelers direct koppelen bij wedstrijd-aanmaak.
+   Buffer-based: speler-records leven in __pmPendingPlayers tot
+   het plan wordt opgeslagen; bij save worden ze in item.spelers
+   gemerged. Hergebruikt de pp-* autocomplete-scoring.
+   ============================================================ */
+let __pmPendingPlayers = [];
+let __pmppSugTimer = null;
+
+function pmppResetPending(){ __pmPendingPlayers = []; }
+
+function pmppGetSuggestions(){
+  const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+  if(!players.length) return [];
+  const norm = s => String(s||'').trim().toLowerCase();
+  const vn = norm($('#pmpp-voornaam')?.value);
+  const an = norm($('#pmpp-achternaam')?.value);
+  const gb = norm($('#pmpp-geboorte')?.value);
+  const cl = norm($('#pmpp-club')?.value);
+  if((vn.length < 2) && (an.length < 2)) return [];
+  function namen(p){
+    let pvn = norm(p.voornaam), pan = norm(p.achternaam);
+    if((!pvn || !pan) && p.naam && typeof splitNaam === 'function'){
+      const s = splitNaam(p.naam);
+      if(!pvn) pvn = norm(s.voornaam);
+      if(!pan) pan = norm(s.achternaam);
+    }
+    return { pvn, pan };
+  }
+  const scored = [];
+  for(const p of players){
+    if(p.concept) continue; // concepten niet voorstellen als bestaande speler
+    const { pvn, pan } = namen(p);
+    let score = 0;
+    if(vn){
+      if(pvn === vn) score += 3;
+      else if(pvn.startsWith(vn)) score += 2;
+      else continue;
+    }
+    if(an){
+      if(pan === an) score += 3;
+      else if(pan.startsWith(an)) score += 2;
+      else continue;
+    }
+    if(gb && norm(p.geboorte) === gb) score += 3;
+    const pcl = norm(p.club);
+    if(cl){
+      if(pcl === cl) score += 2;
+      else if(pcl && pcl.includes(cl)) score += 1;
+    }
+    if(score >= 2) scored.push({ player: p, score });
+  }
+  scored.sort((a,b) => b.score - a.score);
+  return scored.slice(0, 5).map(x => x.player);
+}
+
+function pmppRenderSuggestions(){
+  const wrap = document.getElementById('pmpp-suggestion-wrap');
+  if(!wrap) return;
+  const suggestions = pmppGetSuggestions();
+  if(!suggestions.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  const rows = suggestions.map(p => {
+    const naam = p.naam || [p.voornaam, p.achternaam].filter(Boolean).join(' ') || '(geen naam)';
+    const metaParts = [];
+    if(p.club) metaParts.push(p.club);
+    if(p.geboorte){
+      const parts = String(p.geboorte).split('-');
+      metaParts.push(parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : p.geboorte);
+    }
+    if(p.positie) metaParts.push(p.positie);
+    return `<div class="pp-sug-row" data-player-id="${escapeHtml(p.id)}">
+      <div style="min-width:0; flex:1; display:flex; flex-direction:column; gap:2px;">
+        <div class="pp-sug-name">${escapeHtml(naam)}</div>
+        ${metaParts.length ? `<div class="pp-sug-meta">${escapeHtml(metaParts.join(' · '))}</div>` : ''}
+      </div>
+      <span class="pp-sug-apply">VUL IN</span>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = `<div class="pp-sug-title">Uit spelersdatabase (${suggestions.length})</div>${rows}`;
+  wrap.style.display = '';
+  wrap.querySelectorAll('.pp-sug-row').forEach(row => {
+    row.addEventListener('click', () => pmppApplySuggestion(row.dataset.playerId));
+  });
+}
+
+function pmppApplySuggestion(playerId){
+  if(!playerId) return;
+  const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+  const p = players.find(x => x.id === playerId);
+  if(!p){ toast('Speler niet gevonden in database', true); return; }
+  let vn = p.voornaam || '', an = p.achternaam || '';
+  if((!vn || !an) && p.naam && typeof splitNaam === 'function'){
+    const s = splitNaam(p.naam);
+    if(!vn) vn = s.voornaam;
+    if(!an) an = s.achternaam;
+  }
+  if($('#pmpp-voornaam')) $('#pmpp-voornaam').value = vn;
+  if($('#pmpp-achternaam')) $('#pmpp-achternaam').value = an;
+  if(p.geboorte && $('#pmpp-geboorte')) $('#pmpp-geboorte').value = p.geboorte;
+  if(p.club && $('#pmpp-club')) $('#pmpp-club').value = p.club;
+  const wrap = document.getElementById('pmpp-suggestion-wrap');
+  if(wrap){ wrap.style.display = 'none'; wrap.innerHTML = ''; }
+  try { pmppRenderKnownBanner(); } catch(_){}
+}
+
+function pmppRenderKnownBanner(){
+  const el = document.getElementById('pmpp-known-banner');
+  if(!el) return;
+  const vn = ($('#pmpp-voornaam')?.value || '').trim();
+  const an = ($('#pmpp-achternaam')?.value || '').trim();
+  const gb = ($('#pmpp-geboorte')?.value || '').trim();
+  if(!vn || !an){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  let match = null;
+  try { match = findExistingPlayer(vn, an, gb); } catch(_){}
+  if(!match || !match.player){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  const p = match.player;
+  let n = 0;
+  try { n = (reportsForPlayer(p.id) || []).length; } catch(_){}
+  const next = n + 1;
+  const nth = (next === 1) ? '1e' : (next === 2) ? '2e' : (next === 3) ? '3e' : (next + 'e');
+  const naam = p.naam || [p.voornaam, p.achternaam].filter(Boolean).join(' ');
+  el.innerHTML = `<div style="display:flex; align-items:flex-start; gap:8px;">
+    <span style="font-size:14px; line-height:1;">ℹ️</span>
+    <div>
+      <div style="font-weight:600; color:#dbeafe;">Deze speler is al bekend</div>
+      <div style="margin-top:2px;">Dit wordt het <strong>${nth} spelersrapport</strong> van ${escapeHtml(naam)}${n>0 ? ` (${n} eerder)` : ''}.</div>
+    </div>
+  </div>`;
+  el.style.display = '';
+}
+
+function pmppSchedule(){
+  if(__pmppSugTimer) clearTimeout(__pmppSugTimer);
+  __pmppSugTimer = setTimeout(() => {
+    try { pmppRenderSuggestions(); } catch(_){}
+    try { pmppRenderKnownBanner(); } catch(_){}
+  }, 180);
+}
+
+function pmppRenderList(){
+  const list = document.getElementById('pmpp-list');
+  if(!list) return;
+  if(!__pmPendingPlayers.length){ list.innerHTML = ''; return; }
+  const rows = __pmPendingPlayers.map(s => {
+    const naam = s.naam || [s.voornaam, s.achternaam].filter(Boolean).join(' ') || '(geen naam)';
+    const meta = [];
+    if(s.club) meta.push(s.club);
+    if(s.geboorte){
+      const parts = String(s.geboorte).split('-');
+      meta.push(parts.length === 3 ? `${parts[2]}-${parts[1]}-${parts[0]}` : s.geboorte);
+    }
+    return `<div style="display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--border); border-radius:8px; background:var(--bg-1); margin-top:6px;">
+      <div style="flex:1; min-width:0;">
+        <div style="font-weight:600; font-size:13px;">${escapeHtml(naam)}</div>
+        ${meta.length ? `<div style="font-size:11.5px; color:var(--text-3); margin-top:1px;">${escapeHtml(meta.join(' · '))}</div>` : ''}
+      </div>
+      <button type="button" class="btn" data-pmpp-remove="${escapeHtml(s.id)}" style="font-size:11.5px; padding:4px 8px; color:#ef4444;">Verwijderen</button>
+    </div>`;
+  }).join('');
+  list.innerHTML = `<div style="font-size:11.5px; color:var(--text-3); margin-top:8px;">Toegevoegd aan plan (${__pmPendingPlayers.length}):</div>${rows}`;
+  list.querySelectorAll('[data-pmpp-remove]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id = btn.getAttribute('data-pmpp-remove');
+      __pmPendingPlayers = __pmPendingPlayers.filter(x => x.id !== id);
+      pmppRenderList();
+    });
+  });
+}
+
+function pmppAdd(){
+  const vn = ($('#pmpp-voornaam')?.value || '').trim();
+  const an = ($('#pmpp-achternaam')?.value || '').trim();
+  if(!vn || !an){ toast('Vul voornaam en achternaam in', true); return; }
+  const gb = ($('#pmpp-geboorte')?.value || '').trim();
+  const cl = ($('#pmpp-club')?.value || '').trim();
+  // Voorkom dubbel-toevoegen (zelfde naam + geboorte) in dezelfde sessie
+  const dup = __pmPendingPlayers.find(s =>
+    (s.voornaam||'').toLowerCase() === vn.toLowerCase() &&
+    (s.achternaam||'').toLowerCase() === an.toLowerCase() &&
+    (s.geboorte||'') === gb
+  );
+  if(dup){ toast('Deze speler staat al in het plan', true); return; }
+  const naam = [vn, an].filter(Boolean).join(' ');
+  __pmPendingPlayers.push({
+    id: genId('progsp'),
+    naam, voornaam: vn, achternaam: an,
+    geboorte: gb, club: cl,
+    rugnummer: '', positie: '',
+    voor_notities: '',
+    volledig: null,
+    modified: Date.now()
+  });
+  // Velden leegmaken voor volgende speler
+  if($('#pmpp-voornaam')) $('#pmpp-voornaam').value = '';
+  if($('#pmpp-achternaam')) $('#pmpp-achternaam').value = '';
+  if($('#pmpp-geboorte')) $('#pmpp-geboorte').value = '';
+  if($('#pmpp-club')) $('#pmpp-club').value = '';
+  const wrap = document.getElementById('pmpp-suggestion-wrap');
+  if(wrap){ wrap.style.display = 'none'; wrap.innerHTML = ''; }
+  const banner = document.getElementById('pmpp-known-banner');
+  if(banner){ banner.style.display = 'none'; banner.innerHTML = ''; }
+  pmppRenderList();
+  if($('#pmpp-voornaam')) $('#pmpp-voornaam').focus();
+}
+
+function pmppResetUI(){
+  __pmPendingPlayers = [];
+  ['#pmpp-voornaam','#pmpp-achternaam','#pmpp-geboorte','#pmpp-club'].forEach(sel => {
+    const el = document.querySelector(sel);
+    if(el) el.value = '';
+  });
+  const wrap = document.getElementById('pmpp-suggestion-wrap');
+  if(wrap){ wrap.style.display = 'none'; wrap.innerHTML = ''; }
+  const banner = document.getElementById('pmpp-known-banner');
+  if(banner){ banner.style.display = 'none'; banner.innerHTML = ''; }
+  const list = document.getElementById('pmpp-list');
+  if(list) list.innerHTML = '';
+  const det = document.getElementById('pm-pp-details');
+  if(det) det.open = false;
+}
+
+// Wire-up: handlers + buttons (één keer, na DOM-load)
+(function wirePmppHandlers(){
+  function bind(){
+    ['pmpp-voornaam','pmpp-achternaam','pmpp-geboorte','pmpp-club'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el && !el.dataset._pmppBound){
+        el.dataset._pmppBound = '1';
+        el.addEventListener('input', pmppSchedule);
+        el.addEventListener('change', pmppSchedule);
+      }
+    });
+    const addBtn = document.getElementById('pmpp-add');
+    if(addBtn && !addBtn.dataset._pmppBound){
+      addBtn.dataset._pmppBound = '1';
+      addBtn.addEventListener('click', pmppAdd);
+    }
+  }
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', bind);
+  } else {
+    bind();
+  }
+})();
+
+window.pmppAdd = pmppAdd;
+window.pmppRenderList = pmppRenderList;
+window.pmppResetUI = pmppResetUI;
+window.__pmPendingPlayers = __pmPendingPlayers;
 
 function openProgPlayerModal(progId, spelerId){
   const it = programmaCache.find(p => p.id === progId);
@@ -33235,7 +33955,11 @@ function openProgPlayerModal(progId, spelerId){
   // s35t: reset suggestie-strip en check direct (bij sp leeg toont 'ie niets totdat user typt)
   const sugWrap = document.getElementById('pp-suggestion-wrap');
   if(sugWrap){ sugWrap.style.display = 'none'; sugWrap.innerHTML = ''; }
+  // s35dg Fase B: reset bekende-speler banner
+  const knownBanner = document.getElementById('pp-known-banner');
+  if(knownBanner){ knownBanner.style.display = 'none'; knownBanner.innerHTML = ''; }
   if(typeof renderPpSuggestions === 'function') setTimeout(renderPpSuggestions, 50);
+  if(typeof renderKnownPlayerBanner === 'function') setTimeout(renderKnownPlayerBanner, 60);
   setTimeout(()=> $('#pp-voornaam').focus(), 80); // s35q: voornaam is nu eerste veld
 }
 function closeProgPlayerModal(){ hideModal('prog-player-backdrop'); ppFullDraft = null; }
@@ -33505,7 +34229,11 @@ function collectReportFormData(){
       opstelling: $('#f-w-opstelling').value.trim(),
       context: $('#f-w-context').value.trim(),
       toernooi: $('#f-w-toernooi') ? !!$('#f-w-toernooi').checked : false,
-      toernooi_naam: $('#f-w-toernooi-naam') ? $('#f-w-toernooi-naam').value.trim() : ''
+      toernooi_naam: $('#f-w-toernooi-naam') ? $('#f-w-toernooi-naam').value.trim() : '',
+      /* s35dg Fase H */
+      plaats: $('#f-w-plaats') ? $('#f-w-plaats').value.trim() : '',
+      sportpark: $('#f-w-sportpark') ? $('#f-w-sportpark').value.trim() : '',
+      veld: $('#f-w-veld') ? $('#f-w-veld').value.trim() : ''
     },
     bouw: $('#f-bouw').value.trim(),
     lengte: $('#f-lengte').value.trim(),
@@ -36142,7 +36870,11 @@ try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_
         opstelling: $id('f-w-opstelling')?.value || '',
         context: ($id('f-w-context')?.value || '').trim(),
         toernooi: !!($id('f-w-toernooi') && $id('f-w-toernooi').checked),
-        toernooi_naam: ($id('f-w-toernooi-naam')?.value || '').trim()
+        toernooi_naam: ($id('f-w-toernooi-naam')?.value || '').trim(),
+        /* s35dg Fase H: wedstrijd-locatie */
+        plaats: ($id('f-w-plaats')?.value || '').trim(),
+        sportpark: ($id('f-w-sportpark')?.value || '').trim(),
+        veld: ($id('f-w-veld')?.value || '').trim()
       },
       bouw: $id('f-bouw')?.value || '',
       lengte: $id('f-lengte')?.value || '',

@@ -1162,12 +1162,11 @@ a { color: var(--accent); text-decoration: none; }
 }
 .sa-tile:hover { background: rgba(78,161,255,.10); border-color: rgba(78,161,255,.4); transform: translateY(-1px); }
 .sa-tile.draft { border-color: rgba(245,197,24,0.5); }
-.sa-tile.draft::after { content: '● concept'; font-size: 10px; color: #f5c518; font-weight: 600; letter-spacing: .3px; margin-top: 2px; }
 .sa-tile.linked { border-color: rgba(16,185,129,0.4); }
 .sa-tile.linked::after { content: '● gekoppeld'; font-size: 10px; color: #34d399; font-weight: 600; letter-spacing: .3px; margin-top: 2px; }
-.sa-tile-name { font-size: 13px; font-weight: 700; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* s35dg-hotfix4: inline chip "— spelersnotitie" achter spelernaam in live-tile */
-.sa-tile-snelnote-chip { font-size: 11px; font-weight: 500; color: #fbbf24; cursor: pointer; margin-left: 6px; opacity: .85; }
+.sa-tile-name { font-size: 13px; font-weight: 700; color: var(--text-1); }
+/* s35dg-hotfix5: chip "— spelersnotitie" op eigen regel onder spelernaam, volledig leesbaar */
+.sa-tile-snelnote-chip { display: block; font-size: 11px; font-weight: 500; color: #fbbf24; cursor: pointer; opacity: .85; margin-top: 2px; }
 .sa-tile-snelnote-chip:hover { opacity: 1; text-decoration: underline; }
 .sa-tile-meta { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sa-empty-players { font-size: 12px; color: var(--text-3); font-style: italic; padding: 6px 0; }
@@ -7667,7 +7666,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35dg-hotfix2 (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35dg-hotfix5 (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
         <!-- s35cr: juridische links onderin de Instellingen-modal -->
         <div class="settings-meta" style="margin-top:6px; font-size:11px;">
           <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('privacy');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Privacyverklaring</a>
@@ -9878,7 +9877,12 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35dg-hotfix4 &middot; 20 mei 2026</div>
+    <div class="changelog-ver">v70h-s35dg-hotfix5 &middot; 20 mei 2026</div>
+
+    <div class="changelog-item">
+      <div class="changelog-item-title">Live-tile leesbaarder + spelersnotitie-velden blijven leeg (s35dg-hotfix5)</div>
+      <div class="changelog-item-detail">Drie kleine maar storende dingen rond de live-tile en spelersnotitie zijn opgelost: <b>(1)</b> de extra <b>"● concept"</b>-tekst onder een tile met een openstaande snel-notitie is weg — de gele rand is al de signaalkleur, dubbel-labelen leidde alleen maar af. <b>(2)</b> Het kleine <b>"— spelersnotitie"</b>-linkje achter de spelernaam stond op één regel met de naam en werd op smalle tiles afgekapt tot <i>"— spelersnot…"</i>. Het linkje staat nu op een eigen regel direct onder de naam, altijd volledig leesbaar. <b>(3)</b> Bij het openen van een spelersnotitie werden bij sommige termen automatisch andere term-namen ingevuld (bijv. SPRINTEN-veld toonde "duelleren:", DUELLEREN-veld toonde "wendbaarheid:"). Dit was restdata uit een eerdere patch. De velden zijn nu altijd leeg behalve wanneer er echte invoer staat — alléén de titels van de termen blijven zichtbaar.</div>
+    </div>
 
     <div class="changelog-item">
       <div class="changelog-item-title">Spelersnotitie per gekoppelde speler: één concept, geen lege regels meer (s35dg-hotfix4)</div>
@@ -24998,7 +25002,8 @@ function renderActiveScouting(){
         </div>` : '';
         return `<div class="${cls}" data-prog-id="${escapeHtml(prog.id)}" data-sp-idx="${i}" data-player-id="${player ? escapeHtml(player.id) : ''}" title="Klik om uit te klappen">
           <button type="button" class="sa-tile-close" data-tile-act="close" aria-label="Sluiten" style="display:none">×</button>
-          <div class="sa-tile-name">${escapeHtml(naam)} <span class="sa-tile-snelnote-chip" data-tile-act="new-snel-notitie">— spelersnotitie</span></div>
+          <div class="sa-tile-name">${escapeHtml(naam)}</div>
+          <span class="sa-tile-snelnote-chip" data-tile-act="new-snel-notitie">— spelersnotitie</span>
           ${meta ? `<div class="sa-tile-meta">${escapeHtml(meta)}</div>` : ''}
           ${conceptTag}
           <div class="sa-tile-panel">
@@ -25326,6 +25331,13 @@ function renderActiveScouting(){
             }).join('\n');
           };
           // Parse: tekst-string -> 8 inputs (regex per term)
+          // s35dg-hotfix5: sanitize waarden die per ongeluk een andere TERM-naam bevatten
+          // (legacy data uit een vorige patch waarin sprinten→duelleren, duelleren→wendbaarheid enz. zijn opgeslagen)
+          const isShiftedJunk = (v) => {
+            if(!v) return false;
+            const stripped = v.trim().replace(/:\s*$/, '').toLowerCase();
+            return TERMS.indexOf(stripped) >= 0;
+          };
           const parseTekstIntoInputs = (tekst) => {
             const src = tekst || '';
             TERMS.forEach(t => {
@@ -25333,7 +25345,9 @@ function renderActiveScouting(){
               if(!el) return;
               const re = new RegExp('^\\s*' + t + '\\s*:\\s*(.*)$', 'mi');
               const m = src.match(re);
-              el.value = (m && m[1]) ? m[1].trim() : '';
+              let val = (m && m[1]) ? m[1].trim() : '';
+              if(isShiftedJunk(val)) val = '';
+              el.value = val;
             });
           };
           // Sync term-inputs -> hidden textarea on every input

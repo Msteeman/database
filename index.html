@@ -7664,7 +7664,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35dg-hotfix1 (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35dg-hotfix2 (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
         <!-- s35cr: juridische links onderin de Instellingen-modal -->
         <div class="settings-meta" style="margin-top:6px; font-size:11px;">
           <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('privacy');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Privacyverklaring</a>
@@ -9875,7 +9875,17 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35dg-hotfix1 &middot; 20 mei 2026</div>
+    <div class="changelog-ver">v70h-s35dg-hotfix3 &middot; 20 mei 2026</div>
+
+    <div class="changelog-item">
+      <div class="changelog-item-title">Wedstrijdrapport en spelersnotitie openen nu direct (s35dg-hotfix3)</div>
+      <div class="changelog-item-detail">Twee klik-fixes in de Wedstrijden-pagina: <b>(1)</b> "Open wedstrijdrapport" op een concept-record opent nu direct het wedstrijdrapport-formulier met datum, thuis, uit, leeftijd en de eerder genoteerde tekst ingevuld — geen tussenscherm of tweede klik meer nodig. <b>(2)</b> "Openen" op een spelersnotitie (bijv. "#10 Liam de Boer") springt nu rechtstreeks naar het <b>volledige spelersrapport</b> met de inhoud van de snel-notitie al ingevuld als concept. Voorheen kwam je eerst in een "Speler toevoegen"-scherm en moest je nog een keer op "Volledig invullen" klikken.</div>
+    </div>
+
+    <div class="changelog-item">
+      <div class="changelog-item-title">Dubbele spelersnotities tegengaan + "Bezig"-tile binnen leeftijdsvenster (s35dg-hotfix2)</div>
+      <div class="changelog-item-detail">Twee verbeteringen aan de live-wedstrijdflow: <b>(1)</b> je kunt tijdens een live wedstrijd niet meer per ongeluk meerdere snel-notities voor dezelfde speler aanmaken — als er al een notitie voor deze speler bestaat (op basis van rugnummer of naam), wordt die bestaande notitie hergebruikt en bewerk je verder. Je ziet een korte statusmelding "bestaande notitie geopend". <b>(2)</b> De <b>"Bezig"</b>-tile op het dashboard hield zich niet altijd aan het leeftijdsgebonden tijdvenster (5 min voor aftrap + speelduur + rust + 15 min na). Bij wedstrijden zonder ingevuld leeftijdsveld viel hij terug op het standaard 120-minuten-venster, waardoor de tile bij bijv. een O.16 (95 min totaal) bleef hangen tot +135. De leeftijd wordt nu automatisch herleid uit het thuis- of uit-elftal (bijv. "O.16"), zodat het venster correct sluit op +110 min na aftrap voor O.16/O.17.</div>
+    </div>
 
     <div class="changelog-item">
       <div class="changelog-item-title">Losse spelersnotities worden automatisch concept-spelersrapporten (s35dg-hotfix1)</div>
@@ -24496,7 +24506,14 @@ function getMatchWindow(prog){
   if(!Y||!M||!D) return null;
   const kick = new Date(Y, M-1, D, hh, mm, 0, 0);
   const start = new Date(kick.getTime() - SCOUTING_PRE_MIN*60000);
-  const end   = new Date(kick.getTime() + (getMatchDurationMin(prog.leeftijd) + SCOUTING_POST_MIN)*60000);
+  // s35dg-hotfix2: prog.leeftijd is op nieuwere items vaak leeg; pak dan
+  // thuis_elftal/uit_elftal (bv. 'O.16'). Zonder fallback rekent de window
+  // op default 120 min en blijft de 'Bezig'-tile tot +135 min hangen.
+  const lf = (prog.leeftijd && String(prog.leeftijd).trim())
+          || (prog.thuis_elftal && String(prog.thuis_elftal).trim())
+          || (prog.uit_elftal && String(prog.uit_elftal).trim())
+          || '';
+  const end   = new Date(kick.getTime() + (getMatchDurationMin(lf) + SCOUTING_POST_MIN)*60000);
   return { kick, start, end };
 }
 function isMatchInWindow(prog, now){
@@ -25312,6 +25329,22 @@ function renderActiveScouting(){
             }
             if(!Array.isArray(prog.snelnotities)) prog.snelnotities = [];
             const tekst = tekstRaw;
+            // s35dg-hotfix2: duplicate-check — één snel-notitie per speler per wedstrijd.
+            // Match op (genormaliseerde naam) OF (niet-leeg rugnummer). Bestaat er al
+            // een, hergebruik die id ipv een nieuwe te maken.
+            const norm = (s) => String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
+            const findDup = () => {
+              if(!naam && !rug) return null;
+              const nNaam = norm(naam);
+              const nRug = String(rug||'').trim();
+              return prog.snelnotities.find(s => {
+                if(!s) return false;
+                if(savedSnId && s.id === savedSnId) return false;
+                if(nRug && String(s.rugnummer||'').trim() === nRug) return true;
+                if(nNaam && norm(s.naam) === nNaam) return true;
+                return false;
+              }) || null;
+            };
             if(savedSnId){
               const existing = prog.snelnotities.find(s => s.id === savedSnId);
               if(existing){
@@ -25320,12 +25353,25 @@ function renderActiveScouting(){
                 existing.positie = pos;
                 existing.tekst = tekst;
               } else {
+                const dup = findDup();
+                if(dup){
+                  savedSnId = dup.id;
+                  dup.naam = naam; dup.rugnummer = rug; dup.positie = pos; dup.tekst = tekst;
+                } else {
+                  savedSnId = 'sn_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+                  prog.snelnotities.push({ id: savedSnId, naam, rugnummer: rug, positie: pos, tekst, created: Date.now() });
+                }
+              }
+            } else {
+              const dup = findDup();
+              if(dup){
+                savedSnId = dup.id;
+                dup.naam = naam; dup.rugnummer = rug; dup.positie = pos; dup.tekst = tekst;
+                if(statusEl){ statusEl.textContent = 'bestaande notitie geopend'; statusEl.style.color = '#fbbf24'; }
+              } else {
                 savedSnId = 'sn_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
                 prog.snelnotities.push({ id: savedSnId, naam, rugnummer: rug, positie: pos, tekst, created: Date.now() });
               }
-            } else {
-              savedSnId = 'sn_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-              prog.snelnotities.push({ id: savedSnId, naam, rugnummer: rug, positie: pos, tekst, created: Date.now() });
             }
             prog.modified = Date.now();
             try {
@@ -27649,19 +27695,33 @@ function _shOpenEditModal(m){
       const progId = btn.dataset.wrOpenModal;
       const prog = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === progId) : null;
       if(!prog){ if(typeof toast === 'function') toast('Wedstrijd niet gevonden', true); return; }
-      // Probeer eerst de speciale wedstrijdrapport-modal; val terug op snel-notitie-conversie van eerste wn
-      if(typeof _shOpenWedstrijdrapportModal === 'function'){
-        _shCloseEditModal();
-        _shOpenWedstrijdrapportModal(prog);
-        return;
-      }
-      // Fallback: open eerste wedstrijdnotitie via bestaande converter
-      const wns = Array.isArray(prog.wedstrijdnotities) ? prog.wedstrijdnotities : [];
-      if(wns.length > 0){
-        _shCloseEditModal();
-        _shConvertWstrNotitieToRapport(prog.id, 0);
+      // s35dg-hotfix3: direct openen wedstrijdrapport-modal met prefill uit concept
+      _shCloseEditModal();
+      if(typeof openMatchReportModal === 'function'){
+        openMatchReportModal('');
+        setTimeout(() => {
+          try {
+            const wr = prog.wedstrijdrapport || {};
+            const setVal = (id, v) => { const el = document.getElementById(id); if(el && v != null && !el.value) el.value = v; };
+            setVal('mr-datum', wr.datum || prog.datum || '');
+            setVal('mr-thuis', wr.thuis || prog.thuis || '');
+            setVal('mr-uit',   wr.uit   || prog.uit   || '');
+            setVal('mr-leeftijd', prog.leeftijd || '');
+            const opm = document.getElementById('mr-opmerking');
+            if(opm && !opm.value){
+              const tekst = wr.tekst || '';
+              if(tekst) opm.value = tekst;
+            }
+          } catch(_){}
+        }, 60);
       } else {
-        if(typeof toast === 'function') toast('Geen bewerker beschikbaar — wedstrijdrapport opent in volgende update', true);
+        // Fallback: open eerste wedstrijdnotitie via bestaande converter
+        const wns = Array.isArray(prog.wedstrijdnotities) ? prog.wedstrijdnotities : [];
+        if(wns.length > 0){
+          _shConvertWstrNotitieToRapport(prog.id, 0);
+        } else {
+          if(typeof toast === 'function') toast('Geen bewerker beschikbaar', true);
+        }
       }
     });
   });
@@ -27794,9 +27854,13 @@ async function _shConvertSnelToRapport(progId, snIdx){
           setVal("pp-notities", sn.tekst || "");
           window.__shConvertingFromSnId = sn.id || null;
           window.__shConvertingFromProgId = progId;
+          // s35dg-hotfix3: direct doorklikken naar volledig spelersrapport, geen tussenscherm
+          if(typeof openPpFullForm === "function"){
+            openPpFullForm();
+          }
         } catch(_){}
       }, 80);
-      if(typeof toast === "function") toast("Snel-notitie geladen — vul aanvullende info in");
+      if(typeof toast === "function") toast("Spelersrapport geopend met notitie");
     } else {
       if(typeof toast === "function") toast("Spelersrapport-modal niet beschikbaar", true);
     }

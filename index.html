@@ -1166,6 +1166,9 @@ a { color: var(--accent); text-decoration: none; }
 .sa-tile.linked { border-color: rgba(16,185,129,0.4); }
 .sa-tile.linked::after { content: '● gekoppeld'; font-size: 10px; color: #34d399; font-weight: 600; letter-spacing: .3px; margin-top: 2px; }
 .sa-tile-name { font-size: 13px; font-weight: 700; color: var(--text-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* s35dg-hotfix4: inline chip "— spelersnotitie" achter spelernaam in live-tile */
+.sa-tile-snelnote-chip { font-size: 11px; font-weight: 500; color: #fbbf24; cursor: pointer; margin-left: 6px; opacity: .85; }
+.sa-tile-snelnote-chip:hover { opacity: 1; text-decoration: underline; }
 .sa-tile-meta { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sa-empty-players { font-size: 12px; color: var(--text-3); font-style: italic; padding: 6px 0; }
 .sa-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
@@ -9875,7 +9878,12 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35dg-hotfix3 &middot; 20 mei 2026</div>
+    <div class="changelog-ver">v70h-s35dg-hotfix4 &middot; 20 mei 2026</div>
+
+    <div class="changelog-item">
+      <div class="changelog-item-title">Spelersnotitie per gekoppelde speler: één concept, geen lege regels meer (s35dg-hotfix4)</div>
+      <div class="changelog-item-detail">Drie verbeteringen voor het noteren tijdens een live wedstrijd vanuit het dashboard: <b>(1)</b> achter elke gekoppelde spelernaam staat nu een klein <b>"— spelersnotitie"</b> linkje in plaats van een aparte "+ Nieuwe spelersnotitie"-knop — rustiger en directer. <b>(2)</b> Als je een spelersnotitie opent, zijn de 8 termregels (techniek, inzicht, mentaliteit, explosiviteit, sprinten, duelleren, wendbaarheid, algemeen) altijd leeg behalve wanneer je een eerder gestarte notitie voor déze speler heropent. Geen restdata van een andere speler meer. <b>(3)</b> Per gekoppelde speler bestaat maximaal <b>één</b> snel-notitie per wedstrijd — als je nogmaals op de link klikt, wordt diezelfde notitie heropend in plaats van een nieuwe te maken. Na fluitje+15 wordt die ene notitie automatisch het concept-spelersrapport in de Wedstrijden-pagina.</div>
+    </div>
 
     <div class="changelog-item">
       <div class="changelog-item-title">Wedstrijdrapport en spelersnotitie openen nu direct (s35dg-hotfix3)</div>
@@ -24983,14 +24991,14 @@ function renderActiveScouting(){
         ].filter(Boolean).join(' · ');
         const conceptTag = concept ? `<div class="sa-tile-concept-tag">concept</div>` : '';
         // s35dg Fase C+D: tijdens live alleen spelersnotitie — geen volledig rapport meer
+        // s35dg-hotfix4: chip-link inline achter naam, geen aparte "+ Nieuwe spelersnotitie"-knop
         const matchedId = player ? player.id : '';
-        const actsHtml = `<div class="sa-tile-acts">
-          <button type="button" class="primary" data-tile-act="new-snel-notitie">+ Nieuwe spelersnotitie</button>
-          ${matchedId ? `<button type="button" data-tile-act="open-player" data-player-id="${escapeHtml(matchedId)}">Open speler</button>` : ''}
-        </div>`;
+        const actsHtml = matchedId ? `<div class="sa-tile-acts">
+          <button type="button" data-tile-act="open-player" data-player-id="${escapeHtml(matchedId)}">Open speler</button>
+        </div>` : '';
         return `<div class="${cls}" data-prog-id="${escapeHtml(prog.id)}" data-sp-idx="${i}" data-player-id="${player ? escapeHtml(player.id) : ''}" title="Klik om uit te klappen">
           <button type="button" class="sa-tile-close" data-tile-act="close" aria-label="Sluiten" style="display:none">×</button>
-          <div class="sa-tile-name">${escapeHtml(naam)}</div>
+          <div class="sa-tile-name">${escapeHtml(naam)} <span class="sa-tile-snelnote-chip" data-tile-act="new-snel-notitie">— spelersnotitie</span></div>
           ${meta ? `<div class="sa-tile-meta">${escapeHtml(meta)}</div>` : ''}
           ${conceptTag}
           <div class="sa-tile-panel">
@@ -25145,7 +25153,9 @@ function renderActiveScouting(){
       ? findSlotConcept(prog.id, sp.id) : null;
     openScoutingPlayerForm(prog, sp, matched, slotConcept);
   }
-  // s35dg Fase C+D: open snel-notitie pre-filled voor deze tile-speler
+  // s35dg Fase C+D: open snel-notitie voor deze tile-speler
+  // s35dg-hotfix4: één notitie per speler (spelerKey), volledige form-reset bij open,
+  // bestaande notitie via __shFillFromSn herladen ipv nieuwe maken.
   function __saOpenSnelForPlayer(tile){
     const progId = tile.dataset.progId;
     const spIdx = parseInt(tile.dataset.spIdx, 10);
@@ -25160,19 +25170,39 @@ function renderActiveScouting(){
     // Trigger open via bestaande handler (zet wiring + click-outside)
     const trigger = card.querySelector(`.sa-trigger-snel[data-progid="${progId}"]`);
     if(trigger) trigger.click();
-    // Pre-fill na een tick zodat handler form heeft geopend
+    // Pre-fill / herladen na een tick zodat handler form heeft geopend
     setTimeout(() => {
       try {
-        const naam = sp.naam || [sp.voornaam, sp.achternaam].filter(Boolean).join(' ') || '';
         const naamIn = form.querySelector('.sa-snel-naam');
         const rugIn  = form.querySelector('.sa-snel-rug');
         const posIn  = form.querySelector('.sa-snel-positie');
-        if(naamIn && !naamIn.value) naamIn.value = naam;
-        if(rugIn && !rugIn.value && sp.rugnummer) rugIn.value = sp.rugnummer;
-        if(posIn && !posIn.value && sp.positie) posIn.value = sp.positie;
-        // Trigger input event zodat auto-save de prefill oppikt
-        if(naamIn && naam) naamIn.dispatchEvent(new Event('input', {bubbles:true}));
-        // Focus op eerste term-input (techniek) want naam staat al
+        const termIns = form.querySelectorAll('.sa-snel-term-input');
+        const txtIn  = form.querySelector('.sa-snel-tekst');
+        // ALTIJD eerst volledig leegmaken — voorkomt dat regels van een vorige speler blijven staan
+        if(naamIn) naamIn.value = '';
+        if(rugIn)  rugIn.value  = '';
+        if(posIn)  posIn.value  = '';
+        termIns.forEach(el => { el.value = ''; });
+        // savedSnId resetten via __shReset state mag NIET (die triggert autosave) —
+        // ipv reset gebruiken we __shFillFromSn met een leeg of bestaand record.
+        // Markeer de form met de speler-id zodat save logic spelerKey kan zetten
+        form.dataset.spelerKey = sp.id || '';
+        // Zoek bestaande snel-notitie voor deze speler
+        const existing = (prog.snelnotities || []).find(s => s && s.spelerKey === sp.id);
+        if(existing && typeof form.__shFillFromSn === 'function'){
+          form.__shFillFromSn(existing);
+        } else {
+          // Geen bestaande notitie — fill alleen naam/rug/pos vanuit speler-data
+          const naam = sp.naam || [sp.voornaam, sp.achternaam].filter(Boolean).join(' ') || '';
+          if(naamIn) naamIn.value = naam;
+          if(rugIn && sp.rugnummer) rugIn.value = sp.rugnummer;
+          if(posIn && sp.positie)   posIn.value = sp.positie;
+          // Reset savedSnId zodat nieuwe save een nieuw record maakt met spelerKey
+          if(typeof form.__shSetSavedSnId === 'function') form.__shSetSavedSnId(null);
+          // Trigger input event zodat auto-save de prefill oppikt
+          if(naamIn && naam) naamIn.dispatchEvent(new Event('input', {bubbles:true}));
+        }
+        // Focus op eerste term-input
         const firstTerm = form.querySelector('.sa-snel-term-input');
         if(firstTerm) firstTerm.focus();
         try { form.scrollIntoView({behavior:'smooth', block:'center'}); } catch(_){}
@@ -25329,17 +25359,24 @@ function renderActiveScouting(){
             }
             if(!Array.isArray(prog.snelnotities)) prog.snelnotities = [];
             const tekst = tekstRaw;
-            // s35dg-hotfix2: duplicate-check — één snel-notitie per speler per wedstrijd.
-            // Match op (genormaliseerde naam) OF (niet-leeg rugnummer). Bestaat er al
-            // een, hergebruik die id ipv een nieuwe te maken.
+            // s35dg-hotfix4: spelerKey leidend — één snel-notitie per gekoppelde speler.
+            // Match-prio: (1) spelerKey, (2) genormaliseerde naam, (3) rugnummer.
+            const spelerKey = form.dataset.spelerKey || null;
             const norm = (s) => String(s||'').trim().toLowerCase().replace(/\s+/g,' ');
             const findDup = () => {
-              if(!naam && !rug) return null;
               const nNaam = norm(naam);
               const nRug = String(rug||'').trim();
+              // 1. spelerKey-match (sterkste signaal voor gekoppelde speler)
+              if(spelerKey){
+                const byKey = prog.snelnotities.find(s => s && s.spelerKey === spelerKey && (!savedSnId || s.id !== savedSnId));
+                if(byKey) return byKey;
+              }
+              if(!naam && !rug) return null;
               return prog.snelnotities.find(s => {
                 if(!s) return false;
                 if(savedSnId && s.id === savedSnId) return false;
+                // sla records met andere spelerKey over zodat we geen records "stelen"
+                if(spelerKey && s.spelerKey && s.spelerKey !== spelerKey) return false;
                 if(nRug && String(s.rugnummer||'').trim() === nRug) return true;
                 if(nNaam && norm(s.naam) === nNaam) return true;
                 return false;
@@ -25352,14 +25389,16 @@ function renderActiveScouting(){
                 existing.rugnummer = rug;
                 existing.positie = pos;
                 existing.tekst = tekst;
+                if(spelerKey && !existing.spelerKey) existing.spelerKey = spelerKey;
               } else {
                 const dup = findDup();
                 if(dup){
                   savedSnId = dup.id;
                   dup.naam = naam; dup.rugnummer = rug; dup.positie = pos; dup.tekst = tekst;
+                  if(spelerKey && !dup.spelerKey) dup.spelerKey = spelerKey;
                 } else {
                   savedSnId = 'sn_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-                  prog.snelnotities.push({ id: savedSnId, naam, rugnummer: rug, positie: pos, tekst, created: Date.now() });
+                  prog.snelnotities.push({ id: savedSnId, naam, rugnummer: rug, positie: pos, tekst, spelerKey, created: Date.now() });
                 }
               }
             } else {
@@ -25367,10 +25406,11 @@ function renderActiveScouting(){
               if(dup){
                 savedSnId = dup.id;
                 dup.naam = naam; dup.rugnummer = rug; dup.positie = pos; dup.tekst = tekst;
+                if(spelerKey && !dup.spelerKey) dup.spelerKey = spelerKey;
                 if(statusEl){ statusEl.textContent = 'bestaande notitie geopend'; statusEl.style.color = '#fbbf24'; }
               } else {
                 savedSnId = 'sn_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
-                prog.snelnotities.push({ id: savedSnId, naam, rugnummer: rug, positie: pos, tekst, created: Date.now() });
+                prog.snelnotities.push({ id: savedSnId, naam, rugnummer: rug, positie: pos, tekst, spelerKey, created: Date.now() });
               }
             }
             prog.modified = Date.now();
@@ -25401,6 +25441,8 @@ function renderActiveScouting(){
             savedSnId    = sn.id || null;
             if(statusEl){ statusEl.textContent = 'bewerken'; statusEl.style.color = ''; }
           };
+          // s35dg-hotfix4: helper om savedSnId van buitenaf te resetten (voor speler-switch)
+          form.__shSetSavedSnId = (id) => { savedSnId = id || null; };
           // Reset state wanneer form sluit
           form.__shReset = () => {
             if(debTimer){ clearTimeout(debTimer); debTimer = null; }

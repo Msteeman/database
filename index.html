@@ -9587,7 +9587,7 @@ algemeen:</textarea>
               <div class="field"><label>Club</label><input id="pmpp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" /></div>
             </div>
             <div id="pmpp-suggestion-wrap" class="pp-suggestion-wrap" style="display:none; margin-top:8px;"></div>
-            <div id="pmpp-known-banner" style="display:none; margin-top:8px; padding:10px 12px; border-radius:10px; background:rgba(59,130,246,0.10); border:1px solid rgba(59,130,246,0.40); font-size:12.5px; color:#bfdbfe; line-height:1.4;"></div>
+            <div id="pmpp-known-banner" style="display:none; margin-top:8px; padding:10px 12px; border-radius:10px; background:rgba(34,197,94,0.10); border:1px solid rgba(34,197,94,0.40); font-size:12.5px; color:#bbf7d0; line-height:1.4;"></div>
             <div style="display:flex; justify-content:flex-end; margin-top:10px;">
               <button type="button" class="btn btn-primary" id="pmpp-add" style="font-size:12.5px;">+ Toevoegen aan plan</button>
             </div>
@@ -9620,7 +9620,7 @@ algemeen:</textarea>
         <!-- s35t: suggestie-strip uit spelersdatabase op basis van naam/club/geboorte -->
         <div id="pp-suggestion-wrap" class="pp-suggestion-wrap" style="display:none;"></div>
         <!-- s35dg Fase B: bekende-speler banner met rapport-teller -->
-        <div id="pp-known-banner" style="display:none; margin-top:8px; padding:10px 12px; border-radius:10px; background:rgba(59,130,246,0.10); border:1px solid rgba(59,130,246,0.40); font-size:12.5px; color:#bfdbfe; line-height:1.4;"></div>
+        <div id="pp-known-banner" style="display:none; margin-top:8px; padding:10px 12px; border-radius:10px; background:rgba(34,197,94,0.10); border:1px solid rgba(34,197,94,0.40); font-size:12.5px; color:#bbf7d0; line-height:1.4;"></div>
         <!-- s35q: voornaam + achternaam losse velden, geboorte ook hier. -->
         <div class="field-row" style="margin-top:0;">
           <div class="field">
@@ -25680,7 +25680,7 @@ function renderActiveScouting(){
         <div class="sa-tiles">${tilesHtml}</div>
         ${(prog.snelnotities && prog.snelnotities.length) ? `
         <div class="sa-snelnotities" data-progid="${escapeHtml(prog.id)}" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border,#2a2f3a);">
-          <div style="font-size:11px; color:var(--muted,#9aa3b7); text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px;">Snel notities (${prog.snelnotities.length})</div>
+          <div style="font-size:11px; color:var(--muted,#9aa3b7); text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px;">Alleen notities (${prog.snelnotities.length})</div>
           ${prog.snelnotities.map((sn, idx) => `
             <div class="sa-snelnotitie-row" data-sa-act="edit-snel-notitie" data-progid="${escapeHtml(prog.id)}" data-snidx="${idx}" style="background:rgba(255,255,255,0.04); border:1px solid var(--border,#2a2f3a); border-radius:8px; padding:8px 10px; margin-bottom:6px; font-size:12.5px; display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer; transition:background .15s, border-color .15s;" title="Klik om te bewerken">
               <div style="flex:1; min-width:0; display:flex; align-items:center; gap:8px;">
@@ -34445,7 +34445,7 @@ function renderKnownPlayerBanner(){
   el.innerHTML = `<div style="display:flex; align-items:flex-start; gap:8px;">
     <span style="font-size:14px; line-height:1;">ℹ️</span>
     <div>
-      <div style="font-weight:600; color:#dbeafe;">Deze speler is al bekend</div>
+      <div style="font-weight:600; color:#bbf7d0;">Deze speler is al bekend</div>
       <div style="margin-top:2px;">Dit wordt het <strong>${nth} spelersrapport</strong> van ${safeName}${n>0 ? ` (${n} eerder)` : ''}.</div>
     </div>
   </div>`;
@@ -34577,7 +34577,7 @@ function pmppRenderKnownBanner(){
   el.innerHTML = `<div style="display:flex; align-items:flex-start; gap:8px;">
     <span style="font-size:14px; line-height:1;">ℹ️</span>
     <div>
-      <div style="font-weight:600; color:#dbeafe;">Deze speler is al bekend</div>
+      <div style="font-weight:600; color:#bbf7d0;">Deze speler is al bekend</div>
       <div style="margin-top:2px;">Dit wordt het <strong>${nth} spelersrapport</strong> van ${escapeHtml(naam)}${n>0 ? ` (${n} eerder)` : ''}.</div>
     </div>
   </div>`;

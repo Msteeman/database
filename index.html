@@ -7254,6 +7254,98 @@ tbody tr:last-child td { border-bottom: none; }
 
 .db-compare-filter-btn:disabled .cmp-count { background: rgba(0,0,0,.15); }
 
+/* ===== s35di: Ritten-pagina ===== */
+.ritten-filterbar{
+  display:flex; flex-wrap:wrap; gap:10px; align-items:flex-end;
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:14px; padding:14px 16px; margin-bottom:14px;
+}
+.ritten-filterbar .rf-field{ display:flex; flex-direction:column; gap:4px; min-width:140px; }
+.ritten-filterbar label{ font-size:11px; color:var(--text-3); font-weight:600; letter-spacing:.04em; text-transform:uppercase; }
+.ritten-filterbar input[type="date"]{
+  background:var(--bg); color:var(--text-1); border:1px solid var(--border);
+  border-radius:8px; padding:8px 10px; font:inherit;
+}
+.ritten-summary{
+  display:flex; flex-wrap:wrap; gap:14px; margin-bottom:14px;
+}
+.ritten-kpi{
+  flex:1 1 140px; background:var(--panel); border:1px solid var(--border);
+  border-radius:14px; padding:14px 18px;
+}
+.ritten-kpi .kpi-label{ font-size:11px; color:var(--text-3); text-transform:uppercase; letter-spacing:.04em; }
+.ritten-kpi .kpi-value{ font-size:22px; font-weight:700; margin-top:4px; color:var(--text-1); }
+.ritten-list{ display:flex; flex-direction:column; gap:8px; }
+.rit-row{
+  display:grid; grid-template-columns: 90px 1fr auto auto;
+  gap:12px; align-items:center;
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:12px; padding:12px 14px;
+}
+.rit-row .rit-datum{ font-size:13px; color:var(--text-2); font-weight:600; }
+.rit-row .rit-route{ font-size:14px; color:var(--text-1); line-height:1.35; }
+.rit-row .rit-route .rit-arrow{ color:var(--text-3); margin:0 6px; }
+.rit-row .rit-doel{ font-size:11px; color:var(--text-3); margin-top:2px; }
+.rit-row .rit-km{ font-weight:700; color:var(--accent); white-space:nowrap; }
+.rit-row .rit-actions{ display:flex; gap:6px; }
+.rit-row .rit-actions button{
+  background:transparent; border:1px solid var(--border); color:var(--text-2);
+  border-radius:8px; padding:6px 10px; cursor:pointer; font-size:12px;
+}
+.rit-row .rit-actions button:hover{ background:var(--bg); color:var(--text-1); }
+.rit-empty{
+  text-align:center; padding:50px 20px; color:var(--text-3); font-size:13px;
+  background:var(--panel); border:1px dashed var(--border); border-radius:14px;
+}
+@media (max-width:640px){
+  .rit-row{ grid-template-columns: 1fr; gap:6px; }
+  .rit-row .rit-actions{ justify-content:flex-end; }
+  .rit-row .rit-km{ font-size:15px; }
+}
+
+/* Rit-modal */
+#rit-modal{
+  position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9999;
+  display:none; align-items:flex-start; justify-content:center;
+  padding:40px 16px; overflow-y:auto;
+}
+#rit-modal.active{ display:flex; }
+#rit-modal .rit-dialog{
+  background:var(--panel); border:1px solid var(--border);
+  border-radius:16px; width:100%; max-width:520px; padding:22px;
+  box-shadow:0 20px 50px rgba(0,0,0,.4);
+}
+#rit-modal h3{ margin:0 0 14px; font-size:18px; color:var(--text-1); }
+#rit-modal .rm-field{ display:flex; flex-direction:column; gap:5px; margin-bottom:12px; position:relative; }
+#rit-modal label{ font-size:11px; color:var(--text-3); font-weight:600; text-transform:uppercase; letter-spacing:.04em; }
+#rit-modal input, #rit-modal textarea, #rit-modal select{
+  background:var(--bg); color:var(--text-1); border:1px solid var(--border);
+  border-radius:8px; padding:9px 11px; font:inherit;
+}
+#rit-modal textarea{ resize:vertical; min-height:60px; }
+#rit-modal .rm-row{ display:flex; gap:10px; }
+#rit-modal .rm-row .rm-field{ flex:1; }
+#rit-modal .rm-actions{
+  display:flex; gap:8px; justify-content:flex-end; margin-top:18px;
+  padding-top:14px; border-top:1px solid var(--border);
+}
+#rit-modal .rm-geo{
+  align-self:flex-start; margin-top:4px;
+  background:transparent; border:1px solid var(--border); color:var(--accent);
+  border-radius:8px; padding:5px 10px; font-size:12px; cursor:pointer;
+}
+#rit-modal .rm-geo:hover{ background:var(--bg); }
+#rit-modal .rm-suggest{
+  position:absolute; top:100%; left:0; right:0; z-index:10;
+  background:var(--panel); border:1px solid var(--border); border-radius:8px;
+  max-height:180px; overflow-y:auto; margin-top:4px; display:none;
+}
+#rit-modal .rm-suggest.open{ display:block; }
+#rit-modal .rm-suggest-item{
+  padding:8px 11px; cursor:pointer; font-size:13px; color:var(--text-2);
+}
+#rit-modal .rm-suggest-item:hover{ background:var(--bg); color:var(--text-1); }
+
 
 </style>
 <style id="s35cg-roles">
@@ -7666,7 +7758,7 @@ tbody tr:last-child td { border-bottom: none; }
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35dg-hotfix5 (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35di (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
         <!-- s35cr: juridische links onderin de Instellingen-modal -->
         <div class="settings-meta" style="margin-top:6px; font-size:11px;">
           <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('privacy');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Privacyverklaring</a>
@@ -7838,6 +7930,10 @@ tbody tr:last-child td { border-bottom: none; }
         <button class="nav-item" data-view="contacts">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Contacten
+        </button>
+                <button class="nav-item" data-view="ritten">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13l2-5a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 8l2 5"/><path d="M3 13h18v5a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H4a1 1 0 0 1-1-1z"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/></svg>
+          Ritten
         </button>
         <button class="nav-item" data-view="tips">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>
@@ -8962,6 +9058,99 @@ algemeen:</textarea>
         </div>
       </section>
 
+      <!-- ====== s35di: RITTEN ====== -->
+      <section class="view" id="view-ritten">
+        <div class="topbar">
+          <div>
+            <div class="page-title">Ritten</div>
+            <div class="page-sub">Km-registratie per rit — heen en terug apart, geo-locatie als startpunt</div>
+          </div>
+          <button class="btn btn-primary" id="rit-new-btn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Nieuwe rit
+          </button>
+        </div>
+
+        <div class="ritten-filterbar">
+          <div class="rf-field">
+            <label for="rit-filter-van">Van datum</label>
+            <input type="date" id="rit-filter-van" />
+          </div>
+          <div class="rf-field">
+            <label for="rit-filter-tot">Tot datum</label>
+            <input type="date" id="rit-filter-tot" />
+          </div>
+          <div class="rf-field" style="min-width:0;">
+            <label>&nbsp;</label>
+            <button class="btn btn-secondary" id="rit-filter-reset" type="button" style="padding:8px 14px;">Reset</button>
+          </div>
+          <div class="rf-field" style="margin-left:auto; min-width:0;">
+            <label>&nbsp;</label>
+            <button class="btn btn-secondary" id="rit-export-csv" type="button" style="padding:8px 14px;">CSV-export</button>
+          </div>
+        </div>
+
+        <div class="ritten-summary">
+          <div class="ritten-kpi"><div class="kpi-label">Totaal ritten</div><div class="kpi-value" id="rit-kpi-aantal">0</div></div>
+          <div class="ritten-kpi"><div class="kpi-label">Totaal km</div><div class="kpi-value" id="rit-kpi-km">0</div></div>
+          <div class="ritten-kpi"><div class="kpi-label">Periode</div><div class="kpi-value" id="rit-kpi-periode" style="font-size:15px;">—</div></div>
+        </div>
+
+        <div id="ritten-list" class="ritten-list"></div>
+        <div id="ritten-empty" class="rit-empty" style="display:none;">
+          Nog geen ritten in deze periode. Klik op <strong>Nieuwe rit</strong> om er een toe te voegen.
+        </div>
+      </section>
+
+      <!-- ====== s35di: Rit-modal ====== -->
+      <div id="rit-modal" role="dialog" aria-modal="true" aria-labelledby="rit-modal-title">
+        <div class="rit-dialog">
+          <h3 id="rit-modal-title">Nieuwe rit</h3>
+          <input type="hidden" id="rit-id" />
+
+          <div class="rm-row">
+            <div class="rm-field">
+              <label for="rit-datum">Datum</label>
+              <input type="date" id="rit-datum" />
+            </div>
+            <div class="rm-field">
+              <label for="rit-tijd">Tijd</label>
+              <input type="time" id="rit-tijd" />
+            </div>
+          </div>
+
+          <div class="rm-field">
+            <label for="rit-vertrek">Vertrekadres</label>
+            <input type="text" id="rit-vertrek" autocomplete="off" placeholder="Adres of plaats" />
+            <button class="rm-geo" type="button" id="rit-geo-vertrek">📍 Mijn huidige locatie</button>
+            <div class="rm-suggest" id="rit-vertrek-suggest"></div>
+          </div>
+
+          <div class="rm-field">
+            <label for="rit-aankomst">Aankomstadres</label>
+            <input type="text" id="rit-aankomst" autocomplete="off" placeholder="Adres of plaats" />
+            <div class="rm-suggest" id="rit-aankomst-suggest"></div>
+          </div>
+
+          <div class="rm-row">
+            <div class="rm-field">
+              <label for="rit-km">Kilometers</label>
+              <input type="number" id="rit-km" min="0" step="0.1" placeholder="0" />
+            </div>
+            <div class="rm-field">
+              <label for="rit-doel">Doel (optioneel)</label>
+              <input type="text" id="rit-doel" placeholder="Bv. wedstrijd, scouting, vergadering" />
+            </div>
+          </div>
+
+          <div class="rm-actions">
+            <button class="btn btn-danger" id="rit-delete-btn" type="button" style="margin-right:auto; display:none;">Verwijderen</button>
+            <button class="btn btn-secondary" id="rit-cancel-btn" type="button">Annuleren</button>
+            <button class="btn btn-primary" id="rit-save-btn" type="button">Opslaan</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ====== s35cr: PRIVACYVERKLARING ====== -->
       <section class="view" id="view-privacy">
         <div class="topbar">
@@ -9877,7 +10066,17 @@ algemeen:</textarea>
   <div class="changelog-modal">
     <div class="changelog-grip"></div>
     <div class="changelog-title">Nieuw in deze versie</div>
-    <div class="changelog-ver">v70h-s35dg-hotfix5 &middot; 20 mei 2026</div>
+    <div class="changelog-ver">v70h-s35di &middot; 20 mei 2026</div>
+    <div class="changelog-item">
+      <div class="changelog-item-title">Nieuwe pagina: Ritten — km-registratie (s35di)</div>
+      <div class="changelog-item-detail">Een aparte pagina <b>Ritten</b> in het menu om je kilometers bij te houden. Per rit leg je <b>datum, tijd, vertrek- en aankomstadres, km en doel</b> vast — heen en terug zijn twee aparte ritten. Met de knop <b>📍 Mijn huidige locatie</b> vult de app automatisch je vertrekpunt in (via je GPS + adres-zoek). Adressen die je al eens hebt ingevoerd verschijnen meteen als suggestie bij volgende ritten. Filter op datum-bereik om bv. een maand of een toernooi-periode te bekijken, met direct het totaal aantal kilometers. Met <b>CSV-export</b> haal je alles in één klik in Excel voor je declaratie of boekhouding.</div>
+    </div>
+    <div class="changelog-ver">v70h-s35dg-hotfix6 &middot; 20 mei 2026</div>
+
+    <div class="changelog-item">
+      <div class="changelog-item-title">Updates komen sneller binnen op telefoon en laptop (s35dg-hotfix6)</div>
+      <div class="changelog-item-detail">Na het uploaden van een nieuwe versie bleef de app soms hardnekkig de oude versie tonen, omdat de browser <i>tussenkopieën</i> van <code>index.html</code> en <code>sw.js</code> bewaart. De service-worker pakt nu bij installatie en bij elke paginalading <b>gegarandeerd verse bytes</b> (de tussenkopie wordt overgeslagen). Na een nieuwe upload zou je dus direct of na één herstart van de PWA de nieuwste versie moeten zien — geen "Clear site data" of Unregister meer nodig in de meeste gevallen.</div>
+    </div>
 
     <div class="changelog-item">
       <div class="changelog-item-title">Live-tile leesbaarder + spelersnotitie-velden blijven leeg (s35dg-hotfix5)</div>
@@ -10987,6 +11186,8 @@ let matchReportsCache = [];
 let tipsCache = [];
 let programmaCache = [];
 let unsubProgramma = null;
+let rittenCache = [];
+let unsubRitten = null;
 
 /* =============== DEMO-DATA s35cy (auto-generated) =============== */
 /* JS-array fallback: laadt fictieve spelers/rapporten/wedstrijden/teams/
@@ -22947,6 +23148,7 @@ function contactsCol(){ return collection(db, 'users', currentUser.uid, 'contact
 function matchReportsCol(){ return collection(db, 'users', currentUser.uid, 'match_reports'); }
 function tipsCol(){ return collection(db, 'users', currentUser.uid, 'tips'); }
 function programmaCol(){ return collection(db, 'users', currentUser.uid, 'programma'); }
+function rittenCol(){ return collection(db, 'users', currentUser.uid, 'ritten'); }
 
 // s35m: vul plaats/adres/postcode op rapport/wedstrijd vanuit findClubInfo
 // (thuisspelende ploeg = bron). opts.force=true overschrijft ook bestaande
@@ -23111,6 +23313,15 @@ function subscribeData(){
     setSync('offline');
   });
 
+  unsubRitten = onSnapshot(rittenCol(), snap=>{
+    rittenCache = snap.docs.map(d => ({...d.data(), id: d.id}));
+    if(currentView === 'ritten') renderRitten();
+    setSync('ok');
+  }, err=>{
+    console.error('Ritten sync error:', err);
+    setSync('offline');
+  });
+
   unsubProgramma = onSnapshot(programmaCol(), snap=>{
     programmaCache = snap.docs.map(d => ({...d.data(), id: d.id}));
     // s35bm: skip dashboard re-render zolang een snel-notitie open staat — anders
@@ -23141,12 +23352,14 @@ function unsubscribeData(){
   if(unsubMatchReports){ unsubMatchReports(); unsubMatchReports = null; }
   if(unsubTips){ unsubTips(); unsubTips = null; }
   if(unsubProgramma){ unsubProgramma(); unsubProgramma = null; }
+  if(unsubRitten){ unsubRitten(); unsubRitten = null; }
   playersCache = [];
   analysesCache = [];
   contactsCache = [];
   matchReportsCache = [];
   tipsCache = [];
   programmaCache = [];
+  rittenCache = [];
 }
 
 async function savePlayer(player){
@@ -23289,6 +23502,277 @@ async function deleteProgrammaItem(id){
     throw e;
   }
 }
+
+/* =============== s35di: RITTEN =============== */
+async function saveRit(rit){
+  setSync('syncing');
+  try {
+    const id = rit.id;
+    const {id: _drop, ...data} = rit;
+    await setDoc(doc(rittenCol(), id), data);
+  } catch(e){
+    console.error('Save rit error:', e);
+    toast('Opslaan mislukt — controleer je verbinding', true);
+    setSync('offline');
+    throw e;
+  }
+}
+async function deleteRit(id){
+  setSync('syncing');
+  try { await deleteDoc(doc(rittenCol(), id)); }
+  catch(e){
+    console.error('Delete rit error:', e);
+    toast('Verwijderen mislukt', true);
+    setSync('offline');
+    throw e;
+  }
+}
+
+function _ritFmtDatum(iso){
+  if(!iso) return '';
+  const d = new Date(iso + 'T00:00:00');
+  if(isNaN(d)) return iso;
+  return d.toLocaleDateString('nl-NL', {day:'2-digit', month:'short'});
+}
+function _ritFmtKm(km){
+  const n = Number(km);
+  if(!isFinite(n)) return '0';
+  return n.toFixed(1).replace('.', ',');
+}
+function _ritGebruikerAdressen(){
+  const set = new Set();
+  (rittenCache||[]).forEach(r => {
+    if(r.vertrekAdres) set.add(r.vertrekAdres.trim());
+    if(r.aankomstAdres) set.add(r.aankomstAdres.trim());
+  });
+  return Array.from(set).filter(Boolean).sort((a,b)=>a.localeCompare(b,'nl'));
+}
+
+function renderRitten(){
+  const list = document.getElementById('ritten-list');
+  const empty = document.getElementById('ritten-empty');
+  if(!list) return;
+
+  const van = (document.getElementById('rit-filter-van')||{}).value || '';
+  const tot = (document.getElementById('rit-filter-tot')||{}).value || '';
+
+  let items = (rittenCache||[]).slice().sort((a,b)=>{
+    const ka = (a.datum||'') + 'T' + (a.tijd||'00:00');
+    const kb = (b.datum||'') + 'T' + (b.tijd||'00:00');
+    return kb.localeCompare(ka);
+  });
+  if(van) items = items.filter(r => (r.datum||'') >= van);
+  if(tot) items = items.filter(r => (r.datum||'') <= tot);
+
+  const totKm = items.reduce((s,r)=> s + (Number(r.km)||0), 0);
+  const kpiAantal = document.getElementById('rit-kpi-aantal');
+  const kpiKm = document.getElementById('rit-kpi-km');
+  const kpiPer = document.getElementById('rit-kpi-periode');
+  if(kpiAantal) kpiAantal.textContent = items.length;
+  if(kpiKm) kpiKm.textContent = _ritFmtKm(totKm);
+  if(kpiPer){
+    if(van && tot) kpiPer.textContent = _ritFmtDatum(van) + ' – ' + _ritFmtDatum(tot);
+    else if(van) kpiPer.textContent = 'vanaf ' + _ritFmtDatum(van);
+    else if(tot) kpiPer.textContent = 't/m ' + _ritFmtDatum(tot);
+    else kpiPer.textContent = items.length ? 'alle ritten' : '—';
+  }
+
+  if(!items.length){
+    list.innerHTML = '';
+    if(empty) empty.style.display = '';
+    return;
+  }
+  if(empty) empty.style.display = 'none';
+
+  list.innerHTML = items.map(r => {
+    const datum = _ritFmtDatum(r.datum) + (r.tijd ? '<br><span style="font-size:11px;color:var(--text-3);">' + r.tijd + '</span>' : '');
+    const route = (r.vertrekAdres || '—') + '<span class="rit-arrow">→</span>' + (r.aankomstAdres || '—');
+    const doel = r.doel ? '<div class="rit-doel">' + escapeHtml(r.doel) + '</div>' : '';
+    return '<div class="rit-row" data-id="' + r.id + '">' +
+      '<div class="rit-datum">' + datum + '</div>' +
+      '<div><div class="rit-route">' + escapeHtml(route).replace('&lt;span class=&quot;rit-arrow&quot;&gt;→&lt;/span&gt;','<span class="rit-arrow">→</span>') + '</div>' + doel + '</div>' +
+      '<div class="rit-km">' + _ritFmtKm(r.km) + ' km</div>' +
+      '<div class="rit-actions"><button data-act="edit">Bewerken</button></div>' +
+      '</div>';
+  }).join('');
+
+  list.querySelectorAll('.rit-row').forEach(row => {
+    row.querySelector('[data-act="edit"]').addEventListener('click', () => {
+      const id = row.dataset.id;
+      const rit = rittenCache.find(r => r.id === id);
+      if(rit) openRitModal(rit);
+    });
+  });
+}
+
+function openRitModal(rit){
+  const modal = document.getElementById('rit-modal');
+  if(!modal) return;
+  const isNew = !rit;
+  const today = new Date();
+  const isoDate = today.toISOString().slice(0,10);
+  const isoTime = today.toTimeString().slice(0,5);
+
+  document.getElementById('rit-modal-title').textContent = isNew ? 'Nieuwe rit' : 'Rit bewerken';
+  document.getElementById('rit-id').value = isNew ? '' : (rit.id || '');
+  document.getElementById('rit-datum').value = (rit && rit.datum) || isoDate;
+  document.getElementById('rit-tijd').value = (rit && rit.tijd) || isoTime;
+  document.getElementById('rit-vertrek').value = (rit && rit.vertrekAdres) || '';
+  document.getElementById('rit-aankomst').value = (rit && rit.aankomstAdres) || '';
+  document.getElementById('rit-km').value = (rit && rit.km) || '';
+  document.getElementById('rit-doel').value = (rit && rit.doel) || '';
+  document.getElementById('rit-delete-btn').style.display = isNew ? 'none' : '';
+  modal.classList.add('active');
+}
+function closeRitModal(){
+  const modal = document.getElementById('rit-modal');
+  if(modal) modal.classList.remove('active');
+}
+
+async function saveRitFromForm(){
+  const id = document.getElementById('rit-id').value || ('rit_' + Date.now() + '_' + Math.random().toString(36).slice(2,8));
+  const rit = {
+    id,
+    datum: document.getElementById('rit-datum').value || '',
+    tijd: document.getElementById('rit-tijd').value || '',
+    vertrekAdres: document.getElementById('rit-vertrek').value.trim(),
+    aankomstAdres: document.getElementById('rit-aankomst').value.trim(),
+    km: Number(document.getElementById('rit-km').value) || 0,
+    doel: document.getElementById('rit-doel').value.trim(),
+    createdAt: Date.now()
+  };
+  if(!rit.vertrekAdres || !rit.aankomstAdres){
+    toast('Vul vertrek- en aankomstadres in', true);
+    return;
+  }
+  try {
+    await saveRit(rit);
+    closeRitModal();
+    toast('Rit opgeslagen');
+  } catch(_){}
+}
+
+async function deleteRitFromForm(){
+  const id = document.getElementById('rit-id').value;
+  if(!id) return;
+  if(!confirm('Deze rit verwijderen?')) return;
+  try {
+    await deleteRit(id);
+    closeRitModal();
+    toast('Rit verwijderd');
+  } catch(_){}
+}
+
+/* Geolocatie + reverse-geocode via Nominatim */
+async function _ritGeoMyLocation(){
+  if(!navigator.geolocation){ toast('Geolocatie niet ondersteund', true); return; }
+  const btn = document.getElementById('rit-geo-vertrek');
+  if(btn){ btn.disabled = true; btn.textContent = 'Locatie ophalen…'; }
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const {latitude, longitude} = pos.coords;
+    try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=16&addressdetails=1`;
+      const res = await fetch(url, { headers: { 'Accept-Language': 'nl' } });
+      const data = await res.json();
+      const a = data.address || {};
+      const straat = [a.road, a.house_number].filter(Boolean).join(' ');
+      const plaats = a.city || a.town || a.village || a.municipality || '';
+      const adres = [straat, plaats].filter(Boolean).join(', ') || data.display_name || '';
+      document.getElementById('rit-vertrek').value = adres;
+    } catch(e){
+      document.getElementById('rit-vertrek').value = latitude.toFixed(5) + ', ' + longitude.toFixed(5);
+    } finally {
+      if(btn){ btn.disabled = false; btn.textContent = '📍 Mijn huidige locatie'; }
+    }
+  }, (err) => {
+    toast('Kon locatie niet bepalen', true);
+    if(btn){ btn.disabled = false; btn.textContent = '📍 Mijn huidige locatie'; }
+  }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
+}
+
+/* Autocomplete uit eerder opgeslagen ritten */
+function _ritSetupSuggest(inputId, boxId){
+  const input = document.getElementById(inputId);
+  const box = document.getElementById(boxId);
+  if(!input || !box) return;
+  const fill = () => {
+    const q = (input.value||'').trim().toLowerCase();
+    const all = _ritGebruikerAdressen();
+    const matches = q ? all.filter(a => a.toLowerCase().includes(q)).slice(0,6) : all.slice(0,6);
+    if(!matches.length){ box.classList.remove('open'); box.innerHTML = ''; return; }
+    box.innerHTML = matches.map(a => '<div class="rm-suggest-item">' + escapeHtml(a) + '</div>').join('');
+    box.classList.add('open');
+    box.querySelectorAll('.rm-suggest-item').forEach((el, i) => {
+      el.addEventListener('mousedown', (ev) => { ev.preventDefault(); input.value = matches[i]; box.classList.remove('open'); });
+    });
+  };
+  input.addEventListener('focus', fill);
+  input.addEventListener('input', fill);
+  input.addEventListener('blur', () => { setTimeout(()=> box.classList.remove('open'), 150); });
+}
+
+/* CSV-export */
+function _ritExportCsv(){
+  const van = (document.getElementById('rit-filter-van')||{}).value || '';
+  const tot = (document.getElementById('rit-filter-tot')||{}).value || '';
+  let items = (rittenCache||[]).slice().sort((a,b)=> ((a.datum||'')+ 'T' + (a.tijd||'')).localeCompare((b.datum||'') + 'T' + (b.tijd||'')));
+  if(van) items = items.filter(r => (r.datum||'') >= van);
+  if(tot) items = items.filter(r => (r.datum||'') <= tot);
+  if(!items.length){ toast('Geen ritten in deze periode'); return; }
+  const head = ['Datum','Tijd','Vertrek','Aankomst','Km','Doel'];
+  const rows = items.map(r => [r.datum||'', r.tijd||'', r.vertrekAdres||'', r.aankomstAdres||'', String(r.km||0).replace('.', ','), r.doel||'']);
+  const escapeCsv = (s) => {
+    s = String(s);
+    if(/[",;\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  };
+  const csv = [head, ...rows].map(r => r.map(escapeCsv).join(';')).join('\r\n');
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0,10);
+  a.href = url;
+  a.download = 'ritten-' + (van||'alles') + '_' + (tot||stamp) + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=> URL.revokeObjectURL(url), 1000);
+}
+
+/* Init listeners — éénmalig na DOM ready */
+function _ritInitListeners(){
+  if(window.__ritInited) return;
+  window.__ritInited = true;
+  const $ = (id) => document.getElementById(id);
+  const bind = (id, ev, fn) => { const el = $(id); if(el) el.addEventListener(ev, fn); };
+
+  bind('rit-new-btn', 'click', () => openRitModal(null));
+  bind('rit-cancel-btn', 'click', closeRitModal);
+  bind('rit-save-btn', 'click', saveRitFromForm);
+  bind('rit-delete-btn', 'click', deleteRitFromForm);
+  bind('rit-geo-vertrek', 'click', _ritGeoMyLocation);
+  bind('rit-filter-van', 'change', renderRitten);
+  bind('rit-filter-tot', 'change', renderRitten);
+  bind('rit-filter-reset', 'click', () => {
+    const v = $('rit-filter-van'); const t = $('rit-filter-tot');
+    if(v) v.value = ''; if(t) t.value = ''; renderRitten();
+  });
+  bind('rit-export-csv', 'click', _ritExportCsv);
+
+  const modal = $('rit-modal');
+  if(modal) modal.addEventListener('click', (e) => { if(e.target === modal) closeRitModal(); });
+
+  _ritSetupSuggest('rit-vertrek', 'rit-vertrek-suggest');
+  _ritSetupSuggest('rit-aankomst', 'rit-aankomst-suggest');
+}
+if(typeof document !== 'undefined'){
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', _ritInitListeners);
+  } else {
+    _ritInitListeners();
+  }
+}
+window.renderRitten = renderRitten;
+window.openRitModal = openRitModal;
+
 
 /* =============== CONTACTS RENDERING =============== */
 function formatNLPhone(val){
@@ -24438,6 +24922,7 @@ function go(view){
     renderAdresboek();
   }
   if(view === 'tips')      renderTips();
+  if(view === 'ritten')    renderRitten();
   if(view === 'player')    renderPlayer();
   // s35cr: privacy + voorwaarden zijn statische views — geen render-functie nodig
   window.scrollTo({top:0});

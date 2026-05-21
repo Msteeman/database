@@ -31190,6 +31190,14 @@ function showTypedDeleteConfirm(opts){
   });
 }
 
+// s36a: leeftijd normaliseren — "O18"/"O.18"/"o 15" -> "O.18" (één consistente groep)
+function normAge(s){
+  if(!s) return '';
+  s = String(s).trim();
+  const m = s.match(/^O\.?\s*(\d{1,2})$/i);
+  return m ? ('O.' + m[1]) : s;
+}
+
 function renderMatches(){
   const players = loadPlayers();
   let matches = aggregateMatches(players).map(m => ({...m, kind: 'aggregated'}));
@@ -31228,8 +31236,8 @@ function renderMatches(){
   const sortMode = $('#match-sort').value || 'newest';
 
   // Populate age filter (unique ages present) + chip-row
-  const ages = Array.from(new Set(matches.map(m => m.age).filter(Boolean))).sort((a,b)=>{
-    return parseInt(a.replace('O','')) - parseInt(b.replace('O',''));
+  const ages = Array.from(new Set(matches.map(m => normAge(m.age)).filter(Boolean))).sort((a,b)=>{
+    return (parseInt(String(a).replace(/\D/g,''))||0) - (parseInt(String(b).replace(/\D/g,''))||0);
   });
   const ageSel = $('#match-age');
   const currentAge = ageSel ? (ageSel.value || ageFilter) : ageFilter;
@@ -31241,7 +31249,7 @@ function renderMatches(){
   const ageChipsHost = document.getElementById('match-age-chips');
   if(ageChipsHost){
     const ageCounts = {};
-    matches.forEach(m => { if(m.age) ageCounts[m.age] = (ageCounts[m.age]||0)+1; });
+    matches.forEach(m => { const a = normAge(m.age); if(a) ageCounts[a] = (ageCounts[a]||0)+1; });
     const totalAge = matches.length;
     const ageHtml = [`<button type="button" class="m-chip${ageFilter===''?' active':''}" data-age-chip="">Alle <span class="m-chip-count">${totalAge}</span></button>`]
       .concat(ages.map(a => `<button type="button" class="m-chip${ageFilter===a?' active':''}" data-age-chip="${escapeHtml(a)}">${escapeHtml(a)} <span class="m-chip-count">${ageCounts[a]||0}</span></button>`))
@@ -31273,7 +31281,7 @@ function renderMatches(){
     );
   }
   if(ageFilter){
-    matches = matches.filter(m => m.age === ageFilter);
+    matches = matches.filter(m => normAge(m.age) === normAge(ageFilter));
   }
   // s35bq + s35bt: status-filter
   if(matchStatusFilter === 'verwerkt'){

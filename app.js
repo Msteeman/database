@@ -13128,7 +13128,7 @@ function renderRitten(){
       '<div class="rit-datum">' + datum + '</div>' +
       '<div><div class="rit-route">' + escapeHtml(route).replace('&lt;span class=&quot;rit-arrow&quot;&gt;→&lt;/span&gt;','<span class="rit-arrow">→</span>') + '</div>' + doel + '</div>' +
       '<div class="rit-km">' + _ritFmtKm(r.km) + ' km</div>' +
-      '<div class="rit-actions"><button data-act="edit">Bewerken</button></div>' +
+      '<div class="rit-actions"><button data-act="edit">Bewerken</button><button data-act="terug" title="Retourrit aanmaken">&#x21a9; Terug</button></div>' +
       '</div>';
   }).join('');
 
@@ -13138,24 +13138,105 @@ function renderRitten(){
       const rit = rittenCache.find(r => r.id === id);
       if(rit) openRitModal(rit);
     });
+    // s35dj: retourrit — swap vertrek/aankomst, zelfde km, doel "Terug — ..."
+    const terugBtn = row.querySelector('[data-act="terug"]');
+    if(terugBtn) terugBtn.addEventListener('click', () => {
+      const id = row.dataset.id;
+      const r = rittenCache.find(x => x.id === id);
+      if(!r) return;
+      const today = new Date();
+      openRitModal({
+        // geen id → nieuwe rit
+        datum: today.toISOString().slice(0,10),
+        tijd:  today.toTimeString().slice(0,5),
+        vertrekAdres:  r.aankomstAdres || '',
+        aankomstAdres: r.vertrekAdres  || '',
+        vertrekLat:  r.aankomstLat,  vertrekLon:  r.aankomstLon,
+        aankomstLat: r.vertrekLat,   aankomstLon: r.vertrekLon,
+        km:   r.km || '',
+        doel: r.doel ? 'Terug — ' + r.doel : 'Terug'
+      });
+    });
   });
+}
+
+// s35dj: aankomst-suggesties vanuit programma (vandaag ±1 dag met locatie)
+function _ritShowProgChips(chipsEl){
+  if(!chipsEl) return;
+  chipsEl.innerHTML = '';
+  chipsEl.style.display = 'none';
+  try {
+    const today = new Date();
+    const dates = [-1,0,1].map(d => {
+      const dt = new Date(today); dt.setDate(dt.getDate() + d);
+      return dt.toISOString().slice(0,10);
+    });
+    const relevant = (typeof programmaCache !== 'undefined' ? programmaCache : []).filter(p => {
+      if(!p || !p.datum) return false;
+      if(!dates.includes(p.datum)) return false;
+      return !!(p.locatie || p.sportpark || p.adres);
+    });
+    if(!relevant.length) return;
+    const dayLabel = (d) => {
+      if(d === dates[0]) return 'Gisteren';
+      if(d === dates[1]) return 'Vandaag';
+      return 'Morgen';
+    };
+    chipsEl.innerHTML = '<div class="rm-prog-chips-label">Aankomst uit Programma:</div>' +
+      relevant.map(p => {
+        const loc  = (p.locatie || p.sportpark || p.adres || '').trim();
+        const naam = p.thuis || p.toernooi_naam || p.naam || '';
+        const label = [dayLabel(p.datum), naam, loc].filter(Boolean).join(' · ');
+        const doel  = naam ? (p.thuis ? 'Wedstrijd ' + p.thuis : naam) : 'Programma';
+        return '<button type="button" class="rm-prog-chip"' +
+          ' data-adres="' + (loc.replace(/"/g,'&quot;')) + '"' +
+          ' data-doel="' + (doel.replace(/"/g,'&quot;')) + '">' +
+          label.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</button>';
+      }).join('');
+    chipsEl.style.display = '';
+    chipsEl.querySelectorAll('.rm-prog-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const adres = btn.dataset.adres;
+        const doel  = btn.dataset.doel;
+        const aankomstEl = document.getElementById('rit-aankomst');
+        const doelEl = document.getElementById('rit-doel');
+        if(aankomstEl && adres){ aankomstEl.value = adres; }
+        if(doelEl && doel && !doelEl.value){ doelEl.value = doel; }
+        // Geocode adres voor km-berekening
+        if(adres && typeof _ritNominatimSearch === 'function'){
+          _ritNominatimSearch(adres).then(results => {
+            if(results && results.length){
+              const r = results[0];
+              const latEl = document.getElementById('rit-aankomst-lat');
+              const lonEl = document.getElementById('rit-aankomst-lon');
+              if(latEl) latEl.value = String(r.lat);
+              if(lonEl) lonEl.value = String(r.lon);
+              _ritAddrCoords.set(adres, {lat:r.lat, lon:r.lon});
+              _ritTryAutoKm();
+            }
+          }).catch(()=>{});
+        }
+      });
+    });
+  } catch(_){}
 }
 
 function openRitModal(rit){
   const modal = document.getElementById('rit-modal');
   if(!modal) return;
-  const isNew = !rit;
+  // s35dj: isNew ook als rit een template is zonder id (retourrit / pre-fill)
+  const isNew = !rit || !rit.id;
   const today = new Date();
   const isoDate = today.toISOString().slice(0,10);
   const isoTime = today.toTimeString().slice(0,5);
 
   document.getElementById('rit-modal-title').textContent = isNew ? 'Nieuwe rit' : 'Rit bewerken';
-  document.getElementById('rit-id').value = isNew ? '' : (rit.id || '');
+  document.getElementById('rit-id').value = (rit && rit.id) || '';
   document.getElementById('rit-datum').value = (rit && rit.datum) || isoDate;
   document.getElementById('rit-tijd').value = (rit && rit.tijd) || isoTime;
   document.getElementById('rit-vertrek').value = (rit && rit.vertrekAdres) || '';
   document.getElementById('rit-aankomst').value = (rit && rit.aankomstAdres) || '';
-  document.getElementById('rit-km').value = (rit && rit.km) || '';
+  document.getElementById('rit-km').value = (rit && rit.km != null && rit.km !== '') ? rit.km : '';
   document.getElementById('rit-doel').value = (rit && rit.doel) || '';
   document.getElementById('rit-vertrek-lat').value = (rit && rit.vertrekLat) || '';
   document.getElementById('rit-vertrek-lon').value = (rit && rit.vertrekLon) || '';
@@ -13163,6 +13244,20 @@ function openRitModal(rit){
   document.getElementById('rit-aankomst-lon').value = (rit && rit.aankomstLon) || '';
   document.getElementById('rit-delete-btn').style.display = isNew ? 'none' : '';
   modal.classList.add('active');
+
+  // s35dj: bij nieuwe rit → auto-GPS vertrek + programma-chips aankomst
+  const chips = document.getElementById('rit-prog-chips');
+  if(isNew){
+    // Auto-GPS voor vertrek (als veld nog leeg)
+    const vertrekEl = document.getElementById('rit-vertrek');
+    if(vertrekEl && !vertrekEl.value){
+      setTimeout(() => { try { _ritGeoLocation('vertrek'); } catch(_){} }, 200);
+    }
+    // Aankomst-suggesties vanuit Programma
+    if(chips) _ritShowProgChips(chips);
+  } else {
+    if(chips){ chips.innerHTML = ''; chips.style.display = 'none'; }
+  }
 }
 function closeRitModal(){
   const modal = document.getElementById('rit-modal');
@@ -13212,34 +13307,48 @@ async function deleteRitFromForm(){
 }
 
 /* Geolocatie + reverse-geocode via Nominatim */
-async function _ritGeoMyLocation(){
+// s35dj: generiek voor vertrek én aankomst
+async function _ritGeoLocation(kind){
+  kind = kind || 'vertrek';
   if(!navigator.geolocation){ toast('Geolocatie niet ondersteund', true); return; }
-  const btn = document.getElementById('rit-geo-vertrek');
+  const btnId = (kind === 'vertrek') ? 'rit-geo-vertrek' : 'rit-geo-aankomst';
+  const adresId = 'rit-' + kind;
+  const latId   = 'rit-' + kind + '-lat';
+  const lonId   = 'rit-' + kind + '-lon';
+  const btn     = document.getElementById(btnId);
+  const adresEl = document.getElementById(adresId);
   if(btn){ btn.disabled = true; btn.textContent = 'Locatie ophalen…'; }
+  if(adresEl && !adresEl.value) adresEl.placeholder = 'Locatie ophalen…';
   navigator.geolocation.getCurrentPosition(async (pos) => {
     const {latitude, longitude} = pos.coords;
     let adres = '';
     try {
       const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=16&addressdetails=1`;
       const res = await fetch(url, { headers: { 'Accept-Language': 'nl' } });
-      const data = await res.json();
-      const a = data.address || {};
+      const json = await res.json();
+      const a = json.address || {};
       const straat = [a.road, a.house_number].filter(Boolean).join(' ');
       const plaats = a.city || a.town || a.village || a.municipality || '';
-      adres = [straat, plaats].filter(Boolean).join(', ') || data.display_name || '';
+      adres = [straat, plaats].filter(Boolean).join(', ') || json.display_name || '';
     } catch(e){
       adres = latitude.toFixed(5) + ', ' + longitude.toFixed(5);
     }
-    document.getElementById('rit-vertrek').value = adres;
-    document.getElementById('rit-vertrek-lat').value = String(latitude);
-    document.getElementById('rit-vertrek-lon').value = String(longitude);
+    if(adresEl){ adresEl.value = adres; adresEl.placeholder = 'Adres of plaats'; }
+    const latEl = document.getElementById(latId);
+    const lonEl = document.getElementById(lonId);
+    if(latEl) latEl.value = String(latitude);
+    if(lonEl) lonEl.value = String(longitude);
+    if(adres) _ritAddrCoords.set(adres, {lat:latitude, lon:longitude});
     if(btn){ btn.disabled = false; btn.textContent = '📍 Mijn huidige locatie'; }
     _ritTryAutoKm();
-  }, (err) => {
+  }, () => {
     toast('Kon locatie niet bepalen', true);
     if(btn){ btn.disabled = false; btn.textContent = '📍 Mijn huidige locatie'; }
+    if(adresEl && adresEl.placeholder === 'Locatie ophalen…') adresEl.placeholder = 'Adres of plaats';
   }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
 }
+// Backwards-compat wrapper
+function _ritGeoMyLocation(){ return _ritGeoLocation('vertrek'); }
 
 /* Adres-suggest: combineer eigen historie + live OSM (Nominatim NL).
    Onthoud coords per gekozen suggestie, en trigger auto-km. */
@@ -13421,7 +13530,17 @@ function _ritInitListeners(){
   bind('rit-cancel-btn', 'click', closeRitModal);
   bind('rit-save-btn', 'click', saveRitFromForm);
   bind('rit-delete-btn', 'click', deleteRitFromForm);
-  bind('rit-geo-vertrek', 'click', _ritGeoMyLocation);
+  bind('rit-geo-vertrek', 'click', () => _ritGeoLocation('vertrek'));
+  bind('rit-geo-aankomst', 'click', () => _ritGeoLocation('aankomst'));
+  bind('rit-km-recalc',   'click', () => _ritTryAutoKm(true));
+  // s35dj: doel-chips
+  const doelChips = document.querySelectorAll('.rm-doel-chips [data-doel]');
+  doelChips.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const d = document.getElementById('rit-doel');
+      if(d) d.value = btn.dataset.doel;
+    });
+  });
   bind('rit-filter-van', 'change', renderRitten);
   bind('rit-filter-tot', 'change', renderRitten);
   bind('rit-filter-reset', 'click', () => {
@@ -13435,11 +13554,7 @@ function _ritInitListeners(){
 
   _ritSetupSuggest('rit-vertrek', 'rit-vertrek-suggest', 'vertrek');
   _ritSetupSuggest('rit-aankomst', 'rit-aankomst-suggest', 'aankomst');
-  const kmInp = $('rit-km');
-  if(kmInp){
-    // dubbelklik op km-veld = forceer (her)berekening
-    kmInp.addEventListener('dblclick', () => _ritTryAutoKm(true));
-  }
+  // s35dj: km herberekening via de ⟳ knop (dblclick uitgefaseerd)
 }
 if(typeof document !== 'undefined'){
   if(document.readyState === 'loading'){

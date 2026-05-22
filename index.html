@@ -35028,6 +35028,16 @@ function shSyncNietGerapporteerdUI(){
   if(cb && wrap) wrap.style.display = cb.checked ? '' : 'none';
 }
 window.shSyncNietGerapporteerdUI = shSyncNietGerapporteerdUI;
+/* s36f: zichtbaarheid betrouwbaar bijwerken zolang het rapport-formulier
+   open staat — dekt alle paden waarlangs een rapport geopend wordt. */
+try {
+  setInterval(function(){
+    var rv = document.getElementById('view-report');
+    if(rv && rv.offsetParent !== null){
+      try { shSyncNietGerapporteerdUI(); } catch(_){}
+    }
+  }, 600);
+} catch(_){}
 
 function collectReportFormData(){
   // Verzamelt alle velden zoals saveReport doet, zonder daadwerkelijk op te slaan

@@ -4477,9 +4477,26 @@ tbody tr:last-child td { border-bottom: none; }
     padding-right: 14px !important;
     box-sizing: border-box;
   }
-  /* 4. In 3-dagen mode: verberg niet-actieve dagen op mobile (pill-selectie). */
-  #view-programma #programma-grid.prog-grid-uur.prog-uur-multi > .agenda-day-col:not(.active) {
+  /* 4. s35dh: 3-dagen mode op mobile — alle 3 dagen naast elkaar ipv tabs. */
+  #view-programma #programma-grid.prog-grid-uur.prog-uur-multi .prog-uur-daytabs {
     display: none !important;
+  }
+  #view-programma #programma-grid.prog-grid-uur.prog-uur-multi > .agenda-day-col:not(.active) {
+    display: block !important;
+  }
+  #view-programma #programma-grid.prog-grid-uur.prog-uur-multi {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 0 !important;
+  }
+  #view-programma #programma-grid.prog-grid-uur.prog-uur-multi > .agenda-day-col {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    border-right: 1px solid var(--border, #262b39);
+    font-size: 11px;
+  }
+  #view-programma #programma-grid.prog-grid-uur.prog-uur-multi > .agenda-day-col:last-child {
+    border-right: none !important;
   }
 }
 
@@ -27962,8 +27979,15 @@ function _shFindLinkedPrograms(m){
 // Verzamel alle open snel-notities van gekoppelde programma-items
 function _shCollectSnelNotities(m){
   const out = [];
+  // s35dh: collect spelerKeys die al in prog.spelers zitten (zijn al getoond in Spelersrapporten-sectie)
+  const _linkedSpelerIds = new Set();
+  _shFindLinkedPrograms(m).forEach(p => {
+    (p.spelers || []).forEach(sp => { if(sp && sp.id) _linkedSpelerIds.add(sp.id); });
+  });
   _shFindLinkedPrograms(m).forEach(p => {
     (p.snelnotities || []).forEach((sn, idx) => {
+      // Skip als notitie voor een gekoppelde speler is (voorkomt dubbeling in "Nieuwe spelersnotities")
+      if(sn && sn.spelerKey && _linkedSpelerIds.has(sn.spelerKey)) return;
       out.push({ progId: p.id, snIdx: idx, sn });
     });
   });
@@ -28238,6 +28262,20 @@ function _shOpenEditModal(m){
       });
     } catch(_){}
   }
+  // s35dh: voor programma-kind: zoek concept-spelers gekoppeld via programma_link of wedstrijd-velden
+  if((m.kind === 'programma' || m.kind === 'prog') && players.length === 0 && m.progId){
+    try {
+      const _allEdit = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+      const _found = _allEdit.filter(p => {
+        if(p.programma_link && p.programma_link.progId === m.progId) return true;
+        const _w = (p.wedstrijd) || (p.rapport && p.rapport.wedstrijd) || {};
+        return _w.datum === m.datum &&
+               (_w.thuis||'').toLowerCase().trim() === (m.thuis||'').toLowerCase().trim() &&
+               (_w.uit||'').toLowerCase().trim() === (m.uit||'').toLowerCase().trim();
+      });
+      _found.forEach(p => players.push(p));
+    } catch(_){}
+  }
   const sns = _shCollectSnelNotities(m);
   const wns = _shCollectWedstrijdNotities(m);
 
@@ -28359,6 +28397,12 @@ function _shOpenEditModal(m){
   const footEl = document.getElementById("wstr-edit-foot");
   if(footEl){
     const reportId = m.kind === "report" ? m.id : "";
+    // s35dh: voor programma-kind: voeg "Bewerk in Programma"-knop toe
+    const progEditBtn = (m.kind === 'programma' || m.kind === 'prog') && m.progId
+      ? `<button type="button" class="btn btn-ghost" data-edit-prog-id="${escapeHtml(m.progId)}" style="margin-left:auto">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          Bewerk in Programma
+        </button>` : '';
     footEl.innerHTML = `
       <button type="button" class="btn btn-secondary match-verwerk-btn" data-match-key="${escapeHtml(key)}" data-report-id="${escapeHtml(reportId)}">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -28377,6 +28421,7 @@ function _shOpenEditModal(m){
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         Verwijderen
       </button>` : ''}
+      ${progEditBtn}
     `;
   }
 
@@ -28489,6 +28534,15 @@ function _shOpenEditModal(m){
           const newBtn = document.getElementById("add-player-btn") || document.getElementById("player-add-btn");
           if(newBtn) newBtn.click();
         } catch(_){}
+      });
+    });
+    // s35dh: "Bewerk in Programma" knop voor programma-kind
+    footEl.querySelectorAll('[data-edit-prog-id]').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const pid = btn.dataset.editProgId;
+        _shCloseEditModal();
+        if(typeof openProgMatchModal === 'function') openProgMatchModal(pid);
       });
     });
     footEl.querySelectorAll('.match-report-delete').forEach(btn => {
@@ -28625,7 +28679,20 @@ function _shOpenVerwerkModal(m){
   if(!back) return;
   const key = _shMatchKey(m);
   const isLocked = shIsWedstrijdVerwerkt(key);
-  const players = m.players || [];
+  let players = (m.players || []).slice();
+  // s35dh: voor programma-kind: zoek concept-spelers via programma_link
+  if((m.kind === 'programma' || m.kind === 'prog') && players.length === 0 && m.progId){
+    try {
+      const _allV = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+      const _fndV = _allV.filter(p => {
+        if(p.programma_link && p.programma_link.progId === m.progId) return true;
+        const _wv = (p.wedstrijd) || (p.rapport && p.rapport.wedstrijd) || {};
+        return _wv.datum === m.datum &&
+               (_wv.thuis||'').toLowerCase().trim() === (m.thuis||'').toLowerCase().trim();
+      });
+      players = players.concat(_fndV);
+    } catch(_){}
+  }
   const conceptCount = players.filter(_shPlayerIsConcept).length;
   const ingediendCount = players.length - conceptCount;
   const sns = _shCollectSnelNotities(m);
@@ -28691,6 +28758,7 @@ function _shOpenVerwerkModal(m){
     confirmBtn.dataset.locked = isLocked ? "1" : "0";
     // s35ca-3: concept-count meegeven voor confirm() in _shConfirmVerwerk
     confirmBtn.dataset.concepts = String(conceptCount || 0);
+    confirmBtn.dataset.sns = String(sns.length || 0); // s35dh: voor blokkeer-check op open snel-notities
   }
 
   // s35bu: snelknop 'Alle concepten + markeer verwerkt' als er nog concepten zijn
@@ -28780,6 +28848,19 @@ function _shConfirmVerwerk(){
       else if(typeof toast === 'function') toast(msg, true);
       return;
     }
+    // s35dh: ook blokkeren als er nog open spelersnotities zijn
+    const sc = parseInt(btn.dataset.sns || "0", 10) || 0;
+    if(sc > 0){
+      const msg2 = "Er " + (sc===1 ? "staat nog 1 spelersnotitie" : "staan nog " + sc + " spelersnotities")
+        + " open. Verwerk elke notitie eerst naar een spelersrapport via 'Nieuwe spelersnotities'.";
+      if(typeof window.alert === 'function') window.alert(msg2);
+      else if(typeof toast === 'function') toast(msg2, true);
+      return;
+    }
+  }
+  // s35dh: double-check bij heropenen van een verwerkte wedstrijd
+  if(wasLocked){
+    if(!confirm("Wedstrijd heropenen?\n\nDe status 'Verwerkt' wordt verwijderd en de wedstrijd wordt weer bewerkbaar.")) return;
   }
   shMarkWedstrijdVerwerkt(key, !wasLocked);
   if(typeof toast === "function"){
@@ -31258,13 +31339,31 @@ function renderMatches(){
   }));
   matches = matches.concat(reports);
 
+  // s35dh: merge past programma-items die nog niet als aggregated/report voorkomen
+  try {
+    const _dNow = new Date(); _dNow.setHours(23,59,59,999);
+    const _dCut = new Date(_dNow); _dCut.setDate(_dCut.getDate() - 60);
+    if(typeof programmaCache !== 'undefined' && Array.isArray(programmaCache)){
+      const _existK = new Set(matches.map(m => _shMatchKey(m)));
+      programmaCache.forEach(p => {
+        if(!p || !p.datum || !p.thuis || !p.uit) return;
+        const _d = (typeof parseAnyDate === 'function') ? parseAnyDate(p.datum) : new Date(p.datum);
+        if(!_d || isNaN(_d.getTime())) return;
+        if(_d > _dNow || _d < _dCut) return;
+        const _pm = { datum: p.datum, thuis: p.thuis, uit: p.uit, age: p.leeftijd||'', kind:'programma', progId:p.id, id:p.id, players:[] };
+        const _k = _shMatchKey(_pm);
+        if(!_existK.has(_k)){ matches.push(_pm); _existK.add(_k); }
+      });
+    }
+  } catch(_){}
+
   // s35bq: stats vóór filtering (totalen op volledige set)
   const _statTotal = matches.length;
   const _statVerwerkt = matches.filter(m => m.kind === 'aggregated' && !m.toernooi).length;
   const _statToernooi = matches.filter(m => m.kind === 'aggregated' && m.toernooi).length;
   const _statInfo = matches.filter(m => m.kind === 'report').length;
-  // s35bt: aantal nog niet verwerkte wedstrijden (aggregated, niet-toernooi)
-  const _statNogVerwerken = matches.filter(m => m.kind === 'aggregated' && !m.toernooi && !shIsWedstrijdVerwerkt(_shMatchKey(m))).length;
+  // s35bt+s35dh: aantal nog niet verwerkte wedstrijden (aggregated + programma, niet-toernooi)
+  const _statNogVerwerken = matches.filter(m => (m.kind === 'aggregated' || m.kind === 'programma') && !m.toernooi && !shIsWedstrijdVerwerkt(_shMatchKey(m))).length;
   const _setText = (id, n) => { const el = document.getElementById(id); if(el) el.textContent = n; };
   _setText('m-stat-total', _statTotal);
   _setText('m-stat-verwerkt', _statVerwerkt);
@@ -31332,7 +31431,7 @@ function renderMatches(){
   } else if(matchStatusFilter === 'info'){
     matches = matches.filter(m => m.kind === 'report');
   } else if(matchStatusFilter === 'nog-verwerken'){
-    matches = matches.filter(m => m.kind === 'aggregated' && !m.toernooi && !shIsWedstrijdVerwerkt(_shMatchKey(m)));
+    matches = matches.filter(m => (m.kind === 'aggregated' || m.kind === 'programma') && !m.toernooi && !shIsWedstrijdVerwerkt(_shMatchKey(m)));
   }
 
   // Sort
@@ -31393,6 +31492,50 @@ function renderMatches(){
               ${_shIsVerwerktR ? '<span class="match-status-pill" style="background:rgba(127,217,158,0.18);color:#7fd99e;border:1px solid #7fd99e;">🔒 Verwerkt</span>' : ''}
             </div>
             ${m.opmerking ? `<div class="match-report-note">${escapeHtml(m.opmerking)}</div>` : ''}
+            ${_shBannerHTML(m)}
+          </div>
+          <div class="match-report-click-hint" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    // s35dh: programma-item (staat in Programma, datum verleden, nog niet als aggregated)
+    if(m.kind === 'programma'){
+      const _shKeyP = _shMatchKey(m);
+      const _shIsVerwerktP = shIsWedstrijdVerwerkt(_shKeyP);
+      const _progP = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === m.progId) : null;
+      const _hasConceptP = _progP && _progP.wedstrijdrapport && _progP.wedstrijdrapport.status === 'concept';
+      const _snsP = _progP ? (_progP.snelnotities || []).length : 0;
+      const _wnsP = _progP ? (_progP.wedstrijdnotities || []).length : 0;
+      const _notesP = _snsP + _wnsP;
+      const ageBadgeP = m.age ? `<span class="match-age-badge">${escapeHtml(m.age)}</span>` : '';
+      const statusPillP = _shIsVerwerktP
+        ? `<span class="match-status-pill" style="background:rgba(127,217,158,.18);color:#7fd99e;border:1px solid rgba(127,217,158,.3);">✓ Verwerkt</span>`
+        : (_hasConceptP
+            ? `<span class="match-status-pill" style="background:rgba(245,200,66,.15);color:#f5c842;border:1px solid rgba(245,200,66,.3);">📝 Concept</span>`
+            : `<span class="match-status-pill" style="background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3);">📋 Programma</span>`);
+      const notesMetaP = _notesP > 0 ? `<span class="match-players-count">${_notesP} notitie${_notesP===1?'':'s'}</span>` : '';
+      html += `
+        <div class="match-card match-report-card${_shIsVerwerktP?' locked':''}" data-prog-match-id="${escapeHtml(m.progId)}" data-match-key="${escapeHtml(_shKeyP)}">
+          <div class="match-date">
+            <div class="match-date-day">${d.day}</div>
+            <div class="match-date-month">${d.month}</div>
+            <div class="match-date-year">${d.year}</div>
+          </div>
+          <div class="match-teams">
+            <div class="match-teams-row">
+              <span class="match-team-home">${thuisClean}</span>
+              <span class="match-vs">vs</span>
+              <span class="match-team-away">${uitClean}</span>
+            </div>
+            <div class="match-meta">
+              ${statusPillP}
+              ${ageBadgeP}
+              ${notesMetaP}
+            </div>
             ${_shBannerHTML(m)}
           </div>
           <div class="match-report-click-hint" aria-hidden="true">
@@ -31691,6 +31834,18 @@ function renderMatches(){
         opmerking: r.opmerking,
         players: []
       });
+    });
+  });
+
+  // s35dh: programma-match card klik → open Wedstrijd-bewerken modal
+  list.querySelectorAll('[data-prog-match-id]').forEach(card => {
+    card.addEventListener('click', (e) => {
+      if(e.target && e.target.closest && (e.target.closest('button') || e.target.closest('a'))) return;
+      const progId = card.dataset.progMatchId;
+      if(!progId) return;
+      const p = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === progId) : null;
+      if(!p){ if(typeof toast === 'function') toast('Wedstrijd niet gevonden', true); return; }
+      _shOpenEditModal({ kind:'programma', id:progId, progId, datum:p.datum, thuis:p.thuis, uit:p.uit, age:p.leeftijd||'', players:[] });
     });
   });
 

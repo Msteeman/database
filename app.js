@@ -20485,6 +20485,29 @@ function syncNaamHidden(prefix){
 }
 window.syncNaamHidden = syncNaamHidden;
 
+// s35dh fix: parse snel-notitie tekst-string naar individuele rapport-criterium-velden
+function _shParseTekstToForm(tekst){
+  if(!tekst) return;
+  const TERM_MAP = [
+    ['techniek',     'f-tekst-techniek'],
+    ['inzicht',      'f-tekst-inzicht'],
+    ['mentaliteit',  'f-tekst-grit'],        // mentaliteit ↔ GRIT in rapport
+    ['explosiviteit','f-tekst-explosiviteit'],
+    ['sprinten',     'f-tekst-sprinten'],
+    ['duelleren',    'f-tekst-duelleren'],
+    ['wendbaarheid', 'f-tekst-wendbaarheid'],
+    ['algemeen',     'f-notities'],
+  ];
+  const src = String(tekst);
+  TERM_MAP.forEach(([term, fieldId]) => {
+    const el = document.getElementById(fieldId);
+    if(!el) return;
+    const re = new RegExp('^\\s*' + term + '\\s*:\\s*(.*)$', 'mi');
+    const m = src.match(re);
+    const val = (m && m[1]) ? m[1].trim() : '';
+    if(val) el.value = val; // overschrijft: live-notitie heeft prioriteit boven lege velden
+  });
+}
 function loadIntoForm(p){
   $('#report-title').textContent = 'Rapport bewerken — ' + (p.naam || [p.voornaam, p.achternaam].filter(Boolean).join(' '));
   $('#f-id').value = p.id;
@@ -20557,6 +20580,14 @@ function loadIntoForm(p){
   $('#f-tekst-sprinten').value = b.sprinten_tekst || '';
   $('#f-tekst-duelleren').value = b.duelleren_tekst || '';
   $('#f-tekst-wendbaarheid').value = b.wendbaarheid_tekst || '';
+
+  // s35dh fix: concept-speler met snel-notitie → parse tekst naar criterium-velden
+  // alleen als de beoordelingen-teksten nog leeg zijn (wil bestaande rapporten niet overschrijven)
+  if(p.opmerkingen && !p.notities){
+    const _bEmpty = !b.techniek_tekst && !b.inzicht_tekst && !b.grit_tekst &&
+                    !b.explosiviteit_tekst && !b.sprinten_tekst && !b.duelleren_tekst && !b.wendbaarheid_tekst;
+    if(_bEmpty) try { _shParseTekstToForm(p.opmerkingen); } catch(_){}
+  }
 
   setPickerValue('huidig_niveau', p.huidig_niveau);
   setPickerValue('potentieel_niveau', p.potentieel_niveau);

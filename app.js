@@ -17923,7 +17923,23 @@ function _shOpenEditModal(m){
       e.stopPropagation();
       const pid = btn.dataset.editPlayer;
       _shCloseEditModal();
-      if(typeof openDetail === "function") openDetail(pid);
+      // s35dh fix: open rapport-formulier direct (niet spelersprofiel)
+      try {
+        const _allP = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+        const _pl = _allP.find(x => x.id === pid);
+        if(!_pl){ if(typeof openDetail === 'function') openDetail(pid); return; }
+        // Concept met programma-link → via openScoutingPlayerForm (behoudt context + live-notities)
+        if(_shPlayerIsConcept(_pl) && _pl.programma_link && typeof openScoutingPlayerForm === 'function'){
+          const _prog = Array.isArray(programmaCache) ? programmaCache.find(p => p.id === _pl.programma_link.progId) : null;
+          const _sp = _prog ? (_prog.spelers||[]).find(s => s && s.id === _pl.programma_link.spelerKey) : null;
+          if(_prog && _sp){ openScoutingPlayerForm(_prog, _sp, null, _pl); return; }
+        }
+        // Ingediend rapport of concept zonder link → rapport-bewerken
+        go('report');
+        setTimeout(() => { if(typeof loadIntoForm === 'function') loadIntoForm(_pl); }, 80);
+      } catch(_){
+        if(typeof openDetail === 'function') openDetail(pid);
+      }
     });
   });
   bodyEl.querySelectorAll('[data-edit-submit]').forEach(btn => {
@@ -20499,12 +20515,13 @@ function loadIntoForm(p){
   $('#f-methode').value = p.methode || 'Live';
   $('#f-advies').value = p.advies || '';
   $('#f-wapen').value = p.wapen || '';
-  $('#f-notities').value = p.notities || '';
+  $('#f-notities').value = p.notities || p.opmerkingen || ''; // s35dh fix: concept-spelers gebruiken opmerkingen
   if($('#f-niet-gerapporteerd')) $('#f-niet-gerapporteerd').checked = !!p.niet_gerapporteerd;
   if($('#f-niet-gerapporteerd-reden')) $('#f-niet-gerapporteerd-reden').value = p.niet_gerapporteerd_reden || '';
   if(typeof shSyncNietGerapporteerdUI === 'function'){ try{ shSyncNietGerapporteerdUI(); }catch(_){} }
 
-  const w = p.wedstrijd || {};
+  // s35dh fix: concept-spelers slaan wedstrijddata op in rapport.wedstrijd
+  const w = p.wedstrijd || (p.rapport && p.rapport.wedstrijd) || {};
   $('#f-w-datum').value = w.datum || '';
   $('#f-w-thuis').value = w.thuis || w.tegenstander || '';
   $('#f-w-uit').value = w.uit || '';

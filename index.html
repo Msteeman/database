@@ -8467,6 +8467,24 @@ tbody tr:last-child td { border-bottom: none; }
           <div class="report-intro-strip" id="report-intro-strip" style="grid-column:1/-1; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:10px 14px; margin-bottom:8px; font-size:13px; color:var(--muted,#9aa3b7); line-height:1.45;">
             <strong style="color:var(--text,#e5e9f5); font-weight:600;">Dit is een concept.</strong> Alles wat je invult wordt automatisch opgeslagen. Klaar? Klik onderaan op <strong style="color:var(--text,#e5e9f5); font-weight:600;">Indienen</strong>.
           </div>
+          <!-- s36d: 'Niet gerapporteerd'-optie — alleen zichtbaar bij gekoppelde speler -->
+          <div id="niet-gerapporteerd-section" style="display:none; grid-column:1/-1; background:rgba(251,191,36,0.06); border:1px solid rgba(251,191,36,0.30); border-radius:10px; padding:10px 14px; margin-bottom:8px;">
+            <label style="display:flex; align-items:center; gap:9px; font-size:13px; color:var(--text,#e5e9f5); cursor:pointer;">
+              <input type="checkbox" id="f-niet-gerapporteerd" style="width:16px; height:16px; flex-shrink:0; cursor:pointer;" />
+              <span><strong>Niet gerapporteerd</strong> &mdash; deze gekoppelde speler is niet beoordeeld</span>
+            </label>
+            <div id="niet-gerapporteerd-reden-wrap" style="display:none; margin-top:8px;">
+              <label style="display:block; font-size:11.5px; color:var(--muted,#9aa3b7); margin-bottom:4px;">Reden</label>
+              <select id="f-niet-gerapporteerd-reden" style="width:100%; background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:8px 11px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13.5px; outline:none;">
+                <option value="">Kies een reden...</option>
+                <option value="afwezig">Afwezig</option>
+                <option value="geblesseerd">Geblesseerd</option>
+                <option value="ziek">Ziek</option>
+                <option value="niet ingevallen">Niet ingevallen / niet gespeeld</option>
+                <option value="anders">Anders</option>
+              </select>
+            </div>
+          </div>
           <!-- s35aq: opklapbaar Snel notitie-paneel — handig langs de lijn (mobile + desktop) -->
           <div class="snel-notitie-panel" id="snel-notitie-panel" style="grid-column:1/-1;">
             <button type="button" class="snel-notitie-toggle" id="snel-notitie-toggle">
@@ -30908,6 +30926,9 @@ function loadIntoForm(p){
   $('#f-advies').value = p.advies || '';
   $('#f-wapen').value = p.wapen || '';
   $('#f-notities').value = p.notities || '';
+  if($('#f-niet-gerapporteerd')) $('#f-niet-gerapporteerd').checked = !!p.niet_gerapporteerd;
+  if($('#f-niet-gerapporteerd-reden')) $('#f-niet-gerapporteerd-reden').value = p.niet_gerapporteerd_reden || '';
+  if(typeof shSyncNietGerapporteerdUI === 'function'){ try{ shSyncNietGerapporteerdUI(); }catch(_){} }
 
   const w = p.wedstrijd || {};
   $('#f-w-datum').value = w.datum || '';
@@ -34976,6 +34997,37 @@ function backToProgrammaFromFull(progId){
   go('programma');
 }
 
+/* s36d: 'Niet gerapporteerd'-optie — alleen tonen bij een gekoppelde speler
+   (speler die in een programma-wedstrijd aan prog.spelers hangt). */
+function shIsCoupledPlayerInReportForm(){
+  const norm = s => String(s||'').trim().toLowerCase();
+  const vn = norm($('#f-voornaam') && $('#f-voornaam').value);
+  const an = norm($('#f-achternaam') && $('#f-achternaam').value);
+  if(!vn || !an) return false;
+  if(typeof programmaCache === 'undefined' || !Array.isArray(programmaCache)) return false;
+  for(const prog of programmaCache){
+    const sps = Array.isArray(prog && prog.spelers) ? prog.spelers : [];
+    for(const sp of sps){
+      let svn = norm(sp.voornaam), san = norm(sp.achternaam);
+      if((!svn || !san) && sp.naam && typeof splitNaam === 'function'){
+        const s = splitNaam(sp.naam);
+        if(!svn) svn = norm(s.voornaam);
+        if(!san) san = norm(s.achternaam);
+      }
+      if(svn === vn && san === an) return true;
+    }
+  }
+  return false;
+}
+function shSyncNietGerapporteerdUI(){
+  const sec = document.getElementById('niet-gerapporteerd-section');
+  if(sec) sec.style.display = shIsCoupledPlayerInReportForm() ? '' : 'none';
+  const cb = document.getElementById('f-niet-gerapporteerd');
+  const wrap = document.getElementById('niet-gerapporteerd-reden-wrap');
+  if(cb && wrap) wrap.style.display = cb.checked ? '' : 'none';
+}
+window.shSyncNietGerapporteerdUI = shSyncNietGerapporteerdUI;
+
 function collectReportFormData(){
   // Verzamelt alle velden zoals saveReport doet, zonder daadwerkelijk op te slaan
   // s35q: zorg dat hidden naam in sync is voordat we 'm lezen
@@ -35001,6 +35053,8 @@ function collectReportFormData(){
     advies: $('#f-advies').value,
     wapen: $('#f-wapen').value.trim(),
     notities: $('#f-notities').value.trim(),
+    niet_gerapporteerd: !!($('#f-niet-gerapporteerd') && $('#f-niet-gerapporteerd').checked),
+    niet_gerapporteerd_reden: ($('#f-niet-gerapporteerd-reden') ? $('#f-niet-gerapporteerd-reden').value : ''),
     huidig_niveau: getPickerValue('huidig_niveau'),
     potentieel_niveau: getPickerValue('potentieel_niveau'),
     wedstrijd: {
@@ -35790,7 +35844,8 @@ function initApp(){
     }
   });
   $('#report-form').addEventListener('submit', submitReport);
-  $('#report-form').addEventListener('input', ()=> setDirty(true));
+  $('#report-form').addEventListener('input', ()=> { setDirty(true); try{ shSyncNietGerapporteerdUI(); }catch(_){} });
+  $('#f-niet-gerapporteerd')?.addEventListener('change', ()=> { try{ shSyncNietGerapporteerdUI(); }catch(_){} });
   // s35ao (#3 decoupling): thuis->club mirror uitgezet
   if(false) try {
     const thuisInp = $('#f-w-thuis');

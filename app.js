@@ -20241,6 +20241,8 @@ function renderDetailOverview(p){
 
     <div id="dtl-summary-card"></div>
 
+    <div id="dtl-trend-card"></div>
+
     <div class="card compare-card dtl-sw-card" id="dtl-sw-card">
       <div class="compare-card-title">
         <span>Sterktes &amp; ontwikkelpunten</span>
@@ -20276,8 +20278,6 @@ function renderDetailOverview(p){
         <div class="compare-bars" id="dtl-bars"></div>
       </div>
     </div>
-
-    <div id="dtl-trend-card"></div>
 
     ${reportsListHtml}
 

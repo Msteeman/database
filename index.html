@@ -1801,29 +1801,24 @@ algemeen:</textarea>
           </div>
 
           <div class="rm-field">
-            <label for="rit-aankomst">Aankomstadres</label>
+            <label for="rit-aankomst">Club / trainingscomplex / adres</label>
             <div id="rit-prog-chips"></div>
-            <input type="text" id="rit-aankomst" autocomplete="off" placeholder="Adres of plaats" />
-            <button class="rm-geo" type="button" id="rit-geo-aankomst">📍 Mijn huidige locatie</button>
+            <input type="text" id="rit-aankomst" autocomplete="off" placeholder="Typ clubnaam of adres…" />
             <div class="rm-suggest" id="rit-aankomst-suggest"></div>
           </div>
 
           <div class="rm-row">
             <div class="rm-field">
               <label for="rit-km">Kilometers</label>
-              <div class="rm-km-row">
-                <input type="number" id="rit-km" min="0" step="0.1" placeholder="auto" />
-                <button class="rm-recalc" type="button" id="rit-km-recalc" title="Herbereken route">&#x21bb;</button>
-              </div>
+              <input type="number" id="rit-km" min="0" step="0.1" placeholder="0" />
             </div>
             <div class="rm-field">
-              <label for="rit-doel">Doel (optioneel)</label>
-              <input type="text" id="rit-doel" placeholder="Bv. wedstrijd, scouting" />
+              <label for="rit-doel">Doel</label>
+              <input type="text" id="rit-doel" placeholder="Wedstrijd, training, kantoor…" />
               <div class="rm-doel-chips">
                 <button type="button" data-doel="Wedstrijd">Wedstrijd</button>
-                <button type="button" data-doel="Scouting">Scouting</button>
                 <button type="button" data-doel="Training">Training</button>
-                <button type="button" data-doel="Vergadering">Vergadering</button>
+                <button type="button" data-doel="Kantoor">Kantoor</button>
               </div>
             </div>
           </div>

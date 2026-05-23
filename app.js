@@ -13202,19 +13202,30 @@ function _ritShowProgChips(chipsEl){
         const doelEl = document.getElementById('rit-doel');
         if(aankomstEl && adres){ aankomstEl.value = adres; }
         if(doelEl && doel && !doelEl.value){ doelEl.value = doel; }
-        // Geocode adres voor km-berekening
-        if(adres && typeof _ritNominatimSearch === 'function'){
-          _ritNominatimSearch(adres).then(results => {
-            if(results && results.length){
-              const r = results[0];
-              const latEl = document.getElementById('rit-aankomst-lat');
-              const lonEl = document.getElementById('rit-aankomst-lon');
-              if(latEl) latEl.value = String(r.lat);
-              if(lonEl) lonEl.value = String(r.lon);
-              _ritAddrCoords.set(adres, {lat:r.lat, lon:r.lon});
-              _ritTryAutoKm();
-            }
-          }).catch(()=>{});
+        // Probeer coords: eerst club-adresboek, dan Nominatim
+        if(adres){
+          const clubMatches = typeof _ritSearchClubs === 'function' ? _ritSearchClubs(adres) : [];
+          const clubHit = clubMatches.find(c => isFinite(c.lat) && isFinite(c.lon));
+          if(clubHit){
+            const latEl = document.getElementById('rit-aankomst-lat');
+            const lonEl = document.getElementById('rit-aankomst-lon');
+            if(latEl) latEl.value = String(clubHit.lat);
+            if(lonEl) lonEl.value = String(clubHit.lon);
+            _ritAddrCoords.set(adres, {lat:clubHit.lat, lon:clubHit.lon});
+            _ritTryAutoKm();
+          } else if(typeof _ritNominatimSearch === 'function'){
+            _ritNominatimSearch(adres).then(results => {
+              if(results && results.length){
+                const r = results[0];
+                const latEl = document.getElementById('rit-aankomst-lat');
+                const lonEl = document.getElementById('rit-aankomst-lon');
+                if(latEl) latEl.value = String(r.lat);
+                if(lonEl) lonEl.value = String(r.lon);
+                _ritAddrCoords.set(adres, {lat:r.lat, lon:r.lon});
+                _ritTryAutoKm();
+              }
+            }).catch(()=>{});
+          }
         }
       });
     });
@@ -13331,7 +13342,12 @@ async function _ritGeoLocation(kind){
       const plaats = a.city || a.town || a.village || a.municipality || '';
       adres = [straat, plaats].filter(Boolean).join(', ') || json.display_name || '';
     } catch(e){
-      adres = latitude.toFixed(5) + ', ' + longitude.toFixed(5);
+      // Altijd een leesbaar adres proberen — geen rauwe coordinaten tonen
+      try {
+        const fb = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`, { headers: { 'Accept-Language': 'nl' } });
+        const fj = await fb.json();
+        adres = fj.display_name || (latitude.toFixed(4) + ', ' + longitude.toFixed(4));
+      } catch(_){ adres = latitude.toFixed(4) + ', ' + longitude.toFixed(4); }
     }
     if(adresEl){ adresEl.value = adres; adresEl.placeholder = 'Adres of plaats'; }
     const latEl = document.getElementById(latId);
@@ -13383,6 +13399,53 @@ async function _ritNominatimSearch(q){
   } catch(_){ return []; }
 }
 
+/* Club-adresboek doorzoeken voor rit-suggesties */
+function _ritSearchClubs(q){
+  q = (q||'').trim().toLowerCase();
+  if(q.length < 2) return [];
+  const results = [];
+  const seen = new Set();
+  const addResult = (naam, ci) => {
+    if(!ci || seen.has(naam)) return;
+    seen.add(naam);
+    // label = sportpark of naam, plus plaats
+    const label = [ci.sportpark || ci.naam || naam, ci.plaats].filter(Boolean).join(', ');
+    if(!label) return;
+    if(isFinite(ci.lat) && isFinite(ci.lon)){
+      results.push({ label, lat: Number(ci.lat), lon: Number(ci.lon), fromClub: true });
+    } else if(ci.adres){
+      results.push({ label, lat: NaN, lon: NaN, adres: ci.adres, fromClub: true });
+    }
+  };
+  // Zoek in CLUB_ADRESSEN (handmatig geverifieerd, heeft lat/lon)
+  try {
+    if(typeof CLUB_ADRESSEN !== 'undefined'){
+      for(const [k,v] of Object.entries(CLUB_ADRESSEN)){
+        const naam = v.naam || k;
+        if(k.includes(q) || naam.toLowerCase().includes(q) ||
+           (v.sportpark||'').toLowerCase().includes(q) ||
+           (v.aliassen||[]).some(a => a.toLowerCase().includes(q))){
+          addResult(naam, v);
+        }
+      }
+    }
+  } catch(_){}
+  // Zoek in HV_CLUB_ADRESSEN (grote lijst)
+  try {
+    if(typeof HV_CLUB_ADRESSEN !== 'undefined'){
+      for(const [k,v] of Object.entries(HV_CLUB_ADRESSEN)){
+        const naam = v.naam || k;
+        if(k.toLowerCase().includes(q) || naam.toLowerCase().includes(q) ||
+           (v.sportpark||'').toLowerCase().includes(q)){
+          addResult(naam, v);
+          if(results.length >= 6) break;
+        }
+      }
+    }
+  } catch(_){}
+  return results.slice(0,6);
+}
+
 function _ritSetupSuggest(inputId, boxId, kind){
   const input = document.getElementById(inputId);
   const box = document.getElementById(boxId);
@@ -13402,11 +13465,29 @@ function _ritSetupSuggest(inputId, boxId, kind){
         ev.preventDefault();
         const m = matches[Number(el.dataset.i)];
         input.value = m.label;
-        if(latInp) latInp.value = isFinite(m.lat) ? String(m.lat) : '';
-        if(lonInp) lonInp.value = isFinite(m.lon) ? String(m.lon) : '';
-        if(isFinite(m.lat) && isFinite(m.lon)) _ritAddrCoords.set(m.label, {lat:m.lat, lon:m.lon});
-        box.classList.remove('open');
-        _ritTryAutoKm();
+        if(isFinite(m.lat) && isFinite(m.lon)){
+          if(latInp) latInp.value = String(m.lat);
+          if(lonInp) lonInp.value = String(m.lon);
+          _ritAddrCoords.set(m.label, {lat:m.lat, lon:m.lon});
+          box.classList.remove('open');
+          _ritTryAutoKm();
+        } else if(m.adres && typeof _ritNominatimSearch === 'function'){
+          // Club zonder coords — geocodeer het adres
+          box.classList.remove('open');
+          _ritNominatimSearch(m.adres).then(res => {
+            if(res && res.length){
+              if(latInp) latInp.value = String(res[0].lat);
+              if(lonInp) lonInp.value = String(res[0].lon);
+              _ritAddrCoords.set(m.label, {lat:res[0].lat, lon:res[0].lon});
+              _ritTryAutoKm();
+            }
+          }).catch(()=>{});
+        } else {
+          if(latInp) latInp.value = '';
+          if(lonInp) lonInp.value = '';
+          box.classList.remove('open');
+          _ritTryAutoKm();
+        }
       });
     });
   };
@@ -13417,16 +13498,21 @@ function _ritSetupSuggest(inputId, boxId, kind){
     if(latInp) latInp.value = '';
     if(lonInp) lonInp.value = '';
 
+    // Club-adresboek eerst (snelst, geen netwerk)
+    const clubs = _ritSearchClubs(q);
+
     const local = _ritGebruikerAdressen()
       .filter(a => !q || a.toLowerCase().includes(q.toLowerCase()))
-      .slice(0,4)
+      .slice(0,3)
       .map(a => {
         const c = _ritAddrCoords.get(a) || {};
         return { label: a, lat: c.lat, lon: c.lon };
       });
 
-    // toon eerst lokaal
-    render(local);
+    // Clubs hebben prioriteit, dan lokale historie
+    const seen0 = new Set(clubs.map(x => x.label.toLowerCase()));
+    const combined = clubs.concat(local.filter(l => !seen0.has(l.label.toLowerCase())));
+    render(combined);
 
     if(q.length < 3) return;
     const mySeq = ++_ritSearchSeq;
@@ -13434,9 +13520,9 @@ function _ritSetupSuggest(inputId, boxId, kind){
     debounce = setTimeout(async () => {
       const remote = await _ritNominatimSearch(q);
       if(mySeq !== _ritSearchSeq) return; // race
-      // dedup op label
-      const seen = new Set(local.map(x => x.label.toLowerCase()));
-      const merged = local.concat(remote.filter(r => !seen.has(r.label.toLowerCase()))).slice(0,8);
+      // dedup — clubs + lokaal voor Nominatim
+      const seen = new Set(combined.map(x => x.label.toLowerCase()));
+      const merged = combined.concat(remote.filter(r => !seen.has(r.label.toLowerCase()))).slice(0,8);
       render(merged);
     }, 280);
   };
@@ -13531,8 +13617,6 @@ function _ritInitListeners(){
   bind('rit-save-btn', 'click', saveRitFromForm);
   bind('rit-delete-btn', 'click', deleteRitFromForm);
   bind('rit-geo-vertrek', 'click', () => _ritGeoLocation('vertrek'));
-  bind('rit-geo-aankomst', 'click', () => _ritGeoLocation('aankomst'));
-  bind('rit-km-recalc',   'click', () => _ritTryAutoKm(true));
   // s35dj: doel-chips
   const doelChips = document.querySelectorAll('.rm-doel-chips [data-doel]');
   doelChips.forEach(btn => {

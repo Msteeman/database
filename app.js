@@ -12381,6 +12381,8 @@ function __shApplyDemoChrome(){
     const seedRow = document.getElementById('settings-seed-row');
     if(strip) strip.style.display = isDemo ? 'flex' : 'none';
     if(seedRow) seedRow.style.display = isPrimary ? 'flex' : 'none';
+    const resetRow = document.getElementById('settings-reset-row');
+    if(resetRow) resetRow.style.display = isPrimary ? 'flex' : 'none';
   } catch(_){}
 }
 window.__shApplyDemoChrome = __shApplyDemoChrome;
@@ -12610,6 +12612,47 @@ const __SH_DEMO_RITTEN = [
     "createdAt": 1736400000000
   }
 ];
+
+async function __shResetAndReseedDemo(){
+  if(!confirm('⚠️ Alle demo-data wordt gewist en opnieuw geladen.\nDit kan niet ongedaan worden gemaakt. Doorgaan?')) return;
+  const btn = document.getElementById('settings-reset-demo');
+  if(btn){ btn.disabled = true; btn.textContent = 'Bezig…'; }
+  try {
+    toast('Demo-data wissen…');
+    // 1. Wis alle bestaande records
+    const players  = loadPlayers ? loadPlayers() : [];
+    const reports  = loadMatchReports ? loadMatchReports() : [];
+    const matches  = typeof programmaCache !== 'undefined' ? programmaCache : [];
+    const contacts = typeof contactsCache !== 'undefined' ? contactsCache : [];
+    const tips     = typeof tipsCache !== 'undefined' ? tipsCache : [];
+    const analyses = typeof analysisCache !== 'undefined' ? analysisCache : [];
+    const ritten   = typeof rittenCache !== 'undefined' ? rittenCache : [];
+
+    for(const p of players)  { try { await deletePlayer(p.id); } catch(_){} }
+    for(const r of reports)  { try { await deleteMatchReport(r.id); } catch(_){} }
+    for(const m of matches)  { try { await deleteProgrammaItem(m.id); } catch(_){} }
+    for(const c of contacts) { try { await deleteContact(c.id); } catch(_){} }
+    for(const t of tips)     { try { await deleteTip(t.id); } catch(_){} }
+    for(const a of analyses) { try { await deleteAnalysis(a.id); } catch(_){} }
+    for(const rit of ritten) { try { await deleteRit(rit.id); } catch(_){} }
+
+    // 2. Reset localStorage-vlag zodat auto-seed niet geblokkeerd is
+    if(currentUser) {
+      localStorage.removeItem('sh_demo_autoseed_' + currentUser.uid);
+    }
+
+    // 3. Herlaad demo-data
+    toast('Data gewist — opnieuw laden…');
+    await __shSeedDemoToFirestore();
+
+    if(btn){ btn.disabled = false; btn.textContent = 'Reset & herlaad'; }
+    document.getElementById('settings-modal-backdrop')?.classList.remove('show');
+  } catch(e){
+    console.error('Reset mislukt:', e);
+    toast('Reset mislukt: ' + (e.message||''), true);
+    if(btn){ btn.disabled = false; btn.textContent = 'Reset & herlaad'; }
+  }
+}
 
 async function __shSeedDemoToFirestore(){
   if(!__shIsDemoUser()){
@@ -15030,7 +15073,7 @@ function go(view){
   $$('#bottom-nav .bn-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
   if(view === 'dashboard') renderDashboard();
   if(view === 'database')  renderDatabase();
-  if(view === 'compare')   renderCompare();
+  if(view === 'compare')   { renderCompare(); shUpdateCmpUI(); }
   if(view === 'matches')   renderMatches();
   if(view === 'pitch')     renderPitch();
   if(view === 'report')    {
@@ -19702,6 +19745,7 @@ function renderCompareSelected(){
       ev.stopPropagation();
       const id = btn.dataset.removeId;
       cmpSelectedIds = cmpSelectedIds.filter(x => x !== id);
+      shUpdateCmpUI();
       renderCompare();
     });
   });
@@ -25824,12 +25868,12 @@ function shUpdateMatchesNavBadge(){
        && typeof getISOWeek === 'function' && typeof weekKey === 'function' && typeof parseIsoDate === 'function'){
       const cur = getISOWeek(new Date());
       const curKey = weekKey(cur[0], cur[1]);
+      const today = new Date(); today.setHours(0,0,0,0);
       n = programmaCache.filter(it => {
         if(!it || it.status === 'verwerkt' || !it.datum) return false;
         const d = parseIsoDate(it.datum);
         if(!d) return false;
-        const wk = getISOWeek(d);
-        return weekKey(wk[0], wk[1]) < curKey;
+        return d < today; // datum < vandaag = afgelopen, nog te verwerken
       }).length;
     }
   } catch(_){}
@@ -25911,12 +25955,13 @@ function shUpdateCmpUI(){
         badge.style.display = 'none';
       }
     });
-    // Floating bar
+    // Floating bar — NIET tonen op de vergelijken-pagina zelf
+    const onComparePage = (typeof currentView !== 'undefined' && currentView === 'compare');
     const bar = document.getElementById('cmp-float-bar');
     const countEl = document.getElementById('cmp-float-count');
     if(bar){
       if(countEl) countEl.textContent = String(n);
-      bar.style.display = n > 0 ? 'flex' : 'none';
+      bar.style.display = (n > 0 && !onComparePage) ? 'flex' : 'none';
     }
   } catch(_){}
 }
@@ -27422,6 +27467,13 @@ document.addEventListener('click', (e) => {
     setTimeout(()=> { renderTeamOverzicht().catch(err=>console.warn(err)); }, 60);
   } else if(v === 'admin'){
     setTimeout(()=> { renderAdminPanel().catch(err=>console.warn(err)); }, 60);
+  }
+});
+
+/* ===== Demo reset-knop ===== */
+document.addEventListener('click', (e) => {
+  if(e.target.closest('#settings-reset-demo')){
+    if(typeof __shResetAndReseedDemo === 'function') __shResetAndReseedDemo();
   }
 });
 

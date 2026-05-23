@@ -12392,6 +12392,225 @@ const __shDemoChromeIv = setInterval(() => {
   }
 }, 2000);
 
+const __SH_DEMO_RITTEN = [
+  {
+    "id": "demo_rit01",
+    "datum": "2026-05-22",
+    "tijd": "13:45",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "Sportpark De Westmaat, Spakenburg",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 52.2557, "aankomstLon": 5.3748,
+    "km": 31,
+    "doel": "IJsselmeervogels O.18 vs FC Utrecht O.18 — letten op Daan Bakker (nr. 7) en Joris Smit (nr. 11)",
+    "createdAt": 1748000000000
+  },
+  {
+    "id": "demo_rit02",
+    "datum": "2026-05-18",
+    "tijd": "09:30",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "Sportpark Birkhoven, Amersfoort",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 52.1680, "aankomstLon": 5.3853,
+    "km": 26,
+    "doel": "ASC Nieuwland O.17 — training observatie op verzoek van hoofdscout",
+    "createdAt": 1747600000000
+  },
+  {
+    "id": "demo_rit03",
+    "datum": "2026-05-10",
+    "tijd": "10:00",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "De Toekomst, Duivendrecht",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 52.3095, "aankomstLon": 4.9389,
+    "km": 52,
+    "doel": "Ajax O.18 open training — Owen Schimmelpenninck en Liam de Boer observeren",
+    "createdAt": 1746900000000
+  },
+  {
+    "id": "demo_rit04",
+    "datum": "2026-05-03",
+    "tijd": "14:00",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "GVVV Sportpark, Veenendaal",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 52.0278, "aankomstLon": 5.5567,
+    "km": 32,
+    "doel": "GVVV O.16 vs VRC — keeper Noah van den Berg scouten (nr. 1)",
+    "createdAt": 1746200000000
+  },
+  {
+    "id": "demo_rit05",
+    "datum": "2026-04-26",
+    "tijd": "11:00",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "VVOG Sportpark, Harderwijk",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 52.3427, "aankomstLon": 5.6249,
+    "km": 59,
+    "doel": "VVOG O.17 — Tobias Vermeer (CV, nr. 5) op verzoek van technische staf",
+    "createdAt": 1745500000000
+  },
+  {
+    "id": "demo_rit06",
+    "datum": "2026-04-19",
+    "tijd": "13:00",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "AFAS Stadion, Alkmaar",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 52.6336, "aankomstLon": 4.7474,
+    "km": 84,
+    "doel": "AZ O.17 vs Feyenoord O.17 — Scouting beide kanten, focus op middenvelders",
+    "createdAt": 1744800000000
+  },
+  {
+    "id": "demo_rit07",
+    "datum": "2026-04-12",
+    "tijd": "10:30",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "GelreDome, Arnhem",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 51.9659, "aankomstLon": 5.8953,
+    "km": 68,
+    "doel": "Vitesse O.18 toernooi dag 1 — meerdere spelers observeren",
+    "createdAt": 1744100000000
+  },
+  {
+    "id": "demo_rit08",
+    "datum": "2026-04-05",
+    "tijd": "09:00",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "PSV Campus, Eindhoven",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 51.4416, "aankomstLon": 5.4697,
+    "km": 92,
+    "doel": "PSV O.18 trainingsdag — Wessel Bos en Stef Guijt volgen",
+    "createdAt": 1743400000000
+  },
+  {
+    "id": "demo_rit09",
+    "datum": "2026-03-28",
+    "tijd": "14:30",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "Varkenoord, Rotterdam",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 51.9244, "aankomstLon": 4.4777,
+    "km": 73,
+    "doel": "Feyenoord O.17 vs AZ O.17 — aanvallende spelers scouten",
+    "createdAt": 1742700000000
+  },
+  {
+    "id": "demo_rit10",
+    "datum": "2026-03-21",
+    "tijd": "10:00",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "De Goffert, Nijmegen",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 51.8425, "aankomstLon": 5.8570,
+    "km": 88,
+    "doel": "NEC O.17 — Bart Klaassen (GK, nr. 1) eerste observatie na tip van regioscout",
+    "createdAt": 1742000000000
+  },
+  {
+    "id": "demo_rit11",
+    "datum": "2026-03-14",
+    "tijd": "13:00",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "CSV Apeldoorn, Apeldoorn",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 52.2112, "aankomstLon": 5.9699,
+    "km": 78,
+    "doel": "CSV Apeldoorn O.16 vs VVOG — verkenning talenten lager jeugd",
+    "createdAt": 1741300000000
+  },
+  {
+    "id": "demo_rit12",
+    "datum": "2026-03-07",
+    "tijd": "09:00",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "FC Twente Trainingscomplex, Enschede",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 52.2215, "aankomstLon": 6.8937,
+    "km": 147,
+    "doel": "FC Twente O.18 vs Ajax O.18 — Sem van der Berg (LV) follow-up bezoek",
+    "createdAt": 1740600000000
+  },
+  {
+    "id": "demo_rit13",
+    "datum": "2026-02-28",
+    "tijd": "11:30",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "KNVB Campus, Zeist",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 52.0827, "aankomstLon": 5.2299,
+    "km": 13,
+    "doel": "U17 Nationale selectiedag — meerdere spelers uit regio observeren",
+    "createdAt": 1739900000000
+  },
+  {
+    "id": "demo_rit14",
+    "datum": "2026-02-21",
+    "tijd": "14:00",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "Heerenveen Trainingscomplex, Heerenveen",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 52.9553, "aankomstLon": 5.9152,
+    "km": 148,
+    "doel": "SC Heerenveen O.18 — Koen de Vries (AM) — eerste bezoek na aanbeveling",
+    "createdAt": 1739200000000
+  },
+  {
+    "id": "demo_rit15",
+    "datum": "2026-02-14",
+    "tijd": "10:00",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "Sportlust '46, Woerden",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 52.0880, "aankomstLon": 4.8856,
+    "km": 19,
+    "doel": "Sportlust O.17 — regionale talenten verkennen, 3 spelers op lijst",
+    "createdAt": 1738500000000
+  },
+  {
+    "id": "demo_rit16",
+    "datum": "2026-02-07",
+    "tijd": "13:00",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "Ajax O.17 Sportpark, Amsterdam",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 52.3676, "aankomstLon": 4.9041,
+    "km": 51,
+    "doel": "Ajax O.17 vs PSV O.17 — Jurriën Bakker (CS, nr. 9) derde bezoek",
+    "createdAt": 1737800000000
+  },
+  {
+    "id": "demo_rit17",
+    "datum": "2026-01-31",
+    "tijd": "09:30",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "Martiniplaza Sporthal, Groningen",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 53.2194, "aankomstLon": 6.5665,
+    "km": 204,
+    "doel": "FC Groningen O.18 zaaltoernooi — nieuwe gezichten scouten in de regio Noord",
+    "createdAt": 1737100000000
+  },
+  {
+    "id": "demo_rit18",
+    "datum": "2026-01-24",
+    "tijd": "14:00",
+    "vertrekAdres": "Stadionlaan 1, Utrecht",
+    "aankomstAdres": "Heracles Trainingspark, Almelo",
+    "vertrekLat": 52.0797, "vertrekLon": 5.1277,
+    "aankomstLat": 52.3632, "aankomstLon": 6.6653,
+    "km": 132,
+    "doel": "Heracles Almelo O.17 — verdedigende middenvelders verkennen op aanwijzing hoofdscout",
+    "createdAt": 1736400000000
+  }
+];
+
 async function __shSeedDemoToFirestore(){
   if(!__shIsDemoUser()){
     if(typeof toast === 'function') toast('Demo-vullen alleen beschikbaar voor demo-account', true);
@@ -12442,7 +12661,14 @@ async function __shSeedDemoToFirestore(){
       try { await saveTip({...tp}); okTi++; } catch(e){ fail++; console.error('seed tip', e); }
     }
   } catch(e){ console.error('seed tips block', e); }
-  const msg = `Demo-data geladen: ${okP} spelers, ${okR} rapporten, ${okM} wedstrijden, ${okT} teams, ${okC} contacten, ${okTi} tips` + (fail ? ` (${fail} fouten)` : '');
+  // Ritten
+  let okRit = 0;
+  try {
+    for(const rit of __SH_DEMO_RITTEN){
+      try { await saveRit({...rit}); okRit++; } catch(e){ fail++; console.error('seed rit', e); }
+    }
+  } catch(e){ console.error('seed ritten block', e); }
+  const msg = `Demo-data geladen: ${okP} spelers, ${okR} rapporten, ${okM} wedstrijden, ${okT} teams, ${okC} contacten, ${okTi} tips, ${okRit} ritten` + (fail ? ` (${fail} fouten)` : '');
   if(typeof toast === 'function') toast(msg);
   else alert(msg);
   if(typeof __shTrace === 'function') __shTrace('demo-seed-done', {okP, okR, okM, okT, okC, okTi, fail});
@@ -12506,10 +12732,14 @@ setTimeout(async () => {
     for(const tp of __SH_DEMO_TIPS){
       try { await saveTip({...tp}); okTi++; } catch(e){ fail++; }
     }
+    let okRit = 0;
+    for(const rit of __SH_DEMO_RITTEN){
+      try { await saveRit({...rit}); okRit++; } catch(e){ fail++; }
+    }
     localStorage.setItem(seenKey, new Date().toISOString());
     __shAutoSeedDone = true;
     if(typeof __shTrace === 'function') __shTrace('demo-autoseed-done', {okP, okR, okM, okT, okC, okTi, fail});
-    if(typeof toast === 'function') toast(`Demo-data geladen (${okP} spelers, ${okR} rapporten, ${okM} wedstrijden, ${okT} teams, ${okC} contacten, ${okTi} tips)`);
+    if(typeof toast === 'function') toast(`Demo-data geladen (${okP} spelers, ${okR} rapporten, ${okM} wedstrijden, ${okT} teams, ${okC} contacten, ${okTi} tips, ${okRit} ritten)`);
   } catch(e){
     console.error('auto-seed error:', e);
   }

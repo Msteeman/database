@@ -1030,42 +1030,37 @@
             <div class="page-title">Programma</div>
             <div class="page-sub" id="programma-sub">Plan je scoutingweek</div>
           </div>
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn btn-secondary" id="programma-today-btn">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              Vandaag
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <button class="btn btn-primary" id="programma-new-btn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Afspraak inplannen
             </button>
           </div>
         </div>
 
-        <!-- s35de: controle-balk — toggle + kleine pijlen -->
-        <div class="prog-controls">
-          <div class="prog-span-toggle" role="tablist" aria-label="Weergave">
-            <button type="button" data-prog-span="1" class="active">1 dag</button>
-            <button type="button" data-prog-span="3">3 dagen</button>
-            <button type="button" data-prog-span="7">Week</button>
-          </div>
-          <div class="prog-arrows">
-            <button class="prog-arrow-btn" id="prog-prev-week" aria-label="Vorige">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
-            <button class="prog-arrow-btn" id="prog-next-week" aria-label="Volgende">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-          </div>
+        <!-- s35dj: nieuwe prog-nav-bar + week-strip -->
+        <div class="prog-nav-bar">
+          <button class="prog-nav-arrow" id="prog-prev-week" aria-label="Vorige week">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+          </button>
+          <div class="prog-nav-label" id="prog-nav-label">Programma</div>
+          <button class="prog-nav-arrow" id="prog-next-week" aria-label="Volgende week">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+          </button>
+          <button class="prog-nav-today" id="programma-today-btn">Vandaag</button>
         </div>
 
-        <!-- s35de: datum-aanduiding — label (1d) of klikbare pills (3d/Week) -->
-        <div class="prog-dateline" id="prog-dateline"></div>
+        <!-- weekstrip: 7 dag-chips -->
+        <div id="prog-week-strip" class="prog-week-strip"></div>
 
-        <!-- legacy weeklabel houder; nu verborgen maar JS verwacht hem nog -->
+        <!-- legacy weeklabel (JS verwacht #prog-weeklabel) -->
         <div id="prog-weeklabel" style="display:none"></div>
 
-        <div id="programma-grid" class="prog-list"></div>
+        <div id="programma-grid" class="prog-ev-list"></div>
 
         <div id="programma-empty" style="display:none; text-align:center; padding:40px 20px; color:var(--text-3);">
-          <div style="font-size:14px; margin-bottom:8px;">Geen wedstrijden ingepland deze week.</div>
-          <div style="font-size:12px;">Klik op een dag om te starten.</div>
+          <div style="font-size:14px; margin-bottom:8px;">Niets ingepland voor deze dag.</div>
+          <div style="font-size:12px;">Klik op + Afspraak inplannen om te beginnen.</div>
         </div>
       </section>
 
@@ -2180,23 +2175,37 @@ algemeen:</textarea>
 <div class="modal-backdrop" id="prog-match-backdrop">
   <div class="modal" id="prog-match-modal">
     <div class="modal-header">
-      <div class="modal-title" id="prog-match-title">Nieuw wedstrijdrapport</div>
+      <div class="modal-title" id="prog-match-title">Afspraak inplannen</div>
       <button class="modal-close" id="prog-match-close">×</button>
     </div>
     <div class="modal-body">
       <form id="prog-match-form" autocomplete="off">
         <input type="hidden" id="pm-id" />
+        <input type="hidden" id="pm-type" value="wedstrijd" />
+        <!-- s35dj: type-selector -->
+        <div class="pm-type-pills">
+          <button type="button" class="pm-type-pill active" data-pm-type="wedstrijd">&#x26BD; Wedstrijd</button>
+          <button type="button" class="pm-type-pill" data-pm-type="training">&#x1F3C3; Training</button>
+          <button type="button" class="pm-type-pill" data-pm-type="vergadering">&#x1F4AC; Vergadering</button>
+        </div>
+        <!-- naam/omschrijving voor training & vergadering -->
+        <div class="field" id="pm-naam-row" style="display:none; margin-bottom:12px;">
+          <label>Naam / omschrijving</label>
+          <input id="pm-naam" type="text" placeholder="bv. Training O14, Teamvergadering..." />
+        </div>
         <div class="field-row">
           <div class="field">
             <label>Datum *</label>
             <input id="pm-datum" type="date" required />
           </div>
           <div class="field">
-            <label>Aftrap</label>
+            <label>Tijd</label>
             <input id="pm-tijd" type="time" />
           </div>
         </div>
         <!-- s35be: pm-leeftijd weg (elftal wordt nu per-club ingevuld) -->
+        <!-- s35dj: pm-wedstrijd-fields — verborgen bij training/vergadering -->
+        <div id="pm-wedstrijd-fields">
         <div class="field" style="margin-top:12px;">
           <label>Scoutingmethode</label>
           <select id="pm-methode">
@@ -2224,11 +2233,11 @@ algemeen:</textarea>
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Thuisspelende ploeg *</label>
-            <input id="pm-thuis" type="text" required placeholder="Bijv. AFC" autocomplete="off" data-picker="club" />
+            <input id="pm-thuis" type="text" placeholder="Bijv. AFC" autocomplete="off" data-picker="club" />
           </div>
           <div class="field">
             <label>Uitspelende ploeg *</label>
-            <input id="pm-uit" type="text" required placeholder="Bijv. Ajax" autocomplete="off" data-picker="club" />
+            <input id="pm-uit" type="text" placeholder="Bijv. Ajax" autocomplete="off" data-picker="club" />
           </div>
         </div>
         <!-- s35bd: elftal per club (bv. O.16-1 vs O.16-2) -->
@@ -2256,6 +2265,7 @@ algemeen:</textarea>
           <label>Veld (optioneel)</label>
           <input id="pm-veld" type="text" placeholder="bv. 2, 3, 4a, 5b, 1b" maxlength="8" />
         </div>
+        </div><!-- /pm-wedstrijd-fields -->
         <div class="field" style="margin-top:12px;">
           <label>Notities (optioneel)</label>
           <textarea id="pm-notities" rows="2" placeholder="Bijv. focus op #10 thuis, mogelijke transferdoel..."></textarea>

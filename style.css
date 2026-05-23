@@ -7684,3 +7684,161 @@ tbody tr:last-child td { border-bottom: none; }
   #s35cl-debug .grp{margin-top:8px;padding-top:6px;border-top:1px solid #262b39}
   #s35cl-debug .close{position:absolute;top:6px;right:8px;background:transparent;border:0;color:#9aa3b7;font-size:16px;cursor:pointer}
   #s35cl-debug .hint{color:#9aa3b7;font-size:10px;margin-top:6px}
+
+/* ===== s35dj: Programma redesign — nav-bar + week-strip + event-cards ===== */
+
+/* Nav bar */
+.prog-nav-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 0 4px;
+  margin-bottom: 2px;
+}
+.prog-nav-arrow {
+  width: 34px; height: 34px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text-2); cursor: pointer;
+  flex-shrink: 0; transition: border-color .15s, color .15s;
+}
+.prog-nav-arrow:hover { border-color: var(--accent); color: var(--text); }
+.prog-nav-label {
+  flex: 1; text-align: center;
+  font-size: 14px; font-weight: 600; color: var(--text);
+  display: flex; align-items: center; justify-content: center; gap: 7px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.pnl-wk {
+  font-size: 11px; font-weight: 700; color: var(--accent);
+  background: rgba(78,161,255,.12); padding: 2px 7px;
+  border-radius: 20px; letter-spacing: .5px; flex-shrink: 0;
+}
+.pnl-range { color: var(--text-2); font-size: 13px; font-weight: 500; }
+.prog-nav-today {
+  font-size: 11.5px; font-weight: 600; padding: 5px 11px;
+  background: var(--bg-3); border: 1px solid var(--border-2);
+  border-radius: 8px; color: var(--text-2); cursor: pointer;
+  flex-shrink: 0; transition: border-color .15s, color .15s;
+}
+.prog-nav-today:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Week strip */
+.prog-week-strip {
+  display: flex; gap: 4px;
+  padding: 8px 0 10px;
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.prog-week-strip::-webkit-scrollbar { display: none; }
+.prog-strip-day {
+  flex: 1; min-width: 40px; max-width: 52px;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 3px; padding: 8px 4px 6px;
+  border-radius: 12px; cursor: pointer;
+  background: var(--bg-2); border: 1.5px solid transparent;
+  transition: background .15s, border-color .15s;
+  user-select: none;
+}
+.prog-strip-day:hover { background: var(--bg-3); border-color: var(--border); }
+.prog-strip-day.is-active {
+  background: rgba(227,6,19,.12); border-color: var(--primary);
+}
+.prog-strip-day.is-today .psd-num {
+  background: var(--primary); color: #fff;
+  border-radius: 50%; width: 26px; height: 26px;
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700;
+}
+.psd-abbr { font-size: 10px; font-weight: 600; color: var(--text-3); text-transform: uppercase; letter-spacing: .5px; }
+.psd-num  { font-size: 15px; font-weight: 700; color: var(--text); line-height: 1; }
+.prog-strip-day.is-active .psd-abbr { color: var(--primary); }
+.prog-strip-day.is-active .psd-num  { color: var(--primary); }
+.psd-dot {
+  width: 5px; height: 5px; border-radius: 50%;
+  background: transparent;
+}
+.psd-dot.has-events { background: var(--accent); }
+.prog-strip-day.is-active .psd-dot.has-events { background: var(--primary); }
+
+/* Event list */
+.prog-ev-list {
+  display: flex; flex-direction: column; gap: 8px;
+  padding-bottom: 24px;
+}
+.prog-ev-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 11px 12px;
+  cursor: pointer; position: relative;
+  transition: border-color .15s, background .15s;
+}
+.prog-ev-card:hover { border-color: var(--border-2); background: var(--bg-3); }
+.prog-ev-card.status-verwerkt { opacity: .6; }
+.pec-icon {
+  font-size: 22px; line-height: 1; flex-shrink: 0; width: 30px; text-align: center;
+}
+.pec-body { flex: 1; min-width: 0; }
+.pec-title {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  margin-bottom: 4px;
+}
+.pec-meta {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+}
+.pec-time {
+  font-size: 12px; font-weight: 700; color: var(--secondary);
+  background: rgba(245,197,24,.10); padding: 1px 6px;
+  border-radius: 6px; flex-shrink: 0;
+}
+.pec-pill {
+  font-size: 11px; color: var(--text-3);
+  background: var(--bg-3); border: 1px solid var(--border);
+  padding: 1px 7px; border-radius: 20px; white-space: nowrap;
+}
+.pec-pill.pec-verwerkt {
+  color: var(--green); border-color: rgba(34,197,94,.3);
+  background: rgba(34,197,94,.08);
+}
+.pec-loc {
+  font-size: 11px; color: var(--text-3);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
+}
+.pec-edit-btn {
+  flex-shrink: 0; width: 30px; height: 30px;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; border: 1px solid transparent;
+  border-radius: 8px; color: var(--text-3); font-size: 16px;
+  cursor: pointer; transition: color .15s, border-color .15s, background .15s;
+}
+.pec-edit-btn:hover { color: var(--text); border-color: var(--border); background: var(--bg-3); }
+
+/* Type pills in modal */
+.pm-type-pills {
+  display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;
+}
+.pm-type-pill {
+  flex: 1; min-width: 90px;
+  padding: 8px 10px; border-radius: 10px;
+  border: 1.5px solid var(--border); background: var(--bg-2);
+  color: var(--text-2); font-size: 12.5px; font-weight: 600;
+  cursor: pointer; transition: border-color .15s, background .15s, color .15s;
+  text-align: center;
+}
+.pm-type-pill:hover { border-color: var(--border-2); color: var(--text); }
+.pm-type-pill.active {
+  border-color: var(--primary); background: rgba(227,6,19,.10);
+  color: var(--text);
+}
+
+/* Mobile tweaks */
+@media (max-width: 480px) {
+  .prog-nav-label { font-size: 13px; }
+  .pnl-range { font-size: 12px; }
+  .prog-strip-day { min-width: 36px; padding: 7px 3px 5px; }
+  .psd-num { font-size: 14px; }
+  .prog-ev-card { gap: 9px; padding: 9px 10px; }
+  .pec-title { font-size: 13px; }
+  .pm-type-pill { font-size: 12px; padding: 7px 8px; }
+}

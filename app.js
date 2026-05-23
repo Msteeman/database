@@ -23548,28 +23548,24 @@ function renderProgrammaUur(){
 }
 
 function renderProgramma(){
-  // s35bk-3: branch on progSpan
-  if(progSpan !== 7){
-    const g = $('#programma-grid');
-    if(g){ g.classList.add('prog-grid-uur'); g.classList.remove('prog-week-grid'); }
-    return renderProgrammaUur();
-  }
-  // s35bn: week-view -> mini uur-as grid (consistent met 1d/3d agenda-look)
-  const g = $('#programma-grid');
-  if(g){ g.classList.remove('prog-grid-uur'); g.classList.add('prog-week-grid'); }
+  // s35dj: nieuwe week-strip + dag-event-list (vervangt uur-grid en span-toggle)
   const monday = getCurrentDisplayMonday();
   const sunday = new Date(monday); sunday.setDate(sunday.getDate()+6);
   const [jaar, weeknr] = getISOWeek(monday);
   const today = new Date(); today.setHours(0,0,0,0);
 
-  $('#prog-weeklabel').textContent =
-    `Week ${weeknr} — ${formatNlDate(monday)} t/m ${formatNlDate(sunday)} ${sunday.getFullYear()}`;
+  // Nav label bijwerken
+  const fromStr = `${monday.getDate()} ${MONTH_NL[monday.getMonth()].slice(0,3)}`;
+  const toStr   = `${sunday.getDate()} ${MONTH_NL[sunday.getMonth()].slice(0,3)}`;
+  const navLabel = $('#prog-nav-label');
+  if(navLabel) navLabel.innerHTML =
+    `<span class="pnl-wk">Wk ${weeknr}</span><span class="pnl-range">${fromStr}–${toStr}</span>`;
+
   $('#programma-sub').textContent =
     progWeekOffset === 0 ? 'Huidige week — plan je scoutingweek'
     : progWeekOffset < 0 ? `${Math.abs(progWeekOffset)} week${Math.abs(progWeekOffset)===1?'':'en'} terug`
     : `${progWeekOffset} week${progWeekOffset===1?'':'en'} vooruit`;
 
-  const grid = $('#programma-grid');
   const days = [];
   for(let i=0; i<7; i++){
     const d = new Date(monday); d.setDate(d.getDate()+i);
@@ -23583,125 +23579,92 @@ function renderProgramma(){
     return d >= monday && d <= sunday;
   });
 
-  // s35cw: bepaal actieve dag (0-6) voor mobile day-tabs. Vandaag heeft prioriteit
-  //        als die in de zichtbare week valt, anders blijft bestaande keuze
-  //        (of valt terug op maandag).
+  // Actieve dag bepalen
   let activeDayIdx = (typeof progWeekActiveDay === 'number') ? progWeekActiveDay : 0;
   const todayIdxInWeek = days.findIndex(d => d.getTime() === today.getTime());
-  if(progWeekOffset === 0 && todayIdxInWeek >= 0){
-    activeDayIdx = todayIdxInWeek;
-  }
+  if(progWeekOffset === 0 && todayIdxInWeek >= 0) activeDayIdx = todayIdxInWeek;
   if(activeDayIdx < 0 || activeDayIdx > 6) activeDayIdx = 0;
   progWeekActiveDay = activeDayIdx;
 
-  // Vaste anchor-uren (08, 10, 12, 14, 16) + extra rij voor élk event-uur dat er nog niet bij zit.
-  const ANCHOR_HOURS = [8, 10, 12, 14, 16];
-
-  // s35cw: render day-tabs voor mobile week-swiper (Optie D). Op desktop verstopt
-  //        via CSS (.prog-week-daytabs { display:none }), op mobile flex.
-  const dayTabsHtml = `<div class="prog-week-daytabs">${days.map((d,i) => {
-    const cnt = weekItems.filter(p => datumToIsoStr(p.datum) === isoDateStr(d)).length;
-    const isTd = d.getTime() === today.getTime();
-    const isAct = i === activeDayIdx;
-    const cls = ['prog-week-daytab', isTd?'today':'', isAct?'active':''].filter(Boolean).join(' ');
-    return `<div class="${cls}" data-pw-tab="${i}"><span class="num">${d.getDate()}</span>${DAY_NAMES_NL[(d.getDay()+6)%7].slice(0,2)}${cnt>0?'<br><span class="dot"></span>':''}</div>`;
-  }).join('')}</div>`;
-
-  const dayCellsHtml = days.map((d, idx) => {
-    const dStr = isoDateStr(d);
-    const isToday = d.getTime() === today.getTime();
-    const isActive = idx === activeDayIdx;
-    const dayItems = weekItems.filter(p => datumToIsoStr(p.datum) === dStr)
-      .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
-
-    const dayHourOf = it => {
-      const t = String(it.tijd||''); const h = parseInt(t.split(':')[0], 10);
-      return isNaN(h) ? -1 : h;
-    };
-    const ochtend = dayItems.filter(it => dayHourOf(it) >= 0 && dayHourOf(it) < 17);
-    const avond   = dayItems.filter(it => dayHourOf(it) >= 17);
-
-    const ochtendEventHours = new Set(ochtend.map(dayHourOf).filter(h => h >= 0 && h < 17));
-    const ochtendShowHours = Array.from(new Set([...ANCHOR_HOURS, ...ochtendEventHours])).sort((a,b)=>a-b);
-
-    const evtChip = it => {
-      const cls = agendaLeeftijdClass(it.leeftijd);
-      const dur = getMatchDurationMin(it.leeftijd);
-      const stCls = _shMatchStatusClass(it); // s35bu
-      const t = escapeHtml(it.tijd||'');
-      const teams = `${(it.thuis||'?')} — ${(it.uit||'?')}`;
-      return `<div class="pwg-evt ${cls} ${stCls}" data-prog-week-evt="${it.id||''}">
-        <div class="pwg-evt-title">${t} ${escapeHtml(teams)}</div>
+  // Week-strip renderen
+  const stripEl = $('#prog-week-strip');
+  if(stripEl){
+    stripEl.innerHTML = days.map((d,i) => {
+      const dStr = isoDateStr(d);
+      const cnt  = weekItems.filter(p => datumToIsoStr(p.datum) === dStr).length;
+      const isTd = d.getTime() === today.getTime();
+      const isAct = i === activeDayIdx;
+      const abbr  = DAY_NAMES_NL[(d.getDay()+6)%7].slice(0,2);
+      return `<div class="prog-strip-day${isTd?' is-today':''}${isAct?' is-active':''}" data-strip-day="${i}">
+        <div class="psd-abbr">${abbr}</div>
+        <div class="psd-num">${d.getDate()}</div>
+        <div class="psd-dot${cnt>0?' has-events':''}"></div>
       </div>`;
-    };
-
-    const ochtendRows = ochtendShowHours.map(h => {
-      const items = ochtend.filter(it => dayHourOf(it) === h);
-      const lbl = String(h).padStart(2,'0');
-      if(items.length === 0){
-        return `<div class="pwg-hour-row empty"><div class="pwg-hour-label">${lbl}</div><div></div></div>`;
-      }
-      return `<div class="pwg-hour-row"><div class="pwg-hour-label">${lbl}</div><div>${items.map(evtChip).join('')}</div></div>`;
     }).join('');
+    stripEl.querySelectorAll('[data-strip-day]').forEach(el => {
+      el.addEventListener('click', () => {
+        progWeekActiveDay = parseInt(el.dataset.stripDay, 10);
+        renderProgramma();
+      });
+    });
+  }
 
-    let avondHtml = '';
-    if(avond.length > 0){
-      const avondHours = Array.from(new Set(avond.map(dayHourOf))).sort((a,b)=>a-b);
-      avondHtml = avondHours.map(h => {
-        const items = avond.filter(it => dayHourOf(it) === h);
-        const lbl = String(h).padStart(2,'0');
-        return `<div class="pwg-hour-row"><div class="pwg-hour-label">${lbl}</div><div>${items.map(evtChip).join('')}</div></div>`;
-      }).join('');
-    }
+  // Events voor actieve dag
+  const activeDay = days[activeDayIdx];
+  const activeDStr = isoDateStr(activeDay);
+  const dayItems = weekItems
+    .filter(p => datumToIsoStr(p.datum) === activeDStr)
+    .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
 
-    // s35cw: in mobile-swiper de actieve dag krijgt volle dag-naam + datum;
-    //        in desktop 7-koloms grid blijft het compact "Ma 11" gevoel maar via
-    //        dezelfde markup (afgeknipt met text-overflow via bestaande CSS).
-    const fullDayName = `${DAY_NAMES_NL[(d.getDay()+6)%7]} ${d.getDate()} ${MONTH_NL[d.getMonth()].slice(0,3)}${isToday ? ' &middot; vandaag' : ''}`;
-    return `
-      <div class="pwg-day${isToday ? ' today' : ''}${isActive ? ' active' : ''}" data-pw-day-idx="${idx}">
-        <div class="pwg-day-head">
-          <div class="pwg-day-name">${fullDayName}</div>
-          <div class="pwg-day-count">${dayItems.length} wedstrijd${dayItems.length===1?'':'en'}</div>
+  const TYPE_ICON  = { wedstrijd:'⚽', training:'\u{1f3c3}', vergadering:'\u{1f4ac}' };
+  const TYPE_LABEL = { wedstrijd:'Wedstrijd', training:'Training', vergadering:'Vergadering' };
+
+  const evCardHTML = it => {
+    const type    = it.type || 'wedstrijd';
+    const icon    = TYPE_ICON[type]  || '\u{1f4c5}';
+    const typeLbl = TYPE_LABEL[type] || type;
+    const stCls   = _shMatchStatusClass(it);
+    const titleLine = type === 'wedstrijd'
+      ? `${escapeHtml(it.thuis||'?')} — ${escapeHtml(it.uit||'?')}`
+      : escapeHtml(it.naam || typeLbl);
+    const spelersN = (it.spelers||[]).length;
+    const locShort = it.locatie ? (it.locatie.length>28 ? it.locatie.slice(0,28)+'…' : it.locatie) : '';
+    return `<div class="prog-ev-card ${stCls}" data-prog-id="${it.id}">
+      <div class="pec-icon">${icon}</div>
+      <div class="pec-body">
+        <div class="pec-title">${titleLine}</div>
+        <div class="pec-meta">
+          ${it.tijd ? `<span class="pec-time">${escapeHtml(it.tijd)}</span>` : ''}
+          ${it.methode && type==='wedstrijd' ? `<span class="pec-pill">${escapeHtml(it.methode)}</span>` : ''}
+          ${locShort ? `<span class="pec-loc">${escapeHtml(locShort)}</span>` : ''}
+          ${spelersN ? `<span class="pec-pill">${spelersN} speler${spelersN===1?'':'s'}</span>` : ''}
+          ${it.status==='verwerkt' ? `<span class="pec-pill pec-verwerkt">✓ Verwerkt</span>` : ''}
         </div>
-        ${ochtendRows}
-        ${avondHtml}
-        <button class="pwg-add-btn" data-prog-add-day="${dStr}">+</button>
       </div>
-    `;
-  }).join('');
+      <button class="pec-edit-btn" data-pec-edit="${it.id}" aria-label="Bewerken" title="Bewerken">&#9998;</button>
+    </div>`;
+  };
 
-  grid.innerHTML = dayTabsHtml + dayCellsHtml;
-
-  // s35cw: day-tab click → wissel actieve dag in mobile week-swiper.
-  grid.querySelectorAll('[data-pw-tab]').forEach(tab => {
-    tab.addEventListener('click', () => {
-      const idx = parseInt(tab.dataset.pwTab, 10);
-      if(isNaN(idx)) return;
-      progWeekActiveDay = idx;
-      renderProgramma();
+  const grid = $('#programma-grid');
+  if(grid){
+    grid.innerHTML = dayItems.map(evCardHTML).join('');
+    grid.querySelectorAll('[data-prog-id]').forEach(el => {
+      el.addEventListener('click', e => {
+        if(e.target.closest('[data-pec-edit]')) return;
+        const pid = el.dataset.progId;
+        if(pid && typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(pid);
+      });
     });
-  });
-
-  $('#programma-empty').style.display = weekItems.length === 0 ? 'block' : 'none';
-
-  grid.querySelectorAll('[data-prog-add-day]').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      openProgMatchModal(null, btn.dataset.progAddDay);
+    grid.querySelectorAll('[data-pec-edit]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        openProgMatchModal(btn.dataset.pecEdit, null);
+      });
     });
-  });
-  grid.querySelectorAll('[data-prog-week-evt]').forEach(el => {
-    el.addEventListener('click', () => {
-      const pid = el.dataset.progWeekEvt;
-      if(pid && typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(pid);
-    });
-  });
+  }
 
-  // s35bn: detail-card legacy host wegruimen (modal heeft voorrang in week-view)
-  const expandedHost = document.querySelector('#programma-grid + .prog-detail-card');
-  if(expandedHost) expandedHost.remove();
-  // s35df-hotfix: stray '}' verwijderd die de hele JS-module brak
+  const emptyEl = $('#programma-empty');
+  if(emptyEl) emptyEl.style.display = dayItems.length === 0 ? 'block' : 'none';
 }
 
 function progMatchCardHTML(it){
@@ -23947,12 +23910,32 @@ function closeProgMatchDetailModal(){ hideModal('prog-match-detail-backdrop'); }
 window.openProgMatchDetailModal = openProgMatchDetailModal;
 
 /* ------------- Plan match modal ------------- */
+function _pmUpdateTypeUI(type){
+  // s35dj: toon/verberg velden op basis van type
+  const isW = !type || type === 'wedstrijd';
+  const naamRow = $('#pm-naam-row');
+  const wFields = $('#pm-wedstrijd-fields');
+  if(naamRow) naamRow.style.display = isW ? 'none' : '';
+  if(wFields) wFields.style.display = isW ? '' : 'none';
+  document.querySelectorAll('.pm-type-pill').forEach(b => {
+    b.classList.toggle('active', b.dataset.pmType === (type||'wedstrijd'));
+  });
+  if($('#pm-type')) $('#pm-type').value = type || 'wedstrijd';
+  // required-attrib op thuis/uit aanpassen
+  const thuisEl = $('#pm-thuis'); const uitEl = $('#pm-uit');
+  if(thuisEl) thuisEl.required = isW;
+  if(uitEl)   uitEl.required   = isW;
+}
+
 function openProgMatchModal(progId, defaultDate){
   const it = progId ? programmaCache.find(p => p.id === progId) : null;
-  $('#prog-match-title').textContent = it ? 'Wedstrijdrapport bewerken' : 'Nieuw wedstrijdrapport';
+  const type = it ? (it.type || 'wedstrijd') : 'wedstrijd';
+  $('#prog-match-title').textContent = it ? 'Afspraak bewerken' : 'Afspraak inplannen';
   $('#pm-id').value = it ? it.id : '';
   $('#pm-datum').value = it ? (it.datum||'') : (defaultDate || isoDateStr(new Date()));
   $('#pm-tijd').value = it ? (it.tijd||'') : '';
+  if($('#pm-naam')) $('#pm-naam').value = it ? (it.naam||'') : '';
+  _pmUpdateTypeUI(type);
   // s35be: pm-leeftijd field weg — niet meer laden
   $('#pm-methode').value = it ? (it.methode || 'Live') : 'Live';
   // pm-info is nu een <select> — voeg legacy-waarden alsnog toe.
@@ -24070,9 +24053,13 @@ async function saveProgMatchFromForm(e){
     seen.add(k);
     return true;
   });
+  const _pmType = ($('#pm-type')?.value || 'wedstrijd');
+  const _pmNaam = ($('#pm-naam')?.value || '').trim();
   const item = {
     id,
     datum,
+    type: _pmType,
+    naam: _pmNaam,
     tijd: $('#pm-tijd').value,
     // s35be: leeftijd-veld weg (elftal nu per-club)
     methode: $('#pm-methode').value,
@@ -24097,7 +24084,7 @@ async function saveProgMatchFromForm(e){
     closeProgMatchModal();
     progExpandedId = id;
     const nAdded = mergedPending.length;
-    toast(nAdded ? `Wedstrijd ingepland + ${nAdded} speler${nAdded===1?'':'s'} gekoppeld` : 'Wedstrijd ingepland');
+    toast(nAdded ? `Afspraak ingepland + ${nAdded} speler${nAdded===1?'':'s'} gekoppeld` : 'Afspraak ingepland');
   } catch(e){ /* toast in saveProgrammaItem */ }
   finally {
     __savingProgMatch = false;
@@ -25067,29 +25054,17 @@ function checkProgrammaReminder(){
 
 /* ------------- Wire up programma events (once) ------------- */
 function wireProgrammaUI(){
+  // s35dj: vereenvoudigd — altijd weeknavigatie
   $('#programma-new-btn')?.addEventListener('click', () => openProgMatchModal(null, isoDateStr(new Date())));
-  $('#programma-today-btn')?.addEventListener('click', () => { progWeekOffset = 0; progDayOffset = 0; renderProgramma(); });
-  $('#prog-prev-week')?.addEventListener('click', () => {
-    if(progSpan === 7) progWeekOffset--;
-    else progDayOffset -= progSpan;
-    renderProgramma();
-  });
-  $('#prog-next-week')?.addEventListener('click', () => {
-    if(progSpan === 7) progWeekOffset++;
-    else progDayOffset += progSpan;
-    renderProgramma();
-  });
-  document.querySelectorAll('[data-prog-span]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const nxt = parseInt(btn.dataset.progSpan, 10) || 7;
-      if(nxt === progSpan) return;
-      progSpan = nxt;
-      progDayOffset = 0;
-      progWeekOffset = 0;
-      progUurActiveDay = 0; // s35db: reset pill-selectie bij span-wissel
-      document.querySelectorAll('[data-prog-span]').forEach(b => b.classList.toggle('active', b === btn));
-      renderProgramma();
-    });
+  $('#programma-today-btn')?.addEventListener('click', () => { progWeekOffset = 0; renderProgramma(); });
+  $('#prog-prev-week')?.addEventListener('click', () => { progWeekOffset--; renderProgramma(); });
+  $('#prog-next-week')?.addEventListener('click', () => { progWeekOffset++; renderProgramma(); });
+
+  // s35dj: type-pill klikken in modal
+  document.addEventListener('click', e => {
+    const pill = e.target.closest('[data-pm-type]');
+    if(!pill) return;
+    _pmUpdateTypeUI(pill.dataset.pmType);
   });
 
   // s35bk-2: Agenda-view bindings

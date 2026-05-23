@@ -6879,6 +6879,62 @@ function renderUpcomingMatches(){
 // s35dj: Unified dashboard agenda — één sectie met 4 staten.
 // Coördineert renderActiveScouting + renderTodayMatches + renderUpcomingMatches
 // en past zichtbaarheid aan op de huidige match-staat.
+/* s19: Vandaag banner — prominente melding bovenaan dashboard bij wedstrijd vandaag met spelers */
+function renderVandaagBanner(){
+  const wrap = document.getElementById('dash-vandaag-banner');
+  if(!wrap) return;
+  if(typeof programmaCache === 'undefined' || !Array.isArray(programmaCache)){
+    wrap.innerHTML = ''; wrap.style.display = 'none'; return;
+  }
+  const now = new Date();
+  const today = [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-');
+  // Wedstrijden vandaag met minstens 1 speler
+  const items = programmaCache.filter(p => p && p.datum === today && Array.isArray(p.spelers) && p.spelers.length > 0);
+  if(items.length === 0){ wrap.innerHTML = ''; wrap.style.display = 'none'; return; }
+
+  items.sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
+  const cards = items.map(it => {
+    const thuisClean = it.thuis_elftal ? `${it.thuis} ${it.thuis_elftal}` : (it.thuis || '?');
+    const uitClean   = it.uit_elftal   ? `${it.uit} ${it.uit_elftal}`     : (it.uit   || '?');
+    const n = it.spelers.length;
+    const tijdLabel = it.tijd ? `<span class="dvb-tijd">${escapeHtml(it.tijd)}</span>` : '';
+    const ageLabel = it.leeftijd ? `<span class="dvb-tag">${escapeHtml(it.leeftijd)}</span>` : '';
+    return `
+      <div class="dvb-card" data-dvb-progid="${escapeHtml(it.id)}">
+        <div class="dvb-left">
+          <span class="dvb-dot"></span>
+          <div class="dvb-info">
+            <div class="dvb-teams">${escapeHtml(thuisClean)} <span class="dvb-vs">—</span> ${escapeHtml(uitClean)}</div>
+            <div class="dvb-meta">${tijdLabel}${ageLabel}<span class="dvb-spelers">${n} speler${n===1?'':'s'}</span></div>
+          </div>
+        </div>
+        <button class="dvb-cta" data-dvb-progid="${escapeHtml(it.id)}">Bekijk →</button>
+      </div>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="dash-vandaag-banner">
+      <div class="dvb-header">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Vandaag op het programma
+      </div>
+      ${cards}
+    </div>`;
+  wrap.style.display = 'block';
+
+  // Klik op "Bekijk →" → ga naar programma-tab en open het item
+  wrap.querySelectorAll('[data-dvb-progid]').forEach(el => {
+    el.addEventListener('click', () => {
+      const pid = el.dataset.dvbProgid;
+      if(typeof go === 'function') go('programma');
+      setTimeout(() => {
+        const card = document.querySelector(`[data-prog-id="${pid}"]`);
+        if(card){ card.scrollIntoView({ behavior: 'smooth', block: 'center' }); card.classList.add('highlight-flash'); setTimeout(() => card.classList.remove('highlight-flash'), 1200); }
+      }, 350);
+    });
+  });
+}
+
 function renderDashboardAgenda(){
   const now = new Date();
 
@@ -6889,6 +6945,7 @@ function renderDashboardAgenda(){
   }
 
   // Render de drie sub-secties
+  if(typeof renderVandaagBanner  === 'function') renderVandaagBanner();
   if(typeof renderActiveScouting === 'function') renderActiveScouting();
   if(typeof renderTodayMatches   === 'function') renderTodayMatches();
   if(typeof renderUpcomingMatches=== 'function') renderUpcomingMatches();
@@ -9292,6 +9349,21 @@ function renderCompare(){
         cmpSelectedIds = [];
         shUpdateCmpUI();
         renderCompare();
+      });
+    }
+    // s20: CTA-balk knoppen
+    const ctaBack = $('#cmp-cta-back');
+    if(ctaBack){
+      ctaBack.addEventListener('click', () => { if(typeof go === 'function') go('database'); });
+    }
+    const ctaPitch = $('#cmp-cta-pitch');
+    if(ctaPitch){
+      ctaPitch.addEventListener('click', () => { if(typeof go === 'function') go('pitch'); });
+    }
+    const ctaPdf = $('#cmp-cta-pdf');
+    if(ctaPdf){
+      ctaPdf.addEventListener('click', () => {
+        toast('PDF downloaden — binnenkort beschikbaar');
       });
     }
   }
@@ -14539,6 +14611,15 @@ function renderProgramma(){
           Verwerk
         </button>`
       : '';
+    // s21: Live scouten — vandaag, type wedstrijd, met spelers
+    const _todayStr = new Date().toISOString().slice(0,10);
+    const canLive = type === 'wedstrijd' && it.datum === _todayStr && spelersN > 0;
+    const liveHtml = canLive
+      ? `<button class="pec-live-btn" data-pec-live="${it.id}" title="Live notities per speler bijhouden">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
+          Live scouten
+        </button>`
+      : '';
     return `<div class="prog-ev-card ${stCls}" data-prog-id="${it.id}">
       <div class="pec-icon">${icon}</div>
       <div class="pec-body">
@@ -14549,7 +14630,10 @@ function renderProgramma(){
           ${it.status==='verwerkt' ? `<span class="pec-pill pec-verwerkt">✓ Verwerkt</span>` : ''}
         </div>
         ${locHtml ? `<div class="pec-loc-row">${locHtml}</div>` : ''}
-        ${verwerkHtml}
+        <div class="pec-actions-row">
+          ${liveHtml}
+          ${verwerkHtml}
+        </div>
       </div>
       <button class="pec-edit-btn" data-pec-edit="${it.id}" aria-label="Bewerken" title="Bewerken">&#9998;</button>
     </div>`;
@@ -14585,11 +14669,102 @@ function renderProgramma(){
         if(typeof verwerkProgrammaItem === 'function') verwerkProgrammaItem(btn.dataset.pecVerwerk);
       });
     });
+    // s21: Live scouten
+    grid.querySelectorAll('[data-pec-live]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        if(typeof openLiveScoutModal === 'function') openLiveScoutModal(btn.dataset.pecLive);
+      });
+    });
   }
 
   const emptyEl = $('#programma-empty');
   if(emptyEl) emptyEl.style.display = dayItems.length === 0 ? 'block' : 'none';
 }
+
+/* s21: Live scouten modal */
+function openLiveScoutModal(progId){
+  const it = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === progId) : null;
+  if(!it) return;
+  const backdrop = document.getElementById('live-scout-backdrop');
+  const body     = document.getElementById('live-scout-body');
+  const sub      = document.getElementById('live-scout-sub');
+  if(!backdrop || !body) return;
+
+  // Header info
+  const teams = it.thuis && it.uit
+    ? `${it.thuis}${it.thuis_elftal?' '+it.thuis_elftal:''} — ${it.uit}${it.uit_elftal?' '+it.uit_elftal:''}`
+    : (it.naam || 'Wedstrijd');
+  if(sub) sub.textContent = [it.tijd, teams].filter(Boolean).join('  ·  ');
+
+  // Load existing live notes from localStorage
+  const _lsKey = `sh_live_scout_${progId}`;
+  let savedNotes = {};
+  try { savedNotes = JSON.parse(localStorage.getItem(_lsKey)||'{}'); } catch(_){}
+
+  const spelers = it.spelers || [];
+  if(spelers.length === 0){
+    body.innerHTML = '<div class="lsm-empty">Geen spelers op dit programma-item.</div>';
+  } else {
+    body.innerHTML = spelers.map((sp, i) => {
+      const pid  = sp.spelerId || sp.id || `sp_${i}`;
+      const naam = sp.naam || '?';
+      const note = savedNotes[pid] || '';
+      return `
+        <div class="lsm-player-row" data-lsm-pid="${escapeAttr(pid)}">
+          <div class="lsm-player-name">
+            ${sp.rugnummer ? `<span class="lsm-nr">#${escapeHtml(String(sp.rugnummer))}</span>` : ''}
+            ${escapeHtml(naam)}
+            ${sp.positie ? `<span class="lsm-pos">${escapeHtml(sp.positie)}</span>` : ''}
+          </div>
+          <textarea class="lsm-note" data-lsm-pid="${escapeAttr(pid)}" rows="2"
+            placeholder="Snelle observatie...">${escapeHtml(note)}</textarea>
+        </div>`;
+    }).join('');
+  }
+
+  backdrop.style.display = 'flex';
+  // Focus eerste textarea
+  setTimeout(() => { const f = body.querySelector('textarea'); if(f) f.focus(); }, 80);
+
+  // Auto-save bij typen
+  body.querySelectorAll('textarea[data-lsm-pid]').forEach(ta => {
+    ta.addEventListener('input', () => {
+      try {
+        let cur = {}; try { cur = JSON.parse(localStorage.getItem(_lsKey)||'{}'); } catch(_){}
+        cur[ta.dataset.lsmPid] = ta.value;
+        localStorage.setItem(_lsKey, JSON.stringify(cur));
+      } catch(_){}
+    });
+  });
+
+  // Sluit
+  const _close = () => { backdrop.style.display = 'none'; };
+  document.getElementById('live-scout-close').onclick  = _close;
+  document.getElementById('live-scout-close2').onclick = _close;
+  backdrop.addEventListener('click', e => { if(e.target === backdrop) _close(); }, { once: true });
+
+  // Opslaan → persist notes terug naar programmaCache + save
+  document.getElementById('live-scout-save').onclick = async () => {
+    const notes = {};
+    body.querySelectorAll('textarea[data-lsm-pid]').forEach(ta => { notes[ta.dataset.lsmPid] = ta.value.trim(); });
+    // Sla op als snelnotities op het programma-item
+    const existing = Array.isArray(it.snelnotities) ? [...it.snelnotities] : [];
+    const stamp = new Date().toLocaleTimeString('nl-NL', {hour:'2-digit',minute:'2-digit'});
+    Object.entries(notes).forEach(([pid, note]) => {
+      if(!note) return;
+      const sp = spelers.find(s => (s.spelerId||s.id) === pid);
+      const label = sp ? sp.naam : pid;
+      existing.push({ tekst: `[${stamp}] ${label}: ${note}`, aangemaakt: Date.now(), spelerId: pid });
+    });
+    const updated = { ...it, snelnotities: existing, modified: Date.now() };
+    if(typeof saveProgrammaItem === 'function'){
+      try { await saveProgrammaItem(updated); toast('Notities opgeslagen'); } catch(e){ toast('Opslaan mislukt', true); }
+    }
+    _close();
+  };
+}
+window.openLiveScoutModal = openLiveScoutModal;
 
 function progMatchCardHTML(it){
   const isV = it.status === 'verwerkt';

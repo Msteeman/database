@@ -657,6 +657,9 @@
           </button>
         </div>
 
+        <!-- s19: Vandaag banner — prominente melding als er vandaag een wedstrijd is met spelers -->
+        <div id="dash-vandaag-banner"></div>
+
         <!-- s35dj: Unified dashboard agenda (live / vandaag / aankomend) -->
         <div id="dashboard-agenda-wrap">
           <div id="scouting-active-wrap" class="scouting-active-wrap" style="display:none;"></div>
@@ -909,6 +912,22 @@
               <div class="compare-table-wrap">
                 <table class="compare-table" id="cmp-table"></table>
               </div>
+            </div>
+
+            <!-- s20: CTA-balk onderaan vergelijking -->
+            <div class="cmp-cta-bar" id="cmp-cta-bar">
+              <button class="btn btn-ghost cmp-cta-btn" id="cmp-cta-back">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+                Terug naar spelers
+              </button>
+              <button class="btn btn-secondary cmp-cta-btn" id="cmp-cta-pitch">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18M3 12h18"/></svg>
+                Naar elftal analyse
+              </button>
+              <button class="btn btn-primary cmp-cta-btn" id="cmp-cta-pdf">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                Download PDF
+              </button>
             </div>
 
           </div>
@@ -2068,6 +2087,25 @@ algemeen:</textarea>
       </section>
 
     </main>
+  </div>
+
+  <!-- s21: Live scouten modal -->
+  <div id="live-scout-backdrop" class="live-scout-backdrop" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="live-scout-title">
+    <div class="live-scout-modal">
+      <div class="live-scout-header">
+        <div class="live-scout-title-wrap">
+          <span class="live-scout-dot"></span>
+          <h2 class="live-scout-title" id="live-scout-title">Live scouten</h2>
+          <span class="live-scout-sub" id="live-scout-sub"></span>
+        </div>
+        <button class="live-scout-close" id="live-scout-close" aria-label="Sluiten">✕</button>
+      </div>
+      <div class="live-scout-body" id="live-scout-body"></div>
+      <div class="live-scout-footer">
+        <button class="btn btn-ghost" id="live-scout-close2">Sluiten</button>
+        <button class="btn btn-primary" id="live-scout-save">Opslaan</button>
+      </div>
+    </div>
   </div>
 
   <!-- Floating vergelijk-bar: zichtbaar als >=1 speler geselecteerd -->

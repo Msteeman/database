@@ -15418,7 +15418,6 @@ function renderActiveScouting(){
         </div>
         <div class="sa-players-title">Spelers (${spelers.length})</div>
         <div class="sa-tiles">${tilesHtml}</div>
-        ${(prog.snelnotities && prog.snelnotities.length) 
         <div class="sa-snel-form" data-progid="${escapeHtml(prog.id)}" style="display:none; margin-top:10px; padding:12px; background:rgba(245,200,66,0.06); border:1px solid rgba(245,200,66,0.25); border-radius:10px;">
           <!-- s35bg: heading werkt als sluit-knop -->
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:10px;">

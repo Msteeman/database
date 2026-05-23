@@ -26363,29 +26363,8 @@ function initApp(){
   });
   $('#logout-btn').addEventListener('click', ()=> doLogout(false));
 
-  /* Settings modal openen via sidebar-knop */
-  const settingsBtn = document.getElementById('sidebar-settings-btn');
-  if(settingsBtn){
-    settingsBtn.addEventListener('click', ()=>{
-      const modal = document.getElementById('settings-modal-backdrop');
-      if(modal) modal.classList.add('show');
-    });
-  }
-
-  /* Settings modal sluiten via close-knop of backdrop-klik */
-  const settingsCloseBtn = document.getElementById('settings-close-btn');
-  if(settingsCloseBtn){
-    settingsCloseBtn.addEventListener('click', ()=>{
-      const modal = document.getElementById('settings-modal-backdrop');
-      if(modal) modal.classList.remove('show');
-    });
-  }
-  const settingsBackdrop = document.getElementById('settings-modal-backdrop');
-  if(settingsBackdrop){
-    settingsBackdrop.addEventListener('click', (e)=>{
-      if(e.target === settingsBackdrop) settingsBackdrop.classList.remove('show');
-    });
-  }
+  /* Settings modal — open/sluit via event delegation (timing-proof) */
+  /* (handlers staan onderaan via document.addEventListener) */
 
   buildGradePickers();
   refreshPositionDropdowns();
@@ -27269,6 +27248,26 @@ document.addEventListener('click', (e) => {
     setTimeout(()=> { renderTeamOverzicht().catch(err=>console.warn(err)); }, 60);
   } else if(v === 'admin'){
     setTimeout(()=> { renderAdminPanel().catch(err=>console.warn(err)); }, 60);
+  }
+});
+
+/* ===== Settings modal: event delegation (altijd actief) ===== */
+document.addEventListener('click', (e) => {
+  const modal = document.getElementById('settings-modal-backdrop');
+  if(!modal) return;
+  // Open
+  if(e.target.closest('#sidebar-settings-btn')){
+    modal.classList.add('show');
+    return;
+  }
+  // Sluit via × knop
+  if(e.target.closest('#settings-close-btn')){
+    modal.classList.remove('show');
+    return;
+  }
+  // Sluit via backdrop-klik
+  if(e.target === modal){
+    modal.classList.remove('show');
   }
 });
 

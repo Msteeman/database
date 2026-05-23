@@ -25138,7 +25138,9 @@ function checkProgrammaReminder(){
 
 /* ------------- Wire up programma events (once) ------------- */
 function wireProgrammaUI(){
-  // s35dj: vereenvoudigd — altijd weeknavigatie
+  // s35dj: één keer binden — guard tegen dubbele listeners (PWA bfcache/pageshow)
+  if(window.__progUIInited) return;
+  window.__progUIInited = true;
   $('#programma-new-btn')?.addEventListener('click', () => openProgMatchModal(null, isoDateStr(new Date())));
   $('#programma-today-btn')?.addEventListener('click', () => { progWeekOffset = 0; renderProgramma(); });
   $('#prog-prev-week')?.addEventListener('click', () => { progWeekOffset--; renderProgramma(); });

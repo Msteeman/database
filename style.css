@@ -7842,3 +7842,11 @@ tbody tr:last-child td { border-bottom: none; }
   .pec-title { font-size: 13px; }
   .pm-type-pill { font-size: 12px; padding: 7px 8px; }
 }
+
+/* s35dj-fix: betere touch-respons op week-strip (voorkomt scroll-vs-tap conflict) */
+.prog-week-strip { touch-action: pan-x; }
+.prog-strip-day {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  cursor: pointer;
+}

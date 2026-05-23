@@ -2734,8 +2734,30 @@ async function __shSeedDemoToFirestore(){
     if(typeof toast === 'function') toast('Demo-vullen alleen beschikbaar voor demo-account', true);
     return;
   }
-  if(!confirm('Demo-data nu in dit account zetten? Bestaande demo-records (demo_*) worden overschreven.')) return;
+  if(!confirm('Demo-data wordt opnieuw ingeladen. Alle bestaande data in dit account wordt eerst gewist. Doorgaan?')) return;
+
+  // s-seed-fix: altijd eerst alles wissen vóór seeden zodat oude records weg zijn
+  try {
+    if(typeof toast === 'function') toast('Bestaande data wissen…');
+    const _players  = typeof loadPlayers     === 'function' ? loadPlayers()     : [];
+    const _reports  = typeof loadMatchReports=== 'function' ? loadMatchReports(): [];
+    const _matches  = (typeof programmaCache !== 'undefined' && Array.isArray(programmaCache)) ? programmaCache : [];
+    const _contacts = (typeof contactsCache  !== 'undefined' && Array.isArray(contactsCache))  ? contactsCache  : [];
+    const _tips     = (typeof tipsCache      !== 'undefined' && Array.isArray(tipsCache))      ? tipsCache      : [];
+    const _analyses = (typeof analysisCache  !== 'undefined' && Array.isArray(analysisCache))  ? analysisCache  : [];
+    const _ritten   = (typeof rittenCache    !== 'undefined' && Array.isArray(rittenCache))    ? rittenCache    : [];
+    for(const p  of _players)  { try { await deletePlayer(p.id);        } catch(_){} }
+    for(const r  of _reports)  { try { await deleteMatchReport(r.id);   } catch(_){} }
+    for(const m  of _matches)  { try { await deleteProgrammaItem(m.id); } catch(_){} }
+    for(const c  of _contacts) { try { await deleteContact(c.id);       } catch(_){} }
+    for(const t  of _tips)     { try { await deleteTip(t.id);           } catch(_){} }
+    for(const a  of _analyses) { try { await deleteAnalysis(a.id);      } catch(_){} }
+    for(const rt of _ritten)   { try { await deleteRit(rt.id);          } catch(_){} }
+    if(currentUser) localStorage.removeItem('sh_demo_autoseed_' + currentUser.uid);
+  } catch(e){ console.error('seed: wis-stap mislukt', e); }
+
   let okP=0, okR=0, okM=0, okT=0, okC=0, okTi=0, fail=0;
+  if(typeof toast === 'function') toast('Demo-data laden…');
   // Spelers — krijgen beoordelingen+advies van hun MEEST RECENTE rapport
   try {
     const latestByPlayer = {};
@@ -2749,7 +2771,7 @@ async function __shSeedDemoToFirestore(){
       try { await savePlayer(rec); okP++; } catch(e){ fail++; console.error('seed player', e); }
     }
   } catch(e){ console.error('seed players block', e); }
-  // Rapport-historie (matchReports) — alle rapporten incl. duplicaten per speler
+  // Rapport-historie (matchReports)
   try {
     for(const r of __SH_DEMO_REPORTS){
       try { await saveMatchReport({...r}); okR++; } catch(e){ fail++; console.error('seed report', e); }
@@ -2786,10 +2808,12 @@ async function __shSeedDemoToFirestore(){
       try { await saveRit({...rit}); okRit++; } catch(e){ fail++; console.error('seed rit', e); }
     }
   } catch(e){ console.error('seed ritten block', e); }
-  const msg = `Demo-data geladen: ${okP} spelers, ${okR} rapporten, ${okM} wedstrijden, ${okT} teams, ${okC} contacten, ${okTi} tips, ${okRit} ritten` + (fail ? ` (${fail} fouten)` : '');
+
+  const msg = `Demo-data geladen: ${okP} spelers, ${okR} rapporten, ${okM} wedstrijden, ${okC} contacten, ${okTi} tips, ${okRit} ritten` + (fail ? ` (${fail} fouten)` : '') + ' — pagina wordt herladen.';
   if(typeof toast === 'function') toast(msg);
-  else alert(msg);
   if(typeof __shTrace === 'function') __shTrace('demo-seed-done', {okP, okR, okM, okT, okC, okTi, fail});
+  // s-seed-fix: pagina herladen zodat caches volledig worden vernieuwd
+  setTimeout(() => location.reload(), 1800);
 }
 window.__shSeedDemoToFirestore = __shSeedDemoToFirestore;
 // Wire seed-knop wanneer DOM klaar is

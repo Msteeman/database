@@ -15404,19 +15404,7 @@ function renderActiveScouting(){
         </div>
         <div class="sa-players-title">Spelers (${spelers.length})</div>
         <div class="sa-tiles">${tilesHtml}</div>
-        ${(prog.snelnotities && prog.snelnotities.length) ? `
-        <div class="sa-snelnotities" data-progid="${escapeHtml(prog.id)}" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border,#2a2f3a);">
-          <div style="font-size:11px; color:var(--muted,#9aa3b7); text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px;">Alleen notities (${prog.snelnotities.length})</div>
-          ${prog.snelnotities.map((sn, idx) => `
-            <div class="sa-snelnotitie-row" data-sa-act="edit-snel-notitie" data-progid="${escapeHtml(prog.id)}" data-snidx="${idx}" style="background:rgba(255,255,255,0.04); border:1px solid var(--border,#2a2f3a); border-radius:8px; padding:8px 10px; margin-bottom:6px; font-size:12.5px; display:flex; justify-content:space-between; align-items:center; gap:8px; cursor:pointer; transition:background .15s, border-color .15s;" title="Klik om te bewerken">
-              <div style="flex:1; min-width:0; display:flex; align-items:center; gap:8px;">
-                <span style="color:var(--gold,#f5c842); font-size:11px; line-height:1;">&#9656;</span>
-                <div style="font-weight:600; color:var(--text,#e5e9f5); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(sn.naam || 'Onbenoemd')}${sn.rugnummer ? ' <span style=\'color:var(--muted,#9aa3b7); font-weight:500;\'>&middot; #'+escapeHtml(String(sn.rugnummer))+'</span>' : ''}${sn.positie ? ' <span style=\'color:var(--gold,#f5c842); font-weight:600; font-size:11px; background:rgba(245,200,66,0.12); padding:1px 6px; border-radius:4px; margin-left:4px;\'>'+escapeHtml(sn.positie)+'</span>' : ''}</div>
-              </div>
-              <!-- s35bg: convert-knop weg uit active scouting tile (verhuist naar nav>wedstrijden) -->
-              <button class="btn-ghost" data-sa-act="del-snel-notitie" data-progid="${escapeHtml(prog.id)}" data-snidx="${idx}" style="padding:3px 8px; font-size:11px; flex-shrink:0;" title="Verwijderen">×</button>
-            </div>`).join('')}
-        </div>` : ''}
+        ${(prog.snelnotities && prog.snelnotities.length) 
         <div class="sa-snel-form" data-progid="${escapeHtml(prog.id)}" style="display:none; margin-top:10px; padding:12px; background:rgba(245,200,66,0.06); border:1px solid rgba(245,200,66,0.25); border-radius:10px;">
           <!-- s35bg: heading werkt als sluit-knop -->
           <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:10px;">
@@ -15462,16 +15450,21 @@ function renderActiveScouting(){
           <!-- s35bg: onderaan-instructie weg (heading is nu close-trigger) -->
         </div>
         ${(prog.wedstrijdnotities && prog.wedstrijdnotities.length) ? `
-        <div class="sa-wstrnotities" data-progid="${escapeHtml(prog.id)}" style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border,#2a2f3a);">
-          <div style="font-size:11px; color:var(--muted,#9aa3b7); text-transform:uppercase; letter-spacing:.6px; margin-bottom:6px;">Wedstrijdnotities (${prog.wedstrijdnotities.length})</div>
-          ${prog.wedstrijdnotities.map((wn, idx) => `
-            <div class="sa-wstrnotitie-row" data-sa-act="edit-snel-wstr" data-progid="${escapeHtml(prog.id)}" data-wnidx="${idx}" style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.20); border-radius:8px; padding:8px 10px; margin-bottom:6px; font-size:12.5px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px; cursor:pointer; transition:background .15s;" title="Klik om te bewerken">
+        <div class="sa-wstrnotities-wrap" style="margin-top:10px; border-top:1px solid var(--border,#2a2f3a); padding-top:8px;">
+          <div class="sa-wstr-toggle-row" data-sa-act="toggle-wstr" data-progid="${escapeHtml(prog.id)}" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; padding:4px 0;">
+            <span style="font-size:11px; color:var(--muted,#9aa3b7); text-transform:uppercase; letter-spacing:.6px; font-weight:600;">Wedstrijdnotities (${prog.wedstrijdnotities.length})</span>
+            <span class="sa-wstr-chev" style="color:var(--muted,#9aa3b7); font-size:12px; transition:transform .2s;">&#9656;</span>
+          </div>
+          <div class="sa-wstrnotities" data-progid="${escapeHtml(prog.id)}" style="display:none; margin-top:6px;">
+            ${prog.wedstrijdnotities.map((wn, idx) => `
+            <div class="sa-wstrnotitie-row" data-sa-act="edit-snel-wstr" data-progid="${escapeHtml(prog.id)}" data-wnidx="${idx}" style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.20); border-radius:8px; padding:8px 10px; margin-bottom:6px; font-size:12.5px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px; cursor:pointer;" title="Klik om te bewerken">
               <div style="flex:1; min-width:0; display:flex; align-items:flex-start; gap:8px;">
                 <span style="color:#ff6b6b; font-size:11px; line-height:1.3; flex-shrink:0;">&#9656;</span>
                 <div style="color:var(--text,#e5e9f5); white-space:pre-wrap; overflow:hidden; line-height:1.45; flex:1;">${escapeHtml((wn.tekst||'').slice(0, 140))}${(wn.tekst||'').length > 140 ? '…' : ''}</div>
               </div>
               <button class="btn-ghost" data-sa-act="del-snel-wstr" data-progid="${escapeHtml(prog.id)}" data-wnidx="${idx}" style="padding:3px 8px; font-size:11px; flex-shrink:0;" title="Verwijderen">×</button>
             </div>`).join('')}
+          </div>
         </div>` : ''}
         <div class="sa-snel-wstr-form" data-progid="${escapeHtml(prog.id)}" style="display:none;">
           <!-- s35bg: heading werkt als sluit-knop -->
@@ -15483,9 +15476,9 @@ function renderActiveScouting(){
           <!-- s35bg: onderaan-instructie weg (heading is nu close-trigger) -->
         </div>
         <div class="sa-actions">
-          <button class="btn-ghost sa-grad sa-trigger-snel" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}">+ Nieuwe spelersnotitie</button>
-          <button class="btn-ghost sa-grad sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}">+ Wedstrijdrapport</button>
-          <button class="btn-ghost sa-grad" data-sa-act="add-player" data-progid="${escapeHtml(prog.id)}">+ Speler toevoegen</button>
+          <button class="btn-ghost sa-grad sa-trigger-snel" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}">+ Spelersnotitie</button>
+          <button class="btn-ghost sa-grad" data-sa-act="add-player" data-progid="${escapeHtml(prog.id)}">+ Speler</button>
+          <button class="btn-ghost sa-grad sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}">+ Wedstrijdnotitie</button>
         </div>
       </div>`;
   }).join('');
@@ -15509,9 +15502,9 @@ function renderActiveScouting(){
       if(collapsed) card.classList.add('sa-collapsed');
       const hdr = card.querySelector('.sa-header[data-sa-collapse="1"]');
       if(hdr){
+        hdr.style.cursor = 'pointer';
         hdr.addEventListener('click', (e) => {
-          // klikken in de status-pill of titel-tekst telt — alleen niet als gebruiker tekst selecteert
-          if(window.getSelection && String(window.getSelection()).length > 0) return;
+          if(e.target.closest('button, a, input')) return;
           const willCollapse = !card.classList.contains('sa-collapsed');
           card.classList.toggle('sa-collapsed', willCollapse);
           try { localStorage.setItem(stateKey, willCollapse ? '1' : '0'); } catch(_){}
@@ -15661,7 +15654,18 @@ function renderActiveScouting(){
           return;
         }
       }
-      if(act === 'add-player'){
+      if(act === 'toggle-wstr'){
+        const wstrWrap = btn.closest('.sa-card');
+        if(!wstrWrap) return;
+        const wstrBody = wstrWrap.querySelector(`.sa-wstrnotities[data-progid="${progId}"]`);
+        const wstrChev = wstrWrap.querySelector('.sa-wstr-toggle-row .sa-wstr-chev');
+        if(wstrBody){
+          const isOpen = wstrBody.style.display !== 'none';
+          wstrBody.style.display = isOpen ? 'none' : '';
+          if(wstrChev) wstrChev.style.transform = isOpen ? '' : 'rotate(90deg)';
+        }
+        return;
+      } else if(act === 'add-player'){
         if(typeof openProgPlayerModal === 'function') openProgPlayerModal(progId, null);
       } else if(act === 'open-match'){
         if(typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(progId);
@@ -16241,7 +16245,9 @@ function renderTodayMatches(){
   const headEl = wrap.querySelector('.today-matches-head[data-toggle-today]');
   const blockEl = wrap.querySelector('.today-matches');
   if(headEl && blockEl){
-    headEl.addEventListener('click', () => {
+    headEl.style.cursor = 'pointer';
+    headEl.addEventListener('click', (e) => {
+      if(e.target.closest('button, a, input')) return;
       const nowCollapsed = blockEl.classList.toggle('collapsed');
       try { localStorage.setItem('todayMatchesCollapsed', nowCollapsed ? '1' : '0'); } catch(_){}
     });
@@ -16345,7 +16351,9 @@ function bindUpcomingToggle(wrap){
   const head = wrap.querySelector('.upcoming-matches-head[data-toggle-upcoming]');
   const block = wrap.querySelector('.upcoming-matches');
   if(!head || !block) return;
-  head.addEventListener('click', () => {
+  head.style.cursor = 'pointer';
+  head.addEventListener('click', (e) => {
+    if(e.target.closest('button, a, input')) return;
     const nowCollapsed = block.classList.toggle('collapsed');
     try { localStorage.setItem('upcomingMatchesCollapsed', nowCollapsed ? '1' : '0'); } catch(_){}
   });
@@ -16355,7 +16363,7 @@ function renderUpcomingMatches(){
   const wrap = document.getElementById('upcoming-matches-wrap');
   if(!wrap) return;
   // s35ct: voorkeur ingeklapt/uitgeklapt onthouden
-  const collapsedPref = (function(){ try { return localStorage.getItem('upcomingMatchesCollapsed') === '1'; } catch(_){ return false; } })();
+  const collapsedPref = (function(){ try { const v = localStorage.getItem('upcomingMatchesCollapsed'); return v === null ? true : v === '1'; } catch(_){ return true; } })();
   const cls = collapsedPref ? 'upcoming-matches collapsed' : 'upcoming-matches';
   const chev = '<span class="upcoming-matches-chev" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2 4 L6 8 L10 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
   if(typeof programmaCache === 'undefined' || !Array.isArray(programmaCache) || programmaCache.length === 0){
@@ -16386,22 +16394,9 @@ function renderUpcomingMatches(){
     return d > today && d < horizon;
   });
   if(items.length === 0){
-    // v70g: altijd tonen, ook zonder wedstrijden in de komende 3 dagen
-    wrap.style.display = 'block';
-    wrap.innerHTML = `
-      <div class="${cls}">
-        <div class="upcoming-matches-head" data-toggle-upcoming="1">
-          <div class="upcoming-matches-title">Aankomende wedstrijden</div>
-          <div class="upcoming-matches-right">
-            <div class="upcoming-matches-count">geen in de komende 3 dagen</div>
-            ${chev}
-          </div>
-        </div>
-        <div class="upcoming-matches-body">
-          <div class="up-empty">Geen wedstrijden ingepland voor de komende 3 dagen.</div>
-        </div>
-      </div>`;
-    bindUpcomingToggle(wrap);
+    // s35dj: verberg als er niets is — minder ruis op dashboard
+    wrap.style.display = 'none';
+    wrap.innerHTML = '';
     return;
   }
   items.sort((a,b) => {

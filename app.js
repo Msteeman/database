@@ -2716,9 +2716,9 @@ async function __shResetAndReseedDemo(){
       localStorage.removeItem('sh_demo_autoseed_' + currentUser.uid);
     }
 
-    // 3. Herlaad demo-data (seed doet nu zelf wissen + herladen)
+    // 3. Herlaad demo-data (seed doet nu zelf wissen + herladen; _skipConfirm=true want reset deed al confirm)
     toast('Data gewist — demo opnieuw laden…');
-    await __shSeedDemoToFirestore();
+    await __shSeedDemoToFirestore(true);
     // __shSeedDemoToFirestore doet zelf location.reload() na 1.8s
   } catch(e){
     console.error('Reset mislukt:', e);

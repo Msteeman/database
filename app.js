@@ -7775,6 +7775,100 @@ function renderDistSegment(dist, outline){
   }).join('') + `</div>`;
 }
 
+/* ── G2: Bubblechart spelerdatabase ── */
+let _dbBubbleView = false;
+
+function renderBubbleChart(players){
+  const wrap = document.getElementById('db-bubble-wrap');
+  if(!wrap) return;
+  if(!players || !players.length){
+    wrap.innerHTML = '<div style="text-align:center;padding:40px;color:var(--text-3);">Geen spelers om te tonen.</div>';
+    return;
+  }
+  const W = 900, H = 520;
+  const GRADE_COLOR = { A:'#c9a227', B:'#60a5fa', C:'#fbbf24', D:'#e30613' };
+  const GRADE_SCORE = { A:4, B:3, C:2, D:1 };
+
+  // Positie spelers op een grid met lichte jitter
+  const rMax = 38, rMin = 14;
+  const cols = Math.ceil(Math.sqrt(players.length * 1.6));
+  const rows = Math.ceil(players.length / cols);
+  const cellW = W / (cols + 1), cellH = H / (rows + 1);
+
+  const placed = players.map((p, i) => {
+    const col = (i % cols) + 1;
+    const row = Math.floor(i / cols) + 1;
+    const jx = (Math.random() - .5) * cellW * .35;
+    const jy = (Math.random() - .5) * cellH * .35;
+    const reports = reportsForPlayer ? reportsForPlayer(p.id) : [];
+    const rptCount = reports.length || 1;
+    const r = Math.max(rMin, Math.min(rMax, rMin + (rptCount - 1) * 6));
+    const grade = p.huidig_niveau || 'D';
+    const color = GRADE_COLOR[grade] || '#888';
+    return { p, x: col * cellW + jx, y: row * cellH + jy, r, grade, color, rptCount };
+  });
+
+  const bubbles = placed.map(b => {
+    const firstName = (b.p.naam||'?').split(/\s+/)[0];
+    const labelSize = b.r >= 26 ? 11 : 9;
+    return `
+      <g class="bubble-player" data-id="${escapeAttr(b.p.id)}" role="button" tabindex="0" aria-label="${escapeAttr(b.p.naam||'?')}">
+        <circle cx="${b.x.toFixed(1)}" cy="${b.y.toFixed(1)}" r="${b.r}"
+          fill="${b.color}" fill-opacity=".22" stroke="${b.color}" stroke-width="1.5"
+          style="transition:r .3s,fill-opacity .2s"/>
+        <circle cx="${b.x.toFixed(1)}" cy="${b.y.toFixed(1)}" r="3"
+          fill="${b.color}" opacity=".9"/>
+        ${b.r >= 20 ? `<text class="bubble-label" x="${b.x.toFixed(1)}" y="${(b.y + labelSize*.38).toFixed(1)}"
+          fill="rgba(229,233,245,.95)" font-size="${labelSize}" text-anchor="middle"
+          font-family="-apple-system,Segoe UI,sans-serif" font-weight="600">${escapeHtml(firstName)}</text>` : ''}
+        <title>${escapeHtml(b.p.naam||'?')} · ${b.grade} · ${b.rptCount} rapport${b.rptCount===1?'':'en'}</title>
+      </g>`;
+  }).join('');
+
+  // Legend
+  const legend = Object.entries(GRADE_COLOR).map(([g, c]) =>
+    `<span style="display:inline-flex;align-items:center;gap:5px;margin-right:14px;">
+      <svg width="10" height="10"><circle cx="5" cy="5" r="5" fill="${c}" fill-opacity=".8"/></svg>
+      <span style="font-size:11px;color:var(--text-2);">${g}</span>
+     </span>`).join('');
+  const sizeLegend = `<span style="font-size:11px;color:var(--text-3);margin-left:8px;">Grootte = aantal rapporten</span>`;
+
+  wrap.innerHTML = `
+    <div style="font-size:12px;margin-bottom:10px;display:flex;align-items:center;flex-wrap:wrap;">${legend}${sizeLegend}</div>
+    <svg id="db-bubble-svg" viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg"
+         style="border-radius:14px;background:var(--bg-2);border:1px solid var(--border);">${bubbles}</svg>`;
+
+  // Click op bubble → open detail
+  wrap.querySelectorAll('.bubble-player').forEach(el => {
+    const open = () => { if(typeof openDetail === 'function') openDetail(el.dataset.id); };
+    el.addEventListener('click', open);
+    el.addEventListener('keydown', e => { if(e.key==='Enter'||e.key===' ') open(); });
+    // Hover highlight
+    el.addEventListener('mouseenter', () => { el.querySelector('circle').setAttribute('fill-opacity','.45'); });
+    el.addEventListener('mouseleave', () => { el.querySelector('circle').setAttribute('fill-opacity','.22'); });
+  });
+}
+
+function toggleDbView(view){
+  _dbBubbleView = (view === 'bubble');
+  const tableWrap  = document.getElementById('db-table-wrap');
+  const bubbleWrap = document.getElementById('db-bubble-wrap');
+  const toggleBtns = document.querySelectorAll('.db-view-btn[data-db-view]');
+  if(tableWrap)  tableWrap.style.display  = _dbBubbleView ? 'none' : '';
+  if(bubbleWrap) bubbleWrap.style.display = _dbBubbleView ? 'block' : 'none';
+  toggleBtns.forEach(b => b.classList.toggle('active', b.dataset.dbView === view));
+  if(_dbBubbleView){
+    const players = loadPlayers ? loadPlayers() : [];
+    renderBubbleChart(players);
+  }
+}
+
+// Wire view-toggle
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.db-view-btn[data-db-view]');
+  if(btn) toggleDbView(btn.dataset.dbView);
+});
+
 /* =============== DATABASE =============== */
 // s35ar (#226): "Verwijder dit concept" onderaan rapport-form
 document.addEventListener('click', e => {
@@ -12843,6 +12937,25 @@ function renderPitchPositions(){
   $('#pitch-gap-list').innerHTML = gaps.length
     ? gaps.map(slot=>`<span class="gap-tag">${slotMeta(slot).label}</span>`).join('')
     : '<span style="color:var(--text-3); font-size:12px;">Geen actieve open posities.</span>';
+
+  // G3: heatmap overlay — gekleurde gloeiplekken per positie op basis van huidig niveau
+  const overlay = $('#pitch-heatmap-overlay');
+  if(overlay){
+    const _HM = { A:'#c9a227', B:'#60a5fa', C:'#fbbf24', D:'#e30613' };
+    overlay.innerHTML = slots.map(slot => {
+      const s = state[slot.key] || {};
+      const grade = s.huidig;
+      if(!grade || !_HM[grade]) return '';
+      return `<div class="heatmap-zone" style="left:${slot.x}%;top:${slot.y}%;width:22%;height:16%;transform:translate(-50%,-60%);background:${_HM[grade]};"></div>`;
+    }).join('');
+    // fade-in via requestAnimationFrame (CSS transition: opacity .4s)
+    $$('.heatmap-zone', overlay).forEach(z => { z.style.opacity = '0'; });
+    requestAnimationFrame(() => {
+      $$('.heatmap-zone', overlay).forEach((z, i) => {
+        setTimeout(() => { z.style.opacity = ''; }, i * 40);
+      });
+    });
+  }
 }
 
 function renderPitchInfo(){

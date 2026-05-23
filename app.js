@@ -12873,7 +12873,7 @@ function subscribeData(){
     }
     if(currentView === 'agenda') renderAgenda();
     if(currentView === 'dashboard' && !hasOpenSnelForm){
-      renderActiveScouting(); renderTodayMatches(); renderUpcomingMatches();
+      renderDashboardAgenda();
     }
     setSync('ok');
   }, err=>{
@@ -14862,7 +14862,7 @@ function getMatchDurationMin(leeftijd){
   if(!leeftijd) return 120;
   const k = String(leeftijd).trim().toUpperCase();
   // s35bx: 'O.8-9' (elftal 9 van O.8) -> 'O.8'. Ook 'JO8'/'MO13-2' -> 'O.8'/'O.13'.
-  const baseMatch = k.match(/^[JM]?O\.?(\d{1,2})/);
+  const baseMatch = k.match(/\b[JM]?O\.?(\d{1,2})\b/);
   if(baseMatch){
     const norm = 'O.' + baseMatch[1];
     if(KNVB_DUUR_MIN[norm]) return KNVB_DUUR_MIN[norm];
@@ -15336,15 +15336,29 @@ function renderActiveScouting(){
 
   const cards = active.map(prog => {
     const w = getMatchWindow(prog);
-    const kickT = w ? w.kick.getTime() : null;
-    let status = 'live', statusLabel = '● Bezig';
+    const kickT  = w ? w.kick.getTime() : null;
+    const matchDur = w ? getMatchDurationMin(
+      (prog.leeftijd && String(prog.leeftijd).trim())
+      || (prog.thuis_elftal && String(prog.thuis_elftal).trim())
+      || (prog.uit_elftal  && String(prog.uit_elftal).trim())  || ''
+    ) : 120;
+    const endT   = kickT ? kickT + matchDur * 60000 : null;
+    // Vier fases: voorbereiding → live → afgelopen → afgesloten (kaart weg)
+    let status = 'live', statusLabel = '● Live';
     if(kickT && now.getTime() < kickT){
+      // Fase 1: voorbereiding (pre-window, max 5 min voor aftrap)
       status = 'warmup';
-      const min = Math.round((kickT - now.getTime())/60000);
-      statusLabel = 'Aftrap over ' + min + ' min';
+      const min = Math.round((kickT - now.getTime()) / 60000);
+      statusLabel = '⏱ Voorbereiding — aftrap over ' + min + ' min';
+    } else if(endT && now.getTime() > endT){
+      // Fase 3: afgelopen (post-window, max 15 min na einde)
+      status = 'ended';
+      const min = Math.round((now.getTime() - endT) / 60000);
+      statusLabel = '✓ Afgelopen — ' + min + ' min geleden gestopt';
     } else if(kickT){
-      const min = Math.round((now.getTime() - kickT)/60000);
-      statusLabel = '● Bezig — ' + min + ' min na aftrap';
+      // Fase 2: live (aftrap t/m einde speeltijd)
+      const min = Math.round((now.getTime() - kickT) / 60000);
+      statusLabel = '● Live — ' + min + ' min na aftrap';
     }
     // s35bd: titel-format 'Club Elftal — Club Elftal'
     const teams = `${escapeHtml(prog.thuis||'?')}${prog.thuis_elftal?' '+escapeHtml(prog.thuis_elftal):''} — ${escapeHtml(prog.uit||'?')}${prog.uit_elftal?' '+escapeHtml(prog.uit_elftal):''}`;
@@ -15851,7 +15865,7 @@ function renderActiveScouting(){
               if(txtIn) txtIn.value = defaultTekst;
               savedSnId = null;
               if(statusEl){ statusEl.textContent = '\u00a0'; statusEl.style.color = ''; }
-              if(typeof renderActiveScouting === 'function') renderActiveScouting();
+              if(typeof renderDashboardAgenda === 'function') renderDashboardAgenda();
             });
           };
         }
@@ -15960,7 +15974,7 @@ function renderActiveScouting(){
               txtIn.value = '';
               savedWnId = null;
               if(statusEl){ statusEl.textContent = '\u00a0'; statusEl.style.color = ''; }
-              if(typeof renderActiveScouting === 'function') renderActiveScouting();
+              if(typeof renderDashboardAgenda === 'function') renderDashboardAgenda();
             });
           };
         }
@@ -16005,7 +16019,7 @@ function renderActiveScouting(){
         prog.modified = Date.now();
         try {
           if(typeof saveProgrammaItem === 'function') await saveProgrammaItem(prog);
-          if(typeof renderActiveScouting === 'function') renderActiveScouting();
+          if(typeof renderDashboardAgenda === 'function') renderDashboardAgenda();
         } catch(err){}
       } else if(act === 'convert-snel-to-rapport'){
         // s35be: snel-notitie -> volledig spelersrapport. Open speler-modal
@@ -16060,7 +16074,7 @@ function renderActiveScouting(){
         prog.modified = Date.now();
         try {
           if(typeof saveProgrammaItem === 'function') await saveProgrammaItem(prog);
-          if(typeof renderActiveScouting === 'function') renderActiveScouting();
+          if(typeof renderDashboardAgenda === 'function') renderDashboardAgenda();
         } catch(err){
           if(typeof toast === 'function') toast('Fout bij verwijderen', true);
         }
@@ -16081,7 +16095,7 @@ function startScoutingTimer(){
       if(active && active.classList && (active.classList.contains('sa-snel-tekst') || active.classList.contains('sa-snel-naam') || active.classList.contains('sa-snel-rug'))) return;
       const openForm = document.querySelector('.sa-snel-form[style*="display: block"], .sa-snel-form[style*="display:block"]');
       if(openForm && openForm.matches(':hover')) return;
-      renderActiveScouting();
+      renderDashboardAgenda();
     }
   }, 60000);
 }
@@ -16261,7 +16275,7 @@ function renderTodayMatches(){
       const pid = card.dataset.progId;
       if(!pid) return;
       wrap.dataset.expandedId = (wrap.dataset.expandedId === pid) ? '' : pid;
-      renderTodayMatches();
+      renderDashboardAgenda();
     });
   });
   // Speler-chip compact (alleen wanneer kaart dicht is): open speler-detail.
@@ -16472,10 +16486,47 @@ function renderUpcomingMatches(){
   });
 }
 
+// s35dj: Unified dashboard agenda — één sectie met 4 staten.
+// Coördineert renderActiveScouting + renderTodayMatches + renderUpcomingMatches
+// en past zichtbaarheid aan op de huidige match-staat.
+function renderDashboardAgenda(){
+  const now = new Date();
+
+  // Bepaal of er een actieve (live of warmup) wedstrijd is
+  let hasActive = false;
+  if(typeof programmaCache !== 'undefined' && Array.isArray(programmaCache)){
+    hasActive = programmaCache.some(p => p && typeof isMatchInWindow === 'function' && isMatchInWindow(p, now));
+  }
+
+  // Render de drie sub-secties
+  if(typeof renderActiveScouting === 'function') renderActiveScouting();
+  if(typeof renderTodayMatches   === 'function') renderTodayMatches();
+  if(typeof renderUpcomingMatches=== 'function') renderUpcomingMatches();
+
+  // Fase-logica: bij live match vandaag + aankomend inklapten / verbergen
+  const todayWrap    = document.getElementById('today-matches-wrap');
+  const upcomingWrap = document.getElementById('upcoming-matches-wrap');
+
+  if(hasActive){
+    // Live: zet vandaag en aankomend in de achtergrond
+    if(todayWrap){
+      const block = todayWrap.querySelector('.today-matches');
+      if(block && !block.classList.contains('collapsed')){
+        block.classList.add('collapsed');
+        try { localStorage.setItem('todayMatchesCollapsed','1'); } catch(_){}
+      }
+    }
+    if(upcomingWrap) upcomingWrap.style.display = 'none';
+  } else {
+    // Geen live match: aankomend mag weer zichtbaar worden (eigen voorkeur bepaalt collapsed-staat)
+    // today-matches toont zichzelf al op basis van items
+  }
+}
+window.renderDashboardAgenda = renderDashboardAgenda;
+
 function renderDashboard(){
-  renderActiveScouting(); // s35s
-  renderTodayMatches();
-  renderUpcomingMatches();
+  renderDashboardAgenda(); // s35dj: unified agenda widget
+
   const players = loadPlayers();
   $('#dashboard-date').textContent =
     new Date().toLocaleDateString('nl-NL',{weekday:'long', day:'numeric', month:'long', year:'numeric'});
@@ -21084,6 +21135,8 @@ function renderMatches(){
         const _d = (typeof parseAnyDate === 'function') ? parseAnyDate(p.datum) : new Date(p.datum);
         if(!_d || isNaN(_d.getTime())) return;
         if(_d > _dNow || _d < _dCut) return;
+        // s35dj: programma-item pas zichtbaar in Wedstrijden nadat wedstrijd op slot is
+        if(typeof _shIsMatchLocked === 'function' && !_shIsMatchLocked(p)) return;
         const _pm = { datum: p.datum, thuis: p.thuis, uit: p.uit, age: p.leeftijd||'', kind:'programma', progId:p.id, id:p.id, players:[] };
         const _k = _shMatchKey(_pm);
         if(!_existK.has(_k)){ matches.push(_pm); _existK.add(_k); }

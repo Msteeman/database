@@ -7850,3 +7850,6 @@ tbody tr:last-child td { border-bottom: none; }
   -webkit-tap-highlight-color: transparent;
   cursor: pointer;
 }
+
+/* s35dj: wedstrijd-fases status pill */
+.sa-status.ended { background: rgba(148,163,184,0.18); color: #94a3b8; }

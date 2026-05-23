@@ -15046,12 +15046,19 @@ async function ensureActiveMatchReport(prog){
   const mrId = 'mr_prog_' + prog.id;
   const existing = (matchReportsCache||[]).find(r => r.id === mrId);
   if(existing) return existing;
+  // s35dj: elftal = leeftijdscategorie uit thuis_elftal/uit_elftal
+  const _mrElftal = (prog.thuis_elftal||'').trim() || (prog.uit_elftal||'').trim() || (prog.leeftijd||'').trim();
+  const _mrThuis  = prog.thuis ? `${prog.thuis}${prog.thuis_elftal?' '+prog.thuis_elftal:''}`.trim() : '';
+  const _mrUit    = prog.uit   ? `${prog.uit}${prog.uit_elftal?' '+prog.uit_elftal:''}`.trim()       : '';
   const report = {
     id: mrId,
     datum: prog.datum || todayISO(),
-    leeftijd: prog.leeftijd || '',
-    thuis: prog.thuis || '',
-    uit: prog.uit || '',
+    leeftijd: _mrElftal,
+    thuis: _mrThuis,
+    uit:   _mrUit,
+    sportpark: prog.locatie || '',
+    veld: prog.veld || '',
+    methode: prog.methode || '',
     opmerking: prog.notities || '',
     auto_from_programma: true,
     programma_id: prog.id,
@@ -15154,7 +15161,10 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
         if(typeof refreshPositionDropdowns === 'function') refreshPositionDropdowns();
         if($('#f-positie')) $('#f-positie').value = mp.positie || '';
         if($('#f-beoogd')) $('#f-beoogd').value = mp.beoogd || '';
-        if($('#f-leeftijd')) $('#f-leeftijd').value = mp.leeftijd || prog.leeftijd || '';
+        // s35dj: leeftijd uit elftal-velden als fallback
+        const _sfElftal = (prog.thuis_elftal||'').trim() || (prog.uit_elftal||'').trim() || (prog.leeftijd||'').trim();
+        if($('#f-leeftijd')) $('#f-leeftijd').value = mp.leeftijd || _sfElftal;
+        if($('#f-elftal') && !$('#f-elftal').value) $('#f-elftal').value = mp.elftal || progSp.elftal || _sfElftal;
         if($('#f-bouw')) $('#f-bouw').value = mp.bouw || '';
         if($('#f-lengte')) $('#f-lengte').value = mp.lengte || '';
         // Title aanpassen: NIEUW rapport, niet bewerken
@@ -15171,7 +15181,12 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
         if(progSp.club && $('#f-club')) $('#f-club').value = progSp.club;
         if(progSp.rugnummer && $('#f-rugnummer')) $('#f-rugnummer').value = progSp.rugnummer;
         if(progSp.positie && $('#f-positie')) $('#f-positie').value = progSp.positie;
-        if(prog.leeftijd && $('#f-leeftijd')) $('#f-leeftijd').value = prog.leeftijd;
+        // s35dj: leeftijdscategorie uit thuis_elftal als primaire bron
+        const _sfElftalNew = (prog.thuis_elftal||'').trim() || (prog.uit_elftal||'').trim() || (prog.leeftijd||'').trim();
+        if(_sfElftalNew && $('#f-leeftijd')) $('#f-leeftijd').value = _sfElftalNew;
+        if(_sfElftalNew && $('#f-elftal') && !$('#f-elftal').value) $('#f-elftal').value = progSp.elftal || _sfElftalNew;
+        // Club: gebruik club van speler, anders thuisclub als hint
+        if(!progSp.club && prog.thuis && $('#f-club') && !$('#f-club').value) $('#f-club').value = prog.thuis;
       }
       // Wedstrijdcontext invullen vanuit programma
       // s35ao (#4 demo): alleen NA aftrap auto-invullen (vóór aftrap is wedstrijd nog niet gespeeld)
@@ -15184,10 +15199,13 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
         }
       } catch(_){}
       if(__sh_autofill_ok){
+        // s35dj: thuis/uit inclusief elftal-suffix voor leesbaarheid in rapport
+        const _sfThuis = prog.thuis ? `${prog.thuis}${prog.thuis_elftal?' '+prog.thuis_elftal:''}`.trim() : '';
+        const _sfUit   = prog.uit   ? `${prog.uit}${prog.uit_elftal?' '+prog.uit_elftal:''}`.trim()       : '';
         if($('#f-w-datum')) $('#f-w-datum').value = prog.datum || '';
-        if($('#f-w-thuis')) $('#f-w-thuis').value = prog.thuis || '';
-        if($('#f-w-uit')) $('#f-w-uit').value = prog.uit || '';
-        /* s35dg Fase H: plaats/sportpark/veld doortrekken uit programma */
+        if($('#f-w-thuis')) $('#f-w-thuis').value = _sfThuis;
+        if($('#f-w-uit'))   $('#f-w-uit').value   = _sfUit;
+        /* s35dg Fase H: plaats/sportpark/veld/methode doortrekken uit programma */
         try {
           const __sp = (prog.locatie || '').trim();
           const __vd = (prog.veld || '').trim();
@@ -15197,8 +15215,10 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
             if(__ci && __ci.plaats) __pl = __ci.plaats;
           }
           if($('#f-w-sportpark') && !$('#f-w-sportpark').value) $('#f-w-sportpark').value = __sp;
-          if($('#f-w-veld') && !$('#f-w-veld').value) $('#f-w-veld').value = __vd;
-          if($('#f-w-plaats') && !$('#f-w-plaats').value) $('#f-w-plaats').value = __pl;
+          if($('#f-w-veld')      && !$('#f-w-veld').value)      $('#f-w-veld').value      = __vd;
+          if($('#f-w-plaats')    && !$('#f-w-plaats').value)    $('#f-w-plaats').value    = __pl;
+          if($('#f-w-context')   && !$('#f-w-context').value && prog.methode)
+            $('#f-w-context').value = prog.methode;
         } catch(_){}
       }
       // s35ak (#4): markeer wedstrijd-velden visueel als auto-ingevuld vanuit programma
@@ -15213,14 +15233,16 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
             if(__ci2 && __ci2.plaats) __pl2 = __ci2.plaats;
           }
         } catch(_){}
+        const _amThuis = prog.thuis ? `${prog.thuis}${prog.thuis_elftal?' '+prog.thuis_elftal:''}`.trim() : '';
+        const _amUit   = prog.uit   ? `${prog.uit}${prog.uit_elftal?' '+prog.uit_elftal:''}`.trim()       : '';
         const autoMap = {
-          'f-w-datum': prog.datum||'',
-          'f-w-thuis': prog.thuis||'',
-          'f-w-uit': prog.uit||'',
+          'f-w-datum':     prog.datum||'',
+          'f-w-thuis':     _amThuis,
+          'f-w-uit':       _amUit,
           /* s35dg Fase H */
-          'f-w-plaats': __pl2,
+          'f-w-plaats':    __pl2,
           'f-w-sportpark': prog.locatie||'',
-          'f-w-veld': prog.veld||''
+          'f-w-veld':      prog.veld||''
         };
         Object.keys(autoMap).forEach(id => {
           const inp = document.getElementById(id); if(!inp) return;
@@ -17825,15 +17847,21 @@ function _shConvertNotesToDrafts(prog){
     }
   } catch(_){}
   const wr = prog.wedstrijdrapport || {};
+  // s35dj: elftal als leeftijdscategorie meegeven
+  const _wrdElftal = (prog.thuis_elftal||'').trim() || (prog.uit_elftal||'').trim() || (prog.leeftijd||'').trim();
+  const _wrdThuis  = prog.thuis ? `${prog.thuis}${prog.thuis_elftal?' '+prog.thuis_elftal:''}`.trim() : (wr.thuis||'');
+  const _wrdUit    = prog.uit   ? `${prog.uit}${prog.uit_elftal?' '+prog.uit_elftal:''}`.trim()       : (wr.uit||'');
   prog.wedstrijdrapport = {
     status: 'concept',
     tekst: tekst,
     datum: prog.datum || wr.datum || '',
-    thuis: prog.thuis || wr.thuis || '',
-    uit:   prog.uit   || wr.uit   || '',
-    plaats: plaats || wr.plaats || '',
+    leeftijd: _wrdElftal || wr.leeftijd || '',
+    methode:  prog.methode || wr.methode || '',
+    thuis:    _wrdThuis,
+    uit:      _wrdUit,
+    plaats:   plaats || wr.plaats || '',
     sportpark: prog.locatie || wr.sportpark || '',
-    veld: prog.veld || wr.veld || '',
+    veld:     prog.veld || wr.veld || '',
     updated_at: Date.now()
   };
   // s35dg-hotfix1: óók losse snel-notities (zonder gekoppelde speler) omzetten
@@ -17910,6 +17938,10 @@ function _shConvertSnelToConceptPlayers(prog){
       const detId = 'concept_' + String(prog.id).replace(/[^a-z0-9_-]/gi,'')
                   + '__' + String(sn.id).replace(/[^a-z0-9_-]/gi,'');
       const nowIso = new Date().toISOString();
+      // s35dj: elftal/leeftijd meegenomen uit programma
+      const _snElftal = (prog.thuis_elftal||'').trim() || (prog.uit_elftal||'').trim() || (prog.leeftijd||'').trim();
+      const _snThuis  = prog.thuis ? `${prog.thuis}${prog.thuis_elftal?' '+prog.thuis_elftal:''}`.trim() : '';
+      const _snUit    = prog.uit   ? `${prog.uit}${prog.uit_elftal?' '+prog.uit_elftal:''}`.trim()       : '';
       const concept = {
         id: detId,
         concept: true,
@@ -17919,16 +17951,20 @@ function _shConvertSnelToConceptPlayers(prog){
         naam: fullNaam,
         rugnummer: sn.rugnummer || '',
         positie: sn.positie || '',
-        club: prog.thuis || '',
+        elftal: sn.elftal || _snElftal,
+        leeftijd: _snElftal,
+        club: sn.club || prog.thuis || '',
         opmerkingen: String(sn.tekst || '').trim(),
         rapport: {
           wedstrijd: {
-            datum: prog.datum || '',
-            thuis: prog.thuis || '',
-            uit:   prog.uit   || '',
-            plaats: plaats || '',
+            datum:     prog.datum || '',
+            leeftijd:  _snElftal,
+            methode:   prog.methode || '',
+            thuis:     _snThuis,
+            uit:       _snUit,
+            plaats:    plaats || '',
             sportpark: prog.locatie || '',
-            veld: prog.veld || ''
+            veld:      prog.veld || ''
           }
         },
         datum: prog.datum || '',
@@ -18231,7 +18267,14 @@ function _shOpenEditModal(m){
             setVal('mr-datum', wr.datum || prog.datum || '');
             setVal('mr-thuis', wr.thuis || prog.thuis || '');
             setVal('mr-uit',   wr.uit   || prog.uit   || '');
-            setVal('mr-leeftijd', prog.leeftijd || '');
+            // s35dj: elftal als leeftijdscategorie
+            const _mrLf = (prog.thuis_elftal||'').trim() || (prog.uit_elftal||'').trim() || (prog.leeftijd||'').trim();
+            setVal('mr-leeftijd', wr.leeftijd || _mrLf);
+            // Thuis/uit met elftal suffix
+            const _mrTh = prog.thuis ? `${prog.thuis}${prog.thuis_elftal?' '+prog.thuis_elftal:''}`.trim() : '';
+            const _mrUt = prog.uit   ? `${prog.uit}${prog.uit_elftal?' '+prog.uit_elftal:''}`.trim()       : '';
+            if(_mrTh) setVal('mr-thuis', wr.thuis || _mrTh);
+            if(_mrUt) setVal('mr-uit',   wr.uit   || _mrUt);
             const opm = document.getElementById('mr-opmerking');
             if(opm && !opm.value){
               const tekst = wr.tekst || '';

@@ -12355,7 +12355,7 @@ const __SH_DEMO_EMAIL = 'demo@scoutinghub.nl';
 function __shIsDemoEmail(em){
   if(!em || typeof em !== 'string') return false;
   const e = em.toLowerCase().trim();
-  // Match: demo@scoutinghub.nl, demo-coord@scoutinghub.nl, coordinator-demo@scoutinghub.nl, etc.
+  // Alle demo-accounts op scoutinghub.nl (demo@, coordinator-demo@, demo-coord@, etc.)
   return /^([a-z0-9._-]*demo[a-z0-9._-]*)@scoutinghub\.nl$/.test(e);
 }
 function __shIsDemoUser(){
@@ -18800,7 +18800,16 @@ function _shBannerHTML(m){
   return html;
 }
 
-function cmpPlayerById(id){ return loadPlayers().find(p => p.id === id) || null; }
+function cmpPlayerById(id){
+  const p = loadPlayers().find(x => x.id === id);
+  if(!p) return null;
+  try {
+    const reports = reportsForPlayer(id);
+    if(!reports.length) return p;
+    if(reports.length >= 2) return buildAvgPlayer(p);
+    return buildPlayerFromReport(p, reports[0]);
+  } catch(_){ return p; }
+}
 function cmpGradeNum(g){ return CMP_GRADE_VAL[g] || 0; }
 function cmpGradeFromNum(n){
   if(n >= 3.5) return 'A';
@@ -19407,6 +19416,8 @@ function renderCompareResults(){
   renderCompareGauges(players);
   renderCompareRadar(players);
   renderCompareBars(players);
+  renderCompareAdvies(players);
+  renderCompareStrengths(players);
   renderCompareTable(players);
 }
 
@@ -19685,6 +19696,69 @@ function renderCompareTable(players){
   tbl.querySelectorAll('.cmp-name-link').forEach(a => {
     a.addEventListener('click', () => { if(typeof openDetail === 'function') openDetail(a.dataset.id); });
   });
+}
+
+
+/* ── Vergelijken: Advies-widget ── */
+function renderCompareAdvies(players){
+  const wrap = $('#cmp-advies');
+  if(!wrap) return;
+  const labels = {'4':'Direct contracteren','3':'Op proef uitnodigen','2':'Periodiek monitoren','1':'Geen vervolgstap'};
+  const gradeClass = {'4':'A','3':'B','2':'C','1':'D'};
+  wrap.innerHTML = players.map((p, i) => {
+    const col = cmpColorFor(i);
+    const adv = String(p.advies || '');
+    const label = labels[adv] || 'Geen advies';
+    const gCls = gradeClass[adv] || '';
+    const reports = reportsForPlayer(p.id);
+    const cnt = reports.length;
+    return `
+      <div class="cmp-advies-card" style="border-top:3px solid ${col.c}">
+        <div class="cmp-advies-naam" style="color:${col.c}">${escapeHtml((p.naam||'?').split(' ')[0])}</div>
+        <div class="cmp-advies-label ${gCls}">${escapeHtml(label)}</div>
+        <div class="cmp-advies-meta">${cnt} rapport${cnt===1?'':'en'}</div>
+      </div>`;
+  }).join('');
+}
+
+/* ── Vergelijken: Sterkste punten per speler ── */
+function renderCompareStrengths(players){
+  const wrap = $('#cmp-strengths');
+  if(!wrap) return;
+  wrap.innerHTML = players.map((p, i) => {
+    const col = cmpColorFor(i);
+    const b = p.beoordelingen || {};
+    const gradeNum = {A:4,B:3,C:2,D:1};
+    // Sorteer criteria op score (hoog→laag)
+    const sorted = CMP_CRITERIA
+      .map(c => ({ label: c.label, grade: b[c.key] || null, val: gradeNum[b[c.key]] || 0 }))
+      .filter(x => x.val > 0)
+      .sort((a,b) => b.val - a.val);
+    const top3 = sorted.slice(0, 3);
+    const bot = sorted.slice(-2).reverse(); // 2 aandachtspunten
+    const firstName = (p.naam||'?').split(' ')[0];
+    return `
+      <div class="cmp-strengths-col">
+        <div class="cmp-strengths-head" style="color:${col.c}">${escapeHtml(firstName)}</div>
+        ${top3.length ? `
+          <div class="cmp-strengths-section">Sterk</div>
+          ${top3.map(x => `
+            <div class="cmp-strengths-row">
+              <span class="cmp-strengths-grade ${x.grade}">${x.grade}</span>
+              <span class="cmp-strengths-label">${escapeHtml(x.label)}</span>
+            </div>`).join('')}
+        ` : '<div class="cmp-strengths-empty">Geen beoordelingen</div>'}
+        ${bot.length ? `
+          <div class="cmp-strengths-section dev">Aandacht</div>
+          ${bot.map(x => `
+            <div class="cmp-strengths-row">
+              <span class="cmp-strengths-grade ${x.grade}">${x.grade}</span>
+              <span class="cmp-strengths-label">${escapeHtml(x.label)}</span>
+            </div>`).join('')}
+        ` : ''}
+        ${p.wapen ? `<div class="cmp-strengths-wapen">⚡ ${escapeHtml(p.wapen)}</div>` : ''}
+      </div>`;
+  }).join('');
 }
 
 /* =============== PLAYER DETAIL (full-page) =============== */
@@ -26750,6 +26824,7 @@ onAuthStateChanged(auth, async (user)=>{
 
   if(user){
     currentUser = user;
+    __shApplyDemoChrome(); // direct toepassen na login
     /* s35cg: rol + team ophalen vóór de rest van de app start */
     await loadUserRole();
     if(currentUserRole !== 'scout'){
@@ -26763,6 +26838,7 @@ onAuthStateChanged(auth, async (user)=>{
     // s35cr: changelog-popup volledig uitgeschakeld (Marcel: weghalen)
   } else {
     currentUser = null;
+    __shApplyDemoChrome(); // strip verbergen bij uitloggen
     unsubscribeData();
     showLogin();
   }

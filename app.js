@@ -11913,20 +11913,7 @@ function renderMatches(){
   const players = loadPlayers();
   let matches = aggregateMatches(players).map(m => ({...m, kind: 'aggregated'}));
 
-  // Merge in standalone match-reports
-  const reports = loadMatchReports().map(r => ({
-    id: r.id,
-    datum: r.datum,
-    thuis: r.thuis || '',
-    uit: r.uit || '',
-    age: r.leeftijd || '',
-    opmerking: r.opmerking || '',
-    uitslag: '',
-    opstelling: '',
-    players: [],
-    kind: 'report'
-  }));
-  matches = matches.concat(reports);
+  // s18b: Voorstel B — standalone match-reports (kind:'report') niet meer in wedstrijden-overzicht
 
   // s35dh: merge past programma-items die nog niet als aggregated/report voorkomen
   try {
@@ -11948,18 +11935,16 @@ function renderMatches(){
     }
   } catch(_){}
 
-  // s35bq: stats vóór filtering (totalen op volledige set)
+  // s18b: stats vóór filtering (totalen op volledige set — geen 'report' meer)
   const _statTotal = matches.length;
   const _statVerwerkt = matches.filter(m => m.kind === 'aggregated' && !m.toernooi).length;
   const _statToernooi = matches.filter(m => m.kind === 'aggregated' && m.toernooi).length;
-  const _statInfo = matches.filter(m => m.kind === 'report').length;
   // s35bt+s35dh: aantal nog niet verwerkte wedstrijden (aggregated + programma, niet-toernooi)
   const _statNogVerwerken = matches.filter(m => (m.kind === 'aggregated' || m.kind === 'programma') && !m.toernooi && !shIsWedstrijdVerwerkt(_shMatchKey(m))).length;
   const _setText = (id, n) => { const el = document.getElementById(id); if(el) el.textContent = n; };
   _setText('m-stat-total', _statTotal);
   _setText('m-stat-verwerkt', _statVerwerkt);
   _setText('m-stat-toernooi', _statToernooi);
-  _setText('m-stat-info', _statInfo);
 
   // Filters
   const search = ($('#match-search').value || '').toLowerCase().trim();
@@ -11994,8 +11979,7 @@ function renderMatches(){
       { id: '',              label: 'Alle status',     count: _statTotal },
       { id: 'nog-verwerken', label: 'Nog te verwerken',count: _statNogVerwerken },
       { id: 'verwerkt',      label: 'Verwerkt',        count: _statVerwerkt },
-      { id: 'toernooi',      label: 'Toernooi',        count: _statToernooi },
-      { id: 'info',          label: 'Alleen rapport',  count: _statInfo }
+      { id: 'toernooi',      label: 'Toernooi',        count: _statToernooi }
     ];
     statusChipsHost.innerHTML = statuses.map(s =>
       `<button type="button" class="m-chip${matchStatusFilter===s.id?' active':''}" data-status-chip="${s.id}">${escapeHtml(s.label)} <span class="m-chip-count">${s.count}</span></button>`
@@ -12019,8 +12003,6 @@ function renderMatches(){
     matches = matches.filter(m => m.kind === 'aggregated' && !m.toernooi);
   } else if(matchStatusFilter === 'toernooi'){
     matches = matches.filter(m => m.kind === 'aggregated' && m.toernooi);
-  } else if(matchStatusFilter === 'info'){
-    matches = matches.filter(m => m.kind === 'report');
   } else if(matchStatusFilter === 'nog-verwerken'){
     matches = matches.filter(m => (m.kind === 'aggregated' || m.kind === 'programma') && !m.toernooi && !shIsWedstrijdVerwerkt(_shMatchKey(m)));
   }
@@ -12057,41 +12039,7 @@ function renderMatches(){
     const thuisClean = escapeHtml(stripAgeFromTeam(m.thuis) || m.thuis || '—');
     const uitClean = escapeHtml(stripAgeFromTeam(m.uit) || m.uit || '—');
 
-    if(m.kind === 'report'){
-      const ageBadgeR = m.age
-        ? `<span class="match-age-badge">${escapeHtml(m.age)}</span>`
-        : '';
-      const _shKeyR = _shMatchKey(m);
-      const _shIsVerwerktR = shIsWedstrijdVerwerkt(_shKeyR);
-      html += `
-        <div class="match-card match-report-card${_shIsVerwerktR?' locked':''}" data-report-id="${escapeHtml(m.id)}" data-match-key="${escapeHtml(_shKeyR)}">
-          <div class="match-date">
-            <div class="match-date-day">${d.day}</div>
-            <div class="match-date-month">${d.month}</div>
-            <div class="match-date-year">${d.year}</div>
-          </div>
-          <div class="match-teams">
-            <div class="match-teams-row">
-              <span class="match-team-home">${thuisClean}</span>
-              <span class="match-vs">vs</span>
-              <span class="match-team-away">${uitClean}</span>
-            </div>
-            <div class="match-meta">
-              <span class="match-status-pill info">Info</span>
-              <span class="match-report-badge">Wedstrijdrapport</span>
-              ${ageBadgeR}
-              ${_shIsVerwerktR ? '<span class="match-status-pill" style="background:rgba(127,217,158,0.18);color:#7fd99e;border:1px solid #7fd99e;">🔒 Verwerkt</span>' : ''}
-            </div>
-            ${m.opmerking ? `<div class="match-report-note">${escapeHtml(m.opmerking)}</div>` : ''}
-            ${_shBannerHTML(m)}
-          </div>
-          <div class="match-report-click-hint" aria-hidden="true">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </div>
-        </div>
-      `;
-      return;
-    }
+    // s18b: kind === 'report' niet meer getoond in wedstrijden-overzicht
 
     // s35dh: programma-item (staat in Programma, datum verleden, nog niet als aggregated)
     if(m.kind === 'programma'){

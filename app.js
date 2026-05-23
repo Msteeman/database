@@ -20110,11 +20110,24 @@ function renderDetailOverview(p){
       </div>`;
   })() : '';
   $('#player-view-body').innerHTML = `
-    <div style="margin-bottom:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+    <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
       <button class="btn btn-sm" id="dtl-back-prev">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><polyline points="15 18 9 12 15 6"/></svg>
         ${backLabel}
       </button>
+      ${(()=>{
+        const inCmp = cmpSelectedIds.includes(p.id);
+        const full  = cmpSelectedIds.length >= CMP_MAX;
+        if(inCmp) return `<button class="btn btn-sm dtl-cmp-btn dtl-cmp-active" id="dtl-cmp-toggle">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg>In vergelijking</button>`;
+        if(full) return '';
+        return `<button class="btn btn-sm dtl-cmp-btn" id="dtl-cmp-toggle">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/><path d="M12 8v8"/></svg>+ Vergelijk</button>`;
+      })()}
+      ${cmpSelectedIds.length >= 2 ? `<button class="btn btn-sm dtl-cmp-goto" id="dtl-cmp-goto">
+        Vergelijken (${cmpSelectedIds.length})
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-left:3px;"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>` : ''}
       <button class="btn btn-sm" id="dtl-show-report-top" style="background:var(--primary-2);color:#fff;border-color:var(--primary-2);margin-left:auto;">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
         ${escapeHtml(topBtnLabel)}
@@ -20143,6 +20156,8 @@ function renderDetailOverview(p){
     </div>
 
     <div class="dtl-kpi-grid" id="dtl-kpi-grid"></div>
+
+    <div id="dtl-summary-card"></div>
 
     <div class="card compare-card dtl-sw-card" id="dtl-sw-card">
       <div class="compare-card-title">
@@ -20196,11 +20211,31 @@ function renderDetailOverview(p){
     </div>
   `;
   renderDetailKPIs(vp);
+  renderDetailSummary(vp);
   renderDetailStrengthsWeaknesses(vp);
   renderDetailGauge(vp);
   renderDetailPizza(vp);
   renderDetailBars(vp);
   $('#dtl-back-prev').addEventListener('click', () => go(previousViewBeforePlayer || 'database'));
+  // Vergelijk-knop: toevoegen/verwijderen
+  const _dtlCmpToggle = document.getElementById('dtl-cmp-toggle');
+  if(_dtlCmpToggle){
+    _dtlCmpToggle.addEventListener('click', () => {
+      if(cmpSelectedIds.includes(p.id)){
+        cmpSelectedIds = cmpSelectedIds.filter(id => id !== p.id);
+        if(typeof toast === 'function') toast(`${p.naam} verwijderd uit vergelijking`);
+      } else if(cmpSelectedIds.length < CMP_MAX){
+        cmpSelectedIds.push(p.id);
+        const n = cmpSelectedIds.length;
+        if(typeof toast === 'function') toast(n >= 2
+          ? `${p.naam} toegevoegd — tik "Vergelijken (${n})" om te starten`
+          : `${p.naam} toegevoegd — selecteer nog 1 speler om te vergelijken`);
+      }
+      renderDetailOverview(p); // topbar updaten
+    });
+  }
+  const _dtlCmpGoto = document.getElementById('dtl-cmp-goto');
+  if(_dtlCmpGoto) _dtlCmpGoto.addEventListener('click', () => go('compare'));
   /* s35df: knop-gedrag — in avg-modus scroll naar rapportenlijst; anders open volledig rapport voor huidige vp */
   const flashReports = () => {
     const card = document.getElementById('dtl-reports-card');
@@ -20305,6 +20340,63 @@ function renderDetailKPIs(p){
 }
 
 /* ---- Sterktes & ontwikkelpunten ---- */
+
+/* ---- Scout-samenvatting (wapen + notities + wedstrijd) ---- */
+function renderDetailSummary(p){
+  const wrap = document.getElementById('dtl-summary-card');
+  if(!wrap) return;
+  const w = p.wedstrijd || {};
+  const hasWapen   = !!p.wapen;
+  const hasNotities = !!(p.notities || '').trim();
+  const hasWedstrijd = !!(w.thuis || w.uit || w.datum);
+  if(!hasWapen && !hasNotities && !hasWedstrijd){ wrap.innerHTML = ''; return; }
+
+  const wedstrijdStr = [
+    w.thuis && w.uit ? `${escapeHtml(w.thuis)} vs ${escapeHtml(w.uit)}` : '',
+    w.uitslag ? escapeHtml(w.uitslag) : '',
+    w.datum   ? formatDate(w.datum)   : ''
+  ].filter(Boolean).join(' · ');
+
+  const notitiesStr = (p.notities || '').trim();
+  const notitiesPreview = notitiesStr.length > 160
+    ? escapeHtml(notitiesStr.slice(0, 160)) + '…'
+    : escapeHtml(notitiesStr);
+
+  wrap.innerHTML = `
+    <div class="card compare-card dtl-summary-card" style="margin-top:0;margin-bottom:16px;">
+      <div class="compare-card-title">
+        <span>Scout-samenvatting</span>
+        <span class="compare-card-sub">Kernbevindingen op basis van het laatste rapport</span>
+      </div>
+      <div class="dtl-summary-body">
+        ${hasWapen ? `
+        <div class="dtl-summary-row dtl-summary-wapen">
+          <div class="dtl-summary-icon">⚡</div>
+          <div>
+            <div class="dtl-summary-label">Persoonlijk wapen</div>
+            <div class="dtl-summary-text">${escapeHtml(p.wapen)}</div>
+          </div>
+        </div>` : ''}
+        ${hasWedstrijd ? `
+        <div class="dtl-summary-row">
+          <div class="dtl-summary-icon">🏟</div>
+          <div>
+            <div class="dtl-summary-label">Wedstrijd geobserveerd</div>
+            <div class="dtl-summary-text">${wedstrijdStr || '—'}</div>
+          </div>
+        </div>` : ''}
+        ${hasNotities ? `
+        <div class="dtl-summary-row">
+          <div class="dtl-summary-icon">📋</div>
+          <div>
+            <div class="dtl-summary-label">Scout-notities</div>
+            <div class="dtl-summary-text dtl-summary-notes">${notitiesPreview}</div>
+          </div>
+        </div>` : ''}
+      </div>
+    </div>`;
+}
+
 function renderDetailStrengthsWeaknesses(p){
   const wrap = $('#dtl-sw-body');
   if(!wrap) return;

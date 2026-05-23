@@ -5402,6 +5402,26 @@ tbody tr:last-child td { border-bottom: none; }
 .compare-table .cmp-best { box-shadow: 0 0 0 2px var(--grade-a) inset; }
 .compare-table .cmp-name-link { font-weight: 700; color: var(--text); cursor: pointer; border-bottom: 1px dotted var(--text-3); }
 .compare-table .cmp-name-link:hover { color: var(--primary-2); border-bottom-color: var(--primary-2); }
+/* ── Spelersprofiel — vergelijk-knoppen ── */
+.dtl-cmp-btn {
+  border-color: var(--secondary);
+  color: var(--secondary);
+  font-weight: 600;
+}
+.dtl-cmp-btn:hover { background: rgba(245,197,24,.12); }
+.dtl-cmp-active {
+  background: rgba(245,197,24,.18);
+  border-color: var(--secondary) !important;
+  color: var(--secondary) !important;
+}
+.dtl-cmp-goto {
+  background: linear-gradient(135deg, var(--secondary), #e6a800);
+  color: #1a1200;
+  border-color: var(--secondary);
+  font-weight: 700;
+}
+.dtl-cmp-goto:hover { opacity: .88; }
+
 /* ── Vergelijken: Advies-widget ── */
 .cmp-advies-grid {
   display: grid;
@@ -7984,3 +8004,20 @@ tbody tr:last-child td { border-bottom: none; }
   .pnl-wk { font-size: 11px; }
   .pnl-range { font-size: 11px; }
 }
+
+/* ── Spelersdetail: scout-samenvatting ── */
+.dtl-summary-body { display: flex; flex-direction: column; gap: 12px; }
+.dtl-summary-row {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 10px 12px; background: var(--bg-3);
+  border-radius: 8px; border: 1px solid var(--border);
+}
+.dtl-summary-wapen { border-color: rgba(245,197,24,.35); background: rgba(245,197,24,.06); }
+.dtl-summary-icon { font-size: 18px; line-height: 1; flex-shrink: 0; margin-top: 1px; }
+.dtl-summary-label {
+  font-size: 10px; text-transform: uppercase; letter-spacing: .7px;
+  color: var(--text-3); margin-bottom: 4px; font-weight: 600;
+}
+.dtl-summary-text { font-size: 13px; color: var(--text); line-height: 1.5; }
+.dtl-summary-wapen .dtl-summary-text { font-weight: 700; color: var(--secondary); }
+.dtl-summary-notes { color: var(--text-2); font-size: 12.5px; }

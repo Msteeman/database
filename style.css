@@ -8397,3 +8397,286 @@ tbody tr:last-child td { border-bottom: none; }
   background: rgba(34,197,94,.2);
   border-color: rgba(34,197,94,.5);
 }
+
+
+/* =====================================================================
+   VISUELE VERBETERINGEN — animaties, 3D, micro-interacties
+   ===================================================================== */
+
+/* ── A1: Tab crossfade + slide bij view-wissel ── */
+.view.active {
+  animation: sh-view-enter .22s cubic-bezier(.25,.46,.45,.94) both;
+}
+@keyframes sh-view-enter {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── A2: Staggered card entrances ── */
+@keyframes sh-slide-up {
+  from { opacity: 0; transform: translateY(18px) scale(.98); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+.sh-stagger {
+  animation: sh-slide-up .32s cubic-bezier(.25,.46,.45,.94) both;
+  animation-delay: calc(var(--si, 0) * 45ms);
+}
+
+/* ── A3: Button micro-interacties ── */
+.btn { transition: transform .12s, box-shadow .15s, background .15s, border-color .15s, opacity .15s; }
+.btn:active { transform: scale(0.95) !important; }
+.btn-primary:hover  { box-shadow: 0 0 22px rgba(227,6,19,.35), 0 4px 14px rgba(0,0,0,.3); }
+.btn-secondary:hover { box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+.btn-ghost:hover { background: rgba(255,255,255,.06); }
+
+/* ── B2: Segmentbalk niveau-verdeling ── */
+.dist-segment-wrap {
+  display: flex; flex-direction: column; gap: 10px; padding: 4px 0;
+}
+.dist-segment-row {
+  display: flex; align-items: center; gap: 10px;
+}
+.dist-segment-label {
+  width: 26px; flex-shrink: 0;
+  display: flex; justify-content: center;
+}
+.dist-segment-track {
+  flex: 1; height: 10px;
+  background: rgba(255,255,255,.06);
+  border-radius: 6px; overflow: hidden;
+}
+.dist-segment-fill {
+  height: 100%; border-radius: 6px;
+  width: 0;
+  transition: width .7s cubic-bezier(.25,.46,.45,.94);
+}
+.dist-segment-count {
+  width: 26px; font-size: 12px; color: var(--text-3);
+  text-align: right; flex-shrink: 0;
+}
+.dist-section-title { font-size: 11px; color: var(--text-3); margin: 10px 0 4px; letter-spacing: .04em; text-transform: uppercase; }
+
+/* ── C1: 3D player card tilt ── */
+.sh-tilt-card {
+  transform-style: preserve-3d;
+  transform: perspective(800px) rotateX(var(--tilt-x,0deg)) rotateY(var(--tilt-y,0deg));
+  transition: transform .08s linear, box-shadow .15s;
+  will-change: transform;
+}
+.sh-tilt-card:hover {
+  box-shadow: 0 16px 40px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.08);
+}
+
+/* ── C2: Grade A shimmer ── */
+@keyframes grade-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.grade.A {
+  background: linear-gradient(90deg, #c9a227 0%, #f0d060 40%, #ffeea0 50%, #f0d060 60%, #c9a227 100%);
+  background-size: 300% 100%;
+  animation: grade-shimmer 2.4s linear infinite;
+  color: #1a1200 !important;
+  border-color: transparent !important;
+}
+
+/* ── C3: Filterovergang spelerdatabase ── */
+.player-card {
+  transition: opacity .18s ease, transform .18s ease;
+}
+.player-card.sh-exit {
+  opacity: 0 !important; transform: scale(.96) !important; pointer-events: none;
+}
+
+/* ── D1: Gauge animate-in ── */
+.compare-gauge-ring-fg,
+.compare-gauge-ring-pot {
+  transition: stroke-dashoffset .9s cubic-bezier(.25,.46,.45,.94);
+}
+.compare-gauge.gauge-hidden .compare-gauge-ring-fg,
+.compare-gauge.gauge-hidden .compare-gauge-ring-pot {
+  stroke-dashoffset: var(--gauge-circumference, 289) !important;
+}
+
+/* ── D3: Bar fill animatie ── */
+.compare-bar-fill {
+  transition: width .65s cubic-bezier(.2,.8,.3,1.05);
+}
+.compare-bar-fill.bar-init { width: 0 !important; }
+
+/* ── D4: Winner highlight ── */
+.compare-bar-fill.is-winner {
+  box-shadow: 0 0 12px var(--player-color), 0 0 4px var(--player-color);
+}
+.compare-bar-group-title em.winner-label {
+  color: #fbbf24; font-style: normal; font-weight: 700; font-size: 10px;
+}
+
+/* ── D5: 3D flip compare hero card ── */
+.compare-hero-slot {
+  perspective: 900px;
+}
+.compare-hero-inner {
+  position: relative; width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  transition: transform .5s cubic-bezier(.4,.2,.2,1);
+}
+.compare-hero-slot.flipped .compare-hero-inner {
+  transform: rotateY(180deg);
+}
+.compare-hero-front,
+.compare-hero-back {
+  position: absolute; inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: inherit;
+}
+.compare-hero-back {
+  transform: rotateY(180deg);
+  background: var(--bg-3);
+  border: 1px solid var(--border-2);
+  border-radius: 12px;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 6px; padding: 12px;
+  font-size: 12px; color: var(--text-2);
+}
+.compare-hero-back .flip-stat { font-size: 11px; color: var(--text-3); text-align: center; }
+.compare-hero-back .flip-val  { font-size: 18px; font-weight: 800; color: var(--text); }
+
+/* ── E1: Trend chart SVG draw-animatie ── */
+.dtl-trend-line {
+  stroke-dasharray: 1200;
+  stroke-dashoffset: 1200;
+  animation: trend-draw 1s cubic-bezier(.4,0,.2,1) forwards;
+}
+.dtl-trend-line-2 {
+  animation-delay: .2s;
+}
+@keyframes trend-draw {
+  to { stroke-dashoffset: 0; }
+}
+.dtl-trend-dot {
+  opacity: 0;
+  animation: dot-pop .2s ease forwards;
+}
+@keyframes dot-pop {
+  from { opacity: 0; transform: scale(0); transform-box: fill-box; transform-origin: center; }
+  to   { opacity: 1; transform: scale(1); transform-box: fill-box; transform-origin: center; }
+}
+
+/* ── E3: Advies badge bounce ── */
+@keyframes badge-bounce {
+  0%  { transform: scale(0) rotate(-8deg); opacity: 0; }
+  55% { transform: scale(1.18) rotate(3deg); opacity: 1; }
+  75% { transform: scale(.94) rotate(-1deg); }
+  100%{ transform: scale(1) rotate(0); opacity: 1; }
+}
+.advies-badge-anim {
+  animation: badge-bounce .45s cubic-bezier(.34,1.56,.64,1) both;
+}
+
+/* ── F1: Live wedstrijd pulserende border ── */
+@keyframes live-border-pulse {
+  0%,100% { box-shadow: 0 0 0 0 rgba(227,6,19,.0), inset 0 0 0 1.5px rgba(227,6,19,.5); }
+  50%      { box-shadow: 0 0 18px 4px rgba(227,6,19,.25), inset 0 0 0 1.5px rgba(227,6,19,.9); }
+}
+.is-live-card {
+  animation: live-border-pulse 2s ease-in-out infinite;
+}
+
+/* ── F2: Countdown fade bij update ── */
+.cd-tick {
+  display: inline-block;
+  animation: cd-fade .3s ease;
+}
+@keyframes cd-fade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── G1: 3D radar perspective wrapper ── */
+.compare-radar-wrap {
+  perspective: 1400px;
+  perspective-origin: 50% 40%;
+}
+#cmp-radar {
+  transform: rotateX(10deg) scale(1.02);
+  transform-style: preserve-3d;
+  transition: transform .4s ease;
+  display: block; margin: 0 auto;
+}
+.compare-radar-wrap:hover #cmp-radar {
+  transform: rotateX(0deg) scale(1);
+}
+
+/* ── G2: Bubblechart spelerdatabase ── */
+.db-view-toggle {
+  display: flex; gap: 6px; margin-bottom: 12px;
+}
+.db-view-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 5px 12px; border-radius: 8px; font-size: 12px; font-weight: 600;
+  border: 1px solid var(--border); background: var(--bg-2); color: var(--text-2);
+  cursor: pointer; transition: border-color .15s, color .15s, background .15s;
+}
+.db-view-btn.active {
+  border-color: var(--accent); background: rgba(227,6,19,.1); color: var(--text);
+}
+#db-bubble-wrap {
+  width: 100%; overflow: hidden;
+  display: none;
+}
+#db-bubble-wrap.active { display: block; }
+#db-bubble-svg {
+  width: 100%; height: auto;
+  display: block;
+}
+.bubble-player {
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.bubble-player:hover circle {
+  filter: brightness(1.3);
+}
+.bubble-label { font-family: inherit; pointer-events: none; }
+
+/* ── G3: Heatmap pitch overlay ── */
+.pitch-heatmap-overlay {
+  pointer-events: none;
+  position: absolute; inset: 0;
+}
+.heatmap-zone {
+  position: absolute;
+  border-radius: 50%;
+  mix-blend-mode: screen;
+  opacity: .55;
+  filter: blur(22px);
+  transition: opacity .4s;
+}
+
+/* ── KPI count-up ── */
+.kpi-value {
+  transition: color .3s;
+}
+.kpi-value.counting { color: var(--accent); }
+
+/* ── Match group date headers ── */
+.match-group-header {
+  animation: sh-slide-up .25s ease both;
+}
+
+/* ── Smooth scroll dag-strip ── */
+#programma-week-strip,
+.prog-week-strip {
+  scroll-behavior: smooth;
+}
+
+/* ── Algemene panel fade-in ── */
+.panel {
+  animation: sh-slide-up .28s cubic-bezier(.25,.46,.45,.94) both;
+}
+.panel:nth-child(2) { animation-delay: .06s; }
+.panel:nth-child(3) { animation-delay: .12s; }
+.panel:nth-child(4) { animation-delay: .18s; }
+

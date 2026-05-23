@@ -5152,6 +5152,47 @@ function confirmDiscard(){
 /* v70a: beforeunload weggehaald — concept blijft staan in localStorage */
 
 /* =============== NAVIGATION =============== */
+/* ── Stagger helper: voeg sh-stagger class + --si index toe aan kinderen ── */
+function shStagger(containerSelector, childSelector){
+  try {
+    const host = typeof containerSelector === 'string'
+      ? document.querySelector(containerSelector) : containerSelector;
+    if(!host) return;
+    const items = childSelector ? host.querySelectorAll(childSelector) : host.children;
+    [...items].forEach((el, i) => {
+      el.classList.remove('sh-stagger');
+      void el.offsetWidth; // force reflow
+      el.style.setProperty('--si', i);
+      el.classList.add('sh-stagger');
+    });
+  } catch(_){}
+}
+window.shStagger = shStagger;
+
+/* ── C1: 3D tilt op kaarten met class sh-tilt-card (desktop only) ── */
+(function(){
+  if(window.matchMedia('(hover:none)').matches) return; // geen tilt op touch
+  let _rAF = null;
+  document.addEventListener('mousemove', e => {
+    const card = e.target.closest('.sh-tilt-card');
+    if(!card) return;
+    if(_rAF) cancelAnimationFrame(_rAF);
+    _rAF = requestAnimationFrame(() => {
+      const r = card.getBoundingClientRect();
+      const nx = (e.clientX - r.left) / r.width  - 0.5; // -0.5..0.5
+      const ny = (e.clientY - r.top)  / r.height - 0.5;
+      card.style.setProperty('--tilt-y',  (nx *  8) + 'deg');
+      card.style.setProperty('--tilt-x',  (ny * -6) + 'deg');
+    });
+  }, { passive: true });
+  document.addEventListener('mouseleave', e => {
+    const card = e.target.closest && e.target.closest('.sh-tilt-card');
+    if(!card) return;
+    card.style.setProperty('--tilt-x', '0deg');
+    card.style.setProperty('--tilt-y', '0deg');
+  }, true);
+})();
+
 function go(view){
   // v70h-s1.2: guard tegen falsy view (bv. nav-item zonder data-view)
   if(!view || typeof view !== 'string') return;
@@ -5820,7 +5861,7 @@ function renderActiveScouting(){
       }).join('');
     }
     return `
-      <div class="sa-card" data-prog-id="${escapeHtml(prog.id)}">
+      <div class="sa-card is-live-card" data-prog-id="${escapeHtml(prog.id)}">
         <div class="sa-header" data-sa-collapse="1">
           <div>
             <div class="sa-title"><span class="sa-pulse"></span> Bezig met scouten — ${teams}</div>
@@ -7008,25 +7049,42 @@ function renderDashboard(){
   $('#kpi-grid').innerHTML = `
     <div class="kpi-card" data-kpi="all" title="Toon alle spelers">
       <div class="kpi-label">Totaal spelers</div>
-      <div class="kpi-value">${total}</div>
+      <div class="kpi-value" data-count-to="${total}">0</div>
       <div class="kpi-sub">in database</div>
     </div>
     <div class="kpi-card blue" data-kpi="week" title="Toon rapporten van deze week">
       <div class="kpi-label">Deze week</div>
-      <div class="kpi-value">${last7}</div>
+      <div class="kpi-value" data-count-to="${last7}">0</div>
       <div class="kpi-sub">nieuwe rapporten</div>
     </div>
     <div class="kpi-card green" data-kpi="top" title="Toon toptalenten (potentieel A)">
       <div class="kpi-label">Toptalenten</div>
-      <div class="kpi-value">${topPotential}</div>
+      <div class="kpi-value" data-count-to="${topPotential}">0</div>
       <div class="kpi-sub">kan doorgroeien naar top</div>
     </div>
     <div class="kpi-card yellow" data-kpi="admit" title="Toon spelers met advies Direct contracteren">
       <div class="kpi-label">Direct contracteren</div>
-      <div class="kpi-value">${advice1}</div>
+      <div class="kpi-value" data-count-to="${advice1}">0</div>
       <div class="kpi-sub">hoogste advies</div>
     </div>
   `;
+  // B1: count-up animatie
+  setTimeout(() => {
+    document.querySelectorAll('#kpi-grid .kpi-value[data-count-to]').forEach(el => {
+      const target = parseInt(el.dataset.countTo, 10) || 0;
+      if(target === 0){ el.textContent = '0'; return; }
+      const dur = 600, start = performance.now();
+      el.classList.add('counting');
+      function tick(now){
+        const t = Math.min(1, (now - start) / dur);
+        const ease = t < .5 ? 2*t*t : -1+(4-2*t)*t;
+        el.textContent = Math.round(ease * target);
+        if(t < 1) requestAnimationFrame(tick);
+        else { el.textContent = target; el.classList.remove('counting'); }
+      }
+      requestAnimationFrame(tick);
+    });
+  }, 80);
 
   $$('#kpi-grid .kpi-card').forEach(card=>{
     card.addEventListener('click', ()=>{
@@ -7066,7 +7124,7 @@ function renderDashboard(){
   const recent = [...players].sort((a,b)=> new Date(b.datum||0) - new Date(a.datum||0)).slice(0,6);
   const list = $('#recent-list');
   list.innerHTML = recent.map(p => `
-    <div class="recent-item" data-id="${p.id}">
+    <div class="recent-item sh-tilt-card" data-id="${p.id}">
       <div class="recent-avatar">${initials(p.naam)}</div>
       <div class="recent-info">
         <div class="recent-name">${escapeHtml(p.naam)}</div>
@@ -7084,8 +7142,16 @@ function renderDashboard(){
 
   const distCurrent  = countByGrade(players, 'huidig_niveau');
   const distPotential = countByGrade(players, 'potentieel_niveau');
-  $('#dist-current').innerHTML  = renderDist(distCurrent, false);
-  $('#dist-potential').innerHTML = renderDist(distPotential, true);
+  // B2: animated segmentbalken
+  $('#dist-current').innerHTML  = renderDistSegment(distCurrent, false);
+  $('#dist-potential').innerHTML = renderDistSegment(distPotential, true);
+  setTimeout(() => {
+    ['#dist-current','#dist-potential'].forEach(sel => {
+      document.querySelectorAll(`${sel} .dist-segment-fill`).forEach(el => {
+        el.style.width = el.dataset.targetW;
+      });
+    });
+  }, 60);
 
   renderDashGaps();
   renderDashAdvies(players);
@@ -7690,6 +7756,25 @@ function renderDist(dist, outline){
   }).join('');
 }
 
+/* B2: geanimeerde segmentbalk — vervangt renderDist in dashboard */
+const _GRADE_COLORS = { A:'#c9a227', B:'#60a5fa', C:'#fbbf24', D:'#e30613' };
+function renderDistSegment(dist, outline){
+  const total = Object.values(dist).reduce((a,b)=>a+b,0) || 1;
+  return `<div class="dist-segment-wrap">` + GRADES.map(g => {
+    const pct = Math.round((dist[g]/total)*100);
+    const col = _GRADE_COLORS[g] || '#888';
+    const style = outline ? `opacity:.7` : '';
+    return `
+      <div class="dist-segment-row">
+        <div class="dist-segment-label"><span class="grade ${outline?'outline ':' '}${g}">${g}</span></div>
+        <div class="dist-segment-track">
+          <div class="dist-segment-fill" data-target-w="${pct}%" style="background:${col};width:0;${style}"></div>
+        </div>
+        <div class="dist-segment-count">${dist[g]}</div>
+      </div>`;
+  }).join('') + `</div>`;
+}
+
 /* =============== DATABASE =============== */
 // s35ar (#226): "Verwijder dit concept" onderaan rapport-form
 document.addEventListener('click', e => {
@@ -8003,6 +8088,7 @@ function applyFilters(){
     }
   });
   wireDraftCard();
+  setTimeout(() => shStagger(wrap, 'tbody tr:not(.db-expanded-row)'), 0);
   // Row click → detail (but ignore clicks on de checkbox- en expand-kolommen)
   $$('tbody tr', wrap).forEach(tr=>{
     tr.addEventListener('click', (ev)=>{
@@ -9984,7 +10070,15 @@ function renderCompareGauges(players){
         </div>
       </div>`;
   }).join('');
-  wrap.innerHTML = html;
+  // D1: start met gauge-hidden zodat CSS transition de animatie doet
+  const hiddenHtml = html.replace(/class="compare-gauge /g, 'class="compare-gauge gauge-hidden ');
+  wrap.innerHTML = hiddenHtml;
+  // Trigger animate-in na één frame
+  requestAnimationFrame(() => {
+    wrap.querySelectorAll('.compare-gauge.gauge-hidden').forEach((el, i) => {
+      setTimeout(() => el.classList.remove('gauge-hidden'), i * 120);
+    });
+  });
   wrap.querySelectorAll('.compare-gauge').forEach(el => {
     el.addEventListener('click', () => { if(typeof openDetail === 'function') openDetail(el.dataset.id); });
   });
@@ -10054,44 +10148,97 @@ function renderCompareRadar(players){
     ctx.fillText(CMP_CRITERIA[i].label, lx, ly);
   }
 
-  // Player shapes
-  players.forEach((p, idx) => {
+  // D2: pre-compute target points per player
+  const playerData = players.map((p, idx) => {
     const col = cmpColorFor(idx);
     const b = p.beoordelingen || {};
-    const points = CMP_CRITERIA.map((c, i) => {
+    const targets = CMP_CRITERIA.map((c, i) => {
       let v = cmpGradeNum(b[c.key]);
-      if(!v && c.key === 'grit_huidig') v = cmpGradeNum(b.drit_huidig); // fallback
-      const r = R * (v / 4);
+      if(!v && c.key === 'grit_huidig') v = cmpGradeNum(b.drit_huidig);
+      return v;
+    });
+    return { col, targets };
+  });
+
+  function drawShape(progress, pData, eased){
+    const { col, targets } = pData;
+    const points = targets.map((v, i) => {
+      const r = R * (v / 4) * eased;
       const a = angle(i);
       return { x: cx + Math.cos(a)*r, y: cy + Math.sin(a)*r, v };
     });
-    // Filled shape
     ctx.beginPath();
     points.forEach((pt, i) => { if(i===0) ctx.moveTo(pt.x, pt.y); else ctx.lineTo(pt.x, pt.y); });
     ctx.closePath();
-    ctx.fillStyle = hexA(col.c, 0.18);
+    ctx.fillStyle = hexA(col.c, 0.18 * eased);
     ctx.fill();
     ctx.strokeStyle = col.c;
     ctx.lineWidth = 2;
+    ctx.globalAlpha = Math.min(1, eased + 0.1);
     ctx.stroke();
-    // Point dots
-    points.forEach(pt => {
-      if(pt.v <= 0) return;
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, 3.5, 0, Math.PI*2);
-      ctx.fillStyle = col.c;
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(11,15,21,.9)';
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    });
-  });
+    ctx.globalAlpha = 1;
+    if(eased > 0.8){
+      points.forEach(pt => {
+        if(pt.v <= 0) return;
+        ctx.beginPath();
+        ctx.arc(pt.x, pt.y, 3.5 * eased, 0, Math.PI*2);
+        ctx.fillStyle = col.c;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(11,15,21,.9)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      });
+    }
+  }
 
-  // Center dot
-  ctx.beginPath();
-  ctx.arc(cx, cy, 2.5, 0, Math.PI*2);
-  ctx.fillStyle = 'rgba(255,255,255,.4)';
-  ctx.fill();
+  function redrawStatic(){
+    ctx.clearRect(0,0,W,H);
+    // Rings
+    for(let lvl=1; lvl<=4; lvl++){
+      ctx.beginPath();
+      for(let i=0;i<N;i++){
+        const a=angle(i); const r=R*(lvl/4);
+        const x=cx+Math.cos(a)*r; const y=cy+Math.sin(a)*r;
+        if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+      }
+      ctx.closePath();
+      ctx.strokeStyle=lvl===4?'rgba(255,255,255,.18)':'rgba(255,255,255,.08)';
+      ctx.lineWidth=lvl===4?1.2:1; ctx.stroke();
+      if(lvl<4){ ctx.fillStyle='rgba(255,255,255,.02)'; ctx.fill(); }
+    }
+    for(let i=0;i<N;i++){
+      const a=angle(i);
+      ctx.beginPath(); ctx.moveTo(cx,cy);
+      ctx.lineTo(cx+Math.cos(a)*R, cy+Math.sin(a)*R);
+      ctx.strokeStyle='rgba(255,255,255,.06)'; ctx.stroke();
+    }
+    ctx.fillStyle='rgba(255,255,255,.35)'; ctx.font='10px -apple-system,Segoe UI,sans-serif'; ctx.textAlign='center';
+    ['D','C','B','A'].forEach((g,i)=>{ const r=R*((i+1)/4); ctx.fillText(g,cx+8,cy-r+3); });
+    ctx.fillStyle='rgba(232,237,245,.9)'; ctx.font='600 12.5px -apple-system,Segoe UI,sans-serif';
+    for(let i=0;i<N;i++){
+      const a=angle(i); const lx=cx+Math.cos(a)*(R+24); const ly=cy+Math.sin(a)*(R+24);
+      ctx.textAlign=Math.abs(Math.cos(a))<0.2?'center':(Math.cos(a)>0?'left':'right');
+      ctx.textBaseline=Math.abs(Math.sin(a))<0.2?'middle':(Math.sin(a)>0?'top':'bottom');
+      ctx.fillText(CMP_CRITERIA[i].label,lx,ly);
+    }
+    ctx.beginPath(); ctx.arc(cx,cy,2.5,0,Math.PI*2); ctx.fillStyle='rgba(255,255,255,.4)'; ctx.fill();
+  }
+
+  // Animated draw — elke speler 200ms vertraging
+  const DUR = 700, DELAY = 200;
+  const totalDur = DUR + (players.length - 1) * DELAY;
+  const startT = performance.now();
+  function frame(now){
+    const elapsed = now - startT;
+    redrawStatic();
+    playerData.forEach((pd, idx) => {
+      const t = Math.max(0, Math.min(1, (elapsed - idx * DELAY) / DUR));
+      const eased = t < .5 ? 2*t*t : -1+(4-2*t)*t;
+      drawShape(elapsed, pd, eased);
+    });
+    if(elapsed < totalDur) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
 
   // Legend
   legend.innerHTML = players.map((p, i) => {
@@ -10111,8 +10258,14 @@ function hexA(hex, alpha){
 function renderCompareBars(players){
   const wrap = $('#cmp-bars');
   if(!wrap) return;
-  // For each criterium, show one row per selected player
   const html = CMP_CRITERIA.map(c => {
+    // D4: bepaal winner-score per criterium
+    const scores = players.map(p => {
+      const b = p.beoordelingen || {};
+      let g = b[c.key]; if(!g && c.key==='grit_huidig') g = b.drit_huidig;
+      return cmpGradeNum(g);
+    });
+    const best = Math.max(...scores);
     const rows = players.map((p, i) => {
       const col = cmpColorFor(i);
       const b = p.beoordelingen || {};
@@ -10122,32 +10275,36 @@ function renderCompareBars(players){
       const pct = v ? (v/4)*100 : 0;
       const display = g || '–';
       const firstName = (p.naam||'?').split(/\s+/)[0] || '?';
+      const isWinner = best > 0 && v === best;
+      // D3: start met bar-init (width:0), JS verwijdert die class na render
       return `
         <div class="compare-bar-row">
           <div class="compare-bar-name" title="${escapeAttr(p.naam||'')}">${escapeHtml(firstName)}</div>
           <div class="compare-bar-track">
-            <div class="compare-bar-fill" style="width:${pct}%;--player-color:${col.c};--player-color-2:${col.c2}"></div>
+            <div class="compare-bar-fill bar-init${isWinner?' is-winner':''}" data-target-w="${pct}" style="width:0;--player-color:${col.c};--player-color-2:${col.c2}"></div>
           </div>
           <div class="compare-bar-grade">${escapeHtml(display)}</div>
         </div>`;
     }).join('');
-    // best grade among selected
-    const best = players.reduce((acc, p) => {
-      const b = p.beoordelingen || {};
-      let g = b[c.key]; if(!g && c.key==='grit_huidig') g = b.drit_huidig;
-      const v = cmpGradeNum(g);
-      return v > acc ? v : acc;
-    }, 0);
     return `
       <div class="compare-bar-group">
         <div class="compare-bar-group-title">
           <span>${escapeHtml(c.label)}</span>
-          <em>${best ? 'beste: ' + cmpGradeFromNum(best) : '—'}</em>
+          <em>${best ? cmpGradeFromNum(best) : '—'}</em>
         </div>
         <div class="compare-bar-rows">${rows}</div>
       </div>`;
   }).join('');
   wrap.innerHTML = html;
+  // D3: trigger fill animatie
+  requestAnimationFrame(() => {
+    wrap.querySelectorAll('.compare-bar-fill.bar-init').forEach((el, i) => {
+      setTimeout(() => {
+        el.classList.remove('bar-init');
+        el.style.width = el.dataset.targetW + '%';
+      }, i * 30);
+    });
+  });
 }
 
 function renderCompareTable(players){
@@ -10615,22 +10772,22 @@ function renderDetailKPIs(p){
   const pVal = cmpGradeNum(p.potentieel_niveau);
   const growth = (hVal && pVal && pVal > hVal) ? `+${pVal - hVal} klasse${pVal-hVal>1?'n':''}` : (hVal && pVal && pVal === hVal ? 'op niveau' : '');
   wrap.innerHTML = `
-    <div class="dtl-kpi-tile ${accentClass(hn)}">
+    <div class="dtl-kpi-tile ${accentClass(hn)} advies-badge-anim" style="animation-delay:.05s">
       <div class="dtl-kpi-label">Huidig niveau</div>
       <div class="dtl-kpi-value">${escapeHtml(hn||'–')}</div>
       <div class="dtl-kpi-sub">${growth ? 'Groei: '+escapeHtml(growth) : 'Nu inzetbaar'}</div>
     </div>
-    <div class="dtl-kpi-tile ${accentClass(pn)}">
+    <div class="dtl-kpi-tile ${accentClass(pn)} advies-badge-anim" style="animation-delay:.12s">
       <div class="dtl-kpi-label">Potentieel</div>
       <div class="dtl-kpi-value">${escapeHtml(pn||'–')}</div>
       <div class="dtl-kpi-sub">Ceiling bij ontwikkeling</div>
     </div>
-    <div class="dtl-kpi-tile ${accentClass(gradeForAdvies(p.advies))}">
+    <div class="dtl-kpi-tile ${accentClass(gradeForAdvies(p.advies))} advies-badge-anim" style="animation-delay:.19s">
       <div class="dtl-kpi-label">Advies</div>
       <div class="dtl-kpi-value small">${escapeHtml(ad)}</div>
       <div class="dtl-kpi-sub">${p.wapen ? 'Wapen: '+escapeHtml(p.wapen) : 'Scout-conclusie'}</div>
     </div>
-    <div class="dtl-kpi-tile ${accentClass(scoreGrade)}">
+    <div class="dtl-kpi-tile ${accentClass(scoreGrade)} advies-badge-anim" style="animation-delay:.26s">
       <div class="dtl-kpi-label">Gem. score</div>
       <div class="dtl-kpi-value">${score ? score.toFixed(2) : '–'}<span style="font-size:14px;font-weight:600;color:var(--text-3);"> / 4</span></div>
       <div class="dtl-kpi-sub">${score ? 'Klasse '+scoreGrade : 'Nog geen beoordelingen'}</div>
@@ -10815,17 +10972,18 @@ function renderDetailGauge(p){
   const potPct = potVal ? potVal/4 : 0;
   const potOff = C * (1 - potPct);
   const meta = [positionLabel(p.positie), p.club].filter(Boolean).join(' · ');
+  // D1: start vanuit hidden (stroke-dashoffset = C), animeer naar target
   wrap.innerHTML = `
-    <div class="compare-gauge" style="--player-color:${col.c}">
+    <div class="compare-gauge gauge-hidden" style="--player-color:${col.c};--gauge-circumference:${C}">
       <div class="compare-gauge-name">${escapeHtml(p.naam||'?')}</div>
       <div class="compare-gauge-meta">${escapeHtml(meta||'—')}</div>
       <div class="compare-gauge-ring">
         <svg width="110" height="110" viewBox="0 0 110 110">
           <circle class="compare-gauge-ring-bg" cx="55" cy="55" r="${R}" fill="none" stroke-width="8"/>
           <circle class="compare-gauge-ring-pot" cx="55" cy="55" r="${R}" fill="none" stroke-width="3"
-                  stroke-dasharray="${C}" stroke-dashoffset="${potOff}" stroke-linecap="round"/>
+                  stroke-dasharray="${C}" stroke-dashoffset="${C}" stroke-linecap="round"/>
           <circle class="compare-gauge-ring-fg" cx="55" cy="55" r="${R}" fill="none" stroke-width="8"
-                  stroke-dasharray="${C}" stroke-dashoffset="${off}" stroke-linecap="round"/>
+                  stroke-dasharray="${C}" stroke-dashoffset="${C}" stroke-linecap="round"/>
         </svg>
         <div class="compare-gauge-center">
           <div class="compare-gauge-grade">${escapeHtml(grade)}</div>
@@ -10837,6 +10995,15 @@ function renderDetailGauge(p){
         <div>Potentieel<b>${escapeHtml(p.potentieel_niveau||'–')}</b></div>
       </div>
     </div>`;
+  requestAnimationFrame(() => {
+    const el = wrap.querySelector('.compare-gauge');
+    if(!el) return;
+    el.classList.remove('gauge-hidden');
+    const fg = el.querySelector('.compare-gauge-ring-fg');
+    const pot = el.querySelector('.compare-gauge-ring-pot');
+    if(fg)  fg.style.strokeDashoffset  = off;
+    if(pot) pot.style.strokeDashoffset = potOff;
+  });
 }
 
 function renderDetailRadar(p){
@@ -11060,13 +11227,22 @@ function renderDetailBars(p){
           <div class="compare-bar-row">
             <div class="compare-bar-name">&nbsp;</div>
             <div class="compare-bar-track">
-              <div class="compare-bar-fill" style="width:${pct}%;--player-color:${col.c};--player-color-2:${col.c2}"></div>
+              <div class="compare-bar-fill bar-init" data-target-w="${pct}" style="width:0;--player-color:${col.c};--player-color-2:${col.c2}"></div>
             </div>
             <div class="compare-bar-grade">${escapeHtml(display)}</div>
           </div>
         </div>
       </div>`;
   }).join('');
+  // E2: animate bars
+  requestAnimationFrame(() => {
+    wrap.querySelectorAll('.compare-bar-fill.bar-init').forEach((el, i) => {
+      setTimeout(() => {
+        el.classList.remove('bar-init');
+        el.style.width = el.dataset.targetW + '%';
+      }, i * 50);
+    });
+  });
 }
 
 function renderDetailFullReport(p){
@@ -12295,6 +12471,7 @@ function renderMatches(){
     }
   });
   list.innerHTML = html;
+  setTimeout(() => shStagger(list, '.match-card, .match-report-card, .match-group-header'), 0);
 
   list.querySelectorAll('.match-player-chip').forEach(chip => {
     chip.addEventListener('click', (e)=>{
@@ -14642,7 +14819,7 @@ function renderProgramma(){
           Live scouten
         </button>`
       : '';
-    return `<div class="prog-ev-card ${stCls}" data-prog-id="${it.id}">
+    return `<div class="prog-ev-card sh-tilt-card ${stCls}" data-prog-id="${it.id}">
       <div class="pec-icon">${icon}</div>
       <div class="pec-body">
         <div class="pec-title">${titleLine}</div>
@@ -14702,6 +14879,7 @@ function renderProgramma(){
 
   const emptyEl = $('#programma-empty');
   if(emptyEl) emptyEl.style.display = dayItems.length === 0 ? 'block' : 'none';
+  if(grid) setTimeout(() => shStagger(grid, '.prog-ev-card'), 0);
 }
 
 /* s21: Live scouten modal */

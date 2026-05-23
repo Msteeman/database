@@ -2118,6 +2118,22 @@ a { color: var(--accent); text-decoration: none; }
 .poscov-count { font-size: 18px; font-weight: 800; margin-top: 3px; color: var(--text); }
 .poscov-count.zero { color: var(--text-3); }
 .poscov-label { font-size: 9px; color: var(--text-3); margin-top: 2px; line-height: 1.2; }
+/* ── Club-overzicht widget ── */
+.club-legend { display:flex; gap:12px; font-size:11px; color:var(--text-3); margin-bottom:10px; align-items:center; }
+.club-legend-dot { display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:3px; }
+.club-grid { display:flex; flex-direction:column; gap:7px; }
+.club-row {
+  display:flex; align-items:center; gap:10px;
+  cursor:pointer; padding:6px 4px; border-radius:6px;
+  transition:background .15s;
+}
+.club-row:hover { background:var(--bg-3); }
+.club-name { width:110px; font-size:12px; font-weight:600; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex-shrink:0; }
+.club-bar-wrap { flex:1; }
+.club-bar { display:flex; height:18px; border-radius:5px; overflow:hidden; background:var(--bg-3); }
+.club-seg { height:100%; transition:width .4s ease; }
+.club-count { width:26px; text-align:right; font-size:12px; font-weight:700; color:var(--text-2); flex-shrink:0; }
+
 
 /* Database table */
 .filters {

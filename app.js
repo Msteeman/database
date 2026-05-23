@@ -16662,7 +16662,7 @@ function renderDashboard(){
   renderDashGaps();
   renderDashAdvies(players);
   renderDashTop(players);
-  renderDashPositions(players);
+  renderDashClubs(players);
   renderGeo();
   renderDashCategories(players);
 }
@@ -16748,19 +16748,19 @@ function renderDashAdvies(players){
   }).join('');
 }
 function renderDashTop(players){
+  const gradeScore = {A:4, B:3, C:2, D:1};
   const scored = players
     .filter(p => p.potentieel_niveau === 'A' || p.potentieel_niveau === 'B')
     .map(p => {
-      const t = parseFloat(p.toekomst) || 0;
-      const i = parseFloat(p.indruk) || 0;
-      return { p, score: (t*0.6) + (i*0.4) };
+      const pot    = gradeScore[p.potentieel_niveau] || 0;
+      const huidig = gradeScore[p.huidig_niveau]     || 0;
+      return { p, score: (pot * 0.65) + (huidig * 0.35) };
     })
-    .filter(x => x.score > 0)
-    .sort((a,b)=> b.score - a.score)
-    .slice(0,5);
+    .sort((a,b) => b.score - a.score || a.p.naam.localeCompare(b.p.naam, 'nl'))
+    .slice(0, 6);
   const wrap = $('#dash-top');
   if(!scored.length){
-    wrap.innerHTML = '<div class="gap-empty"><div class="icon">○</div><div>Nog geen spelers met potentieel A of B + scores.</div></div>';
+    wrap.innerHTML = '<div class="gap-empty"><div class="icon">○</div><div>Nog geen spelers met potentieel A of B.</div></div>';
     return;
   }
   wrap.innerHTML = `
@@ -16770,9 +16770,12 @@ function renderDashTop(players){
           <div class="top-rank">${idx+1}</div>
           <div class="top-info">
             <div class="top-name">${escapeHtml(x.p.naam)}</div>
-            <div class="top-meta">${escapeHtml(positionLabel(x.p.positie))}${x.p.club?(' · '+escapeHtml(x.p.club)):''} · pot. <span class="grade outline ${x.p.potentieel_niveau}" style="padding:0 5px;height:16px;font-size:10px;">${x.p.potentieel_niveau}</span></div>
+            <div class="top-meta">${escapeHtml(positionLabel(x.p.positie))}${x.p.club?' · '+escapeHtml(x.p.club):''}${x.p.elftal?' · '+escapeHtml(x.p.elftal):''}</div>
           </div>
-          <div class="top-score">${x.score.toFixed(1)}</div>
+          <div style="display:flex;gap:4px;align-items:center;flex-shrink:0;">
+            <span class="grade ${x.p.huidig_niveau||'D'}">${x.p.huidig_niveau||'?'}</span>
+            <span class="grade outline ${x.p.potentieel_niveau||'D'}">${x.p.potentieel_niveau||'?'}</span>
+          </div>
         </div>
       `).join('')}
     </div>
@@ -16781,30 +16784,55 @@ function renderDashTop(players){
     el.addEventListener('click', ()=> openDetail(el.dataset.id));
   });
 }
-function renderDashPositions(players){
-  const counts = {};
-  ALL_POSITIONS.forEach(p => counts[p.code] = 0);
-  players.forEach(p => { if(counts[p.positie] !== undefined) counts[p.positie]++; });
-  $('#dash-positions').innerHTML = `
-    <div class="poscov-grid">
-      ${ALL_POSITIONS.map(p=>{
-        const n = counts[p.code];
+function renderDashClubs(players){
+  // Club-overzicht: top 8 clubs, balk opgesplitst per potentieel-niveau
+  const clubMap = {};
+  players.forEach(p => {
+    const club = p.club || 'Onbekend';
+    if(!clubMap[club]) clubMap[club] = {total:0, A:0, B:0, C:0, D:0};
+    clubMap[club].total++;
+    const pot = p.potentieel_niveau || 'D';
+    if(clubMap[club][pot] !== undefined) clubMap[club][pot]++;
+  });
+  const sorted = Object.entries(clubMap)
+    .sort((a,b) => b[1].total - a[1].total)
+    .slice(0, 8);
+  const max = sorted[0]?.[1]?.total || 1;
+  const wrap = $('#dash-clubs');
+  if(!sorted.length){
+    wrap.innerHTML = '<div class="gap-empty"><div class="icon">○</div><div>Nog geen spelers in database.</div></div>';
+    return;
+  }
+  // Legenda
+  const legend = ['A','B','C','D'].map(g =>
+    `<span class="club-legend-dot" style="background:var(--grade-${g.toLowerCase()})"></span>${g}`
+  ).join('');
+  wrap.innerHTML = `
+    <div class="club-legend">${legend}</div>
+    <div class="club-grid">
+      ${sorted.map(([club, data]) => {
+        const tot = data.total;
+        const segs = ['A','B','C','D']
+          .filter(g => data[g] > 0)
+          .map(g => `<div class="club-seg" style="width:${(data[g]/tot)*100}%;background:var(--grade-${g.toLowerCase()})" title="${data[g]}× pot. ${g}"></div>`)
+          .join('');
         return `
-          <div class="poscov-cell ${n===0?'zero':''}" data-code="${p.code}" title="${escapeHtml(p.label)}">
-            <div class="poscov-code">${p.code}</div>
-            <div class="poscov-count ${n===0?'zero':''}">${n}</div>
-            <div class="poscov-label">${escapeHtml(p.label)}</div>
+          <div class="club-row" data-club="${escapeHtml(club)}">
+            <div class="club-name">${escapeHtml(club)}</div>
+            <div class="club-bar-wrap">
+              <div class="club-bar">${segs}</div>
+            </div>
+            <div class="club-count">${tot}</div>
           </div>`;
       }).join('')}
     </div>
   `;
-  $$('.poscov-cell', $('#dash-positions')).forEach(el=>{
+  $$('.club-row', wrap).forEach(el=>{
     el.addEventListener('click', ()=>{
-      if(el.classList.contains('zero')) return;
       go('database');
       setTimeout(()=>{
-        const sel = $('#filter-position');
-        if(sel){ sel.value = el.dataset.code; applyFilters(); }
+        const s = $('#filter-search');
+        if(s){ s.value = el.dataset.club; applyFilters(); }
       }, 50);
     });
   });

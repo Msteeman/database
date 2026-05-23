@@ -828,7 +828,20 @@
           <div class="legend-item"><span class="legend-dot" style="background:var(--grade-d)"></span>D — KKD / onder niveau</div>
         </div>
 
+        <!-- G2: view-toggle lijst / bubblechart -->
+        <div class="db-view-toggle" id="db-view-toggle">
+          <button class="db-view-btn active" data-db-view="list">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+            Lijst
+          </button>
+          <button class="db-view-btn" data-db-view="bubble">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="6" cy="12" r="4"/><circle cx="16" cy="7" r="6"/><circle cx="17" cy="18" r="3"/></svg>
+            Bubble view
+          </button>
+        </div>
+
         <div class="table-wrap" id="db-table-wrap"></div>
+        <div id="db-bubble-wrap"></div>
       </section>
 
       <!-- ====== VERGELIJKEN ====== -->

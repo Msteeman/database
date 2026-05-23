@@ -23732,11 +23732,12 @@ function renderProgramma(){
         <div class="psd-dot${cnt>0?' has-events':''}"></div>
       </div>`;
     }).join('');
-    stripEl.querySelectorAll('[data-strip-day]').forEach(el => {
-      el.addEventListener('click', () => {
-        progWeekActiveDay = parseInt(el.dataset.stripDay, 10);
-        renderProgramma();
-      });
+    // s35dj-fix: event delegation op container — robuuster dan per-element op mobiel
+    stripEl.addEventListener('click', e => {
+      const day = e.target.closest('[data-strip-day]');
+      if(!day) return;
+      progWeekActiveDay = parseInt(day.dataset.stripDay, 10);
+      renderProgramma();
     });
   }
 
@@ -23756,21 +23757,36 @@ function renderProgramma(){
     const typeLbl = TYPE_LABEL[type] || type;
     const stCls   = _shMatchStatusClass(it);
     const titleLine = type === 'wedstrijd'
-      ? `${escapeHtml(it.thuis||'?')} — ${escapeHtml(it.uit||'?')}`
+      ? `${escapeHtml(it.thuis||'?')}${it.thuis_elftal?' '+escapeHtml(it.thuis_elftal):''} — ${escapeHtml(it.uit||'?')}${it.uit_elftal?' '+escapeHtml(it.uit_elftal):''}`
       : escapeHtml(it.naam || typeLbl);
     const spelersN = (it.spelers||[]).length;
-    const locShort = it.locatie ? (it.locatie.length>28 ? it.locatie.slice(0,28)+'…' : it.locatie) : '';
+    // Route-knop: club opzoeken of locatie gebruiken
+    let mapsUrl = '';
+    const clubInfo = (typeof CLUB_ADRESSEN !== 'undefined' && it.thuis)
+      ? CLUB_ADRESSEN[(it.thuis||'').toLowerCase().trim()] : null;
+    if(clubInfo && clubInfo.lat && clubInfo.lon){
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${clubInfo.lat},${clubInfo.lon}`;
+    } else if(clubInfo && clubInfo.adres){
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(clubInfo.adres)}`;
+    } else if(it.locatie){
+      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(it.locatie)}`;
+    }
+    const locLabel = it.locatie || (clubInfo && clubInfo.sportpark) || '';
+    const locHtml = locLabel
+      ? (mapsUrl
+        ? `<span class="pec-loc pec-route" data-maps-url="${escapeAttr(mapsUrl)}" title="Route openen">📍 ${escapeHtml(locLabel)}</span>`
+        : `<span class="pec-loc">📍 ${escapeHtml(locLabel)}</span>`)
+      : '';
     return `<div class="prog-ev-card ${stCls}" data-prog-id="${it.id}">
       <div class="pec-icon">${icon}</div>
       <div class="pec-body">
         <div class="pec-title">${titleLine}</div>
         <div class="pec-meta">
           ${it.tijd ? `<span class="pec-time">${escapeHtml(it.tijd)}</span>` : ''}
-          ${it.methode && type==='wedstrijd' ? `<span class="pec-pill">${escapeHtml(it.methode)}</span>` : ''}
-          ${locShort ? `<span class="pec-loc">${escapeHtml(locShort)}</span>` : ''}
           ${spelersN ? `<span class="pec-pill">${spelersN} speler${spelersN===1?'':'s'}</span>` : ''}
           ${it.status==='verwerkt' ? `<span class="pec-pill pec-verwerkt">✓ Verwerkt</span>` : ''}
         </div>
+        ${locHtml ? `<div class="pec-loc-row">${locHtml}</div>` : ''}
       </div>
       <button class="pec-edit-btn" data-pec-edit="${it.id}" aria-label="Bewerken" title="Bewerken">&#9998;</button>
     </div>`;
@@ -23782,6 +23798,14 @@ function renderProgramma(){
     grid.querySelectorAll('[data-prog-id]').forEach(el => {
       el.addEventListener('click', e => {
         if(e.target.closest('[data-pec-edit]')) return;
+        // Route-knop: open Google Maps
+        const routeEl = e.target.closest('.pec-route');
+        if(routeEl){
+          e.stopPropagation();
+          const url = routeEl.dataset.mapsUrl;
+          if(url) window.open(url, '_blank', 'noopener');
+          return;
+        }
         const pid = el.dataset.progId;
         if(pid && typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(pid);
       });

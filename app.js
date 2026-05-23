@@ -13393,7 +13393,7 @@ async function _ritNominatimSearch(q){
       label: _ritFormatNomItem(it),
       lat: parseFloat(it.lat),
       lon: parseFloat(it.lon)
-    })).filter(x => x.label && isFinite(x.lat) && isFinite(x.lon));
+    })).filter(x => x.label && _ritCoordsValid(x.lat, x.lon));
     _ritSearchCache.set(q, out);
     return out;
   } catch(_){ return []; }
@@ -13541,18 +13541,31 @@ function _ritHaversineKm(lat1, lon1, lat2, lon2){
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+/* Coördinatenvalidatie — Nederland: lat 50.5-53.7, lon 3.2-7.4 */
+function _ritCoordsValid(lat, lon){
+  return isFinite(lat) && isFinite(lon)
+    && lat >= 50.5 && lat <= 53.7
+    && lon >= 3.2  && lon <= 7.4;
+}
+
 /* OSRM route, met fallback naar Haversine * 1.3 */
 async function _ritRouteKm(lat1, lon1, lat2, lon2){
+  // Sanity check: coördinaten moeten binnen Nederland liggen
+  if(!_ritCoordsValid(lat1, lon1) || !_ritCoordsValid(lat2, lon2)){
+    console.warn('_ritRouteKm: coördinaten buiten Nederland', {lat1,lon1,lat2,lon2});
+    return null; // null = kan niet berekenen
+  }
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
     const res = await fetch(url);
     if(res.ok){
       const data = await res.json();
       const m = data && data.routes && data.routes[0] && data.routes[0].distance;
-      if(isFinite(m) && m > 0) return m / 1000;
+      if(isFinite(m) && m > 0 && m < 800000) return m / 1000; // max 800 km
     }
   } catch(_){}
-  return _ritHaversineKm(lat1, lon1, lat2, lon2) * 1.3;
+  const hav = _ritHaversineKm(lat1, lon1, lat2, lon2) * 1.3;
+  return hav < 800 ? hav : null; // sanity cap
 }
 
 let _ritKmBusy = false;
@@ -13572,7 +13585,14 @@ async function _ritTryAutoKm(force){
   kmInp.placeholder = 'Berekenen…';
   try {
     const km = await _ritRouteKm(vLat, vLon, aLat, aLon);
-    if(isFinite(km) && km > 0) kmInp.value = km.toFixed(1);
+    if(km !== null && isFinite(km) && km > 0){
+      kmInp.value = km.toFixed(1);
+    } else if(km === null){
+      // Coördinaten buiten NL of onbetrouwbaar — laat veld leeg zodat gebruiker handmatig invult
+      kmInp.value = '';
+      kmInp.placeholder = 'Vul handmatig in';
+      if(typeof toast === 'function') toast('Kon afstand niet automatisch berekenen — vul km handmatig in', true);
+    }
   } finally {
     kmInp.placeholder = prev || '0';
     _ritKmBusy = false;

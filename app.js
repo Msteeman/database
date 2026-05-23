@@ -13019,6 +13019,7 @@ function subscribeData(){
     }
     if(currentView === 'dashboard') renderDashboard();
     if(currentView === 'database') applyFilters();
+    try { shUpdateDatabaseNavBadge(); } catch(_){}
     if(currentView === 'pitch' && currentAnalysisId) renderPitchInfo();
     setSync('ok');
   }, err=>{
@@ -16893,6 +16894,7 @@ function renderDashboard(){
   renderDashAdvies(players);
   renderDashTop(players);
   renderDashClubs(players);
+  renderDashFollowUp(players);
   renderGeo();
   renderDashCategories(players);
 }
@@ -17108,6 +17110,77 @@ function renderDashCategories(players){
     </div>
   `;
 }
+
+/* ---- Follow-up nodig widget ---- */
+function renderDashFollowUp(players){
+  const wrap = $('#dash-followup');
+  if(!wrap) return;
+  const DAYS = 60;
+  const cutoff = Date.now() - DAYS * 24 * 3600 * 1000;
+  // Periodiek monitoren (2) of Op proef uitnodigen (3) maar al lang niet gezien
+  const needsVisit = players.filter(p => {
+    const adv = String(p.advies || '');
+    if(adv !== '2' && adv !== '3') return false;
+    if(!p.datum) return true; // geen datum = nog nooit bezocht
+    return new Date(p.datum).getTime() < cutoff;
+  }).sort((a,b) => {
+    const da = a.datum ? new Date(a.datum).getTime() : 0;
+    const db = b.datum ? new Date(b.datum).getTime() : 0;
+    return da - db; // oudste eerst
+  });
+  if(!needsVisit.length){
+    wrap.innerHTML = `<div class="followup-empty">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+      Geen spelers die follow-up nodig hebben — alles up-to-date.
+    </div>`;
+    return;
+  }
+  const daysSince = p => {
+    if(!p.datum) return null;
+    return Math.floor((Date.now() - new Date(p.datum).getTime()) / (24*3600*1000));
+  };
+  const advLabel = adv => adv === '3' ? 'Op proef' : 'Monitoren';
+  const advClass = adv => adv === '3' ? 'B' : 'C';
+  wrap.innerHTML = `
+    <div class="followup-meta">
+      ${needsVisit.length} speler${needsVisit.length===1?'':'s'} — langer dan ${DAYS} dagen niet bezocht
+    </div>
+    <div class="followup-list">
+      ${needsVisit.slice(0,6).map(p => {
+        const days = daysSince(p);
+        const daysStr = days == null ? 'Nooit bezocht' : `${days} dagen geleden`;
+        return `<div class="followup-row" data-id="${p.id}">
+          <div class="followup-avatar">${initials(p.naam)}</div>
+          <div class="followup-info">
+            <div class="followup-naam">${escapeHtml(p.naam)}</div>
+            <div class="followup-meta-row">${escapeHtml(positionLabel(p.positie))}${p.club?' · '+escapeHtml(p.club):''}</div>
+          </div>
+          <div class="followup-right">
+            <span class="grade ${advClass(p.advies)}" style="font-size:10px;padding:2px 7px;">${advLabel(p.advies)}</span>
+            <div class="followup-days">${daysStr}</div>
+          </div>
+        </div>`;
+      }).join('')}
+      ${needsVisit.length > 6 ? `<div class="followup-more">+ ${needsVisit.length-6} meer spelers</div>` : ''}
+    </div>
+    <button class="btn btn-sm followup-cta" id="followup-cta-btn">
+      Toon alle ${needsVisit.length} in spelersbase →
+    </button>`;
+  const ctaBtn = document.getElementById('followup-cta-btn');
+  if(ctaBtn) ctaBtn.addEventListener('click', () => {
+    go('database');
+    setTimeout(() => {
+      try {
+        $('#filter-advies').value = '2';
+        applyFilters();
+      } catch(_){}
+    }, 60);
+  });
+  wrap.querySelectorAll('.followup-row').forEach(el => {
+    el.addEventListener('click', () => openDetail(el.dataset.id));
+  });
+}
+
 /* ---- Geo widget (Leaflet, regio Utrecht + Veluwe) ---- */
 let _leafletMap = null;
 let _leafletLayer = null;
@@ -25640,6 +25713,43 @@ function shUpdateMatchesNavBadge(){
   });
 }
 window.shUpdateMatchesNavBadge = shUpdateMatchesNavBadge;
+
+/* ---- Follow-up nav-badge op Spelersbase ---- */
+function shUpdateDatabaseNavBadge(){
+  try {
+    const players = typeof loadPlayers === 'function' ? loadPlayers() : [];
+    const DAYS = 60;
+    const cutoff = Date.now() - DAYS * 24 * 3600 * 1000;
+    const n = players.filter(p => {
+      const adv = String(p.advies || '');
+      if(adv !== '2' && adv !== '3') return false;
+      if(!p.datum) return true;
+      return new Date(p.datum).getTime() < cutoff;
+    }).length;
+    document.querySelectorAll('[data-view="database"]').forEach(nav => {
+      let badge = nav.querySelector('.nav-followup-badge');
+      if(n > 0){
+        const isBottom = nav.classList.contains('bn-item');
+        if(!badge){
+          badge = document.createElement('span');
+          badge.className = 'nav-followup-badge';
+          if(isBottom) nav.style.position = 'relative';
+          badge.style.cssText = isBottom
+            ? 'position:absolute; top:5px; right:14px; background:var(--grade-c); color:#1a0c00; font-size:9px; font-weight:700; min-width:15px; height:15px; border-radius:8px; padding:0 3px; display:inline-flex; align-items:center; justify-content:center; line-height:1; box-sizing:border-box; z-index:2;'
+            : 'background:var(--grade-c); color:#1a0c00; font-size:10px; font-weight:700; min-width:17px; height:17px; border-radius:9px; padding:0 5px; display:inline-flex; align-items:center; justify-content:center; line-height:1; margin-left:7px; vertical-align:middle; box-sizing:border-box;';
+          nav.appendChild(badge);
+        }
+        badge.textContent = n > 99 ? '99+' : String(n);
+        badge.style.display = 'inline-flex';
+        nav.setAttribute('title', n + ' speler' + (n===1?'':'s') + ' zonder recent bezoek (60+ dagen)');
+      } else if(badge){
+        badge.style.display = 'none';
+      }
+    });
+  } catch(_){}
+}
+window.shUpdateDatabaseNavBadge = shUpdateDatabaseNavBadge;
+
 
 function checkProgrammaReminder(){
   if(!programmaCache || programmaCache.length === 0) return;

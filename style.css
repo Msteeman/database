@@ -8021,3 +8021,32 @@ tbody tr:last-child td { border-bottom: none; }
 .dtl-summary-text { font-size: 13px; color: var(--text); line-height: 1.5; }
 .dtl-summary-wapen .dtl-summary-text { font-weight: 700; color: var(--secondary); }
 .dtl-summary-notes { color: var(--text-2); font-size: 12.5px; }
+
+/* ── Follow-up nodig widget ── */
+.followup-meta { font-size:11px; color:var(--text-3); margin-bottom:10px; font-weight:500; }
+.followup-list { display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+.followup-row {
+  display:flex; align-items:center; gap:10px;
+  padding:9px 10px; background:var(--bg-3);
+  border:1px solid var(--border); border-radius:8px;
+  cursor:pointer; transition:all .15s;
+}
+.followup-row:hover { border-color:var(--grade-c); background:rgba(245,158,11,.06); }
+.followup-avatar {
+  width:32px; height:32px; border-radius:50%;
+  background:var(--bg-2); border:1px solid var(--border);
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; font-weight:700; color:var(--text-2); flex-shrink:0;
+}
+.followup-info { flex:1; min-width:0; }
+.followup-naam { font-size:13px; font-weight:600; color:var(--text); }
+.followup-meta-row { font-size:11px; color:var(--text-3); margin-top:1px; }
+.followup-right { display:flex; flex-direction:column; align-items:flex-end; gap:4px; flex-shrink:0; }
+.followup-days { font-size:10.5px; color:var(--grade-c); font-weight:600; white-space:nowrap; }
+.followup-more { font-size:11px; color:var(--text-3); text-align:center; padding:6px; }
+.followup-cta { width:100%; justify-content:center; }
+.followup-empty {
+  display:flex; align-items:center; gap:8px;
+  color:var(--grade-a); font-size:12px; font-weight:600;
+  padding:10px 4px;
+}

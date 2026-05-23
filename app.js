@@ -2716,12 +2716,10 @@ async function __shResetAndReseedDemo(){
       localStorage.removeItem('sh_demo_autoseed_' + currentUser.uid);
     }
 
-    // 3. Herlaad demo-data
-    toast('Data gewist — opnieuw laden…');
+    // 3. Herlaad demo-data (seed doet nu zelf wissen + herladen)
+    toast('Data gewist — demo opnieuw laden…');
     await __shSeedDemoToFirestore();
-
-    if(btn){ btn.disabled = false; btn.textContent = 'Reset & herlaad'; }
-    document.getElementById('settings-modal-backdrop')?.classList.remove('show');
+    // __shSeedDemoToFirestore doet zelf location.reload() na 1.8s
   } catch(e){
     console.error('Reset mislukt:', e);
     toast('Reset mislukt: ' + (e.message||''), true);
@@ -2729,12 +2727,12 @@ async function __shResetAndReseedDemo(){
   }
 }
 
-async function __shSeedDemoToFirestore(){
+async function __shSeedDemoToFirestore(_skipConfirm){
   if(!__shIsDemoUser()){
     if(typeof toast === 'function') toast('Demo-vullen alleen beschikbaar voor demo-account', true);
     return;
   }
-  if(!confirm('Demo-data wordt opnieuw ingeladen. Alle bestaande data in dit account wordt eerst gewist. Doorgaan?')) return;
+  if(!_skipConfirm && !confirm('Demo-data wordt opnieuw ingeladen. Alle bestaande data in dit account wordt eerst gewist. Doorgaan?')) return;
 
   // s-seed-fix: altijd eerst alles wissen vóór seeden zodat oude records weg zijn
   try {

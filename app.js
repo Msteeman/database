@@ -17981,6 +17981,7 @@ function renderDbCompareBar(){
   if(goBtn && !goBtn.disabled){
     goBtn.addEventListener('click', () => {
       cmpSelectedIds = dbCheckedIds.slice(0, max);
+      shUpdateCmpUI();
       dbCheckedIds = [];
       go('compare');
     });
@@ -18006,6 +18007,7 @@ function _renderDbCompareFloat(n, max){
       try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch(_){ window.scrollTo(0, 0); }
       const ids = dbCheckedIds.slice(0, max);
       cmpSelectedIds = ids;
+      shUpdateCmpUI();
       dbCheckedIds = [];
       // Korte vertraging zodat scroll mooi voelt voordat view wisselt
       setTimeout(() => { try { go('compare'); } catch(_){} }, 180);
@@ -19170,6 +19172,7 @@ function renderCompare(){
     if(clearBtn){
       clearBtn.addEventListener('click', () => {
         cmpSelectedIds = [];
+        shUpdateCmpUI();
         renderCompare();
       });
     }
@@ -19217,12 +19220,14 @@ function renderCompareSuggest(query){
       const idx = cmpSelectedIds.indexOf(id);
       if(idx >= 0){
         cmpSelectedIds.splice(idx, 1);
+        shUpdateCmpUI();
       } else {
         if(cmpSelectedIds.length >= CMP_MAX){
           toast(`Maximaal ${CMP_MAX} spelers tegelijk`);
           return;
         }
         cmpSelectedIds.push(id);
+        shUpdateCmpUI();
       }
       renderComparePicker();
       renderCompareSelected();
@@ -19273,12 +19278,14 @@ function renderComparePicker(){
       const idx = cmpSelectedIds.indexOf(id);
       if(idx >= 0){
         cmpSelectedIds.splice(idx, 1);
+        shUpdateCmpUI();
       } else {
         if(cmpSelectedIds.length >= CMP_MAX){
           toast(`Maximaal ${CMP_MAX} spelers tegelijk`);
           return;
         }
         cmpSelectedIds.push(id);
+        shUpdateCmpUI();
       }
       renderComparePicker();
       renderCompareSelected();
@@ -19630,9 +19637,11 @@ function renderCmpAddResults(){
       const idx = cmpSelectedIds.indexOf(id);
       if(idx >= 0){
         cmpSelectedIds.splice(idx, 1);
+        shUpdateCmpUI();
       } else {
         if(cmpSelectedIds.length >= max) return;
         cmpSelectedIds.push(id);
+        shUpdateCmpUI();
       }
       // Update slots + results live, modal blijft open zodat je verder kunt
       renderCompareSelected();
@@ -20268,6 +20277,8 @@ function renderDetailOverview(p){
       </div>
     </div>
 
+    <div id="dtl-trend-card"></div>
+
     ${reportsListHtml}
 
     <div class="form-actions" style="margin-top:24px;">
@@ -20289,6 +20300,7 @@ function renderDetailOverview(p){
   renderDetailGauge(vp);
   renderDetailPizza(vp);
   renderDetailBars(vp);
+  renderDetailTrend(p);
   $('#dtl-back-prev').addEventListener('click', () => go(previousViewBeforePlayer || 'database'));
   // Vergelijk-knop: toevoegen/verwijderen
   const _dtlCmpToggle = document.getElementById('dtl-cmp-toggle');
@@ -20299,6 +20311,7 @@ function renderDetailOverview(p){
         if(typeof toast === 'function') toast(`${p.naam} verwijderd uit vergelijking`);
       } else if(cmpSelectedIds.length < CMP_MAX){
         cmpSelectedIds.push(p.id);
+        shUpdateCmpUI();
         const n = cmpSelectedIds.length;
         if(typeof toast === 'function') toast(n >= 2
           ? `${p.naam} toegevoegd — tik "Vergelijken (${n})" om te starten`
@@ -20698,6 +20711,119 @@ function renderDetailRadar(p){
   ctx.arc(cx, cy, 2.5, 0, Math.PI*2);
   ctx.fillStyle = 'rgba(255,255,255,.4)';
   ctx.fill();
+}
+
+function renderDetailTrend(p){
+  const wrap = document.getElementById('dtl-trend-card');
+  if(!wrap) return;
+  const allReports = reportsForPlayer(p.id || p._id || '');
+  if(allReports.length < 2){ wrap.innerHTML = ''; return; }
+
+  // Sort oldest → newest
+  const sorted = [...allReports].sort((a,b) => {
+    const da = a.datum || a.wedstrijd?.datum || '';
+    const db = b.datum || b.wedstrijd?.datum || '';
+    return da < db ? -1 : da > db ? 1 : 0;
+  });
+
+  const gradeColor = { A:'var(--grade-a)', B:'var(--grade-b)', C:'var(--grade-c)', D:'var(--grade-d)' };
+  const gradeScore = { A:4, B:3, C:2, D:1 };
+
+  // Build data points
+  const points = sorted.map((r, i) => ({
+    i,
+    label: r.datum ? formatDate(r.datum).slice(0,7) : `#${i+1}`,
+    hn: (r.huidig_niveau||'').toUpperCase(),
+    pn: (r.potentieel_niveau||'').toUpperCase(),
+    adv: r.advies != null ? Number(r.advies) : null,
+    hnVal: gradeScore[(r.huidig_niveau||'').toUpperCase()] || 0,
+    pnVal: gradeScore[(r.potentieel_niveau||'').toUpperCase()] || 0,
+  }));
+
+  const n = points.length;
+  const W = 400, H = 160, pad = { l:36, r:16, t:16, b:32 };
+  const iW = W - pad.l - pad.r;
+  const iH = H - pad.t - pad.b;
+  const xPos = i => pad.l + (n === 1 ? iW/2 : (i / (n-1)) * iW);
+  const yPos = v => pad.t + iH - ((v-1)/3) * iH;
+
+  // SVG grid lines
+  let gridLines = '';
+  [1,2,3,4].forEach(v => {
+    const y = yPos(v);
+    const lbl = ['D','C','B','A'][v-1];
+    const col = v===4?'rgba(255,255,255,.18)':'rgba(255,255,255,.07)';
+    gridLines += `<line x1="${pad.l}" y1="${y}" x2="${W-pad.r}" y2="${y}" stroke="${col}" stroke-width="1"/>`;
+    gridLines += `<text x="${pad.l-6}" y="${y+4}" text-anchor="end" font-size="9" fill="rgba(232,237,245,.5)" font-family="inherit">${lbl}</text>`;
+  });
+
+  // Build polyline path
+  const buildPath = (vals) => vals.map((pt,i) => {
+    if(!pt) return null;
+    return `${xPos(i).toFixed(1)},${yPos(pt).toFixed(1)}`;
+  }).filter(Boolean).join(' ');
+
+  const hnPath  = buildPath(points.map(p => p.hnVal));
+  const pnPath  = buildPath(points.map(p => p.pnVal));
+  const hnColor = '#60a5fa';
+  const pnColor = '#34d399';
+
+  // Dots
+  let dots = '';
+  points.forEach((pt, i) => {
+    const x = xPos(i).toFixed(1);
+    if(pt.hnVal){
+      const y = yPos(pt.hnVal).toFixed(1);
+      dots += `<circle cx="${x}" cy="${y}" r="4.5" fill="${hnColor}" stroke="rgba(11,15,21,.8)" stroke-width="1.5"/>`;
+      dots += `<text x="${x}" y="${parseFloat(y)-8}" text-anchor="middle" font-size="9" fill="${hnColor}" font-weight="700" font-family="inherit">${pt.hn}</text>`;
+    }
+    if(pt.pnVal){
+      const y = yPos(pt.pnVal).toFixed(1);
+      dots += `<circle cx="${x}" cy="${y}" r="4.5" fill="${pnColor}" stroke="rgba(11,15,21,.8)" stroke-width="1.5"/>`;
+      dots += `<text x="${x}" y="${parseFloat(y)+16}" text-anchor="middle" font-size="9" fill="${pnColor}" font-weight="700" font-family="inherit">${pt.pn}</text>`;
+    }
+  });
+
+  // X-axis labels
+  let xLabels = '';
+  points.forEach((pt, i) => {
+    const x = xPos(i).toFixed(1);
+    xLabels += `<text x="${x}" y="${H - 6}" text-anchor="middle" font-size="9" fill="rgba(232,237,245,.45)" font-family="inherit">${escapeHtml(pt.label)}</text>`;
+  });
+
+  // Trend indicator
+  const hnFirst = points[0].hnVal;
+  const hnLast  = points[n-1].hnVal;
+  const pnFirst = points[0].pnVal;
+  const pnLast  = points[n-1].pnVal;
+  const delta = (a, b) => a && b ? (b > a ? '↑' : b < a ? '↓' : '→') : '—';
+  const deltaCol = (a, b) => a && b ? (b > a ? 'var(--grade-a)' : b < a ? 'var(--grade-d)' : 'var(--text-3)') : 'var(--text-3)';
+  const hnDelta = delta(hnFirst, hnLast);
+  const pnDelta = delta(pnFirst, pnLast);
+
+  wrap.innerHTML = `
+    <div class="card compare-card dtl-trend-card" style="margin-top:16px;">
+      <div class="compare-card-title">
+        <span>Ontwikkeltrend</span>
+        <span class="compare-card-sub">${n} rapporten · huidig- en potentieelniveau over tijd</span>
+      </div>
+      <div class="dtl-trend-legend">
+        <span class="dtl-trend-dot" style="background:${hnColor}"></span><span>Huidig niveau</span>
+        <span style="color:${deltaCol(hnFirst,hnLast)};font-weight:700;margin-left:4px;">${hnDelta}</span>
+        &nbsp;&nbsp;
+        <span class="dtl-trend-dot" style="background:${pnColor}"></span><span>Potentieel</span>
+        <span style="color:${deltaCol(pnFirst,pnLast)};font-weight:700;margin-left:4px;">${pnDelta}</span>
+      </div>
+      <div style="overflow-x:auto;">
+        <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;display:block;margin:0 auto;">
+          ${gridLines}
+          <polyline points="${hnPath}" fill="none" stroke="${hnColor}" stroke-width="2" stroke-linejoin="round"/>
+          <polyline points="${pnPath}" fill="none" stroke="${pnColor}" stroke-width="2" stroke-linejoin="round" stroke-dasharray="5 3"/>
+          ${dots}
+          ${xLabels}
+        </svg>
+      </div>
+    </div>`;
 }
 
 function renderDetailBars(p){
@@ -24337,6 +24463,15 @@ function renderProgramma(){
         ? `<span class="pec-loc pec-route" data-maps-url="${escapeAttr(mapsUrl)}" title="Route openen">📍 ${escapeHtml(locLabel)}</span>`
         : `<span class="pec-loc">📍 ${escapeHtml(locLabel)}</span>`)
       : '';
+    // Toon "Verwerk" snelknop als wedstrijd voorbij is, niet verwerkt, en spelers heeft
+    const isPast = it.datum && it.datum < new Date().toISOString().slice(0,10);
+    const canVerwerk = isPast && it.status !== 'verwerkt' && spelersN > 0;
+    const verwerkHtml = canVerwerk
+      ? `<button class="pec-verwerk-btn" data-pec-verwerk="${it.id}" title="Verwerk ${spelersN} speler${spelersN===1?'':'s'} naar database">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          Verwerk
+        </button>`
+      : '';
     return `<div class="prog-ev-card ${stCls}" data-prog-id="${it.id}">
       <div class="pec-icon">${icon}</div>
       <div class="pec-body">
@@ -24347,6 +24482,7 @@ function renderProgramma(){
           ${it.status==='verwerkt' ? `<span class="pec-pill pec-verwerkt">✓ Verwerkt</span>` : ''}
         </div>
         ${locHtml ? `<div class="pec-loc-row">${locHtml}</div>` : ''}
+        ${verwerkHtml}
       </div>
       <button class="pec-edit-btn" data-pec-edit="${it.id}" aria-label="Bewerken" title="Bewerken">&#9998;</button>
     </div>`;
@@ -24374,6 +24510,12 @@ function renderProgramma(){
       btn.addEventListener('click', e => {
         e.stopPropagation();
         openProgMatchModal(btn.dataset.pecEdit, null);
+      });
+    });
+    grid.querySelectorAll('[data-pec-verwerk]').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        if(typeof verwerkProgrammaItem === 'function') verwerkProgrammaItem(btn.dataset.pecVerwerk);
       });
     });
   }
@@ -25750,6 +25892,36 @@ function shUpdateDatabaseNavBadge(){
 }
 window.shUpdateDatabaseNavBadge = shUpdateDatabaseNavBadge;
 
+/* ---- Vergelijken nav-badge + floating bar ---- */
+function shUpdateCmpUI(){
+  try {
+    const n = (typeof cmpSelectedIds !== 'undefined') ? cmpSelectedIds.length : 0;
+    // Sidebar badge
+    document.querySelectorAll('[data-view="compare"]').forEach(nav => {
+      let badge = nav.querySelector('.nav-cmp-badge');
+      if(n > 0){
+        if(!badge){
+          badge = document.createElement('span');
+          badge.className = 'nav-cmp-badge';
+          nav.appendChild(badge);
+        }
+        badge.textContent = String(n);
+        badge.style.display = 'inline-flex';
+      } else if(badge){
+        badge.style.display = 'none';
+      }
+    });
+    // Floating bar
+    const bar = document.getElementById('cmp-float-bar');
+    const countEl = document.getElementById('cmp-float-count');
+    if(bar){
+      if(countEl) countEl.textContent = String(n);
+      bar.style.display = n > 0 ? 'flex' : 'none';
+    }
+  } catch(_){}
+}
+window.shUpdateCmpUI = shUpdateCmpUI;
+
 
 function checkProgrammaReminder(){
   if(!programmaCache || programmaCache.length === 0) return;
@@ -26367,6 +26539,7 @@ function initApp(){
   /* (handlers staan onderaan via document.addEventListener) */
 
   buildGradePickers();
+  shUpdateCmpUI();
   refreshPositionDropdowns();
   $('#f-linie').addEventListener('change', refreshPositionDropdowns);
   $('#f-club').addEventListener('blur', async ()=>{
@@ -26527,6 +26700,7 @@ function initApp(){
       const max = (typeof CMP_MAX === 'number') ? CMP_MAX : 6;
       if(dbCheckedIds.length < 2) return;
       cmpSelectedIds = dbCheckedIds.slice(0, max);
+      shUpdateCmpUI();
       dbCheckedIds = [];
       go('compare');
     });
@@ -27248,6 +27422,29 @@ document.addEventListener('click', (e) => {
     setTimeout(()=> { renderTeamOverzicht().catch(err=>console.warn(err)); }, 60);
   } else if(v === 'admin'){
     setTimeout(()=> { renderAdminPanel().catch(err=>console.warn(err)); }, 60);
+  }
+});
+
+/* ===== Floating vergelijk-bar knoppen ===== */
+document.addEventListener('click', (e) => {
+  // "Vergelijken →" knop
+  if(e.target.closest('#cmp-float-go')){
+    if(typeof go === 'function') go('compare');
+    return;
+  }
+  // "✕" wissen
+  if(e.target.closest('#cmp-float-clear')){
+    if(typeof cmpSelectedIds !== 'undefined'){
+      cmpSelectedIds = [];
+      shUpdateCmpUI();
+      // Reset checkboxes in database view
+      document.querySelectorAll('.db-player-checkbox:checked, .cmp-checkbox:checked').forEach(cb => { cb.checked = false; });
+      document.querySelectorAll('.db-row.cmp-selected, .player-card.cmp-selected').forEach(el => el.classList.remove('cmp-selected'));
+      // Reset detail toggle if open
+      const toggleBtn = document.getElementById('dtl-cmp-toggle');
+      if(toggleBtn){ toggleBtn.classList.remove('dtl-cmp-active'); toggleBtn.textContent = '+ Vergelijk'; }
+    }
+    return;
   }
 });
 

@@ -2067,6 +2067,18 @@ algemeen:</textarea>
     </main>
   </div>
 
+  <!-- Floating vergelijk-bar: zichtbaar als >=1 speler geselecteerd -->
+  <div id="cmp-float-bar" class="cmp-float-bar" style="display:none;" role="status" aria-live="polite">
+    <span class="cmp-float-label">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/><path d="M12 8v8"/></svg>
+      <span id="cmp-float-count">0</span> geselecteerd
+    </span>
+    <div class="cmp-float-actions">
+      <button type="button" class="cmp-float-clear" id="cmp-float-clear" aria-label="Selectie wissen">✕</button>
+      <button type="button" class="cmp-float-go" id="cmp-float-go">Vergelijken →</button>
+    </div>
+  </div>
+
   <!-- Mobile bottom tab nav (visible only on mobile) -->
   <nav class="bottom-nav" id="bottom-nav" aria-label="Hoofdnavigatie">
     <button class="bn-item active" data-view="dashboard" aria-label="Dashboard">

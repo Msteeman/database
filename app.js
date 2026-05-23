@@ -26363,6 +26363,30 @@ function initApp(){
   });
   $('#logout-btn').addEventListener('click', ()=> doLogout(false));
 
+  /* Settings modal openen via sidebar-knop */
+  const settingsBtn = document.getElementById('sidebar-settings-btn');
+  if(settingsBtn){
+    settingsBtn.addEventListener('click', ()=>{
+      const modal = document.getElementById('settings-modal-backdrop');
+      if(modal) modal.classList.add('show');
+    });
+  }
+
+  /* Settings modal sluiten via close-knop of backdrop-klik */
+  const settingsCloseBtn = document.getElementById('settings-close-btn');
+  if(settingsCloseBtn){
+    settingsCloseBtn.addEventListener('click', ()=>{
+      const modal = document.getElementById('settings-modal-backdrop');
+      if(modal) modal.classList.remove('show');
+    });
+  }
+  const settingsBackdrop = document.getElementById('settings-modal-backdrop');
+  if(settingsBackdrop){
+    settingsBackdrop.addEventListener('click', (e)=>{
+      if(e.target === settingsBackdrop) settingsBackdrop.classList.remove('show');
+    });
+  }
+
   buildGradePickers();
   refreshPositionDropdowns();
   $('#f-linie').addEventListener('change', refreshPositionDropdowns);

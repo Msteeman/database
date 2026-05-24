@@ -17715,4 +17715,25 @@ async function loadUserRole(){
       /* Sync naar Firestore zodat rules kloppen */
       try {
         await setDoc(uref, { role: 'admin', email: currentUser.email }, { merge: true });
-      } catch(e){ /* niet kritisch
+      } catch(e){ /* niet kritisch */ }
+    }
+    currentUserRole = role;
+    currentUserTeamId = teamId;
+  } catch(err){
+    console.warn('loadUserRole failed', err);
+  }
+}
+
+/* =============== AUTH STATE =============== */
+onAuthStateChanged(auth, async (user) => {
+  currentUser = user;
+  if(user){
+    showApp();
+    initApp();
+    await loadUserRole();
+  } else {
+    showLogin();
+  }
+});
+
+initAuthForms();

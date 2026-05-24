@@ -3616,6 +3616,72 @@ function _ritShowProgChips(chipsEl){
   } catch(_){}
 }
 
+
+// s36l: programma-picker voor ritten — toont alle programma-items in een popup
+function _ritOpenProgPicker(items){
+  // Verwijder bestaande picker
+  const old = document.getElementById('rit-prog-picker');
+  if(old) old.remove();
+
+  const today = new Date().toISOString().slice(0,10);
+  const filtered = (items || []).filter(p => p.datum >= today).slice(0, 30);
+  if(!filtered.length){ toast('Geen aankomende programma-items gevonden'); return; }
+
+  const picker = document.createElement('div');
+  picker.id = 'rit-prog-picker';
+  picker.style.cssText = [
+    'position:fixed; inset:0; z-index:9000; background:rgba(0,0,0,.6)',
+    'display:flex; align-items:flex-end; justify-content:center; padding:12px'
+  ].join(';');
+
+  const dayNames = ['zo','ma','di','wo','do','vr','za'];
+  const rows = filtered.map(p => {
+    const d = new Date(p.datum + 'T12:00:00');
+    const dag = dayNames[d.getDay()] + ' ' + d.getDate() + '-' + (d.getMonth()+1);
+    const naam = p.thuis || p.naam || p.toernooi_naam || p.type || 'Item';
+    const loc  = (p.locatie || p.sportpark || p.adres || '').trim();
+    const tijd = p.tijd || p.tijdstip || '';
+    const sub  = [loc, tijd].filter(Boolean).join(' · ');
+    return `<div class="rpp-row" data-datum="${p.datum}" data-tijd="${tijd}" data-loc="${(loc||'').replace(/"/g,'&quot;')}" data-doel="${naam.replace(/"/g,'&quot;')}">
+      <span class="rpp-dag">${dag}</span>
+      <span class="rpp-naam">${naam.replace(/</g,'&lt;')}</span>
+      ${sub ? `<span class="rpp-sub">${sub.replace(/</g,'&lt;')}</span>` : ''}
+    </div>`;
+  }).join('');
+
+  picker.innerHTML = `<div style="background:var(--panel,#181b28);border:1px solid var(--border,#2a2d3e);border-radius:16px 16px 0 0;width:100%;max-width:520px;max-height:70vh;overflow-y:auto;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px 10px;position:sticky;top:0;background:var(--panel,#181b28);border-bottom:1px solid var(--border,#2a2d3e);">
+      <span style="font-weight:700;font-size:15px;">Kies een programma-item</span>
+      <button id="rpp-close" style="background:none;border:none;color:var(--text-3,#9aa3b7);font-size:20px;cursor:pointer;padding:0 4px;">&times;</button>
+    </div>
+    <div id="rpp-list" style="padding:8px 0;">${rows}</div>
+  </div>`;
+
+  document.body.appendChild(picker);
+
+  picker.querySelector('#rpp-close').onclick = () => picker.remove();
+  picker.addEventListener('click', e => { if(e.target === picker) picker.remove(); });
+  picker.querySelectorAll('.rpp-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const datum = row.dataset.datum;
+      const tijd  = row.dataset.tijd;
+      const loc   = row.dataset.loc;
+      const doel  = row.dataset.doel;
+      const datumEl = document.getElementById('rit-datum');
+      const tijdEl  = document.getElementById('rit-tijd');
+      const aanEl   = document.getElementById('rit-aankomst');
+      const doelEl  = document.getElementById('rit-doel');
+      if(datumEl && datum) datumEl.value = datum;
+      if(tijdEl && tijd)   tijdEl.value  = tijd;
+      if(aanEl && loc)     aanEl.value   = loc;
+      if(doelEl && doel && !doelEl.value) doelEl.value = doel;
+      picker.remove();
+      // Probeer km te berekenen
+      if(loc) try{ aanEl.dispatchEvent(new Event('input',{bubbles:true})); }catch(_){}
+    });
+  });
+}
+
 function openRitModal(rit){
   const modal = document.getElementById('rit-modal');
   if(!modal) return;
@@ -3640,18 +3706,26 @@ function openRitModal(rit){
   document.getElementById('rit-delete-btn').style.display = isNew ? 'none' : '';
   modal.classList.add('active');
 
-  // s35dj: bij nieuwe rit → auto-GPS vertrek + programma-chips aankomst
+  // s36l: bij nieuwe rit → auto-GPS vertrek + programma-knop + chips
   const chips = document.getElementById('rit-prog-chips');
+  const pickBtn = document.getElementById('rit-prog-pick-btn');
   if(isNew){
-    // Auto-GPS voor vertrek (als veld nog leeg)
     const vertrekEl = document.getElementById('rit-vertrek');
     if(vertrekEl && !vertrekEl.value){
       setTimeout(() => { try { _ritGeoLocation('vertrek'); } catch(_){} }, 200);
     }
-    // Aankomst-suggesties vanuit Programma
+    // Toon "Kies uit programma" knop als er items zijn
+    const progItems = (typeof programmaCache !== 'undefined' ? programmaCache : [])
+      .filter(p => p && p.datum)
+      .sort((a,b) => a.datum.localeCompare(b.datum));
+    if(pickBtn){
+      pickBtn.style.display = progItems.length ? '' : 'none';
+      pickBtn.onclick = () => _ritOpenProgPicker(progItems);
+    }
     if(chips) _ritShowProgChips(chips);
   } else {
     if(chips){ chips.innerHTML = ''; chips.style.display = 'none'; }
+    if(pickBtn) pickBtn.style.display = 'none';
   }
 }
 function closeRitModal(){

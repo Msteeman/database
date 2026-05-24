@@ -1900,7 +1900,12 @@ algemeen:</textarea>
           </div>
 
           <div class="rm-field">
-            <label for="rit-aankomst">Club / trainingscomplex / adres</label>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+              <label for="rit-aankomst" style="margin:0;">Club / trainingscomplex / adres</label>
+              <button type="button" id="rit-prog-pick-btn" style="font-size:11px; color:var(--accent,#f5c542); background:none; border:none; cursor:pointer; padding:0; display:none;">
+                📅 Kies uit programma
+              </button>
+            </div>
             <div id="rit-prog-chips"></div>
             <input type="text" id="rit-aankomst" autocomplete="off" placeholder="Typ clubnaam of adres…" />
             <div class="rm-suggest" id="rit-aankomst-suggest"></div>

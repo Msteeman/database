@@ -17801,14 +17801,14 @@ async function loadUserRole(){
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   if(user){
-    showApp();
-    if(typeof go === 'function') go('dashboard');
-    initApp();
-    subscribeData();
-    await loadUserRole();
+    try { showApp(); } catch(e){ console.error('showApp failed', e); }
+    try { subscribeData(); } catch(e){ console.error('subscribeData failed', e); }
+    try { initApp(); } catch(e){ console.error('initApp failed', e); }
+    try { if(typeof go === 'function') go('dashboard'); } catch(e){ console.error('go dashboard failed', e); }
+    try { await loadUserRole(); } catch(e){ console.warn('loadUserRole failed', e); }
   } else {
-    unsubscribeData();
-    showLogin();
+    try { unsubscribeData(); } catch(_){}
+    try { showLogin(); } catch(e){ console.error('showLogin failed', e); }
   }
 });
 

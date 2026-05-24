@@ -17829,6 +17829,33 @@ async function loadUserRole(){
     }
     currentUserRole = role;
     currentUserTeamId = teamId;
+    // Sidebar scout-naam + initialen dynamisch zetten
+    try {
+      const _nameEl = document.getElementById('scout-name');
+      const _initsEl = document.getElementById('scout-avatar-initials');
+      const _imgEl = document.getElementById('scout-avatar-img');
+      let _dispName = displayName || currentUser.displayName || '';
+      // Demo-fallback: als naam leeg is, toon een nette demo-naam
+      if(!_dispName && __shIsDemoUser()) _dispName = 'Demo Scout';
+      if(!_dispName) _dispName = (currentUser.email || '').split('@')[0];
+      if(_nameEl) _nameEl.textContent = _dispName;
+      if(_initsEl){
+        const parts = _dispName.trim().split(/\s+/);
+        const initials = parts.length >= 2
+          ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase()
+          : _dispName.slice(0,2).toUpperCase();
+        _initsEl.textContent = initials;
+      }
+      // Profielfoto als Firebase photo beschikbaar is
+      if(_imgEl && currentUser.photoURL){
+        _imgEl.src = currentUser.photoURL;
+        _imgEl.style.display = 'block';
+        if(_initsEl) _initsEl.style.display = 'none';
+      } else {
+        if(_imgEl) _imgEl.style.display = 'none';
+        if(_initsEl) _initsEl.style.display = 'flex';
+      }
+    } catch(_){ /* niet kritisch */ }
   } catch(err){
     console.warn('loadUserRole failed', err);
   }
@@ -17843,8 +17870,12 @@ onAuthStateChanged(auth, async (user) => {
     try { initApp(); } catch(e){ console.error('initApp failed', e); }
     try { if(typeof go === 'function') go('dashboard'); } catch(e){ console.error('go dashboard failed', e); }
     try { await loadUserRole(); } catch(e){ console.warn('loadUserRole failed', e); }
+    // Altijd demo-chrome opnieuw evalueren na auth — ook als interval al gestopt is
+    try { __shApplyDemoChrome(); } catch(_){}
   } else {
     try { unsubscribeData(); } catch(_){}
+    // Zorg dat demo-strip verborgen is bij uitloggen
+    try { const s = document.getElementById('demo-strip'); if(s) s.style.display='none'; } catch(_){}
     try { showLogin(); } catch(e){ console.error('showLogin failed', e); }
   }
 });

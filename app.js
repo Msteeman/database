@@ -17805,6 +17805,8 @@ onAuthStateChanged(auth, async (user) => {
     initApp();
     subscribeData();
     await loadUserRole();
+    // Navigeer naar dashboard na login (currentView leeg anders)
+    if(typeof go === 'function') go('dashboard');
   } else {
     unsubscribeData();
     showLogin();

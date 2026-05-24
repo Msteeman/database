@@ -9489,14 +9489,10 @@ function _shBannerHTML(m){
       + `</div>`;
   }
   if(conceptProg){
-    const wr = conceptProg.wedstrijdrapport || {};
-    const t = (wr.tekst || "").trim();
-    const txt = t ? escapeHtml(t).replace(/\n/g, "<br>") : "<em>(nog geen tekst — open om in te vullen)</em>";
-    html += `<div class="m-wstrnote-banner is-concept" onclick="event.stopPropagation()">`
-      + `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`
-      + `<div class="m-wstrnote-banner-text"><strong>Wedstrijdrapport (concept)</strong>${txt}`
-      + `<br><button type="button" class="m-wstrnote-banner-open" data-wr-open="${escapeHtml(conceptProg.id)}">Open wedstrijdrapport</button></div>`
-      + `</div>`;
+    // s36: vereenvoudigd concept-label — enkel klikbare pill, geen tekst blok
+    html += `<button type="button" class="m-concept-pill" data-wr-open="${escapeHtml(conceptProg.id)}" onclick="event.stopPropagation();">`
+      + `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`
+      + ` Wedstrijdrapport (concept) — klik om te openen</button>`;
   } else if(wns.length){
     const txt = wns.map(({wn}) => {
       if(!wn) return "";
@@ -12621,8 +12617,85 @@ function renderMatches(){
       `;
     }
   });
+  // s34: Concepten-sectie — programma-items met concept-rapport of open snelnotities
+  let _conceptItems = [];
+  try {
+    if(typeof programmaCache !== 'undefined' && Array.isArray(programmaCache)){
+      programmaCache.forEach(p => {
+        if(!p || !p.datum) return;
+        const hasConcept = p.wedstrijdrapport && p.wedstrijdrapport.status === 'concept';
+        const hasSnel = Array.isArray(p.snelnotities) && p.snelnotities.some(sn => sn && (sn.naam || '').trim());
+        if(hasConcept || hasSnel) _conceptItems.push(p);
+      });
+    }
+  } catch(_){}
+  if(_conceptItems.length > 0){
+    const _conceptCards = _conceptItems.map(p => {
+      const _cd = formatDayMonth(p.datum || '');
+      const _ct = escapeHtml(stripAgeFromTeam(p.thuis) || p.thuis || '—');
+      const _cu = escapeHtml(stripAgeFromTeam(p.uit) || p.uit || '—');
+      const _hasConcept = p.wedstrijdrapport && p.wedstrijdrapport.status === 'concept';
+      const _snels = Array.isArray(p.snelnotities) ? p.snelnotities.filter(sn => sn && (sn.naam || '').trim()) : [];
+      const _typeLabel = _hasConcept
+        ? `<span class="cc-badge cc-badge-rapport">📝 Wedstrijdrapport</span>`
+        : `<span class="cc-badge cc-badge-snel">💡 ${_snels.length} spelersnotitie${_snels.length===1?'':'s'}</span>`;
+      const _age = p.leeftijd ? `<span class="cc-age">${escapeHtml(p.leeftijd)}</span>` : '';
+      return `<div class="concept-card" id="cc-${escapeHtml(p.id)}" data-concept-prog-id="${escapeHtml(p.id)}">
+        <div class="cc-date"><span class="cc-day">${_cd.day}</span><span class="cc-month">${_cd.month}</span></div>
+        <div class="cc-main">
+          <div class="cc-teams">${_ct} <span class="cc-vs">vs</span> ${_cu}</div>
+          <div class="cc-meta">${_typeLabel}${_age}</div>
+        </div>
+        <svg class="cc-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>`;
+    }).join('');
+    html = `<div class="matches-concepts-section" id="matches-concepts-section">
+      <div class="mcs-header">
+        <span class="mcs-title">Concepten</span>
+        <span class="mcs-badge">${_conceptItems.length}</span>
+      </div>
+      ${_conceptCards}
+    </div>` + html;
+  }
+
   list.innerHTML = html;
   setTimeout(() => shStagger(list, '.match-card, .match-report-card, .match-group-header'), 0);
+
+  // s34: concept-card click → open programma-item in edit-modal
+  list.querySelectorAll('.concept-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const pid = card.dataset.conceptProgId;
+      if(!pid || typeof programmaCache === 'undefined') return;
+      const prog = programmaCache.find(p => p && p.id === pid);
+      if(prog) _shOpenEditModal({...prog, kind:'programma', progId:prog.id});
+    });
+  });
+  // s34: concept-badge pill in match cards → scroll to concept section
+  list.querySelectorAll('.m-concept-pill').forEach(pill => {
+    pill.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const wrId = pill.dataset.wrOpen;
+      if(!wrId) return;
+      // Try to open the wedstrijdrapport directly
+      const progEl = document.getElementById('matches-concepts-section');
+      if(progEl){
+        progEl.scrollIntoView({behavior:'smooth', block:'start'});
+        // highlight the matching concept card
+        const target = document.getElementById('cc-' + CSS.escape(wrId));
+        if(target){ target.classList.add('cc-highlight'); setTimeout(()=>target.classList.remove('cc-highlight'),1600); }
+      }
+      // Also open the rapport form
+      if(typeof openProgrammaWedstrijdrapport === 'function'){
+        openProgrammaWedstrijdrapport(wrId);
+      } else {
+        // fallback: open programma-item
+        if(typeof programmaCache !== 'undefined'){
+          const prog = programmaCache.find(p => p && p.id === wrId);
+          if(prog) _shOpenEditModal({...prog, kind:'programma', progId:prog.id});
+        }
+      }
+    });
+  });
 
   list.querySelectorAll('.match-player-chip').forEach(chip => {
     chip.addEventListener('click', (e)=>{
@@ -17730,8 +17803,10 @@ onAuthStateChanged(auth, async (user) => {
   if(user){
     showApp();
     initApp();
+    subscribeData();
     await loadUserRole();
   } else {
+    unsubscribeData();
     showLogin();
   }
 });

@@ -8836,12 +8836,12 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .tf-itab.active {
   background: rgba(245,197,66,.14);
-  color: var(--accent, #f5c542);
+  color: #f5c542;
   font-weight: 600;
 }
 .tf-itab:not(:last-child) { border-right: 0.5px solid var(--border, #2a2d3e); }
 .tf-itab svg { opacity: .7; }
-.tf-itab.active svg { opacity: 1; stroke: var(--accent, #f5c542); }
+.tf-itab.active svg { opacity: 1; stroke: #f5c542; }
 
 .tf-upload-zone {
   border: 1.5px dashed var(--border-1,#e2e5ef); border-radius: 12px;
@@ -8936,7 +8936,7 @@ tbody tr:last-child td { border-bottom: none; }
   flex: 1;
 }
 .sh-ac-label strong {
-  color: var(--accent, #f5c542);
+  color: #f5c542;
   font-weight: 700;
 }
 .sh-ac-sub {
@@ -8969,7 +8969,7 @@ tbody tr:last-child td { border-bottom: none; }
 .sh-ac-item--col:hover,
 .sh-ac-item--col.active {
   background: rgba(245,197,66,.15);
-  color: var(--accent, #f5c542);
+  color: #f5c542;
 }
 .sh-ac-item--col .sh-ac-label {
   flex: none;
@@ -9028,7 +9028,7 @@ tbody tr:last-child td { border-bottom: none; }
 .rpp-dag {
   font-size: 11px;
   font-weight: 600;
-  color: var(--accent, #f5c542);
+  color: #f5c542;
   min-width: 52px;
   text-transform: uppercase;
   letter-spacing: .4px;

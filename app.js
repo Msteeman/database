@@ -17924,6 +17924,8 @@ function initApp(){
   ['mr-leeftijd','t-leeftijd','a-leeftijd','f-elftal'].forEach(id => {
     shUpgradeSelectToAC(id);
   });
+  // Toernooi-form leeftijdscategorie is al een text-input — direct AC wiren
+  shWireLeeftijdAC(document.getElementById('tf-leeftijd'));
 }
 
 function initAuthForms(){
@@ -18574,22 +18576,14 @@ async function tfParseUrl(){
         }
       }catch(_){ /* CORS of netwerk — probeer Cloud Function */ }
 
-      // Stap 2: als directe fetch mislukt of niets opgeleverd — Cloud Function
+      // Stap 2: als directe fetch mislukt of niets opgeleverd — toon melding
       if(!parsed){
-        status.textContent='Ophalen via server…';
-        try{
-          const endpoint = `https://europe-west1-${__shFirebaseProject()}.cloudfunctions.net/parseToernooiUrl`;
-          const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-          const r = await fetch(endpoint, {
-            method:'POST',
-            headers:{'Content-Type':'application/json', ...(idToken ? {'Authorization':`Bearer ${idToken}`} : {})},
-            body: JSON.stringify({ url })
-          });
-          if(r.ok){
-            parsed = await r.json();
-            if(parsed.error) parsed = null;
-          }
-        }catch(_){ /* Cloud Function ook niet beschikbaar */ }
+        status.textContent='⏳ AI-verwerking via URL is binnenkort beschikbaar. Sla het programma op als PDF en upload via "Foto / Scan / PDF", of vul handmatig in.';
+        status.style.color='var(--muted,#9aa3b7)';
+        document.getElementById('tf-basic-fields').style.display='';
+        document.getElementById('tf-action-row').style.display='flex';
+        btn.disabled=false; btn.textContent='Schema inlezen';
+        return;
       }
 
       if(!parsed || !parsed.poules?.length) throw new Error('Geen wedstrijdschema herkend. Probeer Foto/Scan/PDF of vul handmatig in.');
@@ -18661,9 +18655,11 @@ function _tfParseText(text, url){
   // strip HTML tags if HTML
   const clean = text.replace(/<[^>]+>/g,' ').replace(/&amp;/g,'&').replace(/&nbsp;/g,' ').replace(/\s{2,}/g,' ');
 
-  // detect tournament name
+  // detect tournament name — try broad context first (words before kampioenschap/cup etc.)
   let naam = '';
-  const naamMatch = clean.match(/(?:AVK|KNVB|Cup|toernooi|kampioenschap)[^,\n]{0,60}/i);
+  const naamMatch = clean.match(/[A-Z][a-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){1,4}\s+(?:Kampioenschap|Toernooi|Cup)[^,.\d\n]{0,40}/i)
+    || clean.match(/(?:AVK|KNVB)[^,.\n\d]{0,60}/i)
+    || clean.match(/(?:toernooi|kampioenschap|cup)[^,.\n]{0,60}/i);
   if(naamMatch) naam = naamMatch[0].trim();
 
   // detect dates
@@ -18675,9 +18671,12 @@ function _tfParseText(text, url){
     const m = months_nl[dm[2].toLowerCase()];
     dates.push(`${dm[3]}-${String(m).padStart(2,'0')}-${String(dm[1]).padStart(2,'0')}`);
   }
-  // also detect numeric dates like 27 Mei 2026
-  const datum = dates[0] || '';
-  const datumEinde = dates.length>1 ? dates[dates.length-1] : '';
+  // pick earliest & latest valid dates (sanity: ignore years > earliest+1 = typo protection)
+  const sortedDates = [...new Set(dates)].sort();
+  const datum = sortedDates[0] || '';
+  const baseYear = datum ? parseInt(datum.slice(0,4)) : 0;
+  const validDates = sortedDates.filter(d => !baseYear || Math.abs(parseInt(d.slice(0,4)) - baseYear) <= 1);
+  const datumEinde = validDates.length > 1 ? validDates[validDates.length-1] : '';
 
   // detect leeftijd
   let leeftijd = '';
@@ -18690,9 +18689,11 @@ function _tfParseText(text, url){
   else if(/7\s*[xvtegen]{1,5}\s*7|7x7/i.test(clean)) format='7v7';
   else if(/8\s*[xvtegen]{1,5}\s*8|8x8/i.test(clean)) format='8v8';
 
-  // detect location
+  // detect location — match sportpark/complex name (space before capital OK)
   let locatie = '';
-  const locM = clean.match(/(?:sportpark|sportcomplex|velden van|te\s+)([A-Z][a-zÀ-ÿ\s]{3,40})/);
+  const locM = clean.match(/(?:sportpark|sportcomplex)\s+([A-Z][a-zÀ-ÿ\w\s]{3,40})/)
+    || clean.match(/velden van\s+([A-Z][a-zÀ-ÿ\w\s]{3,40})/)
+    || clean.match(/te\s+([A-Z][a-zÀ-ÿ\s]{3,30})/);
   if(locM) locatie = locM[0].trim();
 
   // detect reglement
@@ -18766,8 +18767,7 @@ function _tfParseText(text, url){
     }
   });
 
-  if(!poules.length) return null;
-
+  // Altijd basisdata teruggeven, ook zonder poules (zodat naam/datum/leeftijd al worden ingevuld)
   return { naam, datum, datumEinde, locatie, leeftijdscategorie: leeftijd, format, reglement, poules, knockout: null };
 }
 
@@ -18853,10 +18853,14 @@ function tfHandleFotoUpload(e){
           document.getElementById('tf-action-row').style.display='flex';
           parseBtn.style.display='none';
         } else {
-          // Tekst gevonden maar schema niet herkend — AI kan het beter lezen
-          statusEl && (statusEl.textContent='Tekst uitgelezen — klik op "Schema uitlezen via AI" voor nauwkeuriger resultaat.');
-          statusEl && (statusEl.style.color='var(--muted,#9aa3b7)');
-          parseBtn.style.display='';
+          // Tekst gevonden maar geen poules herkend — vul wel basisvelden in als die er zijn
+          if(parsed) _tfFillBasicFromParsed(parsed);
+          const hasBasic = parsed && (parsed.naam || parsed.datum || parsed.leeftijdscategorie);
+          statusEl && (statusEl.textContent = hasBasic
+            ? `✓ Basisgegevens ingevuld — poule-schema niet herkend. Vul het wedstrijdschema handmatig aan.`
+            : `Tekst uitgelezen maar geen gegevens herkend. Vul handmatig in.`);
+          statusEl && (statusEl.style.color = hasBasic ? '#3b6d11' : 'var(--muted,#9aa3b7)');
+          parseBtn.style.display='none';
           document.getElementById('tf-basic-fields').style.display='';
           document.getElementById('tf-action-row').style.display='flex';
         }
@@ -18893,26 +18897,13 @@ async function tfParseFoto(){
   status.textContent='Schema uitlezen via AI… (dit duurt 10–20 seconden)';
 
   try{
-    // Call Cloud Function for AI parsing
-    const endpoint = 'https://europe-west1-' + __shFirebaseProject() + '.cloudfunctions.net/parseToernooiImage';
-    const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-    const res = await fetch(endpoint, {
-      method:'POST',
-      headers:{'Content-Type':'application/json', ...(idToken ? {'Authorization':`Bearer ${idToken}`} : {})},
-      body: JSON.stringify({ image: __tfFotoBase64 })
-    });
-    if(!res.ok) throw new Error(`Serverfout ${res.status}`);
-    const data = await res.json();
-    if(!data.poules?.length) throw new Error('Geen schema herkend in de afbeelding.');
-    __tfParsedData = data;
-    _tfShowPreview(data);
-    _tfFillBasicFromParsed(data);
+    // AI-verwerking binnenkort beschikbaar
+    status.textContent='⏳ AI-verwerking van foto\'s en scans is binnenkort beschikbaar. Upload het toernooiprogramma als PDF voor automatisch inlezen, of vul handmatig in.';
+    status.style.color='var(--muted,#9aa3b7)';
     document.getElementById('tf-basic-fields').style.display='';
     document.getElementById('tf-action-row').style.display='flex';
-    status.textContent=`Ingelezen: ${data.poules.length} poules, ${data.poules.reduce((s,p)=>s+(p.wedstrijden||[]).length,0)} wedstrijden.`;
-    status.style.color='#3b6d11';
   }catch(err){
-    status.textContent=`AI-uitlezen mislukt: ${err.message} — vul handmatig in of stuur de URL via URL-import.`;
+    status.textContent=`Fout: ${err.message}`;
     status.style.color='#a32d2d';
     document.getElementById('tf-basic-fields').style.display='';
     document.getElementById('tf-action-row').style.display='flex';
@@ -19228,14 +19219,4 @@ onAuthStateChanged(auth, async (user) => {
     try { initApp(); } catch(e){ console.error('initApp failed', e); }
     try { if(typeof go === 'function') go('dashboard'); } catch(e){ console.error('go dashboard failed', e); }
     try { await loadUserRole(); } catch(e){ console.warn('loadUserRole failed', e); }
-    // Altijd demo-chrome opnieuw evalueren na auth — ook als interval al gestopt is
-    try { __shApplyDemoChrome(); } catch(_){}
-  } else {
-    try { unsubscribeData(); } catch(_){}
-    // Zorg dat demo-strip verborgen is bij uitloggen
-    try { const s = document.getElementById('demo-strip'); if(s) s.style.display='none'; } catch(_){}
-    try { showLogin(); } catch(e){ console.error('showLogin failed', e); }
-  }
-});
-
-initAuthForms();
+    // Altijd demo-chrome opnieuw evalueren na auth — ook al

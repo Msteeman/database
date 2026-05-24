@@ -63,7 +63,22 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Stale-while-revalidate for same-origin assets.
+  // Network-first for JS/CSS so code updates always land immediately.
+  if (url.origin === self.location.origin &&
+      (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'))) {
+    event.respondWith(
+      fetch(new Request(req, { cache: 'reload' })).then((res) => {
+        if (res && res.status === 200) {
+          const copy = res.clone();
+          caches.open(RUNTIME_CACHE).then((c) => c.put(req, copy));
+        }
+        return res;
+      }).catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Stale-while-revalidate for other same-origin assets.
   if (url.origin === self.location.origin) {
     event.respondWith(
       caches.match(req).then((cached) => {

@@ -17797,13 +17797,15 @@ function initApp(){
     }
   });
 
-  // ── "Nieuw" knop in navigatie → naar Programma + modal openen ──
-  document.getElementById('nav-new-report-btn')?.addEventListener('click', () => {
+  // ── "Nieuw" knoppen (nav + bottom nav) → naar Programma + modal openen ──
+  function _goNieuw(){
     if(typeof go === 'function') go('programma');
     setTimeout(() => {
       if(typeof openProgMatchModal === 'function') openProgMatchModal(null, isoDateStr(new Date()));
     }, 80);
-  });
+  }
+  document.getElementById('nav-new-report-btn')?.addEventListener('click', _goNieuw);
+  document.getElementById('bn-new-report-btn')?.addEventListener('click', _goNieuw);
 
   // ── s36l: Club autocomplete op alle statische clubvelden ──
   // Spelersrapport
@@ -18763,15 +18765,15 @@ function _renderDashToernooi(){
   function _pos(input){
     const r = input.getBoundingClientRect();
     const dd = _dd();
-    dd.style.left  = (r.left + window.scrollX) + 'px';
-    dd.style.top   = (r.bottom + window.scrollY + 2) + 'px';
+    // position:fixed — viewport coords, geen scroll offset
+    dd.style.left  = r.left + 'px';
     dd.style.width = r.width + 'px';
-    // flip up if too low
     if(r.bottom + 260 > window.innerHeight){
-      dd.style.top = '';
-      dd.style.bottom = (window.innerHeight - r.top + window.scrollY - 2) + 'px';
+      dd.style.top    = '';
+      dd.style.bottom = (window.innerHeight - r.top + 2) + 'px';
     } else {
       dd.style.bottom = '';
+      dd.style.top    = (r.bottom + 2) + 'px';
     }
   }
 

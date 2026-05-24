@@ -3564,15 +3564,25 @@ algemeen:</textarea>
 
         <!-- Foto import pane -->
         <div id="tf-pane-foto" class="tf-pane" style="display:none;">
-          <div class="tf-upload-zone" id="tf-upload-zone" onclick="document.getElementById('tf-foto-input').click()">
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            <div style="margin-top:8px; font-weight:500;">Foto, scan of PDF uploaden</div>
-            <div style="font-size:12px; color:var(--muted,#9aa3b7); margin-top:4px;">Maak een foto van een schema, upload een scan of PDF — klik of sleep hierheen</div>
-            <input type="file" id="tf-foto-input" accept="image/*,.pdf" style="display:none;" onchange="tfHandleFotoUpload(event)" />
+          <!-- Twee duidelijke knoppen: camera OF bestand -->
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px;">
+            <button class="btn btn-ghost tf-upload-btn" onclick="document.getElementById('tf-camera-input').click()" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:18px 8px; border:1.5px dashed var(--border,#2a2d3e); border-radius:10px;">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <span style="font-size:13px; font-weight:500;">Foto maken</span>
+              <span style="font-size:11px; color:var(--muted,#9aa3b7);">Camera openen</span>
+              <input type="file" id="tf-camera-input" accept="image/jpeg,image/png,image/heic,image/heif,image/webp" capture="environment" style="display:none;" onchange="tfHandleFotoUpload(event)" />
+            </button>
+            <button class="btn btn-ghost tf-upload-btn" onclick="document.getElementById('tf-foto-input').click()" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:18px 8px; border:1.5px dashed var(--border,#2a2d3e); border-radius:10px;">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              <span style="font-size:13px; font-weight:500;">Bestand uploaden</span>
+              <span style="font-size:11px; color:var(--muted,#9aa3b7);">Foto, scan of PDF</span>
+              <input type="file" id="tf-foto-input" accept="image/jpeg,image/png,image/heic,image/heif,image/webp,.pdf,application/pdf" style="display:none;" onchange="tfHandleFotoUpload(event)" />
+            </button>
           </div>
           <div id="tf-foto-preview" style="display:none; margin-top:12px;"></div>
           <button class="btn btn-primary" id="tf-foto-parse-btn" onclick="tfParseFoto()" style="margin-top:12px; display:none;">
-            Schema uitlezen
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            Schema uitlezen via AI
           </button>
           <div id="tf-foto-status" style="margin-top:10px; font-size:13px; color:var(--muted,#9aa3b7); display:none;"></div>
         </div>

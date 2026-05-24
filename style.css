@@ -8829,13 +8829,19 @@ tbody tr:last-child td { border-bottom: none; }
   border-radius: 8px; overflow: hidden; margin-top: 4px;
 }
 .tf-itab {
-  flex: 1; padding: 8px 12px; font-size: 12px; font-weight: 500;
+  flex: 1; padding: 9px 12px; font-size: 12px; font-weight: 500;
   background: transparent; border: none; cursor: pointer;
-  color: var(--text-2,#6b7280); display: flex; align-items: center; justify-content: center; gap: 5px;
-  transition: background .12s, color .12s;
+  color: var(--text-3, #9aa3b7); display: flex; align-items: center; justify-content: center; gap: 5px;
+  transition: background .15s, color .15s;
 }
-.tf-itab.active { background: var(--bg-2,#f3f4f6); color: var(--text-1,#111827); }
-.tf-itab:not(:last-child) { border-right: 0.5px solid var(--border-1,#e2e5ef); }
+.tf-itab.active {
+  background: rgba(245,197,66,.14);
+  color: var(--accent, #f5c542);
+  font-weight: 600;
+}
+.tf-itab:not(:last-child) { border-right: 0.5px solid var(--border, #2a2d3e); }
+.tf-itab svg { opacity: .7; }
+.tf-itab.active svg { opacity: 1; stroke: var(--accent, #f5c542); }
 
 .tf-upload-zone {
   border: 1.5px dashed var(--border-1,#e2e5ef); border-radius: 12px;

@@ -15,7 +15,7 @@ import {
   getFirestore, collection, doc,
   onSnapshot, setDoc, deleteDoc, getDoc,
   /* s35cg: extra imports voor rollen-systeem */
-  updateDoc, query, where, getDocs, orderBy
+  updateDoc, query, where, getDocs, orderBy, addDoc
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* =============== FIREBASE CONFIG =============== */
@@ -5698,7 +5698,7 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
         if($('#f-plaats')) $('#f-plaats').value = mp.plaats || '';
         if($('#f-adres')) $('#f-adres').value = mp.adres || '';
         if($('#f-rugnummer')) $('#f-rugnummer').value = mp.rugnummer || '';
-        if($('#f-elftal')) $('#f-elftal').value = mp.elftal || '';
+        if($('#f-elftal')){ $('#f-elftal').value = mp.elftal || ''; try{document.getElementById('f-elftal')._syncAC && document.getElementById('f-elftal')._syncAC();}catch(_){} }
         if($('#f-been')) $('#f-been').value = mp.been || '';
         if($('#f-tweebenig')) $('#f-tweebenig').value = mp.tweebenig || '';
         if($('#f-linie')) $('#f-linie').value = mp.linie || '';
@@ -5708,7 +5708,7 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
         // s35dj: leeftijd uit elftal-velden als fallback
         const _sfElftal = (prog.thuis_elftal||'').trim() || (prog.uit_elftal||'').trim() || (prog.leeftijd||'').trim();
         if($('#f-leeftijd')) $('#f-leeftijd').value = mp.leeftijd || _sfElftal;
-        if($('#f-elftal') && !$('#f-elftal').value) $('#f-elftal').value = mp.elftal || progSp.elftal || _sfElftal;
+        if($('#f-elftal') && !$('#f-elftal').value){ $('#f-elftal').value = mp.elftal || progSp.elftal || _sfElftal; try{document.getElementById('f-elftal')._syncAC && document.getElementById('f-elftal')._syncAC();}catch(_){} }
         if($('#f-bouw')) $('#f-bouw').value = mp.bouw || '';
         if($('#f-lengte')) $('#f-lengte').value = mp.lengte || '';
         // Title aanpassen: NIEUW rapport, niet bewerken
@@ -12136,7 +12136,7 @@ function loadIntoForm(p){
   $('#f-plaats').value = p.plaats || '';
   if($('#f-adres')) $('#f-adres').value = p.adres || '';
   $('#f-rugnummer').value = p.rugnummer || '';
-  $('#f-elftal').value = p.elftal || '';
+  $('#f-elftal').value = p.elftal || ''; try{document.getElementById('f-elftal')._syncAC && document.getElementById('f-elftal')._syncAC();}catch(_){}
   $('#f-been').value = p.been || '';
   $('#f-tweebenig').value = p.tweebenig || '';
   $('#f-linie').value = p.linie || '';
@@ -17897,7 +17897,7 @@ function initApp(){
   shWireClubAC(document.getElementById('pp-club'));
 
   // ── s36l: Leeftijdscategorie AC op selects ──
-  ['mr-leeftijd','t-leeftijd','a-leeftijd'].forEach(id => {
+  ['mr-leeftijd','t-leeftijd','a-leeftijd','f-elftal'].forEach(id => {
     shUpgradeSelectToAC(id);
   });
 }
@@ -18509,6 +18509,20 @@ async function tfParseUrl(){
         throw new Error('Geen wedstrijdschema herkend in de PDF. Vul handmatig in of gebruik de Foto/Scan/PDF tab.');
       }
     } else {
+      const isTournify = /tournifyapp\.com/i.test(url);
+
+      if(isTournify){
+        // Tournify live-pagina's zijn JS-rendered — vereist handmatige invoer
+        const tLink = document.getElementById('tf-tournify-url');
+        if(tLink && !tLink.value) tLink.value = url;
+        status.textContent='✓ Tournify-link opgeslagen — vul naam en datum hieronder aan.';
+        status.style.color='#3b6d11';
+        document.getElementById('tf-basic-fields').style.display='';
+        document.getElementById('tf-action-row').style.display='flex';
+        btn.disabled=false; btn.textContent='Schema inlezen';
+        return;
+      }
+
       // Stap 1: probeer directe fetch (statische HTML)
       status.textContent='URL ophalen…';
       try{
@@ -18522,7 +18536,7 @@ async function tfParseUrl(){
 
       // Stap 2: als directe fetch mislukt of niets opgeleverd — Cloud Function
       if(!parsed){
-        status.textContent="Ophalen via server (Tournify / JS-pagina’s)…";
+        status.textContent='Ophalen via server…';
         try{
           const endpoint = `https://europe-west1-${__shFirebaseProject()}.cloudfunctions.net/parseToernooiUrl`;
           const r = await fetch(endpoint, {
@@ -18537,7 +18551,7 @@ async function tfParseUrl(){
         }catch(_){ /* Cloud Function ook niet beschikbaar */ }
       }
 
-      if(!parsed || !parsed.poules?.length) throw new Error('Geen wedstrijdschema herkend. Probeer de foto-import.');
+      if(!parsed || !parsed.poules?.length) throw new Error('Geen wedstrijdschema herkend. Probeer Foto/Scan/PDF of vul handmatig in.');
     }
 
     __tfParsedData = parsed;
@@ -18754,24 +18768,72 @@ function _tfShowPreview(parsed){
   prev.style.display = 'block';
 }
 
-/* foto upload */
+/* foto / camera / PDF upload */
 function tfHandleFotoUpload(e){
-  const file = e.target.files[0];
+  const file = e.target.files && e.target.files[0];
   if(!file) return;
   const preview = document.getElementById('tf-foto-preview');
   const parseBtn = document.getElementById('tf-foto-parse-btn');
-  const reader = new FileReader();
-  reader.onload = ev => {
-    __tfFotoBase64 = ev.target.result;
-    if(file.type.startsWith('image/')){
-      preview.innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:200px;border-radius:8px;border:0.5px solid var(--border-1,#e2e5ef);" />`;
-    } else {
-      preview.innerHTML = `<div style="padding:10px 12px;background:var(--bg-2,#f3f4f6);border-radius:8px;font-size:13px;">PDF geladen: ${escapeHtml(file.name)}</div>`;
-    }
+  const statusEl = document.getElementById('tf-foto-status');
+  if(statusEl){ statusEl.style.display='none'; statusEl.textContent=''; }
+
+  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+
+  if(isPdf){
+    // PDF: lees als ArrayBuffer, extraheer tekst via pdf.js, parse direct
+    statusEl && (statusEl.style.display='block');
+    statusEl && (statusEl.textContent='PDF laden…');
+    statusEl && (statusEl.style.color='var(--muted,#9aa3b7)');
+    preview.innerHTML = `<div style="padding:10px 12px;background:rgba(245,197,66,.08);border-radius:8px;font-size:13px;display:flex;align-items:center;gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent,#f5c542)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>PDF geselecteerd: <strong>${escapeHtml(file.name)}</strong></span></div>`;
     preview.style.display='block';
-    parseBtn.style.display='';
-  };
-  reader.readAsDataURL(file);
+
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      try{
+        await _tfLoadPdfJs();
+        statusEl && (statusEl.textContent='PDF tekst uitlezen…');
+        const pdfText = await _tfExtractPdfText(ev.target.result);
+        statusEl && (statusEl.textContent='Schema analyseren…');
+        const parsed = _tfParseText(pdfText, file.name);
+        if(parsed && parsed.poules?.length){
+          __tfParsedData = parsed;
+          _tfShowPreview(parsed);
+          _tfFillBasicFromParsed(parsed);
+          const nW = parsed.poules.reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
+          statusEl && (statusEl.textContent=`✓ Ingelezen: ${parsed.poules.length} poules, ${nW} wedstrijden.`);
+          statusEl && (statusEl.style.color='#3b6d11');
+          document.getElementById('tf-basic-fields').style.display='';
+          document.getElementById('tf-action-row').style.display='flex';
+          parseBtn.style.display='none'; // al verwerkt
+        } else {
+          // PDF tekst gevonden maar schema niet herkend — toon AI-knop
+          __tfFotoBase64 = null; // geen base64 voor PDF AI
+          statusEl && (statusEl.textContent='Schema niet automatisch herkend — probeer AI uitlezen of vul handmatig in.');
+          statusEl && (statusEl.style.color='var(--muted,#9aa3b7)');
+          parseBtn.style.display='';
+          document.getElementById('tf-basic-fields').style.display='';
+          document.getElementById('tf-action-row').style.display='flex';
+        }
+      }catch(err){
+        statusEl && (statusEl.textContent='Fout bij uitlezen: '+err.message);
+        statusEl && (statusEl.style.color='#a32d2d');
+        parseBtn.style.display='';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  } else {
+    // Afbeelding: lees als base64 voor AI
+    const reader = new FileReader();
+    reader.onload = ev => {
+      __tfFotoBase64 = ev.target.result;
+      preview.innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:200px;border-radius:8px;border:0.5px solid var(--border,#2a2d3e);" />`;
+      preview.style.display='block';
+      parseBtn.style.display='';
+    };
+    reader.readAsDataURL(file);
+  }
+  // Reset input zo dat hetzelfde bestand opnieuw gekozen kan worden
+  e.target.value = '';
 }
 
 async function tfParseFoto(){

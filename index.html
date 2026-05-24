@@ -1264,7 +1264,7 @@ algemeen:</textarea>
             <div class="field-row">
               <div class="field">
                 <label>Club van de speler</label>
-                <input id="f-club" type="text" autocomplete="off" data-picker="club" />
+                <input id="f-club" type="text" autocomplete="off" list="club-suggestions" data-picker="club" />
               </div>
               <div class="field">
                 <label>Plaats</label>
@@ -1278,7 +1278,7 @@ algemeen:</textarea>
             <div class="field-row three">
               <div class="field">
                 <label>Elftal</label>
-                <input id="f-elftal" type="text" placeholder="Bijv. O.15-1" autocomplete="off" data-picker="elftal" />
+                <input id="f-elftal" type="text" placeholder="Bijv. O.15-1" autocomplete="off" list="elftal-suggestions" data-picker="elftal" />
               </div>
               <div class="field">
                 <label>Rugnummer</label>
@@ -1312,11 +1312,11 @@ algemeen:</textarea>
               </div>
               <div class="field">
                 <label>Thuisspelende ploeg</label>
-                <input id="f-w-thuis" type="text" placeholder="Bijv. FC Twente O15" autocomplete="off" data-picker="club" />
+                <input id="f-w-thuis" type="text" placeholder="Bijv. FC Twente O15" autocomplete="off" list="club-suggestions" data-picker="club" />
               </div>
               <div class="field">
                 <label>Uitspelende ploeg</label>
-                <input id="f-w-uit" type="text" placeholder="Bijv. Sparta Rotterdam O15" autocomplete="off" data-picker="club" />
+                <input id="f-w-uit" type="text" placeholder="Bijv. Sparta Rotterdam O15" autocomplete="off" list="club-suggestions" data-picker="club" />
               </div>
             </div>
             <!-- s35dg Fase H: locatie-velden, prefilled vanuit programma -->
@@ -2324,22 +2324,22 @@ algemeen:</textarea>
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Thuisspelende ploeg *</label>
-            <input id="pm-thuis" type="text" placeholder="Bijv. AFC" autocomplete="off" data-picker="club" />
+            <input id="pm-thuis" type="text" placeholder="Bijv. AFC" autocomplete="off" list="club-suggestions" data-picker="club" />
           </div>
           <div class="field">
             <label>Uitspelende ploeg *</label>
-            <input id="pm-uit" type="text" placeholder="Bijv. Ajax" autocomplete="off" data-picker="club" />
+            <input id="pm-uit" type="text" placeholder="Bijv. Ajax" autocomplete="off" list="club-suggestions" data-picker="club" />
           </div>
         </div>
         <!-- s35bd: elftal per club (bv. O.16-1 vs O.16-2) -->
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Elftal thuis (optioneel)</label>
-            <input id="pm-thuis-elftal" type="text" placeholder="bv. O.16-1" autocomplete="off" maxlength="20" data-picker="elftal" />
+            <input id="pm-thuis-elftal" type="text" placeholder="bv. O.16-1" autocomplete="off" maxlength="20" list="elftal-suggestions" data-picker="elftal" />
           </div>
           <div class="field">
             <label>Elftal uit (optioneel)</label>
-            <input id="pm-uit-elftal" type="text" placeholder="bv. O.16-2" autocomplete="off" maxlength="20" data-picker="elftal" />
+            <input id="pm-uit-elftal" type="text" placeholder="bv. O.16-2" autocomplete="off" maxlength="20" list="elftal-suggestions" data-picker="elftal" />
           </div>
         </div>
         <div class="field-row" style="margin-top:12px;">
@@ -2371,7 +2371,7 @@ algemeen:</textarea>
             </div>
             <div class="field-row" style="margin-top:8px;">
               <div class="field"><label>Geboortedatum</label><input id="pmpp-geboorte" type="date" /></div>
-              <div class="field"><label>Club</label><input id="pmpp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" /></div>
+              <div class="field"><label>Club</label><input id="pmpp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" list="club-suggestions" /></div>
             </div>
             <div id="pmpp-suggestion-wrap" class="pp-suggestion-wrap" style="display:none; margin-top:8px;"></div>
             <div id="pmpp-known-banner" style="display:none; margin-top:8px; padding:10px 12px; border-radius:10px; background:rgba(34,197,94,0.10); border:1px solid rgba(34,197,94,0.40); font-size:12.5px; color:#bbf7d0; line-height:1.4;"></div>
@@ -2426,7 +2426,7 @@ algemeen:</textarea>
           </div>
           <div class="field">
             <label>Club</label>
-            <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" data-picker="club" />
+            <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" list="club-suggestions" data-picker="club" />
           </div>
         </div>
         <!-- s35q: hidden naam (auto-synced); s35p hidden rugnummer/positie (preserve) -->
@@ -2676,11 +2676,11 @@ algemeen:</textarea>
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Thuisspelende ploeg *</label>
-            <input id="mr-thuis" type="text" required placeholder="Bijv. Roda'46 12.2" autocomplete="off" data-picker="club" />
+            <input id="mr-thuis" type="text" required placeholder="Bijv. Roda'46 12.2" autocomplete="off" list="club-suggestions" data-picker="club" />
           </div>
           <div class="field">
             <label>Uitspelende ploeg *</label>
-            <input id="mr-uit" type="text" required placeholder="Bijv. Scherpenzeel 12.1" autocomplete="off" data-picker="club" />
+            <input id="mr-uit" type="text" required placeholder="Bijv. Scherpenzeel 12.1" autocomplete="off" list="club-suggestions" data-picker="club" />
           </div>
         </div>
         <div class="field-row" style="margin-top:12px;">
@@ -3221,6 +3221,11 @@ algemeen:</textarea>
 <!-- s35cz: Demo-rondleiding wire-up (standalone, geen module-afhankelijkheid) -->
 
 
+<!-- ── Floating "terug naar boven" knop ── -->
+<button id="sh-back-to-top" aria-label="Terug naar boven" title="Terug naar boven">
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"/></svg>
+</button>
+
 <!-- Adresboek-autocomplete: gevuld door fillClubDatalist() -->
 <datalist id="club-suggestions"></datalist>
 <!-- Elftal-autocomplete: O.8-1 t/m O.23-10 -->
@@ -3396,68 +3401,4 @@ algemeen:</textarea>
       <div class="sh-picker-title" id="sh-picker-title">Kies</div>
       <button class="sh-picker-close" id="sh-picker-close" type="button" aria-label="Sluiten">&times;</button>
     </div>
-    <input class="sh-picker-search" id="sh-picker-search" type="search" placeholder="Zoeken..." autocomplete="off" />
-    <div class="sh-picker-recents-label" id="sh-picker-recents-label">Recent</div>
-    <div class="sh-picker-recents" id="sh-picker-recents"></div>
-    <div class="sh-picker-list" id="sh-picker-list"></div>
-  </div>
-</div>
-
-
-<!-- ===== /Universele picker ===== -->
-
-
-<!-- v70: Copy-last-report confirm modal -->
-<div class="copy-confirm-backdrop" id="report-copy-confirm">
-  <div class="copy-confirm" role="dialog" aria-modal="true">
-    <h3>Vorig rapport kopiëren</h3>
-    <p class="sub">De volgende velden worden overgenomen uit <strong id="report-copy-confirm-source">—</strong>:</p>
-    <ul id="report-copy-confirm-list"></ul>
-    <div class="copy-confirm-actions">
-      <button type="button" class="cancel" id="report-copy-confirm-cancel">Annuleren</button>
-      <button type="button" class="confirm" id="report-copy-confirm-ok">Kopieer velden</button>
-    </div>
-  </div>
-</div>
-
-
-
-
-
-
-
-
-
-<!-- v70h-s14: teleport opslaan-balk naar <body> ALLEEN op mobile/tablet
-     (<=1024px). Daar moet hij fixed boven de bottom-nav blijven en mag
-     geen ancestor met transform/will-change roet in het eten gooien.
-     Op desktop blijft de balk gewoon binnen <form id="report-form">. -->
-
-
-
-<!-- s35at (#231): tip-systeem 💡 BASAAL — floating knop + modal -->
-<button id="sh-tip-btn" type="button" aria-label="Wat zie ik op dit scherm?" title="Wat zie ik op dit scherm?" style="display:none; width:22px; height:22px; padding:0; margin-left:8px; border-radius:50%; border:1px solid rgba(245,200,66,0.45); background:rgba(245,200,66,0.10); color:#f5c842; font-size:12px; line-height:1; cursor:pointer; vertical-align:middle; align-items:center; justify-content:center;">?</button>
-<div id="sh-tip-modal" style="display:none; position:fixed; inset:0; z-index:9100; background:rgba(0,0,0,0.5); backdrop-filter:blur(3px); align-items:center; justify-content:center; padding:20px;">
-  <div style="background:linear-gradient(180deg,#181c28 0%,#13161f 100%); border:1px solid rgba(245,200,66,0.3); border-radius:14px; padding:18px; max-width:340px; width:100%; box-shadow:0 12px 32px rgba(0,0,0,0.6);">
-    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-      <div style="font-size:14px; font-weight:700; color:#f5c842; display:flex; align-items:center; gap:6px;">💡 <span id="sh-tip-title">Dit scherm</span></div>
-      <button type="button" id="sh-tip-close" style="background:transparent; border:0; color:#8a93ab; font-size:22px; line-height:1; width:28px; height:28px; border-radius:6px; cursor:pointer;">×</button>
-    </div>
-    <ul id="sh-tip-list" style="margin:0; padding-left:18px; font-size:13px; line-height:1.65; color:#e5e9f5;"></ul>
-  </div>
-</div>
-
-<!-- /s35at -->
-
-<!-- ===== s35cl: layout debug overlay (URL hash #debug of #debug-layout) ===== -->
-
-<div id="s35cl-debug" aria-hidden="true">
-  <button class="close" aria-label="Sluit debug" onclick="document.getElementById('s35cl-debug').classList.remove('on')">×</button>
-  <h4>Layout Debug (s35cl)</h4>
-  <div id="s35cl-debug-body">…</div>
-  <div class="hint">Verberg: × of typ #debug-off in URL. Vernieuw met R.</div>
-</div>
-
-<script type="module" src="app.js"></script>
-</body>
-</html>
+    <input class="sh-picker-search" id="sh-picker-search" type="

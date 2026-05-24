@@ -5169,6 +5169,26 @@ function shStagger(containerSelector, childSelector){
 }
 window.shStagger = shStagger;
 
+// ── Floating "terug naar boven" knop ──
+(function _shBackToTop(){
+  const btn = document.getElementById('sh-back-to-top');
+  if(!btn) return;
+  const scrollEl = document.querySelector('.main') || window;
+  const getScroll = () => scrollEl === window ? window.scrollY : scrollEl.scrollTop;
+  const onScroll = () => {
+    if(getScroll() > 300) btn.classList.add('visible');
+    else btn.classList.remove('visible');
+  };
+  scrollEl.addEventListener('scroll', onScroll, { passive: true });
+  btn.addEventListener('click', () => {
+    if(scrollEl === window) window.scrollTo({ top: 0, behavior: 'smooth' });
+    else scrollEl.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+  onScroll();
+})();
+
+
+
 /* ── C1: 3D tilt op kaarten met class sh-tilt-card (desktop only) ── */
 (function(){
   if(window.matchMedia('(hover:none)').matches) return; // geen tilt op touch
@@ -6296,6 +6316,13 @@ function renderActiveScouting(){
           [naamIn, rugIn, posIn].forEach(el => el && el.addEventListener('input', onInput));
           termIns.forEach(el => el.addEventListener('input', onInput));
           if(posIn) posIn.addEventListener('change', onInput);
+          // s-blur-save: direct opslaan als gebruiker het formulier verlaat (wegklikt)
+          form.addEventListener('focusout', (e) => {
+            // Controleer of focus nog binnen het form blijft (bv. naar volgend veld)
+            if(form.contains(e.relatedTarget)) return;
+            if(debTimer){ clearTimeout(debTimer); debTimer = null; }
+            doAutoSave();
+          });
           // Helper: form vullen vanuit bestaande snel-notitie (parse tekst -> inputs)
           form.__shFillFromSn = (sn) => {
             naamIn.value = sn.naam || '';
@@ -8899,12 +8926,8 @@ function _shOpenEditModal(m){
   const footEl = document.getElementById("wstr-edit-foot");
   if(footEl){
     const reportId = m.kind === "report" ? m.id : "";
-    // s35dh: voor programma-kind: voeg "Bewerk in Programma"-knop toe
-    const progEditBtn = (m.kind === 'programma' || m.kind === 'prog') && m.progId
-      ? `<button type="button" class="btn btn-ghost" data-edit-prog-id="${escapeHtml(m.progId)}" style="margin-left:auto">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          Bewerk in Programma
-        </button>` : '';
+    // s-prog-edit-removed: "Bewerk in Programma" niet in Wedstrijden-modal
+    const progEditBtn = '';
     footEl.innerHTML = `
       <button type="button" class="btn btn-secondary match-verwerk-btn" data-match-key="${escapeHtml(key)}" data-report-id="${escapeHtml(reportId)}">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
@@ -9036,7 +9059,15 @@ function _shOpenEditModal(m){
           const r = matchReportsCache.find(x => x.id === rid);
           if(r){ _shCloseEditModal(); _shOpenVerwerkModal({ kind:"report", id:r.id, datum:r.datum, thuis:r.thuis, uit:r.uit, opmerking:r.opmerking }); }
         } else if(mk){
-          const found = _shFindMatchByKey(mk);
+          // s-verwerk-fix: zoek eerst in aggregated, dan in programmaCache, dan gebruik huidig open match
+          let found = _shFindMatchByKey(mk);
+          if(!found && typeof programmaCache !== 'undefined'){
+            const pItem = programmaCache.find(p => _shMatchKey(p) === mk || _shMatchKey({...p, kind:'programma'}) === mk);
+            if(pItem) found = {...pItem, kind:'programma'};
+          }
+          if(!found && window.__shCurrentEditMatch && _shMatchKey(window.__shCurrentEditMatch) === mk){
+            found = window.__shCurrentEditMatch;
+          }
           if(found){ _shCloseEditModal(); _shOpenVerwerkModal(found); }
         }
       });
@@ -9881,7 +9912,7 @@ function wireCmpAddModal(){
   const filters = document.querySelector('.cmp-add-modal-filters');
   if(filters){
     filters.addEventListener('click', (ev) => {
-      // Categorie-knop (Keeper direct, anderen open/close dropdown)
+      // Categorie-knop: toggle ALLE posities in die categorie direct in filter
       const catBtn = ev.target.closest('.cmp-cat-btn');
       if(catBtn){
         const cat = catBtn.dataset.cat;
@@ -9889,6 +9920,17 @@ function wireCmpAddModal(){
           toggleSet(cmpAddModalState.pos, 'GK');
           cmpAddModalState.openCat = null;
         } else {
+          // s-pos-filter-fix: selecteer/deselecteer alle posities in deze categorie
+          const catPositions = (CMP_POSITION_CATS[cat] || []).map(p => p.code);
+          const allActive = catPositions.every(code => cmpAddModalState.pos.has(code));
+          if(allActive){
+            // allemaal aan → allemaal uit
+            catPositions.forEach(code => cmpAddModalState.pos.delete(code));
+          } else {
+            // niet alle aan → zet ze allemaal aan
+            catPositions.forEach(code => cmpAddModalState.pos.add(code));
+          }
+          // dropdown tonen/verbergen als extra visuele hint
           cmpAddModalState.openCat = (cmpAddModalState.openCat === cat) ? null : cat;
         }
         renderCmpAddCategoryButtons();
@@ -10674,10 +10716,21 @@ function renderDetailOverview(p){
         Vergelijken (${cmpSelectedIds.length})
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-left:3px;"><polyline points="9 18 15 12 9 6"/></svg>
       </button>` : ''}
-      <button class="btn btn-sm" id="dtl-show-report-top" style="background:var(--primary-2);color:#fff;border-color:var(--primary-2);margin-left:auto;">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        ${escapeHtml(topBtnLabel)}
-      </button>
+      <div class="dtl-icon-actions" style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+        <button class="btn btn-sm" id="dtl-show-report-top" style="background:var(--primary-2);color:#fff;border-color:var(--primary-2);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+          ${escapeHtml(topBtnLabel)}
+        </button>
+        <button class="btn btn-sm dtl-icon-btn" id="dtl-edit-top" title="Bewerken">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
+        <button class="btn btn-sm dtl-icon-btn" id="dtl-pdf-top" title="Download als PDF">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
+        <button class="btn btn-sm dtl-icon-btn" id="dtl-del-top" title="Verwijder rapport" style="color:#ef4444;border-color:#ef4444;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        </button>
+      </div>
     </div>
     <div class="spelersoverzicht-title-row">
       <div class="spelersoverzicht-title">Spelersoverzicht</div>
@@ -10688,7 +10741,10 @@ function renderDetailOverview(p){
     <div class="detail-header">
       <div class="detail-avatar">${initials(p.naam)}</div>
       <div style="flex:1;">
-        <div class="detail-name">${escapeHtml(p.naam)}</div>
+        <div class="detail-name">
+          ${escapeHtml(p.naam)}
+          ${p.leeftijd ? `<span class="dtl-leeftijd-chip">${escapeHtml(p.leeftijd)}</span>` : ''}
+        </div>
         <div class="detail-meta">
           ${escapeHtml(meta||'—')}${p.rugnummer?(' · #'+escapeHtml(p.rugnummer)):''}${p.been?(' · '+escapeHtml(p.been)):''}${p.geboorte?(' · '+formatDate(p.geboorte)):''}
         </div>
@@ -10745,18 +10801,7 @@ function renderDetailOverview(p){
 
     ${reportsListHtml}
 
-    <div class="form-actions" style="margin-top:24px;">
-      <button class="btn" id="dtl-show-report" style="background:var(--primary-2);color:#fff;border-color:var(--primary-2);">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-        ${escapeHtml(topBtnLabel)}
-      </button>
-      <button class="btn btn-sm" id="dtl-pdf">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Download als PDF
-      </button>
-      <button class="btn btn-sm" id="dtl-edit">Bewerken</button>
-      <button class="btn btn-danger btn-sm" id="dtl-del">Verwijder rapport</button>
-    </div>
+    <div style="height:16px;"></div>
   `;
   renderDetailKPIs(vp);
   renderDetailSummary(vp);
@@ -10814,6 +10859,18 @@ function renderDetailOverview(p){
       if(!rep) return;
       renderDetailFullReport(buildPlayerFromReport(p, rep));
     });
+  });
+  // s-icon-btns: nieuwe icon-knoppen bovenaan (vervangt form-actions onderaan)
+  const _dtlPdfTop = document.getElementById('dtl-pdf-top');
+  if(_dtlPdfTop) _dtlPdfTop.addEventListener('click', () => generatePlayerPDF(vp));
+  const _dtlEditTop = document.getElementById('dtl-edit-top');
+  if(_dtlEditTop) _dtlEditTop.addEventListener('click', () => { go('report'); loadIntoForm(vp); });
+  const _dtlDelTop = document.getElementById('dtl-del-top');
+  if(_dtlDelTop) _dtlDelTop.addEventListener('click', async () => {
+    const naam = (p.naam || '').trim() || 'onbekende speler';
+    if(!confirm('Rapport van ' + naam + ' verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
+    try { await deletePlayer(p.id); go(previousViewBeforePlayer || 'database'); if(typeof toast==='function') toast('Rapport verwijderd'); }
+    catch(err){ if(typeof toast==='function') toast('Verwijderen mislukt', true); }
   });
   $('#dtl-pdf').addEventListener('click', () => generatePlayerPDF(p));
   $('#dtl-edit').addEventListener('click', () => {
@@ -16414,15 +16471,8 @@ window.shUpdateMatchesNavBadge = shUpdateMatchesNavBadge;
 /* ---- Follow-up nav-badge op Spelersbase ---- */
 function shUpdateDatabaseNavBadge(){
   try {
-    const players = typeof loadPlayers === 'function' ? loadPlayers() : [];
-    const DAYS = 60;
-    const cutoff = Date.now() - DAYS * 24 * 3600 * 1000;
-    const n = players.filter(p => {
-      const adv = String(p.advies || '');
-      if(adv !== '2' && adv !== '3') return false;
-      if(!p.datum) return true;
-      return new Date(p.datum).getTime() < cutoff;
-    }).length;
+    // s-badge-off: op verzoek uitgeschakeld
+    const n = 0;
     document.querySelectorAll('[data-view="database"]').forEach(nav => {
       let badge = nav.querySelector('.nav-followup-badge');
       if(n > 0){
@@ -16541,6 +16591,37 @@ function wireProgrammaUI(){
   $('#programma-today-btn')?.addEventListener('click', () => { progWeekOffset = 0; renderProgramma(); });
   $('#prog-prev-week')?.addEventListener('click', () => { progWeekOffset--; renderProgramma(); });
   $('#prog-next-week')?.addEventListener('click', () => { progWeekOffset++; renderProgramma(); });
+
+  // s-week-picker: klik op week-label → verborgen date-input opent, sprong naar willekeurige week
+  (function _wireWeekPicker(){
+    const label = $('#prog-nav-label');
+    if(!label || label.dataset.wpWired) return;
+    label.dataset.wpWired = '1';
+    label.style.cursor = 'pointer';
+    label.title = 'Klik om naar een specifieke week te gaan';
+    // maak verborgen date-input
+    const inp = document.createElement('input');
+    inp.type = 'date';
+    inp.style.cssText = 'position:absolute;opacity:0;pointer-events:none;width:1px;height:1px;';
+    label.appendChild(inp);
+    label.addEventListener('click', (e) => {
+      // Stel input in op maandag van huidige displayweek
+      const mon = getCurrentDisplayMonday();
+      inp.value = isoDateStr(mon);
+      inp.showPicker ? inp.showPicker() : inp.click();
+    });
+    inp.addEventListener('change', () => {
+      if(!inp.value) return;
+      const chosen = new Date(inp.value + 'T00:00:00');
+      const thisMonday = getMondayOfWeek(new Date());
+      const chosenMonday = getMondayOfWeek(chosen);
+      progWeekOffset = Math.round((chosenMonday - thisMonday) / (7*24*3600*1000));
+      // Zet actieve dag op de gekozen datum als die in de week valt
+      const dayOfWeek = (chosen.getDay() + 6) % 7; // 0=ma
+      progWeekActiveDay = dayOfWeek;
+      renderProgramma();
+    });
+  })();
 
   // s35dj: type-pill klikken in modal
   document.addEventListener('click', e => {
@@ -17634,539 +17715,4 @@ async function loadUserRole(){
       /* Sync naar Firestore zodat rules kloppen */
       try {
         await setDoc(uref, { role: 'admin', email: currentUser.email }, { merge: true });
-      } catch(e){ /* niet kritisch */ }
-    }
-    currentUserRole = role;
-    currentUserTeamId = teamId;
-    /* Body-class voor CSS-gating */
-    document.body.classList.remove('role-scout','role-coord','role-admin');
-    if(role === 'admin') document.body.classList.add('role-admin');
-    else if(role === 'coordinator') document.body.classList.add('role-coord');
-    else document.body.classList.add('role-scout');
-    /* Update settings-rows */
-    const sr = document.getElementById('settings-role');
-    if(sr) sr.textContent = role.charAt(0).toUpperCase()+role.slice(1);
-    const st = document.getElementById('settings-team');
-    if(st) st.textContent = teamId || 'Individueel (geen team)';
-    /* s35cj: sidebar-naam dynamisch zetten op basis van ingelogde user.
-       Volgorde: user-doc displayName > Firebase Auth displayName >
-       email local-part (prettified) > fallback 'Scout'.                       */
-    try {
-      let _label = (displayName || '').trim();
-      if(!_label && currentUser && currentUser.email){
-        const local = currentUser.email.split('@')[0] || '';
-        _label = local.replace(/[._-]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim();
-      }
-      if(!_label) _label = 'Scout';
-      const nameEl = document.querySelector('.scout-name');
-      if(nameEl && nameEl.textContent !== _label) nameEl.textContent = _label;
-      /* Initialen + avatar verversen via bestaande helper (rebuildt 'MS' uit nieuwe naam) */
-      if(typeof applyPhotoEverywhere === 'function' && typeof readPhoto === 'function'){
-        try { applyPhotoEverywhere(readPhoto()); } catch(_){}
-      }
-    } catch(e){ console.warn('[s35cj] sidebar-name update failed:', e); }
-    console.log('[s35cj] role=' + role + ' team=' + teamId + ' name=' + (displayName||currentUser?.email||''));
-  } catch(e){
-    console.warn('[s35cg] loadUserRole failed:', e);
-  }
-}
-
-/* Lijst van scouts in mijn team (coord/admin) — voor dropdowns + team-overzicht */
-async function loadTeamScouts(){
-  if(currentUserRole === 'scout') { teamScoutsCache = []; return; }
-  /* s35ch: coordinator zonder team kan geen team-genoten zien */
-  if(!currentUserTeamId){ teamScoutsCache = []; return; }
-  try {
-    const q = query(collection(db, 'users'), where('teamId', '==', currentUserTeamId));
-    const snap = await getDocs(q);
-    const out = [];
-    snap.forEach(docSnap => {
-      const d = docSnap.data() || {};
-      out.push({
-        uid: docSnap.id,
-        email: d.email || '',
-        displayName: d.displayName || d.email || docSnap.id.slice(0,6),
-        role: d.role || 'scout',
-        teamId: d.teamId || ''
-      });
-    });
-    teamScoutsCache = out;
-  } catch(e){
-    console.warn('[s35cg] loadTeamScouts failed:', e);
-    teamScoutsCache = [];
-  }
-}
-
-/* Vul de scout-dropdown in de wedstrijd-modal */
-function populateScoutDropdown(preselectUid){
-  const sel = document.getElementById('pm-scout');
-  if(!sel) return;
-  if(currentUserRole === 'scout'){
-    sel.innerHTML = '<option value="">— Mijzelf —</option>';
-    sel.value = '';
-    return;
-  }
-  let html = '<option value="">— Mijzelf —</option>';
-  /* Scouts: alleen role=scout tonen (coord plant voor scouts, niet voor andere coords) */
-  const scouts = teamScoutsCache.filter(u => u.uid !== currentUser.uid && u.role === 'scout');
-  scouts.sort((a,b)=> (a.displayName||'').localeCompare(b.displayName||''));
-  for(const s of scouts){
-    const label = (s.displayName || s.email).replace(/"/g,'&quot;');
-    html += '<option value="' + s.uid + '">' + label + '</option>';
-  }
-  sel.innerHTML = html;
-  if(preselectUid) sel.value = preselectUid;
-}
-
-/* ============================================================
-   TEAM-OVERZICHT renderer (coord/admin)
-   N+1: voor elke scout in team → match_reports + players ophalen
-   ============================================================ */
-let __teamOverzichtCache = null;
-
-async function fetchTeamReports(){
-  if(currentUserRole === 'scout') return { match_reports: [], players: [], scouts: [] };
-  /* s35ch: zonder team is er niets om te tonen */
-  if(!currentUserTeamId) return { match_reports: [], players: [], scouts: [] };
-  await loadTeamScouts();
-  const teamScouts = teamScoutsCache;
-  const allMatches = [];
-  const allPlayers = [];
-  for(const s of teamScouts){
-    /* Match reports */
-    try {
-      const mSnap = await getDocs(collection(db, 'users', s.uid, 'match_reports'));
-      mSnap.forEach(d => {
-        const data = d.data() || {};
-        allMatches.push({
-          id: d.id,
-          _scoutUid: s.uid,
-          _scoutName: s.displayName || s.email,
-          ...data
-        });
-      });
-    } catch(e){ console.warn('match_reports fail for', s.uid, e); }
-    /* Players */
-    try {
-      const pSnap = await getDocs(collection(db, 'users', s.uid, 'players'));
-      pSnap.forEach(d => {
-        const data = d.data() || {};
-        allPlayers.push({
-          id: d.id,
-          _scoutUid: s.uid,
-          _scoutName: s.displayName || s.email,
-          ...data
-        });
-      });
-    } catch(e){ console.warn('players fail for', s.uid, e); }
-  }
-  return { match_reports: allMatches, players: allPlayers, scouts: teamScouts };
-}
-
-function _toEscape(s){ return String(s||'').replace(/[&<>"']/g, c => ({
-  '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-}[c])); }
-
-function _groupByScout(rows){
-  const m = new Map();
-  for(const r of rows){
-    const k = r._scoutUid;
-    if(!m.has(k)) m.set(k, { name: r._scoutName, items: [] });
-    m.get(k).items.push(r);
-  }
-  return Array.from(m.entries()).map(([uid, v]) => ({ uid, name: v.name, items: v.items }));
-}
-
-async function renderTeamOverzicht(){
-  const empWed = document.getElementById('to-empty-wedstrijd');
-  const lstWed = document.getElementById('to-list-wedstrijd');
-  const empSp  = document.getElementById('to-empty-speler');
-  const lstSp  = document.getElementById('to-list-speler');
-  const empSc  = document.getElementById('to-empty-scouts');
-  const lstSc  = document.getElementById('to-list-scouts');
-  if(!empWed) return;
-  empWed.textContent = 'Laden…'; if(lstWed) lstWed.innerHTML = '';
-  empSp.textContent  = 'Laden…'; if(lstSp)  lstSp.innerHTML  = '';
-  empSc.textContent  = 'Laden…'; if(lstSc)  lstSc.innerHTML  = '';
-  const data = await fetchTeamReports();
-  __teamOverzichtCache = data;
-
-  /* ----- Wedstrijdrapporten ----- */
-  if(!data.match_reports.length){
-    empWed.style.display = 'block';
-    empWed.textContent = 'Nog geen wedstrijdrapporten in je team.';
-    lstWed.innerHTML = '';
-  } else {
-    empWed.style.display = 'none';
-    const groups = _groupByScout(data.match_reports);
-    groups.sort((a,b)=> a.name.localeCompare(b.name));
-    let h = '';
-    for(const g of groups){
-      g.items.sort((a,b)=> (b.datum||'').localeCompare(a.datum||''));
-      h += '<div class="to-scout-group">';
-      h += '  <div class="to-scout-head">' + _toEscape(g.name)
-        +  '<span class="to-scout-count">' + g.items.length + '</span></div>';
-      for(const it of g.items){
-        const titel = (it.thuis||'?') + ' – ' + (it.uit||'?');
-        const meta  = (it.datum||'') + (it.locatie ? ' · ' + it.locatie : '');
-        h += '<div class="to-card">';
-        h += '  <div class="to-card-title">' + _toEscape(titel) + '</div>';
-        h += '  <div class="to-card-meta">' + _toEscape(meta) + '</div>';
-        h += '</div>';
-      }
-      h += '</div>';
-    }
-    lstWed.innerHTML = h;
-  }
-
-  /* ----- Spelersrapporten (players) ----- */
-  if(!data.players.length){
-    empSp.style.display = 'block';
-    empSp.textContent = 'Nog geen spelersrapporten in je team.';
-    lstSp.innerHTML = '';
-  } else {
-    empSp.style.display = 'none';
-    const groups = _groupByScout(data.players);
-    groups.sort((a,b)=> a.name.localeCompare(b.name));
-    let h = '';
-    for(const g of groups){
-      g.items.sort((a,b)=> ((b.created||0) - (a.created||0)));
-      h += '<div class="to-scout-group">';
-      h += '  <div class="to-scout-head">' + _toEscape(g.name)
-        +  '<span class="to-scout-count">' + g.items.length + '</span></div>';
-      for(const it of g.items){
-        const naam = (it.voornaam||'') + ' ' + (it.achternaam||'') || it.naam || '(geen naam)';
-        const meta = (it.club||'') + (it.positie ? ' · ' + it.positie : '');
-        h += '<div class="to-card">';
-        h += '  <div class="to-card-title">' + _toEscape(naam) + '</div>';
-        h += '  <div class="to-card-meta">' + _toEscape(meta) + '</div>';
-        h += '</div>';
-      }
-      h += '</div>';
-    }
-    lstSp.innerHTML = h;
-  }
-
-  /* ----- Scouts in team ----- */
-  if(!data.scouts.length){
-    empSc.style.display = 'block';
-    empSc.textContent = 'Geen scouts in je team gevonden.';
-    lstSc.innerHTML = '';
-  } else {
-    empSc.style.display = 'none';
-    let h = '';
-    for(const s of data.scouts){
-      const me = s.uid === currentUser.uid ? ' (jij)' : '';
-      h += '<div class="to-card">';
-      h += '  <div class="to-card-title">' + _toEscape(s.displayName || s.email) + me + '</div>';
-      h += '  <div class="to-card-meta">' + _toEscape(s.email) + ' · ' + _toEscape(s.role) + '</div>';
-      h += '</div>';
-    }
-    lstSc.innerHTML = h;
-  }
-}
-
-/* Tab-switching binnen team-overzicht */
-document.addEventListener('click', (e) => {
-  const tab = e.target.closest && e.target.closest('#view-team-overzicht .to-tab');
-  if(!tab) return;
-  const which = tab.dataset.toTab;
-  document.querySelectorAll('#view-team-overzicht .to-tab').forEach(t => t.classList.toggle('active', t === tab));
-  document.querySelectorAll('#view-team-overzicht .to-section').forEach(s => {
-    s.classList.toggle('active', s.id === 'to-section-' + which);
-  });
-});
-
-/* ============================================================
-   ADMIN-PANEEL renderer (alleen role=admin)
-   ============================================================ */
-async function renderAdminPanel(){
-  const wrap = document.getElementById('admin-users-list');
-  if(!wrap) return;
-  if(currentUserRole !== 'admin'){
-    wrap.innerHTML = '<div class="to-empty">Geen toegang — alleen admin.</div>';
-    return;
-  }
-  wrap.innerHTML = '<div class="to-empty">Laden…</div>';
-  let users = [];
-  try {
-    const snap = await getDocs(collection(db, 'users'));
-    snap.forEach(d => {
-      const dd = d.data() || {};
-      users.push({
-        uid: d.id,
-        email: dd.email || '',
-        displayName: dd.displayName || '',
-        role: dd.role || 'scout',
-        teamId: dd.teamId || ''
-      });
-    });
-  } catch(e){
-    wrap.innerHTML = '<div class="to-empty">Laden mislukt: ' + _toEscape(e.message||'') + '</div>';
-    return;
-  }
-  if(!users.length){ wrap.innerHTML = '<div class="to-empty">Nog geen gebruikers.</div>'; return; }
-  users.sort((a,b)=> (a.email||'').localeCompare(b.email||''));
-  let h = '';
-  for(const u of users){
-    const me = u.uid === currentUser.uid ? ' <em style="color:#9ca3af;">(jij)</em>' : '';
-    h += '<div class="admin-user-row" data-uid="' + _toEscape(u.uid) + '">';
-    h += '  <div class="admin-user-email">' + _toEscape(u.email || u.displayName || u.uid)
-       + ' <span class="admin-role-badge ' + _toEscape(u.role) + '">' + _toEscape(u.role) + '</span>' + me + '</div>';
-    h += '  <select class="admin-user-role-select" data-uid="' + _toEscape(u.uid) + '">';
-    for(const r of ['scout','coordinator','admin']){
-      const sel = (r === u.role) ? ' selected' : '';
-      h += '<option value="' + r + '"' + sel + '>' + r + '</option>';
-    }
-    h += '  </select>';
-    h += '  <input class="admin-user-team-input" data-uid="' + _toEscape(u.uid) + '" value="'
-       + _toEscape(u.teamId) + '" placeholder="(leeg = individueel)" />';
-    h += '  <button class="admin-save-btn" data-uid="' + _toEscape(u.uid) + '">Opslaan</button>';
-    h += '</div>';
-  }
-  wrap.innerHTML = h;
-}
-
-document.addEventListener('click', async (e) => {
-  const btn = e.target.closest && e.target.closest('.admin-save-btn');
-  if(!btn) return;
-  const uid = btn.dataset.uid;
-  if(!uid) return;
-  const row = btn.closest('.admin-user-row');
-  const roleSel = row.querySelector('.admin-user-role-select');
-  const teamInp = row.querySelector('.admin-user-team-input');
-  const newRole = roleSel.value;
-  const newTeam = (teamInp.value || '').trim();
-  btn.disabled = true;
-  const origText = btn.textContent;
-  btn.textContent = 'Opslaan…';
-  try {
-    await updateDoc(doc(db, 'users', uid), { role: newRole, teamId: newTeam });
-    btn.textContent = 'Opgeslagen ✓';
-    setTimeout(()=> { btn.textContent = origText; btn.disabled = false; }, 1400);
-    if(typeof toast === 'function') toast('Gebruiker bijgewerkt');
-    /* Refresh admin badge */
-    const badge = row.querySelector('.admin-role-badge');
-    if(badge){ badge.className = 'admin-role-badge ' + newRole; badge.textContent = newRole; }
-  } catch(err){
-    console.error('Admin save failed:', err);
-    btn.textContent = 'Fout';
-    if(typeof toast === 'function') toast('Opslaan mislukt: ' + (err.message||''), true);
-    setTimeout(()=> { btn.textContent = origText; btn.disabled = false; }, 1800);
-  }
-});
-
-/* Settings: open admin-paneel knop */
-document.addEventListener('click', (e) => {
-  if(e.target && e.target.id === 'settings-open-admin-btn'){
-    const back = document.getElementById('settings-modal-backdrop');
-    if(back) back.classList.remove('active');
-    if(typeof switchView === 'function') switchView('admin');
-    else {
-      const btn = document.querySelector('[data-view="admin"]');
-      if(btn) btn.click();
-    }
-  }
-});
-
-/* Re-render bij view-switch naar admin/team-overzicht */
-document.addEventListener('click', (e) => {
-  const navBtn = e.target.closest && e.target.closest('[data-view]');
-  if(!navBtn) return;
-  const v = navBtn.dataset.view;
-  if(v === 'team-overzicht'){
-    setTimeout(()=> { renderTeamOverzicht().catch(err=>console.warn(err)); }, 60);
-  } else if(v === 'admin'){
-    setTimeout(()=> { renderAdminPanel().catch(err=>console.warn(err)); }, 60);
-  }
-});
-
-/* ===== Demo reset-knop ===== */
-document.addEventListener('click', (e) => {
-  if(e.target.closest('#settings-reset-demo')){
-    if(typeof __shResetAndReseedDemo === 'function') __shResetAndReseedDemo();
-  }
-});
-
-/* ===== Floating vergelijk-bar knoppen ===== */
-document.addEventListener('click', (e) => {
-  // "Vergelijken →" knop
-  if(e.target.closest('#cmp-float-go')){
-    if(typeof go === 'function') go('compare');
-    return;
-  }
-  // "✕" wissen
-  if(e.target.closest('#cmp-float-clear')){
-    if(typeof cmpSelectedIds !== 'undefined'){
-      cmpSelectedIds = [];
-      shUpdateCmpUI();
-      // Reset checkboxes in database view
-      document.querySelectorAll('.db-player-checkbox:checked, .cmp-checkbox:checked').forEach(cb => { cb.checked = false; });
-      document.querySelectorAll('.db-row.cmp-selected, .player-card.cmp-selected').forEach(el => el.classList.remove('cmp-selected'));
-      // Reset detail toggle if open
-      const toggleBtn = document.getElementById('dtl-cmp-toggle');
-      if(toggleBtn){ toggleBtn.classList.remove('dtl-cmp-active'); toggleBtn.textContent = '+ Vergelijk'; }
-    }
-    return;
-  }
-});
-
-/* ===== Settings modal: event delegation (altijd actief) ===== */
-document.addEventListener('click', (e) => {
-  const modal = document.getElementById('settings-modal-backdrop');
-  if(!modal) return;
-  // Open
-  if(e.target.closest('#sidebar-settings-btn')){
-    modal.classList.add('show');
-    return;
-  }
-  // Sluit via × knop
-  if(e.target.closest('#settings-close-btn')){
-    modal.classList.remove('show');
-    return;
-  }
-  // Sluit via backdrop-klik
-  if(e.target === modal){
-    modal.classList.remove('show');
-  }
-});
-
-/* =============== BOOT =============== */
-initAuthForms();
-
-onAuthStateChanged(auth, async (user)=>{
-   
-
-  if(user){
-    currentUser = user;
-    __shApplyDemoChrome(); // direct toepassen na login
-    /* s35cg: rol + team ophalen vóór de rest van de app start */
-    await loadUserRole();
-    if(currentUserRole !== 'scout'){
-      try { await loadTeamScouts(); } catch(_){}
-    }
-    initApp();
-    subscribeData();
-    showApp();
-    renderDashboard();
-    setTimeout(() => { try { shUpdateMatchesNavBadge(); } catch(e){ console.warn(e); } }, 1800);
-    // s35cr: changelog-popup volledig uitgeschakeld (Marcel: weghalen)
-  } else {
-    currentUser = null;
-    __shApplyDemoChrome(); // strip verbergen bij uitloggen
-    unsubscribeData();
-    showLogin();
-  }
-});
-
-/* =============== PWA: SERVICE WORKER + INSTALL =============== */
-(function setupPWA(){
-  // Register service worker
-  if('serviceWorker' in navigator){
-    window.addEventListener('load', ()=>{
-      navigator.serviceWorker.register('sw.js').then((reg)=>{
-        // Listen for updates and auto-activate
-        if(reg.waiting) reg.waiting.postMessage({type:'SKIP_WAITING'});
-        reg.addEventListener('updatefound', ()=>{
-          const nw = reg.installing;
-          if(!nw) return;
-          nw.addEventListener('statechange', ()=>{
-            if(nw.state === 'installed' && navigator.serviceWorker.controller){
-              nw.postMessage({type:'SKIP_WAITING'});
-            }
-          });
-        });
-      }).catch(()=>{ /* offline support best-effort */ });
-    });
-    // Reload once when a new SW takes control
-    let refreshing = false;
-    navigator.serviceWorker.addEventListener('controllerchange', ()=>{
-      if(refreshing) return;
-      refreshing = true;
-      window.location.reload();
-    });
-  }
-
-  // v70h-s28: Install prompt — knop ALTIJD zichtbaar tenzij al geïnstalleerd
-  let deferredPrompt = null;
-  const installBtn = document.getElementById('install-btn');
-  const installModal = document.getElementById('install-modal-backdrop');
-  const installModalSteps = document.getElementById('install-modal-steps');
-  const installModalClose = document.getElementById('install-modal-close');
-
-  const isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
-    || window.navigator.standalone === true;
-
-  // v70h-s28: reset oude dismiss-vlag — knop moet terugkomen voor bestaande gebruikers
-  try { localStorage.removeItem('sh_install_dismissed'); } catch(_){}
-
-  function detectPlatform(){
-    const ua = navigator.userAgent;
-    if(/iPhone|iPad|iPod/i.test(ua)) return 'ios';
-    if(/Android/i.test(ua)) return 'android';
-    if(/Edg\//i.test(ua)) return 'edge';
-    if(/Chrome\//i.test(ua)) return 'chrome';
-    if(/Safari/i.test(ua)) return 'safari-desktop';
-    if(/Firefox/i.test(ua)) return 'firefox';
-    return 'other';
-  }
-
-  function showInstructions(){
-    if(!installModal || !installModalSteps) return;
-    const p = detectPlatform();
-    const steps = {
-      ios:     ['Tik op het deel-icoon (☐↑) onderaan Safari', 'Kies "Zet op beginscherm"', 'Bevestig met "Voeg toe"'],
-      android: ['Tik op de drie puntjes (⋮) rechtsboven', 'Kies "App installeren" of "Toevoegen aan startscherm"', 'Bevestig met "Installeren"'],
-      edge:    ['Klik op het ⊕-icoontje rechts in de adresbalk', 'Kies "Installeren"', 'Of: ⋯-menu → Apps → "Deze site installeren als app"'],
-      chrome:  ['Klik op het ⊕- of monitor-icoontje rechts in de adresbalk', 'Kies "Installeren"', 'Of: ⋮-menu → "App installeren"'],
-      'safari-desktop': ['Klik op Bestand → "Toevoegen aan Dock"', 'Of gebruik Chrome/Edge voor installatie'],
-      firefox: ['Firefox ondersteunt PWA-installatie niet', 'Gebruik Chrome of Edge om de app te installeren'],
-      other:   ['Open je browser-menu', 'Zoek naar "Installeren" of "Toevoegen aan startscherm"']
-    };
-    installModalSteps.innerHTML = (steps[p] || steps.other).map(s => `<li>${s}</li>`).join('');
-    installModal.classList.add('show');
-  }
-
-  // Verberg knop alléén wanneer app al draait als geïnstalleerde PWA
-  if(installBtn && isStandalone){
-    installBtn.classList.add('install-btn--hidden');
-  }
-
-  window.addEventListener('beforeinstallprompt', (e)=>{
-    e.preventDefault();
-    deferredPrompt = e;
-  });
-
-  if(installBtn){
-    installBtn.addEventListener('click', async ()=>{
-      if(deferredPrompt){
-        try {
-          deferredPrompt.prompt();
-          await deferredPrompt.userChoice;
-        } catch(_){}
-        deferredPrompt = null;
-      } else {
-        // Geen native prompt beschikbaar → toon platform-specifieke instructies
-        showInstructions();
-      }
-    });
-  }
-  if(installModalClose){
-    installModalClose.addEventListener('click', ()=> installModal.classList.remove('show'));
-  }
-  if(installModal){
-    installModal.addEventListener('click', (ev)=>{
-      if(ev.target === installModal) installModal.classList.remove('show');
-    });
-  }
-  window.addEventListener('appinstalled', ()=>{
-    deferredPrompt = null;
-    if(installBtn) installBtn.classList.add('install-btn--hidden');
-  });
-})();
-
-/* s35c — expose data aan het window zodat de picker-IIFE in script #2 erbij kan. */
-try { if (typeof HV_CLUBS !== 'undefined') window.HV_CLUBS = HV_CLUBS; } catch(_){}
-try { if (typeof CLUB_ADRESSEN !== 'undefined') window.CLUB_ADRESSEN = CLUB_ADRESSEN; } catch(_){}
-try { if (typeof HV_CLUB_ADRESSEN !== 'undefined') window.HV_CLUB_ADRESSEN = HV_CLUB_ADRESSEN; } catch(_){}
-try { if (typeof CLUB_ADRESSEN_BY_NAAM !== 'undefined') window.CLUB_ADRESSEN_BY_NAAM = CLUB_ADRESSEN_BY_NAAM; } catch(_){}
+      } catch(e){ /* niet kritisch

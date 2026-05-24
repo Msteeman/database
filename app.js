@@ -574,8 +574,9 @@ function teamForPlayer(p){
 
 const LEEFTIJD_OPTIONS = (()=>{
   const out = [];
+  // Format: O.{leeftijd}-{team}  (met punt, tot 10 teams per leeftijdsgroep)
   [8,9,10,11,12,13,14,15,16,17,18,19,21,23].forEach(age=>{
-    [1,2,3].forEach(t=> out.push(`O${age}-${t}`));
+    for(let t=1; t<=10; t++) out.push(`O.${age}-${t}`);
   });
   return out;
 })();
@@ -18158,6 +18159,7 @@ window.saveToernooi           = () => saveToernooi();
 window.tfSwitchImport         = (m) => tfSwitchImport(m);
 window.tfParseUrl             = () => tfParseUrl();
 window.tfParseFoto            = () => tfParseFoto();
+window.tfHandleFotoUpload     = (e) => tfHandleFotoUpload(e);
 window.openToernooiDetail     = (id) => openToernooiDetail(id);
 window.closeToernooiDetail    = () => closeToernooiDetail();
 window.openToernooiInfo       = () => openToernooiInfo();
@@ -18480,36 +18482,63 @@ async function tfParseUrl(){
 
   try{
     let parsed = null;
+    const isPdf = /\.pdf(\?|$|#)/i.test(url);
 
-    // Stap 1: probeer directe fetch (werkt voor PDFs, statische HTML)
-    status.textContent='URL ophalen…';
-    try{
-      const res = await fetch(url, { mode: 'cors' });
-      if(res.ok){
-        const text = await res.text();
-        status.textContent='Schema analyseren…';
-        parsed = _tfParseText(text, url);
-      }
-    }catch(_){ /* CORS of netwerk — probeer Cloud Function */ }
+    if(isPdf){
+      // PDF-URL: laad pdf.js, haal bytes op, extraheer tekst correct
+      status.textContent='PDF-lezer laden…';
+      try{ await _tfLoadPdfJs(); }
+      catch(e){ throw new Error('PDF-lezer kon niet worden geladen. Controleer je verbinding.'); }
 
-    // Stap 2: als directe fetch mislukt of niets opgeleverd — Cloud Function
-    if(!parsed){
-      status.textContent="Ophalen via server (Tournify / JS-pagina's)...";
+      status.textContent='PDF ophalen…';
+      let arrayBuf;
       try{
-        const endpoint = `https://europe-west1-${__shFirebaseProject()}.cloudfunctions.net/parseToernooiUrl`;
-        const r = await fetch(endpoint, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ url, userId: currentUser?.uid })
-        });
-        if(r.ok){
-          parsed = await r.json();
-          if(parsed.error) parsed = null;
-        }
-      }catch(_){ /* Cloud Function ook niet beschikbaar */ }
-    }
+        const res = await fetch(url, { mode:'cors' });
+        if(!res.ok) throw new Error(`HTTP ${res.status}`);
+        arrayBuf = await res.arrayBuffer();
+      }catch(e){
+        throw new Error('PDF kon niet worden opgehaald (CORS). Sla het bestand op en upload via Foto/Scan/PDF.');
+      }
 
-    if(!parsed || !parsed.poules?.length) throw new Error('Geen wedstrijdschema herkend. Probeer de foto-import.');
+      status.textContent='PDF tekst uitlezen…';
+      const pdfText = await _tfExtractPdfText(arrayBuf);
+
+      status.textContent='Schema analyseren…';
+      parsed = _tfParseText(pdfText, url);
+      if(!parsed || !parsed.poules?.length){
+        throw new Error('Geen wedstrijdschema herkend in de PDF. Vul handmatig in of gebruik de Foto/Scan/PDF tab.');
+      }
+    } else {
+      // Stap 1: probeer directe fetch (statische HTML)
+      status.textContent='URL ophalen…';
+      try{
+        const res = await fetch(url, { mode: 'cors' });
+        if(res.ok){
+          const text = await res.text();
+          status.textContent='Schema analyseren…';
+          parsed = _tfParseText(text, url);
+        }
+      }catch(_){ /* CORS of netwerk — probeer Cloud Function */ }
+
+      // Stap 2: als directe fetch mislukt of niets opgeleverd — Cloud Function
+      if(!parsed){
+        status.textContent="Ophalen via server (Tournify / JS-pagina’s)…";
+        try{
+          const endpoint = `https://europe-west1-${__shFirebaseProject()}.cloudfunctions.net/parseToernooiUrl`;
+          const r = await fetch(endpoint, {
+            method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ url, userId: currentUser?.uid })
+          });
+          if(r.ok){
+            parsed = await r.json();
+            if(parsed.error) parsed = null;
+          }
+        }catch(_){ /* Cloud Function ook niet beschikbaar */ }
+      }
+
+      if(!parsed || !parsed.poules?.length) throw new Error('Geen wedstrijdschema herkend. Probeer de foto-import.');
+    }
 
     __tfParsedData = parsed;
     _tfShowPreview(parsed);
@@ -18527,6 +18556,49 @@ async function tfParseUrl(){
   }finally{
     btn.disabled=false; btn.textContent='Schema inlezen';
   }
+}
+
+/* Laad pdf.js van CDN on-demand */
+async function _tfLoadPdfJs(){
+  if(window.pdfjsLib) return;
+  await new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = resolve;
+    s.onerror = () => reject(new Error('pdf.js laden mislukt'));
+    document.head.appendChild(s);
+  });
+  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+/* Extraheer leesbare platte tekst uit een PDF ArrayBuffer via pdf.js */
+async function _tfExtractPdfText(arrayBuf){
+  const loadingTask = window.pdfjsLib.getDocument({ data: new Uint8Array(arrayBuf) });
+  const pdf = await loadingTask.promise;
+  let fullText = '';
+  for(let i = 1; i <= pdf.numPages; i++){
+    const page = await pdf.getPage(i);
+    const tc = await page.getTextContent();
+    // Sorteer items op verticale positie dan horizontaal voor juiste leesvolgorde
+    const items = tc.items.filter(it => it.str && it.str.trim());
+    items.sort((a, b) => {
+      const ay = Math.round(-a.transform[5] / 3) * 3;
+      const by = Math.round(-b.transform[5] / 3) * 3;
+      if(ay !== by) return ay - by;
+      return a.transform[4] - b.transform[4];
+    });
+    // Groepeer per regel (zelfde y-positie)
+    let lastY = null;
+    for(const it of items){
+      const y = Math.round(-it.transform[5] / 3) * 3;
+      if(lastY !== null && Math.abs(y - lastY) > 3) fullText += '\n';
+      fullText += it.str + ' ';
+      lastY = y;
+    }
+    fullText += '\n\n'; // paginascheiding
+  }
+  return fullText;
 }
 
 /* Core text parser — Dutch tournament format */
@@ -18839,10 +18911,14 @@ function _renderDashToernooi(){
   function _pos(input){
     const r = input.getBoundingClientRect();
     const dd = _dd();
+    const isGrid = dd.classList.contains('sh-ac-dd--grid');
     // position:fixed — viewport coords, geen scroll offset
+    // Grid-modus: minimaal 260px breed zodat 3 kolommen passen
+    const minW = isGrid ? Math.max(r.width, 260) : r.width;
     dd.style.left  = r.left + 'px';
-    dd.style.width = r.width + 'px';
-    if(r.bottom + 260 > window.innerHeight){
+    dd.style.width = minW + 'px';
+    const maxH = isGrid ? 320 : 260;
+    if(r.bottom + maxH > window.innerHeight){
       dd.style.top    = '';
       dd.style.bottom = (window.innerHeight - r.top + 2) + 'px';
     } else {
@@ -18856,12 +18932,24 @@ function _renderDashToernooi(){
   function _render(){
     const dd = _dd();
     if(!_items.length || !_inp){ dd.style.display='none'; return; }
-    dd.innerHTML = _items.map((it,i) =>
-      `<div class="sh-ac-item${i===_cursor?' active':''}" data-idx="${i}" role="option" aria-selected="${i===_cursor}">
-        <span class="sh-ac-label">${_highlight(_esc(it.label), _inp.value.trim())}</span>
-        ${it.sub ? `<span class="sh-ac-sub">${_esc(it.sub)}</span>` : ''}
-      </div>`
-    ).join('');
+    const useGrid = _items.length > 3 && _items.every(it => it.col3);
+    if(useGrid){
+      // 3-kolom grid voor leeftijdscategorie-opties
+      dd.className = 'sh-ac-dd sh-ac-dd--grid';
+      dd.innerHTML = _items.map((it,i) =>
+        `<div class="sh-ac-item sh-ac-item--col${i===_cursor?' active':''}" data-idx="${i}" role="option" aria-selected="${i===_cursor}">
+          <span class="sh-ac-label">${_highlight(_esc(it.label), _inp.value.trim())}</span>
+        </div>`
+      ).join('');
+    } else {
+      dd.className = 'sh-ac-dd';
+      dd.innerHTML = _items.map((it,i) =>
+        `<div class="sh-ac-item${i===_cursor?' active':''}" data-idx="${i}" role="option" aria-selected="${i===_cursor}">
+          <span class="sh-ac-label">${_highlight(_esc(it.label), _inp.value.trim())}</span>
+          ${it.sub ? `<span class="sh-ac-sub">${_esc(it.sub)}</span>` : ''}
+        </div>`
+      ).join('');
+    }
     dd.style.display = 'block';
     _pos(_inp);
     dd.querySelectorAll('.sh-ac-item').forEach(row => {
@@ -18951,12 +19039,20 @@ function _renderDashToernooi(){
     return out;
   };
 
-  /* Leeftijd items */
+  /* Leeftijd items — typ "16" → O.16-1 t/m O.16-10, typ "o.16" ook */
   window.shLeeftijdItems = function(q){
-    const ql = (q||'').toLowerCase();
-    return (typeof LEEFTIJD_OPTIONS !== 'undefined' ? LEEFTIJD_OPTIONS : [])
-      .filter(o => !ql || o.toLowerCase().includes(ql))
-      .map(o => ({ value: o, label: o, sub: '' }));
+    const raw = (q||'').trim().toLowerCase();
+    // Normalize: "16" → zoek "16", "o16"/"o.16" → zoek "16", "o.16-" → zoek "16-"
+    let ql = raw.replace(/^o\.?/i,'');        // strip leading "o." or "o"
+    const opts = typeof LEEFTIJD_OPTIONS !== 'undefined' ? LEEFTIJD_OPTIONS : [];
+    if(!ql) return opts.map(o => ({ value: o, label: o, sub: '', col3: true }));
+    return opts
+      .filter(o => {
+        // o is like "O.16-3" → strip "O." prefix before matching
+        const bare = o.replace(/^O\.?/i,'').toLowerCase(); // "16-3"
+        return bare.startsWith(ql) || o.toLowerCase().includes(ql);
+      })
+      .map(o => ({ value: o, label: o, sub: '', col3: true }));
   };
 
   /* Helper: wire club AC to a field, auto-fill adres/plaats siblings */
@@ -18982,7 +19078,7 @@ function _renderDashToernooi(){
   window.shWireLeeftijdAC = function(inputEl){
     if(!inputEl || inputEl.dataset.shAcWired) return;
     inputEl.dataset.shAcWired = '1';
-    window.shAC(inputEl, window.shLeeftijdItems, null, { minChars: 0, maxItems: 20 });
+    window.shAC(inputEl, window.shLeeftijdItems, null, { minChars: 0, maxItems: 60 });
   };
 
   /* Helper: upgrade a <select> to text-input + AC, keep hidden select in sync */
@@ -19003,7 +19099,7 @@ function _renderDashToernooi(){
     window.shAC(inp, window.shLeeftijdItems, (item) => {
       sel.value = item.value;
       sel.dispatchEvent(new Event('change',{bubbles:true}));
-    }, { minChars: 0, maxItems: 20 });
+    }, { minChars: 0, maxItems: 60 });
     // Expose sync so modal openers can update inp after setting sel.value
     sel._syncAC = () => { inp.value = sel.value || ''; };
   };

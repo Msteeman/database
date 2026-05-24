@@ -8939,6 +8939,37 @@ tbody tr:last-child td { border-bottom: none; }
   white-space: nowrap;
 }
 
+/* 3-kolom grid voor leeftijdscategorie */
+.sh-ac-dd--grid {
+  max-height: 320px;
+  padding: 6px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+  overflow-y: auto;
+}
+.sh-ac-item--col {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 4px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background .12s;
+  font-size: 12.5px;
+  text-align: center;
+  font-weight: 500;
+}
+.sh-ac-item--col:hover,
+.sh-ac-item--col.active {
+  background: rgba(245,197,66,.15);
+  color: var(--accent, #f5c542);
+}
+.sh-ac-item--col .sh-ac-label {
+  flex: none;
+  font-size: 12.5px;
+}
+
 /* ── Toernooi modal overlays  s36m ── */
 .modal-overlay {
   position: fixed;

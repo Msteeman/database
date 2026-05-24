@@ -6981,14 +6981,16 @@ function renderVandaagBanner(){
   const now = new Date();
   const today = [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-');
   // Wedstrijden vandaag met minstens 1 speler
-  const items = programmaCache.filter(p => p && p.datum === today && Array.isArray(p.spelers) && p.spelers.length > 0);
+  // s19: toon elk programma-item van vandaag (ook zonder spelers)
+  const items = programmaCache.filter(p => p && p.datum === today && (p.thuis || p.uit));
   if(items.length === 0){ wrap.innerHTML = ''; wrap.style.display = 'none'; return; }
 
   items.sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
   const cards = items.map(it => {
     const thuisClean = it.thuis_elftal ? `${it.thuis} ${it.thuis_elftal}` : (it.thuis || '?');
     const uitClean   = it.uit_elftal   ? `${it.uit} ${it.uit_elftal}`     : (it.uit   || '?');
-    const n = it.spelers.length;
+    const n = Array.isArray(it.spelers) ? it.spelers.length : 0;
+    const spelersLabel = n > 0 ? `${spelersLabel}` : '';
     const tijdLabel = it.tijd ? `<span class="dvb-tijd">${escapeHtml(it.tijd)}</span>` : '';
     const ageLabel = it.leeftijd ? `<span class="dvb-tag">${escapeHtml(it.leeftijd)}</span>` : '';
     return `
@@ -9192,6 +9194,16 @@ async function _shConvertSnelToRapport(progId, snIdx){
           setVal("pp-rugnummer", sn.rugnummer || "");
           setVal("pp-positie", sn.positie || "");
           setVal("pp-notities", sn.tekst || "");
+          // s37: pre-fill club vanuit spelersnotitie of programma
+          const _snClub = sn.club || (prog && (prog.uit || prog.thuis)) || "";
+          setVal("pp-club", _snClub);
+          // s37: sla wedstrijd-context op voor openPpFullForm
+          window.__shSnelProgContext = prog ? {
+            datum: prog.datum || "",
+            thuis: prog.thuis || "",
+            uit: prog.uit || "",
+            leeftijd: prog.leeftijd || ""
+          } : null;
           window.__shConvertingFromSnId = sn.id || null;
           window.__shConvertingFromProgId = progId;
           // s35dg-hotfix3: direct doorklikken naar volledig spelersrapport, geen tussenscherm
@@ -16270,6 +16282,29 @@ function openPpFullForm(){
   if(ctx.club) $('#f-club').value = ctx.club;
   if(ctx.rugnummer) $('#f-rugnummer').value = ctx.rugnummer;
   if(ctx.positie) $('#f-positie').value = ctx.positie;
+  // s37: wedstrijddata + leeftijdscategorie vullen vanuit snelnotitie-context
+  try {
+    const _wCtx = window.__shSnelProgContext || null;
+    if(_wCtx){
+      if(_wCtx.datum && $('#f-w-datum') && !$('#f-w-datum').value) $('#f-w-datum').value = _wCtx.datum;
+      if(_wCtx.thuis && $('#f-w-thuis') && !$('#f-w-thuis').value) $('#f-w-thuis').value = _wCtx.thuis;
+      if(_wCtx.uit   && $('#f-w-uit')   && !$('#f-w-uit').value)   $('#f-w-uit').value   = _wCtx.uit;
+      if(_wCtx.leeftijd && $('#f-leeftijd') && !$('#f-leeftijd').value) $('#f-leeftijd').value = _wCtx.leeftijd;
+      window.__shSnelProgContext = null; // eenmalig verbruiken
+    } else {
+      // Fallback: zoek prog via progId in cache
+      const _pid = ctx.progId;
+      if(_pid && typeof programmaCache !== 'undefined'){
+        const _pr = programmaCache.find(p => p && p.id === _pid);
+        if(_pr){
+          if(_pr.datum && $('#f-w-datum') && !$('#f-w-datum').value) $('#f-w-datum').value = _pr.datum;
+          if(_pr.thuis && $('#f-w-thuis') && !$('#f-w-thuis').value) $('#f-w-thuis').value = _pr.thuis;
+          if(_pr.uit   && $('#f-w-uit')   && !$('#f-w-uit').value)   $('#f-w-uit').value   = _pr.uit;
+          if(_pr.leeftijd && $('#f-leeftijd') && !$('#f-leeftijd').value) $('#f-leeftijd').value = _pr.leeftijd;
+        }
+      }
+    }
+  } catch(_){}
 
   if(p && Object.keys(p).length){
     loadIntoForm({...p, id: ''}); // zonder id zodat het concept blijft

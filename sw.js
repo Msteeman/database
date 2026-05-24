@@ -1,6 +1,6 @@
 /* Scouting Platform — Service Worker
    Bump CACHE_VERSION whenever you ship a new index.html so users get the latest. */
-const CACHE_VERSION = 'sh-v70h-s36c-fix';
+const CACHE_VERSION = 'sh-v70h-s36d-data';
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-rt`;
 
@@ -75,22 +75,3 @@ self.addEventListener('fetch', (event) => {
         return res;
       }).catch(() => caches.match(req))
     );
-    return;
-  }
-
-  // Stale-while-revalidate for other same-origin assets.
-  if (url.origin === self.location.origin) {
-    event.respondWith(
-      caches.match(req).then((cached) => {
-        const fetchPromise = fetch(req).then((res) => {
-          if (res && res.status === 200) {
-            const copy = res.clone();
-            caches.open(RUNTIME_CACHE).then((c) => c.put(req, copy));
-          }
-          return res;
-        }).catch(() => cached);
-        return cached || fetchPromise;
-      })
-    );
-  }
-});

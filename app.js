@@ -17772,6 +17772,29 @@ function initApp(){
   $('#tip-search')?.addEventListener('input', renderTips);
   $('#tip-sort')?.addEventListener('change', renderTips);
   $('#tip-filter-status')?.addEventListener('change', renderTips);
+
+  // ── Instellingen knop ──
+  document.getElementById('sidebar-settings-btn')?.addEventListener('click', () => {
+    const bd = document.getElementById('settings-modal-backdrop');
+    if(bd) bd.classList.add('show');
+  });
+  document.getElementById('settings-close-btn')?.addEventListener('click', () => {
+    const bd = document.getElementById('settings-modal-backdrop');
+    if(bd) bd.classList.remove('show');
+  });
+  document.getElementById('settings-modal-backdrop')?.addEventListener('click', e => {
+    if(e.target.id === 'settings-modal-backdrop'){
+      e.currentTarget.classList.remove('show');
+    }
+  });
+
+  // ── "Nieuw" knop in navigatie → naar Programma + modal openen ──
+  document.getElementById('nav-new-report-btn')?.addEventListener('click', () => {
+    if(typeof go === 'function') go('programma');
+    setTimeout(() => {
+      if(typeof openProgMatchModal === 'function') openProgMatchModal(null, isoDateStr(new Date()));
+    }, 80);
+  });
 }
 
 function initAuthForms(){
@@ -18023,6 +18046,23 @@ let __tdsCurrentId = null;
 let __tdsCurrentPoule = 0;
 let __tdsKoRound = 0;
 window.__tdsCurrentId = null;
+
+// s36g: toernooien — expose to window for inline onclick handlers
+window.openToernooiForm       = (...a) => openToernooiForm(...a);
+window.closeToernooiForm      = () => closeToernooiForm();
+window.saveToernooi           = () => saveToernooi();
+window.tfSwitchImport         = (m) => tfSwitchImport(m);
+window.tfParseUrl             = () => tfParseUrl();
+window.tfParseFoto            = () => tfParseFoto();
+window.openToernooiDetail     = (id) => openToernooiDetail(id);
+window.closeToernooiDetail    = () => closeToernooiDetail();
+window.openToernooiInfo       = () => openToernooiInfo();
+window.closeToernooiInfo      = () => closeToernooiInfo();
+window.syncToernooiNow        = () => syncToernooiNow();
+window.tdsGoRound             = (n) => tdsGoRound(n);
+window.tdsMoveRound           = (d) => tdsMoveRound(d);
+window.tdsShowPoule           = (i) => tdsShowPoule(i);
+window.switchMatchesSubview   = (v) => switchMatchesSubview(v);
 
 function openToernooiDetail(id){
   const t = tournamentsCache.find(x => x.id === id);

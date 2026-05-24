@@ -15,7 +15,7 @@ import {
   getFirestore, collection, doc,
   onSnapshot, setDoc, deleteDoc, getDoc,
   /* s35cg: extra imports voor rollen-systeem */
-  updateDoc, query, where, getDocs
+  updateDoc, query, where, getDocs, orderBy
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 /* =============== FIREBASE CONFIG =============== */

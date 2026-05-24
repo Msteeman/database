@@ -3251,7 +3251,7 @@ function subscribeData(){
     console.error('Programma sync error:', err);
     setSync('offline');
   });
-}
+
   // s36g: toernooien subscription
   try { subscribeToernooien(); } catch(e){ console.warn('subscribeToernooien failed', e); }
 }
@@ -18350,7 +18350,7 @@ async function tfParseUrl(){
 
     // Stap 2: als directe fetch mislukt of niets opgeleverd — Cloud Function
     if(!parsed){
-      status.textContent='Ophalen via server (Tournify / JS-pagina's)…';
+      status.textContent="Ophalen via server (Tournify / JS-pagina's)...";
       try{
         const endpoint = `https://europe-west1-${__shFirebaseProject()}.cloudfunctions.net/parseToernooiUrl`;
         const r = await fetch(endpoint, {

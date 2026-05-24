@@ -4038,19 +4038,43 @@ async function _ritTryAutoKm(force){
   const vLon = parseFloat((document.getElementById('rit-vertrek-lon')||{}).value);
   const aLat = parseFloat((document.getElementById('rit-aankomst-lat')||{}).value);
   const aLon = parseFloat((document.getElementById('rit-aankomst-lon')||{}).value);
-  if(![vLat,vLon,aLat,aLon].every(isFinite)) return;
+  // Als coords ontbreken: geocode de adrestekst via Nominatim
+  let _vLat = vLat, _vLon = vLon, _aLat = aLat, _aLon = aLon;
+
+  if(!isFinite(_vLat) || !isFinite(_vLon)){
+    const vtxt = (document.getElementById('rit-vertrek')||{}).value||'';
+    if(vtxt.trim()){
+      try{
+        const hits = await _nominatimSearch(vtxt.trim() + ', Nederland');
+        if(hits && hits[0]){ _vLat = parseFloat(hits[0].lat); _vLon = parseFloat(hits[0].lon); }
+      }catch(_){}
+    }
+  }
+  if(!isFinite(_aLat) || !isFinite(_aLon)){
+    const atxt = (document.getElementById('rit-aankomst')||{}).value||'';
+    if(atxt.trim()){
+      try{
+        const hits = await _nominatimSearch(atxt.trim() + ', Nederland');
+        if(hits && hits[0]){ _aLat = parseFloat(hits[0].lat); _aLon = parseFloat(hits[0].lon); }
+      }catch(_){}
+    }
+  }
+  if(![_vLat,_vLon,_aLat,_aLon].every(isFinite)){ return; }
+
   _ritKmBusy = true;
   const prev = kmInp.placeholder;
   kmInp.placeholder = 'Berekenen…';
   try {
-    const km = await _ritRouteKm(vLat, vLon, aLat, aLon);
+    const km = await _ritRouteKm(_vLat, _vLon, _aLat, _aLon);
     if(km !== null && isFinite(km) && km > 0){
       kmInp.value = km.toFixed(1);
-    } else if(km === null){
-      // Coördinaten buiten NL of onbetrouwbaar — laat veld leeg zodat gebruiker handmatig invult
+      // Sla gevonden coords op in hidden fields voor volgende keer
+      const setHidden = (id, v) => { const el = document.getElementById(id); if(el) el.value = v; };
+      setHidden('rit-vertrek-lat', _vLat); setHidden('rit-vertrek-lon', _vLon);
+      setHidden('rit-aankomst-lat', _aLat); setHidden('rit-aankomst-lon', _aLon);
+    } else {
       kmInp.value = '';
       kmInp.placeholder = 'Vul handmatig in';
-      if(typeof toast === 'function') toast('Kon afstand niet automatisch berekenen — vul km handmatig in', true);
     }
   } finally {
     kmInp.placeholder = prev || '0';
@@ -18465,6 +18489,22 @@ function tfSwitchImport(mode){
     document.getElementById(`tf-pane-${m}`).style.display = m===mode?'':'none';
     document.getElementById(`tf-itab-${m}`).classList.toggle('active',m===mode);
   });
+  // Reset upload zone opacity bij terugkeren naar foto-tab
+  const zone = document.getElementById('tf-upload-zone');
+  if(zone) zone.style.opacity = '';
+  // Reset statussen
+  ['tf-url-status','tf-foto-status'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el){ el.style.display='none'; el.textContent=''; }
+  });
+  // Verberg preview bij non-manual tabs (parse opnieuw vereist)
+  if(mode !== 'manual'){
+    const prev = document.getElementById('tf-preview');
+    if(prev) prev.style.display = 'none';
+    document.getElementById('tf-basic-fields').style.display = 'none';
+    document.getElementById('tf-action-row').style.display = 'none';
+    __tfParsedData = null;
+  }
   if(mode==='manual'){
     document.getElementById('tf-basic-fields').style.display='';
     document.getElementById('tf-action-row').style.display='flex';
@@ -18832,8 +18872,9 @@ function tfHandleFotoUpload(e){
     };
     reader.readAsDataURL(file);
   }
-  // Reset input zo dat hetzelfde bestand opnieuw gekozen kan worden
-  e.target.value = '';
+  // Verberg het upload-zone zodra er een bestand is gekozen
+  const zone = document.getElementById('tf-upload-zone');
+  if(zone && !isPdf) zone.style.opacity = '0.4';
 }
 
 async function tfParseFoto(){

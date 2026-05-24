@@ -18579,10 +18579,11 @@ async function tfParseUrl(){
         status.textContent='Ophalen via server…';
         try{
           const endpoint = `https://europe-west1-${__shFirebaseProject()}.cloudfunctions.net/parseToernooiUrl`;
+          const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
           const r = await fetch(endpoint, {
             method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({ url, userId: currentUser?.uid })
+            headers:{'Content-Type':'application/json', ...(idToken ? {'Authorization':`Bearer ${idToken}`} : {})},
+            body: JSON.stringify({ url })
           });
           if(r.ok){
             parsed = await r.json();
@@ -18894,9 +18895,10 @@ async function tfParseFoto(){
   try{
     // Call Cloud Function for AI parsing
     const endpoint = 'https://europe-west1-' + __shFirebaseProject() + '.cloudfunctions.net/parseToernooiImage';
+    const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
     const res = await fetch(endpoint, {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
+      headers:{'Content-Type':'application/json', ...(idToken ? {'Authorization':`Bearer ${idToken}`} : {})},
       body: JSON.stringify({ image: __tfFotoBase64 })
     });
     if(!res.ok) throw new Error(`Serverfout ${res.status}`);
@@ -18974,10 +18976,11 @@ async function syncToernooiNow(){
 
   try{
     const endpoint = 'https://europe-west1-' + __shFirebaseProject() + '.cloudfunctions.net/syncTournify';
+    const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
     const res = await fetch(endpoint, {
       method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ tournamentId: __tdsCurrentId, url: t.tournifyUrl||`https://tournifyapp.com/live/${t.tournifySlug}`, userId: currentUser.uid })
+      headers:{'Content-Type':'application/json', ...(idToken ? {'Authorization':`Bearer ${idToken}`} : {})},
+      body: JSON.stringify({ tournamentId: __tdsCurrentId, url: t.tournifyUrl||`https://tournifyapp.com/live/${t.tournifySlug}` })
     });
     if(!res.ok) throw new Error('Sync mislukt');
     if(syncDot) syncDot.className='tds-sync-dot ok';

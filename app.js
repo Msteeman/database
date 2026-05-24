@@ -4881,11 +4881,13 @@ async function tryLogin(){
   }
 }
 function showLogin(){
-  $('#loader').style.display = 'none';
-  $('#login-overlay').style.display = 'flex';
-  $('#app').style.display = 'none';
-  $('#login-form').style.display = 'block';
-  setTimeout(()=>{ $('#login-email').focus(); }, 100);
+  const _ld = document.getElementById('loader');
+  const _lo = document.getElementById('login-overlay');
+  const _ap = document.getElementById('app');
+  if(_ld) _ld.style.display = 'none';
+  if(_lo) _lo.style.display = 'flex';
+  if(_ap) _ap.style.display = 'none';
+  setTimeout(()=>{ const e = document.getElementById('login-email'); if(e) e.focus(); }, 100);
 }
 function showApp(){
   $('#loader').style.display = 'none';

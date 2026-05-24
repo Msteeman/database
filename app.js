@@ -17802,11 +17802,10 @@ onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   if(user){
     showApp();
+    if(typeof go === 'function') go('dashboard');
     initApp();
     subscribeData();
     await loadUserRole();
-    // Navigeer naar dashboard na login (currentView leeg anders)
-    if(typeof go === 'function') go('dashboard');
   } else {
     unsubscribeData();
     showLogin();

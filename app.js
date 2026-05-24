@@ -3537,22 +3537,20 @@ function renderRitten(){
   });
 }
 
-// s35dj: aankomst-suggesties vanuit programma (vandaag ±1 dag met locatie)
+// s36l: aankomst-suggesties vanuit programma — alle items komende 14 dagen + vorige 2 dagen
 function _ritShowProgChips(chipsEl){
   if(!chipsEl) return;
   chipsEl.innerHTML = '';
   chipsEl.style.display = 'none';
   try {
     const today = new Date();
-    const dates = [-1,0,1].map(d => {
-      const dt = new Date(today); dt.setDate(dt.getDate() + d);
-      return dt.toISOString().slice(0,10);
-    });
-    const relevant = (typeof programmaCache !== 'undefined' ? programmaCache : []).filter(p => {
-      if(!p || !p.datum) return false;
-      if(!dates.includes(p.datum)) return false;
-      return !!(p.locatie || p.sportpark || p.adres);
-    });
+    const relevant = (typeof programmaCache !== 'undefined' ? programmaCache : [])
+      .filter(p => {
+        if(!p || !p.datum) return false;
+        const diff = (new Date(p.datum) - today) / 86400000;
+        return diff >= -2 && diff <= 14;
+      })
+      .sort((a,b) => a.datum.localeCompare(b.datum));
     if(!relevant.length) return;
     const dayLabel = (d) => {
       if(d === dates[0]) return 'Gisteren';
@@ -3565,9 +3563,12 @@ function _ritShowProgChips(chipsEl){
         const naam = p.thuis || p.toernooi_naam || p.naam || '';
         const label = [dayLabel(p.datum), naam, loc].filter(Boolean).join(' · ');
         const doel  = naam ? (p.thuis ? 'Wedstrijd ' + p.thuis : naam) : 'Programma';
+        const tijd  = p.tijd || p.tijdstip || '';
         return '<button type="button" class="rm-prog-chip"' +
           ' data-adres="' + (loc.replace(/"/g,'&quot;')) + '"' +
-          ' data-doel="' + (doel.replace(/"/g,'&quot;')) + '">' +
+          ' data-doel="' + (doel.replace(/"/g,'&quot;')) + '"' +
+          ' data-datum="' + (p.datum||'') + '"' +
+          ' data-tijd="' + (tijd||'') + '">' +
           label.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</button>';
       }).join('');
     chipsEl.style.display = '';
@@ -3575,10 +3576,16 @@ function _ritShowProgChips(chipsEl){
       btn.addEventListener('click', () => {
         const adres = btn.dataset.adres;
         const doel  = btn.dataset.doel;
+        const datum = btn.dataset.datum;
+        const tijd  = btn.dataset.tijd;
         const aankomstEl = document.getElementById('rit-aankomst');
-        const doelEl = document.getElementById('rit-doel');
+        const doelEl  = document.getElementById('rit-doel');
+        const datumEl = document.getElementById('rit-datum');
+        const tijdEl  = document.getElementById('rit-tijd');
         if(aankomstEl && adres){ aankomstEl.value = adres; }
         if(doelEl && doel && !doelEl.value){ doelEl.value = doel; }
+        if(datumEl && datum){ datumEl.value = datum; }
+        if(tijdEl && tijd){ tijdEl.value = tijd; }
         // Probeer coords: eerst club-adresboek, dan Nominatim
         if(adres){
           const clubMatches = typeof _ritSearchClubs === 'function' ? _ritSearchClubs(adres) : [];
@@ -4493,6 +4500,7 @@ function openMatchReportModal(id){
   $('#mr-id').value        = r ? r.id : '';
   $('#mr-datum').value     = r ? (r.datum || todayISO()) : todayISO();
   $('#mr-leeftijd').value  = r ? (r.leeftijd || '') : '';
+  try{ const s=document.getElementById('mr-leeftijd'); if(s && s._syncAC) s._syncAC(); }catch(_){}
   $('#mr-thuis').value     = r ? (r.thuis || '')    : '';
   $('#mr-uit').value       = r ? (r.uit || '')      : '';
   $('#mr-opmerking').value = r ? (r.opmerking || ''): '';
@@ -4715,6 +4723,7 @@ function openTipModal(id){
   $('#t-speler').value         = t ? (t.speler || '') : '';
   $('#t-elftal').value         = t ? (t.elftal || '') : '';
   $('#t-leeftijd').value       = t ? (t.leeftijd || '') : '';
+  try{ const s=document.getElementById('t-leeftijd'); if(s && s._syncAC) s._syncAC(); }catch(_){}
   $('#t-positie').value        = t ? (t.positie || '') : '';
   $('#t-regio').value          = t ? (t.regio || '') : '';
   $('#t-prioriteit').value     = t ? (t.prioriteit || 'Midden') : 'Midden';
@@ -17795,6 +17804,25 @@ function initApp(){
       if(typeof openProgMatchModal === 'function') openProgMatchModal(null, isoDateStr(new Date()));
     }, 80);
   });
+
+  // ── s36l: Club autocomplete op alle statische clubvelden ──
+  // Spelersrapport
+  shWireClubAC(document.getElementById('f-club'));
+  shWireClubAC(document.getElementById('f-w-thuis'));
+  shWireClubAC(document.getElementById('f-w-uit'));
+  // Wedstrijdrapport modal
+  shWireClubAC(document.getElementById('mr-thuis'));
+  shWireClubAC(document.getElementById('mr-uit'));
+  // Programma modal
+  shWireClubAC(document.getElementById('pm-thuis'));
+  shWireClubAC(document.getElementById('pm-uit'));
+  // Speler in programma modal
+  shWireClubAC(document.getElementById('pp-club'));
+
+  // ── s36l: Leeftijdscategorie AC op selects ──
+  ['mr-leeftijd','t-leeftijd','a-leeftijd'].forEach(id => {
+    shUpgradeSelectToAC(id);
+  });
 }
 
 function initAuthForms(){
@@ -18711,6 +18739,201 @@ function _renderDashToernooi(){
   try { const w = document.getElementById('dash-toernooi-banner-wrap'); if(w) w.innerHTML=''; } catch(_){}
   try { renderUpcomingMatches(); } catch(_){}
 }
+
+
+/* ============================================================
+   shAC — Universele autocomplete engine  s36l
+   ============================================================ */
+(function(){
+  const DD_ID = 'sh-ac-dropdown';
+  let _inp = null, _items = [], _cursor = -1, _onPick = null;
+
+  function _dd(){
+    let el = document.getElementById(DD_ID);
+    if(!el){
+      el = document.createElement('div');
+      el.id = DD_ID;
+      el.className = 'sh-ac-dd';
+      el.setAttribute('role','listbox');
+      document.body.appendChild(el);
+    }
+    return el;
+  }
+
+  function _pos(input){
+    const r = input.getBoundingClientRect();
+    const dd = _dd();
+    dd.style.left  = (r.left + window.scrollX) + 'px';
+    dd.style.top   = (r.bottom + window.scrollY + 2) + 'px';
+    dd.style.width = r.width + 'px';
+    // flip up if too low
+    if(r.bottom + 260 > window.innerHeight){
+      dd.style.top = '';
+      dd.style.bottom = (window.innerHeight - r.top + window.scrollY - 2) + 'px';
+    } else {
+      dd.style.bottom = '';
+    }
+  }
+
+  function _esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function _render(){
+    const dd = _dd();
+    if(!_items.length || !_inp){ dd.style.display='none'; return; }
+    dd.innerHTML = _items.map((it,i) =>
+      `<div class="sh-ac-item${i===_cursor?' active':''}" data-idx="${i}" role="option" aria-selected="${i===_cursor}">
+        <span class="sh-ac-label">${_highlight(_esc(it.label), _inp.value.trim())}</span>
+        ${it.sub ? `<span class="sh-ac-sub">${_esc(it.sub)}</span>` : ''}
+      </div>`
+    ).join('');
+    dd.style.display = 'block';
+    _pos(_inp);
+    dd.querySelectorAll('.sh-ac-item').forEach(row => {
+      row.addEventListener('mousedown', e => { e.preventDefault(); _pick(_items[parseInt(row.dataset.idx,10)]); });
+    });
+  }
+
+  function _highlight(label, q){
+    if(!q) return label;
+    try {
+      const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
+      return label.replace(re, '<strong>$1</strong>');
+    } catch(_){ return label; }
+  }
+
+  function _pick(item){
+    if(!item || !_inp) return;
+    _inp.value = item.value;
+    _inp.dispatchEvent(new Event('input',{bubbles:true}));
+    _inp.dispatchEvent(new Event('change',{bubbles:true}));
+    if(_onPick) try{ _onPick(item, _inp); }catch(_){}
+    _close();
+  }
+
+  function _close(){
+    const dd = document.getElementById(DD_ID);
+    if(dd) dd.style.display = 'none';
+    _cursor = -1; _items = []; _inp = null; _onPick = null;
+  }
+
+  document.addEventListener('click', e => {
+    const dd = document.getElementById(DD_ID);
+    if(dd && !dd.contains(e.target) && e.target !== _inp) _close();
+  }, true);
+
+  window.addEventListener('scroll', () => { if(_inp) _pos(_inp); }, true);
+  window.addEventListener('resize', () => { if(_inp) _pos(_inp); });
+
+  /* Public API */
+  window.shAC = function(inputEl, itemsFn, onPickFn, opts){
+    if(!inputEl) return;
+    opts = opts || {};
+    const min = opts.minChars != null ? opts.minChars : 1;
+    const max = opts.maxItems || 12;
+
+    function open(){
+      const q = inputEl.value.trim();
+      if(q.length < min && min > 0){ _close(); return; }
+      _inp = inputEl; _onPick = onPickFn || null; _cursor = -1;
+      _items = (itemsFn(q) || []).slice(0, max);
+      _render();
+    }
+
+    inputEl.addEventListener('input', open);
+    inputEl.addEventListener('focus', open);
+    inputEl.addEventListener('keydown', e => {
+      const dd = document.getElementById(DD_ID);
+      if(!dd || dd.style.display === 'none') return;
+      if(e.key === 'ArrowDown'){ e.preventDefault(); _cursor = Math.min(_cursor+1, _items.length-1); _render(); }
+      else if(e.key === 'ArrowUp'){ e.preventDefault(); _cursor = Math.max(_cursor-1, -1); _render(); }
+      else if(e.key === 'Enter' && _cursor >= 0){ e.preventDefault(); _pick(_items[_cursor]); }
+      else if(e.key === 'Escape'){ _close(); }
+    });
+    inputEl.addEventListener('blur', () => {
+      setTimeout(() => { if(_inp === inputEl) _close(); }, 160);
+    });
+  };
+
+  /* Club items — HV_CLUBS + CLUB_ADRESSEN */
+  window.shClubItems = function(q){
+    const ql = (q||'').toLowerCase();
+    const seen = new Set();
+    const out  = [];
+    const add  = (naam, sub) => {
+      if(!naam || seen.has(naam)) return;
+      if(ql && !naam.toLowerCase().includes(ql)) return;
+      seen.add(naam);
+      out.push({ value: naam, label: naam, sub: sub||'' });
+    };
+    try{ if(typeof HV_CLUBS!=='undefined') HV_CLUBS.forEach(c => add(c.naam, c.plaats||c.gemeente||'')); }catch(_){}
+    try{ Object.values(CLUB_ADRESSEN).forEach(c => add(c.naam, c.plaats||'')); }catch(_){}
+    out.sort((a,b) => {
+      const as = a.value.toLowerCase().startsWith(ql)?0:1;
+      const bs = b.value.toLowerCase().startsWith(ql)?0:1;
+      return (as-bs) || a.value.localeCompare(b.value,'nl');
+    });
+    return out;
+  };
+
+  /* Leeftijd items */
+  window.shLeeftijdItems = function(q){
+    const ql = (q||'').toLowerCase();
+    return (typeof LEEFTIJD_OPTIONS !== 'undefined' ? LEEFTIJD_OPTIONS : [])
+      .filter(o => !ql || o.toLowerCase().includes(ql))
+      .map(o => ({ value: o, label: o, sub: '' }));
+  };
+
+  /* Helper: wire club AC to a field, auto-fill adres/plaats siblings */
+  window.shWireClubAC = function(inputEl, opts){
+    if(!inputEl || inputEl.dataset.shAcWired) return;
+    inputEl.dataset.shAcWired = '1';
+    // Remove browser datalist interference
+    inputEl.removeAttribute('list');
+    window.shAC(inputEl, window.shClubItems, (item, el) => {
+      const ci = typeof window.findClubInfo === 'function' ? window.findClubInfo(item.value) : null;
+      if(!ci) return;
+      // Try to fill plaats + adres in same form
+      const form = el.closest('form, .modal-body, .modal-sheet, .modal-card, [class*=modal]');
+      if(!form) return;
+      const fill = (sel, val) => { const f=form.querySelector(sel); if(f && val && !f.value) f.value=val; };
+      fill('[id$="-plaats"], [id="f-plaats"], #f-w-plaats, #mr-plaats', ci.plaats||'');
+      fill('[id$="-adres"], [id="f-adres"], #f-w-adres, #mr-adres',
+        [ci.sportpark, ci.adres, ci.postcode].filter(Boolean).join(' · ')||'');
+    }, opts || {});
+  };
+
+  /* Helper: wire leeftijd AC to a field */
+  window.shWireLeeftijdAC = function(inputEl){
+    if(!inputEl || inputEl.dataset.shAcWired) return;
+    inputEl.dataset.shAcWired = '1';
+    window.shAC(inputEl, window.shLeeftijdItems, null, { minChars: 0, maxItems: 20 });
+  };
+
+  /* Helper: upgrade a <select> to text-input + AC, keep hidden select in sync */
+  window.shUpgradeSelectToAC = function(selectId){
+    const sel = document.getElementById(selectId);
+    if(!sel || sel.dataset.acDone) return;
+    sel.dataset.acDone = '1';
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.id = selectId + '-ac';
+    inp.autocomplete = 'off';
+    inp.placeholder = 'Zoek leeftijdscategorie…';
+    inp.className = sel.className || '';
+    inp.style.cssText = window.getComputedStyle(sel).cssText || '';
+    inp.value = sel.value || '';
+    sel.style.display = 'none';
+    sel.parentNode.insertBefore(inp, sel.nextSibling);
+    window.shAC(inp, window.shLeeftijdItems, (item) => {
+      sel.value = item.value;
+      sel.dispatchEvent(new Event('change',{bubbles:true}));
+    }, { minChars: 0, maxItems: 20 });
+    // Expose sync so modal openers can update inp after setting sel.value
+    sel._syncAC = () => { inp.value = sel.value || ''; };
+  };
+
+})();
+/* end shAC */
 
 /* =============== AUTH STATE =============== */
 onAuthStateChanged(auth, async (user) => {

@@ -18827,8 +18827,14 @@ function tfHandleFotoUpload(e){
     preview.innerHTML = `<div style="padding:10px 12px;background:rgba(245,197,66,.08);border-radius:8px;font-size:13px;display:flex;align-items:center;gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent,#f5c542)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>PDF geselecteerd: <strong>${escapeHtml(file.name)}</strong></span></div>`;
     preview.style.display='block';
 
+    // Lees PDF zowel als ArrayBuffer (voor pdf.js) als DataURL (voor AI fallback)
     const reader = new FileReader();
     reader.onload = async ev => {
+      // Bewaar base64 DataURL voor AI fallback (Cloud Function ondersteunt application/pdf)
+      const b64Reader = new FileReader();
+      b64Reader.onload = b64ev => { __tfFotoBase64 = b64ev.target.result; };
+      b64Reader.readAsDataURL(file);
+
       try{
         await _tfLoadPdfJs();
         statusEl && (statusEl.textContent='PDF tekst uitlezen…');
@@ -18844,19 +18850,19 @@ function tfHandleFotoUpload(e){
           statusEl && (statusEl.style.color='#3b6d11');
           document.getElementById('tf-basic-fields').style.display='';
           document.getElementById('tf-action-row').style.display='flex';
-          parseBtn.style.display='none'; // al verwerkt
+          parseBtn.style.display='none';
         } else {
-          // PDF tekst gevonden maar schema niet herkend — toon AI-knop
-          __tfFotoBase64 = null; // geen base64 voor PDF AI
-          statusEl && (statusEl.textContent='Schema niet automatisch herkend — probeer AI uitlezen of vul handmatig in.');
+          // Tekst gevonden maar schema niet herkend — AI kan het beter lezen
+          statusEl && (statusEl.textContent='Tekst uitgelezen — klik op "Schema uitlezen via AI" voor nauwkeuriger resultaat.');
           statusEl && (statusEl.style.color='var(--muted,#9aa3b7)');
           parseBtn.style.display='';
           document.getElementById('tf-basic-fields').style.display='';
           document.getElementById('tf-action-row').style.display='flex';
         }
       }catch(err){
-        statusEl && (statusEl.textContent='Fout bij uitlezen: '+err.message);
-        statusEl && (statusEl.style.color='#a32d2d');
+        // pdf.js mislukt — AI kan het alsnog proberen via base64
+        statusEl && (statusEl.textContent='Automatisch uitlezen mislukt — probeer "Schema uitlezen via AI".');
+        statusEl && (statusEl.style.color='var(--muted,#9aa3b7)');
         parseBtn.style.display='';
       }
     };

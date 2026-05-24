@@ -8587,3 +8587,312 @@ tbody tr:last-child td { border-bottom: none; }
   transition: background .15s, border-color .15s;
 }
 .m-concept-pill:hover { background: rgba(245,200,66,.22); border-color: rgba(245,200,66,.45); }
+
+/* ====================================================
+   TOERNOOIEN — s36g
+   ==================================================== */
+
+/* Subview toggle in Wedstrijden-topbar */
+.matches-subview-toggle {
+  display: flex;
+  gap: 0;
+  border: 0.5px solid var(--border-1, #e2e5ef);
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.msv-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-2, #6b7280);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+}
+.msv-btn.active {
+  background: var(--bg-2, #f3f4f6);
+  color: var(--text-1, #111827);
+}
+.msv-btn:not(:last-child) { border-right: 0.5px solid var(--border-1, #e2e5ef); }
+.msv-btn svg { flex-shrink: 0; }
+
+/* Toernooien list */
+.toernooien-list { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
+
+.toernooi-card {
+  background: var(--bg-card, #fff);
+  border: 0.5px solid var(--border-1, #e2e5ef);
+  border-radius: 14px;
+  padding: 16px 18px;
+  cursor: pointer;
+  transition: border-color .15s, box-shadow .15s;
+}
+.toernooi-card:hover { border-color: var(--accent, #4f6ef7); box-shadow: 0 2px 12px rgba(79,110,247,.08); }
+
+.tc-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.tc-naam { font-size: 15px; font-weight: 600; }
+.tc-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
+.tc-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 500; padding: 3px 8px;
+  border-radius: 6px;
+}
+.tc-badge.gold { background: #faeeda; color: #854f0b; }
+.tc-badge.blue { background: #e6f1fb; color: #185fa5; }
+.tc-badge.muted { background: var(--bg-2, #f3f4f6); color: var(--text-2, #6b7280); }
+.tc-badge.green { background: #eaf3de; color: #3b6d11; }
+
+.tc-meta { margin-top: 8px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2, #6b7280); }
+.tc-meta span { display: flex; align-items: center; gap: 4px; }
+
+.tc-sync-row { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border-1, #e2e5ef); display: flex; align-items: center; justify-content: space-between; }
+.tc-sync-info { font-size: 11px; color: var(--text-3, #9aa3b7); display: flex; align-items: center; gap: 5px; }
+.tc-sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #3b6d11; }
+.tc-sync-dot.stale { background: #ba7517; }
+
+/* Tournament detail sheet */
+.toernooi-detail-sheet {
+  max-width: 780px !important;
+  height: 95vh !important;
+  max-height: 95vh !important;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0 !important;
+}
+
+.tds-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 0.5px solid var(--border-1, #e2e5ef);
+  flex-shrink: 0;
+  gap: 10px;
+}
+.tds-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.tds-naam { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tds-meta { font-size: 12px; color: var(--text-2, #6b7280); margin-top: 1px; }
+.tds-header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+.tds-sync-status { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-2,#6b7280); }
+.tds-sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #ba7517; }
+.tds-sync-dot.syncing { background: #185fa5; animation: syncPulse 1.2s infinite; }
+.tds-sync-dot.ok { background: #3b6d11; }
+@keyframes syncPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* Poule tabs */
+.tds-poule-nav {
+  display: flex;
+  overflow-x: auto;
+  gap: 0;
+  padding: 0 18px;
+  border-bottom: 0.5px solid var(--border-1, #e2e5ef);
+  flex-shrink: 0;
+  scrollbar-width: none;
+}
+.tds-poule-nav::-webkit-scrollbar { display: none; }
+
+.tds-ptab {
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  color: var(--text-2, #6b7280);
+  white-space: nowrap;
+  transition: color .15s, border-color .15s;
+  margin-bottom: -0.5px;
+}
+.tds-ptab.active { color: var(--accent, #4f6ef7); border-bottom-color: var(--accent, #4f6ef7); }
+
+/* Body */
+.tds-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
+
+/* Match card in detail */
+.tds-match {
+  display: flex; align-items: center; gap: 8px;
+  padding: 9px 12px;
+  border: 0.5px solid var(--border-1,#e2e5ef);
+  border-radius: 10px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  transition: border-color .12s;
+}
+.tds-match:hover { border-color: var(--accent,#4f6ef7); }
+.tds-match-time { font-size: 11px; color: var(--text-2,#6b7280); min-width: 40px; flex-shrink: 0; }
+.tds-match-teams { flex: 1; display: flex; align-items: center; gap: 6px; }
+.tds-match-home { flex: 1; font-weight: 500; }
+.tds-match-away { flex: 1; text-align: right; font-weight: 500; }
+.tds-match-vs { font-size: 11px; color: var(--text-2,#6b7280); flex-shrink: 0; }
+.tds-match-score {
+  min-width: 42px; text-align: center; font-weight: 700; font-size: 13px;
+  color: #185fa5; flex-shrink: 0;
+}
+.tds-match-score.pending { color: var(--text-3,#9aa3b7); font-weight: 400; }
+.tds-match-field { font-size: 10px; color: var(--text-2,#6b7280); background: var(--bg-2,#f3f4f6); padding: 2px 7px; border-radius: 5px; flex-shrink: 0; }
+.tds-match-type-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; background: #faeeda; color: #854f0b; flex-shrink: 0; }
+
+.tds-dag-label { font-size: 11px; font-weight: 600; color: var(--text-2,#6b7280); text-transform: uppercase; letter-spacing: .06em; margin: 14px 0 6px; }
+
+/* Standings */
+.tds-stand { width: 100%; font-size: 12px; border-collapse: collapse; margin-top: 14px; }
+.tds-stand th { font-size: 10px; font-weight: 600; color: var(--text-2,#6b7280); text-transform: uppercase; letter-spacing:.05em; padding: 4px 8px; border-bottom: 0.5px solid var(--border-1,#e2e5ef); text-align:left; }
+.tds-stand td { padding: 6px 8px; border-bottom: 0.5px solid var(--border-1,#e2e5ef); }
+.tds-stand tr:last-child td { border-bottom: none; }
+.tds-stand .pts { font-weight: 700; color: var(--text-1,#111827); }
+.tds-stand tr.leader td:first-child { border-left: 2px solid var(--accent,#4f6ef7); }
+
+/* Knockout section */
+.tds-ko-divider {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em;
+  color: var(--text-2,#6b7280);
+  padding: 14px 18px 10px;
+  border-top: 0.5px solid var(--border-1,#e2e5ef);
+  flex-shrink: 0;
+}
+
+.tds-ko-container {
+  position: relative;
+  flex-shrink: 0;
+  height: 300px;
+  overflow: hidden;
+  margin: 0 18px 18px;
+  border: 0.5px solid var(--border-1,#e2e5ef);
+  border-radius: 12px;
+}
+.tds-ko-rounds { position: relative; width: 100%; height: 100%; }
+
+.tds-ko-round {
+  position: absolute; inset: 0; padding: 14px;
+  opacity: 0; pointer-events: none;
+  transition: opacity .35s, transform .35s;
+  overflow-y: auto;
+}
+.tds-ko-round.visible { opacity: 1; pointer-events: all; transform: translateY(0) !important; }
+.tds-ko-round.above { transform: translateY(-20px); }
+.tds-ko-round.below { transform: translateY(20px); }
+
+.tds-ko-round-title {
+  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-2,#6b7280); margin-bottom: 10px;
+}
+.tds-ko-grid { display: grid; gap: 6px; }
+.tds-ko-grid.cols2 { grid-template-columns: 1fr 1fr; }
+.tds-ko-grid.cols1 { grid-template-columns: 1fr; max-width: 300px; margin: 0 auto; }
+
+.tds-ko-match {
+  border: 0.5px solid var(--border-1,#e2e5ef); border-radius: 8px; overflow: hidden;
+  background: var(--bg-card,#fff);
+}
+.tds-ko-match.final-match { border-color: #fac775; border-width: 1px; }
+.tds-ko-team {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 10px; font-size: 12px; gap: 6px;
+}
+.tds-ko-team:first-child { border-bottom: 0.5px solid var(--border-1,#e2e5ef); }
+.tds-ko-team.winner { font-weight: 600; }
+.tds-ko-team .ko-sc { font-weight: 700; font-size: 12px; min-width: 18px; text-align: right; color: #185fa5; }
+.tds-ko-team .ko-sc.pending { color: var(--text-3,#9aa3b7); font-weight: 400; }
+.tds-ko-meta { padding: 3px 10px; background: var(--bg-2,#f3f4f6); font-size: 10px; color: var(--text-2,#6b7280); display: flex; gap: 8px; border-top: 0.5px solid var(--border-1,#e2e5ef); }
+.tds-ko-meta.final-meta { background: #faeeda; color: #854f0b; }
+.tds-ko-meta .winner-label { margin-left: auto; font-weight: 600; }
+
+.tds-ko-dots {
+  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 5px;
+}
+.tds-ko-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-1,#e2e5ef); transition: background .2s, transform .2s; cursor: pointer; }
+.tds-ko-dot.active { background: var(--accent,#4f6ef7); transform: scale(1.4); }
+
+.tds-ko-nav {
+  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 12px;
+  background: var(--bg-card,#fff); border: 0.5px solid var(--border-1,#e2e5ef);
+  border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 500;
+}
+.tds-ko-navbtn { background: none; border: none; cursor: pointer; display: flex; align-items: center; color: var(--text-2,#6b7280); padding: 2px; }
+.tds-ko-navbtn:disabled { opacity: .3; cursor: default; }
+
+/* Import form */
+.tf-import-tabs {
+  display: flex; border: 0.5px solid var(--border-1,#e2e5ef);
+  border-radius: 8px; overflow: hidden; margin-top: 4px;
+}
+.tf-itab {
+  flex: 1; padding: 8px 12px; font-size: 12px; font-weight: 500;
+  background: transparent; border: none; cursor: pointer;
+  color: var(--text-2,#6b7280); display: flex; align-items: center; justify-content: center; gap: 5px;
+  transition: background .12s, color .12s;
+}
+.tf-itab.active { background: var(--bg-2,#f3f4f6); color: var(--text-1,#111827); }
+.tf-itab:not(:last-child) { border-right: 0.5px solid var(--border-1,#e2e5ef); }
+
+.tf-upload-zone {
+  border: 1.5px dashed var(--border-1,#e2e5ef); border-radius: 12px;
+  padding: 32px 20px; text-align: center; cursor: pointer;
+  color: var(--text-2,#6b7280); margin-top: 16px;
+  transition: border-color .15s, background .15s;
+}
+.tf-upload-zone:hover { border-color: var(--accent,#4f6ef7); background: #f6f8ff; }
+.tf-upload-zone.drag-over { border-color: var(--accent,#4f6ef7); background: #eef2ff; }
+
+.tf-preview-header {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: #3b6d11;
+  background: #eaf3de; border-radius: 8px; padding: 8px 12px;
+  margin-bottom: 12px;
+}
+
+/* Dashboard toernooi banner */
+.dash-toernooi-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #faeeda 0%, #fef3e0 100%);
+  border: 0.5px solid #fac775;
+  border-radius: 12px;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: border-color .15s;
+}
+.dash-toernooi-banner:hover { border-color: #ef9f27; }
+.dtb-icon { font-size: 24px; flex-shrink: 0; }
+.dtb-text { flex: 1; min-width: 0; }
+.dtb-naam { font-size: 14px; font-weight: 600; color: #633806; }
+.dtb-meta { font-size: 12px; color: #854f0b; margin-top: 2px; }
+.dtb-badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: #ef9f27; color: #fff; flex-shrink: 0; }
+
+/* Programma week-strip toernooi-dag */
+.prog-day-cell.has-toernooi { border-color: #fac775 !important; background: #fef8ef !important; }
+.prog-day-cell.has-toernooi .prog-day-badge-toernooi {
+  font-size: 9px; font-weight: 600; color: #854f0b;
+  display: flex; align-items: center; gap: 2px; margin-top: 2px;
+}
+
+
+/* ── Toernooi-rij in aankomende lijst (s36g) ── */
+.up-row-toernooi {
+  border-left: 3px solid #fac775 !important;
+  background: linear-gradient(90deg, rgba(250,206,122,.09) 0%, transparent 60%);
+}
+.up-row-toernooi:hover {
+  background: linear-gradient(90deg, rgba(250,206,122,.18) 0%, transparent 70%);
+}
+.up-row-toernooi .up-day { color: #854f0b; }
+.up-toernooi-icon {
+  display: inline-flex; align-items: center;
+  color: #ef9f27; margin-right: 5px; vertical-align: middle;
+}
+.up-tag-toernooi {
+  background: #faeeda !important;
+  color: #854f0b !important;
+}

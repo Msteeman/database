@@ -3252,6 +3252,10 @@ function subscribeData(){
     setSync('offline');
   });
 }
+  // s36g: toernooien subscription
+  try { subscribeToernooien(); } catch(e){ console.warn('subscribeToernooien failed', e); }
+}
+
 function unsubscribeData(){
   if(unsubPlayers){ unsubPlayers(); unsubPlayers = null; }
   if(unsubAnalyses){ unsubAnalyses(); unsubAnalyses = null; }
@@ -3260,6 +3264,7 @@ function unsubscribeData(){
   if(unsubTips){ unsubTips(); unsubTips = null; }
   if(unsubProgramma){ unsubProgramma(); unsubProgramma = null; }
   if(unsubRitten){ unsubRitten(); unsubRitten = null; }
+  try { unsubscribeToernooien(); } catch(_){}
   playersCache = [];
   analysesCache = [];
   contactsCache = [];
@@ -3267,6 +3272,7 @@ function unsubscribeData(){
   tipsCache = [];
   programmaCache = [];
   rittenCache = [];
+  tournamentsCache = [];
 }
 
 async function savePlayer(player){
@@ -6858,21 +6864,38 @@ function bindUpcomingToggle(wrap){
 function renderUpcomingMatches(){
   const wrap = document.getElementById('upcoming-matches-wrap');
   if(!wrap) return;
-  // s35ct: voorkeur ingeklapt/uitgeklapt onthouden
   const collapsedPref = (function(){ try { const v = localStorage.getItem('upcomingMatchesCollapsed'); return v === null ? true : v === '1'; } catch(_){ return true; } })();
   const cls = collapsedPref ? 'upcoming-matches collapsed' : 'upcoming-matches';
   const chev = '<span class="upcoming-matches-chev" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M2 4 L6 8 L10 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
-  if(typeof programmaCache === 'undefined' || !Array.isArray(programmaCache) || programmaCache.length === 0){
-    // v70g: altijd tonen, ook bij lege cache
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  // Programma-items: horizon +3 dagen
+  const horizon3 = new Date(today.getTime() + 4*24*3600*1000);
+  const progItems = (Array.isArray(programmaCache) ? programmaCache : []).filter(p => {
+    if(!p || !p.datum) return false;
+    const d = new Date(p.datum + 'T00:00:00');
+    return d > today && d < horizon3;
+  });
+
+  // Toernooien: horizon +14 dagen
+  const horizon14 = new Date(today.getTime() + 15*24*3600*1000);
+  const trItems = (Array.isArray(tournamentsCache) ? tournamentsCache : []).filter(t => {
+    if(!t || !t.datum) return false;
+    const d = new Date(t.datum + 'T00:00:00');
+    return d >= today && d < horizon14;
+  });
+
+  const hasNothing = !progItems.length && !trItems.length;
+
+  if(hasNothing && (!Array.isArray(programmaCache) || !programmaCache.length)){
     wrap.style.display = 'block';
     wrap.innerHTML = `
       <div class="${cls}">
         <div class="upcoming-matches-head" data-toggle-upcoming="1">
-          <div class="upcoming-matches-title">Aankomende wedstrijden</div>
-          <div class="upcoming-matches-right">
-            <div class="upcoming-matches-count">geen ingepland</div>
-            ${chev}
-          </div>
+          <div class="upcoming-matches-title">Aankomend</div>
+          <div class="upcoming-matches-right"><div class="upcoming-matches-count">geen ingepland</div>${chev}</div>
         </div>
         <div class="upcoming-matches-body">
           <div class="up-empty">Plan een wedstrijd in via Programma of via "+ Nieuw rapport".</div>
@@ -6881,89 +6904,112 @@ function renderUpcomingMatches(){
     bindUpcomingToggle(wrap);
     return;
   }
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const horizon = new Date(today.getTime() + 4*24*3600*1000); // +4: pak dag t/m +3
-  const items = programmaCache.filter(p => {
-    if(!p || !p.datum) return false;
-    const d = new Date(p.datum + 'T00:00:00');
-    return d > today && d < horizon;
-  });
-  if(items.length === 0){
-    // s35dj: verberg als er niets is — minder ruis op dashboard
-    wrap.style.display = 'none';
-    wrap.innerHTML = '';
-    return;
-  }
-  items.sort((a,b) => {
-    const ka = (a.datum||'') + ' ' + (a.tijd||'99:99');
-    const kb = (b.datum||'') + ' ' + (b.tijd||'99:99');
-    return ka.localeCompare(kb);
-  });
+  if(hasNothing){ wrap.style.display='none'; wrap.innerHTML=''; return; }
+
   const weekdays = ['Zo','Ma','Di','Wo','Do','Vr','Za'];
-  const lines = items.map(it => {
-    const d = new Date(it.datum + 'T00:00:00');
-    const diffDays = Math.round((d - today) / (24*3600*1000));
-    let label = '';
-    if(diffDays === 1) label = 'Morgen';
-    else if(diffDays === 2) label = 'Overmorgen';
-    else label = `${weekdays[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}`;
-    // s35bd: titel-format 'Club Elftal — Club Elftal'
+  function dayLabel(dateStr){
+    const d = new Date(dateStr + 'T00:00:00');
+    const diff = Math.round((d - today) / 86400000);
+    if(diff === 0) return 'Vandaag';
+    if(diff === 1) return 'Morgen';
+    if(diff === 2) return 'Overmorgen';
+    return `${weekdays[d.getDay()]} ${String(d.getDate()).padStart(2,'0')}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  }
+
+  progItems.sort((a,b) => ((a.datum||'')+' '+(a.tijd||'99:99')).localeCompare((b.datum||'')+' '+(b.tijd||'99:99')));
+
+  // --- toernooi-rijen ---
+  const trLines = trItems
+    .sort((a,b) => (a.datum||'').localeCompare(b.datum||''))
+    .map(t => {
+      const nWedstrijden = (t.poules||[]).reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
+      const d = new Date(t.datum + 'T00:00:00');
+      const diff = Math.round((d - today) / 86400000);
+      const diffLabel = diff === 0 ? 'Vandaag' : diff === 1 ? 'Morgen' : `over ${diff} dag${diff===1?'':'en'}`;
+      const pouleCount = (t.poules||[]).length;
+      return `
+        <div class="up-row up-row-toernooi" data-toernooi-id="${escapeHtml(t.id)}">
+          <div class="up-when">
+            <span class="up-day">${dayLabel(t.datum)}</span>
+            ${t.datumEinde && t.datumEinde !== t.datum ? `<span class="up-time">t/m ${dayLabel(t.datumEinde)}</span>` : ''}
+          </div>
+          <div class="up-teams">
+            <span class="up-toernooi-icon" aria-hidden="true"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 21h8M12 17v4M5 3H19L17 11C17 14.866 14.866 17 12 17C9.134 17 7 14.866 7 11L5 3Z"/></svg></span>
+            ${escapeHtml(t.naam||'Toernooi')}
+          </div>
+          <div class="up-meta">
+            ${t.leeftijdscategorie ? `<span class="up-tag up-tag-toernooi">${escapeHtml(t.leeftijdscategorie)}</span>` : ''}
+            ${pouleCount ? `<span class="up-tag up-tag-toernooi">${pouleCount} poules</span>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+  // --- programma-rijen ---
+  const progLines = progItems.map(it => {
     const teams = `${escapeHtml(it.thuis||'?')}${it.thuis_elftal?' '+escapeHtml(it.thuis_elftal):''} — ${escapeHtml(it.uit||'?')}${it.uit_elftal?' '+escapeHtml(it.uit_elftal):''}`;
     const tijd = it.tijd ? escapeHtml(it.tijd) : '';
-    const club = (typeof CLUB_ADRESSEN !== 'undefined' && it.thuis)
-      ? CLUB_ADRESSEN[it.thuis.toLowerCase().trim()] : null;
+    const club = (typeof CLUB_ADRESSEN !== 'undefined' && it.thuis) ? CLUB_ADRESSEN[it.thuis.toLowerCase().trim()] : null;
     let mapsUrl = '';
-    if(club && club.lat && club.lon){
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${club.lat},${club.lon}`;
-    } else if(club && club.adres){
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(club.adres)}`;
-    } else if(it.locatie){
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(it.locatie)}`;
-    }
-    const routeHtml = mapsUrl
-      ? `<a class="up-route" href="${mapsUrl}" target="_blank" rel="noopener" title="Route via Google Maps">🗺️</a>`
-      : '';
+    if(club && club.lat && club.lon) mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${club.lat},${club.lon}`;
+    else if(club && club.adres) mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(club.adres)}`;
+    else if(it.locatie) mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(it.locatie)}`;
+    const routeHtml = mapsUrl ? `<a class="up-route" href="${mapsUrl}" target="_blank" rel="noopener" title="Route via Google Maps">🗺️</a>` : '';
     const leef = it.leeftijd ? `<span class="up-tag">${escapeHtml(it.leeftijd)}</span>` : '';
     return `
       <div class="up-row" data-prog-id="${it.id}">
         <div class="up-when">
-          <span class="up-day">${label}</span>
+          <span class="up-day">${dayLabel(it.datum)}</span>
           ${tijd ? `<span class="up-time">${tijd}</span>` : ''}
         </div>
         <div class="up-teams">${teams}</div>
         <div class="up-meta">${leef}${routeHtml}</div>
       </div>`;
   }).join('');
+
+  const totalCount = progItems.length + trItems.length;
+  const countLabel = totalCount === 1 ? '1 item' : `${totalCount} aankomend`;
+
   wrap.innerHTML = `
     <div class="${cls}">
       <div class="upcoming-matches-head" data-toggle-upcoming="1">
-        <div class="upcoming-matches-title">Aankomende wedstrijden</div>
+        <div class="upcoming-matches-title">Aankomend</div>
         <div class="upcoming-matches-right">
-          <div class="upcoming-matches-count">${items.length} de komende 3 dagen</div>
+          <div class="upcoming-matches-count">${countLabel}</div>
           ${chev}
         </div>
       </div>
       <div class="upcoming-matches-body">
-        ${lines}
+        ${trLines}${progLines}
       </div>
     </div>
   `;
   wrap.style.display = 'block';
   bindUpcomingToggle(wrap);
-  // s35aj (#2): klik op regel -> direct naar programma met deze match uitgeklapt. Geen tussenmodal.
-  wrap.querySelectorAll('.up-row').forEach(row => {
+
+  // Klik programma-rij → programma
+  wrap.querySelectorAll('.up-row[data-prog-id]').forEach(row => {
     row.addEventListener('click', e => {
       if(e.target.closest('a')) return;
       const pid = row.dataset.progId;
       if(!pid) return;
-      try { progExpandedId = pid; } catch(_) { window.progExpandedId = pid; }
+      try { progExpandedId = pid; } catch(_){ window.progExpandedId = pid; }
       if(typeof go === 'function') go('programma');
       setTimeout(() => {
-        const el = document.querySelector(`.prog-detail-card[data-prog-detail-id="${pid}"]`)
-                || document.querySelector('.prog-detail-card');
+        const el = document.querySelector(`.prog-detail-card[data-prog-detail-id="${pid}"]`) || document.querySelector('.prog-detail-card');
         if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
       }, 140);
+    });
+  });
+
+  // Klik toernooi-rij → toernooien subview
+  wrap.querySelectorAll('.up-row-toernooi[data-toernooi-id]').forEach(row => {
+    row.addEventListener('click', () => {
+      const tid = row.dataset.toernooiId;
+      if(typeof go === 'function') go('matches');
+      setTimeout(() => {
+        switchMatchesSubview('toernooien');
+        if(tid) setTimeout(() => openToernooiDetail(tid), 100);
+      }, 180);
     });
   });
 }
@@ -17859,6 +17905,771 @@ async function loadUserRole(){
   } catch(err){
     console.warn('loadUserRole failed', err);
   }
+}
+
+
+/* ==========================================================
+   TOERNOOIEN — s36g
+   ========================================================== */
+
+let tournamentsCache = [];
+let __tUnsubscribe = null;
+
+function subscribeToernooien(){
+  if(!currentUser) return;
+  if(__tUnsubscribe) { try{ __tUnsubscribe(); }catch(_){} }
+  const col = collection(db, 'users', currentUser.uid, 'toernooien');
+  __tUnsubscribe = onSnapshot(
+    query(col, orderBy('datum','desc')),
+    snap => {
+      tournamentsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      renderToernooien();
+      _renderDashToernooi();
+    },
+    err => console.warn('toernooien snap err', err)
+  );
+}
+
+function unsubscribeToernooien(){
+  if(__tUnsubscribe){ try{ __tUnsubscribe(); }catch(_){} __tUnsubscribe = null; }
+  tournamentsCache = [];
+}
+
+/* ---------- subview toggle ---------- */
+let __matchesSubview = 'wedstrijden';
+function switchMatchesSubview(view){
+  __matchesSubview = view;
+  const isTrn = view === 'toernooien';
+  // toggle buttons
+  const bW = document.getElementById('msv-wedstrijden');
+  const bT = document.getElementById('msv-toernooien');
+  if(bW) bW.classList.toggle('active', !isTrn);
+  if(bT) bT.classList.toggle('active', isTrn);
+  // show/hide sections
+  const wSections = ['match-stats','m-search-row','match-age-chips','match-status-chips','matches-list','matches-empty','match-report-new-btn','match-report-import-btn','match-report-bulk-delete-btn'];
+  wSections.forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.style.display = isTrn ? 'none' : '';
+  });
+  const tView = document.getElementById('toernooien-subview');
+  if(tView) tView.style.display = isTrn ? 'block' : 'none';
+  const tBtn = document.getElementById('toernooi-new-btn');
+  if(tBtn) tBtn.style.display = isTrn ? '' : 'none';
+  const title = document.getElementById('matches-page-title');
+  if(title) title.textContent = isTrn ? 'Toernooien' : 'Wedstrijden';
+  if(isTrn) renderToernooien();
+}
+
+/* ---------- render list ---------- */
+function renderToernooien(){
+  const list = document.getElementById('toernooien-list');
+  const empty = document.getElementById('toernooien-empty');
+  if(!list) return;
+  if(!tournamentsCache.length){
+    list.innerHTML = '';
+    if(empty) empty.style.display = 'block';
+    return;
+  }
+  if(empty) empty.style.display = 'none';
+
+  list.innerHTML = tournamentsCache.map(t => {
+    const poules = t.poules || [];
+    const koRondes = (t.knockout && t.knockout.rondes) || [];
+    const nWedstrijden = poules.reduce((s,p)=> s + (p.wedstrijden||[]).length, 0)
+      + koRondes.reduce((s,r)=> s + (r.wedstrijden||[]).length, 0);
+    const syncAgo = t.lastSyncAt ? _tSyncAgo(t.lastSyncAt) : null;
+    const hasTournify = !!(t.tournifyUrl || t.tournifySlug);
+    return `<div class="toernooi-card" onclick="openToernooiDetail('${escapeHtml(t.id)}')">
+      <div class="tc-header">
+        <div class="tc-naam">${escapeHtml(t.naam || '—')}</div>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-3,#9aa3b7);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
+      </div>
+      <div class="tc-badges">
+        ${t.leeftijdscategorie ? `<span class="tc-badge gold">${escapeHtml(t.leeftijdscategorie)}</span>` : ''}
+        ${t.format ? `<span class="tc-badge blue">${escapeHtml(t.format)}</span>` : ''}
+        ${poules.length ? `<span class="tc-badge muted">${poules.length} poules</span>` : ''}
+        ${koRondes.length ? `<span class="tc-badge muted"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 21h8M12 17v4M5 3H19L17 11C17 14.866 14.866 17 12 17C9.134 17 7 14.866 7 11L5 3Z"/></svg> knockout</span>` : ''}
+      </div>
+      <div class="tc-meta">
+        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${_tFormatDatum(t.datum, t.datumEinde)}</span>
+        ${t.locatie ? `<span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(t.locatie)}</span>` : ''}
+        ${nWedstrijden ? `<span>${nWedstrijden} wedstrijden</span>` : ''}
+      </div>
+      ${hasTournify && syncAgo ? `<div class="tc-sync-row"><div class="tc-sync-info"><span class="tc-sync-dot"></span>Tournify · ${syncAgo}</div><span style="font-size:11px;color:var(--accent,#4f6ef7)">Sync beschikbaar</span></div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function _tFormatDatum(d, e){
+  if(!d) return '—';
+  const fmt = s => { const [y,m,dd] = s.split('-'); const months=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']; return `${parseInt(dd)} ${months[parseInt(m)-1]} ${y}`; };
+  if(e && e !== d) return `${fmt(d)} – ${fmt(e)}`;
+  return fmt(d);
+}
+function _tSyncAgo(ts){
+  try{
+    const ms = (ts.toDate ? ts.toDate() : new Date(ts)).getTime();
+    const diff = Math.round((Date.now()-ms)/60000);
+    if(diff < 2) return 'zojuist';
+    if(diff < 60) return `${diff} min geleden`;
+    const h = Math.round(diff/60);
+    if(h < 24) return `${h}u geleden`;
+    return `${Math.round(h/24)}d geleden`;
+  }catch(_){ return ''; }
+}
+
+/* ---------- detail modal ---------- */
+let __tdsCurrentId = null;
+let __tdsCurrentPoule = 0;
+let __tdsKoRound = 0;
+window.__tdsCurrentId = null;
+
+function openToernooiDetail(id){
+  const t = tournamentsCache.find(x => x.id === id);
+  if(!t) return;
+  __tdsCurrentId = id;
+  window.__tdsCurrentId = id;
+  const ov = document.getElementById('toernooi-detail-overlay');
+  if(!ov) return;
+  ov.style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+
+  // header
+  document.getElementById('tds-naam').textContent = t.naam || '—';
+  document.getElementById('tds-meta').textContent = [
+    _tFormatDatum(t.datum, t.datumEinde),
+    t.locatie,
+    t.leeftijdscategorie,
+    t.format
+  ].filter(Boolean).join(' · ');
+
+  const syncBtn = document.getElementById('tds-sync-btn');
+  if(syncBtn) syncBtn.style.display = (t.tournifyUrl||t.tournifySlug) ? '' : 'none';
+
+  // poule tabs
+  const poules = t.poules || [];
+  const nav = document.getElementById('tds-poule-nav');
+  if(nav){
+    nav.innerHTML = poules.map((p,i) =>
+      `<button class="tds-ptab${i===0?' active':''}" onclick="tdsShowPoule(${i})" id="tds-ptab-${i}">${escapeHtml(p.naam || ('Poule '+(p.id||i)))}</button>`
+    ).join('');
+  }
+  __tdsCurrentPoule = 0;
+  tdsShowPoule(0);
+
+  // knockout
+  const ko = t.knockout;
+  const koWrap = document.getElementById('tds-knockout-wrap');
+  if(koWrap){
+    if(ko && ko.rondes && ko.rondes.length){
+      koWrap.style.display = '';
+      __tdsKoRound = 0;
+      tdsRenderKnockout(ko.rondes);
+    } else {
+      koWrap.style.display = 'none';
+    }
+  }
+}
+
+function tdsShowPoule(idx){
+  const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
+  if(!t) return;
+  const poules = t.poules || [];
+  const p = poules[idx];
+  __tdsCurrentPoule = idx;
+  // update tab active
+  document.querySelectorAll('.tds-ptab').forEach((el,i) => el.classList.toggle('active', i===idx));
+  const body = document.getElementById('tds-poule-content');
+  if(!body || !p) return;
+
+  // group wedstrijden by day
+  const weds = p.wedstrijden || [];
+  const byDag = {};
+  weds.forEach(w => { const dag = w.dag || 'onbekend'; (byDag[dag] = byDag[dag]||[]).push(w); });
+  const days = Object.keys(byDag).sort();
+
+  let html = '';
+  days.forEach(dag => {
+    const dayWeds = byDag[dag];
+    html += `<div class="tds-dag-label">${_tDagLabel(dag, dayWeds[0] && dayWeds[0].type)}</div>`;
+    dayWeds.sort((a,b)=>(a.tijd||'').localeCompare(b.tijd||'')).forEach(w => {
+      const gespeeld = w.gespeeld || (w.scoreThuis !== null && w.scoreThuis !== undefined);
+      const scoreHtml = gespeeld
+        ? `<span class="tds-match-score">${w.scoreThuis}–${w.scoreUit}</span>`
+        : `<span class="tds-match-score pending">–</span>`;
+      const typeBadge = (w.type && w.type !== 'groep')
+        ? `<span class="tds-match-type-badge">${w.type==='finale'?'Finale':w.type==='3e4e'?'3e/4e pl.':w.type}</span>`
+        : '';
+      html += `<div class="tds-match">
+        <span class="tds-match-time">${escapeHtml(w.tijd||'')}</span>
+        <div class="tds-match-teams">
+          <span class="tds-match-home${gespeeld && w.scoreThuis > w.scoreUit?' winner':''}">${escapeHtml(w.thuis||'—')}</span>
+          <span class="tds-match-vs">–</span>
+          <span class="tds-match-away${gespeeld && w.scoreUit > w.scoreThuis?' winner':''}">${escapeHtml(w.uit||'—')}</span>
+        </div>
+        ${scoreHtml}
+        ${w.veld ? `<span class="tds-match-field">${escapeHtml(w.veld)}</span>` : ''}
+        ${typeBadge}
+      </div>`;
+    });
+  });
+
+  // standings
+  const stand = p.stand || _computeStand(p);
+  if(stand && stand.length){
+    html += `<table class="tds-stand"><thead><tr><th>#</th><th>Team</th><th>G</th><th>W</th><th>G</th><th>V</th><th>GV</th><th>GT</th><th>Pts</th></tr></thead><tbody>`;
+    stand.forEach((r,i) => {
+      html += `<tr class="${i===0?'leader':''}"><td>${i+1}</td><td>${escapeHtml(r.team||'—')}</td><td>${r.G||0}</td><td>${r.W||0}</td><td>${r.Ge||0}</td><td>${r.V||0}</td><td>${r.GV||0}</td><td>${r.GT||0}</td><td class="pts">${r.Pts||0}</td></tr>`;
+    });
+    html += `</tbody></table>`;
+  }
+  body.innerHTML = html;
+}
+
+function _tDagLabel(dag, type){
+  if(dag === 'onbekend') return type === 'finale' ? 'Finales' : 'Voorrondes';
+  try{
+    const d = new Date(dag);
+    const days = ['zo','ma','di','wo','do','vr','za'];
+    const months = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
+    return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}${type==='finale'?' — finales':''}`;
+  }catch(_){ return dag; }
+}
+
+function _computeStand(poule){
+  const teams = poule.teams || [];
+  const stand = {};
+  teams.forEach(t => { stand[t] = {team:t, G:0, W:0, Ge:0, V:0, GV:0, GT:0, Pts:0}; });
+  (poule.wedstrijden||[]).filter(w=>w.gespeeld||w.scoreThuis!=null).forEach(w=>{
+    const h = stand[w.thuis], a = stand[w.uit];
+    if(!h||!a) return;
+    const sh=w.scoreThuis||0, sa=w.scoreUit||0;
+    h.G++; a.G++; h.GV+=sh; h.GT+=sa; a.GV+=sa; a.GT+=sh;
+    if(sh>sa){h.W++;h.Pts+=3;a.V++;}
+    else if(sh<sa){a.W++;a.Pts+=3;h.V++;}
+    else{h.Ge++;a.Ge++;h.Pts++;a.Pts++;}
+  });
+  return Object.values(stand).sort((a,b)=>b.Pts-a.Pts||(b.GV-b.GT)-(a.GV-a.GT)||b.GV-a.GV);
+}
+
+/* knockout animation */
+function tdsRenderKnockout(rondes){
+  const wrap = document.getElementById('tds-ko-rounds');
+  const dots = document.getElementById('tds-ko-dots');
+  if(!wrap) return;
+  __tdsKoRound = 0;
+
+  wrap.innerHTML = rondes.map((r,i) => {
+    const isFinal = i === rondes.length-1;
+    const weds = r.wedstrijden || [];
+    const cols = weds.length > 2 ? 'cols2' : 'cols1';
+    const matchHtml = weds.map(w => {
+      const gespeeld = w.gespeeld || w.scoreThuis!=null;
+      const hWin = gespeeld && w.scoreThuis > w.scoreUit;
+      const aWin = gespeeld && w.scoreUit > w.scoreThuis;
+      return `<div class="tds-ko-match${isFinal?' final-match':''}">
+        <div class="tds-ko-team${hWin?' winner':''}">${escapeHtml(w.thuis||'?')} <span class="ko-sc${!gespeeld?' pending':''}">${gespeeld?w.scoreThuis:'–'}</span></div>
+        <div class="tds-ko-team${aWin?' winner':''}">${escapeHtml(w.uit||'?')} <span class="ko-sc${!gespeeld?' pending':''}">${gespeeld?w.scoreUit:'–'}</span></div>
+        <div class="tds-ko-meta${isFinal?' final-meta':''}">
+          ${w.veld?`<span>${escapeHtml(w.veld)}</span>`:''}
+          ${w.tijd?`<span>${escapeHtml(w.tijd)}</span>`:''}
+          ${isFinal&&gespeeld?`<span class="winner-label">Winnaar: ${escapeHtml(hWin?w.thuis:w.uit)}</span>`:''}
+        </div>
+      </div>`;
+    }).join('');
+    const cls = i===0?'visible':'below';
+    return `<div class="tds-ko-round ${cls}" id="tds-ko-round-${i}" style="${i===0?'':'transform:translateY(20px)'}">
+      ${isFinal?`<div style="text-align:center;margin-bottom:10px;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#854f0b" stroke-width="1.8"><path d="M8 21h8M12 17v4M5 3H19L17 11C17 14.866 14.866 17 12 17C9.134 17 7 14.866 7 11L5 3Z"/><path d="M5 7H3C2 7 1 8 1 9C1 11.5 3 13 5 13"/><path d="M19 7H21C22 7 23 8 23 9C23 11.5 21 13 19 13"/></svg></div>`:''}
+      <div class="tds-ko-round-title">${escapeHtml(r.naam||'Ronde '+(i+1))}</div>
+      <div class="tds-ko-grid ${cols}">${matchHtml}</div>
+    </div>`;
+  }).join('');
+
+  if(dots) dots.innerHTML = rondes.map((_,i)=>`<div class="tds-ko-dot${i===0?' active':''}" onclick="tdsGoRound(${i})"></div>`).join('');
+
+  const lbl = document.getElementById('tds-ko-round-label');
+  if(lbl) lbl.textContent = rondes[0]?.naam || 'Ronde 1';
+  tdsUpdateKoNav(rondes.length);
+}
+
+function tdsGoRound(n){
+  const t = tournamentsCache.find(x=>x.id===__tdsCurrentId);
+  const rondes = t?.knockout?.rondes || [];
+  if(!rondes.length) return;
+  const prev = __tdsKoRound;
+  __tdsKoRound = Math.max(0, Math.min(rondes.length-1, n));
+  const dir = __tdsKoRound > prev ? 1 : -1;
+  rondes.forEach((_,i) => {
+    const el = document.getElementById(`tds-ko-round-${i}`);
+    if(!el) return;
+    el.classList.remove('visible','above','below');
+    el.style.transform = '';
+    if(i===__tdsKoRound){
+      el.style.transform = `translateY(${dir>0?'20px':'-20px'})`;
+      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+        el.style.transform='translateY(0)'; el.classList.add('visible');
+      }));
+    } else if(i<__tdsKoRound){
+      el.classList.add('above'); el.style.transform='translateY(-20px)';
+    } else {
+      el.classList.add('below'); el.style.transform='translateY(20px)';
+    }
+  });
+  document.querySelectorAll('.tds-ko-dot').forEach((d,i)=>d.classList.toggle('active',i===__tdsKoRound));
+  const lbl = document.getElementById('tds-ko-round-label');
+  if(lbl) lbl.textContent = rondes[__tdsKoRound]?.naam || '';
+  tdsUpdateKoNav(rondes.length);
+}
+function tdsMoveRound(dir){ tdsGoRound(__tdsKoRound+dir); }
+function tdsUpdateKoNav(total){
+  const prev = document.getElementById('tds-ko-prev');
+  const next = document.getElementById('tds-ko-next');
+  if(prev) prev.disabled = __tdsKoRound===0;
+  if(next) next.disabled = __tdsKoRound===total-1;
+}
+
+function closeToernooiDetail(){
+  const ov = document.getElementById('toernooi-detail-overlay');
+  if(ov) ov.style.display='none';
+  document.body.style.overflow='';
+  __tdsCurrentId=null; window.__tdsCurrentId=null;
+}
+
+/* info modal */
+function openToernooiInfo(){
+  const t = tournamentsCache.find(x=>x.id===__tdsCurrentId);
+  if(!t) return;
+  const ov = document.getElementById('toernooi-info-overlay');
+  const body = document.getElementById('toernooi-info-body');
+  if(!ov||!body) return;
+
+  const rows = [
+    ['Toernooi', t.naam],
+    ['Datum', _tFormatDatum(t.datum, t.datumEinde)],
+    ['Locatie', t.locatie],
+    ['Format', t.format],
+    ['Leeftijdscategorie', t.leeftijdscategorie],
+    ['Tournify', t.tournifyUrl||t.tournifySlug ? (t.tournifyUrl||`tournifyapp.com/live/${t.tournifySlug}`) : null],
+  ].filter(r=>r[1]);
+
+  body.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
+    ${rows.map(([k,v])=>`<div style="background:var(--bg-2,#f3f4f6);border-radius:8px;padding:10px 12px;">
+      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2,#6b7280);margin-bottom:3px;">${escapeHtml(k)}</div>
+      <div style="font-size:13px;">${escapeHtml(v)}</div>
+    </div>`).join('')}
+  </div>
+  ${t.reglement?`<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2,#6b7280);margin-bottom:6px;">Reglement</div>
+  <div style="font-size:13px;line-height:1.65;color:var(--text-1,#111);white-space:pre-wrap;">${escapeHtml(t.reglement)}</div>`:''}`;
+  ov.style.display='flex';
+}
+function closeToernooiInfo(){ const ov=document.getElementById('toernooi-info-overlay'); if(ov) ov.style.display='none'; }
+
+/* ---------- FORM / IMPORT ---------- */
+let __tfParsedData = null;
+let __tfEditId = null;
+let __tfFotoBase64 = null;
+
+function openToernooiForm(id){
+  __tfEditId = id || null;
+  __tfParsedData = null;
+  __tfFotoBase64 = null;
+  const ov = document.getElementById('toernooi-form-overlay');
+  if(!ov) return;
+  const title = document.getElementById('toernooi-form-title');
+  if(title) title.textContent = id ? 'Toernooi bewerken' : 'Toernooi toevoegen';
+  // clear fields
+  ['tf-naam','tf-leeftijd','tf-locatie','tf-tournify-url','tf-reglement'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['tf-datum','tf-datum-einde'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  document.getElementById('tf-preview').style.display='none';
+  document.getElementById('tf-basic-fields').style.display='none';
+  document.getElementById('tf-action-row').style.display='none';
+  document.getElementById('tf-url-status').style.display='none';
+  document.getElementById('tf-foto-status').style.display='none';
+  document.getElementById('tf-foto-parse-btn').style.display='none';
+  document.getElementById('tf-foto-preview').style.display='none';
+  document.getElementById('tf-url-input').value='';
+
+  if(id){
+    const t = tournamentsCache.find(x=>x.id===id);
+    if(t){ _tfFillForm(t); }
+  } else {
+    tfSwitchImport('url');
+  }
+  ov.style.display='flex';
+}
+function closeToernooiForm(){ const ov=document.getElementById('toernooi-form-overlay'); if(ov) ov.style.display='none'; }
+
+function _tfFillForm(t){
+  tfSwitchImport('manual');
+  document.getElementById('tf-basic-fields').style.display='';
+  document.getElementById('tf-action-row').style.display='flex';
+  if(t.naam) document.getElementById('tf-naam').value=t.naam;
+  if(t.leeftijdscategorie) document.getElementById('tf-leeftijd').value=t.leeftijdscategorie;
+  if(t.datum) document.getElementById('tf-datum').value=t.datum;
+  if(t.datumEinde) document.getElementById('tf-datum-einde').value=t.datumEinde;
+  if(t.locatie) document.getElementById('tf-locatie').value=t.locatie;
+  if(t.tournifyUrl) document.getElementById('tf-tournify-url').value=t.tournifyUrl;
+  if(t.reglement) document.getElementById('tf-reglement').value=t.reglement;
+  if(t.format){ const sel=document.getElementById('tf-format'); if(sel) sel.value=t.format; }
+  __tfParsedData = t; // keep existing poules/ko
+}
+
+function tfSwitchImport(mode){
+  ['url','foto','manual'].forEach(m=>{
+    document.getElementById(`tf-pane-${m}`).style.display = m===mode?'':'none';
+    document.getElementById(`tf-itab-${m}`).classList.toggle('active',m===mode);
+  });
+  if(mode==='manual'){
+    document.getElementById('tf-basic-fields').style.display='';
+    document.getElementById('tf-action-row').style.display='flex';
+  }
+}
+
+/* URL / PDF parsing */
+async function tfParseUrl(){
+  const url = (document.getElementById('tf-url-input').value||'').trim();
+  if(!url){ alert('Voer een URL in.'); return; }
+  const btn = document.getElementById('tf-url-parse-btn');
+  const status = document.getElementById('tf-url-status');
+  btn.disabled=true; btn.textContent='Bezig met inlezen…';
+  status.style.display='block'; status.style.color='var(--muted,#9aa3b7)';
+
+  try{
+    let parsed = null;
+
+    // Stap 1: probeer directe fetch (werkt voor PDFs, statische HTML)
+    status.textContent='URL ophalen…';
+    try{
+      const res = await fetch(url, { mode: 'cors' });
+      if(res.ok){
+        const text = await res.text();
+        status.textContent='Schema analyseren…';
+        parsed = _tfParseText(text, url);
+      }
+    }catch(_){ /* CORS of netwerk — probeer Cloud Function */ }
+
+    // Stap 2: als directe fetch mislukt of niets opgeleverd — Cloud Function
+    if(!parsed){
+      status.textContent='Ophalen via server (Tournify / JS-pagina's)…';
+      try{
+        const endpoint = `https://europe-west1-${__shFirebaseProject()}.cloudfunctions.net/parseToernooiUrl`;
+        const r = await fetch(endpoint, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ url, userId: currentUser?.uid })
+        });
+        if(r.ok){
+          parsed = await r.json();
+          if(parsed.error) parsed = null;
+        }
+      }catch(_){ /* Cloud Function ook niet beschikbaar */ }
+    }
+
+    if(!parsed || !parsed.poules?.length) throw new Error('Geen wedstrijdschema herkend. Probeer de foto-import.');
+
+    __tfParsedData = parsed;
+    _tfShowPreview(parsed);
+    const nW = parsed.poules.reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
+    status.textContent=`✓ Ingelezen: ${parsed.poules.length} poules, ${nW} wedstrijden${parsed.knockout?.rondes?.length?' + knockout':''}.`;
+    status.style.color='#3b6d11';
+    document.getElementById('tf-basic-fields').style.display='';
+    document.getElementById('tf-action-row').style.display='flex';
+    _tfFillBasicFromParsed(parsed);
+  }catch(err){
+    status.textContent=`Fout: ${err.message}`;
+    status.style.color='#a32d2d';
+    document.getElementById('tf-basic-fields').style.display='';
+    document.getElementById('tf-action-row').style.display='flex';
+  }finally{
+    btn.disabled=false; btn.textContent='Schema inlezen';
+  }
+}
+
+/* Core text parser — Dutch tournament format */
+function _tfParseText(text, url){
+  // strip HTML tags if HTML
+  const clean = text.replace(/<[^>]+>/g,' ').replace(/&amp;/g,'&').replace(/&nbsp;/g,' ').replace(/\s{2,}/g,' ');
+
+  // detect tournament name
+  let naam = '';
+  const naamMatch = clean.match(/(?:AVK|KNVB|Cup|toernooi|kampioenschap)[^,\n]{0,60}/i);
+  if(naamMatch) naam = naamMatch[0].trim();
+
+  // detect dates
+  const datePattern = /(\d{1,2})\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+(20\d{2})/gi;
+  const months_nl = {januari:1,februari:2,maart:3,april:4,mei:5,juni:6,juli:7,augustus:8,september:9,oktober:10,november:11,december:12};
+  const dates = [];
+  let dm;
+  while((dm = datePattern.exec(clean)) !== null){
+    const m = months_nl[dm[2].toLowerCase()];
+    dates.push(`${dm[3]}-${String(m).padStart(2,'0')}-${String(dm[1]).padStart(2,'0')}`);
+  }
+  // also detect numeric dates like 27 Mei 2026
+  const datum = dates[0] || '';
+  const datumEinde = dates.length>1 ? dates[dates.length-1] : '';
+
+  // detect leeftijd
+  let leeftijd = '';
+  const lm = clean.match(/JO\d{1,2}|JO\s+\d{1,2}|U\d{1,2}/i);
+  if(lm) leeftijd = lm[0].replace(/\s/,'');
+
+  // detect format
+  let format = '11v11';
+  if(/6\s*[xvtegen]{1,5}\s*6|6x6/i.test(clean)) format='6v6';
+  else if(/7\s*[xvtegen]{1,5}\s*7|7x7/i.test(clean)) format='7v7';
+  else if(/8\s*[xvtegen]{1,5}\s*8|8x8/i.test(clean)) format='8v8';
+
+  // detect location
+  let locatie = '';
+  const locM = clean.match(/(?:sportpark|sportcomplex|velden van|te\s+)([A-Z][a-zÀ-ÿ\s]{3,40})/);
+  if(locM) locatie = locM[0].trim();
+
+  // detect reglement
+  let reglement = '';
+  const regM = clean.match(/(?:Wedstrijdbepalingen|Reglement)([\s\S]{0,2000}?)(?=Poule [A-Z]|$)/i);
+  if(regM) reglement = regM[1].trim().replace(/\s{2,}/g,'\n').substring(0,2000);
+
+  // parse poules
+  const poules = [];
+  // split on "POULE X" or "Poule X"
+  const pouleSplit = clean.split(/(?=POULE\s+[A-Z]|Poule\s+[A-Z])/i);
+
+  pouleSplit.forEach(block => {
+    const pouleM = block.match(/(?:POULE|Poule)\s+([A-Z])/i);
+    if(!pouleM) return;
+    const pouleId = pouleM[1].toUpperCase();
+
+    // determine day context (Woensdag/Vrijdag etc + date)
+    const dayMatch = block.match(/(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\s+(\d{1,2})\s+\w+\s+(\d{4})/i);
+    let dagStr = datum; // fallback to main date
+    if(dayMatch){
+      // try to find matching date from dates array
+      const dayNum = parseInt(dayMatch[2]);
+      const matchDate = dates.find(d => parseInt(d.split('-')[2])===dayNum);
+      if(matchDate) dagStr = matchDate;
+    }
+
+    // is this a finales block?
+    const isFinale = /finale/i.test(block.substring(0,100));
+    const type = isFinale ? 'finale' : 'groep';
+
+    // extract match lines: time pattern HH:MM-HH:MM ... Team - Team ... Veld
+    const matchRe = /(\d{1,2}:\d{2})[-–]\d{1,2}:\d{2}[^A-Z\d]*([A-Z][A-Za-z\s'0-9]+?)\s+[-–]\s+([A-Z][A-Za-z\s'0-9]+?)\s+([\dA-Z]{2,6})/g;
+    const wedstrijden = [];
+    let mm;
+    while((mm = matchRe.exec(block)) !== null){
+      const thuis = mm[2].trim().replace(/\s+/g,' ');
+      const uit = mm[3].trim().replace(/\s+/g,' ');
+      // skip if team names look like NR numbers (placeholder)
+      if(/^NR\s*\d/i.test(thuis) || /^NR\s*\d/i.test(uit)) continue;
+      wedstrijden.push({
+        id: `${pouleId}-${wedstrijden.length}`,
+        dag: dagStr,
+        tijd: mm[1],
+        thuis, uit,
+        scoreThuis: null, scoreUit: null,
+        gespeeld: false,
+        veld: mm[4].trim(),
+        type
+      });
+    }
+    if(!wedstrijden.length) return;
+
+    // extract teams from standings block (lines with just team names)
+    const teams = [];
+    // look for team names listed alone (standings format)
+    const standRe = /^([A-Z][A-Za-z\s'0-9]{2,30})\s*[-–]?\s*$/gm;
+    let sm;
+    while((sm = standRe.exec(block)) !== null){
+      const tn = sm[1].trim();
+      if(tn.length>2 && !/POULE|Veld|Uitslag|Totaal|Doelsaldo|Eindstand|Woensdag|Vrijdag|Dinsdag|Donderdag|Zaterdag|Maandag/i.test(tn))
+        if(!teams.includes(tn)) teams.push(tn);
+    }
+
+    // check if same poule already exists (multiple days share same poule)
+    const existing = poules.find(p=>p.id===pouleId);
+    if(existing){
+      existing.wedstrijden.push(...wedstrijden);
+    } else {
+      poules.push({ id: pouleId, naam: `Poule ${pouleId}`, veld: wedstrijden[0]?.veld||'', teams, wedstrijden });
+    }
+  });
+
+  if(!poules.length) return null;
+
+  return { naam, datum, datumEinde, locatie, leeftijdscategorie: leeftijd, format, reglement, poules, knockout: null };
+}
+
+function _tfFillBasicFromParsed(p){
+  if(p.naam) document.getElementById('tf-naam').value=p.naam;
+  if(p.leeftijdscategorie) document.getElementById('tf-leeftijd').value=p.leeftijdscategorie;
+  if(p.datum) document.getElementById('tf-datum').value=p.datum;
+  if(p.datumEinde) document.getElementById('tf-datum-einde').value=p.datumEinde;
+  if(p.locatie) document.getElementById('tf-locatie').value=p.locatie;
+  if(p.reglement) document.getElementById('tf-reglement').value=p.reglement;
+  const sel=document.getElementById('tf-format'); if(sel&&p.format) sel.value=p.format;
+}
+
+function _tfShowPreview(parsed){
+  const prev = document.getElementById('tf-preview');
+  const body = document.getElementById('tf-preview-body');
+  if(!prev||!body) return;
+  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:12px;">`;
+  html += `<div style="background:var(--bg-2,#f3f4f6);border-radius:8px;padding:9px 12px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2,#6b7280);">Naam</div><div style="font-size:13px;font-weight:500;margin-top:2px;">${escapeHtml(parsed.naam||'—')}</div></div>`;
+  html += `<div style="background:var(--bg-2,#f3f4f6);border-radius:8px;padding:9px 12px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2,#6b7280);">Datum</div><div style="font-size:13px;font-weight:500;margin-top:2px;">${escapeHtml(_tFormatDatum(parsed.datum,parsed.datumEinde))}</div></div>`;
+  html += `<div style="background:var(--bg-2,#f3f4f6);border-radius:8px;padding:9px 12px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2,#6b7280);">Poules</div><div style="font-size:13px;font-weight:500;margin-top:2px;">${parsed.poules.length} (${parsed.poules.map(p=>p.id).join(', ')})</div></div>`;
+  const nW = parsed.poules.reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
+  html += `<div style="background:var(--bg-2,#f3f4f6);border-radius:8px;padding:9px 12px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2,#6b7280);">Wedstrijden</div><div style="font-size:13px;font-weight:500;margin-top:2px;">${nW}</div></div>`;
+  html += '</div>';
+  // first 3 matches as sample
+  const sample = parsed.poules[0]?.wedstrijden?.slice(0,3)||[];
+  if(sample.length){
+    html += `<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2,#6b7280);margin-bottom:6px;">Voorbeeld wedstrijden</div>`;
+    sample.forEach(w => {
+      html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:0.5px solid var(--border-1,#e2e5ef);border-radius:8px;margin-bottom:5px;font-size:12px;">
+        <span style="color:var(--text-2,#6b7280);min-width:38px;font-size:11px;">${escapeHtml(w.tijd||'')}</span>
+        <span style="flex:1;">${escapeHtml(w.thuis)} – ${escapeHtml(w.uit)}</span>
+        <span style="font-size:10px;background:var(--bg-2,#f3f4f6);padding:2px 6px;border-radius:4px;">${escapeHtml(w.veld||'')}</span>
+      </div>`;
+    });
+    if(nW>3) html += `<div style="font-size:12px;color:var(--text-2,#6b7280);margin-top:4px;">+ ${nW-3} meer…</div>`;
+  }
+  body.innerHTML = html;
+  prev.style.display = 'block';
+}
+
+/* foto upload */
+function tfHandleFotoUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  const preview = document.getElementById('tf-foto-preview');
+  const parseBtn = document.getElementById('tf-foto-parse-btn');
+  const reader = new FileReader();
+  reader.onload = ev => {
+    __tfFotoBase64 = ev.target.result;
+    if(file.type.startsWith('image/')){
+      preview.innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:200px;border-radius:8px;border:0.5px solid var(--border-1,#e2e5ef);" />`;
+    } else {
+      preview.innerHTML = `<div style="padding:10px 12px;background:var(--bg-2,#f3f4f6);border-radius:8px;font-size:13px;">PDF geladen: ${escapeHtml(file.name)}</div>`;
+    }
+    preview.style.display='block';
+    parseBtn.style.display='';
+  };
+  reader.readAsDataURL(file);
+}
+
+async function tfParseFoto(){
+  if(!__tfFotoBase64){ alert('Upload eerst een bestand.'); return; }
+  const btn = document.getElementById('tf-foto-parse-btn');
+  const status = document.getElementById('tf-foto-status');
+  btn.disabled=true; btn.textContent='Bezig met uitlezen…';
+  status.style.display='block'; status.style.color='var(--text-2,#6b7280)';
+  status.textContent='Schema uitlezen via AI… (dit duurt 10–20 seconden)';
+
+  try{
+    // Call Cloud Function for AI parsing
+    const endpoint = 'https://europe-west1-' + __shFirebaseProject() + '.cloudfunctions.net/parseToernooiImage';
+    const res = await fetch(endpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ image: __tfFotoBase64 })
+    });
+    if(!res.ok) throw new Error(`Serverfout ${res.status}`);
+    const data = await res.json();
+    if(!data.poules?.length) throw new Error('Geen schema herkend in de afbeelding.');
+    __tfParsedData = data;
+    _tfShowPreview(data);
+    _tfFillBasicFromParsed(data);
+    document.getElementById('tf-basic-fields').style.display='';
+    document.getElementById('tf-action-row').style.display='flex';
+    status.textContent=`Ingelezen: ${data.poules.length} poules, ${data.poules.reduce((s,p)=>s+(p.wedstrijden||[]).length,0)} wedstrijden.`;
+    status.style.color='#3b6d11';
+  }catch(err){
+    status.textContent=`AI-uitlezen mislukt: ${err.message} — vul handmatig in of stuur de URL via URL-import.`;
+    status.style.color='#a32d2d';
+    document.getElementById('tf-basic-fields').style.display='';
+    document.getElementById('tf-action-row').style.display='flex';
+  }finally{
+    btn.disabled=false; btn.textContent='Schema uitlezen';
+  }
+}
+
+function __shFirebaseProject(){
+  try{ return firebaseConfig?.projectId || 'scoutinghub'; }catch(_){ return 'scoutinghub'; }
+}
+
+/* save */
+async function saveToernooi(){
+  if(!currentUser) return;
+  const btn = document.getElementById('tf-save-btn');
+  btn.disabled=true; btn.textContent='Opslaan…';
+  try{
+    const data = {
+      naam: document.getElementById('tf-naam').value.trim() || (__tfParsedData?.naam||''),
+      leeftijdscategorie: document.getElementById('tf-leeftijd').value.trim(),
+      datum: document.getElementById('tf-datum').value || (__tfParsedData?.datum||''),
+      datumEinde: document.getElementById('tf-datum-einde').value || (__tfParsedData?.datumEinde||''),
+      locatie: document.getElementById('tf-locatie').value.trim() || (__tfParsedData?.locatie||''),
+      format: document.getElementById('tf-format').value,
+      tournifyUrl: document.getElementById('tf-tournify-url').value.trim(),
+      reglement: document.getElementById('tf-reglement').value.trim() || (__tfParsedData?.reglement||''),
+      poules: __tfParsedData?.poules || [],
+      knockout: __tfParsedData?.knockout || null,
+      userId: currentUser.uid,
+      updated: Date.now()
+    };
+    if(!data.naam){ alert('Vul een toernooinaam in.'); btn.disabled=false; btn.textContent='Opslaan'; return; }
+
+    const col = collection(db, 'users', currentUser.uid, 'toernooien');
+    if(__tfEditId){
+      await setDoc(doc(col, __tfEditId), data, {merge:true});
+    } else {
+      data.created = Date.now();
+      await addDoc(col, data);
+    }
+    closeToernooiForm();
+  }catch(err){
+    alert('Opslaan mislukt: '+err.message);
+    console.error(err);
+  }finally{
+    btn.disabled=false; btn.textContent='Opslaan';
+  }
+}
+
+/* ---------- Tournify sync ---------- */
+async function syncToernooiNow(){
+  const t = tournamentsCache.find(x=>x.id===__tdsCurrentId);
+  if(!t||(!t.tournifyUrl&&!t.tournifySlug)) return;
+  const syncStatus = document.getElementById('tds-sync-status');
+  const syncDot = document.getElementById('tds-sync-dot');
+  const syncLbl = document.getElementById('tds-sync-label');
+  if(syncStatus){ syncStatus.style.display='flex'; }
+  if(syncDot){ syncDot.className='tds-sync-dot syncing'; }
+  if(syncLbl) syncLbl.textContent='Synchroniseren…';
+
+  try{
+    const endpoint = 'https://europe-west1-' + __shFirebaseProject() + '.cloudfunctions.net/syncTournify';
+    const res = await fetch(endpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ tournamentId: __tdsCurrentId, url: t.tournifyUrl||`https://tournifyapp.com/live/${t.tournifySlug}`, userId: currentUser.uid })
+    });
+    if(!res.ok) throw new Error('Sync mislukt');
+    if(syncDot) syncDot.className='tds-sync-dot ok';
+    if(syncLbl) syncLbl.textContent='Bijgewerkt';
+    setTimeout(()=>{ if(syncStatus) syncStatus.style.display='none'; }, 3000);
+  }catch(err){
+    if(syncDot) syncDot.className='tds-sync-dot stale';
+    if(syncLbl) syncLbl.textContent='Sync mislukt';
+    setTimeout(()=>{ if(syncStatus) syncStatus.style.display='none'; }, 4000);
+  }
+}
+
+/* ---------- Dashboard banner — geïntegreerd in aankomende lijst (s36g) ---------- */
+function _renderDashToernooi(){
+  // Toernooien staan nu in renderUpcomingMatches() — geen aparte banner meer.
+  try { const w = document.getElementById('dash-toernooi-banner-wrap'); if(w) w.innerHTML=''; } catch(_){}
+  try { renderUpcomingMatches(); } catch(_){}
 }
 
 /* =============== AUTH STATE =============== */

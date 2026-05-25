@@ -18304,7 +18304,12 @@ function tdsShowPoule(idx){
       const typeBadge = (w.type && w.type !== 'groep')
         ? `<span class="tds-match-type-badge">${w.type==='finale'?'Finale':w.type==='3e4e'?'3e/4e pl.':w.type}</span>`
         : '';
-      html += `<div class="tds-match">
+      const wIdx = (p.wedstrijden||[]).indexOf(w);
+      const scoutedPlayers = (w.scouted||[]);
+      const scoutedChips = scoutedPlayers.map(sp =>
+        `<span class="tds-scout-chip" data-remove-scout="${escapeHtml(sp.id||sp.naam)}" data-widx="${wIdx}" title="Verwijder">${escapeHtml(sp.naam||sp.id)}<span class="tds-scout-chip-x">×</span></span>`
+      ).join('');
+      html += `<div class="tds-match" data-widx="${wIdx}">
         <span class="tds-match-time">${escapeHtml(w.tijd||'')}</span>
         <div class="tds-match-teams">
           <span class="tds-match-home${gespeeld && w.scoreThuis > w.scoreUit?' winner':''}">${escapeHtml(w.thuis||'—')}</span>
@@ -18314,6 +18319,11 @@ function tdsShowPoule(idx){
         ${scoreHtml}
         ${w.veld ? `<span class="tds-match-field">${escapeHtml(w.veld)}</span>` : ''}
         ${typeBadge}
+        <button class="tds-scout-btn" data-widx="${wIdx}" title="Speler koppelen om te scouten">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+        ${scoutedChips ? `<div class="tds-scout-chips">${scoutedChips}</div>` : ''}
       </div>`;
     });
   });
@@ -18328,6 +18338,115 @@ function tdsShowPoule(idx){
     html += `</tbody></table>`;
   }
   body.innerHTML = html;
+
+  // Scout-knop click handler
+  body.querySelectorAll('.tds-scout-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const widx = parseInt(btn.dataset.widx, 10);
+      _tdsOpenScoutPicker(idx, widx);
+    });
+  });
+  // Scout chip verwijderen
+  body.querySelectorAll('[data-remove-scout]').forEach(chip => {
+    chip.addEventListener('click', e => {
+      e.stopPropagation();
+      const widx = parseInt(chip.dataset.widx, 10);
+      const spId = chip.dataset.removeScout;
+      _tdsRemoveScout(idx, widx, spId);
+    });
+  });
+}
+
+function _tdsOpenScoutPicker(pouleIdx, wedstrIdx){
+  const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
+  if(!t) return;
+  const w = (t.poules[pouleIdx]?.wedstrijden||[])[wedstrIdx];
+  if(!w) return;
+
+  // Verwijder bestaande picker
+  document.getElementById('tds-scout-picker')?.remove();
+
+  const players = Array.isArray(playersCache) ? playersCache : [];
+  const picker = document.createElement('div');
+  picker.id = 'tds-scout-picker';
+  picker.className = 'tds-scout-picker-overlay';
+  picker.innerHTML = `
+    <div class="tds-scout-picker-sheet">
+      <div class="tds-scout-picker-head">
+        <div class="tds-scout-picker-title">Speler koppelen</div>
+        <div class="tds-scout-picker-match">${escapeHtml(w.thuis||'?')} – ${escapeHtml(w.uit||'?')}${w.tijd?' · '+w.tijd:''}</div>
+        <button class="tds-scout-picker-close" id="tds-sp-close">×</button>
+      </div>
+      <input id="tds-sp-search" class="filter-input" placeholder="Zoek speler op naam of club…" style="margin:0 0 8px;" autocomplete="off" />
+      <div id="tds-sp-results" class="tds-sp-results"></div>
+    </div>`;
+  document.body.appendChild(picker);
+
+  const searchEl = picker.querySelector('#tds-sp-search');
+  const resultsEl = picker.querySelector('#tds-sp-results');
+
+  function renderResults(q){
+    const lower = q.toLowerCase();
+    const matches = players.filter(p =>
+      !lower || (p.naam||'').toLowerCase().includes(lower) || (p.club||'').toLowerCase().includes(lower)
+    ).slice(0,20);
+    if(!matches.length){
+      resultsEl.innerHTML = `<div style="padding:12px;color:var(--text-3);font-size:13px;">Geen spelers gevonden.</div>`;
+      return;
+    }
+    resultsEl.innerHTML = matches.map(p =>
+      `<div class="tds-sp-row" data-sp-id="${escapeHtml(p.id||p.naam)}" data-sp-naam="${escapeHtml(p.naam||'')}">
+        <div class="tds-sp-naam">${escapeHtml(p.naam||'—')}</div>
+        <div class="tds-sp-meta">${escapeHtml(p.club||'')}${p.leeftijd?' · '+p.leeftijd:''}</div>
+      </div>`
+    ).join('');
+    resultsEl.querySelectorAll('.tds-sp-row').forEach(row => {
+      row.addEventListener('click', () => {
+        _tdsAddScout(pouleIdx, wedstrIdx, { id: row.dataset.spId, naam: row.dataset.spNaam });
+        picker.remove();
+      });
+    });
+  }
+
+  renderResults('');
+  searchEl.addEventListener('input', () => renderResults(searchEl.value));
+  searchEl.focus();
+  picker.querySelector('#tds-sp-close').addEventListener('click', () => picker.remove());
+  picker.addEventListener('click', e => { if(e.target === picker) picker.remove(); });
+}
+
+async function _tdsAddScout(pouleIdx, wedstrIdx, speler){
+  if(!currentUser || !__tdsCurrentId) return;
+  const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
+  if(!t) return;
+  const poules = JSON.parse(JSON.stringify(t.poules||[]));
+  const w = poules[pouleIdx]?.wedstrijden?.[wedstrIdx];
+  if(!w) return;
+  w.scouted = w.scouted||[];
+  if(w.scouted.some(s => s.id === speler.id)) return; // al gekoppeld
+  w.scouted.push(speler);
+  try{
+    const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const ref = doc(db, 'users', currentUser.uid, 'toernooien', __tdsCurrentId);
+    await updateDoc(ref, { poules });
+    toast(`${speler.naam} gekoppeld aan wedstrijd`);
+  }catch(e){ console.error('tdsAddScout error', e); toast('Opslaan mislukt: '+e.message); }
+}
+
+async function _tdsRemoveScout(pouleIdx, wedstrIdx, spId){
+  if(!currentUser || !__tdsCurrentId) return;
+  const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
+  if(!t) return;
+  const poules = JSON.parse(JSON.stringify(t.poules||[]));
+  const w = poules[pouleIdx]?.wedstrijden?.[wedstrIdx];
+  if(!w) return;
+  w.scouted = (w.scouted||[]).filter(s => s.id !== spId && s.naam !== spId);
+  try{
+    const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const ref = doc(db, 'users', currentUser.uid, 'toernooien', __tdsCurrentId);
+    await updateDoc(ref, { poules });
+  }catch(e){ console.error('tdsRemoveScout error', e); }
 }
 
 function _tDagLabel(dag, type){

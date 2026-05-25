@@ -166,7 +166,7 @@
 
     <!-- Login screen -->
     <!-- s35cf: <form> i.p.v. <div> zodat password-field correct geassocieerd is -->
-      <form onsubmit="event.preventDefault(); go('dashboard'); return false;">
+      <form onsubmit="event.preventDefault(); tryLogin(); return false;">
         <div class="login-field">
         <label>E-mailadres</label>
         <input id="login-email" type="email" class="login-input" placeholder="jouw@email.nl" autocomplete="email" />
@@ -175,7 +175,7 @@
         <label>Wachtwoord</label>
         <input id="login-pw" type="password" class="login-input" placeholder="Voer wachtwoord in" autocomplete="current-password" />
       </div>
-      <button id="login-btn" type="submit" onclick="go('dashboard')" class="login-btn">Inloggen</button>
+      <button id="login-btn" type="submit" class="login-btn">Inloggen</button>
       <div id="login-error" class="login-error"></div>
       <div class="login-legal">
         <a href="#" onclick="event.preventDefault(); window.go && window.go('voorwaarden');">Voorwaarden</a>

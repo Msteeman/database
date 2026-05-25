@@ -4977,7 +4977,7 @@ function authErrorNL(code){
   };
   return map[code] || 'Er ging iets mis. Probeer opnieuw.';
 }
-async function tryLogin(){
+window.tryLogin = async function tryLogin(){
   const btn = $('#login-btn');
   const email = $('#login-email').value.trim();
   const pw = $('#login-pw').value;

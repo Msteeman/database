@@ -18357,21 +18357,38 @@ function _tdsOpenScoutPicker(pouleIdx, wedstrIdx){
   const picker = document.createElement('div');
   picker.id = 'tds-scout-picker';
   picker.className = 'tds-scout-picker-overlay';
+  // Twee fasen: zoeken → notitie schrijven
+  let _selectedSpeler = null;
+
   picker.innerHTML = `
     <div class="tds-scout-picker-sheet">
       <div class="tds-scout-picker-head">
         <div>
-          <div class="tds-scout-picker-title">👤 Scout speler</div>
+          <div class="tds-scout-picker-title" id="tds-sp-title">👤 Scout speler</div>
           <div class="tds-scout-picker-match">${escapeHtml(w.thuis||'?')} – ${escapeHtml(w.uit||'?')}${w.tijd?' · '+w.tijd:''}</div>
         </div>
         <button class="tds-scout-picker-close" id="tds-sp-close">×</button>
       </div>
-      <input id="tds-sp-search" class="filter-input" placeholder="Typ naam (bestaande speler of nieuw)…" style="margin:0 0 6px;" autocomplete="off" />
-      <div id="tds-sp-new-row" class="tds-sp-new-row" style="display:none">
-        <span id="tds-sp-new-lbl"></span>
-        <button id="tds-sp-new-btn" class="tds-sp-new-add">+ Voeg toe als nieuwe observatie</button>
+
+      <!-- Fase 1: zoeken -->
+      <div id="tds-sp-fase1">
+        <input id="tds-sp-search" class="filter-input" placeholder="Zoek naam of club… of typ nieuwe speler" style="margin:0 0 6px;" autocomplete="off" />
+        <div id="tds-sp-new-row" class="tds-sp-new-row" style="display:none">
+          <span id="tds-sp-new-lbl" style="font-size:12px;color:var(--text-2)"></span>
+          <button id="tds-sp-new-btn" class="tds-sp-new-add">+ Nieuw</button>
+        </div>
+        <div id="tds-sp-results" class="tds-sp-results"></div>
       </div>
-      <div id="tds-sp-results" class="tds-sp-results"></div>
+
+      <!-- Fase 2: notitie -->
+      <div id="tds-sp-fase2" style="display:none">
+        <div id="tds-sp-selected-naam" class="tds-sp-selected-naam"></div>
+        <textarea id="tds-sp-notitie" class="tds-sp-notitie-area" placeholder="Notitie (optioneel) — bijv. 'Goede eerste touch, speelt breed, JO9 niveau A'" rows="4"></textarea>
+        <div class="tds-sp-fase2-btns">
+          <button id="tds-sp-back" class="btn-ghost-sm">← Terug</button>
+          <button id="tds-sp-opslaan" class="btn-primary-sm">Opslaan</button>
+        </div>
+      </div>
     </div>`;
   document.body.appendChild(picker);
 
@@ -18380,10 +18397,23 @@ function _tdsOpenScoutPicker(pouleIdx, wedstrIdx){
   const newRow    = picker.querySelector('#tds-sp-new-row');
   const newLbl    = picker.querySelector('#tds-sp-new-lbl');
   const newBtn    = picker.querySelector('#tds-sp-new-btn');
+  const fase1     = picker.querySelector('#tds-sp-fase1');
+  const fase2     = picker.querySelector('#tds-sp-fase2');
+  const notitieEl = picker.querySelector('#tds-sp-notitie');
+  const naamLbl   = picker.querySelector('#tds-sp-selected-naam');
+  const titleEl   = picker.querySelector('#tds-sp-title');
+
+  function goFase2(speler){
+    _selectedSpeler = speler;
+    fase1.style.display = 'none';
+    fase2.style.display = '';
+    naamLbl.textContent = speler.naam;
+    titleEl.textContent = '📝 Notitie toevoegen';
+    notitieEl.focus();
+  }
 
   function renderResults(q){
     const lower = q.trim().toLowerCase();
-    // Bestaande spelers
     const matches = players.filter(p =>
       !lower || (p.naam||'').toLowerCase().includes(lower) || (p.club||'').toLowerCase().includes(lower)
     ).slice(0, 15);
@@ -18391,12 +18421,10 @@ function _tdsOpenScoutPicker(pouleIdx, wedstrIdx){
       ? matches.map(p =>
           `<div class="tds-sp-row" data-sp-id="${escapeHtml(p.id||p.naam)}" data-sp-naam="${escapeHtml(p.naam||'')}">
             <div class="tds-sp-naam">${escapeHtml(p.naam||'—')}</div>
-            <div class="tds-sp-meta">${escapeHtml(p.club||'')}${p.leeftijd?' · '+p.leeftijd:''}</div>
+            <div class="tds-sp-meta">${[p.club, p.leeftijd, p.positie].filter(Boolean).join(' · ')}</div>
           </div>`
         ).join('')
-      : (lower ? '' : `<div style="padding:10px 0;color:var(--text-3);font-size:13px;">Typ een naam om te zoeken of voeg nieuw toe ↑</div>`);
-
-    // Nieuwe speler optie
+      : (lower ? '' : `<div style="padding:10px 0;color:var(--text-3);font-size:13px;">Typ een naam om te zoeken…</div>`);
     if(lower){
       newLbl.textContent = `"${q.trim()}"`;
       newRow.style.display = 'flex';
@@ -18404,19 +18432,37 @@ function _tdsOpenScoutPicker(pouleIdx, wedstrIdx){
       newRow.style.display = 'none';
     }
     resultsEl.querySelectorAll('.tds-sp-row').forEach(row => {
-      row.addEventListener('click', () => {
-        _tdsAddScout(pouleIdx, wedstrIdx, { id: row.dataset.spId, naam: row.dataset.spNaam });
-        picker.remove();
-      });
+      row.addEventListener('click', () => goFase2({ id: row.dataset.spId, naam: row.dataset.spNaam }));
     });
   }
 
   newBtn.addEventListener('click', () => {
     const naam = searchEl.value.trim();
     if(!naam) return;
-    // Voeg toe als naamslabel zonder bestaand speler-id
-    _tdsAddScout(pouleIdx, wedstrIdx, { id: `obs_${Date.now()}`, naam });
+    goFase2({ id: `obs_${Date.now()}`, naam });
+  });
+
+  picker.querySelector('#tds-sp-back').addEventListener('click', () => {
+    fase2.style.display = 'none';
+    fase1.style.display = '';
+    titleEl.textContent = '👤 Scout speler';
+    _selectedSpeler = null;
+    searchEl.focus();
+  });
+
+  picker.querySelector('#tds-sp-opslaan').addEventListener('click', async () => {
+    if(!_selectedSpeler) return;
+    const notitie = notitieEl.value.trim();
+    await _tdsAddScout(pouleIdx, wedstrIdx, { ..._selectedSpeler, notitie });
     picker.remove();
+  });
+
+  // Enter in notitieveld = opslaan
+  notitieEl.addEventListener('keydown', e => {
+    if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)){
+      e.preventDefault();
+      picker.querySelector('#tds-sp-opslaan').click();
+    }
   });
 
   renderResults('');

@@ -18427,7 +18427,6 @@ async function _tdsAddScout(pouleIdx, wedstrIdx, speler){
   if(w.scouted.some(s => s.id === speler.id)) return; // al gekoppeld
   w.scouted.push(speler);
   try{
-    const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const ref = doc(db, 'users', currentUser.uid, 'toernooien', __tdsCurrentId);
     await updateDoc(ref, { poules });
     toast(`${speler.naam} gekoppeld aan wedstrijd`);
@@ -18443,7 +18442,6 @@ async function _tdsRemoveScout(pouleIdx, wedstrIdx, spId){
   if(!w) return;
   w.scouted = (w.scouted||[]).filter(s => s.id !== spId && s.naam !== spId);
   try{
-    const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const ref = doc(db, 'users', currentUser.uid, 'toernooien', __tdsCurrentId);
     await updateDoc(ref, { poules });
   }catch(e){ console.error('tdsRemoveScout error', e); }

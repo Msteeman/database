@@ -18567,18 +18567,44 @@ async function tfParseUrl(){
 
       // Stap 1: probeer directe fetch (statische HTML)
       status.textContent='URL ophalen…';
+      let fetchedHtml = null;
       try{
         const res = await fetch(url, { mode: 'cors' });
         if(res.ok){
-          const text = await res.text();
+          fetchedHtml = await res.text();
           status.textContent='Schema analyseren…';
-          parsed = _tfParseText(text, url);
+          parsed = _tfParseText(fetchedHtml, url);
         }
-      }catch(_){ /* CORS of netwerk — probeer Cloud Function */ }
+      }catch(_){ /* CORS of netwerk — probeer Gemini */ }
 
-      // Stap 2: als directe fetch mislukt of niets opgeleverd — toon melding
+      // Stap 2: als regex niets vond maar HTML wel opgehaald — stuur naar Gemini
+      if(!parsed && fetchedHtml){
+        status.textContent='Regex kon schema niet herkennen — AI analyseren… (10–20 sec)';
+        try{
+          // Stuur max 30.000 tekens naar Gemini (meer is te groot / duur)
+          const snippet = fetchedHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi,'')
+            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi,'')
+            .replace(/<[^>]+>/g,' ').replace(/\s{2,}/g,' ').slice(0,30000);
+          const rawText = await _callGemini([{ text: _GEMINI_PROMPT + '\n\nInhoud van de pagina:\n' + snippet }]);
+          parsed = _geminiJsonToParsed(rawText);
+        }catch(aiErr){
+          console.warn('Gemini URL parse mislukt:', aiErr);
+        }
+      }
+
+      // Stap 3: als CORS blokkeert én geen HTML — probeer Gemini enkel op basis van URL-tekst
+      if(!parsed && !fetchedHtml){
+        status.textContent='Pagina niet bereikbaar — AI probeert via URL… (10–20 sec)';
+        try{
+          const rawText = await _callGemini([{ text: `${_GEMINI_PROMPT}\n\nURL: ${url}\n(De pagina was niet direct bereikbaar. Analyseer op basis van de URL of bekende toernooiplatforms als tournifyapp.com.)` }]);
+          parsed = _geminiJsonToParsed(rawText);
+        }catch(aiErr){
+          console.warn('Gemini URL-only parse mislukt:', aiErr);
+        }
+      }
+
       if(!parsed){
-        status.textContent='⏳ AI-verwerking via URL is binnenkort beschikbaar. Sla het programma op als PDF en upload via "Foto / Scan / PDF", of vul handmatig in.';
+        status.textContent='Geen schema herkend via URL of AI. Sla het programma op als PDF en upload via "Foto / Scan / PDF", of vul handmatig in.';
         status.style.color='var(--muted,#9aa3b7)';
         document.getElementById('tf-basic-fields').style.display='';
         document.getElementById('tf-action-row').style.display='flex';
@@ -18586,7 +18612,17 @@ async function tfParseUrl(){
         return;
       }
 
-      if(!parsed || !parsed.poules?.length) throw new Error('Geen wedstrijdschema herkend. Probeer Foto/Scan/PDF of vul handmatig in.');
+      if(!parsed.poules?.length){
+        // Basisvelden wel gevonden maar geen poules
+        _tfFillBasicFromParsed(parsed);
+        __tfParsedData = parsed;
+        status.textContent='AI: basisgegevens ingevuld — wedstrijdschema niet gevonden in URL. Vul handmatig aan.';
+        status.style.color='#3b6d11';
+        document.getElementById('tf-basic-fields').style.display='';
+        document.getElementById('tf-action-row').style.display='flex';
+        btn.disabled=false; btn.textContent='Schema inlezen';
+        return;
+      }
     }
 
     __tfParsedData = parsed;
@@ -18888,6 +18924,75 @@ function tfHandleFotoUpload(e){
   if(zone && !isPdf) zone.style.opacity = '0.4';
 }
 
+// ── Gemini AI helper ─────────────────────────────────────────────────────────
+const _GEMINI_KEY = 'AIzaSyDH58cAtoWrlbpmu0MdbyrlsPgcQYduRV4';
+const _GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${_GEMINI_KEY}`;
+
+const _GEMINI_PROMPT = `Je bent een assistent die toernooiprogramma's van voetbaltoernooien analyseert.
+Extraheer de volgende informatie en geef ALLEEN geldige JSON terug (geen uitleg, geen markdown):
+{
+  "naam": "volledige naam van het toernooi",
+  "datum": "YYYY-MM-DD (eerste speeldag)",
+  "datumEinde": "YYYY-MM-DD (laatste speeldag, leeg als onbekend of zelfde dag)",
+  "locatie": "naam van het sportpark of de stad",
+  "leeftijdscategorie": "bijv. JO9, JO10, JO11, JO12 etc.",
+  "format": "poules_knockout of only_poules of only_knockout",
+  "reglement": "korte beschrijving van het reglement (max 200 tekens), leeg als niet vermeld",
+  "poules": [
+    {
+      "naam": "naam van de poule bijv. Poule A",
+      "teams": ["Team 1", "Team 2"],
+      "wedstrijden": [
+        {"thuis": "Team 1", "uit": "Team 2", "tijd": "09:00", "veld": "1"}
+      ]
+    }
+  ]
+}
+Als een veld niet gevonden kan worden, gebruik dan een lege string of leeg array.
+Geef ALLEEN de JSON terug, niets anders.`;
+
+async function _callGemini(parts){
+  const body = { contents:[{ parts }] };
+  const res = await fetch(_GEMINI_URL, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(body)
+  });
+  if(!res.ok){
+    const err = await res.json().catch(()=>({error:{message:res.statusText}}));
+    throw new Error(`Gemini fout: ${err?.error?.message || res.statusText}`);
+  }
+  const data = await res.json();
+  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+}
+
+function _geminiJsonToParsed(text){
+  // strip markdown code fences if present
+  const clean = text.replace(/^```(?:json)?\n?/i,'').replace(/\n?```$/,'').trim();
+  let obj;
+  try{ obj = JSON.parse(clean); }catch(_){ return null; }
+  if(!obj || typeof obj !== 'object') return null;
+  // normalize poules: ensure teams & wedstrijden arrays
+  const poules = (obj.poules||[]).map(p=>({
+    naam: p.naam||'',
+    teams: Array.isArray(p.teams)?p.teams:[],
+    wedstrijden: Array.isArray(p.wedstrijden)?p.wedstrijden.map(w=>({
+      thuis: w.thuis||'', uit: w.uit||'', tijd: w.tijd||'', veld: w.veld||''
+    })):[]
+  })).filter(p=>p.naam||p.teams.length||p.wedstrijden.length);
+  return {
+    naam: obj.naam||'',
+    datum: obj.datum||'',
+    datumEinde: obj.datumEinde||'',
+    locatie: obj.locatie||'',
+    leeftijdscategorie: obj.leeftijdscategorie||'',
+    format: obj.format||'',
+    reglement: obj.reglement||'',
+    poules,
+    knockout: null
+  };
+}
+
 async function tfParseFoto(){
   if(!__tfFotoBase64){ alert('Upload eerst een bestand.'); return; }
   const btn = document.getElementById('tf-foto-parse-btn');
@@ -18897,9 +19002,39 @@ async function tfParseFoto(){
   status.textContent='Schema uitlezen via AI… (dit duurt 10–20 seconden)';
 
   try{
-    // AI-verwerking binnenkort beschikbaar
-    status.textContent='⏳ AI-verwerking van foto\'s en scans is binnenkort beschikbaar. Upload het toernooiprogramma als PDF voor automatisch inlezen, of vul handmatig in.';
-    status.style.color='var(--muted,#9aa3b7)';
+    // Haal mime type en base64 data op uit de DataURL
+    const dataUrl = __tfFotoBase64;
+    const mimeMatch = dataUrl.match(/^data:([^;]+);base64,/);
+    if(!mimeMatch) throw new Error('Ongeldig bestandsformaat.');
+    const mimeType = mimeMatch[1]; // bijv. image/jpeg of application/pdf
+    const base64Data = dataUrl.slice(mimeMatch[0].length);
+
+    status.textContent='Bestand naar AI sturen… (dit duurt 10–20 seconden)';
+
+    const rawText = await _callGemini([
+      { text: _GEMINI_PROMPT },
+      { inline_data: { mime_type: mimeType, data: base64Data } }
+    ]);
+
+    const parsed = _geminiJsonToParsed(rawText);
+    if(!parsed) throw new Error('AI-antwoord kon niet worden verwerkt. Probeer opnieuw of vul handmatig in.');
+
+    __tfParsedData = parsed;
+
+    if(parsed.poules?.length){
+      _tfShowPreview(parsed);
+      _tfFillBasicFromParsed(parsed);
+      const nW = parsed.poules.reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
+      status.textContent=`✓ AI ingelezen: ${parsed.poules.length} poules, ${nW} wedstrijden.`;
+      status.style.color='#3b6d11';
+    } else {
+      _tfFillBasicFromParsed(parsed);
+      const hasBasic = parsed.naam || parsed.datum || parsed.leeftijdscategorie;
+      status.textContent = hasBasic
+        ? `✓ AI: basisgegevens ingevuld — wedstrijdschema niet herkend. Vul handmatig aan.`
+        : `AI kon geen gegevens herkennen. Vul handmatig in.`;
+      status.style.color = hasBasic ? '#3b6d11' : 'var(--muted,#9aa3b7)';
+    }
     document.getElementById('tf-basic-fields').style.display='';
     document.getElementById('tf-action-row').style.display='flex';
   }catch(err){
@@ -19089,128 +19224,10 @@ function _renderDashToernooi(){
   }, true);
 
   window.addEventListener('scroll', () => { if(_inp) _pos(_inp); }, true);
-  window.addEventListener('resize', () => { if(_inp) _pos(_inp); });
-
-  /* Public API */
-  window.shAC = function(inputEl, itemsFn, onPickFn, opts){
-    if(!inputEl) return;
-    opts = opts || {};
-    const min = opts.minChars != null ? opts.minChars : 1;
-    const max = opts.maxItems || 12;
-
-    function open(){
-      const q = inputEl.value.trim();
-      if(q.length < min && min > 0){ _close(); return; }
-      _inp = inputEl; _onPick = onPickFn || null; _cursor = -1;
-      _items = (itemsFn(q) || []).slice(0, max);
-      _render();
-    }
-
-    inputEl.addEventListener('input', open);
-    inputEl.addEventListener('focus', open);
-    inputEl.addEventListener('keydown', e => {
-      const dd = document.getElementById(DD_ID);
-      if(!dd || dd.style.display === 'none') return;
-      if(e.key === 'ArrowDown'){ e.preventDefault(); _cursor = Math.min(_cursor+1, _items.length-1); _render(); }
-      else if(e.key === 'ArrowUp'){ e.preventDefault(); _cursor = Math.max(_cursor-1, -1); _render(); }
-      else if(e.key === 'Enter' && _cursor >= 0){ e.preventDefault(); _pick(_items[_cursor]); }
-      else if(e.key === 'Escape'){ _close(); }
-    });
-    inputEl.addEventListener('blur', () => {
-      setTimeout(() => { if(_inp === inputEl) _close(); }, 160);
-    });
-  };
-
-  /* Club items — HV_CLUBS + CLUB_ADRESSEN */
-  window.shClubItems = function(q){
-    const ql = (q||'').toLowerCase();
-    const seen = new Set();
-    const out  = [];
-    const add  = (naam, sub) => {
-      if(!naam || seen.has(naam)) return;
-      if(ql && !naam.toLowerCase().includes(ql)) return;
-      seen.add(naam);
-      out.push({ value: naam, label: naam, sub: sub||'' });
-    };
-    try{ if(typeof HV_CLUBS!=='undefined') HV_CLUBS.forEach(c => add(c.naam, c.plaats||c.gemeente||'')); }catch(_){}
-    try{ Object.values(CLUB_ADRESSEN).forEach(c => add(c.naam, c.plaats||'')); }catch(_){}
-    out.sort((a,b) => {
-      const as = a.value.toLowerCase().startsWith(ql)?0:1;
-      const bs = b.value.toLowerCase().startsWith(ql)?0:1;
-      return (as-bs) || a.value.localeCompare(b.value,'nl');
-    });
-    return out;
-  };
-
-  /* Leeftijd items — typ "16" → O.16-1 t/m O.16-10, typ "o.16" ook */
-  window.shLeeftijdItems = function(q){
-    const raw = (q||'').trim().toLowerCase();
-    // Normalize: "16" → zoek "16", "o16"/"o.16" → zoek "16", "o.16-" → zoek "16-"
-    let ql = raw.replace(/^o\.?/i,'');        // strip leading "o." or "o"
-    const opts = typeof LEEFTIJD_OPTIONS !== 'undefined' ? LEEFTIJD_OPTIONS : [];
-    if(!ql) return opts.map(o => ({ value: o, label: o, sub: '', col3: true }));
-    return opts
-      .filter(o => {
-        // o is like "O.16-3" → strip "O." prefix before matching
-        const bare = o.replace(/^O\.?/i,'').toLowerCase(); // "16-3"
-        return bare.startsWith(ql) || o.toLowerCase().includes(ql);
-      })
-      .map(o => ({ value: o, label: o, sub: '', col3: true }));
-  };
-
-  /* Helper: wire club AC to a field, auto-fill adres/plaats siblings */
-  window.shWireClubAC = function(inputEl, opts){
-    if(!inputEl || inputEl.dataset.shAcWired) return;
-    inputEl.dataset.shAcWired = '1';
-    // Remove browser datalist interference
-    inputEl.removeAttribute('list');
-    window.shAC(inputEl, window.shClubItems, (item, el) => {
-      const ci = typeof window.findClubInfo === 'function' ? window.findClubInfo(item.value) : null;
-      if(!ci) return;
-      // Try to fill plaats + adres in same form
-      const form = el.closest('form, .modal-body, .modal-sheet, .modal-card, [class*=modal]');
-      if(!form) return;
-      const fill = (sel, val) => { const f=form.querySelector(sel); if(f && val && !f.value) f.value=val; };
-      fill('[id$="-plaats"], [id="f-plaats"], #f-w-plaats, #mr-plaats', ci.plaats||'');
-      fill('[id$="-adres"], [id="f-adres"], #f-w-adres, #mr-adres',
-        [ci.sportpark, ci.adres, ci.postcode].filter(Boolean).join(' · ')||'');
-    }, opts || {});
-  };
-
-  /* Helper: wire leeftijd AC to a field */
-  window.shWireLeeftijdAC = function(inputEl){
-    if(!inputEl || inputEl.dataset.shAcWired) return;
-    inputEl.dataset.shAcWired = '1';
-    window.shAC(inputEl, window.shLeeftijdItems, null, { minChars: 0, maxItems: 60 });
-  };
-
-  /* Helper: upgrade a <select> to text-input + AC, keep hidden select in sync */
-  window.shUpgradeSelectToAC = function(selectId){
-    const sel = document.getElementById(selectId);
-    if(!sel || sel.dataset.acDone) return;
-    sel.dataset.acDone = '1';
-    const inp = document.createElement('input');
-    inp.type = 'text';
-    inp.id = selectId + '-ac';
-    inp.autocomplete = 'off';
-    inp.placeholder = 'Zoek leeftijdscategorie…';
-    inp.className = sel.className || '';
-    inp.style.cssText = window.getComputedStyle(sel).cssText || '';
-    inp.value = sel.value || '';
-    sel.style.display = 'none';
-    sel.parentNode.insertBefore(inp, sel.nextSibling);
-    window.shAC(inp, window.shLeeftijdItems, (item) => {
-      sel.value = item.value;
-      sel.dispatchEvent(new Event('change',{bubbles:true}));
-    }, { minChars: 0, maxItems: 60 });
-    // Expose sync so modal openers can update inp after setting sel.value
-    sel._syncAC = () => { inp.value = sel.value || ''; };
-  };
-
+  window.addEventListener('resize', () => { if(_inp) _close(); });
 })();
-/* end shAC */
 
-/* =============== AUTH STATE =============== */
+// ── Bootstrap ──────────────────────────────────────────────────────────────
 onAuthStateChanged(auth, async (user) => {
   currentUser = user;
   if(user){

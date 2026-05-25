@@ -15153,10 +15153,15 @@ function renderProgramma(){
   const navLabel = $('#prog-nav-label');
   if(navLabel) navLabel.innerHTML =
     `<span class="pnl-wk">Wk ${weeknr}</span><span class="pnl-range">${fromStr}–${toStr}</span>`;
-  $('#programma-sub').textContent =
+  const subEl = $('#programma-sub');
+  if(subEl) subEl.textContent =
     progWeekOffset === 0 ? 'Huidige week'
     : progWeekOffset < 0 ? `${Math.abs(progWeekOffset)} week${Math.abs(progWeekOffset)===1?'':'en'} terug`
     : `${progWeekOffset} week${progWeekOffset===1?'':'en'} vooruit`;
+
+  // Verberg de oude week-strip — niet meer nodig in agenda-view
+  const strip = $('#prog-week-strip');
+  if(strip) strip.style.display = 'none';
 
   const days = [];
   for(let i=0;i<7;i++){ const d=new Date(monday); d.setDate(d.getDate()+i); days.push(d); }
@@ -15172,150 +15177,121 @@ function renderProgramma(){
     return tE>=monday && tS<=sunday;
   });
 
-  // Actieve dag
-  let activeDayIdx = (typeof progWeekActiveDay==='number') ? progWeekActiveDay : 0;
-  const todayIdx = days.findIndex(d => d.getTime()===today.getTime());
-  if(progWeekOffset===0 && todayIdx>=0) activeDayIdx = todayIdx;
-  if(activeDayIdx<0||activeDayIdx>6) activeDayIdx=0;
-  progWeekActiveDay = activeDayIdx;
-
-  // ── Week-strip ── (clone om stacking listeners te voorkomen)
-  const oldStrip = $('#prog-week-strip');
-  if(oldStrip){
-    const newStrip = oldStrip.cloneNode(false);
-    newStrip.innerHTML = days.map((d,i) => {
-      const dStr = isoDateStr(d);
-      const progCnt = weekItems.filter(p => datumToIsoStr(p.datum)===dStr).length;
-      const trnCnt  = weekTrn.filter(t => dStr>=t.datum && dStr<=(t.datumEinde||t.datum)).length;
-      const cnt = progCnt + trnCnt;
-      const isTd  = d.getTime()===today.getTime();
-      const isAct = i===activeDayIdx;
-      const abbr  = DAY_NAMES_NL[(d.getDay()+6)%7].slice(0,2).toUpperCase();
-      return `<div class="prog-strip-day${isTd?' is-today':''}${isAct?' is-active':''}" data-strip-day="${i}">
-        <div class="psd-abbr">${abbr}</div>
-        <div class="psd-num">${d.getDate()}</div>
-        <div class="psd-dot${cnt>0?' has-events':''}${trnCnt>0&&!progCnt?' trn-only':''}"></div>
-      </div>`;
-    }).join('');
-    // Één handler via delegation — nooit dubbel
-    newStrip.addEventListener('click', e => {
-      const day = e.target.closest('[data-strip-day]');
-      if(!day) return;
-      progWeekActiveDay = parseInt(day.dataset.stripDay, 10);
-      renderProgramma();
-    });
-    oldStrip.parentNode.replaceChild(newStrip, oldStrip);
-  }
-
-  // ── Dag-content ──
-  const activeDay  = days[activeDayIdx];
-  const activeDStr = isoDateStr(activeDay);
-  const dayItems   = weekItems
-    .filter(p => datumToIsoStr(p.datum)===activeDStr)
-    .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
-  const dayTrn = weekTrn.filter(t => activeDStr>=t.datum && activeDStr<=(t.datumEinde||t.datum));
-
   const TYPE_ICON  = { wedstrijd:'⚽', training:'🏃', vergadering:'💬' };
-  const TYPE_LABEL = { wedstrijd:'Wedstrijd', training:'Training', vergadering:'Vergadering' };
 
-  const evCardHTML = it => {
+  // ── Event card builder ──
+  const evCardHTML = (it, dStr) => {
     const type   = it.type || 'wedstrijd';
     const icon   = TYPE_ICON[type] || '📅';
     const stCls  = _shMatchStatusClass(it);
-    // Team labels met elftal/leeftijd
-    const thuisLbl = [it.thuis, it.thuis_elftal, it.leeftijd && type==='wedstrijd'?it.leeftijd:''].filter(Boolean).join(' ');
+    const thuisLbl = [it.thuis, it.thuis_elftal].filter(Boolean).join(' ');
     const uitLbl   = [it.uit,   it.uit_elftal  ].filter(Boolean).join(' ');
     const titleLine = type==='wedstrijd'
-      ? `${escapeHtml(thuisLbl||'?')} <span class="pec-vs">–</span> ${escapeHtml(uitLbl||'?')}`
-      : escapeHtml(it.naam||TYPE_LABEL[type]);
+      ? `${escapeHtml(thuisLbl||'?')} – ${escapeHtml(uitLbl||'?')}`
+      : escapeHtml(it.naam||(type.charAt(0).toUpperCase()+type.slice(1)));
     const spelersN = (it.spelers||[]).length;
     const clubInfo = (typeof CLUB_ADRESSEN!=='undefined'&&it.thuis) ? CLUB_ADRESSEN[(it.thuis||'').toLowerCase().trim()] : null;
     let mapsUrl='';
     if(clubInfo&&clubInfo.lat&&clubInfo.lon) mapsUrl=`https://www.google.com/maps/dir/?api=1&destination=${clubInfo.lat},${clubInfo.lon}`;
-    else if(clubInfo&&clubInfo.adres) mapsUrl=`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(clubInfo.adres)}`;
     else if(it.locatie) mapsUrl=`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(it.locatie)}`;
     const locLabel = it.locatie||(clubInfo&&clubInfo.sportpark)||'';
-    const locHtml = locLabel
-      ? (mapsUrl
-        ? `<a class="pec-loc pec-route" href="${mapsUrl}" target="_blank" rel="noopener">📍 ${escapeHtml(locLabel)}</a>`
-        : `<span class="pec-loc">📍 ${escapeHtml(locLabel)}</span>`)
-      : '';
-    const isPast   = it.datum && it.datum < new Date().toISOString().slice(0,10);
-    const canVerw  = isPast && it.status!=='verwerkt' && spelersN>0;
-    const canLive  = type==='wedstrijd' && it.datum===new Date().toISOString().slice(0,10) && spelersN>0;
-    return `<div class="prog-ev-card ${stCls}" data-prog-id="${escapeHtml(it.id)}">
-      <div class="pec-time-col">
-        ${it.tijd?`<span class="pec-time">${escapeHtml(it.tijd)}</span>`:'<span class="pec-time muted">—:—</span>'}
-        <span class="pec-type-icon">${icon}</span>
+    const isPast  = it.datum && it.datum < new Date().toISOString().slice(0,10);
+    const canVerw = isPast && it.status!=='verwerkt' && spelersN>0;
+    const canLive = type==='wedstrijd' && it.datum===new Date().toISOString().slice(0,10) && spelersN>0;
+    return `<div class="pag-card ${stCls}" data-prog-id="${escapeHtml(it.id)}">
+      <div class="pag-card-top">
+        <span class="pag-icon">${icon}</span>
+        ${it.tijd?`<span class="pag-time">${escapeHtml(it.tijd)}</span>`:''}
+        <span class="pag-title">${titleLine}</span>
+        <button class="pag-edit" data-pec-edit="${escapeHtml(it.id)}" aria-label="Bewerken">✏</button>
       </div>
-      <div class="pec-body">
-        <div class="pec-title">${titleLine}</div>
-        <div class="pec-chips">
-          ${it.leeftijd?`<span class="pec-chip leeftijd">${escapeHtml(it.leeftijd)}</span>`:''}
-          ${spelersN?`<span class="pec-chip">${spelersN} speler${spelersN===1?'':'s'}</span>`:''}
-          ${it.status==='verwerkt'?`<span class="pec-chip green">✓ Verwerkt</span>`:''}
-        </div>
-        ${locHtml?`<div class="pec-loc-row">${locHtml}</div>`:''}
-        <div class="pec-actions-row">
-          ${canLive?`<button class="pec-live-btn" data-pec-live="${it.id}">● Live scouten</button>`:''}
-          ${canVerw?`<button class="pec-verwerk-btn" data-pec-verwerk="${it.id}">✓ Verwerk</button>`:''}
-        </div>
+      <div class="pag-chips">
+        ${it.leeftijd?`<span class="pag-chip age">${escapeHtml(it.leeftijd)}</span>`:''}
+        ${spelersN?`<span class="pag-chip">${spelersN}sp</span>`:''}
+        ${locLabel?`<span class="pag-chip loc">${mapsUrl?`<a class="pag-loc-link" href="${mapsUrl}" target="_blank" rel="noopener">📍${escapeHtml(locLabel)}</a>`:`📍${escapeHtml(locLabel)}`}</span>`:''}
+        ${it.status==='verwerkt'?`<span class="pag-chip ok">✓</span>`:''}
       </div>
-      <button class="pec-edit-btn" data-pec-edit="${it.id}" aria-label="Bewerken">✏</button>
+      ${canLive||canVerw?`<div class="pag-actions">
+        ${canLive?`<button class="pec-live-btn" data-pec-live="${it.id}">● Live</button>`:''}
+        ${canVerw?`<button class="pec-verwerk-btn" data-pec-verwerk="${it.id}">✓ Verwerk</button>`:''}
+      </div>`:''}
     </div>`;
   };
 
-  // Toernooi-kaart in programma-grid
-  const trnCardHTML = t => {
+  // ── Toernooi card builder ──
+  const trnCardHTML = (t, dStr) => {
     const nW = (t.poules||[]).reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
-    const isFirst = t.datum===activeDStr, isLast=(t.datumEinde||t.datum)===activeDStr;
-    const dayLbl  = isFirst&&isLast?'Toernooidag':isFirst?'Start toernooi':isLast?'Laatste dag':'Toernooi bezig';
-    return `<div class="prog-ev-card prog-ev-toernooi" data-trn-id="${escapeHtml(t.id)}">
-      <div class="pec-time-col">
-        <span class="pec-type-icon" style="font-size:18px;">🏆</span>
+    const cats = (t.leeftijdscategorie||'').split(',').filter(Boolean);
+    const isFirst=(t.datum===dStr), isLast=(t.datumEinde||t.datum)===dStr;
+    const span = (!isFirst&&!isLast)?'bezig':(isFirst&&isLast)?'':(isFirst?'start':'laatste dag');
+    return `<div class="pag-card pag-trn" data-trn-id="${escapeHtml(t.id)}">
+      <div class="pag-card-top">
+        <span class="pag-icon">🏆</span>
+        <span class="pag-title">${escapeHtml(t.naam||'Toernooi')}</span>
+        <span class="pag-edit" style="opacity:.4;cursor:default">›</span>
       </div>
-      <div class="pec-body">
-        <div class="pec-title">${escapeHtml(t.naam||'Toernooi')}</div>
-        <div class="pec-chips">
-          ${t.leeftijdscategorie?`<span class="pec-chip leeftijd">${escapeHtml(t.leeftijdscategorie)}</span>`:''}
-          ${(t.poules||[]).length?`<span class="pec-chip">${t.poules.length} poules</span>`:''}
-          ${nW?`<span class="pec-chip">${nW} wedstrijden</span>`:''}
-          <span class="pec-chip muted">${dayLbl}</span>
-        </div>
-        ${t.locatie?`<div class="pec-loc-row"><span class="pec-loc">📍 ${escapeHtml(t.locatie)}</span></div>`:''}
+      <div class="pag-chips">
+        ${cats.map(c=>`<span class="pag-chip age">${escapeHtml(c)}</span>`).join('')}
+        ${nW?`<span class="pag-chip">${nW}wstr</span>`:''}
+        ${span?`<span class="pag-chip muted">${span}</span>`:''}
       </div>
-      <span class="pec-edit-btn" style="opacity:.5">›</span>
     </div>`;
   };
 
+  // ── Bouw alle dagkolommen ──
   const grid = $('#programma-grid');
-  if(grid){
-    const allCards = [...dayTrn.map(trnCardHTML), ...dayItems.map(evCardHTML)].join('');
-    grid.innerHTML = allCards || '';
-    // Handlers
-    grid.querySelectorAll('[data-prog-id]').forEach(el => {
-      el.addEventListener('click', e => {
-        if(e.target.closest('[data-pec-edit],[data-pec-live],[data-pec-verwerk],.pec-route')) return;
-        if(typeof openProgMatchDetailModal==='function') openProgMatchDetailModal(el.dataset.progId);
-      });
-    });
-    grid.querySelectorAll('[data-trn-id]').forEach(el => {
-      el.addEventListener('click', () => openToernooiDetail(el.dataset.trnId));
-    });
-    grid.querySelectorAll('[data-pec-edit]').forEach(btn => {
-      btn.addEventListener('click', e => { e.stopPropagation(); openProgMatchModal(btn.dataset.pecEdit, null); });
-    });
-    grid.querySelectorAll('[data-pec-verwerk]').forEach(btn => {
-      btn.addEventListener('click', e => { e.stopPropagation(); if(typeof verwerkProgrammaItem==='function') verwerkProgrammaItem(btn.dataset.pecVerwerk); });
-    });
-    grid.querySelectorAll('[data-pec-live]').forEach(btn => {
-      btn.addEventListener('click', e => { e.stopPropagation(); if(typeof openLiveScoutModal==='function') openLiveScoutModal(btn.dataset.pecLive); });
-    });
-  }
+  if(!grid) return;
+
+  const hasAnything = weekItems.length>0 || weekTrn.length>0;
+  grid.innerHTML = days.map((d,i) => {
+    const dStr     = isoDateStr(d);
+    const isToday  = d.getTime()===today.getTime();
+    const dayItems = weekItems
+      .filter(p => datumToIsoStr(p.datum)===dStr)
+      .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
+    const dayTrn   = weekTrn.filter(t => dStr>=t.datum && dStr<=(t.datumEinde||t.datum));
+    const hasItems = dayItems.length>0 || dayTrn.length>0;
+    const abbr     = DAY_NAMES_NL[(d.getDay()+6)%7].slice(0,2).toUpperCase();
+    const cardsHtml = [...dayTrn.map(t=>trnCardHTML(t,dStr)), ...dayItems.map(it=>evCardHTML(it,dStr))].join('');
+    return `<div class="pag-day${isToday?' is-today':''}${!hasItems?' is-empty':''}" data-pag-day="${i}">
+      <div class="pag-day-head">
+        <span class="pag-abbr">${abbr}</span>
+        <span class="pag-date-num${isToday?' today':''}">${d.getDate()}</span>
+        <span class="pag-month">${MONTH_NL[d.getMonth()].slice(0,3)}</span>
+        ${hasItems?`<span class="pag-day-cnt">${dayItems.length+dayTrn.length}</span>`:''}
+      </div>
+      <div class="pag-day-body">
+        ${cardsHtml||'<div class="pag-vrij">—</div>'}
+      </div>
+      <button class="pag-add-day-btn" data-add-day="${dStr}" title="Toevoegen op ${abbr} ${d.getDate()}">+</button>
+    </div>`;
+  }).join('');
+
+  // ── Event delegation — één keer, nooit dubbel ──
+  const newGrid = grid.cloneNode(false);
+  newGrid.innerHTML = grid.innerHTML;
+  grid.parentNode.replaceChild(newGrid, grid);
+
+  newGrid.addEventListener('click', e => {
+    const card = e.target.closest('[data-prog-id]');
+    const trn  = e.target.closest('[data-trn-id]');
+    const edit = e.target.closest('[data-pec-edit]');
+    const live = e.target.closest('[data-pec-live]');
+    const verw = e.target.closest('[data-pec-verwerk]');
+    const add  = e.target.closest('[data-add-day]');
+    const link = e.target.closest('.pag-loc-link');
+    if(link) return; // laat link gewoon volgen
+    if(add)  { e.stopPropagation(); openProgMatchModal(null, add.dataset.addDay); return; }
+    if(edit) { e.stopPropagation(); openProgMatchModal(edit.dataset.pecEdit, null); return; }
+    if(verw) { e.stopPropagation(); if(typeof verwerkProgrammaItem==='function') verwerkProgrammaItem(verw.dataset.pecVerwerk); return; }
+    if(live) { e.stopPropagation(); if(typeof openLiveScoutModal==='function') openLiveScoutModal(live.dataset.pecLive); return; }
+    if(trn)  { openToernooiDetail(trn.dataset.trnId); return; }
+    if(card&&typeof openProgMatchDetailModal==='function') openProgMatchDetailModal(card.dataset.progId);
+  });
 
   const emptyEl = $('#programma-empty');
-  if(emptyEl) emptyEl.style.display = (dayItems.length===0 && dayTrn.length===0) ? 'block' : 'none';
-  if(grid) setTimeout(() => shStagger(grid, '.prog-ev-card'), 0);
+  if(emptyEl) emptyEl.style.display = hasAnything ? 'none' : 'block';
+  setTimeout(() => shStagger(newGrid, '.pag-card'), 0);
 }
 
 /* s21: Live scouten modal */
@@ -18104,6 +18080,9 @@ function subscribeToernooien(){
       tournamentsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       renderToernooien();
       _renderDashToernooi();
+      // Refresh programma + agenda zodat toernooien direct zichtbaar zijn
+      try{ renderProgramma(); }catch(_){}
+      try{ renderAgenda(); }catch(_){}
     },
     err => console.warn('toernooien snap err', err)
   );
@@ -18285,17 +18264,45 @@ function tdsShowPoule(idx){
   weds.forEach(w => { const dag = w.dag || 'onbekend'; (byDag[dag] = byDag[dag]||[]).push(w); });
   const days = Object.keys(byDag).sort();
 
+  // ── Standen bovenaan ──
+  const stand = p.stand || _computeStand(p);
+  const heeftUitslagen = (p.wedstrijden||[]).some(w => w.gespeeld || w.scoreThuis!=null);
   let html = '';
+  if(stand && stand.length){
+    const standLabel = heeftUitslagen ? 'Stand' : 'Teams';
+    html += `<div class="tds-stand-wrap">
+      <div class="tds-section-title">${standLabel}</div>
+      <table class="tds-stand"><thead><tr>
+        <th class="tds-rk">#</th><th class="tds-team">Team</th>
+        <th title="Gespeeld">G</th><th title="Gewonnen">W</th><th title="Gelijk">G</th><th title="Verloren">V</th>
+        <th title="Doelpunten voor">+</th><th title="Doelpunten tegen">−</th><th title="Doelsaldo">±</th><th title="Punten" class="pts">Pts</th>
+      </tr></thead><tbody>`;
+    stand.forEach((r,i) => {
+      const saldo = (r.GV||0)-(r.GT||0);
+      const saldoStr = saldo>0?`+${saldo}`:String(saldo);
+      html += `<tr class="${i===0&&heeftUitslagen?'leader':''}">
+        <td class="tds-rk">${i+1}</td>
+        <td class="tds-team">${escapeHtml(r.team||'—')}</td>
+        <td>${r.G||0}</td><td>${r.W||0}</td><td>${r.Ge||0}</td><td>${r.V||0}</td>
+        <td>${r.GV||0}</td><td>${r.GT||0}</td><td class="${saldo>=0?'pos':'neg'}">${saldoStr}</td>
+        <td class="pts">${r.Pts||0}</td>
+      </tr>`;
+    });
+    html += `</tbody></table></div>`;
+  }
+
+  // ── Wedstrijden per dag ──
+  html += `<div class="tds-section-title" style="margin-top:16px">Programma</div>`;
   days.forEach(dag => {
     const dayWeds = byDag[dag];
-    html += `<div class="tds-dag-label">${_tDagLabel(dag, dayWeds[0] && dayWeds[0].type)}</div>`;
+    html += `<div class="tds-dag-label">${_tDagLabel(dag, dayWeds[0]?.type)}</div>`;
     dayWeds.sort((a,b)=>(a.tijd||'').localeCompare(b.tijd||'')).forEach(w => {
       const gespeeld = w.gespeeld || (w.scoreThuis !== null && w.scoreThuis !== undefined);
       const scoreHtml = gespeeld
         ? `<span class="tds-match-score">${w.scoreThuis}–${w.scoreUit}</span>`
         : `<span class="tds-match-score pending">–</span>`;
       const typeBadge = (w.type && w.type !== 'groep')
-        ? `<span class="tds-match-type-badge">${w.type==='finale'?'Finale':w.type==='3e4e'?'3e/4e pl.':w.type}</span>`
+        ? `<span class="tds-match-type-badge">${w.type==='finale'?'Finale':w.type==='3e4e'?'3e/4e':w.type}</span>`
         : '';
       const wIdx = (p.wedstrijden||[]).indexOf(w);
       const scoutedPlayers = (w.scouted||[]);
@@ -18303,33 +18310,19 @@ function tdsShowPoule(idx){
         `<span class="tds-scout-chip" data-remove-scout="${escapeHtml(sp.id||sp.naam)}" data-widx="${wIdx}" title="Verwijder">${escapeHtml(sp.naam||sp.id)}<span class="tds-scout-chip-x">×</span></span>`
       ).join('');
       html += `<div class="tds-match" data-widx="${wIdx}">
-        <span class="tds-match-time">${escapeHtml(w.tijd||'')}</span>
+        <span class="tds-match-time">${escapeHtml(w.tijd||'??:??')}</span>
         <div class="tds-match-teams">
           <span class="tds-match-home${gespeeld && w.scoreThuis > w.scoreUit?' winner':''}">${escapeHtml(w.thuis||'—')}</span>
-          <span class="tds-match-vs">–</span>
+          ${scoreHtml}
           <span class="tds-match-away${gespeeld && w.scoreUit > w.scoreThuis?' winner':''}">${escapeHtml(w.uit||'—')}</span>
         </div>
-        ${scoreHtml}
-        ${w.veld ? `<span class="tds-match-field">${escapeHtml(w.veld)}</span>` : ''}
+        ${w.veld?`<span class="tds-match-field">V${escapeHtml(w.veld)}</span>`:''}
         ${typeBadge}
-        <button class="tds-scout-btn" data-widx="${wIdx}" title="Speler koppelen om te scouten">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
-          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        </button>
-        ${scoutedChips ? `<div class="tds-scout-chips">${scoutedChips}</div>` : ''}
+        <button class="tds-scout-btn" data-widx="${wIdx}" title="Scout speler uit deze wedstrijd">👤+</button>
+        ${scoutedChips?`<div class="tds-scout-chips">${scoutedChips}</div>`:''}
       </div>`;
     });
   });
-
-  // standings
-  const stand = p.stand || _computeStand(p);
-  if(stand && stand.length){
-    html += `<table class="tds-stand"><thead><tr><th>#</th><th>Team</th><th>G</th><th>W</th><th>G</th><th>V</th><th>GV</th><th>GT</th><th>Pts</th></tr></thead><tbody>`;
-    stand.forEach((r,i) => {
-      html += `<tr class="${i===0?'leader':''}"><td>${i+1}</td><td>${escapeHtml(r.team||'—')}</td><td>${r.G||0}</td><td>${r.W||0}</td><td>${r.Ge||0}</td><td>${r.V||0}</td><td>${r.GV||0}</td><td>${r.GT||0}</td><td class="pts">${r.Pts||0}</td></tr>`;
-    });
-    html += `</tbody></table>`;
-  }
   body.innerHTML = html;
 
   // Scout-knop click handler
@@ -18367,33 +18360,49 @@ function _tdsOpenScoutPicker(pouleIdx, wedstrIdx){
   picker.innerHTML = `
     <div class="tds-scout-picker-sheet">
       <div class="tds-scout-picker-head">
-        <div class="tds-scout-picker-title">Speler koppelen</div>
-        <div class="tds-scout-picker-match">${escapeHtml(w.thuis||'?')} – ${escapeHtml(w.uit||'?')}${w.tijd?' · '+w.tijd:''}</div>
+        <div>
+          <div class="tds-scout-picker-title">👤 Scout speler</div>
+          <div class="tds-scout-picker-match">${escapeHtml(w.thuis||'?')} – ${escapeHtml(w.uit||'?')}${w.tijd?' · '+w.tijd:''}</div>
+        </div>
         <button class="tds-scout-picker-close" id="tds-sp-close">×</button>
       </div>
-      <input id="tds-sp-search" class="filter-input" placeholder="Zoek speler op naam of club…" style="margin:0 0 8px;" autocomplete="off" />
+      <input id="tds-sp-search" class="filter-input" placeholder="Typ naam (bestaande speler of nieuw)…" style="margin:0 0 6px;" autocomplete="off" />
+      <div id="tds-sp-new-row" class="tds-sp-new-row" style="display:none">
+        <span id="tds-sp-new-lbl"></span>
+        <button id="tds-sp-new-btn" class="tds-sp-new-add">+ Voeg toe als nieuwe observatie</button>
+      </div>
       <div id="tds-sp-results" class="tds-sp-results"></div>
     </div>`;
   document.body.appendChild(picker);
 
-  const searchEl = picker.querySelector('#tds-sp-search');
+  const searchEl  = picker.querySelector('#tds-sp-search');
   const resultsEl = picker.querySelector('#tds-sp-results');
+  const newRow    = picker.querySelector('#tds-sp-new-row');
+  const newLbl    = picker.querySelector('#tds-sp-new-lbl');
+  const newBtn    = picker.querySelector('#tds-sp-new-btn');
 
   function renderResults(q){
-    const lower = q.toLowerCase();
+    const lower = q.trim().toLowerCase();
+    // Bestaande spelers
     const matches = players.filter(p =>
       !lower || (p.naam||'').toLowerCase().includes(lower) || (p.club||'').toLowerCase().includes(lower)
-    ).slice(0,20);
-    if(!matches.length){
-      resultsEl.innerHTML = `<div style="padding:12px;color:var(--text-3);font-size:13px;">Geen spelers gevonden.</div>`;
-      return;
+    ).slice(0, 15);
+    resultsEl.innerHTML = matches.length
+      ? matches.map(p =>
+          `<div class="tds-sp-row" data-sp-id="${escapeHtml(p.id||p.naam)}" data-sp-naam="${escapeHtml(p.naam||'')}">
+            <div class="tds-sp-naam">${escapeHtml(p.naam||'—')}</div>
+            <div class="tds-sp-meta">${escapeHtml(p.club||'')}${p.leeftijd?' · '+p.leeftijd:''}</div>
+          </div>`
+        ).join('')
+      : (lower ? '' : `<div style="padding:10px 0;color:var(--text-3);font-size:13px;">Typ een naam om te zoeken of voeg nieuw toe ↑</div>`);
+
+    // Nieuwe speler optie
+    if(lower){
+      newLbl.textContent = `"${q.trim()}"`;
+      newRow.style.display = 'flex';
+    } else {
+      newRow.style.display = 'none';
     }
-    resultsEl.innerHTML = matches.map(p =>
-      `<div class="tds-sp-row" data-sp-id="${escapeHtml(p.id||p.naam)}" data-sp-naam="${escapeHtml(p.naam||'')}">
-        <div class="tds-sp-naam">${escapeHtml(p.naam||'—')}</div>
-        <div class="tds-sp-meta">${escapeHtml(p.club||'')}${p.leeftijd?' · '+p.leeftijd:''}</div>
-      </div>`
-    ).join('');
     resultsEl.querySelectorAll('.tds-sp-row').forEach(row => {
       row.addEventListener('click', () => {
         _tdsAddScout(pouleIdx, wedstrIdx, { id: row.dataset.spId, naam: row.dataset.spNaam });
@@ -18401,6 +18410,14 @@ function _tdsOpenScoutPicker(pouleIdx, wedstrIdx){
       });
     });
   }
+
+  newBtn.addEventListener('click', () => {
+    const naam = searchEl.value.trim();
+    if(!naam) return;
+    // Voeg toe als naamslabel zonder bestaand speler-id
+    _tdsAddScout(pouleIdx, wedstrIdx, { id: `obs_${Date.now()}`, naam });
+    picker.remove();
+  });
 
   renderResults('');
   searchEl.addEventListener('input', () => renderResults(searchEl.value));
@@ -19119,7 +19136,7 @@ Extraheer de volgende informatie en geef ALLEEN geldige JSON terug (geen uitleg,
 Als een veld niet gevonden kan worden, gebruik dan een lege string of leeg array.
 Geef ALLEEN de JSON terug, niets anders.`;
 
-async function _callGemini(parts){
+async function _callGemini(parts, _retry=2){
   const body = { contents:[{ parts }] };
   const res = await fetch(_GEMINI_URL, {
     method:'POST',
@@ -19128,7 +19145,14 @@ async function _callGemini(parts){
   });
   if(!res.ok){
     const err = await res.json().catch(()=>({error:{message:res.statusText}}));
-    throw new Error(`Gemini fout: ${err?.error?.message || res.statusText}`);
+    const msg = err?.error?.message || res.statusText;
+    // Rate-limit (429): wacht en probeer opnieuw
+    if(res.status === 429 && _retry > 0){
+      const waitSec = Math.min(parseInt((msg.match(/(\d+(?:\.\d+)?)s/)||[])[1]||'40')+2, 42);
+      await new Promise(r => setTimeout(r, waitSec*1000));
+      return _callGemini(parts, _retry-1);
+    }
+    throw new Error(`Gemini fout: ${msg}`);
   }
   const data = await res.json();
   return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
@@ -19395,12 +19419,10 @@ function _renderDashToernooi(){
   window.addEventListener('resize', () => { if(_inp) _close(); });
 })();
 
-// ── Bootstrap ──────────────────────────────────────────────────────────────
+// ── Bootstrap ──────────────────────────────────────────────────────────
 onAuthStateChanged(auth, async (user) => {
-  currentUser = user;
   if(user){
-    try { showApp(); } catch(e){ console.error('showApp failed', e); }
-    try { subscribeData(); } catch(e){ console.error('subscribeData failed', e); }
+    currentUser = user;
     try { initApp(); } catch(e){ console.error('initApp failed', e); }
     try { if(typeof go === 'function') go('dashboard'); } catch(e){ console.error('go dashboard failed', e); }
     try { await loadUserRole(); } catch(e){ console.warn('loadUserRole failed', e); }

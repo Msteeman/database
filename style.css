@@ -9249,3 +9249,269 @@ tbody tr:last-child td { border-bottom: none; }
 .tds-sp-row:hover { background: var(--bg-2, #111722); }
 .tds-sp-naam { font-size: 14px; font-weight: 500; }
 .tds-sp-meta { font-size: 12px; color: var(--text-3, #6b7689); margin-top: 2px; }
+
+/* ══════════════════════════════════════════════════
+   PROGRAMMA v76 — Agenda-kolommen layout (pag-*)
+   ══════════════════════════════════════════════════ */
+
+/* Container: 7 kolommen op desktop, verticale lijst op mobiel */
+#programma-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 6px;
+  align-items: start;
+  padding-bottom: 32px;
+}
+@media (max-width: 900px) {
+  #programma-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 599px) {
+  #programma-grid {
+    display: flex; flex-direction: column; gap: 0;
+  }
+}
+
+/* Dagkolom */
+.pag-day {
+  display: flex; flex-direction: column; gap: 4px;
+  background: var(--bg-2, #111722);
+  border: 1px solid var(--border, rgba(255,255,255,.07));
+  border-radius: 14px; padding: 8px 6px 6px;
+  min-height: 80px;
+  transition: border-color .15s;
+}
+.pag-day.is-today {
+  border-color: var(--primary, #e30613);
+  background: rgba(227,6,19,.04);
+}
+/* Mobiel: lege dagen verbergen */
+@media (max-width: 599px) {
+  .pag-day.is-empty { display: none; }
+  .pag-day {
+    border-radius: 0; border-left: none; border-right: none;
+    border-top: 1px solid var(--border); border-bottom: none;
+    padding: 10px 12px 8px;
+  }
+  .pag-day:first-child { border-top: none; }
+}
+
+/* Dag-header */
+.pag-day-head {
+  display: flex; align-items: center; gap: 4px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,.06));
+  margin-bottom: 4px;
+}
+.pag-abbr {
+  font-size: 9px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .7px; color: var(--text-3, #8b95b0);
+}
+.pag-date-num {
+  font-size: 14px; font-weight: 700; color: var(--text, #e5e9f5);
+  min-width: 20px; text-align: center;
+}
+.pag-date-num.today {
+  background: var(--primary, #e30613); color: #fff;
+  border-radius: 50%; width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px;
+}
+.pag-month {
+  font-size: 9px; color: var(--text-3, #8b95b0); font-weight: 500;
+  display: none;
+}
+@media (max-width: 599px) {
+  .pag-day-head { gap: 8px; padding-bottom: 8px; margin-bottom: 6px; }
+  .pag-abbr { font-size: 11px; }
+  .pag-date-num { font-size: 16px; }
+  .pag-month { display: inline; font-size: 12px; }
+}
+.pag-day-cnt {
+  margin-left: auto;
+  background: var(--accent, #60a5fa); color: #fff;
+  font-size: 9px; font-weight: 700;
+  min-width: 16px; height: 16px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 4px;
+}
+.pag-day.is-today .pag-day-cnt { background: var(--primary, #e30613); }
+
+/* Lege dag */
+.pag-vrij {
+  font-size: 12px; color: var(--text-3); text-align: center;
+  padding: 8px 0; opacity: .4;
+}
+
+/* Event card */
+.pag-card {
+  background: var(--bg-3, #141824);
+  border: 1px solid var(--border, rgba(255,255,255,.06));
+  border-radius: 9px; padding: 6px 7px;
+  cursor: pointer; position: relative;
+  transition: border-color .12s, background .12s;
+}
+.pag-card:hover { border-color: var(--border-2, rgba(255,255,255,.15)); background: var(--bg-2); }
+.pag-card.status-verwerkt { opacity: .55; }
+
+/* Toernooi card — gouden stijl */
+.pag-card.pag-trn {
+  border-color: rgba(245,197,24,.25);
+  background: rgba(245,197,24,.04);
+}
+.pag-card.pag-trn:hover { border-color: rgba(245,197,24,.5); background: rgba(245,197,24,.09); }
+
+/* Card bovenste rij */
+.pag-card-top {
+  display: flex; align-items: center; gap: 4px;
+}
+.pag-icon { font-size: 13px; flex-shrink: 0; }
+.pag-time {
+  font-size: 10px; font-weight: 700; color: var(--secondary, #f5c518);
+  white-space: nowrap; flex-shrink: 0;
+}
+.pag-title {
+  font-size: 11px; font-weight: 600; color: var(--text, #e5e9f5);
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  line-height: 1.3;
+}
+@media (max-width: 599px) {
+  .pag-title { font-size: 13px; white-space: normal; }
+  .pag-icon { font-size: 16px; }
+  .pag-time { font-size: 11px; }
+}
+.pag-edit {
+  flex-shrink: 0; font-size: 11px; color: var(--text-3);
+  background: none; border: none; cursor: pointer; padding: 0 2px;
+  opacity: .6; transition: opacity .12s;
+}
+.pag-edit:hover { opacity: 1; }
+
+/* Chips onder titel */
+.pag-chips {
+  display: flex; flex-wrap: wrap; gap: 3px; margin-top: 4px;
+}
+.pag-chip {
+  font-size: 10px; color: var(--text-3);
+  background: var(--bg-2); border: 1px solid var(--border);
+  padding: 1px 5px; border-radius: 20px; white-space: nowrap;
+}
+.pag-chip.age { color: var(--accent, #60a5fa); border-color: rgba(96,165,250,.3); background: rgba(96,165,250,.08); font-weight: 600; }
+.pag-chip.ok  { color: #22c55e; border-color: rgba(34,197,94,.3); background: rgba(34,197,94,.08); }
+.pag-chip.muted { color: var(--text-3); background: transparent; border-color: transparent; font-style: italic; }
+.pag-loc-link { color: inherit; text-decoration: none; }
+.pag-chip.loc { max-width: 80px; overflow: hidden; text-overflow: ellipsis; }
+
+/* Actions (live/verwerk) */
+.pag-actions { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+
+/* + Toevoegen knop onderaan kolom */
+.pag-add-day-btn {
+  margin-top: auto; width: 100%; padding: 5px 0;
+  background: transparent; border: 1px dashed var(--border);
+  border-radius: 7px; color: var(--text-3); font-size: 14px;
+  cursor: pointer; transition: border-color .12s, color .12s;
+  line-height: 1;
+}
+.pag-add-day-btn:hover { border-color: var(--accent); color: var(--accent); }
+@media (max-width: 599px) {
+  .pag-add-day-btn { width: auto; padding: 5px 14px; font-size: 12px; align-self: flex-start; margin-top: 6px; }
+}
+
+/* ══════════════════════════════════════════════════
+   TOERNOOI DETAIL — verbeterde standen + layout
+   ══════════════════════════════════════════════════ */
+
+/* Sectie-titel boven standen/wedstrijden */
+.tds-section-title {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .8px; color: var(--text-3, #8b95b0);
+  margin-bottom: 8px;
+}
+
+/* Standen-wrapper */
+.tds-stand-wrap { margin-bottom: 0; }
+
+/* Standen-tabel */
+.tds-stand {
+  width: 100%; border-collapse: collapse;
+  font-size: 12px; color: var(--text, #e5e9f5);
+  background: var(--bg-2, #111722);
+  border: 1px solid var(--border, rgba(255,255,255,.08));
+  border-radius: 10px; overflow: hidden;
+}
+.tds-stand thead tr { background: var(--bg-3, #141824); }
+.tds-stand th {
+  padding: 6px 4px; text-align: center;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--text-3, #8b95b0);
+  white-space: nowrap;
+}
+.tds-stand th.tds-team, .tds-stand td.tds-team { text-align: left; padding-left: 8px; }
+.tds-stand th.tds-rk, .tds-stand td.tds-rk { width: 22px; color: var(--text-3); }
+.tds-stand td { padding: 7px 4px; text-align: center; border-top: 1px solid var(--border, rgba(255,255,255,.05)); }
+.tds-stand td.pts { font-weight: 700; color: var(--text, #e5e9f5); }
+.tds-stand td.pos { color: #22c55e; }
+.tds-stand td.neg { color: var(--primary, #e30613); }
+.tds-stand tr.leader td { background: rgba(245,197,24,.07); }
+.tds-stand tr.leader td.tds-team { font-weight: 700; color: var(--secondary, #f5c518); }
+
+/* Wedstrijd-rijen */
+.tds-match {
+  display: flex; align-items: center; gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border, rgba(255,255,255,.05));
+  flex-wrap: wrap;
+}
+.tds-match:last-child { border-bottom: none; }
+.tds-match-time {
+  font-size: 11px; font-weight: 600; color: var(--secondary, #f5c518);
+  min-width: 36px; flex-shrink: 0;
+}
+.tds-match-teams {
+  flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0;
+}
+.tds-match-home, .tds-match-away {
+  font-size: 12.5px; font-weight: 500; color: var(--text-2, #b0bac9);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  max-width: 120px;
+}
+.tds-match-home { text-align: right; flex: 1; }
+.tds-match-away { text-align: left; flex: 1; }
+.tds-match-home.winner, .tds-match-away.winner { color: var(--text, #e5e9f5); font-weight: 700; }
+.tds-match-score {
+  font-size: 12px; font-weight: 700; color: var(--text, #e5e9f5);
+  background: var(--bg-3, #141824);
+  border: 1px solid var(--border); border-radius: 6px;
+  padding: 2px 7px; white-space: nowrap; flex-shrink: 0;
+}
+.tds-match-score.pending { color: var(--text-3); background: transparent; border-color: transparent; }
+.tds-match-field { font-size: 10px; color: var(--text-3); background: var(--bg-3); border-radius: 4px; padding: 1px 5px; }
+.tds-match-type-badge { font-size: 10px; color: var(--accent, #60a5fa); background: rgba(96,165,250,.1); border-radius: 4px; padding: 1px 6px; font-weight: 600; }
+
+/* Scout-knop — duidelijk zichtbaar */
+.tds-scout-btn {
+  flex-shrink: 0; padding: 4px 9px; border-radius: 7px;
+  background: rgba(96,165,250,.1); border: 1px solid rgba(96,165,250,.3);
+  color: var(--accent, #60a5fa); font-size: 12px; font-weight: 700;
+  cursor: pointer; transition: background .12s, border-color .12s;
+  white-space: nowrap;
+}
+.tds-scout-btn:hover { background: rgba(96,165,250,.2); border-color: rgba(96,165,250,.5); }
+
+/* Scout picker: "nieuwe speler" rij */
+.tds-sp-new-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; padding: 6px 10px; margin-bottom: 6px;
+  background: rgba(96,165,250,.06); border: 1px solid rgba(96,165,250,.2);
+  border-radius: 8px; font-size: 12px; color: var(--text-2);
+}
+.tds-sp-new-add {
+  background: rgba(96,165,250,.15); border: 1px solid rgba(96,165,250,.4);
+  color: var(--accent, #60a5fa); padding: 4px 10px; border-radius: 7px;
+  font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap;
+  transition: background .12s;
+}
+.tds-sp-new-add:hover { background: rgba(96,165,250,.28); }

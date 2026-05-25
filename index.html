@@ -3603,43 +3603,57 @@ algemeen:</textarea>
 
         <!-- Basic form fields (naam, datum, locatie, leeftijd, etc.) -->
         <div id="tf-basic-fields" style="margin-top:20px; display:none;">
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-            <div class="field-group">
+          <div class="tf-form-grid">
+            <div class="field-group tf-col-full">
               <label class="field-label">Toernooinaam</label>
               <input id="tf-naam" type="text" class="filter-input" placeholder="AVK JO9 2026" />
             </div>
             <div class="field-group">
               <label class="field-label">Leeftijdscategorie</label>
-              <input id="tf-leeftijd" type="text" class="filter-input" placeholder="JO9" />
+              <select id="tf-leeftijd" class="filter-select">
+                <option value="">— kies —</option>
+                <optgroup label="Jongens (JO)">
+                  <option value="JO7">JO7</option><option value="JO8">JO8</option>
+                  <option value="JO9">JO9</option><option value="JO10">JO10</option>
+                  <option value="JO11">JO11</option><option value="JO12">JO12</option>
+                  <option value="JO13">JO13</option><option value="JO14">JO14</option>
+                  <option value="JO15">JO15</option><option value="JO17">JO17</option>
+                  <option value="JO19">JO19</option>
+                </optgroup>
+                <optgroup label="Meisjes (MO)">
+                  <option value="MO7">MO7</option><option value="MO8">MO8</option>
+                  <option value="MO9">MO9</option><option value="MO10">MO10</option>
+                  <option value="MO11">MO11</option><option value="MO12">MO12</option>
+                  <option value="MO13">MO13</option><option value="MO14">MO14</option>
+                  <option value="MO15">MO15</option><option value="MO17">MO17</option>
+                  <option value="MO19">MO19</option>
+                </optgroup>
+                <optgroup label="Senioren">
+                  <option value="Senioren">Senioren</option>
+                  <option value="Dames">Dames</option>
+                  <option value="Veteranen">Veteranen</option>
+                </optgroup>
+              </select>
             </div>
             <div class="field-group">
               <label class="field-label">Begindatum</label>
               <input id="tf-datum" type="date" class="filter-input" />
             </div>
             <div class="field-group">
-              <label class="field-label">Einddatum (optioneel)</label>
+              <label class="field-label">Einddatum <span style="font-size:11px;opacity:.6">(leeg = 1 dag)</span></label>
               <input id="tf-datum-einde" type="date" class="filter-input" />
             </div>
-            <div class="field-group" style="grid-column:1/-1;">
+            <div class="field-group tf-col-full">
               <label class="field-label">Locatie</label>
               <input id="tf-locatie" type="text" class="filter-input" placeholder="Sportpark Dorrestein, Amersfoort" />
             </div>
-            <div class="field-group">
-              <label class="field-label">Format</label>
-              <select id="tf-format" class="filter-select">
-                <option value="6v6">6 tegen 6</option>
-                <option value="7v7">7 tegen 7</option>
-                <option value="8v8">8 tegen 8</option>
-                <option value="11v11">11 tegen 11</option>
-              </select>
-            </div>
-            <div class="field-group">
-              <label class="field-label">Tournify-link (optioneel)</label>
-              <input id="tf-tournify-url" type="url" class="filter-input" placeholder="tournifyapp.com/live/…" />
+            <div class="field-group tf-col-full">
+              <label class="field-label">Tournify-link <span style="font-size:11px;opacity:.6">(optioneel)</span></label>
+              <input id="tf-tournify-url" type="url" class="filter-input" placeholder="https://tournifyapp.com/live/…" />
             </div>
           </div>
           <div class="field-group" style="margin-top:12px;">
-            <label class="field-label">Reglement / opmerkingen</label>
+            <label class="field-label">Reglement / opmerkingen <span style="font-size:11px;opacity:.6">(optioneel)</span></label>
             <textarea id="tf-reglement" class="filter-input" rows="3" style="resize:vertical; width:100%;"></textarea>
           </div>
         </div>
@@ -3655,3 +3669,4 @@ algemeen:</textarea>
 <script type="module" src="app.js"></script>
 </body>
 </html>
+                               

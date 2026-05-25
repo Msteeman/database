@@ -8626,35 +8626,62 @@ tbody tr:last-child td { border-bottom: none; }
 .toernooien-list { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
 
 .toernooi-card {
-  background: var(--bg-card, #fff);
-  border: 0.5px solid var(--border-1, #e2e5ef);
+  background: var(--panel, #151c28);
+  border: 0.5px solid var(--border, #232d40);
   border-radius: 14px;
   padding: 16px 18px;
   cursor: pointer;
   transition: border-color .15s, box-shadow .15s;
 }
-.toernooi-card:hover { border-color: var(--accent, #4f6ef7); box-shadow: 0 2px 12px rgba(79,110,247,.08); }
+.toernooi-card:hover { border-color: var(--accent, #4ea1ff); box-shadow: 0 2px 16px rgba(78,161,255,.12); }
 
 .tc-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-.tc-naam { font-size: 15px; font-weight: 600; }
+.tc-naam { font-size: 15px; font-weight: 600; color: var(--text, #e8edf5); }
 .tc-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
 .tc-badge {
   display: inline-flex; align-items: center; gap: 4px;
   font-size: 11px; font-weight: 500; padding: 3px 8px;
   border-radius: 6px;
 }
-.tc-badge.gold { background: #faeeda; color: #854f0b; }
-.tc-badge.blue { background: #e6f1fb; color: #185fa5; }
-.tc-badge.muted { background: var(--bg-2, #f3f4f6); color: var(--text-2, #6b7280); }
-.tc-badge.green { background: #eaf3de; color: #3b6d11; }
+.tc-badge.gold { background: rgba(245,197,24,.15); color: var(--secondary, #f5c518); }
+.tc-badge.blue { background: rgba(78,161,255,.12); color: var(--accent, #4ea1ff); }
+.tc-badge.muted { background: var(--bg-3, #1a2332); color: var(--text-2, #9aa8bd); }
+.tc-badge.green { background: rgba(34,197,94,.12); color: var(--green, #22c55e); }
 
-.tc-meta { margin-top: 8px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2, #6b7280); }
+.tc-meta { margin-top: 8px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2, #9aa8bd); }
 .tc-meta span { display: flex; align-items: center; gap: 4px; }
 
-.tc-sync-row { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border-1, #e2e5ef); display: flex; align-items: center; justify-content: space-between; }
-.tc-sync-info { font-size: 11px; color: var(--text-3, #9aa3b7); display: flex; align-items: center; gap: 5px; }
-.tc-sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #3b6d11; }
-.tc-sync-dot.stale { background: #ba7517; }
+.tc-sync-row { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border, #232d40); display: flex; align-items: center; justify-content: space-between; }
+.tc-sync-info { font-size: 11px; color: var(--text-3, #6b7689); display: flex; align-items: center; gap: 5px; }
+.tc-sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green, #22c55e); }
+.tc-sync-dot.stale { background: var(--orange, #f59e0b); }
+
+/* Agenda toernooi-banner */
+.agenda-trn-banner {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  background: rgba(245,197,24,.08);
+  border: 0.5px solid rgba(245,197,24,.25);
+  border-radius: 8px; padding: 8px 12px; margin-bottom: 8px;
+  cursor: pointer; font-size: 13px;
+  transition: background .15s;
+}
+.agenda-trn-banner:hover { background: rgba(245,197,24,.14); }
+.agenda-trn-icon { color: var(--secondary, #f5c518); flex-shrink: 0; }
+.agenda-trn-name { font-weight: 600; color: var(--text, #e8edf5); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agenda-trn-tag { background: rgba(245,197,24,.15); color: var(--secondary, #f5c518); font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 5px; }
+.agenda-trn-meta { font-size: 11px; color: var(--text-3, #6b7689); margin-left: auto; white-space: nowrap; }
+
+/* Toernooi form grid — responsive */
+.tf-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.tf-form-grid .tf-col-full { grid-column: 1 / -1; }
+@media (max-width: 520px) {
+  .tf-form-grid { grid-template-columns: 1fr; }
+  .tf-form-grid .tf-col-full { grid-column: 1; }
+}
 
 /* Tournament detail sheet */
 .toernooi-detail-sheet {
@@ -8817,7 +8844,7 @@ tbody tr:last-child td { border-bottom: none; }
 .tds-ko-nav {
   position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 12px;
-  background: var(--bg-card,#fff); border: 0.5px solid var(--border-1,#e2e5ef);
+  background: var(--panel, #151c28); border: 0.5px solid var(--border, #232d40);
   border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 500;
 }
 .tds-ko-navbtn { background: none; border: none; cursor: pointer; display: flex; align-items: center; color: var(--text-2,#6b7280); padding: 2px; }

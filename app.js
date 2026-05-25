@@ -19219,4 +19219,7 @@ onAuthStateChanged(auth, async (user) => {
     try { initApp(); } catch(e){ console.error('initApp failed', e); }
     try { if(typeof go === 'function') go('dashboard'); } catch(e){ console.error('go dashboard failed', e); }
     try { await loadUserRole(); } catch(e){ console.warn('loadUserRole failed', e); }
-    // Altijd demo-chrome opnieuw evalueren na auth — ook al
+  } else {
+    showLogin();
+  }
+});

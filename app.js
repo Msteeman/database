@@ -15142,186 +15142,179 @@ function renderProgrammaUur(){
 }
 
 function renderProgramma(){
-  // s35dj: nieuwe week-strip + dag-event-list (vervangt uur-grid en span-toggle)
-  const monday = getCurrentDisplayMonday();
-  const sunday = new Date(monday); sunday.setDate(sunday.getDate()+6);
+  const monday  = getCurrentDisplayMonday();
+  const sunday  = new Date(monday); sunday.setDate(sunday.getDate()+6);
   const [jaar, weeknr] = getISOWeek(monday);
-  const today = new Date(); today.setHours(0,0,0,0);
+  const today   = new Date(); today.setHours(0,0,0,0);
 
-  // Nav label bijwerken
+  // Nav label
   const fromStr = `${monday.getDate()} ${MONTH_NL[monday.getMonth()].slice(0,3)}`;
   const toStr   = `${sunday.getDate()} ${MONTH_NL[sunday.getMonth()].slice(0,3)}`;
   const navLabel = $('#prog-nav-label');
   if(navLabel) navLabel.innerHTML =
     `<span class="pnl-wk">Wk ${weeknr}</span><span class="pnl-range">${fromStr}–${toStr}</span>`;
-
   $('#programma-sub').textContent =
-    progWeekOffset === 0 ? 'Huidige week — plan je scoutingweek'
+    progWeekOffset === 0 ? 'Huidige week'
     : progWeekOffset < 0 ? `${Math.abs(progWeekOffset)} week${Math.abs(progWeekOffset)===1?'':'en'} terug`
     : `${progWeekOffset} week${progWeekOffset===1?'':'en'} vooruit`;
 
   const days = [];
-  for(let i=0; i<7; i++){
-    const d = new Date(monday); d.setDate(d.getDate()+i);
-    days.push(d);
-  }
+  for(let i=0;i<7;i++){ const d=new Date(monday); d.setDate(d.getDate()+i); days.push(d); }
 
   const weekItems = programmaCache.filter(p => {
     if(!p.datum) return false;
     const d = parseAnyDate(p.datum);
-    if(!d) return false;
-    return d >= monday && d <= sunday;
+    return d && d >= monday && d <= sunday;
+  });
+  const weekTrn = (Array.isArray(tournamentsCache)?tournamentsCache:[]).filter(t => {
+    if(!t||!t.datum) return false;
+    const tS=new Date(t.datum+'T00:00:00'), tE=t.datumEinde?new Date(t.datumEinde+'T00:00:00'):tS;
+    return tE>=monday && tS<=sunday;
   });
 
-  // Actieve dag bepalen
-  let activeDayIdx = (typeof progWeekActiveDay === 'number') ? progWeekActiveDay : 0;
-  const todayIdxInWeek = days.findIndex(d => d.getTime() === today.getTime());
-  if(progWeekOffset === 0 && todayIdxInWeek >= 0) activeDayIdx = todayIdxInWeek;
-  if(activeDayIdx < 0 || activeDayIdx > 6) activeDayIdx = 0;
+  // Actieve dag
+  let activeDayIdx = (typeof progWeekActiveDay==='number') ? progWeekActiveDay : 0;
+  const todayIdx = days.findIndex(d => d.getTime()===today.getTime());
+  if(progWeekOffset===0 && todayIdx>=0) activeDayIdx = todayIdx;
+  if(activeDayIdx<0||activeDayIdx>6) activeDayIdx=0;
   progWeekActiveDay = activeDayIdx;
 
-  // Week-strip renderen
-  const stripEl = $('#prog-week-strip');
-  if(stripEl){
-    stripEl.innerHTML = days.map((d,i) => {
+  // ── Week-strip ── (clone om stacking listeners te voorkomen)
+  const oldStrip = $('#prog-week-strip');
+  if(oldStrip){
+    const newStrip = oldStrip.cloneNode(false);
+    newStrip.innerHTML = days.map((d,i) => {
       const dStr = isoDateStr(d);
-      const cnt  = weekItems.filter(p => datumToIsoStr(p.datum) === dStr).length
-        + (Array.isArray(tournamentsCache) ? tournamentsCache.filter(t => {
-            if(!t||!t.datum) return false;
-            return dStr >= t.datum && dStr <= (t.datumEinde||t.datum);
-          }).length : 0);
-      const isTd = d.getTime() === today.getTime();
-      const isAct = i === activeDayIdx;
-      const abbr  = DAY_NAMES_NL[(d.getDay()+6)%7].slice(0,2);
+      const progCnt = weekItems.filter(p => datumToIsoStr(p.datum)===dStr).length;
+      const trnCnt  = weekTrn.filter(t => dStr>=t.datum && dStr<=(t.datumEinde||t.datum)).length;
+      const cnt = progCnt + trnCnt;
+      const isTd  = d.getTime()===today.getTime();
+      const isAct = i===activeDayIdx;
+      const abbr  = DAY_NAMES_NL[(d.getDay()+6)%7].slice(0,2).toUpperCase();
       return `<div class="prog-strip-day${isTd?' is-today':''}${isAct?' is-active':''}" data-strip-day="${i}">
         <div class="psd-abbr">${abbr}</div>
         <div class="psd-num">${d.getDate()}</div>
-        <div class="psd-dot${cnt>0?' has-events':''}"></div>
+        <div class="psd-dot${cnt>0?' has-events':''}${trnCnt>0&&!progCnt?' trn-only':''}"></div>
       </div>`;
     }).join('');
-    // s35dj-fix: event delegation op container — robuuster dan per-element op mobiel
-    stripEl.addEventListener('click', e => {
+    // Één handler via delegation — nooit dubbel
+    newStrip.addEventListener('click', e => {
       const day = e.target.closest('[data-strip-day]');
       if(!day) return;
       progWeekActiveDay = parseInt(day.dataset.stripDay, 10);
       renderProgramma();
     });
+    oldStrip.parentNode.replaceChild(newStrip, oldStrip);
   }
 
-  // Events voor actieve dag
-  const activeDay = days[activeDayIdx];
+  // ── Dag-content ──
+  const activeDay  = days[activeDayIdx];
   const activeDStr = isoDateStr(activeDay);
-  const dayItems = weekItems
-    .filter(p => datumToIsoStr(p.datum) === activeDStr)
+  const dayItems   = weekItems
+    .filter(p => datumToIsoStr(p.datum)===activeDStr)
     .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
+  const dayTrn = weekTrn.filter(t => activeDStr>=t.datum && activeDStr<=(t.datumEinde||t.datum));
 
-  const TYPE_ICON  = { wedstrijd:'⚽', training:'\u{1f3c3}', vergadering:'\u{1f4ac}' };
+  const TYPE_ICON  = { wedstrijd:'⚽', training:'🏃', vergadering:'💬' };
   const TYPE_LABEL = { wedstrijd:'Wedstrijd', training:'Training', vergadering:'Vergadering' };
 
   const evCardHTML = it => {
-    const type    = it.type || 'wedstrijd';
-    const icon    = TYPE_ICON[type]  || '\u{1f4c5}';
-    const typeLbl = TYPE_LABEL[type] || type;
-    const stCls   = _shMatchStatusClass(it);
-    const titleLine = type === 'wedstrijd'
-      ? `${escapeHtml(it.thuis||'?')}${it.thuis_elftal?' '+escapeHtml(it.thuis_elftal):''} — ${escapeHtml(it.uit||'?')}${it.uit_elftal?' '+escapeHtml(it.uit_elftal):''}`
-      : escapeHtml(it.naam || typeLbl);
+    const type   = it.type || 'wedstrijd';
+    const icon   = TYPE_ICON[type] || '📅';
+    const stCls  = _shMatchStatusClass(it);
+    // Team labels met elftal/leeftijd
+    const thuisLbl = [it.thuis, it.thuis_elftal, it.leeftijd && type==='wedstrijd'?it.leeftijd:''].filter(Boolean).join(' ');
+    const uitLbl   = [it.uit,   it.uit_elftal  ].filter(Boolean).join(' ');
+    const titleLine = type==='wedstrijd'
+      ? `${escapeHtml(thuisLbl||'?')} <span class="pec-vs">–</span> ${escapeHtml(uitLbl||'?')}`
+      : escapeHtml(it.naam||TYPE_LABEL[type]);
     const spelersN = (it.spelers||[]).length;
-    // Route-knop: club opzoeken of locatie gebruiken
-    let mapsUrl = '';
-    const clubInfo = (typeof CLUB_ADRESSEN !== 'undefined' && it.thuis)
-      ? CLUB_ADRESSEN[(it.thuis||'').toLowerCase().trim()] : null;
-    if(clubInfo && clubInfo.lat && clubInfo.lon){
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${clubInfo.lat},${clubInfo.lon}`;
-    } else if(clubInfo && clubInfo.adres){
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(clubInfo.adres)}`;
-    } else if(it.locatie){
-      mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(it.locatie)}`;
-    }
-    const locLabel = it.locatie || (clubInfo && clubInfo.sportpark) || '';
+    const clubInfo = (typeof CLUB_ADRESSEN!=='undefined'&&it.thuis) ? CLUB_ADRESSEN[(it.thuis||'').toLowerCase().trim()] : null;
+    let mapsUrl='';
+    if(clubInfo&&clubInfo.lat&&clubInfo.lon) mapsUrl=`https://www.google.com/maps/dir/?api=1&destination=${clubInfo.lat},${clubInfo.lon}`;
+    else if(clubInfo&&clubInfo.adres) mapsUrl=`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(clubInfo.adres)}`;
+    else if(it.locatie) mapsUrl=`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(it.locatie)}`;
+    const locLabel = it.locatie||(clubInfo&&clubInfo.sportpark)||'';
     const locHtml = locLabel
       ? (mapsUrl
-        ? `<span class="pec-loc pec-route" data-maps-url="${escapeAttr(mapsUrl)}" title="Route openen">📍 ${escapeHtml(locLabel)}</span>`
+        ? `<a class="pec-loc pec-route" href="${mapsUrl}" target="_blank" rel="noopener">📍 ${escapeHtml(locLabel)}</a>`
         : `<span class="pec-loc">📍 ${escapeHtml(locLabel)}</span>`)
       : '';
-    // Toon "Verwerk" snelknop als wedstrijd voorbij is, niet verwerkt, en spelers heeft
-    const isPast = it.datum && it.datum < new Date().toISOString().slice(0,10);
-    const canVerwerk = isPast && it.status !== 'verwerkt' && spelersN > 0;
-    const verwerkHtml = canVerwerk
-      ? `<button class="pec-verwerk-btn" data-pec-verwerk="${it.id}" title="Verwerk ${spelersN} speler${spelersN===1?'':'s'} naar database">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-          Verwerk
-        </button>`
-      : '';
-    // s21: Live scouten — vandaag, type wedstrijd, met spelers
-    const _todayStr = new Date().toISOString().slice(0,10);
-    const canLive = type === 'wedstrijd' && it.datum === _todayStr && spelersN > 0;
-    const liveHtml = canLive
-      ? `<button class="pec-live-btn" data-pec-live="${it.id}" title="Live notities per speler bijhouden">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="currentColor"/></svg>
-          Live scouten
-        </button>`
-      : '';
-    return `<div class="prog-ev-card sh-tilt-card ${stCls}" data-prog-id="${it.id}">
-      <div class="pec-icon">${icon}</div>
+    const isPast   = it.datum && it.datum < new Date().toISOString().slice(0,10);
+    const canVerw  = isPast && it.status!=='verwerkt' && spelersN>0;
+    const canLive  = type==='wedstrijd' && it.datum===new Date().toISOString().slice(0,10) && spelersN>0;
+    return `<div class="prog-ev-card ${stCls}" data-prog-id="${escapeHtml(it.id)}">
+      <div class="pec-time-col">
+        ${it.tijd?`<span class="pec-time">${escapeHtml(it.tijd)}</span>`:'<span class="pec-time muted">—:—</span>'}
+        <span class="pec-type-icon">${icon}</span>
+      </div>
       <div class="pec-body">
         <div class="pec-title">${titleLine}</div>
-        <div class="pec-meta">
-          ${it.tijd ? `<span class="pec-time">${escapeHtml(it.tijd)}</span>` : ''}
-          ${spelersN ? `<span class="pec-pill">${spelersN} speler${spelersN===1?'':'s'}</span>` : ''}
-          ${it.status==='verwerkt' ? `<span class="pec-pill pec-verwerkt">✓ Verwerkt</span>` : ''}
+        <div class="pec-chips">
+          ${it.leeftijd?`<span class="pec-chip leeftijd">${escapeHtml(it.leeftijd)}</span>`:''}
+          ${spelersN?`<span class="pec-chip">${spelersN} speler${spelersN===1?'':'s'}</span>`:''}
+          ${it.status==='verwerkt'?`<span class="pec-chip green">✓ Verwerkt</span>`:''}
         </div>
-        ${locHtml ? `<div class="pec-loc-row">${locHtml}</div>` : ''}
+        ${locHtml?`<div class="pec-loc-row">${locHtml}</div>`:''}
         <div class="pec-actions-row">
-          ${liveHtml}
-          ${verwerkHtml}
+          ${canLive?`<button class="pec-live-btn" data-pec-live="${it.id}">● Live scouten</button>`:''}
+          ${canVerw?`<button class="pec-verwerk-btn" data-pec-verwerk="${it.id}">✓ Verwerk</button>`:''}
         </div>
       </div>
-      <button class="pec-edit-btn" data-pec-edit="${it.id}" aria-label="Bewerken" title="Bewerken">&#9998;</button>
+      <button class="pec-edit-btn" data-pec-edit="${it.id}" aria-label="Bewerken">✏</button>
+    </div>`;
+  };
+
+  // Toernooi-kaart in programma-grid
+  const trnCardHTML = t => {
+    const nW = (t.poules||[]).reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
+    const isFirst = t.datum===activeDStr, isLast=(t.datumEinde||t.datum)===activeDStr;
+    const dayLbl  = isFirst&&isLast?'Toernooidag':isFirst?'Start toernooi':isLast?'Laatste dag':'Toernooi bezig';
+    return `<div class="prog-ev-card prog-ev-toernooi" data-trn-id="${escapeHtml(t.id)}">
+      <div class="pec-time-col">
+        <span class="pec-type-icon" style="font-size:18px;">🏆</span>
+      </div>
+      <div class="pec-body">
+        <div class="pec-title">${escapeHtml(t.naam||'Toernooi')}</div>
+        <div class="pec-chips">
+          ${t.leeftijdscategorie?`<span class="pec-chip leeftijd">${escapeHtml(t.leeftijdscategorie)}</span>`:''}
+          ${(t.poules||[]).length?`<span class="pec-chip">${t.poules.length} poules</span>`:''}
+          ${nW?`<span class="pec-chip">${nW} wedstrijden</span>`:''}
+          <span class="pec-chip muted">${dayLbl}</span>
+        </div>
+        ${t.locatie?`<div class="pec-loc-row"><span class="pec-loc">📍 ${escapeHtml(t.locatie)}</span></div>`:''}
+      </div>
+      <span class="pec-edit-btn" style="opacity:.5">›</span>
     </div>`;
   };
 
   const grid = $('#programma-grid');
   if(grid){
-    grid.innerHTML = dayItems.map(evCardHTML).join('');
+    const allCards = [...dayTrn.map(trnCardHTML), ...dayItems.map(evCardHTML)].join('');
+    grid.innerHTML = allCards || '';
+    // Handlers
     grid.querySelectorAll('[data-prog-id]').forEach(el => {
       el.addEventListener('click', e => {
-        if(e.target.closest('[data-pec-edit]')) return;
-        // Route-knop: open Google Maps
-        const routeEl = e.target.closest('.pec-route');
-        if(routeEl){
-          e.stopPropagation();
-          const url = routeEl.dataset.mapsUrl;
-          if(url) window.open(url, '_blank', 'noopener');
-          return;
-        }
-        const pid = el.dataset.progId;
-        if(pid && typeof openProgMatchDetailModal === 'function') openProgMatchDetailModal(pid);
+        if(e.target.closest('[data-pec-edit],[data-pec-live],[data-pec-verwerk],.pec-route')) return;
+        if(typeof openProgMatchDetailModal==='function') openProgMatchDetailModal(el.dataset.progId);
       });
+    });
+    grid.querySelectorAll('[data-trn-id]').forEach(el => {
+      el.addEventListener('click', () => openToernooiDetail(el.dataset.trnId));
     });
     grid.querySelectorAll('[data-pec-edit]').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        openProgMatchModal(btn.dataset.pecEdit, null);
-      });
+      btn.addEventListener('click', e => { e.stopPropagation(); openProgMatchModal(btn.dataset.pecEdit, null); });
     });
     grid.querySelectorAll('[data-pec-verwerk]').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        if(typeof verwerkProgrammaItem === 'function') verwerkProgrammaItem(btn.dataset.pecVerwerk);
-      });
+      btn.addEventListener('click', e => { e.stopPropagation(); if(typeof verwerkProgrammaItem==='function') verwerkProgrammaItem(btn.dataset.pecVerwerk); });
     });
-    // s21: Live scouten
     grid.querySelectorAll('[data-pec-live]').forEach(btn => {
-      btn.addEventListener('click', e => {
-        e.stopPropagation();
-        if(typeof openLiveScoutModal === 'function') openLiveScoutModal(btn.dataset.pecLive);
-      });
+      btn.addEventListener('click', e => { e.stopPropagation(); if(typeof openLiveScoutModal==='function') openLiveScoutModal(btn.dataset.pecLive); });
     });
   }
 
   const emptyEl = $('#programma-empty');
-  if(emptyEl) emptyEl.style.display = dayItems.length === 0 ? 'block' : 'none';
+  if(emptyEl) emptyEl.style.display = (dayItems.length===0 && dayTrn.length===0) ? 'block' : 'none';
   if(grid) setTimeout(() => shStagger(grid, '.prog-ev-card'), 0);
 }
 

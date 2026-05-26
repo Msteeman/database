@@ -18352,9 +18352,9 @@ function tdsShowPoule(idx){
           <div class="tds-match-main">
             <span class="tds-match-time">${escapeHtml(w.tijd||'??:??')}</span>
             <div class="tds-match-teams">
-              <span class="tds-match-home${gespeeld && w.scoreThuis > w.scoreUit?' winner':''}">${escapeHtml(w.thuis||'—')}</span>
+              <span class="tds-match-home${gespeeld && w.scoreThuis > w.scoreUit?' winner':''}">${escapeHtml(w.thuis||'—')}${w.thuisElftal?`<span class="tds-elftal-label">${escapeHtml(w.thuisElftal)}</span>`:''}</span>
               ${scoreHtml}
-              <span class="tds-match-away${gespeeld && w.scoreUit > w.scoreThuis?' winner':''}">${escapeHtml(w.uit||'—')}</span>
+              <span class="tds-match-away${gespeeld && w.scoreUit > w.scoreThuis?' winner':''}">${escapeHtml(w.uit||'—')}${w.uitElftal?`<span class="tds-elftal-label">${escapeHtml(w.uitElftal)}</span>`:''}</span>
             </div>
             ${w.veld?`<span class="tds-match-field">V${escapeHtml(String(w.veld))}</span>`:''}
             ${typeBadge}
@@ -18436,6 +18436,13 @@ function _tdsOpenMatchDetail(pouleIdx, wedstrIdx){
         <span class="tds-md-score-team">${escapeHtml(w.uit||'—')}</span>
       </div>
 
+      <!-- Elftal invoer -->
+      <div class="tds-md-elftal-row">
+        <input type="text" id="tds-md-thuis-elftal" class="tds-md-elftal-input filter-input" placeholder="Elftal thuis (bijv. O.9-1)" value="${escapeHtml(w.thuisElftal||'')}">
+        <span class="tds-md-elftal-sep">vs</span>
+        <input type="text" id="tds-md-uit-elftal" class="tds-md-elftal-input filter-input" placeholder="Elftal uit (bijv. O.9-2)" value="${escapeHtml(w.uitElftal||'')}">
+      </div>
+
       <div class="tds-md-body">
         <!-- Wedstrijd notitie -->
         <div class="tds-md-section-title">📋 Wedstrijd notitie</div>
@@ -18465,12 +18472,14 @@ function _tdsOpenMatchDetail(pouleIdx, wedstrIdx){
     const scoreUitEl = panel.querySelector('#tds-md-score-uit');
     const scoreThuisVal = scoreThuisEl?.value !== '' ? parseInt(scoreThuisEl.value) : null;
     const scoreUitVal = scoreUitEl?.value !== '' ? parseInt(scoreUitEl.value) : null;
+    const thuisElftal = (panel.querySelector('#tds-md-thuis-elftal')?.value||'').trim();
+    const uitElftal = (panel.querySelector('#tds-md-uit-elftal')?.value||'').trim();
     // Collect updated scout notities
     const scoutUpdates = {};
     panel.querySelectorAll('.tds-md-scout-notitie').forEach(ta => {
       scoutUpdates[ta.dataset.scoutId] = ta.value;
     });
-    await _tdsSaveMatchDetail(pouleIdx, wedstrIdx, notitie, scoutUpdates, scoreThuisVal, scoreUitVal);
+    await _tdsSaveMatchDetail(pouleIdx, wedstrIdx, notitie, scoutUpdates, scoreThuisVal, scoreUitVal, thuisElftal, uitElftal);
     panel.remove();
   });
 
@@ -18500,7 +18509,7 @@ function _tdsOpenMatchDetail(pouleIdx, wedstrIdx){
   panel.querySelector('#tds-md-notitie').focus();
 }
 
-async function _tdsSaveMatchDetail(pouleIdx, wedstrIdx, notitie, scoutUpdates, scoreThuis, scoreUit){
+async function _tdsSaveMatchDetail(pouleIdx, wedstrIdx, notitie, scoutUpdates, scoreThuis, scoreUit, thuisElftal, uitElftal){
   if(!currentUser || !__tdsCurrentId) return;
   const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
   if(!t) return;
@@ -18508,6 +18517,9 @@ async function _tdsSaveMatchDetail(pouleIdx, wedstrIdx, notitie, scoutUpdates, s
   const w = poules[pouleIdx]?.wedstrijden?.[wedstrIdx];
   if(!w) return;
   w.notitie = notitie || '';
+  // Elftal opslaan
+  if(thuisElftal !== undefined) w.thuisElftal = thuisElftal;
+  if(uitElftal !== undefined) w.uitElftal = uitElftal;
   // Score opslaan
   if(scoreThuis !== null && scoreThuis !== undefined && !isNaN(scoreThuis)){
     w.scoreThuis = scoreThuis;
@@ -18797,6 +18809,22 @@ function closeToernooiDetail(){
   __tdsCurrentId=null; window.__tdsCurrentId=null;
 }
 
+/* delete toernooi */
+async function deleteToernooi(){
+  if(!currentUser || !__tdsCurrentId) return;
+  const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
+  const naam = t?.naam || 'dit toernooi';
+  if(!confirm(`Weet je zeker dat je "${naam}" wilt verwijderen? Dit kan niet ongedaan worden gemaakt.`)) return;
+  try{
+    await deleteDoc(doc(collection(db,'users',currentUser.uid,'toernooien'), __tdsCurrentId));
+    closeToernooiDetail();
+    toast('Toernooi verwijderd');
+  }catch(err){
+    alert('Verwijderen mislukt: ' + err.message);
+  }
+}
+window.deleteToernooi = deleteToernooi;
+
 /* info modal */
 function openToernooiInfo(){
   const t = tournamentsCache.find(x=>x.id===__tdsCurrentId);
@@ -18963,25 +18991,78 @@ function tfSwitchImport(mode){
 }
 
 /* URL / PDF parsing */
+/* ── Progress indicator helper (v79) ─────────────────────────────────
+ * Gebruik: const prog = _tfMakeProgress('url');  (of 'foto')
+ *   prog.step('Label van stap', 'Beschrijving');   → nieuwe stap starten
+ *   prog.done('Label', 'Beschrijving');            → stap afronden (✓)
+ *   prog.error('Foutmelding');                     → stap als fout markeren
+ *   prog.finish();                                 → balk op 100%
+ * ─────────────────────────────────────────────────────────────────── */
+function _tfMakeProgress(tab){
+  const wrap  = document.getElementById(`tf-${tab}-progress`);
+  const bar   = document.getElementById(`tf-${tab}-pb`);
+  const steps = document.getElementById(`tf-${tab}-steps`);
+  if(wrap) wrap.classList.add('active');
+  if(steps) steps.innerHTML = '';
+  let pct = 0;
+  let _cur = null;
+
+  const ICONS = { pending:'◌', active:'⟳', done:'✓', error:'✕' };
+
+  function _setBar(p){ pct = Math.min(p, 100); if(bar) bar.style.width = pct + '%'; }
+  function _addStep(label, desc, state){
+    if(!steps) return null;
+    const el = document.createElement('div');
+    el.className = `tf-progress-step ${state}`;
+    el.innerHTML = `<span class="tf-step-icon">${ICONS[state]||'◌'}</span><span>${label}${desc?` <span style="color:var(--text-3,#6b7280);font-size:11px;">— ${desc}</span>`:''}</span>`;
+    steps.appendChild(el);
+    return el;
+  }
+  function _updateStep(el, state, label, desc){
+    if(!el) return;
+    el.className = `tf-progress-step ${state}`;
+    el.innerHTML = `<span class="tf-step-icon">${ICONS[state]||'◌'}</span><span>${label}${desc?` <span style="color:var(--text-3,#6b7280);font-size:11px;">— ${desc}</span>`:''}</span>`;
+  }
+
+  return {
+    step(label, desc, pctTarget){
+      if(_cur) _updateStep(_cur, 'done', _cur._label, '');
+      _cur = _addStep(label, desc||'', 'active');
+      if(_cur) _cur._label = label;
+      if(pctTarget) _setBar(pctTarget);
+    },
+    done(label, desc){
+      if(_cur) _updateStep(_cur, 'done', label||_cur._label, desc||'');
+      _cur = null;
+    },
+    error(msg){
+      if(_cur) _updateStep(_cur, 'error', _cur._label||'Fout', msg||'');
+      _cur = null;
+    },
+    finish(){ _setBar(100); setTimeout(()=>{ if(wrap) wrap.classList.remove('active'); },3000); },
+    hide(){ if(wrap) wrap.classList.remove('active'); if(bar) bar.style.width='0%'; if(steps) steps.innerHTML=''; }
+  };
+}
+
 async function tfParseUrl(){
   const url = (document.getElementById('tf-url-input').value||'').trim();
   if(!url){ alert('Voer een URL in.'); return; }
   const btn = document.getElementById('tf-url-parse-btn');
   const status = document.getElementById('tf-url-status');
   btn.disabled=true; btn.textContent='Bezig met inlezen…';
-  status.style.display='block'; status.style.color='var(--muted,#9aa3b7)';
+  status.style.display='none';
+  const prog = _tfMakeProgress('url');
 
   try{
     let parsed = null;
     const isPdf = /\.pdf(\?|$|#)/i.test(url);
 
     if(isPdf){
-      // PDF-URL: laad pdf.js, haal bytes op, extraheer tekst correct
-      status.textContent='PDF-lezer laden…';
+      prog.step('PDF-lezer laden', '', 10);
       try{ await _tfLoadPdfJs(); }
       catch(e){ throw new Error('PDF-lezer kon niet worden geladen. Controleer je verbinding.'); }
 
-      status.textContent='PDF ophalen…';
+      prog.step('PDF ophalen', url.split('/').pop().slice(0,30), 25);
       let arrayBuf;
       try{
         const res = await fetch(url, { mode:'cors' });
@@ -18991,10 +19072,10 @@ async function tfParseUrl(){
         throw new Error('PDF kon niet worden opgehaald (CORS). Sla het bestand op en upload via Foto/Scan/PDF.');
       }
 
-      status.textContent='PDF tekst uitlezen…';
+      prog.step('Tekst uitlezen uit PDF', '', 50);
       const pdfText = await _tfExtractPdfText(arrayBuf);
 
-      status.textContent='Schema analyseren…';
+      prog.step('Schema analyseren', 'regex parsing', 80);
       parsed = _tfParseText(pdfText, url);
       if(!parsed || !parsed.poules?.length){
         throw new Error('Geen wedstrijdschema herkend in de PDF. Vul handmatig in of gebruik de Foto/Scan/PDF tab.');
@@ -19006,18 +19087,22 @@ async function tfParseUrl(){
         // Tournify: JS-rendered — sla URL op en probeer Gemini voor basisinfo
         const tLink = document.getElementById('tf-tournify-url');
         if(tLink && !tLink.value) tLink.value = url;
-        // Probeer Gemini: geef URL-slug als hint
-        status.textContent='AI-analyse van Tournify-link… (10–20 sec)';
+        prog.step('Tournify-link opslaan', url.split('/').pop(), 15);
+        prog.step('AI analyseert toernooinaam…', 'kan 10–20 sec duren', 30);
         let trnParsed = null;
         try{
           const rawText = await _callGemini([{ text: _GEMINI_PROMPT + `
 
 Tournify-toernooi URL: ${url}
-De slug geeft hints over de naam. Probeer naam, leeftijdscategorie, datum en locatie te achterhalen op basis van de URL-slug en bekende toernooipatronen. Als je het echt niet weet, zet lege strings.` }]);
+De slug geeft hints over de naam. Probeer naam, leeftijdscategorie, datum en locatie te achterhalen op basis van de URL-slug en bekende toernooipatronen. Als je het echt niet weet, zet lege strings. Genereer GEEN wedstrijden of clubs op basis van gissingen — laat poules leeg.` }]);
           trnParsed = _geminiJsonToParsed(rawText);
         }catch(_){}
+        prog.finish();
         if(trnParsed){ _tfFillBasicFromParsed(trnParsed); __tfParsedData = trnParsed; }
-        status.textContent='✓ Tournify-link opgeslagen' + (trnParsed && trnParsed.naam ? ` — AI vulde basisgegevens in. Controleer en pas aan.` : ' — vul naam en datum hieronder aan.');
+        status.style.display='block';
+        status.textContent = trnParsed?.naam
+          ? `✓ Tournify-link opgeslagen — AI vulde naam/datum in. Controleer en gebruik "Sync" om live data op te halen.`
+          : '✓ Tournify-link opgeslagen — vul naam en datum in, gebruik dan "Sync" voor live schema.';
         status.style.color='#3b6d11';
         document.getElementById('tf-basic-fields').style.display='';
         document.getElementById('tf-action-row').style.display='flex';
@@ -19026,22 +19111,21 @@ De slug geeft hints over de naam. Probeer naam, leeftijdscategorie, datum en loc
       }
 
       // Stap 1: probeer directe fetch (statische HTML)
-      status.textContent='URL ophalen…';
+      prog.step('URL ophalen', url.slice(0,40), 15);
       let fetchedHtml = null;
       try{
         const res = await fetch(url, { mode: 'cors' });
         if(res.ok){
           fetchedHtml = await res.text();
-          status.textContent='Schema analyseren…';
+          prog.step('Schema analyseren', 'regex', 40);
           parsed = _tfParseText(fetchedHtml, url);
         }
       }catch(_){ /* CORS of netwerk — probeer Gemini */ }
 
       // Stap 2: als regex niets vond maar HTML wel opgehaald — stuur naar Gemini
       if(!parsed && fetchedHtml){
-        status.textContent='Regex kon schema niet herkennen — AI analyseren… (10–20 sec)';
+        prog.step('AI analyseert pagina-inhoud…', 'kan 10–20 sec duren', 55);
         try{
-          // Stuur max 30.000 tekens naar Gemini (meer is te groot / duur)
           const snippet = fetchedHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi,'')
             .replace(/<script[^>]*>[\s\S]*?<\/script>/gi,'')
             .replace(/<[^>]+>/g,' ').replace(/\s{2,}/g,' ').slice(0,30000);
@@ -19054,9 +19138,9 @@ De slug geeft hints over de naam. Probeer naam, leeftijdscategorie, datum en loc
 
       // Stap 3: als CORS blokkeert én geen HTML — probeer Gemini enkel op basis van URL-tekst
       if(!parsed && !fetchedHtml){
-        status.textContent='Pagina niet bereikbaar — AI probeert via URL… (10–20 sec)';
+        prog.step('Pagina niet bereikbaar — AI via URL…', 'kan 10–20 sec duren', 40);
         try{
-          const rawText = await _callGemini([{ text: `${_GEMINI_PROMPT}\n\nURL: ${url}\n(De pagina was niet direct bereikbaar. Analyseer op basis van de URL of bekende toernooiplatforms als tournifyapp.com.)` }]);
+          const rawText = await _callGemini([{ text: `${_GEMINI_PROMPT}\n\nURL: ${url}\n(De pagina was niet direct bereikbaar. Analyseer op basis van de URL.)` }]);
           parsed = _geminiJsonToParsed(rawText);
         }catch(aiErr){
           console.warn('Gemini URL-only parse mislukt:', aiErr);
@@ -19064,7 +19148,9 @@ De slug geeft hints over de naam. Probeer naam, leeftijdscategorie, datum en loc
       }
 
       if(!parsed){
-        status.textContent='Geen schema herkend via URL of AI. Sla het programma op als PDF en upload via "Foto / Scan / PDF", of vul handmatig in.';
+        prog.error('Geen schema herkend');
+        status.style.display='block';
+        status.textContent='Geen schema herkend. Sla het programma op als PDF en upload via "Foto / Scan / PDF", of vul handmatig in.';
         status.style.color='var(--muted,#9aa3b7)';
         document.getElementById('tf-basic-fields').style.display='';
         document.getElementById('tf-action-row').style.display='flex';
@@ -19073,10 +19159,11 @@ De slug geeft hints over de naam. Probeer naam, leeftijdscategorie, datum en loc
       }
 
       if(!parsed.poules?.length){
-        // Basisvelden wel gevonden maar geen poules
         _tfFillBasicFromParsed(parsed);
         __tfParsedData = parsed;
-        status.textContent='AI: basisgegevens ingevuld — wedstrijdschema niet gevonden in URL. Vul handmatig aan.';
+        prog.finish();
+        status.style.display='block';
+        status.textContent='AI: basisgegevens ingevuld — wedstrijdschema niet gevonden. Vul handmatig aan.';
         status.style.color='#3b6d11';
         document.getElementById('tf-basic-fields').style.display='';
         document.getElementById('tf-action-row').style.display='flex';
@@ -19088,12 +19175,16 @@ De slug geeft hints over de naam. Probeer naam, leeftijdscategorie, datum en loc
     __tfParsedData = parsed;
     _tfShowPreview(parsed);
     const nW = parsed.poules.reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
+    prog.finish();
+    status.style.display='block';
     status.textContent=`✓ Ingelezen: ${parsed.poules.length} poules, ${nW} wedstrijden${parsed.knockout?.rondes?.length?' + knockout':''}.`;
     status.style.color='#3b6d11';
     document.getElementById('tf-basic-fields').style.display='';
     document.getElementById('tf-action-row').style.display='flex';
     _tfFillBasicFromParsed(parsed);
   }catch(err){
+    prog.error(err.message);
+    status.style.display='block';
     status.textContent=`Fout: ${err.message}`;
     status.style.color='#a32d2d';
     document.getElementById('tf-basic-fields').style.display='';
@@ -19484,38 +19575,43 @@ async function tfParseFoto(){
   const btn = document.getElementById('tf-foto-parse-btn');
   const status = document.getElementById('tf-foto-status');
   btn.disabled=true; btn.textContent='Bezig met uitlezen…';
-  status.style.display='block'; status.style.color='var(--text-2,#6b7280)';
-  status.textContent='Schema uitlezen via AI… (dit duurt 10–20 seconden)';
+  status.style.display='none';
+  const prog = _tfMakeProgress('foto');
 
   try{
-    // Haal mime type en base64 data op uit de DataURL
     const dataUrl = __tfFotoBase64;
     const mimeMatch = dataUrl.match(/^data:([^;]+);base64,/);
     if(!mimeMatch) throw new Error('Ongeldig bestandsformaat.');
-    const mimeType = mimeMatch[1]; // bijv. image/jpeg of application/pdf
+    const mimeType = mimeMatch[1];
     const base64Data = dataUrl.slice(mimeMatch[0].length);
+    const isPDF = mimeType === 'application/pdf';
 
-    status.textContent='Bestand naar AI sturen… (dit duurt 10–20 seconden)';
+    prog.step(isPDF ? 'PDF verwerken' : 'Afbeelding verwerken', mimeType, 20);
+    prog.step('AI analyseert schema…', 'kan 10–20 sec duren', 35);
 
     const rawText = await _callGemini([
       { text: _GEMINI_PROMPT },
       { inline_data: { mime_type: mimeType, data: base64Data } }
     ]);
 
+    prog.step('Resultaat verwerken', '', 85);
     const parsed = _geminiJsonToParsed(rawText);
     if(!parsed) throw new Error('AI-antwoord kon niet worden verwerkt. Probeer opnieuw of vul handmatig in.');
 
     __tfParsedData = parsed;
+    prog.finish();
 
     if(parsed.poules?.length){
       _tfShowPreview(parsed);
       _tfFillBasicFromParsed(parsed);
       const nW = parsed.poules.reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
+      status.style.display='block';
       status.textContent=`✓ AI ingelezen: ${parsed.poules.length} poules, ${nW} wedstrijden.`;
       status.style.color='#3b6d11';
     } else {
       _tfFillBasicFromParsed(parsed);
       const hasBasic = parsed.naam || parsed.datum || parsed.leeftijdscategorie;
+      status.style.display='block';
       status.textContent = hasBasic
         ? `✓ AI: basisgegevens ingevuld — wedstrijdschema niet herkend. Vul handmatig aan.`
         : `AI kon geen gegevens herkennen. Vul handmatig in.`;
@@ -19524,6 +19620,8 @@ async function tfParseFoto(){
     document.getElementById('tf-basic-fields').style.display='';
     document.getElementById('tf-action-row').style.display='flex';
   }catch(err){
+    prog.error(err.message);
+    status.style.display='block';
     status.textContent=`Fout: ${err.message}`;
     status.style.color='#a32d2d';
     document.getElementById('tf-basic-fields').style.display='';
@@ -19659,73 +19757,53 @@ function _renderDashToernooi(){
     if(!_items.length || !_inp){ dd.style.display='none'; return; }
     const useGrid = _items.length > 3 && _items.every(it => it.col3);
     if(useGrid){
-      // 3-kolom grid voor leeftijdscategorie-opties
-      dd.className = 'sh-ac-dd sh-ac-dd--grid';
-      dd.innerHTML = _items.map((it,i) =>
-        `<div class="sh-ac-item sh-ac-item--col${i===_cursor?' active':''}" data-idx="${i}" role="option">${_esc(it.label||'')}</div>`
-      ).join('');
+      dd.innerHTML = _items.map((it,i)=>`
+        <div class="sh-ac-item${i===_cursor?' sh-ac-active':''}" data-idx="${i}">
+          <span class="sh-ac-col1">${_esc(it.col1||it.primary||it.label)}</span>
+          <span class="sh-ac-col2">${_esc(it.col2||it.secondary||'')}</span>
+          <span class="sh-ac-col3 sh-ac-muted">${_esc(it.col3||'')}</span>
+        </div>`).join('');
     } else {
-      dd.className = 'sh-ac-dd';
-      dd.innerHTML = _items.map((it,i) =>
-        `<div class="sh-ac-item${i===_cursor?' active':''}" data-idx="${i}" role="option">${_esc(it.primary||it.label||'')}${it.secondary?`<span class="sh-ac-sub">${_esc(it.secondary)}</span>`:''}</div>`
-      ).join('');
+      dd.innerHTML = _items.map((it,i)=>`
+        <div class="sh-ac-item${i===_cursor?' sh-ac-active':''}" data-idx="${i}">
+          <span class="sh-ac-primary">${_esc(it.primary||it.label)}</span>
+          ${it.secondary?`<span class="sh-ac-secondary">${_esc(it.secondary)}</span>`:''}
+        </div>`).join('');
     }
-    dd.style.display = 'block';
+    dd.style.display='block';
     _pos(_inp);
-    dd.querySelectorAll('.sh-ac-item').forEach((el, i) => {
-      el.addEventListener('mousedown', e => {
-        e.preventDefault();
-        _cursor = i;
-        if(_onPick && _items[i]) _onPick(_items[i]);
-        _close();
-      });
+    dd.querySelectorAll('.sh-ac-item').forEach(el=>{
+      el.addEventListener('mousedown', e=>{ e.preventDefault(); _pick(parseInt(el.dataset.idx)); });
     });
   }
 
-  function _close(){
-    const dd = document.getElementById(DD_ID);
-    if(dd) dd.style.display = 'none';
-    _inp = null; _items = []; _cursor = -1;
-  }
-
-  function _pick(){
-    if(_cursor >= 0 && _items[_cursor]){
-      if(_onPick) _onPick(_items[_cursor]);
-    }
+  function _pick(i){
+    if(i<0||i>=_items.length) return;
+    _cursor=i;
+    if(typeof _onPick==='function') _onPick(_items[i]);
     _close();
   }
 
+  function _close(){
+    const dd=_dd(); if(dd) dd.style.display='none';
+    _inp=null; _items=[]; _cursor=-1;
+  }
+
   window.shAC = {
-    show(input, items, onPick){
-      _inp = input; _items = items; _cursor = -1; _onPick = onPick;
-      _render();
-    },
+    show(input, items, onPick){ _inp=input; _items=items; _cursor=-1; _onPick=onPick; _render(); },
     close: _close,
     onKey(e){
       if(!_items.length) return false;
-      if(e.key === 'ArrowDown'){
-        e.preventDefault();
-        _cursor = Math.min(_cursor+1, _items.length-1);
-        _render(); return true;
-      }
-      if(e.key === 'ArrowUp'){
-        e.preventDefault();
-        _cursor = Math.max(_cursor-1, 0);
-        _render(); return true;
-      }
-      if(e.key === 'Enter' && _cursor >= 0){
-        e.preventDefault();
-        _pick(); return true;
-      }
-      if(e.key === 'Escape'){
-        _close(); return true;
-      }
+      if(e.key==='ArrowDown'){ _cursor=Math.min(_cursor+1,_items.length-1); _render(); return true; }
+      if(e.key==='ArrowUp'){ _cursor=Math.max(_cursor-1,0); _render(); return true; }
+      if(e.key==='Enter'&&_cursor>=0){ _pick(_cursor); return true; }
+      if(e.key==='Escape'){ _close(); return true; }
       return false;
     }
   };
 
-  document.addEventListener('click', e => {
-    const dd = document.getElementById(DD_ID);
+  document.addEventListener('mousedown', e=>{
+    const dd=_dd();
     if(dd && !dd.contains(e.target) && e.target !== _inp) _close();
   }, true);
 
@@ -19772,12 +19850,12 @@ function shWireClubAC(input){
  * Toernooi-form leeftijdscategorie is vervangen door multi-select tags-UI.
  * Deze functie is een no-op zodat oude aanroepen geen ReferenceError geven.
  */
-function shWireLeeftijdAC(input){ /* no-op: vervangen door multi-select tags-UI */ if(!input) return; }
+function shWireLeeftijdAC(input){ /* no-op */ if(!input) return; }
 
 /**
  * Upgrade select-element naar AC-input. Huidig gedrag: behoud select as-is.
  */
-function shUpgradeSelectToAC(id){ /* huidige versie: select-elementen blijven intact */ }
+function shUpgradeSelectToAC(id){ /* no-op */ }
 
 // ── Bootstrap ──────────────────────────────────────────────────────────────────
 onAuthStateChanged(auth, async (user) => {

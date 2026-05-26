@@ -9515,3 +9515,260 @@ tbody tr:last-child td { border-bottom: none; }
   transition: background .12s;
 }
 .tds-sp-new-add:hover { background: rgba(96,165,250,.28); }
+
+/* ============================================================
+   v77 — Scout picker fase-2 + multi-select + match detail
+   ============================================================ */
+
+/* ── Scout picker fase 2 ── */
+.tds-sp-selected-naam {
+  font-size: 15px; font-weight: 600; color: var(--text-1,#e2e8f0);
+  padding: 10px 0 6px; border-bottom: 1px solid var(--border,#2a2d3e);
+  margin-bottom: 10px;
+}
+.tds-sp-notitie-area {
+  width: 100%; box-sizing: border-box;
+  background: var(--input-bg, #1a1d2e); border: 1px solid var(--border,#2a2d3e);
+  color: var(--text-1,#e2e8f0); border-radius: 8px; padding: 10px 12px;
+  font-size: 13px; line-height: 1.5; resize: vertical; min-height: 90px;
+  font-family: inherit; transition: border-color .15s;
+}
+.tds-sp-notitie-area:focus { border-color: var(--accent,#4f6ef7); outline: none; }
+.tds-sp-fase2-btns {
+  display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px;
+}
+.btn-ghost-sm {
+  background: transparent; border: 1px solid var(--border,#2a2d3e);
+  color: var(--text-2,#9aa3b7); border-radius: 8px; padding: 7px 16px;
+  font-size: 13px; font-weight: 500; cursor: pointer; transition: background .12s, color .12s;
+}
+.btn-ghost-sm:hover { background: var(--hover,#1e2236); color: var(--text-1,#e2e8f0); }
+.btn-primary-sm {
+  background: var(--accent,#4f6ef7); border: none; color: #fff;
+  border-radius: 8px; padding: 7px 20px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: opacity .12s, transform .1s;
+}
+.btn-primary-sm:hover { opacity: .88; }
+.btn-primary-sm:active { transform: scale(.97); }
+.tds-sp-results { max-height: 220px; overflow-y: auto; }
+.tds-sp-row {
+  padding: 9px 10px; border-radius: 8px; cursor: pointer;
+  transition: background .1s; border-bottom: 1px solid var(--border,#2a2d3e);
+}
+.tds-sp-row:last-child { border-bottom: none; }
+.tds-sp-row:hover { background: var(--hover,#1e2236); }
+.tds-sp-naam { font-size: 13px; font-weight: 600; color: var(--text-1,#e2e8f0); }
+.tds-sp-meta { font-size: 11px; color: var(--text-3,#6b7280); margin-top: 2px; }
+
+/* ── Multi-select leeftijdscategorie ── */
+.tf-multi-cat-wrap { display: flex; flex-direction: column; gap: 6px; }
+.tf-multi-cat-tags {
+  display: flex; flex-wrap: wrap; gap: 6px; min-height: 28px;
+  padding: 4px 0;
+}
+.tf-cat-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  background: rgba(245,197,66,.15); border: 1px solid rgba(245,197,66,.35);
+  color: var(--gold,#f5c542); border-radius: 20px;
+  padding: 3px 10px 3px 12px; font-size: 12px; font-weight: 600;
+}
+.tf-cat-tag-x {
+  background: none; border: none; color: var(--gold,#f5c542);
+  cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px;
+  opacity: .7; transition: opacity .1s;
+}
+.tf-cat-tag-x:hover { opacity: 1; }
+.tf-leeftijd-add { width: auto !important; }
+
+/* ── Match detail panel ── */
+.tds-match-detail-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.55);
+  z-index: 2200; display: flex; align-items: flex-end;
+  animation: tds-md-in .2s ease;
+}
+@keyframes tds-md-in { from { opacity:0 } to { opacity:1 } }
+.tds-match-detail-sheet {
+  width: 100%; max-width: 640px; margin: 0 auto;
+  background: var(--bg-card,#141722); border-radius: 20px 20px 0 0;
+  max-height: 88vh; display: flex; flex-direction: column;
+  box-shadow: 0 -8px 40px rgba(0,0,0,.5);
+  animation: tds-sheet-up .25s cubic-bezier(.16,1,.3,1);
+}
+@keyframes tds-sheet-up { from { transform: translateY(100%) } to { transform: translateY(0) } }
+.tds-md-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 18px 18px 12px; border-bottom: 1px solid var(--border,#2a2d3e);
+  gap: 12px; flex-shrink: 0;
+}
+.tds-md-header-info { flex: 1; min-width: 0; }
+.tds-md-title {
+  font-size: 15px; font-weight: 700; color: var(--text-1,#e2e8f0);
+  line-height: 1.3;
+}
+.tds-md-vs { color: var(--text-3,#6b7280); font-weight: 400; margin: 0 4px; }
+.tds-md-sub {
+  font-size: 11px; color: var(--text-3,#6b7280); margin-top: 3px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tds-md-close {
+  background: var(--hover,#1e2236); border: none; color: var(--text-2,#9aa3b7);
+  width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+  font-size: 18px; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: background .12s;
+}
+.tds-md-close:hover { background: var(--border,#2a2d3e); color: var(--text-1,#e2e8f0); }
+
+/* Score row */
+.tds-md-score-row {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 14px 18px 10px; background: var(--bg-2,#0f1117);
+  border-bottom: 1px solid var(--border,#2a2d3e); flex-shrink: 0;
+}
+.tds-md-score-team {
+  font-size: 12px; font-weight: 600; color: var(--text-2,#9aa3b7);
+  max-width: 110px; text-align: center; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
+.tds-md-score-inputs { display: flex; align-items: center; gap: 6px; }
+.tds-md-score-input {
+  width: 52px; height: 44px; text-align: center; font-size: 22px; font-weight: 700;
+  background: var(--input-bg,#1a1d2e); border: 1.5px solid var(--border,#2a2d3e);
+  color: var(--text-1,#e2e8f0); border-radius: 10px; -moz-appearance: textfield;
+}
+.tds-md-score-input::-webkit-inner-spin-button,
+.tds-md-score-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.tds-md-score-input:focus { border-color: var(--accent,#4f6ef7); outline: none; }
+.tds-md-score-sep { font-size: 24px; font-weight: 800; color: var(--text-3,#6b7280); }
+
+/* Body + footer */
+.tds-md-body {
+  flex: 1; overflow-y: auto; padding: 14px 18px 0;
+}
+.tds-md-section-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .08em; color: var(--text-3,#6b7280); margin-bottom: 8px;
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.tds-md-notitie-area {
+  width: 100%; box-sizing: border-box;
+  background: var(--input-bg,#1a1d2e); border: 1px solid var(--border,#2a2d3e);
+  color: var(--text-1,#e2e8f0); border-radius: 10px; padding: 10px 12px;
+  font-size: 13px; line-height: 1.6; resize: vertical; min-height: 90px;
+  font-family: inherit; transition: border-color .15s;
+}
+.tds-md-notitie-area:focus { border-color: var(--accent,#4f6ef7); outline: none; }
+.tds-md-scout-add-btn {
+  background: rgba(79,110,247,.15); border: 1px solid rgba(79,110,247,.3);
+  color: var(--accent,#4f6ef7); border-radius: 16px; padding: 3px 12px;
+  font-size: 11px; font-weight: 600; cursor: pointer; transition: background .12s;
+}
+.tds-md-scout-add-btn:hover { background: rgba(79,110,247,.28); }
+.tds-md-scout-row {
+  background: var(--bg-2,#0f1117); border: 1px solid var(--border,#2a2d3e);
+  border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
+}
+.tds-md-scout-top {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 6px;
+}
+.tds-md-scout-naam { font-size: 13px; font-weight: 600; color: var(--text-1,#e2e8f0); }
+.tds-md-scout-del {
+  background: none; border: none; color: var(--text-3,#6b7280);
+  font-size: 18px; cursor: pointer; line-height: 1; padding: 0 4px;
+  transition: color .1s;
+}
+.tds-md-scout-del:hover { color: #e53e3e; }
+.tds-md-scout-notitie {
+  width: 100%; box-sizing: border-box; font-size: 12px; border-radius: 8px;
+  background: var(--input-bg,#1a1d2e); min-height: 52px; resize: vertical;
+}
+.tds-md-footer {
+  display: flex; gap: 8px; justify-content: flex-end;
+  padding: 12px 18px; border-top: 1px solid var(--border,#2a2d3e);
+  flex-shrink: 0;
+}
+
+/* ── Toernooi match-row klikbaar indicator ── */
+.tds-match-clickable {
+  cursor: pointer; transition: background .12s, transform .08s;
+  border-radius: 10px; padding: 8px 10px; margin-bottom: 4px;
+  border: 1px solid var(--border,#2a2d3e);
+  background: var(--bg-card,#141722);
+}
+.tds-match-clickable:hover { background: var(--hover,#1e2236); transform: translateX(2px); }
+.tds-match-clickable:active { transform: scale(.99); }
+.tds-match-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.tds-match-meta-row {
+  display: flex; align-items: center; gap: 8px; margin-top: 5px;
+  padding-top: 5px; border-top: 1px solid var(--border,#2a2d3e);
+}
+.tds-match-notitie-preview {
+  font-size: 11px; color: var(--text-2,#9aa3b7); flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.tds-scouted-badge {
+  font-size: 11px; font-weight: 600; color: var(--accent,#4f6ef7);
+  background: rgba(79,110,247,.12); border-radius: 12px; padding: 2px 7px;
+  flex-shrink: 0;
+}
+.tds-match-score.played {
+  background: var(--bg-2,#0f1117); border-radius: 6px; padding: 2px 8px;
+  font-weight: 700; font-size: 14px; color: var(--text-1,#e2e8f0);
+}
+.tds-match-score.pending { color: var(--text-3,#6b7280); font-size: 14px; }
+.tds-match-type-badge.finale {
+  background: rgba(245,197,66,.2); color: var(--gold,#f5c542);
+  border: 1px solid rgba(245,197,66,.35); border-radius: 8px;
+  padding: 2px 8px; font-size: 10px; font-weight: 700;
+}
+.tds-match-hint {
+  font-size: 10px; font-weight: 400; text-transform: none;
+  letter-spacing: 0; color: var(--text-3,#6b7280); font-style: italic;
+}
+
+/* ── Toernooi kaart in Wedstrijden tab — expandable matches ── */
+.tc-matches-toggle {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; background: var(--bg-2,#0f1117);
+  border: 1px solid var(--border,#2a2d3e); border-radius: 8px;
+  padding: 8px 12px; margin-top: 8px; cursor: pointer;
+  color: var(--accent,#4f6ef7); font-size: 12px; font-weight: 600;
+  transition: background .12s;
+}
+.tc-matches-toggle:hover { background: rgba(79,110,247,.08); }
+.tc-toggle-arrow { transition: transform .2s; display: inline-block; }
+.tc-matches-toggle.open .tc-toggle-arrow { transform: rotate(180deg); }
+.trn-matches-wrap { margin-top: 4px; }
+.trn-match-row {
+  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border-radius: 8px; cursor: pointer; border-bottom: 1px solid var(--border,#2a2d3e);
+  transition: background .1s; font-size: 12px;
+}
+.trn-match-row:last-child { border-bottom: none; }
+.trn-match-row:hover { background: var(--hover,#1e2236); }
+.trn-mr-time { color: var(--text-3,#6b7280); min-width: 38px; flex-shrink: 0; }
+.trn-mr-teams { flex: 1; color: var(--text-1,#e2e8f0); font-weight: 500; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.trn-mr-poule { color: var(--text-3,#6b7280); font-size: 10px; min-width: 50px;
+  flex-shrink: 0; text-align: right; }
+.trn-mr-badges { color: var(--accent,#4f6ef7); font-size: 11px; flex-shrink: 0; }
+
+/* ── Standen verbetering ── */
+.tds-stand tr.last td { color: var(--text-3,#6b7280); }
+.tds-section-title { margin-bottom: 10px; }
+.tds-empty {
+  text-align: center; padding: 20px; color: var(--text-3,#6b7280);
+  font-size: 13px;
+}
+
+/* ── Toernooi header meta verbeterd ── */
+.tds-header { 
+  background: linear-gradient(135deg, rgba(79,110,247,.08), rgba(245,197,66,.05));
+  border-bottom: 1px solid var(--border,#2a2d3e);
+}
+.tds-naam { font-size: 18px; font-weight: 700; color: var(--text-1,#e2e8f0); line-height: 1.2; }
+.tds-meta { font-size: 12px; color: var(--text-3,#6b7280); margin-top: 3px; }
+
+/* ── Toernooi card header clickable ── */
+.tc-header { cursor: pointer; transition: opacity .12s; }
+.tc-header:hover { opacity: .85; }

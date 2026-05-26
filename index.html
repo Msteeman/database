@@ -3608,32 +3608,35 @@ algemeen:</textarea>
               <label class="field-label">Toernooinaam</label>
               <input id="tf-naam" type="text" class="filter-input" placeholder="AVK JO9 2026" />
             </div>
-            <div class="field-group">
-              <label class="field-label">Leeftijdscategorie</label>
-              <select id="tf-leeftijd" class="filter-select">
-                <option value="">— kies —</option>
-                <optgroup label="Jongens (JO)">
-                  <option value="JO7">JO7</option><option value="JO8">JO8</option>
-                  <option value="JO9">JO9</option><option value="JO10">JO10</option>
-                  <option value="JO11">JO11</option><option value="JO12">JO12</option>
-                  <option value="JO13">JO13</option><option value="JO14">JO14</option>
-                  <option value="JO15">JO15</option><option value="JO17">JO17</option>
-                  <option value="JO19">JO19</option>
-                </optgroup>
-                <optgroup label="Meisjes (MO)">
-                  <option value="MO7">MO7</option><option value="MO8">MO8</option>
-                  <option value="MO9">MO9</option><option value="MO10">MO10</option>
-                  <option value="MO11">MO11</option><option value="MO12">MO12</option>
-                  <option value="MO13">MO13</option><option value="MO14">MO14</option>
-                  <option value="MO15">MO15</option><option value="MO17">MO17</option>
-                  <option value="MO19">MO19</option>
-                </optgroup>
-                <optgroup label="Senioren">
-                  <option value="Senioren">Senioren</option>
-                  <option value="Dames">Dames</option>
-                  <option value="Veteranen">Veteranen</option>
-                </optgroup>
-              </select>
+            <div class="field-group tf-col-full">
+              <label class="field-label">Leeftijdscategorie(ën) <span style="font-size:11px;opacity:.6">meerdere mogelijk</span></label>
+              <div class="tf-multi-cat-wrap">
+                <div class="tf-multi-cat-tags" id="tf-leeftijd-tags"></div>
+                <select id="tf-leeftijd-add" class="filter-select tf-leeftijd-add">
+                  <option value="">+ Categorie toevoegen</option>
+                  <optgroup label="Jongens (JO)">
+                    <option value="JO7">JO7</option><option value="JO8">JO8</option>
+                    <option value="JO9">JO9</option><option value="JO10">JO10</option>
+                    <option value="JO11">JO11</option><option value="JO12">JO12</option>
+                    <option value="JO13">JO13</option><option value="JO14">JO14</option>
+                    <option value="JO15">JO15</option><option value="JO17">JO17</option>
+                    <option value="JO19">JO19</option>
+                  </optgroup>
+                  <optgroup label="Meisjes (MO)">
+                    <option value="MO7">MO7</option><option value="MO8">MO8</option>
+                    <option value="MO9">MO9</option><option value="MO10">MO10</option>
+                    <option value="MO11">MO11</option><option value="MO12">MO12</option>
+                    <option value="MO13">MO13</option><option value="MO14">MO14</option>
+                    <option value="MO15">MO15</option><option value="MO17">MO17</option>
+                    <option value="MO19">MO19</option>
+                  </optgroup>
+                  <optgroup label="Senioren">
+                    <option value="Senioren">Senioren</option>
+                    <option value="Dames">Dames</option>
+                    <option value="Veteranen">Veteranen</option>
+                  </optgroup>
+                </select>
+              </div>
             </div>
             <div class="field-group">
               <label class="field-label">Begindatum</label>

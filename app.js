@@ -18119,6 +18119,16 @@ function switchMatchesSubview(view){
 }
 
 /* ---------- render list ---------- */
+/* All matches across all toernooien for quick access from Wedstrijden tab */
+function _tdsToggleTrnMatches(trnId){
+  const wrap = document.getElementById('trn-matches-' + trnId);
+  if(!wrap) return;
+  const isOpen = wrap.style.display !== 'none';
+  wrap.style.display = isOpen ? 'none' : '';
+  const btn = document.querySelector(`[data-trn-toggle="${trnId}"]`);
+  if(btn) btn.classList.toggle('open', !isOpen);
+}
+
 function renderToernooien(){
   const list = document.getElementById('toernooien-list');
   const empty = document.getElementById('toernooien-empty');
@@ -18137,23 +18147,49 @@ function renderToernooien(){
       + koRondes.reduce((s,r)=> s + (r.wedstrijden||[]).length, 0);
     const syncAgo = t.lastSyncAt ? _tSyncAgo(t.lastSyncAt) : null;
     const hasTournify = !!(t.tournifyUrl || t.tournifySlug);
-    return `<div class="toernooi-card" onclick="openToernooiDetail('${escapeHtml(t.id)}')">
-      <div class="tc-header">
+    const leeftijdStr = _tNormLeeftijd(t.leeftijdscategorie);
+
+    // Build expandable match list for Wedstrijden tab
+    let matchRows = '';
+    poules.forEach((p, pi) => {
+      (p.wedstrijden||[]).forEach((w, wi) => {
+        const gespeeld = w.gespeeld || (w.scoreThuis !== null && w.scoreThuis !== undefined);
+        const scoreStr = gespeeld ? `${w.scoreThuis}–${w.scoreUit}` : '–';
+        const hasNotitie = !!(w.notitie||'').trim();
+        const scoutedN = (w.scouted||[]).length;
+        matchRows += `<div class="trn-match-row" onclick="(()=>{openToernooiDetail('${escapeHtml(t.id)}'); setTimeout(()=>{tdsShowPoule(${pi}); setTimeout(()=>_tdsOpenMatchDetail(${pi},${wi}),150)},300)})()">
+          <span class="trn-mr-time">${escapeHtml(w.tijd||'')}</span>
+          <span class="trn-mr-teams">${escapeHtml(w.thuis||'—')} <b>${scoreStr}</b> ${escapeHtml(w.uit||'—')}</span>
+          <span class="trn-mr-poule">${escapeHtml(p.naam||'')}</span>
+          <span class="trn-mr-badges">${hasNotitie?'📝':''} ${scoutedN?`👤${scoutedN}`:''}</span>
+        </div>`;
+      });
+    });
+
+    return `<div class="toernooi-card">
+      <div class="tc-header" onclick="openToernooiDetail('${escapeHtml(t.id)}')">
         <div class="tc-naam">${escapeHtml(t.naam || '—')}</div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-3,#9aa3b7);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
       </div>
       <div class="tc-badges">
-        ${t.leeftijdscategorie ? `<span class="tc-badge gold">${escapeHtml(t.leeftijdscategorie)}</span>` : ''}
+        ${leeftijdStr ? `<span class="tc-badge gold">${escapeHtml(leeftijdStr)}</span>` : ''}
         ${t.format ? `<span class="tc-badge blue">${escapeHtml(t.format)}</span>` : ''}
-        ${poules.length ? `<span class="tc-badge muted">${poules.length} poules</span>` : ''}
-        ${koRondes.length ? `<span class="tc-badge muted"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 21h8M12 17v4M5 3H19L17 11C17 14.866 14.866 17 12 17C9.134 17 7 14.866 7 11L5 3Z"/></svg> knockout</span>` : ''}
+        ${poules.length ? `<span class="tc-badge muted">${poules.length} poule${poules.length>1?'s':''}</span>` : ''}
+        ${koRondes.length ? `<span class="tc-badge muted">🏆 knockout</span>` : ''}
       </div>
       <div class="tc-meta">
-        <span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>${_tFormatDatum(t.datum, t.datumEinde)}</span>
-        ${t.locatie ? `<span><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${escapeHtml(t.locatie)}</span>` : ''}
+        <span>${_tFormatDatum(t.datum, t.datumEinde)}</span>
+        ${t.locatie ? `<span>${escapeHtml(t.locatie)}</span>` : ''}
         ${nWedstrijden ? `<span>${nWedstrijden} wedstrijden</span>` : ''}
       </div>
-      ${hasTournify && syncAgo ? `<div class="tc-sync-row"><div class="tc-sync-info"><span class="tc-sync-dot"></span>Tournify · ${syncAgo}</div><span style="font-size:11px;color:var(--accent,#4f6ef7)">Sync beschikbaar</span></div>` : ''}
+      ${hasTournify && syncAgo ? `<div class="tc-sync-row"><div class="tc-sync-info"><span class="tc-sync-dot"></span>Tournify · ${syncAgo}</div></div>` : ''}
+      ${matchRows ? `
+        <button class="tc-matches-toggle" data-trn-toggle="${escapeHtml(t.id)}" onclick="event.stopPropagation(); _tdsToggleTrnMatches('${escapeHtml(t.id)}')">
+          Wedstrijden bekijken &amp; notities <span class="tc-toggle-arrow">▾</span>
+        </button>
+        <div class="trn-matches-wrap" id="trn-matches-${escapeHtml(t.id)}" style="display:none">
+          ${matchRows}
+        </div>` : ''}
     </div>`;
   }).join('');
 }
@@ -18199,6 +18235,8 @@ window.tdsGoRound             = (n) => tdsGoRound(n);
 window.tdsMoveRound           = (d) => tdsMoveRound(d);
 window.tdsShowPoule           = (i) => tdsShowPoule(i);
 window.switchMatchesSubview   = (v) => switchMatchesSubview(v);
+window._tdsOpenMatchDetail    = (pi, wi) => _tdsOpenMatchDetail(pi, wi);
+window._tdsToggleTrnMatches   = (id) => _tdsToggleTrnMatches(id);
 
 function openToernooiDetail(id){
   const t = tournamentsCache.find(x => x.id === id);
@@ -18215,7 +18253,7 @@ function openToernooiDetail(id){
   document.getElementById('tds-meta').textContent = [
     _tFormatDatum(t.datum, t.datumEinde),
     t.locatie,
-    t.leeftijdscategorie,
+    _tNormLeeftijd(t.leeftijdscategorie),
     t.format
   ].filter(Boolean).join(' · ');
 
@@ -18269,7 +18307,7 @@ function tdsShowPoule(idx){
   const heeftUitslagen = (p.wedstrijden||[]).some(w => w.gespeeld || w.scoreThuis!=null);
   let html = '';
   if(stand && stand.length){
-    const standLabel = heeftUitslagen ? 'Stand' : 'Teams';
+    const standLabel = heeftUitslagen ? 'Stand' : 'Deelnemers';
     html += `<div class="tds-stand-wrap">
       <div class="tds-section-title">${standLabel}</div>
       <table class="tds-stand"><thead><tr>
@@ -18280,7 +18318,8 @@ function tdsShowPoule(idx){
     stand.forEach((r,i) => {
       const saldo = (r.GV||0)-(r.GT||0);
       const saldoStr = saldo>0?`+${saldo}`:String(saldo);
-      html += `<tr class="${i===0&&heeftUitslagen?'leader':''}">
+      const rowCls = i===0&&heeftUitslagen?'leader':i===stand.length-1&&heeftUitslagen&&stand.length>2?'last':'';
+      html += `<tr class="${rowCls}">
         <td class="tds-rk">${i+1}</td>
         <td class="tds-team">${escapeHtml(r.team||'—')}</td>
         <td>${r.G||0}</td><td>${r.W||0}</td><td>${r.Ge||0}</td><td>${r.V||0}</td>
@@ -18292,48 +18331,53 @@ function tdsShowPoule(idx){
   }
 
   // ── Wedstrijden per dag ──
-  html += `<div class="tds-section-title" style="margin-top:16px">Programma</div>`;
-  days.forEach(dag => {
-    const dayWeds = byDag[dag];
-    html += `<div class="tds-dag-label">${_tDagLabel(dag, dayWeds[0]?.type)}</div>`;
-    dayWeds.sort((a,b)=>(a.tijd||'').localeCompare(b.tijd||'')).forEach(w => {
-      const gespeeld = w.gespeeld || (w.scoreThuis !== null && w.scoreThuis !== undefined);
-      const scoreHtml = gespeeld
-        ? `<span class="tds-match-score">${w.scoreThuis}–${w.scoreUit}</span>`
-        : `<span class="tds-match-score pending">–</span>`;
-      const typeBadge = (w.type && w.type !== 'groep')
-        ? `<span class="tds-match-type-badge">${w.type==='finale'?'Finale':w.type==='3e4e'?'3e/4e':w.type}</span>`
-        : '';
-      const wIdx = (p.wedstrijden||[]).indexOf(w);
-      const scoutedPlayers = (w.scouted||[]);
-      const scoutedChips = scoutedPlayers.map(sp =>
-        `<span class="tds-scout-chip" data-remove-scout="${escapeHtml(sp.id||sp.naam)}" data-widx="${wIdx}" title="Verwijder">${escapeHtml(sp.naam||sp.id)}<span class="tds-scout-chip-x">×</span></span>`
-      ).join('');
-      html += `<div class="tds-match" data-widx="${wIdx}">
-        <span class="tds-match-time">${escapeHtml(w.tijd||'??:??')}</span>
-        <div class="tds-match-teams">
-          <span class="tds-match-home${gespeeld && w.scoreThuis > w.scoreUit?' winner':''}">${escapeHtml(w.thuis||'—')}</span>
-          ${scoreHtml}
-          <span class="tds-match-away${gespeeld && w.scoreUit > w.scoreThuis?' winner':''}">${escapeHtml(w.uit||'—')}</span>
-        </div>
-        ${w.veld?`<span class="tds-match-field">V${escapeHtml(w.veld)}</span>`:''}
-        ${typeBadge}
-        <button class="tds-scout-btn" data-widx="${wIdx}" title="Scout speler uit deze wedstrijd">👤+</button>
-        ${scoutedChips?`<div class="tds-scout-chips">${scoutedChips}</div>`:''}
-      </div>`;
+  if(days.length){
+    html += `<div class="tds-section-title" style="margin-top:20px">Wedstrijden <span class="tds-match-hint">Klik voor notities en scouting</span></div>`;
+    days.forEach(dag => {
+      const dayWeds = byDag[dag];
+      html += `<div class="tds-dag-label">${_tDagLabel(dag, dayWeds[0]?.type)}</div>`;
+      dayWeds.sort((a,b)=>(a.tijd||'').localeCompare(b.tijd||'')).forEach(w => {
+        const gespeeld = w.gespeeld || (w.scoreThuis !== null && w.scoreThuis !== undefined);
+        const scoreHtml = gespeeld
+          ? `<span class="tds-match-score played">${w.scoreThuis}–${w.scoreUit}</span>`
+          : `<span class="tds-match-score pending">–</span>`;
+        const typeBadge = (w.type && w.type !== 'groep')
+          ? `<span class="tds-match-type-badge ${w.type==='finale'?'finale':''}">${w.type==='finale'?'🏆 Finale':w.type==='3e4e'?'3e/4e pl.':w.type}</span>`
+          : '';
+        const wIdx = (p.wedstrijden||[]).indexOf(w);
+        const scoutedCount = (w.scouted||[]).length;
+        const hasNotitie = !!(w.notitie||'').trim();
+        const notitiePreview = hasNotitie ? `<span class="tds-match-notitie-preview" title="${escapeHtml(w.notitie||'')}">📝 ${escapeHtml((w.notitie||'').slice(0,40))}${(w.notitie||'').length>40?'…':''}</span>` : '';
+        const scoutBadge = scoutedCount ? `<span class="tds-scouted-badge" title="${scoutedCount} gescoute speler(s)">👤 ${scoutedCount}</span>` : '';
+        html += `<div class="tds-match tds-match-clickable" data-widx="${wIdx}" title="Klik voor wedstrijd notities &amp; scouting">
+          <div class="tds-match-main">
+            <span class="tds-match-time">${escapeHtml(w.tijd||'??:??')}</span>
+            <div class="tds-match-teams">
+              <span class="tds-match-home${gespeeld && w.scoreThuis > w.scoreUit?' winner':''}">${escapeHtml(w.thuis||'—')}</span>
+              ${scoreHtml}
+              <span class="tds-match-away${gespeeld && w.scoreUit > w.scoreThuis?' winner':''}">${escapeHtml(w.uit||'—')}</span>
+            </div>
+            ${w.veld?`<span class="tds-match-field">V${escapeHtml(String(w.veld))}</span>`:''}
+            ${typeBadge}
+          </div>
+          ${notitiePreview||scoutBadge?`<div class="tds-match-meta-row">${notitiePreview}${scoutBadge}</div>`:''}
+        </div>`;
+      });
     });
-  });
+  } else {
+    html += `<div class="tds-empty">Geen wedstrijden gepland.</div>`;
+  }
   body.innerHTML = html;
 
-  // Scout-knop click handler
-  body.querySelectorAll('.tds-scout-btn').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      const widx = parseInt(btn.dataset.widx, 10);
-      _tdsOpenScoutPicker(idx, widx);
+  // Click on match row → open match detail
+  body.querySelectorAll('.tds-match-clickable').forEach(row => {
+    row.addEventListener('click', e => {
+      if(e.target.closest('[data-remove-scout]')) return;
+      const widx = parseInt(row.dataset.widx, 10);
+      _tdsOpenMatchDetail(idx, widx);
     });
   });
-  // Scout chip verwijderen
+  // Scout chip verwijderen (legacy chips still possible)
   body.querySelectorAll('[data-remove-scout]').forEach(chip => {
     chip.addEventListener('click', e => {
       e.stopPropagation();
@@ -18342,6 +18386,148 @@ function tdsShowPoule(idx){
       _tdsRemoveScout(idx, widx, spId);
     });
   });
+}
+
+/* ── Match detail panel (notities + scouting) ─────────────────────── */
+function _tdsOpenMatchDetail(pouleIdx, wedstrIdx){
+  const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
+  if(!t) return;
+  const p = (t.poules||[])[pouleIdx];
+  const w = (p?.wedstrijden||[])[wedstrIdx];
+  if(!w) return;
+
+  document.getElementById('tds-match-detail')?.remove();
+
+  const gespeeld = w.gespeeld || (w.scoreThuis !== null && w.scoreThuis !== undefined);
+  const scoreStr = gespeeld ? ` — ${w.scoreThuis}–${w.scoreUit}` : '';
+  const trnNaam = t.naam || 'Toernooi';
+  const poulNaam = p.naam || '';
+
+  const panel = document.createElement('div');
+  panel.id = 'tds-match-detail';
+  panel.className = 'tds-match-detail-overlay';
+
+  const scoutedHtml = (w.scouted||[]).map(sp => `
+    <div class="tds-md-scout-row" data-sp-id="${escapeHtml(sp.id||sp.naam)}">
+      <div class="tds-md-scout-top">
+        <span class="tds-md-scout-naam">${escapeHtml(sp.naam||sp.id||'—')}</span>
+        <button class="tds-md-scout-del" data-del-scout="${escapeHtml(sp.id||sp.naam)}" title="Verwijder">×</button>
+      </div>
+      <textarea class="tds-md-scout-notitie filter-input" rows="2"
+        placeholder="Notitie over deze speler…"
+        data-scout-id="${escapeHtml(sp.id||sp.naam)}">${escapeHtml(sp.notitie||'')}</textarea>
+    </div>`).join('');
+
+  panel.innerHTML = `
+    <div class="tds-match-detail-sheet">
+      <div class="tds-md-header">
+        <div class="tds-md-header-info">
+          <div class="tds-md-title">${escapeHtml(w.thuis||'—')} <span class="tds-md-vs">vs</span> ${escapeHtml(w.uit||'—')}</div>
+          <div class="tds-md-sub">${escapeHtml(trnNaam)}${poulNaam?' · '+escapeHtml(poulNaam):''}${w.tijd?' · '+escapeHtml(w.tijd):''}${w.dag?' · '+_tDagLabel(w.dag):''}${w.veld?' · Veld '+escapeHtml(String(w.veld)):''}</div>
+        </div>
+        <button class="tds-md-close" id="tds-md-close">×</button>
+      </div>
+      <div class="tds-md-score-row">
+        <span class="tds-md-score-team">${escapeHtml(w.thuis||'—')}</span>
+        <div class="tds-md-score-inputs">
+          <input type="number" id="tds-md-score-thuis" class="tds-md-score-input" min="0" max="99" value="${gespeeld ? w.scoreThuis : ''}" placeholder="–">
+          <span class="tds-md-score-sep">:</span>
+          <input type="number" id="tds-md-score-uit" class="tds-md-score-input" min="0" max="99" value="${gespeeld ? w.scoreUit : ''}" placeholder="–">
+        </div>
+        <span class="tds-md-score-team">${escapeHtml(w.uit||'—')}</span>
+      </div>
+
+      <div class="tds-md-body">
+        <!-- Wedstrijd notitie -->
+        <div class="tds-md-section-title">📋 Wedstrijd notitie</div>
+        <textarea id="tds-md-notitie" class="tds-md-notitie-area filter-input" rows="4"
+          placeholder="Notities over deze wedstrijd… bijv. speelstijl, tactiek, bijzonderheden">${escapeHtml(w.notitie||'')}</textarea>
+
+        <!-- Scouting sectie -->
+        <div class="tds-md-section-title" style="margin-top:16px">👤 Gescoute spelers <button class="tds-md-scout-add-btn" id="tds-md-scout-add">+ Scout speler</button></div>
+        <div id="tds-md-scouts-list">${scoutedHtml || '<div class="tds-empty" style="margin:8px 0 0">Nog geen gescoute spelers.</div>'}</div>
+      </div>
+
+      <div class="tds-md-footer">
+        <button class="btn-ghost-sm" id="tds-md-cancel">Annuleren</button>
+        <button class="btn-primary-sm" id="tds-md-save">💾 Opslaan</button>
+      </div>
+    </div>`;
+
+  document.body.appendChild(panel);
+  panel.querySelector('#tds-md-close').addEventListener('click', () => panel.remove());
+  panel.querySelector('#tds-md-cancel').addEventListener('click', () => panel.remove());
+  panel.addEventListener('click', e => { if(e.target === panel) panel.remove(); });
+
+  // Save
+  panel.querySelector('#tds-md-save').addEventListener('click', async () => {
+    const notitie = panel.querySelector('#tds-md-notitie').value;
+    const scoreThuisEl = panel.querySelector('#tds-md-score-thuis');
+    const scoreUitEl = panel.querySelector('#tds-md-score-uit');
+    const scoreThuisVal = scoreThuisEl?.value !== '' ? parseInt(scoreThuisEl.value) : null;
+    const scoreUitVal = scoreUitEl?.value !== '' ? parseInt(scoreUitEl.value) : null;
+    // Collect updated scout notities
+    const scoutUpdates = {};
+    panel.querySelectorAll('.tds-md-scout-notitie').forEach(ta => {
+      scoutUpdates[ta.dataset.scoutId] = ta.value;
+    });
+    await _tdsSaveMatchDetail(pouleIdx, wedstrIdx, notitie, scoutUpdates, scoreThuisVal, scoreUitVal);
+    panel.remove();
+  });
+
+  // Scout add button
+  panel.querySelector('#tds-md-scout-add').addEventListener('click', () => {
+    panel.remove();
+    _tdsOpenScoutPicker(pouleIdx, wedstrIdx);
+  });
+
+  // Delete scout
+  panel.querySelectorAll('[data-del-scout]').forEach(btn => {
+    btn.addEventListener('click', async e => {
+      e.stopPropagation();
+      const spId = btn.dataset.delScout;
+      await _tdsRemoveScout(pouleIdx, wedstrIdx, spId);
+      panel.remove();
+      // re-open to reflect updated state
+      setTimeout(() => _tdsOpenMatchDetail(pouleIdx, wedstrIdx), 100);
+    });
+  });
+
+  // Cmd/Ctrl+Enter in notitieveld = opslaan
+  panel.querySelector('#tds-md-notitie').addEventListener('keydown', e => {
+    if(e.key==='Enter' && (e.ctrlKey||e.metaKey)){ e.preventDefault(); panel.querySelector('#tds-md-save').click(); }
+  });
+
+  panel.querySelector('#tds-md-notitie').focus();
+}
+
+async function _tdsSaveMatchDetail(pouleIdx, wedstrIdx, notitie, scoutUpdates, scoreThuis, scoreUit){
+  if(!currentUser || !__tdsCurrentId) return;
+  const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
+  if(!t) return;
+  const poules = JSON.parse(JSON.stringify(t.poules||[]));
+  const w = poules[pouleIdx]?.wedstrijden?.[wedstrIdx];
+  if(!w) return;
+  w.notitie = notitie || '';
+  // Score opslaan
+  if(scoreThuis !== null && scoreThuis !== undefined && !isNaN(scoreThuis)){
+    w.scoreThuis = scoreThuis;
+    w.scoreUit = (scoreUit !== null && !isNaN(scoreUit)) ? scoreUit : 0;
+    w.gespeeld = true;
+  }
+  // Update scout notities
+  if(scoutUpdates && w.scouted){
+    w.scouted = w.scouted.map(sp => ({
+      ...sp,
+      notitie: scoutUpdates.hasOwnProperty(sp.id||sp.naam) ? scoutUpdates[sp.id||sp.naam] : (sp.notitie||'')
+    }));
+  }
+  try{
+    const ref = doc(collection(db,'users',currentUser.uid,'toernooien'), __tdsCurrentId);
+    await setDoc(ref, { poules, updated: Date.now() }, { merge: true });
+    // Refresh de poule view
+    setTimeout(() => { try{ tdsShowPoule(__tdsCurrentPoule); }catch(_){} }, 200);
+  }catch(err){ console.error('Match detail opslaan mislukt:', err); alert('Opslaan mislukt: '+err.message); }
 }
 
 function _tdsOpenScoutPicker(pouleIdx, wedstrIdx){
@@ -18646,17 +18832,76 @@ let __tfParsedData = null;
 let __tfEditId = null;
 let __tfFotoBase64 = null;
 
+/* ── Leeftijdscategorie multi-select helpers ── */
+let _tfLeeftijden = [];
+const _TF_CAT_OPTIONS = ['JO7','JO8','JO9','JO10','JO11','JO12','JO13','JO14','JO15','JO17','JO19',
+  'MO7','MO8','MO9','MO10','MO11','MO12','MO13','MO14','MO15','MO17','MO19',
+  'Senioren','Dames','Veteranen'];
+
+function _tfLeeftijdRender(){
+  const wrap = document.getElementById('tf-leeftijd-tags');
+  const addSel = document.getElementById('tf-leeftijd-add');
+  if(!wrap) return;
+  wrap.innerHTML = _tfLeeftijden.map(v =>
+    `<span class="tf-cat-tag">${escapeHtml(v)}<button type="button" class="tf-cat-tag-x" data-cat="${escapeHtml(v)}" title="Verwijder">×</button></span>`
+  ).join('');
+  wrap.querySelectorAll('.tf-cat-tag-x').forEach(btn => {
+    btn.addEventListener('click', () => _tfLeeftijdRemove(btn.dataset.cat));
+  });
+  // grey out already-selected in dropdown
+  if(addSel){
+    Array.from(addSel.options).forEach(opt => {
+      opt.disabled = opt.value && _tfLeeftijden.includes(opt.value);
+    });
+  }
+}
+function _tfLeeftijdAdd(val){
+  if(!val || _tfLeeftijden.includes(val)) return;
+  _tfLeeftijden.push(val);
+  _tfLeeftijdRender();
+  const addSel = document.getElementById('tf-leeftijd-add');
+  if(addSel) addSel.value = '';
+}
+function _tfLeeftijdRemove(val){
+  _tfLeeftijden = _tfLeeftijden.filter(v => v !== val);
+  _tfLeeftijdRender();
+}
+function _tfGetLeeftijden(){ return _tfLeeftijden.slice(); }
+function _tfSetLeeftijden(val){
+  if(Array.isArray(val)){
+    _tfLeeftijden = val.filter(Boolean);
+  } else if(typeof val === 'string' && val){
+    // May be comma-separated: "JO9, JO10"
+    _tfLeeftijden = val.split(/[,;]+/).map(s=>s.trim()).filter(Boolean);
+  } else {
+    _tfLeeftijden = [];
+  }
+  _tfLeeftijdRender();
+}
+function _tfLeeftijdStr(){ return _tfGetLeeftijden().join(', '); }
+
+/* Normalize leeftijdscategorie for display (string or array → string) */
+function _tNormLeeftijd(v){
+  if(Array.isArray(v)) return v.join(', ');
+  return v || '';
+}
+
 function openToernooiForm(id){
   __tfEditId = id || null;
   __tfParsedData = null;
   __tfFotoBase64 = null;
+  _tfLeeftijden = [];
   const ov = document.getElementById('toernooi-form-overlay');
   if(!ov) return;
   const title = document.getElementById('toernooi-form-title');
   if(title) title.textContent = id ? 'Toernooi bewerken' : 'Toernooi toevoegen';
   // clear fields
-  ['tf-naam','tf-leeftijd','tf-locatie','tf-tournify-url','tf-reglement'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
-  ['tf-datum','tf-datum-einde'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['tf-naam','tf-locatie','tf-tournify-url','tf-reglement'].forEach(fid=>{ const el=document.getElementById(fid); if(el) el.value=''; });
+  ['tf-datum','tf-datum-einde'].forEach(fid=>{ const el=document.getElementById(fid); if(el) el.value=''; });
+  _tfLeeftijden = []; _tfLeeftijdRender();
+  // wire the leeftijd-add dropdown
+  const addSel = document.getElementById('tf-leeftijd-add');
+  if(addSel){ addSel.onchange = () => { if(addSel.value) _tfLeeftijdAdd(addSel.value); }; }
   document.getElementById('tf-preview').style.display='none';
   document.getElementById('tf-basic-fields').style.display='none';
   document.getElementById('tf-action-row').style.display='none';
@@ -18681,7 +18926,7 @@ function _tfFillForm(t){
   document.getElementById('tf-basic-fields').style.display='';
   document.getElementById('tf-action-row').style.display='flex';
   if(t.naam) document.getElementById('tf-naam').value=t.naam;
-  if(t.leeftijdscategorie) document.getElementById('tf-leeftijd').value=t.leeftijdscategorie;
+  if(t.leeftijdscategorie) _tfSetLeeftijden(t.leeftijdscategorie);
   if(t.datum) document.getElementById('tf-datum').value=t.datum;
   if(t.datumEinde) document.getElementById('tf-datum-einde').value=t.datumEinde;
   if(t.locatie) document.getElementById('tf-locatie').value=t.locatie;
@@ -19023,28 +19268,32 @@ function _tfParseText(text, url){
   return { naam, datum, datumEinde, locatie, leeftijdscategorie: leeftijd, format, reglement, poules, knockout: null };
 }
 
+function _tfNormLeeftijdVal(raw){
+  // Normalize "JO 9" -> "JO9", "jo9" -> "JO9", "u9" -> "JO9", "MO9" -> "MO9"
+  const s = String(raw).trim().replace(/\s+/g,'').toUpperCase();
+  if(/^[UO]\d/.test(s)) return 'JO' + s.slice(1);
+  if(/^JO\d/.test(s) || /^MO\d/.test(s)) return s;
+  return s;
+}
 function _tfFillBasicFromParsed(p){
   if(p.naam) document.getElementById('tf-naam').value=p.naam;
   if(p.leeftijdscategorie){
-    const sel = document.getElementById('tf-leeftijd');
-    if(sel){
-      // Normaliseer: "JO 9" -> "JO9", "jo9" -> "JO9", "MO9" -> "MO9"
-      const raw = String(p.leeftijdscategorie).trim().replace(/\s+/g,'').toUpperCase().replace(/^O(\d)/,'JO$1');
-      // Probeer exacte optie, anders eerste match die de waarde bevat
-      const opts = Array.from(sel.options);
-      const exact = opts.find(o => o.value.toUpperCase() === raw);
-      if(exact) sel.value = exact.value;
-      else {
-        const partial = opts.find(o => o.value && raw.includes(o.value.replace(/[JM]/i,'')));
-        if(partial) sel.value = partial.value;
-      }
-    }
+    // Support both string "JO9" and array ["JO9","JO10"] and comma-separated
+    const cats = Array.isArray(p.leeftijdscategorie)
+      ? p.leeftijdscategorie
+      : String(p.leeftijdscategorie).split(/[,;]+/).map(s=>s.trim()).filter(Boolean);
+    const normalized = cats.map(_tfNormLeeftijdVal).filter(v => _TF_CAT_OPTIONS.includes(v) || v.length > 0);
+    // Add only the ones not already selected
+    normalized.forEach(v => {
+      if(v && !_tfLeeftijden.includes(v)) _tfLeeftijden.push(v);
+    });
+    _tfLeeftijdRender();
   }
   if(p.datum) document.getElementById('tf-datum').value=p.datum;
   if(p.datumEinde) document.getElementById('tf-datum-einde').value=p.datumEinde;
   if(p.locatie) document.getElementById('tf-locatie').value=p.locatie;
   if(p.reglement) document.getElementById('tf-reglement').value=p.reglement;
-  const sel=document.getElementById('tf-format'); if(sel&&p.format) sel.value=p.format;
+  const fmtSel=document.getElementById('tf-format'); if(fmtSel&&p.format) fmtSel.value=p.format;
 }
 
 function _tfShowPreview(parsed){
@@ -19295,9 +19544,10 @@ async function saveToernooi(){
   const btn = document.getElementById('tf-save-btn');
   btn.disabled=true; btn.textContent='Opslaan…';
   try{
+    const _cats = _tfGetLeeftijden();
     const data = {
       naam: document.getElementById('tf-naam').value.trim() || (__tfParsedData?.naam||''),
-      leeftijdscategorie: (document.getElementById('tf-leeftijd')?.value||'').trim(),
+      leeftijdscategorie: _cats.length > 1 ? _cats.join(', ') : (_cats[0] || ''),
       datum: document.getElementById('tf-datum').value || (__tfParsedData?.datum||''),
       datumEinde: document.getElementById('tf-datum-einde').value || (__tfParsedData?.datumEinde||''),
       locatie: document.getElementById('tf-locatie').value.trim() || (__tfParsedData?.locatie||''),
@@ -19413,48 +19663,67 @@ function _renderDashToernooi(){
       // 3-kolom grid voor leeftijdscategorie-opties
       dd.className = 'sh-ac-dd sh-ac-dd--grid';
       dd.innerHTML = _items.map((it,i) =>
-        `<div class="sh-ac-item sh-ac-item--col${i===_cursor?' active':''}" data-idx="${i}" role="option" aria-selected="${i===_cursor}">
-          <span class="sh-ac-label">${_highlight(_esc(it.label), _inp.value.trim())}</span>
-        </div>`
+        `<div class="sh-ac-item sh-ac-item--col${i===_cursor?' active':''}" data-idx="${i}" role="option">${_esc(it.label||'')}</div>`
       ).join('');
     } else {
       dd.className = 'sh-ac-dd';
       dd.innerHTML = _items.map((it,i) =>
-        `<div class="sh-ac-item${i===_cursor?' active':''}" data-idx="${i}" role="option" aria-selected="${i===_cursor}">
-          <span class="sh-ac-label">${_highlight(_esc(it.label), _inp.value.trim())}</span>
-          ${it.sub ? `<span class="sh-ac-sub">${_esc(it.sub)}</span>` : ''}
-        </div>`
+        `<div class="sh-ac-item${i===_cursor?' active':''}" data-idx="${i}" role="option">${_esc(it.primary||it.label||'')}${it.secondary?`<span class="sh-ac-sub">${_esc(it.secondary)}</span>`:''}</div>`
       ).join('');
     }
     dd.style.display = 'block';
     _pos(_inp);
-    dd.querySelectorAll('.sh-ac-item').forEach(row => {
-      row.addEventListener('mousedown', e => { e.preventDefault(); _pick(_items[parseInt(row.dataset.idx,10)]); });
+    dd.querySelectorAll('.sh-ac-item').forEach((el, i) => {
+      el.addEventListener('mousedown', e => {
+        e.preventDefault();
+        _cursor = i;
+        if(_onPick && _items[i]) _onPick(_items[i]);
+        _close();
+      });
     });
-  }
-
-  function _highlight(label, q){
-    if(!q) return label;
-    try {
-      const re = new RegExp('(' + q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')', 'gi');
-      return label.replace(re, '<strong>$1</strong>');
-    } catch(_){ return label; }
-  }
-
-  function _pick(item){
-    if(!item || !_inp) return;
-    _inp.value = item.value;
-    _inp.dispatchEvent(new Event('input',{bubbles:true}));
-    _inp.dispatchEvent(new Event('change',{bubbles:true}));
-    if(_onPick) try{ _onPick(item, _inp); }catch(_){}
-    _close();
   }
 
   function _close(){
     const dd = document.getElementById(DD_ID);
     if(dd) dd.style.display = 'none';
-    _cursor = -1; _items = []; _inp = null; _onPick = null;
+    _inp = null; _items = []; _cursor = -1;
   }
+
+  function _pick(){
+    if(_cursor >= 0 && _items[_cursor]){
+      if(_onPick) _onPick(_items[_cursor]);
+    }
+    _close();
+  }
+
+  window.shAC = {
+    show(input, items, onPick){
+      _inp = input; _items = items; _cursor = -1; _onPick = onPick;
+      _render();
+    },
+    close: _close,
+    onKey(e){
+      if(!_items.length) return false;
+      if(e.key === 'ArrowDown'){
+        e.preventDefault();
+        _cursor = Math.min(_cursor+1, _items.length-1);
+        _render(); return true;
+      }
+      if(e.key === 'ArrowUp'){
+        e.preventDefault();
+        _cursor = Math.max(_cursor-1, 0);
+        _render(); return true;
+      }
+      if(e.key === 'Enter' && _cursor >= 0){
+        e.preventDefault();
+        _pick(); return true;
+      }
+      if(e.key === 'Escape'){
+        _close(); return true;
+      }
+      return false;
+    }
+  };
 
   document.addEventListener('click', e => {
     const dd = document.getElementById(DD_ID);
@@ -19470,6 +19739,7 @@ onAuthStateChanged(auth, async (user) => {
   if(user){
     currentUser = user;
     try { initApp(); } catch(e){ console.error('initApp failed', e); }
+    try { showApp(); } catch(e){ console.error('showApp failed', e); }
     try { if(typeof go === 'function') go('dashboard'); } catch(e){ console.error('go dashboard failed', e); }
     try { await loadUserRole(); } catch(e){ console.warn('loadUserRole failed', e); }
   } else {

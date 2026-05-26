@@ -17925,8 +17925,7 @@ function initApp(){
   ['mr-leeftijd','t-leeftijd','a-leeftijd','f-elftal'].forEach(id => {
     shUpgradeSelectToAC(id);
   });
-  // Toernooi-form leeftijdscategorie is al een text-input — direct AC wiren
-  shWireLeeftijdAC(document.getElementById('tf-leeftijd'));
+  // Toernooi-form leeftijdscategorie: multi-select tags-UI — geen AC nodig
 }
 
 function initAuthForms(){
@@ -19734,15 +19733,63 @@ function _renderDashToernooi(){
   window.addEventListener('resize', () => { if(_inp) _close(); });
 })();
 
-// ── Bootstrap ──────────────────────────────────────────────────────────
+// ── shWireClubAC / shWireLeeftijdAC / shUpgradeSelectToAC ──────────────
+/**
+ * Wire HV_CLUBS-autocomplete op een tekst-input.
+ * Typ 2+ tekens → dropdown met max 12 overeenkomsten.
+ */
+function shWireClubAC(input){
+  if(!input) return;
+  input.setAttribute('autocomplete','off');
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    if(!q || q.length < 2){ window.shAC?.close(); return; }
+    const clubs = (typeof HV_CLUBS !== 'undefined') ? HV_CLUBS : [];
+    const matches = clubs
+      .filter(c => c.naam && (
+        c.naam.toLowerCase().includes(q) ||
+        (c.keys||[]).some(k => k.includes(q))
+      ))
+      .slice(0, 12)
+      .map(c => ({
+        label:     c.naam,
+        primary:   c.naam,
+        secondary: [c.plaats, c.sportpark].filter(Boolean).join(' \xb7 ')
+      }));
+    if(!matches.length){ window.shAC?.close(); return; }
+    window.shAC?.show(input, matches, item => {
+      input.value = item.label;
+      input.dispatchEvent(new Event('change', {bubbles:true}));
+    });
+  });
+  input.addEventListener('keydown', e => {
+    if(window.shAC?.onKey(e)) e.preventDefault();
+  });
+  input.addEventListener('blur', () => setTimeout(() => window.shAC?.close(), 150));
+}
+
+/**
+ * Toernooi-form leeftijdscategorie is vervangen door multi-select tags-UI.
+ * Deze functie is een no-op zodat oude aanroepen geen ReferenceError geven.
+ */
+function shWireLeeftijdAC(input){ /* no-op: vervangen door multi-select tags-UI */ if(!input) return; }
+
+/**
+ * Upgrade select-element naar AC-input. Huidig gedrag: behoud select as-is.
+ */
+function shUpgradeSelectToAC(id){ /* huidige versie: select-elementen blijven intact */ }
+
+// ── Bootstrap ──────────────────────────────────────────────────────────────────
 onAuthStateChanged(auth, async (user) => {
   if(user){
     currentUser = user;
     try { initApp(); } catch(e){ console.error('initApp failed', e); }
+    try { subscribeData(); } catch(e){ console.error('subscribeData failed', e); }
     try { showApp(); } catch(e){ console.error('showApp failed', e); }
     try { if(typeof go === 'function') go('dashboard'); } catch(e){ console.error('go dashboard failed', e); }
     try { await loadUserRole(); } catch(e){ console.warn('loadUserRole failed', e); }
   } else {
+    if(typeof unsubscribeData === 'function') try { unsubscribeData(); } catch(_){}
     showLogin();
   }
 });

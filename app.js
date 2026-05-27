@@ -12645,45 +12645,79 @@ function renderMatches(){
 
     // s18b: kind === 'report' niet meer getoond in wedstrijden-overzicht
 
-    // s35dh: programma-item (staat in Programma, datum verleden, nog niet als aggregated)
+    // s84: programma-item — post-match kaart met opvolgen-sectie en pre-fill rapport
     if(m.kind === 'programma'){
       const _shKeyP = _shMatchKey(m);
       const _shIsVerwerktP = shIsWedstrijdVerwerkt(_shKeyP);
       const _progP = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === m.progId) : null;
       const _hasConceptP = _progP && _progP.wedstrijdrapport && _progP.wedstrijdrapport.status === 'concept';
-      const _snsP = _progP ? (_progP.snelnotities || []).length : 0;
+      const _spelers = _progP ? (_progP.spelers || []) : [];
+      const _sns = _progP ? (_progP.snelnotities || []) : [];
+      const _opvallendCount = _sns.filter(sn => sn && sn.is_opvallend).length;
+      const _snsP = _sns.length;
       const _wnsP = _progP ? (_progP.wedstrijdnotities || []).length : 0;
-      const _notesP = _snsP + _wnsP;
       const ageBadgeP = m.age ? `<span class="match-age-badge">${escapeHtml(m.age)}</span>` : '';
       const statusPillP = _shIsVerwerktP
         ? `<span class="match-status-pill" style="background:rgba(127,217,158,.18);color:#7fd99e;border:1px solid rgba(127,217,158,.3);">✓ Verwerkt</span>`
         : (_hasConceptP
             ? `<span class="match-status-pill" style="background:rgba(245,200,66,.15);color:#f5c842;border:1px solid rgba(245,200,66,.3);">📝 Concept</span>`
             : `<span class="match-status-pill" style="background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3);">📋 Programma</span>`);
-      const notesMetaP = _notesP > 0 ? `<span class="match-players-count">${_notesP} notitie${_notesP===1?'':'s'}</span>` : '';
+      // s84: samenvatting — spelers + opgevallen teller
+      const _sumParts = [];
+      if(_spelers.length > 0) _sumParts.push(_spelers.length + ' speler' + (_spelers.length===1?'':'s'));
+      if(_opvallendCount > 0) _sumParts.push('<span style="color:#f5c518">\u2b50 ' + _opvallendCount + ' opgevallen</span>');
+      else if(_snsP > 0) _sumParts.push(_snsP + ' notitie' + (_snsP===1?'':'s'));
+      const summaryMetaP = _sumParts.length ? `<span class="match-players-count">${_sumParts.join(' \u00b7 ')}</span>` : '';
+      // s84: dropdown rijen — opvallende spelers eerst, dan overige met notitie
+      let _dropRows = '';
+      if(_spelers.length > 0){
+        const _opvSp = _spelers.filter(sp => { const sn=_sns.find(s=>s&&s.spelerKey===sp.id); return sn&&sn.is_opvallend; });
+        const _ovSp  = _spelers.filter(sp => { const sn=_sns.find(s=>s&&s.spelerKey===sp.id); return !(sn&&sn.is_opvallend); });
+        if(_opvSp.length){
+          _dropRows += `<div class="pm-drop-section">\u2b50 Opvolgen (${_opvSp.length})</div>`;
+          _dropRows += _opvSp.map(sp => {
+            const sn = _sns.find(s=>s&&s.spelerKey===sp.id);
+            const naam = sp.naam||[sp.voornaam,sp.achternaam].filter(Boolean).join(' ')||'?';
+            const prev = sn&&sn.tekst ? escapeHtml(sn.tekst.slice(0,80))+(sn.tekst.length>80?'\u2026':'') : '';
+            return `<div class="pm-drop-row is-opv"><div class="pm-drop-info"><div class="pm-drop-name">${escapeHtml(naam)}</div>${prev?`<div class="pm-drop-note">${prev}</div>`:''}</div><button type="button" class="pm-drop-btn" data-pm-rapport="${escapeHtml(m.progId)}" data-pm-sp-id="${escapeHtml(sp.id)}">\u2192 Rapport</button></div>`;
+          }).join('');
+        }
+        if(_ovSp.length){
+          _dropRows += `<div class="pm-drop-section">Spelers (${_ovSp.length})</div>`;
+          _dropRows += _ovSp.map(sp => {
+            const sn = _sns.find(s=>s&&s.spelerKey===sp.id);
+            const naam = sp.naam||[sp.voornaam,sp.achternaam].filter(Boolean).join(' ')||'?';
+            const prev = sn&&sn.tekst ? escapeHtml(sn.tekst.slice(0,60))+(sn.tekst.length>60?'\u2026':'') : '';
+            return `<div class="pm-drop-row"><div class="pm-drop-info"><div class="pm-drop-name">${escapeHtml(naam)}</div>${prev?`<div class="pm-drop-note">${prev}</div>`:''}</div><button type="button" class="pm-drop-btn secondary" data-pm-rapport="${escapeHtml(m.progId)}" data-pm-sp-id="${escapeHtml(sp.id)}">\u2192 Rapport</button></div>`;
+          }).join('');
+        }
+      }
+      const _chevP = _dropRows ? `<span class="match-chevron pm-chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>` : '';
       html += `
-        <div class="match-card match-report-card${_shIsVerwerktP?' locked':''}" data-prog-match-id="${escapeHtml(m.progId)}" data-match-key="${escapeHtml(_shKeyP)}">
-          <div class="match-date">
+        <div class="match-card pm-card${_shIsVerwerktP?' locked':''}" data-prog-match-id="${escapeHtml(m.progId)}" data-match-key="${escapeHtml(_shKeyP)}">
+          <div class="match-date pm-toggle">
             <div class="match-date-day">${d.day}</div>
             <div class="match-date-month">${d.month}</div>
             <div class="match-date-year">${d.year}</div>
           </div>
-          <div class="match-teams">
+          <div class="match-teams pm-toggle">
             <div class="match-teams-row">
               <span class="match-team-home">${thuisClean}</span>
               <span class="match-vs">vs</span>
               <span class="match-team-away">${uitClean}</span>
+              ${_chevP}
             </div>
             <div class="match-meta">
               ${statusPillP}
               ${ageBadgeP}
-              ${notesMetaP}
+              ${summaryMetaP}
             </div>
             ${_shBannerHTML(m)}
           </div>
           <div class="match-report-click-hint" aria-hidden="true">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
           </div>
+          ${_dropRows ? `<div class="match-dropdown pm-dropdown" style="display:none">${_dropRows}</div>` : ''}
         </div>
       `;
       return;

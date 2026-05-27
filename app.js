@@ -5433,9 +5433,9 @@ function getMatchDurationMin(leeftijd){
   }
   return KNVB_DUUR_MIN[k] || 120;
 }
-// s35bk: pre-window 5 min vóór aftrap (startend), post-window = duur + 15 min (zojuist afgelopen)
+// s35bk: pre-window 5 min vóór aftrap (startend), post-window = duur + 5 min (zojuist afgelopen)
 const SCOUTING_PRE_MIN = 5;
-const SCOUTING_POST_MIN = 15;
+const SCOUTING_POST_MIN = 5;
 function getMatchWindow(prog){
   if(!prog || !prog.datum || !prog.tijd) return null;
   const [hh,mm] = String(prog.tijd).split(':').map(n=>parseInt(n,10));
@@ -5943,8 +5943,18 @@ function renderActiveScouting(){
       statusLabel = '✓ Afgelopen — ' + min + ' min geleden gestopt';
     } else if(kickT){
       // Fase 2: live (aftrap t/m einde speeltijd)
-      const min = Math.round((now.getTime() - kickT) / 60000);
-      statusLabel = '● Live — ' + min + ' min na aftrap';
+      // s82: 1e helft / rust / 2e helft op basis van leeftijdscategorie
+      const minElapsed = Math.round((now.getTime() - kickT) / 60000);
+      const halfDur    = Math.round(matchDur / 2);
+      const breakEst   = 10; // geschatte rustduur in minuten
+      if(minElapsed < halfDur){
+        statusLabel = '● 1e helft — ' + minElapsed + "'";
+      } else if(minElapsed < halfDur + breakEst){
+        statusLabel = '⏸ Rust';
+      } else {
+        const m2 = Math.max(1, minElapsed - halfDur - breakEst);
+        statusLabel = '● 2e helft — ' + m2 + "'";
+      }
     }
     // s35bd: titel-format 'Club Elftal — Club Elftal'
     const teams = `${escapeHtml(prog.thuis||'?')}${prog.thuis_elftal?' '+escapeHtml(prog.thuis_elftal):''} — ${escapeHtml(prog.uit||'?')}${prog.uit_elftal?' '+escapeHtml(prog.uit_elftal):''}`;
@@ -15042,7 +15052,10 @@ function renderProgramma(){
     const locLabel = it.locatie||(clubInfo&&clubInfo.sportpark)||'';
     const isPast  = it.datum && it.datum < new Date().toISOString().slice(0,10);
     const canVerw = isPast && it.status!=='verwerkt' && spelersN>0;
-    const canLive = type==='wedstrijd' && it.datum===new Date().toISOString().slice(0,10) && spelersN>0;
+    const canLive = type==='wedstrijd' && spelersN>0 &&
+      (typeof isMatchInWindow === 'function'
+        ? isMatchInWindow(it, new Date())
+        : it.datum === new Date().toISOString().slice(0,10));
     return `<div class="pag-card ${stCls}" data-prog-id="${escapeHtml(it.id)}">
       <div class="pag-card-top">
         <span class="pag-icon">${icon}</span>
@@ -18124,10 +18137,15 @@ function switchMatchesSubview(sub){
 }
 window.switchMatchesSubview = switchMatchesSubview;
 
-// ── Bootstrap ──────────────────────────────────────────────────────────────────
+// ── Bootstrap ──
 onAuthStateChanged(auth, async (user) => {
   if(user){
-    currentUser = user;
-    try { initApp(); } catch(e){ console.error('initApp failed', e); }
-    try { subscribeData(); } catch(e){ console.error('subscribeData failed', e); }
-    try {
+    await initApp();
+    subscribeData();
+    showApp();
+    go('dashboard');
+    loadUserRole();
+  } else {
+    showLogin();
+  }
+});

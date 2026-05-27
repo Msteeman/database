@@ -4899,6 +4899,21 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .prog-speler-badge.full { background: rgba(34,197,94,0.16); color: #86efac; }
 
+/* koppeling-badge (groen bolletje + rapport-teller) */
+.prog-speler-koppel {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0.03em;
+  padding: 2px 8px; border-radius: 999px;
+  background: rgba(74,222,128,0.13); color: #4ade80;
+  white-space: nowrap;
+}
+.prog-koppel-dot {
+  display: inline-block;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: #4ade80;
+  flex-shrink: 0;
+}
+
 /* ---------- BOTTOM TAB NAV (mobile only) ---------- */
 .bottom-nav {
   display: none;

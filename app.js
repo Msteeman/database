@@ -13049,8 +13049,47 @@ function renderMatches(){
     });
   });
 
-  // s35dh: programma-match card klik → open Wedstrijd-bewerken modal
-  list.querySelectorAll('[data-prog-match-id]').forEach(card => {
+  // s84: pm-card expand/collapse + → Rapport knop
+  list.querySelectorAll('.pm-card').forEach(card => {
+    // Expand/collapse via toggle-zone
+    card.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-pm-rapport]');
+      if(btn){
+        // → Rapport knop: open spelersrapport pre-fill
+        e.stopPropagation();
+        const progId = btn.dataset.pmRapport;
+        const spId   = btn.dataset.pmSpId;
+        const prog   = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === progId) : null;
+        if(!prog){ if(typeof toast === 'function') toast('Wedstrijd niet gevonden', true); return; }
+        const sp = (prog.spelers||[]).find(s => s && s.id === spId);
+        if(!sp){ if(typeof toast === 'function') toast('Speler niet gevonden', true); return; }
+        const { player } = (typeof findPlayerMatch === 'function') ? findPlayerMatch(sp) : { player: null };
+        const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(prog.id, sp.id) : null;
+        if(typeof openScoutingPlayerForm === 'function') openScoutingPlayerForm(prog, sp, player, concept);
+        return;
+      }
+      // Edit-modal op klik op datum/teams (niet op knop/link)
+      if(e.target.closest('button, a, .pm-dropdown')) return;
+      // Toggle dropdown
+      const drop = card.querySelector('.pm-dropdown');
+      if(drop){
+        const isOpen = card.classList.contains('pm-open');
+        card.classList.toggle('pm-open', !isOpen);
+        drop.style.display = isOpen ? 'none' : 'block';
+        const chev = card.querySelector('.pm-chev');
+        if(chev) chev.style.transform = isOpen ? '' : 'rotate(180deg)';
+        return;
+      }
+      // Geen dropdown → open edit modal
+      const progId = card.dataset.progMatchId;
+      if(!progId) return;
+      const p = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === progId) : null;
+      if(!p){ if(typeof toast === 'function') toast('Wedstrijd niet gevonden', true); return; }
+      _shOpenEditModal({ kind:'programma', id:progId, progId, datum:p.datum, thuis:p.thuis, uit:p.uit, age:p.leeftijd||'', players:[] });
+    });
+  });
+  // s35dh: kaarten zonder .pm-card (oude match-report-card) → edit modal
+  list.querySelectorAll('[data-prog-match-id]:not(.pm-card)').forEach(card => {
     card.addEventListener('click', (e) => {
       if(e.target && e.target.closest && (e.target.closest('button') || e.target.closest('a'))) return;
       const progId = card.dataset.progMatchId;

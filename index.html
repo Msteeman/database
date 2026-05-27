@@ -659,8 +659,6 @@
 
         <!-- s19: Vandaag banner — prominente melding als er vandaag een wedstrijd is met spelers -->
         <div id="dash-vandaag-banner"></div>
-        <!-- s36g: Toernooi-banner (aankomend toernooi binnen 14 dagen) -->
-        <div id="dash-toernooi-banner-wrap"></div>
 
         <!-- s35dj: Unified dashboard agenda (live / vandaag / aankomend) -->
         <div id="dashboard-agenda-wrap">
@@ -1045,10 +1043,6 @@
             <!-- subview toggle -->
             <div class="matches-subview-toggle" id="matches-subview-toggle">
               <button class="msv-btn active" id="msv-wedstrijden" onclick="switchMatchesSubview('wedstrijden')">Wedstrijden</button>
-              <button class="msv-btn" id="msv-toernooien" onclick="switchMatchesSubview('toernooien')">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M8 21h8M12 17v4M5 3H19L17 11C17 14.866 14.866 17 12 17C9.134 17 7 14.866 7 11L5 3Z"/><path d="M5 7H3C2 7 1 8 1 9C1 11.5 3 13 5 13"/><path d="M19 7H21C22 7 23 8 23 9C23 11.5 21 13 19 13"/></svg>
-                Toernooien
-              </button>
             </div>
             <button class="btn btn-secondary" id="match-report-import-btn" style="display:none;" aria-hidden="true" tabindex="-1">Importeren</button>
             <button class="btn btn-ghost" id="match-report-bulk-delete-btn" style="display:none;" aria-hidden="true" tabindex="-1">Import ongedaan maken</button>
@@ -1056,34 +1050,14 @@
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Nieuw wedstrijdrapport
             </button>
-            <button class="btn btn-primary" id="toernooi-new-btn" style="display:none;" onclick="openToernooiForm()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Nieuw toernooi
-            </button>
           </div>
         </div>
 
-        <!-- ====== TOERNOOIEN SUBVIEW ====== -->
-        <div id="toernooien-subview" style="display:none;">
-          <div id="toernooien-list" class="toernooien-list"></div>
-          <div id="toernooien-empty" class="m-empty" style="display:none;">
-            <div class="m-empty-icon">
-              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 21h8M12 17v4M5 3H19L17 11C17 14.866 14.866 17 12 17C9.134 17 7 14.866 7 11L5 3Z"/><path d="M5 7H3C2 7 1 8 1 9C1 11.5 3 13 5 13"/><path d="M19 7H21C22 7 23 8 23 9C23 11.5 21 13 19 13"/></svg>
-            </div>
-            <div class="m-empty-title">Nog geen toernooien</div>
-            <div class="m-empty-sub">Voeg een toernooi toe via de knop rechts. Je kunt een Tournify-link koppelen, een foto uploaden of handmatig invullen.</div>
-            <button type="button" class="btn btn-primary" onclick="openToernooiForm()">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Toernooi toevoegen
-            </button>
-          </div>
-        </div>
 
         <!-- s35bq: stats-balk -->
         <div class="m-stats" id="match-stats">
           <div class="m-stat"><div class="m-stat-num" id="m-stat-total">0</div><div class="m-stat-lbl">Totaal</div></div>
           <div class="m-stat verwerkt"><div class="m-stat-num" id="m-stat-verwerkt">0</div><div class="m-stat-lbl">Verwerkt</div></div>
-          <div class="m-stat toernooi"><div class="m-stat-num" id="m-stat-toernooi">0</div><div class="m-stat-lbl">Toernooien</div></div>
         </div>
 
         <!-- s35bq: zoek + sort -->
@@ -1128,10 +1102,6 @@
             <button class="btn btn-primary" id="programma-new-btn">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               Afspraak inplannen
-            </button>
-            <button class="btn btn-ghost" id="programma-toernooi-btn" onclick="openToernooiForm()" style="border:1px solid rgba(245,197,66,0.4); color:var(--accent);">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 21h8M12 17v4M5 3h14l-1 7a6 6 0 0 1-12 0L5 3z"/><path d="M5 3H2M19 3h3"/></svg>
-              Toernooi
             </button>
           </div>
         </div>
@@ -1381,26 +1351,7 @@ algemeen:</textarea>
                   <option>1-4-1-4-1</option>
                   <option>Anders</option>
                 </select>
-              </div>
-              <div class="field">
-                <label>Uitslag (optioneel)</label>
-                <input id="f-w-uitslag" type="text" placeholder="Bijv. 3-1" />
-              </div>
-            </div>
-            <div class="field" style="margin-top:10px; padding:10px 12px; background:var(--bg-2); border:1px solid var(--border); border-radius:10px;">
-              <label style="display:flex; align-items:center; gap:10px; cursor:pointer; margin:0;">
-                <input id="f-w-toernooi" type="checkbox" style="width:18px; height:18px; cursor:pointer; accent-color:#f5c518;" />
-                <span style="font-weight:600; font-size:13px; color:var(--text-1);">Onderdeel van toernooi</span>
-              </label>
-              <div style="font-size:11.5px; color:var(--text-3); margin-top:6px; padding-left:28px;">
-                Aanvinken als deze wedstrijd onderdeel is van een toernooi. Meerdere rapporten op dezelfde datum worden dan gegroepeerd onder &eacute;&eacute;n &ldquo;Toernooi&rdquo;-blok in het wedstrijdenoverzicht.
-              </div>
-              <div class="field" style="margin-top:10px; padding-left:28px;" id="f-w-toernooi-naam-wrap">
-                <label style="font-size:11.5px; color:var(--text-3);">Toernooinaam (optioneel)</label>
-                <input id="f-w-toernooi-naam" type="text" placeholder="Bijv. KNVB Voorjaarstoernooi" />
-              </div>
-            </div>
-            <div class="field" style="margin-top:4px;">
+              </div>            <div class="field" style="margin-top:4px;">
               <label>Wedstrijdcontext (optioneel)</label>
               <textarea id="f-w-context" rows="2" placeholder="Beschrijving wedstrijd, niveau, tempo, doel..."></textarea>
             </div>
@@ -3449,238 +3400,6 @@ algemeen:</textarea>
 
 
   <!-- ====== TOERNOOI DETAIL MODAL ====== -->
-  <div id="toernooi-detail-overlay" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true" aria-label="Toernooidetail">
-    <div class="modal-sheet toernooi-detail-sheet" id="toernooi-detail-sheet">
-      <!-- Header -->
-      <div class="tds-header">
-        <div class="tds-header-left">
-          <button class="modal-back-btn" onclick="closeToernooiDetail()" aria-label="Sluiten">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <div>
-            <div class="tds-naam" id="tds-naam">—</div>
-            <div class="tds-meta" id="tds-meta">—</div>
-          </div>
-        </div>
-        <div class="tds-header-right">
-          <div class="tds-sync-status" id="tds-sync-status" style="display:none;">
-            <span class="tds-sync-dot" id="tds-sync-dot"></span>
-            <span id="tds-sync-label">Synchroniseren…</span>
-          </div>
-          <button class="btn btn-ghost btn-sm" id="tds-sync-btn" onclick="syncToernooiNow()" style="display:none;" title="Nu synchroniseren met Tournify">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            Sync
-          </button>
-          <button class="btn btn-ghost btn-sm" id="tds-info-btn" onclick="openToernooiInfo()" title="Toernooi-informatie & reglement">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            Info
-          </button>
-          <button class="btn-ghost-sm" onclick="openToernooiForm(window.__tdsCurrentId)" title="Bewerken" style="display:flex;align-items:center;gap:5px;">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Bewerk
-          </button>
-          <button class="btn-ghost-sm tds-delete-btn" onclick="deleteToernooi()" title="Toernooi verwijderen" style="display:flex;align-items:center;gap:5px;color:#e05252;">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-            Verwijder
-          </button>
-        </div>
-      </div>
-
-      <!-- Poule tabs -->
-      <div class="tds-poule-nav" id="tds-poule-nav"></div>
-
-      <!-- Poule content -->
-      <div class="tds-body" id="tds-body">
-        <div id="tds-poule-content"></div>
-      </div>
-
-      <!-- Knockout section -->
-      <div id="tds-knockout-wrap" style="display:none;">
-        <div class="tds-ko-divider">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M5 3H19L17 11C17 14.866 14.866 17 12 17C9.134 17 7 14.866 7 11L5 3Z"/></svg>
-          Knockout fase
-        </div>
-        <div class="tds-ko-container" id="tds-ko-container">
-          <div class="tds-ko-rounds" id="tds-ko-rounds"></div>
-          <div class="tds-ko-dots" id="tds-ko-dots"></div>
-          <div class="tds-ko-nav">
-            <button class="tds-ko-navbtn" id="tds-ko-prev" onclick="tdsMoveRound(-1)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
-            <span id="tds-ko-round-label">8e finales</span>
-            <button class="tds-ko-navbtn" id="tds-ko-next" onclick="tdsMoveRound(1)">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="9 18 15 12 9 6"/></svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ====== TOERNOOI INFO MODAL (reglement etc) ====== -->
-  <div id="toernooi-info-overlay" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true">
-    <div class="modal-sheet" style="max-width:600px; max-height:85vh; overflow-y:auto;">
-      <div class="modal-header">
-        <div class="modal-title">Toernooi-informatie</div>
-        <button class="modal-close" onclick="closeToernooiInfo()">&times;</button>
-      </div>
-      <div id="toernooi-info-body" style="padding:0 20px 24px;"></div>
-    </div>
-  </div>
-
-  <!-- ====== TOERNOOI FORM / IMPORT MODAL ====== -->
-  <div id="toernooi-form-overlay" class="modal-overlay" style="display:none;" role="dialog" aria-modal="true">
-    <div class="modal-sheet" style="max-width:680px; max-height:90vh; overflow-y:auto;">
-      <div class="modal-header">
-        <div class="modal-title" id="toernooi-form-title">Toernooi toevoegen</div>
-        <button class="modal-close" onclick="closeToernooiForm()">&times;</button>
-      </div>
-      <div style="padding:0 20px 24px;">
-
-        <!-- Import method tabs -->
-        <div class="tf-import-tabs" id="tf-import-tabs">
-          <button class="tf-itab active" id="tf-itab-url" onclick="tfSwitchImport('url')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
-            URL
-          </button>
-          <button class="tf-itab" id="tf-itab-foto" onclick="tfSwitchImport('foto')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-            Foto / Scan / PDF
-          </button>
-          <button class="tf-itab" id="tf-itab-manual" onclick="tfSwitchImport('manual')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Handmatig
-          </button>
-        </div>
-
-        <!-- URL import pane -->
-        <div id="tf-pane-url" class="tf-pane active">
-          <div class="field-group" style="margin-top:16px;">
-            <label class="field-label">URL van toernooiprogramma (website of Tournify-link)</label>
-            <input id="tf-url-input" type="url" placeholder="https://…" class="filter-input" style="width:100%;" />
-            <div class="field-hint" style="margin-top:4px;">Bijv. een Tournify live-pagina of websitepagina met het schema. Voor een PDF: gebruik de tab Foto / Scan / PDF.</div>
-          </div>
-          <button class="btn btn-primary" id="tf-url-parse-btn" onclick="tfParseUrl()" style="margin-top:12px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-            Schema inlezen
-          </button>
-          <div id="tf-url-status" style="margin-top:10px; font-size:13px; color:var(--muted,#9aa3b7); display:none;"></div>
-        <div class="tf-progress-wrap" id="tf-url-progress">
-          <div class="tf-progress-bar-track"><div class="tf-progress-bar-fill" id="tf-url-pb"></div></div>
-          <div class="tf-progress-steps" id="tf-url-steps"></div>
-        </div>
-        </div>
-
-        <!-- Foto import pane -->
-        <div id="tf-pane-foto" class="tf-pane" style="display:none;">
-          <!-- Twee duidelijke knoppen: camera OF bestand -->
-          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px;">
-            <button class="btn btn-ghost tf-upload-btn" onclick="document.getElementById('tf-camera-input').click()" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:18px 8px; border:1.5px dashed var(--border,#2a2d3e); border-radius:10px;">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-              <span style="font-size:13px; font-weight:500;">Foto maken</span>
-              <span style="font-size:11px; color:var(--muted,#9aa3b7);">Camera openen</span>
-              <input type="file" id="tf-camera-input" accept="image/jpeg,image/png,image/heic,image/heif,image/webp" capture="environment" style="display:none;" onchange="tfHandleFotoUpload(event)" />
-            </button>
-            <button class="btn btn-ghost tf-upload-btn" onclick="document.getElementById('tf-foto-input').click()" style="display:flex; flex-direction:column; align-items:center; gap:6px; padding:18px 8px; border:1.5px dashed var(--border,#2a2d3e); border-radius:10px;">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              <span style="font-size:13px; font-weight:500;">Bestand uploaden</span>
-              <span style="font-size:11px; color:var(--muted,#9aa3b7);">Foto, scan of PDF</span>
-              <input type="file" id="tf-foto-input" accept="image/jpeg,image/png,image/heic,image/heif,image/webp,.pdf,application/pdf" style="display:none;" onchange="tfHandleFotoUpload(event)" />
-            </button>
-          </div>
-          <div id="tf-foto-preview" style="display:none; margin-top:12px;"></div>
-          <button class="btn btn-primary" id="tf-foto-parse-btn" onclick="tfParseFoto()" style="margin-top:12px; display:none;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-            Schema uitlezen via AI
-          </button>
-          <div id="tf-foto-status" style="margin-top:10px; font-size:13px; color:var(--muted,#9aa3b7); display:none;"></div>
-        <div class="tf-progress-wrap" id="tf-foto-progress">
-          <div class="tf-progress-bar-track"><div class="tf-progress-bar-fill" id="tf-foto-pb"></div></div>
-          <div class="tf-progress-steps" id="tf-foto-steps"></div>
-        </div>
-        </div>
-
-        <!-- Manual pane -->
-        <div id="tf-pane-manual" class="tf-pane" style="display:none;">
-          <!-- basic fields always visible -->
-        </div>
-
-        <!-- Preview (shared across import modes) -->
-        <div id="tf-preview" style="display:none; margin-top:20px;">
-          <div class="tf-preview-header">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
-            Schema ingelezen — controleer en corrigeer indien nodig
-          </div>
-          <div id="tf-preview-body"></div>
-        </div>
-
-        <!-- Basic form fields (naam, datum, locatie, leeftijd, etc.) -->
-        <div id="tf-basic-fields" style="margin-top:20px; display:none;">
-          <div class="tf-form-grid">
-            <div class="field-group tf-col-full">
-              <label class="field-label">Toernooinaam</label>
-              <input id="tf-naam" type="text" class="filter-input" placeholder="AVK JO9 2026" />
-            </div>
-            <div class="field-group tf-col-full">
-              <label class="field-label">Leeftijdscategorie(ën) <span style="font-size:11px;opacity:.6">meerdere mogelijk</span></label>
-              <div class="tf-multi-cat-wrap">
-                <div class="tf-multi-cat-tags" id="tf-leeftijd-tags"></div>
-                <select id="tf-leeftijd-add" class="filter-select tf-leeftijd-add">
-                  <option value="">+ Categorie toevoegen</option>
-                  <optgroup label="Jongens (JO)">
-                    <option value="JO7">JO7</option><option value="JO8">JO8</option>
-                    <option value="JO9">JO9</option><option value="JO10">JO10</option>
-                    <option value="JO11">JO11</option><option value="JO12">JO12</option>
-                    <option value="JO13">JO13</option><option value="JO14">JO14</option>
-                    <option value="JO15">JO15</option><option value="JO17">JO17</option>
-                    <option value="JO19">JO19</option>
-                  </optgroup>
-                  <optgroup label="Meisjes (MO)">
-                    <option value="MO7">MO7</option><option value="MO8">MO8</option>
-                    <option value="MO9">MO9</option><option value="MO10">MO10</option>
-                    <option value="MO11">MO11</option><option value="MO12">MO12</option>
-                    <option value="MO13">MO13</option><option value="MO14">MO14</option>
-                    <option value="MO15">MO15</option><option value="MO17">MO17</option>
-                    <option value="MO19">MO19</option>
-                  </optgroup>
-                  <optgroup label="Senioren">
-                    <option value="Senioren">Senioren</option>
-                    <option value="Dames">Dames</option>
-                    <option value="Veteranen">Veteranen</option>
-                  </optgroup>
-                </select>
-              </div>
-            </div>
-            <div class="field-group">
-              <label class="field-label">Begindatum</label>
-              <input id="tf-datum" type="date" class="filter-input" />
-            </div>
-            <div class="field-group">
-              <label class="field-label">Einddatum <span style="font-size:11px;opacity:.6">(leeg = 1 dag)</span></label>
-              <input id="tf-datum-einde" type="date" class="filter-input" />
-            </div>
-            <div class="field-group tf-col-full">
-              <label class="field-label">Locatie</label>
-              <input id="tf-locatie" type="text" class="filter-input" placeholder="Sportpark Dorrestein, Amersfoort" />
-            </div>
-            <div class="field-group tf-col-full">
-              <label class="field-label">Tournify-link <span style="font-size:11px;opacity:.6">(optioneel)</span></label>
-              <input id="tf-tournify-url" type="url" class="filter-input" placeholder="https://tournifyapp.com/live/…" />
-            </div>
-          </div>
-          <div class="field-group" style="margin-top:12px;">
-            <label class="field-label">Reglement / opmerkingen <span style="font-size:11px;opacity:.6">(optioneel)</span></label>
-            <textarea id="tf-reglement" class="filter-input" rows="3" style="resize:vertical; width:100%;"></textarea>
-          </div>
-        </div>
-
-        <div style="display:flex; gap:10px; margin-top:20px; justify-content:flex-end;" id="tf-action-row" style="display:none;">
-          <button class="btn btn-ghost" onclick="closeToernooiForm()">Annuleren</button>
-          <button class="btn btn-primary" id="tf-save-btn" onclick="saveToernooi()">Opslaan</button>
-        </div>
-      </div>
-    </div>
-  </div>
 
 <script type="module" src="app.js"></script>
 </body>

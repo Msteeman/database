@@ -3253,8 +3253,6 @@ function subscribeData(){
     setSync('offline');
   });
 
-  // s36g: toernooien subscription
-  try { subscribeToernooien(); } catch(e){ console.warn('subscribeToernooien failed', e); }
 }
 
 function unsubscribeData(){
@@ -3265,7 +3263,6 @@ function unsubscribeData(){
   if(unsubTips){ unsubTips(); unsubTips = null; }
   if(unsubProgramma){ unsubProgramma(); unsubProgramma = null; }
   if(unsubRitten){ unsubRitten(); unsubRitten = null; }
-  try { unsubscribeToernooien(); } catch(_){}
   playersCache = [];
   analysesCache = [];
   contactsCache = [];
@@ -3273,7 +3270,6 @@ function unsubscribeData(){
   tipsCache = [];
   programmaCache = [];
   rittenCache = [];
-  tournamentsCache = [];
 }
 
 async function savePlayer(player){
@@ -6987,15 +6983,7 @@ function renderUpcomingMatches(){
     return d > today && d < horizon3;
   });
 
-  // Toernooien: horizon +14 dagen
-  const horizon14 = new Date(today.getTime() + 15*24*3600*1000);
-  const trItems = (Array.isArray(tournamentsCache) ? tournamentsCache : []).filter(t => {
-    if(!t || !t.datum) return false;
-    const d = new Date(t.datum + 'T00:00:00');
-    return d >= today && d < horizon14;
-  });
-
-  const hasNothing = !progItems.length && !trItems.length;
+  const hasNothing = !progItems.length;
 
   if(hasNothing && (!Array.isArray(programmaCache) || !programmaCache.length)){
     wrap.style.display = 'block';
@@ -7026,32 +7014,6 @@ function renderUpcomingMatches(){
 
   progItems.sort((a,b) => ((a.datum||'')+' '+(a.tijd||'99:99')).localeCompare((b.datum||'')+' '+(b.tijd||'99:99')));
 
-  // --- toernooi-rijen ---
-  const trLines = trItems
-    .sort((a,b) => (a.datum||'').localeCompare(b.datum||''))
-    .map(t => {
-      const nWedstrijden = (t.poules||[]).reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
-      const d = new Date(t.datum + 'T00:00:00');
-      const diff = Math.round((d - today) / 86400000);
-      const diffLabel = diff === 0 ? 'Vandaag' : diff === 1 ? 'Morgen' : `over ${diff} dag${diff===1?'':'en'}`;
-      const pouleCount = (t.poules||[]).length;
-      return `
-        <div class="up-row up-row-toernooi" data-toernooi-id="${escapeHtml(t.id)}">
-          <div class="up-when">
-            <span class="up-day">${dayLabel(t.datum)}</span>
-            ${t.datumEinde && t.datumEinde !== t.datum ? `<span class="up-time">t/m ${dayLabel(t.datumEinde)}</span>` : ''}
-          </div>
-          <div class="up-teams">
-            <span class="up-toernooi-icon" aria-hidden="true"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 21h8M12 17v4M5 3H19L17 11C17 14.866 14.866 17 12 17C9.134 17 7 14.866 7 11L5 3Z"/></svg></span>
-            ${escapeHtml(t.naam||'Toernooi')}
-          </div>
-          <div class="up-meta">
-            ${t.leeftijdscategorie ? `<span class="up-tag up-tag-toernooi">${escapeHtml(t.leeftijdscategorie)}</span>` : ''}
-            ${pouleCount ? `<span class="up-tag up-tag-toernooi">${pouleCount} poules</span>` : ''}
-          </div>
-        </div>`;
-    }).join('');
-
   // --- programma-rijen ---
   const progLines = progItems.map(it => {
     const teams = `${escapeHtml(it.thuis||'?')}${it.thuis_elftal?' '+escapeHtml(it.thuis_elftal):''} — ${escapeHtml(it.uit||'?')}${it.uit_elftal?' '+escapeHtml(it.uit_elftal):''}`;
@@ -7074,7 +7036,7 @@ function renderUpcomingMatches(){
       </div>`;
   }).join('');
 
-  const totalCount = progItems.length + trItems.length;
+  const totalCount = progItems.length;
   const countLabel = totalCount === 1 ? '1 item' : `${totalCount} aankomend`;
 
   wrap.innerHTML = `
@@ -7087,7 +7049,7 @@ function renderUpcomingMatches(){
         </div>
       </div>
       <div class="upcoming-matches-body">
-        ${trLines}${progLines}
+        ${progLines}
       </div>
     </div>
   `;
@@ -7106,18 +7068,6 @@ function renderUpcomingMatches(){
         const el = document.querySelector(`.prog-detail-card[data-prog-detail-id="${pid}"]`) || document.querySelector('.prog-detail-card');
         if(el) el.scrollIntoView({behavior:'smooth', block:'center'});
       }, 140);
-    });
-  });
-
-  // Klik toernooi-rij → toernooien subview
-  wrap.querySelectorAll('.up-row-toernooi[data-toernooi-id]').forEach(row => {
-    row.addEventListener('click', () => {
-      const tid = row.dataset.toernooiId;
-      if(typeof go === 'function') go('matches');
-      setTimeout(() => {
-        switchMatchesSubview('toernooien');
-        if(tid) setTimeout(() => openToernooiDetail(tid), 100);
-      }, 180);
     });
   });
 }
@@ -12185,8 +12135,6 @@ function loadIntoForm(p){
   $('#f-w-uitslag').value = w.uitslag || '';
   $('#f-w-opstelling').value = w.opstelling || '';
   $('#f-w-context').value = w.context || '';
-  if($('#f-w-toernooi')) $('#f-w-toernooi').checked = !!w.toernooi;
-  if($('#f-w-toernooi-naam')) $('#f-w-toernooi-naam').value = w.toernooi_naam || '';
   /* s35dg Fase H: locatie-velden bij reload van concept */
   if($('#f-w-plaats')) $('#f-w-plaats').value = w.plaats || '';
   if($('#f-w-sportpark')) $('#f-w-sportpark').value = w.sportpark || '';
@@ -12298,8 +12246,6 @@ async function submitReport(e){
       uitslag: $('#f-w-uitslag').value.trim(),
       opstelling: $('#f-w-opstelling').value,
       context: $('#f-w-context').value.trim(),
-      toernooi: $('#f-w-toernooi') ? !!$('#f-w-toernooi').checked : false,
-      toernooi_naam: $('#f-w-toernooi-naam') ? $('#f-w-toernooi-naam').value.trim() : '',
       /* s35dg Fase H */
       plaats: $('#f-w-plaats') ? $('#f-w-plaats').value.trim() : '',
       sportpark: $('#f-w-sportpark') ? $('#f-w-sportpark').value.trim() : '',
@@ -12379,39 +12325,18 @@ function aggregateMatches(players){
     const ageHome = extractAge(thuis);
     const ageAway = extractAge(uit);
     const age = ageHome || ageAway || '';
-    const isToernooi = !!w.toernooi;
-    const toernooiNaam = (w.toernooi_naam || '').trim();
-    // Toernooi → groepeer alle rapporten van dezelfde datum (optioneel + toernooinaam) onder &eacute;&eacute;n entry
-    const key = isToernooi
-      ? ['TOERNOOI', datum, toernooiNaam.toLowerCase()].join('|')
-      : [datum, thuis.toLowerCase(), uit.toLowerCase()].join('|');
+    const key = [datum, thuis.toLowerCase(), uit.toLowerCase()].join('|');
     if(!map.has(key)){
       map.set(key, {
-        datum,
-        thuis: isToernooi ? '' : thuis,
-        uit: isToernooi ? '' : uit,
-        age,
-        uitslag: isToernooi ? '' : (w.uitslag || '').trim(),
-        opstelling: isToernooi ? '' : (w.opstelling || ''),
-        toernooi: isToernooi,
-        toernooi_naam: isToernooi ? toernooiNaam : '',
-        toernooi_wedstrijden: isToernooi ? [] : undefined,
+        datum, thuis, uit, age,
+        uitslag: (w.uitslag || '').trim(),
+        opstelling: (w.opstelling || ''),
         players: []
       });
     }
     const entry = map.get(key);
-    if(!isToernooi && !entry.uitslag && (w.uitslag||'').trim()) entry.uitslag = w.uitslag.trim();
-    if(isToernooi){
-      // Verzamel unieke wedstrijden binnen het toernooi
-      const matchLabel = `${thuis||'?'} — ${uit||'?'}${(w.uitslag||'').trim()?' ('+w.uitslag.trim()+')':''}`;
-      if(!entry.toernooi_wedstrijden.some(x => x.label === matchLabel)){
-        entry.toernooi_wedstrijden.push({
-          label: matchLabel,
-          thuis, uit, uitslag: (w.uitslag||'').trim()
-        });
-      }
-      if(!entry.age && age) entry.age = age;
-    }
+    if(!entry.uitslag && (w.uitslag||'').trim()) entry.uitslag = w.uitslag.trim();
+    if(!entry.age && age) entry.age = age;
     entry.players.push({
       id: p.id,
       naam: p.naam || '—',
@@ -12522,14 +12447,11 @@ function renderMatches(){
 
   // s18b: stats vóór filtering (totalen op volledige set — geen 'report' meer)
   const _statTotal = matches.length;
-  const _statVerwerkt = matches.filter(m => m.kind === 'aggregated' && !m.toernooi).length;
-  const _statToernooi = matches.filter(m => m.kind === 'aggregated' && m.toernooi).length;
-  // s35bt+s35dh: aantal nog niet verwerkte wedstrijden (aggregated + programma, niet-toernooi)
-  const _statNogVerwerken = matches.filter(m => (m.kind === 'aggregated' || m.kind === 'programma') && !m.toernooi && !shIsWedstrijdVerwerkt(_shMatchKey(m))).length;
+  const _statVerwerkt = matches.filter(m => m.kind === 'aggregated').length;
+  const _statNogVerwerken = matches.filter(m => (m.kind === 'aggregated' || m.kind === 'programma') && !shIsWedstrijdVerwerkt(_shMatchKey(m))).length;
   const _setText = (id, n) => { const el = document.getElementById(id); if(el) el.textContent = n; };
   _setText('m-stat-total', _statTotal);
   _setText('m-stat-verwerkt', _statVerwerkt);
-  _setText('m-stat-toernooi', _statToernooi);
 
   // Filters
   const search = ($('#match-search').value || '').toLowerCase().trim();
@@ -12563,8 +12485,7 @@ function renderMatches(){
     const statuses = [
       { id: '',              label: 'Alle status',     count: _statTotal },
       { id: 'nog-verwerken', label: 'Nog te verwerken',count: _statNogVerwerken },
-      { id: 'verwerkt',      label: 'Verwerkt',        count: _statVerwerkt },
-      { id: 'toernooi',      label: 'Toernooi',        count: _statToernooi }
+      { id: 'verwerkt',      label: 'Verwerkt',        count: _statVerwerkt }
     ];
     statusChipsHost.innerHTML = statuses.map(s =>
       `<button type="button" class="m-chip${matchStatusFilter===s.id?' active':''}" data-status-chip="${s.id}">${escapeHtml(s.label)} <span class="m-chip-count">${s.count}</span></button>`
@@ -12585,11 +12506,9 @@ function renderMatches(){
   }
   // s35bq + s35bt: status-filter
   if(matchStatusFilter === 'verwerkt'){
-    matches = matches.filter(m => m.kind === 'aggregated' && !m.toernooi);
-  } else if(matchStatusFilter === 'toernooi'){
-    matches = matches.filter(m => m.kind === 'aggregated' && m.toernooi);
+    matches = matches.filter(m => m.kind === 'aggregated');
   } else if(matchStatusFilter === 'nog-verwerken'){
-    matches = matches.filter(m => (m.kind === 'aggregated' || m.kind === 'programma') && !m.toernooi && !shIsWedstrijdVerwerkt(_shMatchKey(m)));
+    matches = matches.filter(m => (m.kind === 'aggregated' || m.kind === 'programma') && !shIsWedstrijdVerwerkt(_shMatchKey(m)));
   }
 
   // Sort
@@ -12670,12 +12589,9 @@ function renderMatches(){
       return;
     }
 
-    const isToernooi = !!m.toernooi;
-    const scoreHtml = isToernooi
-      ? ''
-      : (m.uitslag
-          ? `<span class="match-score">${escapeHtml(m.uitslag)}</span>`
-          : `<span class="match-vs">vs</span>`);
+    const scoreHtml = m.uitslag
+      ? `<span class="match-score">${escapeHtml(m.uitslag)}</span>`
+      : `<span class="match-vs">vs</span>`;
     const playersChips = m.players.map(pl => {
       const isConcept = _shPlayerIsConcept(pl);
       return `<span class="match-player-chip${isConcept?' is-concept':''}" data-player-id="${escapeHtml(pl.id)}" title="${escapeHtml((pl.club || '') + (isConcept?' (concept)':''))}">${escapeHtml(pl.naam)}${isConcept?' 📝':''}</span>`;
@@ -12683,12 +12599,7 @@ function renderMatches(){
     const ageBadge = m.age
       ? `<span class="match-age-badge">${escapeHtml(m.age)}</span>`
       : '';
-    const opstellingMeta = (!isToernooi && m.opstelling)
-      ? `<span class="match-players-count">${escapeHtml(m.opstelling)}</span>`
-      : '';
-    const toernooiBadge = isToernooi
-      ? `<span class="match-toernooi-badge">🏆 Toernooi${(m.toernooi_wedstrijden||[]).length?' · '+m.toernooi_wedstrijden.length+' wedstrijd'+(m.toernooi_wedstrijden.length===1?'':'en'):''}</span>`
-      : '';
+    const opstellingMeta = m.opstelling ? `<span class="match-players-count">${escapeHtml(m.opstelling)}</span>` : '';
     const countMeta = `<span class="match-players-count">${m.players.length} rapport${m.players.length===1?'':'en'}</span>`;
     const chevron = `<span class="match-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;
     const dropdownRows = m.players.map(pl => {
@@ -12716,41 +12627,7 @@ function renderMatches(){
         </button>
       `;
     }).join('');
-    if(isToernooi){
-      const toernooiTitel = m.toernooi_naam
-        ? escapeHtml(m.toernooi_naam)
-        : 'Toernooi';
-      const wedstrijdenList = (m.toernooi_wedstrijden || []).map(w =>
-        `<div class="match-toernooi-wedstrijd">${escapeHtml(w.label)}</div>`
-      ).join('');
-      html += `
-        <div class="match-card expandable match-card-toernooi" data-match-id="${escapeHtml(m.datum+'|TOERNOOI|'+(m.toernooi_naam||''))}">
-          <div class="match-date match-toggle">
-            <div class="match-date-day">${d.day}</div>
-            <div class="match-date-month">${d.month}</div>
-            <div class="match-date-year">${d.year}</div>
-          </div>
-          <div class="match-teams match-toggle">
-            <div class="match-teams-row">
-              <span class="match-team-home" style="color:#f5c518;">🏆 ${toernooiTitel}</span>
-              ${chevron}
-            </div>
-            <div class="match-meta">
-              <span class="match-status-pill toernooi">Toernooi</span>
-              ${toernooiBadge}
-              ${ageBadge}
-              ${countMeta}
-            </div>
-            ${wedstrijdenList ? `<div class="match-toernooi-list">${wedstrijdenList}</div>` : ''}
-          </div>
-          <div class="match-players">${playersChips}</div>
-          <div class="match-dropdown">
-            <div class="match-dropdown-title">Rapporten in dit toernooi — klik op een speler om te openen</div>
-            <div class="match-dropdown-list">${dropdownRows}</div>
-          </div>
-        </div>
-      `;
-    } else {
+    {
       const _shKeyA = _shMatchKey(m);
       const _shIsVerwerktA = shIsWedstrijdVerwerkt(_shKeyA);
       const _shBan = _shBannerHTML(m);
@@ -12874,8 +12751,7 @@ function renderMatches(){
   // s35bt: aggregated niet-toernooi cards openen nu de Wedstrijd-bewerken modal
   //        (gelijk aan report-cards). Toernooi-cards blijven inline uitklappen.
   list.querySelectorAll('.match-card.expandable').forEach(card => {
-    const isToernooi = card.classList.contains('match-card-toernooi');
-    if(isToernooi){
+    if(false){
       // Originele expand-inline gedrag voor toernooi clusters
       card.querySelectorAll('.match-toggle').forEach(el => {
         el.addEventListener('click', (e)=>{
@@ -14779,18 +14655,10 @@ function renderAgenda(){
     return d >= start && d <= lastInclusive;
   });
 
-  // Toernooien die vallen in (of overlappen met) de weergave-periode
-  const rangeTrn = (Array.isArray(tournamentsCache) ? tournamentsCache : []).filter(t => {
-    if(!t || !t.datum) return false;
-    const tStart = new Date(t.datum + 'T00:00:00');
-    const tEnd   = t.datumEinde ? new Date(t.datumEinde + 'T00:00:00') : tStart;
-    return tEnd >= start && tStart <= lastInclusive;
-  });
-
   const grid = $('#agenda-grid');
   if(!grid) return;
 
-  if(rangeItems.length === 0 && rangeTrn.length === 0){
+  if(rangeItems.length === 0){
     grid.innerHTML = `<div class="agenda-empty">Geen wedstrijden in deze periode.<br><span style="font-size:11.5px;opacity:.7">Voeg toe via Programma.</span></div>`;
     return;
   }
@@ -14869,24 +14737,7 @@ function renderAgenda(){
     }).join('');
     const mobileHtml = (orphanHtml + mobileBlocks) || `<div class="agenda-empty" style="padding:14px">Geen wedstrijden.</div>`;
 
-    // Toernooi-banners voor deze dag
-    const dayTrn = rangeTrn.filter(t => {
-      const tS = t.datum; const tE = t.datumEinde || t.datum;
-      return dStr >= tS && dStr <= tE;
-    });
-    const trnBanners = dayTrn.map(t => {
-      const isFirst = (t.datum === dStr);
-      const isLast  = ((t.datumEinde||t.datum) === dStr);
-      const nW = (t.poules||[]).reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
-      const label = isFirst && isLast ? 'Toernooidag'
-        : isFirst ? 'Start toernooi' : isLast ? 'Laatste dag' : 'Toernooi bezig';
-      return `<div class="agenda-trn-banner" onclick="openToernooiDetail('${escapeHtml(t.id)}')">
-        <span class="agenda-trn-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M8 21h8M12 17v4M5 3H19L17 11C17 14.866 14.866 17 12 17C9.134 17 7 14.866 7 11L5 3Z"/></svg></span>
-        <span class="agenda-trn-name">${escapeHtml(t.naam||'Toernooi')}</span>
-        ${t.leeftijdscategorie?`<span class="agenda-trn-tag">${escapeHtml(t.leeftijdscategorie)}</span>`:''}
-        <span class="agenda-trn-meta">${label}${nW?' &middot; '+nW+' wedstr.':''}</span>
-      </div>`;
-    }).join('');
+    const trnBanners = '';
 
     return `
       <div class="agenda-day-col">
@@ -14894,7 +14745,6 @@ function renderAgenda(){
           <div class="agenda-day-name${isToday?' today':''}">${DAY_NAMES_NL[(d.getDay()+6)%7]} ${d.getDate()} ${MONTH_NL[d.getMonth()].slice(0,3)}${isToday?' &middot; vandaag':''}</div>
           <div class="agenda-day-count">${dayItems.length} wedstrijd${dayItems.length===1?'':'en'}</div>
         </div>
-        ${trnBanners}
         ${morningRows.join('')}
         ${eveningHtml}
         ${mobileHtml}
@@ -15171,11 +15021,6 @@ function renderProgramma(){
     const d = parseAnyDate(p.datum);
     return d && d >= monday && d <= sunday;
   });
-  const weekTrn = (Array.isArray(tournamentsCache)?tournamentsCache:[]).filter(t => {
-    if(!t||!t.datum) return false;
-    const tS=new Date(t.datum+'T00:00:00'), tE=t.datumEinde?new Date(t.datumEinde+'T00:00:00'):tS;
-    return tE>=monday && tS<=sunday;
-  });
 
   const TYPE_ICON  = { wedstrijd:'⚽', training:'🏃', vergadering:'💬' };
 
@@ -15218,47 +15063,27 @@ function renderProgramma(){
     </div>`;
   };
 
-  // ── Toernooi card builder ──
-  const trnCardHTML = (t, dStr) => {
-    const nW = (t.poules||[]).reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
-    const cats = (t.leeftijdscategorie||'').split(',').filter(Boolean);
-    const isFirst=(t.datum===dStr), isLast=(t.datumEinde||t.datum)===dStr;
-    const span = (!isFirst&&!isLast)?'bezig':(isFirst&&isLast)?'':(isFirst?'start':'laatste dag');
-    return `<div class="pag-card pag-trn" data-trn-id="${escapeHtml(t.id)}">
-      <div class="pag-card-top">
-        <span class="pag-icon">🏆</span>
-        <span class="pag-title">${escapeHtml(t.naam||'Toernooi')}</span>
-        <span class="pag-edit" style="opacity:.4;cursor:default">›</span>
-      </div>
-      <div class="pag-chips">
-        ${cats.map(c=>`<span class="pag-chip age">${escapeHtml(c)}</span>`).join('')}
-        ${nW?`<span class="pag-chip">${nW}wstr</span>`:''}
-        ${span?`<span class="pag-chip muted">${span}</span>`:''}
-      </div>
-    </div>`;
-  };
 
   // ── Bouw alle dagkolommen ──
   const grid = $('#programma-grid');
   if(!grid) return;
 
-  const hasAnything = weekItems.length>0 || weekTrn.length>0;
+  const hasAnything = weekItems.length>0;
   grid.innerHTML = days.map((d,i) => {
     const dStr     = isoDateStr(d);
     const isToday  = d.getTime()===today.getTime();
     const dayItems = weekItems
       .filter(p => datumToIsoStr(p.datum)===dStr)
       .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
-    const dayTrn   = weekTrn.filter(t => dStr>=t.datum && dStr<=(t.datumEinde||t.datum));
-    const hasItems = dayItems.length>0 || dayTrn.length>0;
+    const hasItems = dayItems.length>0;
     const abbr     = DAY_NAMES_NL[(d.getDay()+6)%7].slice(0,2).toUpperCase();
-    const cardsHtml = [...dayTrn.map(t=>trnCardHTML(t,dStr)), ...dayItems.map(it=>evCardHTML(it,dStr))].join('');
+    const cardsHtml = dayItems.map(it=>evCardHTML(it,dStr)).join('');
     return `<div class="pag-day${isToday?' is-today':''}${!hasItems?' is-empty':''}" data-pag-day="${i}">
       <div class="pag-day-head">
         <span class="pag-abbr">${abbr}</span>
         <span class="pag-date-num${isToday?' today':''}">${d.getDate()}</span>
         <span class="pag-month">${MONTH_NL[d.getMonth()].slice(0,3)}</span>
-        ${hasItems?`<span class="pag-day-cnt">${dayItems.length+dayTrn.length}</span>`:''}
+        ${hasItems?`<span class="pag-day-cnt">${dayItems.length}</span>`:''}
       </div>
       <div class="pag-day-body">
         ${cardsHtml||'<div class="pag-vrij">—</div>'}
@@ -15274,7 +15099,6 @@ function renderProgramma(){
 
   newGrid.addEventListener('click', e => {
     const card = e.target.closest('[data-prog-id]');
-    const trn  = e.target.closest('[data-trn-id]');
     const edit = e.target.closest('[data-pec-edit]');
     const live = e.target.closest('[data-pec-live]');
     const verw = e.target.closest('[data-pec-verwerk]');
@@ -15285,7 +15109,6 @@ function renderProgramma(){
     if(edit) { e.stopPropagation(); openProgMatchModal(edit.dataset.pecEdit, null); return; }
     if(verw) { e.stopPropagation(); if(typeof verwerkProgrammaItem==='function') verwerkProgrammaItem(verw.dataset.pecVerwerk); return; }
     if(live) { e.stopPropagation(); if(typeof openLiveScoutModal==='function') openLiveScoutModal(live.dataset.pecLive); return; }
-    if(trn)  { openToernooiDetail(trn.dataset.trnId); return; }
     if(card&&typeof openProgMatchDetailModal==='function') openProgMatchDetailModal(card.dataset.progId);
   });
 
@@ -16606,8 +16429,6 @@ function collectReportFormData(){
       uitslag: $('#f-w-uitslag').value.trim(),
       opstelling: $('#f-w-opstelling').value.trim(),
       context: $('#f-w-context').value.trim(),
-      toernooi: $('#f-w-toernooi') ? !!$('#f-w-toernooi').checked : false,
-      toernooi_naam: $('#f-w-toernooi-naam') ? $('#f-w-toernooi-naam').value.trim() : '',
       /* s35dg Fase H */
       plaats: $('#f-w-plaats') ? $('#f-w-plaats').value.trim() : '',
       sportpark: $('#f-w-sportpark') ? $('#f-w-sportpark').value.trim() : '',
@@ -18061,1669 +17882,6 @@ async function loadUserRole(){
   }
 }
 
-
-/* ==========================================================
-   TOERNOOIEN — s36g
-   ========================================================== */
-
-let tournamentsCache = [];
-let __tUnsubscribe = null;
-
-function subscribeToernooien(){
-  if(!currentUser) return;
-  if(__tUnsubscribe) { try{ __tUnsubscribe(); }catch(_){} }
-  const col = collection(db, 'users', currentUser.uid, 'toernooien');
-  __tUnsubscribe = onSnapshot(
-    query(col, orderBy('datum','desc')),
-    snap => {
-      tournamentsCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      renderToernooien();
-      _renderDashToernooi();
-      // Refresh programma + agenda zodat toernooien direct zichtbaar zijn
-      try{ renderProgramma(); }catch(_){}
-      try{ renderAgenda(); }catch(_){}
-    },
-    err => console.warn('toernooien snap err', err)
-  );
-}
-
-function unsubscribeToernooien(){
-  if(__tUnsubscribe){ try{ __tUnsubscribe(); }catch(_){} __tUnsubscribe = null; }
-  tournamentsCache = [];
-}
-
-/* ---------- subview toggle ---------- */
-let __matchesSubview = 'wedstrijden';
-function switchMatchesSubview(view){
-  __matchesSubview = view;
-  const isTrn = view === 'toernooien';
-  // toggle buttons
-  const bW = document.getElementById('msv-wedstrijden');
-  const bT = document.getElementById('msv-toernooien');
-  if(bW) bW.classList.toggle('active', !isTrn);
-  if(bT) bT.classList.toggle('active', isTrn);
-  // show/hide sections
-  const wSections = ['match-stats','m-search-row','match-age-chips','match-status-chips','matches-list','matches-empty','match-report-new-btn','match-report-import-btn','match-report-bulk-delete-btn'];
-  wSections.forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.style.display = isTrn ? 'none' : '';
-  });
-  const tView = document.getElementById('toernooien-subview');
-  if(tView) tView.style.display = isTrn ? 'block' : 'none';
-  const tBtn = document.getElementById('toernooi-new-btn');
-  if(tBtn) tBtn.style.display = isTrn ? '' : 'none';
-  const title = document.getElementById('matches-page-title');
-  if(title) title.textContent = isTrn ? 'Toernooien' : 'Wedstrijden';
-  if(isTrn) renderToernooien();
-}
-
-/* ---------- render list ---------- */
-/* All matches across all toernooien for quick access from Wedstrijden tab */
-function _tdsToggleTrnMatches(trnId){
-  const wrap = document.getElementById('trn-matches-' + trnId);
-  if(!wrap) return;
-  const isOpen = wrap.style.display !== 'none';
-  wrap.style.display = isOpen ? 'none' : '';
-  const btn = document.querySelector(`[data-trn-toggle="${trnId}"]`);
-  if(btn) btn.classList.toggle('open', !isOpen);
-}
-
-function renderToernooien(){
-  const list = document.getElementById('toernooien-list');
-  const empty = document.getElementById('toernooien-empty');
-  if(!list) return;
-  if(!tournamentsCache.length){
-    list.innerHTML = '';
-    if(empty) empty.style.display = 'block';
-    return;
-  }
-  if(empty) empty.style.display = 'none';
-
-  list.innerHTML = tournamentsCache.map(t => {
-    const poules = t.poules || [];
-    const koRondes = (t.knockout && t.knockout.rondes) || [];
-    const nWedstrijden = poules.reduce((s,p)=> s + (p.wedstrijden||[]).length, 0)
-      + koRondes.reduce((s,r)=> s + (r.wedstrijden||[]).length, 0);
-    const syncAgo = t.lastSyncAt ? _tSyncAgo(t.lastSyncAt) : null;
-    const hasTournify = !!(t.tournifyUrl || t.tournifySlug);
-    const leeftijdStr = _tNormLeeftijd(t.leeftijdscategorie);
-
-    // Build expandable match list for Wedstrijden tab
-    let matchRows = '';
-    poules.forEach((p, pi) => {
-      (p.wedstrijden||[]).forEach((w, wi) => {
-        const gespeeld = w.gespeeld || (w.scoreThuis !== null && w.scoreThuis !== undefined);
-        const scoreStr = gespeeld ? `${w.scoreThuis}–${w.scoreUit}` : '–';
-        const hasNotitie = !!(w.notitie||'').trim();
-        const scoutedN = (w.scouted||[]).length;
-        matchRows += `<div class="trn-match-row" onclick="(()=>{openToernooiDetail('${escapeHtml(t.id)}'); setTimeout(()=>{tdsShowPoule(${pi}); setTimeout(()=>_tdsOpenMatchDetail(${pi},${wi}),150)},300)})()">
-          <span class="trn-mr-time">${escapeHtml(w.tijd||'')}</span>
-          <span class="trn-mr-teams">${escapeHtml(w.thuis||'—')} <b>${scoreStr}</b> ${escapeHtml(w.uit||'—')}</span>
-          <span class="trn-mr-poule">${escapeHtml(p.naam||'')}</span>
-          <span class="trn-mr-badges">${hasNotitie?'📝':''} ${scoutedN?`👤${scoutedN}`:''}</span>
-        </div>`;
-      });
-    });
-
-    return `<div class="toernooi-card">
-      <div class="tc-header" onclick="openToernooiDetail('${escapeHtml(t.id)}')">
-        <div class="tc-naam">${escapeHtml(t.naam || '—')}</div>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-3,#9aa3b7);flex-shrink:0"><polyline points="9 18 15 12 9 6"/></svg>
-      </div>
-      <div class="tc-badges">
-        ${leeftijdStr ? `<span class="tc-badge gold">${escapeHtml(leeftijdStr)}</span>` : ''}
-        ${t.format ? `<span class="tc-badge blue">${escapeHtml(t.format)}</span>` : ''}
-        ${poules.length ? `<span class="tc-badge muted">${poules.length} poule${poules.length>1?'s':''}</span>` : ''}
-        ${koRondes.length ? `<span class="tc-badge muted">🏆 knockout</span>` : ''}
-      </div>
-      <div class="tc-meta">
-        <span>${_tFormatDatum(t.datum, t.datumEinde)}</span>
-        ${t.locatie ? `<span>${escapeHtml(t.locatie)}</span>` : ''}
-        ${nWedstrijden ? `<span>${nWedstrijden} wedstrijden</span>` : ''}
-      </div>
-      ${hasTournify && syncAgo ? `<div class="tc-sync-row"><div class="tc-sync-info"><span class="tc-sync-dot"></span>Tournify · ${syncAgo}</div></div>` : ''}
-      ${matchRows ? `
-        <button class="tc-matches-toggle" data-trn-toggle="${escapeHtml(t.id)}" onclick="event.stopPropagation(); _tdsToggleTrnMatches('${escapeHtml(t.id)}')">
-          Wedstrijden bekijken &amp; notities <span class="tc-toggle-arrow">▾</span>
-        </button>
-        <div class="trn-matches-wrap" id="trn-matches-${escapeHtml(t.id)}" style="display:none">
-          ${matchRows}
-        </div>` : ''}
-    </div>`;
-  }).join('');
-}
-
-function _tFormatDatum(d, e){
-  if(!d) return '—';
-  const fmt = s => { const [y,m,dd] = s.split('-'); const months=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec']; return `${parseInt(dd)} ${months[parseInt(m)-1]} ${y}`; };
-  if(e && e !== d) return `${fmt(d)} – ${fmt(e)}`;
-  return fmt(d);
-}
-function _tSyncAgo(ts){
-  try{
-    const ms = (ts.toDate ? ts.toDate() : new Date(ts)).getTime();
-    const diff = Math.round((Date.now()-ms)/60000);
-    if(diff < 2) return 'zojuist';
-    if(diff < 60) return `${diff} min geleden`;
-    const h = Math.round(diff/60);
-    if(h < 24) return `${h}u geleden`;
-    return `${Math.round(h/24)}d geleden`;
-  }catch(_){ return ''; }
-}
-
-/* ---------- detail modal ---------- */
-let __tdsCurrentId = null;
-let __tdsCurrentPoule = 0;
-let __tdsKoRound = 0;
-window.__tdsCurrentId = null;
-
-// s36g: toernooien — expose to window for inline onclick handlers
-window.openToernooiForm       = (...a) => openToernooiForm(...a);
-window.closeToernooiForm      = () => closeToernooiForm();
-window.saveToernooi           = () => saveToernooi();
-window.tfSwitchImport         = (m) => tfSwitchImport(m);
-window.tfParseUrl             = () => tfParseUrl();
-window.tfParseFoto            = () => tfParseFoto();
-window.tfHandleFotoUpload     = (e) => tfHandleFotoUpload(e);
-window.openToernooiDetail     = (id) => openToernooiDetail(id);
-window.closeToernooiDetail    = () => closeToernooiDetail();
-window.openToernooiInfo       = () => openToernooiInfo();
-window.closeToernooiInfo      = () => closeToernooiInfo();
-window.syncToernooiNow        = () => syncToernooiNow();
-window.tdsGoRound             = (n) => tdsGoRound(n);
-window.tdsMoveRound           = (d) => tdsMoveRound(d);
-window.tdsShowPoule           = (i) => tdsShowPoule(i);
-window.switchMatchesSubview   = (v) => switchMatchesSubview(v);
-window._tdsOpenMatchDetail    = (pi, wi) => _tdsOpenMatchDetail(pi, wi);
-window._tdsToggleTrnMatches   = (id) => _tdsToggleTrnMatches(id);
-
-function openToernooiDetail(id){
-  const t = tournamentsCache.find(x => x.id === id);
-  if(!t) return;
-  __tdsCurrentId = id;
-  window.__tdsCurrentId = id;
-  const ov = document.getElementById('toernooi-detail-overlay');
-  if(!ov) return;
-  ov.style.display = 'flex';
-  document.body.style.overflow = 'hidden';
-
-  // header
-  document.getElementById('tds-naam').textContent = t.naam || '—';
-  document.getElementById('tds-meta').textContent = [
-    _tFormatDatum(t.datum, t.datumEinde),
-    t.locatie,
-    _tNormLeeftijd(t.leeftijdscategorie),
-    t.format
-  ].filter(Boolean).join(' · ');
-
-  const syncBtn = document.getElementById('tds-sync-btn');
-  if(syncBtn) syncBtn.style.display = (t.tournifyUrl||t.tournifySlug) ? '' : 'none';
-
-  // poule tabs
-  const poules = t.poules || [];
-  const nav = document.getElementById('tds-poule-nav');
-  if(nav){
-    nav.innerHTML = poules.map((p,i) =>
-      `<button class="tds-ptab${i===0?' active':''}" onclick="tdsShowPoule(${i})" id="tds-ptab-${i}">${escapeHtml(p.naam || ('Poule '+(p.id||i)))}</button>`
-    ).join('');
-  }
-  __tdsCurrentPoule = 0;
-  tdsShowPoule(0);
-
-  // knockout
-  const ko = t.knockout;
-  const koWrap = document.getElementById('tds-knockout-wrap');
-  if(koWrap){
-    if(ko && ko.rondes && ko.rondes.length){
-      koWrap.style.display = '';
-      __tdsKoRound = 0;
-      tdsRenderKnockout(ko.rondes);
-    } else {
-      koWrap.style.display = 'none';
-    }
-  }
-}
-
-function tdsShowPoule(idx){
-  const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
-  if(!t) return;
-  const poules = t.poules || [];
-  const p = poules[idx];
-  __tdsCurrentPoule = idx;
-  // update tab active
-  document.querySelectorAll('.tds-ptab').forEach((el,i) => el.classList.toggle('active', i===idx));
-  const body = document.getElementById('tds-poule-content');
-  if(!body || !p) return;
-
-  // group wedstrijden by day
-  const weds = p.wedstrijden || [];
-  const byDag = {};
-  weds.forEach(w => { const dag = w.dag || 'onbekend'; (byDag[dag] = byDag[dag]||[]).push(w); });
-  const days = Object.keys(byDag).sort();
-
-  // ── Standen bovenaan ──
-  const stand = p.stand || _computeStand(p);
-  const heeftUitslagen = (p.wedstrijden||[]).some(w => w.gespeeld || w.scoreThuis!=null);
-  let html = '';
-  if(stand && stand.length){
-    const standLabel = heeftUitslagen ? 'Stand' : 'Deelnemers';
-    html += `<div class="tds-stand-wrap">
-      <div class="tds-section-title">${standLabel}</div>
-      <table class="tds-stand"><thead><tr>
-        <th class="tds-rk">#</th><th class="tds-team">Team</th>
-        <th title="Gespeeld">G</th><th title="Gewonnen">W</th><th title="Gelijk">G</th><th title="Verloren">V</th>
-        <th title="Doelpunten voor">+</th><th title="Doelpunten tegen">−</th><th title="Doelsaldo">±</th><th title="Punten" class="pts">Pts</th>
-      </tr></thead><tbody>`;
-    stand.forEach((r,i) => {
-      const saldo = (r.GV||0)-(r.GT||0);
-      const saldoStr = saldo>0?`+${saldo}`:String(saldo);
-      const rowCls = i===0&&heeftUitslagen?'leader':i===stand.length-1&&heeftUitslagen&&stand.length>2?'last':'';
-      html += `<tr class="${rowCls}">
-        <td class="tds-rk">${i+1}</td>
-        <td class="tds-team">${escapeHtml(r.team||'—')}</td>
-        <td>${r.G||0}</td><td>${r.W||0}</td><td>${r.Ge||0}</td><td>${r.V||0}</td>
-        <td>${r.GV||0}</td><td>${r.GT||0}</td><td class="${saldo>=0?'pos':'neg'}">${saldoStr}</td>
-        <td class="pts">${r.Pts||0}</td>
-      </tr>`;
-    });
-    html += `</tbody></table></div>`;
-  }
-
-  // ── Wedstrijden per dag ──
-  if(days.length){
-    html += `<div class="tds-section-title" style="margin-top:20px">Wedstrijden <span class="tds-match-hint">Klik voor notities en scouting</span></div>`;
-    days.forEach(dag => {
-      const dayWeds = byDag[dag];
-      html += `<div class="tds-dag-label">${_tDagLabel(dag, dayWeds[0]?.type)}</div>`;
-      dayWeds.sort((a,b)=>(a.tijd||'').localeCompare(b.tijd||'')).forEach(w => {
-        const gespeeld = w.gespeeld || (w.scoreThuis !== null && w.scoreThuis !== undefined);
-        const scoreHtml = gespeeld
-          ? `<span class="tds-match-score played">${w.scoreThuis}–${w.scoreUit}</span>`
-          : `<span class="tds-match-score pending">–</span>`;
-        const typeBadge = (w.type && w.type !== 'groep')
-          ? `<span class="tds-match-type-badge ${w.type==='finale'?'finale':''}">${w.type==='finale'?'🏆 Finale':w.type==='3e4e'?'3e/4e pl.':w.type}</span>`
-          : '';
-        const wIdx = (p.wedstrijden||[]).indexOf(w);
-        const scoutedCount = (w.scouted||[]).length;
-        const hasNotitie = !!(w.notitie||'').trim();
-        const notitiePreview = hasNotitie ? `<span class="tds-match-notitie-preview" title="${escapeHtml(w.notitie||'')}">📝 ${escapeHtml((w.notitie||'').slice(0,40))}${(w.notitie||'').length>40?'…':''}</span>` : '';
-        const scoutBadge = scoutedCount ? `<span class="tds-scouted-badge" title="${scoutedCount} gescoute speler(s)">👤 ${scoutedCount}</span>` : '';
-        html += `<div class="tds-match tds-match-clickable" data-widx="${wIdx}" title="Klik voor wedstrijd notities &amp; scouting">
-          <div class="tds-match-main">
-            <span class="tds-match-time">${escapeHtml(w.tijd||'??:??')}</span>
-            <div class="tds-match-teams">
-              <span class="tds-match-home${gespeeld && w.scoreThuis > w.scoreUit?' winner':''}">${escapeHtml(w.thuis||'—')}${w.thuisElftal?`<span class="tds-elftal-label">${escapeHtml(w.thuisElftal)}</span>`:''}</span>
-              ${scoreHtml}
-              <span class="tds-match-away${gespeeld && w.scoreUit > w.scoreThuis?' winner':''}">${escapeHtml(w.uit||'—')}${w.uitElftal?`<span class="tds-elftal-label">${escapeHtml(w.uitElftal)}</span>`:''}</span>
-            </div>
-            ${w.veld?`<span class="tds-match-field">V${escapeHtml(String(w.veld))}</span>`:''}
-            ${typeBadge}
-          </div>
-          ${notitiePreview||scoutBadge?`<div class="tds-match-meta-row">${notitiePreview}${scoutBadge}</div>`:''}
-        </div>`;
-      });
-    });
-  } else {
-    html += `<div class="tds-empty">Geen wedstrijden gepland.</div>`;
-  }
-  body.innerHTML = html;
-
-  // Click on match row → open match detail
-  body.querySelectorAll('.tds-match-clickable').forEach(row => {
-    row.addEventListener('click', e => {
-      if(e.target.closest('[data-remove-scout]')) return;
-      const widx = parseInt(row.dataset.widx, 10);
-      _tdsOpenMatchDetail(idx, widx);
-    });
-  });
-  // Scout chip verwijderen (legacy chips still possible)
-  body.querySelectorAll('[data-remove-scout]').forEach(chip => {
-    chip.addEventListener('click', e => {
-      e.stopPropagation();
-      const widx = parseInt(chip.dataset.widx, 10);
-      const spId = chip.dataset.removeScout;
-      _tdsRemoveScout(idx, widx, spId);
-    });
-  });
-}
-
-/* ── Match detail panel (notities + scouting) ─────────────────────── */
-function _tdsOpenMatchDetail(pouleIdx, wedstrIdx){
-  const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
-  if(!t) return;
-  const p = (t.poules||[])[pouleIdx];
-  const w = (p?.wedstrijden||[])[wedstrIdx];
-  if(!w) return;
-
-  document.getElementById('tds-match-detail')?.remove();
-
-  const gespeeld = w.gespeeld || (w.scoreThuis !== null && w.scoreThuis !== undefined);
-  const scoreStr = gespeeld ? ` — ${w.scoreThuis}–${w.scoreUit}` : '';
-  const trnNaam = t.naam || 'Toernooi';
-  const poulNaam = p.naam || '';
-
-  const panel = document.createElement('div');
-  panel.id = 'tds-match-detail';
-  panel.className = 'tds-match-detail-overlay';
-
-  const scoutedHtml = (w.scouted||[]).map(sp => `
-    <div class="tds-md-scout-row" data-sp-id="${escapeHtml(sp.id||sp.naam)}">
-      <div class="tds-md-scout-top">
-        <span class="tds-md-scout-naam">${escapeHtml(sp.naam||sp.id||'—')}</span>
-        <button class="tds-md-scout-del" data-del-scout="${escapeHtml(sp.id||sp.naam)}" title="Verwijder">×</button>
-      </div>
-      <textarea class="tds-md-scout-notitie filter-input" rows="2"
-        placeholder="Notitie over deze speler…"
-        data-scout-id="${escapeHtml(sp.id||sp.naam)}">${escapeHtml(sp.notitie||'')}</textarea>
-    </div>`).join('');
-
-  panel.innerHTML = `
-    <div class="tds-match-detail-sheet">
-      <div class="tds-md-header">
-        <div class="tds-md-header-info">
-          <div class="tds-md-title">${escapeHtml(w.thuis||'—')} <span class="tds-md-vs">vs</span> ${escapeHtml(w.uit||'—')}</div>
-          <div class="tds-md-sub">${escapeHtml(trnNaam)}${poulNaam?' · '+escapeHtml(poulNaam):''}${w.tijd?' · '+escapeHtml(w.tijd):''}${w.dag?' · '+_tDagLabel(w.dag):''}${w.veld?' · Veld '+escapeHtml(String(w.veld)):''}</div>
-        </div>
-        <button class="tds-md-close" id="tds-md-close">×</button>
-      </div>
-      <div class="tds-md-score-row">
-        <span class="tds-md-score-team">${escapeHtml(w.thuis||'—')}</span>
-        <div class="tds-md-score-inputs">
-          <input type="number" id="tds-md-score-thuis" class="tds-md-score-input" min="0" max="99" value="${gespeeld ? w.scoreThuis : ''}" placeholder="–">
-          <span class="tds-md-score-sep">:</span>
-          <input type="number" id="tds-md-score-uit" class="tds-md-score-input" min="0" max="99" value="${gespeeld ? w.scoreUit : ''}" placeholder="–">
-        </div>
-        <span class="tds-md-score-team">${escapeHtml(w.uit||'—')}</span>
-      </div>
-
-      <!-- Elftal invoer -->
-      <div class="tds-md-elftal-row">
-        <input type="text" id="tds-md-thuis-elftal" class="tds-md-elftal-input filter-input" placeholder="Elftal thuis (bijv. O.9-1)" value="${escapeHtml(w.thuisElftal||'')}">
-        <span class="tds-md-elftal-sep">vs</span>
-        <input type="text" id="tds-md-uit-elftal" class="tds-md-elftal-input filter-input" placeholder="Elftal uit (bijv. O.9-2)" value="${escapeHtml(w.uitElftal||'')}">
-      </div>
-
-      <div class="tds-md-body">
-        <!-- Wedstrijd notitie -->
-        <div class="tds-md-section-title">📋 Wedstrijd notitie</div>
-        <textarea id="tds-md-notitie" class="tds-md-notitie-area filter-input" rows="4"
-          placeholder="Notities over deze wedstrijd… bijv. speelstijl, tactiek, bijzonderheden">${escapeHtml(w.notitie||'')}</textarea>
-
-        <!-- Scouting sectie -->
-        <div class="tds-md-section-title" style="margin-top:16px">👤 Gescoute spelers <button class="tds-md-scout-add-btn" id="tds-md-scout-add">+ Scout speler</button></div>
-        <div id="tds-md-scouts-list">${scoutedHtml || '<div class="tds-empty" style="margin:8px 0 0">Nog geen gescoute spelers.</div>'}</div>
-      </div>
-
-      <div class="tds-md-footer">
-        <button class="btn-ghost-sm" id="tds-md-cancel">Annuleren</button>
-        <button class="btn-primary-sm" id="tds-md-save">💾 Opslaan</button>
-      </div>
-    </div>`;
-
-  document.body.appendChild(panel);
-  panel.querySelector('#tds-md-close').addEventListener('click', () => panel.remove());
-  panel.querySelector('#tds-md-cancel').addEventListener('click', () => panel.remove());
-  panel.addEventListener('click', e => { if(e.target === panel) panel.remove(); });
-
-  // Save
-  panel.querySelector('#tds-md-save').addEventListener('click', async () => {
-    const notitie = panel.querySelector('#tds-md-notitie').value;
-    const scoreThuisEl = panel.querySelector('#tds-md-score-thuis');
-    const scoreUitEl = panel.querySelector('#tds-md-score-uit');
-    const scoreThuisVal = scoreThuisEl?.value !== '' ? parseInt(scoreThuisEl.value) : null;
-    const scoreUitVal = scoreUitEl?.value !== '' ? parseInt(scoreUitEl.value) : null;
-    const thuisElftal = (panel.querySelector('#tds-md-thuis-elftal')?.value||'').trim();
-    const uitElftal = (panel.querySelector('#tds-md-uit-elftal')?.value||'').trim();
-    // Collect updated scout notities
-    const scoutUpdates = {};
-    panel.querySelectorAll('.tds-md-scout-notitie').forEach(ta => {
-      scoutUpdates[ta.dataset.scoutId] = ta.value;
-    });
-    await _tdsSaveMatchDetail(pouleIdx, wedstrIdx, notitie, scoutUpdates, scoreThuisVal, scoreUitVal, thuisElftal, uitElftal);
-    panel.remove();
-  });
-
-  // Scout add button
-  panel.querySelector('#tds-md-scout-add').addEventListener('click', () => {
-    panel.remove();
-    _tdsOpenScoutPicker(pouleIdx, wedstrIdx);
-  });
-
-  // Delete scout
-  panel.querySelectorAll('[data-del-scout]').forEach(btn => {
-    btn.addEventListener('click', async e => {
-      e.stopPropagation();
-      const spId = btn.dataset.delScout;
-      await _tdsRemoveScout(pouleIdx, wedstrIdx, spId);
-      panel.remove();
-      // re-open to reflect updated state
-      setTimeout(() => _tdsOpenMatchDetail(pouleIdx, wedstrIdx), 100);
-    });
-  });
-
-  // Cmd/Ctrl+Enter in notitieveld = opslaan
-  panel.querySelector('#tds-md-notitie').addEventListener('keydown', e => {
-    if(e.key==='Enter' && (e.ctrlKey||e.metaKey)){ e.preventDefault(); panel.querySelector('#tds-md-save').click(); }
-  });
-
-  panel.querySelector('#tds-md-notitie').focus();
-}
-
-async function _tdsSaveMatchDetail(pouleIdx, wedstrIdx, notitie, scoutUpdates, scoreThuis, scoreUit, thuisElftal, uitElftal){
-  if(!currentUser || !__tdsCurrentId) return;
-  const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
-  if(!t) return;
-  const poules = JSON.parse(JSON.stringify(t.poules||[]));
-  const w = poules[pouleIdx]?.wedstrijden?.[wedstrIdx];
-  if(!w) return;
-  w.notitie = notitie || '';
-  // Elftal opslaan
-  if(thuisElftal !== undefined) w.thuisElftal = thuisElftal;
-  if(uitElftal !== undefined) w.uitElftal = uitElftal;
-  // Score opslaan
-  if(scoreThuis !== null && scoreThuis !== undefined && !isNaN(scoreThuis)){
-    w.scoreThuis = scoreThuis;
-    w.scoreUit = (scoreUit !== null && !isNaN(scoreUit)) ? scoreUit : 0;
-    w.gespeeld = true;
-  }
-  // Update scout notities
-  if(scoutUpdates && w.scouted){
-    w.scouted = w.scouted.map(sp => ({
-      ...sp,
-      notitie: scoutUpdates.hasOwnProperty(sp.id||sp.naam) ? scoutUpdates[sp.id||sp.naam] : (sp.notitie||'')
-    }));
-  }
-  try{
-    const ref = doc(collection(db,'users',currentUser.uid,'toernooien'), __tdsCurrentId);
-    await setDoc(ref, { poules, updated: Date.now() }, { merge: true });
-    // Refresh de poule view
-    setTimeout(() => { try{ tdsShowPoule(__tdsCurrentPoule); }catch(_){} }, 200);
-  }catch(err){ console.error('Match detail opslaan mislukt:', err); alert('Opslaan mislukt: '+err.message); }
-}
-
-function _tdsOpenScoutPicker(pouleIdx, wedstrIdx){
-  const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
-  if(!t) return;
-  const w = (t.poules[pouleIdx]?.wedstrijden||[])[wedstrIdx];
-  if(!w) return;
-
-  // Verwijder bestaande picker
-  document.getElementById('tds-scout-picker')?.remove();
-
-  const players = Array.isArray(playersCache) ? playersCache : [];
-  const picker = document.createElement('div');
-  picker.id = 'tds-scout-picker';
-  picker.className = 'tds-scout-picker-overlay';
-  // Twee fasen: zoeken → notitie schrijven
-  let _selectedSpeler = null;
-
-  picker.innerHTML = `
-    <div class="tds-scout-picker-sheet">
-      <div class="tds-scout-picker-head">
-        <div>
-          <div class="tds-scout-picker-title" id="tds-sp-title">👤 Scout speler</div>
-          <div class="tds-scout-picker-match">${escapeHtml(w.thuis||'?')} – ${escapeHtml(w.uit||'?')}${w.tijd?' · '+w.tijd:''}</div>
-        </div>
-        <button class="tds-scout-picker-close" id="tds-sp-close">×</button>
-      </div>
-
-      <!-- Fase 1: zoeken -->
-      <div id="tds-sp-fase1">
-        <input id="tds-sp-search" class="filter-input" placeholder="Zoek naam of club… of typ nieuwe speler" style="margin:0 0 6px;" autocomplete="off" />
-        <div id="tds-sp-new-row" class="tds-sp-new-row" style="display:none">
-          <span id="tds-sp-new-lbl" style="font-size:12px;color:var(--text-2)"></span>
-          <button id="tds-sp-new-btn" class="tds-sp-new-add">+ Nieuw</button>
-        </div>
-        <div id="tds-sp-results" class="tds-sp-results"></div>
-      </div>
-
-      <!-- Fase 2: notitie -->
-      <div id="tds-sp-fase2" style="display:none">
-        <div id="tds-sp-selected-naam" class="tds-sp-selected-naam"></div>
-        <textarea id="tds-sp-notitie" class="tds-sp-notitie-area" placeholder="Notitie (optioneel) — bijv. 'Goede eerste touch, speelt breed, JO9 niveau A'" rows="4"></textarea>
-        <div class="tds-sp-fase2-btns">
-          <button id="tds-sp-back" class="btn-ghost-sm">← Terug</button>
-          <button id="tds-sp-opslaan" class="btn-primary-sm">Opslaan</button>
-        </div>
-      </div>
-    </div>`;
-  document.body.appendChild(picker);
-
-  const searchEl  = picker.querySelector('#tds-sp-search');
-  const resultsEl = picker.querySelector('#tds-sp-results');
-  const newRow    = picker.querySelector('#tds-sp-new-row');
-  const newLbl    = picker.querySelector('#tds-sp-new-lbl');
-  const newBtn    = picker.querySelector('#tds-sp-new-btn');
-  const fase1     = picker.querySelector('#tds-sp-fase1');
-  const fase2     = picker.querySelector('#tds-sp-fase2');
-  const notitieEl = picker.querySelector('#tds-sp-notitie');
-  const naamLbl   = picker.querySelector('#tds-sp-selected-naam');
-  const titleEl   = picker.querySelector('#tds-sp-title');
-
-  function goFase2(speler){
-    _selectedSpeler = speler;
-    fase1.style.display = 'none';
-    fase2.style.display = '';
-    naamLbl.textContent = speler.naam;
-    titleEl.textContent = '📝 Notitie toevoegen';
-    notitieEl.focus();
-  }
-
-  function renderResults(q){
-    const lower = q.trim().toLowerCase();
-    const matches = players.filter(p =>
-      !lower || (p.naam||'').toLowerCase().includes(lower) || (p.club||'').toLowerCase().includes(lower)
-    ).slice(0, 15);
-    resultsEl.innerHTML = matches.length
-      ? matches.map(p =>
-          `<div class="tds-sp-row" data-sp-id="${escapeHtml(p.id||p.naam)}" data-sp-naam="${escapeHtml(p.naam||'')}">
-            <div class="tds-sp-naam">${escapeHtml(p.naam||'—')}</div>
-            <div class="tds-sp-meta">${[p.club, p.leeftijd, p.positie].filter(Boolean).join(' · ')}</div>
-          </div>`
-        ).join('')
-      : (lower ? '' : `<div style="padding:10px 0;color:var(--text-3);font-size:13px;">Typ een naam om te zoeken…</div>`);
-    if(lower){
-      newLbl.textContent = `"${q.trim()}"`;
-      newRow.style.display = 'flex';
-    } else {
-      newRow.style.display = 'none';
-    }
-    resultsEl.querySelectorAll('.tds-sp-row').forEach(row => {
-      row.addEventListener('click', () => goFase2({ id: row.dataset.spId, naam: row.dataset.spNaam }));
-    });
-  }
-
-  newBtn.addEventListener('click', () => {
-    const naam = searchEl.value.trim();
-    if(!naam) return;
-    goFase2({ id: `obs_${Date.now()}`, naam });
-  });
-
-  picker.querySelector('#tds-sp-back').addEventListener('click', () => {
-    fase2.style.display = 'none';
-    fase1.style.display = '';
-    titleEl.textContent = '👤 Scout speler';
-    _selectedSpeler = null;
-    searchEl.focus();
-  });
-
-  picker.querySelector('#tds-sp-opslaan').addEventListener('click', async () => {
-    if(!_selectedSpeler) return;
-    const notitie = notitieEl.value.trim();
-    await _tdsAddScout(pouleIdx, wedstrIdx, { ..._selectedSpeler, notitie });
-    picker.remove();
-  });
-
-  // Enter in notitieveld = opslaan
-  notitieEl.addEventListener('keydown', e => {
-    if(e.key === 'Enter' && (e.ctrlKey || e.metaKey)){
-      e.preventDefault();
-      picker.querySelector('#tds-sp-opslaan').click();
-    }
-  });
-
-  renderResults('');
-  searchEl.addEventListener('input', () => renderResults(searchEl.value));
-  searchEl.focus();
-  picker.querySelector('#tds-sp-close').addEventListener('click', () => picker.remove());
-  picker.addEventListener('click', e => { if(e.target === picker) picker.remove(); });
-}
-
-async function _tdsAddScout(pouleIdx, wedstrIdx, speler){
-  if(!currentUser || !__tdsCurrentId) return;
-  const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
-  if(!t) return;
-  const poules = JSON.parse(JSON.stringify(t.poules||[]));
-  const w = poules[pouleIdx]?.wedstrijden?.[wedstrIdx];
-  if(!w) return;
-  w.scouted = w.scouted||[];
-  if(w.scouted.some(s => s.id === speler.id)) return; // al gekoppeld
-  w.scouted.push(speler);
-  try{
-    const ref = doc(db, 'users', currentUser.uid, 'toernooien', __tdsCurrentId);
-    await updateDoc(ref, { poules });
-    toast(`${speler.naam} gekoppeld aan wedstrijd`);
-  }catch(e){ console.error('tdsAddScout error', e); toast('Opslaan mislukt: '+e.message); }
-}
-
-async function _tdsRemoveScout(pouleIdx, wedstrIdx, spId){
-  if(!currentUser || !__tdsCurrentId) return;
-  const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
-  if(!t) return;
-  const poules = JSON.parse(JSON.stringify(t.poules||[]));
-  const w = poules[pouleIdx]?.wedstrijden?.[wedstrIdx];
-  if(!w) return;
-  w.scouted = (w.scouted||[]).filter(s => s.id !== spId && s.naam !== spId);
-  try{
-    const ref = doc(db, 'users', currentUser.uid, 'toernooien', __tdsCurrentId);
-    await updateDoc(ref, { poules });
-  }catch(e){ console.error('tdsRemoveScout error', e); }
-}
-
-function _tDagLabel(dag, type){
-  if(dag === 'onbekend') return type === 'finale' ? 'Finales' : 'Voorrondes';
-  try{
-    const d = new Date(dag);
-    const days = ['zo','ma','di','wo','do','vr','za'];
-    const months = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-    return `${days[d.getDay()]} ${d.getDate()} ${months[d.getMonth()]}${type==='finale'?' — finales':''}`;
-  }catch(_){ return dag; }
-}
-
-function _computeStand(poule){
-  const teams = poule.teams || [];
-  const stand = {};
-  teams.forEach(t => { stand[t] = {team:t, G:0, W:0, Ge:0, V:0, GV:0, GT:0, Pts:0}; });
-  (poule.wedstrijden||[]).filter(w=>w.gespeeld||w.scoreThuis!=null).forEach(w=>{
-    const h = stand[w.thuis], a = stand[w.uit];
-    if(!h||!a) return;
-    const sh=w.scoreThuis||0, sa=w.scoreUit||0;
-    h.G++; a.G++; h.GV+=sh; h.GT+=sa; a.GV+=sa; a.GT+=sh;
-    if(sh>sa){h.W++;h.Pts+=3;a.V++;}
-    else if(sh<sa){a.W++;a.Pts+=3;h.V++;}
-    else{h.Ge++;a.Ge++;h.Pts++;a.Pts++;}
-  });
-  return Object.values(stand).sort((a,b)=>b.Pts-a.Pts||(b.GV-b.GT)-(a.GV-a.GT)||b.GV-a.GV);
-}
-
-/* knockout animation */
-function tdsRenderKnockout(rondes){
-  const wrap = document.getElementById('tds-ko-rounds');
-  const dots = document.getElementById('tds-ko-dots');
-  if(!wrap) return;
-  __tdsKoRound = 0;
-
-  wrap.innerHTML = rondes.map((r,i) => {
-    const isFinal = i === rondes.length-1;
-    const weds = r.wedstrijden || [];
-    const cols = weds.length > 2 ? 'cols2' : 'cols1';
-    const matchHtml = weds.map(w => {
-      const gespeeld = w.gespeeld || w.scoreThuis!=null;
-      const hWin = gespeeld && w.scoreThuis > w.scoreUit;
-      const aWin = gespeeld && w.scoreUit > w.scoreThuis;
-      return `<div class="tds-ko-match${isFinal?' final-match':''}">
-        <div class="tds-ko-team${hWin?' winner':''}">${escapeHtml(w.thuis||'?')} <span class="ko-sc${!gespeeld?' pending':''}">${gespeeld?w.scoreThuis:'–'}</span></div>
-        <div class="tds-ko-team${aWin?' winner':''}">${escapeHtml(w.uit||'?')} <span class="ko-sc${!gespeeld?' pending':''}">${gespeeld?w.scoreUit:'–'}</span></div>
-        <div class="tds-ko-meta${isFinal?' final-meta':''}">
-          ${w.veld?`<span>${escapeHtml(w.veld)}</span>`:''}
-          ${w.tijd?`<span>${escapeHtml(w.tijd)}</span>`:''}
-          ${isFinal&&gespeeld?`<span class="winner-label">Winnaar: ${escapeHtml(hWin?w.thuis:w.uit)}</span>`:''}
-        </div>
-      </div>`;
-    }).join('');
-    const cls = i===0?'visible':'below';
-    return `<div class="tds-ko-round ${cls}" id="tds-ko-round-${i}" style="${i===0?'':'transform:translateY(20px)'}">
-      ${isFinal?`<div style="text-align:center;margin-bottom:10px;"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#854f0b" stroke-width="1.8"><path d="M8 21h8M12 17v4M5 3H19L17 11C17 14.866 14.866 17 12 17C9.134 17 7 14.866 7 11L5 3Z"/><path d="M5 7H3C2 7 1 8 1 9C1 11.5 3 13 5 13"/><path d="M19 7H21C22 7 23 8 23 9C23 11.5 21 13 19 13"/></svg></div>`:''}
-      <div class="tds-ko-round-title">${escapeHtml(r.naam||'Ronde '+(i+1))}</div>
-      <div class="tds-ko-grid ${cols}">${matchHtml}</div>
-    </div>`;
-  }).join('');
-
-  if(dots) dots.innerHTML = rondes.map((_,i)=>`<div class="tds-ko-dot${i===0?' active':''}" onclick="tdsGoRound(${i})"></div>`).join('');
-
-  const lbl = document.getElementById('tds-ko-round-label');
-  if(lbl) lbl.textContent = rondes[0]?.naam || 'Ronde 1';
-  tdsUpdateKoNav(rondes.length);
-}
-
-function tdsGoRound(n){
-  const t = tournamentsCache.find(x=>x.id===__tdsCurrentId);
-  const rondes = t?.knockout?.rondes || [];
-  if(!rondes.length) return;
-  const prev = __tdsKoRound;
-  __tdsKoRound = Math.max(0, Math.min(rondes.length-1, n));
-  const dir = __tdsKoRound > prev ? 1 : -1;
-  rondes.forEach((_,i) => {
-    const el = document.getElementById(`tds-ko-round-${i}`);
-    if(!el) return;
-    el.classList.remove('visible','above','below');
-    el.style.transform = '';
-    if(i===__tdsKoRound){
-      el.style.transform = `translateY(${dir>0?'20px':'-20px'})`;
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
-        el.style.transform='translateY(0)'; el.classList.add('visible');
-      }));
-    } else if(i<__tdsKoRound){
-      el.classList.add('above'); el.style.transform='translateY(-20px)';
-    } else {
-      el.classList.add('below'); el.style.transform='translateY(20px)';
-    }
-  });
-  document.querySelectorAll('.tds-ko-dot').forEach((d,i)=>d.classList.toggle('active',i===__tdsKoRound));
-  const lbl = document.getElementById('tds-ko-round-label');
-  if(lbl) lbl.textContent = rondes[__tdsKoRound]?.naam || '';
-  tdsUpdateKoNav(rondes.length);
-}
-function tdsMoveRound(dir){ tdsGoRound(__tdsKoRound+dir); }
-function tdsUpdateKoNav(total){
-  const prev = document.getElementById('tds-ko-prev');
-  const next = document.getElementById('tds-ko-next');
-  if(prev) prev.disabled = __tdsKoRound===0;
-  if(next) next.disabled = __tdsKoRound===total-1;
-}
-
-function closeToernooiDetail(){
-  const ov = document.getElementById('toernooi-detail-overlay');
-  if(ov) ov.style.display='none';
-  document.body.style.overflow='';
-  __tdsCurrentId=null; window.__tdsCurrentId=null;
-}
-
-/* delete toernooi */
-async function deleteToernooi(){
-  if(!currentUser || !__tdsCurrentId) return;
-  const t = tournamentsCache.find(x => x.id === __tdsCurrentId);
-  const naam = t?.naam || 'dit toernooi';
-  if(!confirm(`Weet je zeker dat je "${naam}" wilt verwijderen? Dit kan niet ongedaan worden gemaakt.`)) return;
-  try{
-    await deleteDoc(doc(collection(db,'users',currentUser.uid,'toernooien'), __tdsCurrentId));
-    closeToernooiDetail();
-    toast('Toernooi verwijderd');
-  }catch(err){
-    alert('Verwijderen mislukt: ' + err.message);
-  }
-}
-window.deleteToernooi = deleteToernooi;
-
-/* info modal */
-function openToernooiInfo(){
-  const t = tournamentsCache.find(x=>x.id===__tdsCurrentId);
-  if(!t) return;
-  const ov = document.getElementById('toernooi-info-overlay');
-  const body = document.getElementById('toernooi-info-body');
-  if(!ov||!body) return;
-
-  const rows = [
-    ['Toernooi', t.naam],
-    ['Datum', _tFormatDatum(t.datum, t.datumEinde)],
-    ['Locatie', t.locatie],
-    ['Format', t.format],
-    ['Leeftijdscategorie', t.leeftijdscategorie],
-    ['Tournify', t.tournifyUrl||t.tournifySlug ? (t.tournifyUrl||`tournifyapp.com/live/${t.tournifySlug}`) : null],
-  ].filter(r=>r[1]);
-
-  body.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;">
-    ${rows.map(([k,v])=>`<div style="background:var(--bg-2,#f3f4f6);border-radius:8px;padding:10px 12px;">
-      <div style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2,#6b7280);margin-bottom:3px;">${escapeHtml(k)}</div>
-      <div style="font-size:13px;">${escapeHtml(v)}</div>
-    </div>`).join('')}
-  </div>
-  ${t.reglement?`<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2,#6b7280);margin-bottom:6px;">Reglement</div>
-  <div style="font-size:13px;line-height:1.65;color:var(--text-1,#111);white-space:pre-wrap;">${escapeHtml(t.reglement)}</div>`:''}`;
-  ov.style.display='flex';
-}
-function closeToernooiInfo(){ const ov=document.getElementById('toernooi-info-overlay'); if(ov) ov.style.display='none'; }
-
-/* ---------- FORM / IMPORT ---------- */
-let __tfParsedData = null;
-let __tfEditId = null;
-let __tfFotoBase64 = null;
-
-/* ── Leeftijdscategorie multi-select helpers ── */
-let _tfLeeftijden = [];
-const _TF_CAT_OPTIONS = ['JO7','JO8','JO9','JO10','JO11','JO12','JO13','JO14','JO15','JO17','JO19',
-  'MO7','MO8','MO9','MO10','MO11','MO12','MO13','MO14','MO15','MO17','MO19',
-  'Senioren','Dames','Veteranen'];
-
-function _tfLeeftijdRender(){
-  const wrap = document.getElementById('tf-leeftijd-tags');
-  const addSel = document.getElementById('tf-leeftijd-add');
-  if(!wrap) return;
-  wrap.innerHTML = _tfLeeftijden.map(v =>
-    `<span class="tf-cat-tag">${escapeHtml(v)}<button type="button" class="tf-cat-tag-x" data-cat="${escapeHtml(v)}" title="Verwijder">×</button></span>`
-  ).join('');
-  wrap.querySelectorAll('.tf-cat-tag-x').forEach(btn => {
-    btn.addEventListener('click', () => _tfLeeftijdRemove(btn.dataset.cat));
-  });
-  // grey out already-selected in dropdown
-  if(addSel){
-    Array.from(addSel.options).forEach(opt => {
-      opt.disabled = opt.value && _tfLeeftijden.includes(opt.value);
-    });
-  }
-}
-function _tfLeeftijdAdd(val){
-  if(!val || _tfLeeftijden.includes(val)) return;
-  _tfLeeftijden.push(val);
-  _tfLeeftijdRender();
-  const addSel = document.getElementById('tf-leeftijd-add');
-  if(addSel) addSel.value = '';
-}
-function _tfLeeftijdRemove(val){
-  _tfLeeftijden = _tfLeeftijden.filter(v => v !== val);
-  _tfLeeftijdRender();
-}
-function _tfGetLeeftijden(){ return _tfLeeftijden.slice(); }
-function _tfSetLeeftijden(val){
-  if(Array.isArray(val)){
-    _tfLeeftijden = val.filter(Boolean);
-  } else if(typeof val === 'string' && val){
-    // May be comma-separated: "JO9, JO10"
-    _tfLeeftijden = val.split(/[,;]+/).map(s=>s.trim()).filter(Boolean);
-  } else {
-    _tfLeeftijden = [];
-  }
-  _tfLeeftijdRender();
-}
-function _tfLeeftijdStr(){ return _tfGetLeeftijden().join(', '); }
-
-/* Normalize leeftijdscategorie for display (string or array → string) */
-function _tNormLeeftijd(v){
-  if(Array.isArray(v)) return v.join(', ');
-  return v || '';
-}
-
-function openToernooiForm(id){
-  __tfEditId = id || null;
-  __tfParsedData = null;
-  __tfFotoBase64 = null;
-  _tfLeeftijden = [];
-  const ov = document.getElementById('toernooi-form-overlay');
-  if(!ov) return;
-  const title = document.getElementById('toernooi-form-title');
-  if(title) title.textContent = id ? 'Toernooi bewerken' : 'Toernooi toevoegen';
-  // clear fields
-  ['tf-naam','tf-locatie','tf-tournify-url','tf-reglement'].forEach(fid=>{ const el=document.getElementById(fid); if(el) el.value=''; });
-  ['tf-datum','tf-datum-einde'].forEach(fid=>{ const el=document.getElementById(fid); if(el) el.value=''; });
-  _tfLeeftijden = []; _tfLeeftijdRender();
-  // wire the leeftijd-add dropdown
-  const addSel = document.getElementById('tf-leeftijd-add');
-  if(addSel){ addSel.onchange = () => { if(addSel.value) _tfLeeftijdAdd(addSel.value); }; }
-  document.getElementById('tf-preview').style.display='none';
-  document.getElementById('tf-basic-fields').style.display='none';
-  document.getElementById('tf-action-row').style.display='none';
-  document.getElementById('tf-url-status').style.display='none';
-  document.getElementById('tf-foto-status').style.display='none';
-  document.getElementById('tf-foto-parse-btn').style.display='none';
-  document.getElementById('tf-foto-preview').style.display='none';
-  document.getElementById('tf-url-input').value='';
-
-  if(id){
-    const t = tournamentsCache.find(x=>x.id===id);
-    if(t){ _tfFillForm(t); }
-  } else {
-    tfSwitchImport('url');
-  }
-  ov.style.display='flex';
-}
-function closeToernooiForm(){ const ov=document.getElementById('toernooi-form-overlay'); if(ov) ov.style.display='none'; }
-
-function _tfFillForm(t){
-  tfSwitchImport('manual');
-  document.getElementById('tf-basic-fields').style.display='';
-  document.getElementById('tf-action-row').style.display='flex';
-  if(t.naam) document.getElementById('tf-naam').value=t.naam;
-  if(t.leeftijdscategorie) _tfSetLeeftijden(t.leeftijdscategorie);
-  if(t.datum) document.getElementById('tf-datum').value=t.datum;
-  if(t.datumEinde) document.getElementById('tf-datum-einde').value=t.datumEinde;
-  if(t.locatie) document.getElementById('tf-locatie').value=t.locatie;
-  if(t.tournifyUrl) document.getElementById('tf-tournify-url').value=t.tournifyUrl;
-  if(t.reglement) document.getElementById('tf-reglement').value=t.reglement;
-  if(t.format){ const sel=document.getElementById('tf-format'); if(sel) sel.value=t.format; }
-  __tfParsedData = t; // keep existing poules/ko
-}
-
-function tfSwitchImport(mode){
-  ['url','foto','manual'].forEach(m=>{
-    document.getElementById(`tf-pane-${m}`).style.display = m===mode?'':'none';
-    document.getElementById(`tf-itab-${m}`).classList.toggle('active',m===mode);
-  });
-  // Reset upload zone opacity bij terugkeren naar foto-tab
-  const zone = document.getElementById('tf-upload-zone');
-  if(zone) zone.style.opacity = '';
-  // Reset statussen
-  ['tf-url-status','tf-foto-status'].forEach(id=>{
-    const el = document.getElementById(id);
-    if(el){ el.style.display='none'; el.textContent=''; }
-  });
-  // Verberg preview bij non-manual tabs (parse opnieuw vereist)
-  if(mode !== 'manual'){
-    const prev = document.getElementById('tf-preview');
-    if(prev) prev.style.display = 'none';
-    document.getElementById('tf-basic-fields').style.display = 'none';
-    document.getElementById('tf-action-row').style.display = 'none';
-    __tfParsedData = null;
-  }
-  if(mode==='manual'){
-    document.getElementById('tf-basic-fields').style.display='';
-    document.getElementById('tf-action-row').style.display='flex';
-  }
-}
-
-/* URL / PDF parsing */
-/* ── Progress indicator helper (v79) ─────────────────────────────────
- * Gebruik: const prog = _tfMakeProgress('url');  (of 'foto')
- *   prog.step('Label van stap', 'Beschrijving');   → nieuwe stap starten
- *   prog.done('Label', 'Beschrijving');            → stap afronden (✓)
- *   prog.error('Foutmelding');                     → stap als fout markeren
- *   prog.finish();                                 → balk op 100%
- * ─────────────────────────────────────────────────────────────────── */
-function _tfMakeProgress(tab){
-  const wrap  = document.getElementById(`tf-${tab}-progress`);
-  const bar   = document.getElementById(`tf-${tab}-pb`);
-  const steps = document.getElementById(`tf-${tab}-steps`);
-  if(wrap) wrap.classList.add('active');
-  if(steps) steps.innerHTML = '';
-  let pct = 0;
-  let _cur = null;
-
-  const ICONS = { pending:'◌', active:'⟳', done:'✓', error:'✕' };
-
-  function _setBar(p){ pct = Math.min(p, 100); if(bar) bar.style.width = pct + '%'; }
-  function _addStep(label, desc, state){
-    if(!steps) return null;
-    const el = document.createElement('div');
-    el.className = `tf-progress-step ${state}`;
-    el.innerHTML = `<span class="tf-step-icon">${ICONS[state]||'◌'}</span><span>${label}${desc?` <span style="color:var(--text-3,#6b7280);font-size:11px;">— ${desc}</span>`:''}</span>`;
-    steps.appendChild(el);
-    return el;
-  }
-  function _updateStep(el, state, label, desc){
-    if(!el) return;
-    el.className = `tf-progress-step ${state}`;
-    el.innerHTML = `<span class="tf-step-icon">${ICONS[state]||'◌'}</span><span>${label}${desc?` <span style="color:var(--text-3,#6b7280);font-size:11px;">— ${desc}</span>`:''}</span>`;
-  }
-
-  return {
-    step(label, desc, pctTarget){
-      if(_cur) _updateStep(_cur, 'done', _cur._label, '');
-      _cur = _addStep(label, desc||'', 'active');
-      if(_cur) _cur._label = label;
-      if(pctTarget) _setBar(pctTarget);
-    },
-    done(label, desc){
-      if(_cur) _updateStep(_cur, 'done', label||_cur._label, desc||'');
-      _cur = null;
-    },
-    error(msg){
-      if(_cur) _updateStep(_cur, 'error', _cur._label||'Fout', msg||'');
-      _cur = null;
-    },
-    finish(){ _setBar(100); setTimeout(()=>{ if(wrap) wrap.classList.remove('active'); },3000); },
-    hide(){ if(wrap) wrap.classList.remove('active'); if(bar) bar.style.width='0%'; if(steps) steps.innerHTML=''; }
-  };
-}
-
-async function tfParseUrl(){
-  const url = (document.getElementById('tf-url-input').value||'').trim();
-  if(!url){ alert('Voer een URL in.'); return; }
-  const btn = document.getElementById('tf-url-parse-btn');
-  const status = document.getElementById('tf-url-status');
-  btn.disabled=true; btn.textContent='Bezig met inlezen…';
-  status.style.display='none';
-  const prog = _tfMakeProgress('url');
-
-  try{
-    let parsed = null;
-    const isPdf = /\.pdf(\?|$|#)/i.test(url);
-
-    if(isPdf){
-      prog.step('PDF-lezer laden', '', 10);
-      try{ await _tfLoadPdfJs(); }
-      catch(e){ throw new Error('PDF-lezer kon niet worden geladen. Controleer je verbinding.'); }
-
-      prog.step('PDF ophalen', url.split('/').pop().slice(0,30), 25);
-      let arrayBuf;
-      try{
-        const res = await fetch(url, { mode:'cors' });
-        if(!res.ok) throw new Error(`HTTP ${res.status}`);
-        arrayBuf = await res.arrayBuffer();
-      }catch(e){
-        throw new Error('PDF kon niet worden opgehaald (CORS). Sla het bestand op en upload via Foto/Scan/PDF.');
-      }
-
-      prog.step('Tekst uitlezen uit PDF', '', 50);
-      const pdfText = await _tfExtractPdfText(arrayBuf);
-
-      prog.step('Schema analyseren', 'regex parsing', 80);
-      parsed = _tfParseText(pdfText, url);
-      if(!parsed || !parsed.poules?.length){
-        throw new Error('Geen wedstrijdschema herkend in de PDF. Vul handmatig in of gebruik de Foto/Scan/PDF tab.');
-      }
-    } else {
-      const isTournify = /tournifyapp\.com/i.test(url);
-
-      if(isTournify){
-        // Tournify: JS-rendered — sla URL op en probeer Gemini voor basisinfo
-        const tLink = document.getElementById('tf-tournify-url');
-        if(tLink && !tLink.value) tLink.value = url;
-        prog.step('Tournify-link opslaan', url.split('/').pop(), 15);
-        prog.step('AI analyseert toernooinaam…', 'kan 10–20 sec duren', 30);
-        let trnParsed = null;
-        try{
-          const rawText = await _callGemini([{ text: _GEMINI_PROMPT + `
-
-Tournify-toernooi URL: ${url}
-De slug geeft hints over de naam. Probeer naam, leeftijdscategorie, datum en locatie te achterhalen op basis van de URL-slug en bekende toernooipatronen. Als je het echt niet weet, zet lege strings. Genereer GEEN wedstrijden of clubs op basis van gissingen — laat poules leeg.` }]);
-          trnParsed = _geminiJsonToParsed(rawText);
-        }catch(_){}
-        prog.finish();
-        if(trnParsed){ _tfFillBasicFromParsed(trnParsed); __tfParsedData = trnParsed; }
-        status.style.display='block';
-        status.textContent = trnParsed?.naam
-          ? `✓ Tournify-link opgeslagen — AI vulde naam/datum in. Controleer en gebruik "Sync" om live data op te halen.`
-          : '✓ Tournify-link opgeslagen — vul naam en datum in, gebruik dan "Sync" voor live schema.';
-        status.style.color='#3b6d11';
-        document.getElementById('tf-basic-fields').style.display='';
-        document.getElementById('tf-action-row').style.display='flex';
-        btn.disabled=false; btn.textContent='Schema inlezen';
-        return;
-      }
-
-      // Stap 1: probeer directe fetch (statische HTML)
-      prog.step('URL ophalen', url.slice(0,40), 15);
-      let fetchedHtml = null;
-      try{
-        const res = await fetch(url, { mode: 'cors' });
-        if(res.ok){
-          fetchedHtml = await res.text();
-          prog.step('Schema analyseren', 'regex', 40);
-          parsed = _tfParseText(fetchedHtml, url);
-        }
-      }catch(_){ /* CORS of netwerk — probeer Gemini */ }
-
-      // Stap 2: als regex niets vond maar HTML wel opgehaald — stuur naar Gemini
-      if(!parsed && fetchedHtml){
-        prog.step('AI analyseert pagina-inhoud…', 'kan 10–20 sec duren', 55);
-        try{
-          const snippet = fetchedHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi,'')
-            .replace(/<script[^>]*>[\s\S]*?<\/script>/gi,'')
-            .replace(/<[^>]+>/g,' ').replace(/\s{2,}/g,' ').slice(0,30000);
-          const rawText = await _callGemini([{ text: _GEMINI_PROMPT + '\n\nInhoud van de pagina:\n' + snippet }]);
-          parsed = _geminiJsonToParsed(rawText);
-        }catch(aiErr){
-          console.warn('Gemini URL parse mislukt:', aiErr);
-        }
-      }
-
-      // Stap 3: als CORS blokkeert én geen HTML — probeer Gemini enkel op basis van URL-tekst
-      if(!parsed && !fetchedHtml){
-        prog.step('Pagina niet bereikbaar — AI via URL…', 'kan 10–20 sec duren', 40);
-        try{
-          const rawText = await _callGemini([{ text: `${_GEMINI_PROMPT}\n\nURL: ${url}\n(De pagina was niet direct bereikbaar. Analyseer op basis van de URL.)` }]);
-          parsed = _geminiJsonToParsed(rawText);
-        }catch(aiErr){
-          console.warn('Gemini URL-only parse mislukt:', aiErr);
-        }
-      }
-
-      if(!parsed){
-        prog.error('Geen schema herkend');
-        status.style.display='block';
-        status.textContent='Geen schema herkend. Sla het programma op als PDF en upload via "Foto / Scan / PDF", of vul handmatig in.';
-        status.style.color='var(--muted,#9aa3b7)';
-        document.getElementById('tf-basic-fields').style.display='';
-        document.getElementById('tf-action-row').style.display='flex';
-        btn.disabled=false; btn.textContent='Schema inlezen';
-        return;
-      }
-
-      if(!parsed.poules?.length){
-        _tfFillBasicFromParsed(parsed);
-        __tfParsedData = parsed;
-        prog.finish();
-        status.style.display='block';
-        status.textContent='AI: basisgegevens ingevuld — wedstrijdschema niet gevonden. Vul handmatig aan.';
-        status.style.color='#3b6d11';
-        document.getElementById('tf-basic-fields').style.display='';
-        document.getElementById('tf-action-row').style.display='flex';
-        btn.disabled=false; btn.textContent='Schema inlezen';
-        return;
-      }
-    }
-
-    __tfParsedData = parsed;
-    _tfShowPreview(parsed);
-    const nW = parsed.poules.reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
-    prog.finish();
-    status.style.display='block';
-    status.textContent=`✓ Ingelezen: ${parsed.poules.length} poules, ${nW} wedstrijden${parsed.knockout?.rondes?.length?' + knockout':''}.`;
-    status.style.color='#3b6d11';
-    document.getElementById('tf-basic-fields').style.display='';
-    document.getElementById('tf-action-row').style.display='flex';
-    _tfFillBasicFromParsed(parsed);
-  }catch(err){
-    prog.error(err.message);
-    status.style.display='block';
-    status.textContent=`Fout: ${err.message}`;
-    status.style.color='#a32d2d';
-    document.getElementById('tf-basic-fields').style.display='';
-    document.getElementById('tf-action-row').style.display='flex';
-  }finally{
-    btn.disabled=false; btn.textContent='Schema inlezen';
-  }
-}
-
-/* Laad pdf.js van CDN on-demand */
-async function _tfLoadPdfJs(){
-  if(window.pdfjsLib) return;
-  await new Promise((resolve, reject) => {
-    const s = document.createElement('script');
-    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
-    s.onload = resolve;
-    s.onerror = () => reject(new Error('pdf.js laden mislukt'));
-    document.head.appendChild(s);
-  });
-  window.pdfjsLib.GlobalWorkerOptions.workerSrc =
-    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-}
-
-/* Extraheer leesbare platte tekst uit een PDF ArrayBuffer via pdf.js */
-async function _tfExtractPdfText(arrayBuf){
-  const loadingTask = window.pdfjsLib.getDocument({ data: new Uint8Array(arrayBuf) });
-  const pdf = await loadingTask.promise;
-  let fullText = '';
-  for(let i = 1; i <= pdf.numPages; i++){
-    const page = await pdf.getPage(i);
-    const tc = await page.getTextContent();
-    // Sorteer items op verticale positie dan horizontaal voor juiste leesvolgorde
-    const items = tc.items.filter(it => it.str && it.str.trim());
-    items.sort((a, b) => {
-      const ay = Math.round(-a.transform[5] / 3) * 3;
-      const by = Math.round(-b.transform[5] / 3) * 3;
-      if(ay !== by) return ay - by;
-      return a.transform[4] - b.transform[4];
-    });
-    // Groepeer per regel (zelfde y-positie)
-    let lastY = null;
-    for(const it of items){
-      const y = Math.round(-it.transform[5] / 3) * 3;
-      if(lastY !== null && Math.abs(y - lastY) > 3) fullText += '\n';
-      fullText += it.str + ' ';
-      lastY = y;
-    }
-    fullText += '\n\n'; // paginascheiding
-  }
-  return fullText;
-}
-
-/* Core text parser — Dutch tournament format */
-function _tfParseText(text, url){
-  // strip HTML tags if HTML
-  const clean = text.replace(/<[^>]+>/g,' ').replace(/&amp;/g,'&').replace(/&nbsp;/g,' ').replace(/\s{2,}/g,' ');
-
-  // detect tournament name — try broad context first (words before kampioenschap/cup etc.)
-  let naam = '';
-  const naamMatch = clean.match(/[A-Z][a-zÀ-ÿ]+(?:\s+[A-Za-zÀ-ÿ]+){1,4}\s+(?:Kampioenschap|Toernooi|Cup)[^,.\d\n]{0,40}/i)
-    || clean.match(/(?:AVK|KNVB)[^,.\n\d]{0,60}/i)
-    || clean.match(/(?:toernooi|kampioenschap|cup)[^,.\n]{0,60}/i);
-  if(naamMatch) naam = naamMatch[0].trim();
-
-  // detect dates
-  const datePattern = /(\d{1,2})\s+(januari|februari|maart|april|mei|juni|juli|augustus|september|oktober|november|december)\s+(20\d{2})/gi;
-  const months_nl = {januari:1,februari:2,maart:3,april:4,mei:5,juni:6,juli:7,augustus:8,september:9,oktober:10,november:11,december:12};
-  const dates = [];
-  let dm;
-  while((dm = datePattern.exec(clean)) !== null){
-    const m = months_nl[dm[2].toLowerCase()];
-    dates.push(`${dm[3]}-${String(m).padStart(2,'0')}-${String(dm[1]).padStart(2,'0')}`);
-  }
-  // pick earliest & latest valid dates (sanity: ignore years > earliest+1 = typo protection)
-  const sortedDates = [...new Set(dates)].sort();
-  const datum = sortedDates[0] || '';
-  const baseYear = datum ? parseInt(datum.slice(0,4)) : 0;
-  const validDates = sortedDates.filter(d => !baseYear || Math.abs(parseInt(d.slice(0,4)) - baseYear) <= 1);
-  const datumEinde = validDates.length > 1 ? validDates[validDates.length-1] : '';
-
-  // detect leeftijd
-  let leeftijd = '';
-  const lm = clean.match(/JO\d{1,2}|JO\s+\d{1,2}|U\d{1,2}/i);
-  if(lm) leeftijd = lm[0].replace(/\s/,'');
-
-  // detect format
-  let format = '11v11';
-  if(/6\s*[xvtegen]{1,5}\s*6|6x6/i.test(clean)) format='6v6';
-  else if(/7\s*[xvtegen]{1,5}\s*7|7x7/i.test(clean)) format='7v7';
-  else if(/8\s*[xvtegen]{1,5}\s*8|8x8/i.test(clean)) format='8v8';
-
-  // detect location — match sportpark/complex name (space before capital OK)
-  let locatie = '';
-  const locM = clean.match(/(?:sportpark|sportcomplex)\s+([A-Z][a-zÀ-ÿ\w\s]{3,40})/)
-    || clean.match(/velden van\s+([A-Z][a-zÀ-ÿ\w\s]{3,40})/)
-    || clean.match(/te\s+([A-Z][a-zÀ-ÿ\s]{3,30})/);
-  if(locM) locatie = locM[0].trim();
-
-  // detect reglement
-  let reglement = '';
-  const regM = clean.match(/(?:Wedstrijdbepalingen|Reglement)([\s\S]{0,2000}?)(?=Poule [A-Z]|$)/i);
-  if(regM) reglement = regM[1].trim().replace(/\s{2,}/g,'\n').substring(0,2000);
-
-  // parse poules
-  const poules = [];
-  // split on "POULE X" or "Poule X"
-  const pouleSplit = clean.split(/(?=POULE\s+[A-Z]|Poule\s+[A-Z])/i);
-
-  pouleSplit.forEach(block => {
-    const pouleM = block.match(/(?:POULE|Poule)\s+([A-Z])/i);
-    if(!pouleM) return;
-    const pouleId = pouleM[1].toUpperCase();
-
-    // determine day context (Woensdag/Vrijdag etc + date)
-    const dayMatch = block.match(/(maandag|dinsdag|woensdag|donderdag|vrijdag|zaterdag|zondag)\s+(\d{1,2})\s+\w+\s+(\d{4})/i);
-    let dagStr = datum; // fallback to main date
-    if(dayMatch){
-      // try to find matching date from dates array
-      const dayNum = parseInt(dayMatch[2]);
-      const matchDate = dates.find(d => parseInt(d.split('-')[2])===dayNum);
-      if(matchDate) dagStr = matchDate;
-    }
-
-    // is this a finales block?
-    const isFinale = /finale/i.test(block.substring(0,100));
-    const type = isFinale ? 'finale' : 'groep';
-
-    // extract match lines: time pattern HH:MM-HH:MM ... Team - Team ... Veld
-    const matchRe = /(\d{1,2}:\d{2})[-–]\d{1,2}:\d{2}[^A-Z\d]*([A-Z][A-Za-z\s'0-9]+?)\s+[-–]\s+([A-Z][A-Za-z\s'0-9]+?)\s+([\dA-Z]{2,6})/g;
-    const wedstrijden = [];
-    let mm;
-    while((mm = matchRe.exec(block)) !== null){
-      const thuis = mm[2].trim().replace(/\s+/g,' ');
-      const uit = mm[3].trim().replace(/\s+/g,' ');
-      // skip if team names look like NR numbers (placeholder)
-      if(/^NR\s*\d/i.test(thuis) || /^NR\s*\d/i.test(uit)) continue;
-      wedstrijden.push({
-        id: `${pouleId}-${wedstrijden.length}`,
-        dag: dagStr,
-        tijd: mm[1],
-        thuis, uit,
-        scoreThuis: null, scoreUit: null,
-        gespeeld: false,
-        veld: mm[4].trim(),
-        type
-      });
-    }
-    if(!wedstrijden.length) return;
-
-    // extract teams from standings block (lines with just team names)
-    const teams = [];
-    // look for team names listed alone (standings format)
-    const standRe = /^([A-Z][A-Za-z\s'0-9]{2,30})\s*[-–]?\s*$/gm;
-    let sm;
-    while((sm = standRe.exec(block)) !== null){
-      const tn = sm[1].trim();
-      if(tn.length>2 && !/POULE|Veld|Uitslag|Totaal|Doelsaldo|Eindstand|Woensdag|Vrijdag|Dinsdag|Donderdag|Zaterdag|Maandag/i.test(tn))
-        if(!teams.includes(tn)) teams.push(tn);
-    }
-
-    // check if same poule already exists (multiple days share same poule)
-    const existing = poules.find(p=>p.id===pouleId);
-    if(existing){
-      existing.wedstrijden.push(...wedstrijden);
-    } else {
-      poules.push({ id: pouleId, naam: `Poule ${pouleId}`, veld: wedstrijden[0]?.veld||'', teams, wedstrijden });
-    }
-  });
-
-  // Altijd basisdata teruggeven, ook zonder poules (zodat naam/datum/leeftijd al worden ingevuld)
-  return { naam, datum, datumEinde, locatie, leeftijdscategorie: leeftijd, format, reglement, poules, knockout: null };
-}
-
-function _tfNormLeeftijdVal(raw){
-  // Normalize "JO 9" -> "JO9", "jo9" -> "JO9", "u9" -> "JO9", "MO9" -> "MO9"
-  const s = String(raw).trim().replace(/\s+/g,'').toUpperCase();
-  if(/^[UO]\d/.test(s)) return 'JO' + s.slice(1);
-  if(/^JO\d/.test(s) || /^MO\d/.test(s)) return s;
-  return s;
-}
-function _tfFillBasicFromParsed(p){
-  if(p.naam) document.getElementById('tf-naam').value=p.naam;
-  if(p.leeftijdscategorie){
-    // Support both string "JO9" and array ["JO9","JO10"] and comma-separated
-    const cats = Array.isArray(p.leeftijdscategorie)
-      ? p.leeftijdscategorie
-      : String(p.leeftijdscategorie).split(/[,;]+/).map(s=>s.trim()).filter(Boolean);
-    const normalized = cats.map(_tfNormLeeftijdVal).filter(v => _TF_CAT_OPTIONS.includes(v) || v.length > 0);
-    // Add only the ones not already selected
-    normalized.forEach(v => {
-      if(v && !_tfLeeftijden.includes(v)) _tfLeeftijden.push(v);
-    });
-    _tfLeeftijdRender();
-  }
-  if(p.datum) document.getElementById('tf-datum').value=p.datum;
-  if(p.datumEinde) document.getElementById('tf-datum-einde').value=p.datumEinde;
-  if(p.locatie) document.getElementById('tf-locatie').value=p.locatie;
-  if(p.reglement) document.getElementById('tf-reglement').value=p.reglement;
-  const fmtSel=document.getElementById('tf-format'); if(fmtSel&&p.format) fmtSel.value=p.format;
-}
-
-function _tfShowPreview(parsed){
-  const prev = document.getElementById('tf-preview');
-  const body = document.getElementById('tf-preview-body');
-  if(!prev||!body) return;
-  let html = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;margin-bottom:12px;">`;
-  html += `<div style="background:var(--bg-2,#f3f4f6);border-radius:8px;padding:9px 12px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2,#6b7280);">Naam</div><div style="font-size:13px;font-weight:500;margin-top:2px;">${escapeHtml(parsed.naam||'—')}</div></div>`;
-  html += `<div style="background:var(--bg-2,#f3f4f6);border-radius:8px;padding:9px 12px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2,#6b7280);">Datum</div><div style="font-size:13px;font-weight:500;margin-top:2px;">${escapeHtml(_tFormatDatum(parsed.datum,parsed.datumEinde))}</div></div>`;
-  html += `<div style="background:var(--bg-2,#f3f4f6);border-radius:8px;padding:9px 12px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2,#6b7280);">Poules</div><div style="font-size:13px;font-weight:500;margin-top:2px;">${parsed.poules.length} (${parsed.poules.map(p=>p.id).join(', ')})</div></div>`;
-  const nW = parsed.poules.reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
-  html += `<div style="background:var(--bg-2,#f3f4f6);border-radius:8px;padding:9px 12px;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2,#6b7280);">Wedstrijden</div><div style="font-size:13px;font-weight:500;margin-top:2px;">${nW}</div></div>`;
-  html += '</div>';
-  // first 3 matches as sample
-  const sample = parsed.poules[0]?.wedstrijden?.slice(0,3)||[];
-  if(sample.length){
-    html += `<div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-2,#6b7280);margin-bottom:6px;">Voorbeeld wedstrijden</div>`;
-    sample.forEach(w => {
-      html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:0.5px solid var(--border-1,#e2e5ef);border-radius:8px;margin-bottom:5px;font-size:12px;">
-        <span style="color:var(--text-2,#6b7280);min-width:38px;font-size:11px;">${escapeHtml(w.tijd||'')}</span>
-        <span style="flex:1;">${escapeHtml(w.thuis)} – ${escapeHtml(w.uit)}</span>
-        <span style="font-size:10px;background:var(--bg-2,#f3f4f6);padding:2px 6px;border-radius:4px;">${escapeHtml(w.veld||'')}</span>
-      </div>`;
-    });
-    if(nW>3) html += `<div style="font-size:12px;color:var(--text-2,#6b7280);margin-top:4px;">+ ${nW-3} meer…</div>`;
-  }
-  body.innerHTML = html;
-  prev.style.display = 'block';
-}
-
-/* foto / camera / PDF upload */
-function tfHandleFotoUpload(e){
-  const file = e.target.files && e.target.files[0];
-  if(!file) return;
-  const preview = document.getElementById('tf-foto-preview');
-  const parseBtn = document.getElementById('tf-foto-parse-btn');
-  const statusEl = document.getElementById('tf-foto-status');
-  if(statusEl){ statusEl.style.display='none'; statusEl.textContent=''; }
-
-  const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
-
-  if(isPdf){
-    // PDF: lees als ArrayBuffer, extraheer tekst via pdf.js, parse direct
-    statusEl && (statusEl.style.display='block');
-    statusEl && (statusEl.textContent='PDF laden…');
-    statusEl && (statusEl.style.color='var(--muted,#9aa3b7)');
-    preview.innerHTML = `<div style="padding:10px 12px;background:rgba(245,197,66,.08);border-radius:8px;font-size:13px;display:flex;align-items:center;gap:8px;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent,#f5c542)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>PDF geselecteerd: <strong>${escapeHtml(file.name)}</strong></span></div>`;
-    preview.style.display='block';
-
-    // Lees PDF zowel als ArrayBuffer (voor pdf.js) als DataURL (voor AI fallback)
-    const reader = new FileReader();
-    reader.onload = async ev => {
-      // Bewaar base64 DataURL voor AI fallback (Cloud Function ondersteunt application/pdf)
-      const b64Reader = new FileReader();
-      b64Reader.onload = b64ev => { __tfFotoBase64 = b64ev.target.result; };
-      b64Reader.readAsDataURL(file);
-
-      try{
-        await _tfLoadPdfJs();
-        statusEl && (statusEl.textContent='PDF tekst uitlezen…');
-        const pdfText = await _tfExtractPdfText(ev.target.result);
-        statusEl && (statusEl.textContent='Schema analyseren…');
-        const parsed = _tfParseText(pdfText, file.name);
-        if(parsed && parsed.poules?.length){
-          __tfParsedData = parsed;
-          _tfShowPreview(parsed);
-          _tfFillBasicFromParsed(parsed);
-          const nW = parsed.poules.reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
-          statusEl && (statusEl.textContent=`✓ Ingelezen: ${parsed.poules.length} poules, ${nW} wedstrijden.`);
-          statusEl && (statusEl.style.color='#3b6d11');
-          document.getElementById('tf-basic-fields').style.display='';
-          document.getElementById('tf-action-row').style.display='flex';
-          parseBtn.style.display='none';
-        } else {
-          // Tekst gevonden maar geen poules herkend — vul wel basisvelden in als die er zijn
-          if(parsed) _tfFillBasicFromParsed(parsed);
-          const hasBasic = parsed && (parsed.naam || parsed.datum || parsed.leeftijdscategorie);
-          statusEl && (statusEl.textContent = hasBasic
-            ? `✓ Basisgegevens ingevuld — poule-schema niet herkend. Vul het wedstrijdschema handmatig aan.`
-            : `Tekst uitgelezen maar geen gegevens herkend. Vul handmatig in.`);
-          statusEl && (statusEl.style.color = hasBasic ? '#3b6d11' : 'var(--muted,#9aa3b7)');
-          parseBtn.style.display='none';
-          document.getElementById('tf-basic-fields').style.display='';
-          document.getElementById('tf-action-row').style.display='flex';
-        }
-      }catch(err){
-        // pdf.js mislukt — AI kan het alsnog proberen via base64
-        statusEl && (statusEl.textContent='Automatisch uitlezen mislukt — probeer "Schema uitlezen via AI".');
-        statusEl && (statusEl.style.color='var(--muted,#9aa3b7)');
-        parseBtn.style.display='';
-      }
-    };
-    reader.readAsArrayBuffer(file);
-  } else {
-    // Afbeelding: lees als base64 voor AI
-    const reader = new FileReader();
-    reader.onload = ev => {
-      __tfFotoBase64 = ev.target.result;
-      preview.innerHTML = `<img src="${ev.target.result}" style="max-width:100%;max-height:200px;border-radius:8px;border:0.5px solid var(--border,#2a2d3e);" />`;
-      preview.style.display='block';
-      parseBtn.style.display='';
-    };
-    reader.readAsDataURL(file);
-  }
-  // Verberg het upload-zone zodra er een bestand is gekozen
-  const zone = document.getElementById('tf-upload-zone');
-  if(zone && !isPdf) zone.style.opacity = '0.4';
-}
-
-// ── Gemini AI helper ─────────────────────────────────────────────────────────
-// Key is base64-encoded in parts to avoid plain-text scanning.
-// Real protection: key restricted to domain database-scouting.web.app in Google Cloud Console.
-// Domain guard: only assemble on production (or localhost for dev).
-function _gk(){
-  const _ok = ['database-scouting.web.app','localhost','127.0.0.1'].includes(location.hostname);
-  if(!_ok) return '';
-  const _p = [
-    atob('QUl6YVN5REg1OGNBdG9Xcmw='),
-    atob('YnBtdTBNZGJ5cmxzUGdjUQ=='),
-    atob('WWR1UlY0')
-  ];
-  return _p.join('');
-}
-const _GEMINI_KEY = _gk();
-const _GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${_GEMINI_KEY}`;
-
-const _GEMINI_PROMPT = `Je bent een assistent die toernooiprogramma's van voetbaltoernooien analyseert.
-Extraheer de volgende informatie en geef ALLEEN geldige JSON terug (geen uitleg, geen markdown):
-{
-  "naam": "volledige naam van het toernooi",
-  "datum": "YYYY-MM-DD (eerste speeldag)",
-  "datumEinde": "YYYY-MM-DD (laatste speeldag, leeg als onbekend of zelfde dag)",
-  "locatie": "naam van het sportpark of de stad",
-  "leeftijdscategorie": "bijv. JO9, JO10, JO11, JO12 etc.",
-  "format": "poules_knockout of only_poules of only_knockout",
-  "reglement": "korte beschrijving van het reglement (max 200 tekens), leeg als niet vermeld",
-  "poules": [
-    {
-      "naam": "naam van de poule bijv. Poule A",
-      "teams": ["Team 1", "Team 2"],
-      "wedstrijden": [
-        {"thuis": "Team 1", "uit": "Team 2", "tijd": "09:00", "veld": "1"}
-      ]
-    }
-  ]
-}
-Als een veld niet gevonden kan worden, gebruik dan een lege string of leeg array.
-Geef ALLEEN de JSON terug, niets anders.`;
-
-async function _callGemini(parts, _retry=2){
-  const body = { contents:[{ parts }] };
-  const res = await fetch(_GEMINI_URL, {
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body: JSON.stringify(body)
-  });
-  if(!res.ok){
-    const err = await res.json().catch(()=>({error:{message:res.statusText}}));
-    const msg = err?.error?.message || res.statusText;
-    // Rate-limit (429): wacht en probeer opnieuw
-    if(res.status === 429 && _retry > 0){
-      const waitSec = Math.min(parseInt((msg.match(/(\d+(?:\.\d+)?)s/)||[])[1]||'40')+2, 42);
-      await new Promise(r => setTimeout(r, waitSec*1000));
-      return _callGemini(parts, _retry-1);
-    }
-    throw new Error(`Gemini fout: ${msg}`);
-  }
-  const data = await res.json();
-  return data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-}
-
-function _geminiJsonToParsed(text){
-  // strip markdown code fences if present
-  const clean = text.replace(/^```(?:json)?\n?/i,'').replace(/\n?```$/,'').trim();
-  let obj;
-  try{ obj = JSON.parse(clean); }catch(_){ return null; }
-  if(!obj || typeof obj !== 'object') return null;
-  // normalize poules: ensure teams & wedstrijden arrays
-  const poules = (obj.poules||[]).map(p=>({
-    naam: p.naam||'',
-    teams: Array.isArray(p.teams)?p.teams:[],
-    wedstrijden: Array.isArray(p.wedstrijden)?p.wedstrijden.map(w=>({
-      thuis: w.thuis||'', uit: w.uit||'', tijd: w.tijd||'', veld: w.veld||''
-    })):[]
-  })).filter(p=>p.naam||p.teams.length||p.wedstrijden.length);
-  return {
-    naam: obj.naam||'',
-    datum: obj.datum||'',
-    datumEinde: obj.datumEinde||'',
-    locatie: obj.locatie||'',
-    leeftijdscategorie: obj.leeftijdscategorie||'',
-    format: obj.format||'',
-    reglement: obj.reglement||'',
-    poules,
-    knockout: null
-  };
-}
-
-async function tfParseFoto(){
-  if(!__tfFotoBase64){ alert('Upload eerst een bestand.'); return; }
-  const btn = document.getElementById('tf-foto-parse-btn');
-  const status = document.getElementById('tf-foto-status');
-  btn.disabled=true; btn.textContent='Bezig met uitlezen…';
-  status.style.display='none';
-  const prog = _tfMakeProgress('foto');
-
-  try{
-    const dataUrl = __tfFotoBase64;
-    const mimeMatch = dataUrl.match(/^data:([^;]+);base64,/);
-    if(!mimeMatch) throw new Error('Ongeldig bestandsformaat.');
-    const mimeType = mimeMatch[1];
-    const base64Data = dataUrl.slice(mimeMatch[0].length);
-    const isPDF = mimeType === 'application/pdf';
-
-    prog.step(isPDF ? 'PDF verwerken' : 'Afbeelding verwerken', mimeType, 20);
-    prog.step('AI analyseert schema…', 'kan 10–20 sec duren', 35);
-
-    const rawText = await _callGemini([
-      { text: _GEMINI_PROMPT },
-      { inline_data: { mime_type: mimeType, data: base64Data } }
-    ]);
-
-    prog.step('Resultaat verwerken', '', 85);
-    const parsed = _geminiJsonToParsed(rawText);
-    if(!parsed) throw new Error('AI-antwoord kon niet worden verwerkt. Probeer opnieuw of vul handmatig in.');
-
-    __tfParsedData = parsed;
-    prog.finish();
-
-    if(parsed.poules?.length){
-      _tfShowPreview(parsed);
-      _tfFillBasicFromParsed(parsed);
-      const nW = parsed.poules.reduce((s,p)=>s+(p.wedstrijden||[]).length,0);
-      status.style.display='block';
-      status.textContent=`✓ AI ingelezen: ${parsed.poules.length} poules, ${nW} wedstrijden.`;
-      status.style.color='#3b6d11';
-    } else {
-      _tfFillBasicFromParsed(parsed);
-      const hasBasic = parsed.naam || parsed.datum || parsed.leeftijdscategorie;
-      status.style.display='block';
-      status.textContent = hasBasic
-        ? `✓ AI: basisgegevens ingevuld — wedstrijdschema niet herkend. Vul handmatig aan.`
-        : `AI kon geen gegevens herkennen. Vul handmatig in.`;
-      status.style.color = hasBasic ? '#3b6d11' : 'var(--muted,#9aa3b7)';
-    }
-    document.getElementById('tf-basic-fields').style.display='';
-    document.getElementById('tf-action-row').style.display='flex';
-  }catch(err){
-    prog.error(err.message);
-    status.style.display='block';
-    status.textContent=`Fout: ${err.message}`;
-    status.style.color='#a32d2d';
-    document.getElementById('tf-basic-fields').style.display='';
-    document.getElementById('tf-action-row').style.display='flex';
-  }finally{
-    btn.disabled=false; btn.textContent='Schema uitlezen';
-  }
-}
-
-function __shFirebaseProject(){
-  try{ return firebaseConfig?.projectId || 'scoutinghub'; }catch(_){ return 'scoutinghub'; }
-}
-
-/* save */
-async function saveToernooi(){
-  if(!currentUser) return;
-  const btn = document.getElementById('tf-save-btn');
-  btn.disabled=true; btn.textContent='Opslaan…';
-  try{
-    const _cats = _tfGetLeeftijden();
-    const data = {
-      naam: document.getElementById('tf-naam').value.trim() || (__tfParsedData?.naam||''),
-      leeftijdscategorie: _cats.length > 1 ? _cats.join(', ') : (_cats[0] || ''),
-      datum: document.getElementById('tf-datum').value || (__tfParsedData?.datum||''),
-      datumEinde: document.getElementById('tf-datum-einde').value || (__tfParsedData?.datumEinde||''),
-      locatie: document.getElementById('tf-locatie').value.trim() || (__tfParsedData?.locatie||''),
-      format: (document.getElementById('tf-format') ? document.getElementById('tf-format').value : (__tfParsedData?.format||'')),
-      tournifyUrl: document.getElementById('tf-tournify-url').value.trim(),
-      reglement: document.getElementById('tf-reglement').value.trim() || (__tfParsedData?.reglement||''),
-      poules: __tfParsedData?.poules || [],
-      knockout: __tfParsedData?.knockout || null,
-      userId: currentUser.uid,
-      updated: Date.now()
-    };
-    if(!data.naam){ alert('Vul een toernooinaam in.'); btn.disabled=false; btn.textContent='Opslaan'; return; }
-
-    const col = collection(db, 'users', currentUser.uid, 'toernooien');
-    if(__tfEditId){
-      await setDoc(doc(col, __tfEditId), data, {merge:true});
-    } else {
-      data.created = Date.now();
-      await addDoc(col, data);
-    }
-    closeToernooiForm();
-  }catch(err){
-    alert('Opslaan mislukt: '+err.message);
-    console.error(err);
-  }finally{
-    btn.disabled=false; btn.textContent='Opslaan';
-  }
-}
-
-/* ---------- Tournify sync ---------- */
-async function syncToernooiNow(){
-  const t = tournamentsCache.find(x=>x.id===__tdsCurrentId);
-  if(!t||(!t.tournifyUrl&&!t.tournifySlug)) return;
-  const syncStatus = document.getElementById('tds-sync-status');
-  const syncDot = document.getElementById('tds-sync-dot');
-  const syncLbl = document.getElementById('tds-sync-label');
-  if(syncStatus){ syncStatus.style.display='flex'; }
-  if(syncDot){ syncDot.className='tds-sync-dot syncing'; }
-  if(syncLbl) syncLbl.textContent='Synchroniseren…';
-
-  try{
-    const endpoint = 'https://europe-west1-' + __shFirebaseProject() + '.cloudfunctions.net/syncTournify';
-    const idToken = auth.currentUser ? await auth.currentUser.getIdToken() : null;
-    const res = await fetch(endpoint, {
-      method:'POST',
-      headers:{'Content-Type':'application/json', ...(idToken ? {'Authorization':`Bearer ${idToken}`} : {})},
-      body: JSON.stringify({ tournamentId: __tdsCurrentId, url: t.tournifyUrl||`https://tournifyapp.com/live/${t.tournifySlug}` })
-    });
-    if(!res.ok) throw new Error('Sync mislukt');
-    if(syncDot) syncDot.className='tds-sync-dot ok';
-    if(syncLbl) syncLbl.textContent='Bijgewerkt';
-    setTimeout(()=>{ if(syncStatus) syncStatus.style.display='none'; }, 3000);
-  }catch(err){
-    if(syncDot) syncDot.className='tds-sync-dot stale';
-    if(syncLbl) syncLbl.textContent='Sync mislukt';
-    setTimeout(()=>{ if(syncStatus) syncStatus.style.display='none'; }, 4000);
-  }
-}
-
-/* ---------- Dashboard banner — geïntegreerd in aankomende lijst (s36g) ---------- */
-function _renderDashToernooi(){
-  // Toernooien staan nu in renderUpcomingMatches() — geen aparte banner meer.
-  try { const w = document.getElementById('dash-toernooi-banner-wrap'); if(w) w.innerHTML=''; } catch(_){}
-  try { renderUpcomingMatches(); } catch(_){}
-}
-
-
 /* ============================================================
    shAC — Universele autocomplete engine  s36l
    ============================================================ */
@@ -19875,11 +18033,4 @@ onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     try { initApp(); } catch(e){ console.error('initApp failed', e); }
     try { subscribeData(); } catch(e){ console.error('subscribeData failed', e); }
-    try { showApp(); } catch(e){ console.error('showApp failed', e); }
-    try { if(typeof go === 'function') go('dashboard'); } catch(e){ console.error('go dashboard failed', e); }
-    try { await loadUserRole(); } catch(e){ console.warn('loadUserRole failed', e); }
-  } else {
-    if(typeof unsubscribeData === 'function') try { unsubscribeData(); } catch(_){}
-    showLogin();
-  }
-});
+    try {

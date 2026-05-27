@@ -1027,7 +1027,7 @@ a { color: var(--accent); text-decoration: none; }
 .match-status-pill.verwerkt { background: rgba(127,217,158,.16); color: #7fd99e; }
 .match-status-pill.concept   { background: rgba(243,156,18,.18); color: #f39c12; }
 .match-status-pill.info      { background: rgba(155,164,184,.16); color: #9aa3b7; }
-.match-status-pill.toernooi  { background: rgba(91,140,240,.18); color: #7da6ff; }
+
 
 /* Aankomende wedstrijden (3 dagen) — compact */
 .upcoming-matches {
@@ -6001,44 +6001,12 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* ---------- WEDSTRIJDEN LIST ---------- */
 .matches-list { display: flex; flex-direction: column; gap: 10px; }
-.match-card-toernooi {
-  border-color: rgba(245,197,24,0.45) !important;
-  background: linear-gradient(180deg, rgba(245,197,24,0.06) 0%, var(--bg-2) 60%) !important;
-}
-.match-card-toernooi .match-date {
-  background: rgba(245,197,24,0.12) !important;
-  border-color: rgba(245,197,24,0.4) !important;
-}
-.match-card-toernooi .match-date-day,
-.match-card-toernooi .match-date-month,
-.match-card-toernooi .match-date-year { color: #f5c518 !important; }
-.match-toernooi-badge {
-  display: inline-block;
-  padding: 2px 8px;
-  font-size: 10.5px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
-  background: rgba(245,197,24,0.16);
-  color: #f5c518;
-  border: 1px solid rgba(245,197,24,0.4);
-  border-radius: 999px;
-  text-transform: uppercase;
-}
-.match-toernooi-list {
-  margin-top: 8px;
-  padding: 8px 10px;
-  background: var(--bg-3);
-  border: 1px dashed rgba(245,197,24,0.35);
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-.match-toernooi-wedstrijd {
-  font-size: 11.5px;
-  color: var(--text-2);
-  line-height: 1.4;
-}
+
+
+
+
+
+
 .match-group-header {
   font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
   color: var(--text-3); font-weight: 700;
@@ -6427,7 +6395,7 @@ tbody tr:last-child td { border-bottom: none; }
   border-left: 3px solid var(--border-2);
 }
 .m-stat.verwerkt { border-left-color: #7fd99e; }
-.m-stat.toernooi { border-left-color: #f5c518; }
+
 .m-stat.info     { border-left-color: var(--accent, #4ea1ff); }
 .m-stat-num {
   font-size: 24px; font-weight: 800; color: var(--text); line-height: 1.1;
@@ -6468,23 +6436,9 @@ tbody tr:last-child td { border-bottom: none; }
 
 /* Uniforme kaart-shell: zelfde border / padding voor alle types */
 .match-card.match-report-card { border-left-color: var(--accent, #4ea1ff); }
-.match-card.match-card-toernooi { border-left-color: #f5c518; }
+.match-card
 
 /* s35bs: report-card klikbaar -> opent edit-modal */
-/* s35bt: aggregated (niet-toernooi) cards óók klikbaar -> modal */
-.match-card.match-report-card,
-.match-card.expandable:not(.match-card-toernooi) { cursor: pointer; }
-.match-card.match-report-card .match-report-click-hint {
-  display: flex; align-items: center; justify-content: center;
-  color: var(--text-3); padding: 0 4px;
-  transition: color .15s, transform .15s;
-}
-.match-card.match-report-card:hover .match-report-click-hint {
-  color: var(--accent, #4ea1ff); transform: translateX(2px);
-}
-/* s35bt: chevron in aggregated niet-toernooi cards verbergen (modal-flow) */
-.match-card.expandable:not(.match-card-toernooi) .match-chevron { display: none; }
-
 /* Empty state met CTA */
 .m-empty {
   text-align: center; padding: 56px 20px 64px;
@@ -8310,25 +8264,6 @@ tbody tr:last-child td { border-bottom: none; }
   font-style: italic;
 }
 
-/* Toernooi card — golden accent */
-.prog-ev-card.prog-ev-toernooi {
-  border-color: rgba(245,197,24,.28);
-  background: rgba(245,197,24,.05);
-}
-.prog-ev-card.prog-ev-toernooi:hover {
-  border-color: rgba(245,197,24,.5);
-  background: rgba(245,197,24,.10);
-}
-.prog-ev-card.prog-ev-toernooi .pec-type-icon { font-size: 20px; }
-
-/* Week-strip: yellow dot for toernooi-only days */
-.psd-dot.trn-only {
-  background: var(--secondary, #f5c518) !important;
-}
-.prog-strip-day.is-active .psd-dot.trn-only {
-  background: var(--secondary, #f5c518) !important;
-}
-
 /* Desktop: card grid — events side by side when wide */
 @media (min-width: 700px) {
   #programma-grid.prog-ev-list {
@@ -8745,233 +8680,28 @@ tbody tr:last-child td { border-bottom: none; }
 .msv-btn:not(:last-child) { border-right: 0.5px solid var(--border-1, #e2e5ef); }
 .msv-btn svg { flex-shrink: 0; }
 
-/* Toernooien list */
-.toernooien-list { display: flex; flex-direction: column; gap: 12px; margin-top: 4px; }
-
-.toernooi-card {
-  background: var(--panel, #151c28);
-  border: 0.5px solid var(--border, #232d40);
-  border-radius: 14px;
-  padding: 16px 18px;
-  cursor: pointer;
-  transition: border-color .15s, box-shadow .15s;
-}
-.toernooi-card:hover { border-color: var(--accent, #4ea1ff); box-shadow: 0 2px 16px rgba(78,161,255,.12); }
-
-.tc-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
-.tc-naam { font-size: 15px; font-weight: 600; color: var(--text, #e8edf5); }
-.tc-badges { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 6px; }
-.tc-badge {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 11px; font-weight: 500; padding: 3px 8px;
-  border-radius: 6px;
-}
-.tc-badge.gold { background: rgba(245,197,24,.15); color: var(--secondary, #f5c518); }
-.tc-badge.blue { background: rgba(78,161,255,.12); color: var(--accent, #4ea1ff); }
-.tc-badge.muted { background: var(--bg-3, #1a2332); color: var(--text-2, #9aa8bd); }
-.tc-badge.green { background: rgba(34,197,94,.12); color: var(--green, #22c55e); }
-
-.tc-meta { margin-top: 8px; display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-2, #9aa8bd); }
-.tc-meta span { display: flex; align-items: center; gap: 4px; }
-
-.tc-sync-row { margin-top: 10px; padding-top: 10px; border-top: 0.5px solid var(--border, #232d40); display: flex; align-items: center; justify-content: space-between; }
-.tc-sync-info { font-size: 11px; color: var(--text-3, #6b7689); display: flex; align-items: center; gap: 5px; }
-.tc-sync-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green, #22c55e); }
-.tc-sync-dot.stale { background: var(--orange, #f59e0b); }
-
-/* Agenda toernooi-banner */
-.agenda-trn-banner {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  background: rgba(245,197,24,.08);
-  border: 0.5px solid rgba(245,197,24,.25);
-  border-radius: 8px; padding: 8px 12px; margin-bottom: 8px;
-  cursor: pointer; font-size: 13px;
-  transition: background .15s;
-}
-.agenda-trn-banner:hover { background: rgba(245,197,24,.14); }
-.agenda-trn-icon { color: var(--secondary, #f5c518); flex-shrink: 0; }
-.agenda-trn-name { font-weight: 600; color: var(--text, #e8edf5); flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.agenda-trn-tag { background: rgba(245,197,24,.15); color: var(--secondary, #f5c518); font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 5px; }
-.agenda-trn-meta { font-size: 11px; color: var(--text-3, #6b7689); margin-left: auto; white-space: nowrap; }
-
-/* Toernooi form grid — responsive */
-.tf-form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-}
-.tf-form-grid .tf-col-full { grid-column: 1 / -1; }
-@media (max-width: 520px) {
-  .tf-form-grid { grid-template-columns: 1fr; }
-  .tf-form-grid .tf-col-full { grid-column: 1; }
-}
-
 /* Tournament detail sheet */
-.toernooi-detail-sheet {
-  max-width: 780px !important;
-  height: 95vh !important;
-  max-height: 95vh !important;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  padding: 0 !important;
-}
 
-.tds-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 18px;
-  border-bottom: 0.5px solid var(--border-1, #e2e5ef);
-  flex-shrink: 0;
-  gap: 10px;
-}
-.tds-header-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.tds-naam { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.tds-meta { font-size: 12px; color: var(--text-2, #6b7280); margin-top: 1px; }
-.tds-header-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
 
-.tds-sync-status { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-2,#6b7280); }
-.tds-sync-dot { width: 6px; height: 6px; border-radius: 50%; background: #ba7517; }
-.tds-sync-dot.syncing { background: #185fa5; animation: syncPulse 1.2s infinite; }
-.tds-sync-dot.ok { background: #3b6d11; }
 @keyframes syncPulse { 0%,100%{opacity:1} 50%{opacity:.3} }
 
 /* Poule tabs */
-.tds-poule-nav {
-  display: flex;
-  overflow-x: auto;
-  gap: 0;
-  padding: 0 18px;
-  border-bottom: 0.5px solid var(--border-1, #e2e5ef);
-  flex-shrink: 0;
-  scrollbar-width: none;
-}
-.tds-poule-nav::-webkit-scrollbar { display: none; }
 
-.tds-ptab {
-  padding: 10px 16px;
-  font-size: 13px;
-  font-weight: 500;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
-  cursor: pointer;
-  color: var(--text-2, #6b7280);
-  white-space: nowrap;
-  transition: color .15s, border-color .15s;
-  margin-bottom: -0.5px;
-}
-.tds-ptab.active { color: var(--accent, #4f6ef7); border-bottom-color: var(--accent, #4f6ef7); }
 
 /* Body */
-.tds-body { flex: 1; overflow-y: auto; padding: 16px 18px; }
 
 /* Match card in detail */
-.tds-match {
-  display: flex; align-items: center; gap: 8px;
-  padding: 9px 12px;
-  border: 0.5px solid var(--border-1,#e2e5ef);
-  border-radius: 10px;
-  margin-bottom: 6px;
-  font-size: 13px;
-  transition: border-color .12s;
-}
-.tds-match:hover { border-color: var(--accent,#4f6ef7); }
-.tds-match-time { font-size: 11px; color: var(--text-2,#6b7280); min-width: 40px; flex-shrink: 0; }
-.tds-match-teams { flex: 1; display: flex; align-items: center; gap: 6px; }
-.tds-match-home { flex: 1; font-weight: 500; }
-.tds-match-away { flex: 1; text-align: right; font-weight: 500; }
-.tds-match-vs { font-size: 11px; color: var(--text-2,#6b7280); flex-shrink: 0; }
-.tds-match-score {
-  min-width: 42px; text-align: center; font-weight: 700; font-size: 13px;
-  color: #185fa5; flex-shrink: 0;
-}
-.tds-match-score.pending { color: var(--text-3,#9aa3b7); font-weight: 400; }
-.tds-match-field { font-size: 10px; color: var(--text-2,#6b7280); background: var(--bg-2,#f3f4f6); padding: 2px 7px; border-radius: 5px; flex-shrink: 0; }
-.tds-match-type-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 5px; background: #faeeda; color: #854f0b; flex-shrink: 0; }
 
-.tds-dag-label { font-size: 11px; font-weight: 600; color: var(--text-2,#6b7280); text-transform: uppercase; letter-spacing: .06em; margin: 14px 0 6px; }
 
 /* Standings */
-.tds-stand { width: 100%; font-size: 12px; border-collapse: collapse; margin-top: 14px; }
-.tds-stand th { font-size: 10px; font-weight: 600; color: var(--text-2,#6b7280); text-transform: uppercase; letter-spacing:.05em; padding: 4px 8px; border-bottom: 0.5px solid var(--border-1,#e2e5ef); text-align:left; }
-.tds-stand td { padding: 6px 8px; border-bottom: 0.5px solid var(--border-1,#e2e5ef); }
-.tds-stand tr:last-child td { border-bottom: none; }
-.tds-stand .pts { font-weight: 700; color: var(--text-1,#111827); }
-.tds-stand tr.leader td:first-child { border-left: 2px solid var(--accent,#4f6ef7); }
 
 /* Knockout section */
-.tds-ko-divider {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .07em;
-  color: var(--text-2,#6b7280);
-  padding: 14px 18px 10px;
-  border-top: 0.5px solid var(--border-1,#e2e5ef);
-  flex-shrink: 0;
-}
 
-.tds-ko-container {
-  position: relative;
-  flex-shrink: 0;
-  height: 300px;
-  overflow: hidden;
-  margin: 0 18px 18px;
-  border: 0.5px solid var(--border-1,#e2e5ef);
-  border-radius: 12px;
-}
-.tds-ko-rounds { position: relative; width: 100%; height: 100%; }
 
-.tds-ko-round {
-  position: absolute; inset: 0; padding: 14px;
-  opacity: 0; pointer-events: none;
-  transition: opacity .35s, transform .35s;
-  overflow-y: auto;
-}
-.tds-ko-round.visible { opacity: 1; pointer-events: all; transform: translateY(0) !important; }
-.tds-ko-round.above { transform: translateY(-20px); }
-.tds-ko-round.below { transform: translateY(20px); }
 
-.tds-ko-round-title {
-  font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em;
-  color: var(--text-2,#6b7280); margin-bottom: 10px;
-}
-.tds-ko-grid { display: grid; gap: 6px; }
-.tds-ko-grid.cols2 { grid-template-columns: 1fr 1fr; }
-.tds-ko-grid.cols1 { grid-template-columns: 1fr; max-width: 300px; margin: 0 auto; }
 
-.tds-ko-match {
-  border: 0.5px solid var(--border-1,#e2e5ef); border-radius: 8px; overflow: hidden;
-  background: var(--bg-card,#fff);
-}
-.tds-ko-match.final-match { border-color: #fac775; border-width: 1px; }
-.tds-ko-team {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 6px 10px; font-size: 12px; gap: 6px;
-}
-.tds-ko-team:first-child { border-bottom: 0.5px solid var(--border-1,#e2e5ef); }
-.tds-ko-team.winner { font-weight: 600; }
-.tds-ko-team .ko-sc { font-weight: 700; font-size: 12px; min-width: 18px; text-align: right; color: #185fa5; }
-.tds-ko-team .ko-sc.pending { color: var(--text-3,#9aa3b7); font-weight: 400; }
-.tds-ko-meta { padding: 3px 10px; background: var(--bg-2,#f3f4f6); font-size: 10px; color: var(--text-2,#6b7280); display: flex; gap: 8px; border-top: 0.5px solid var(--border-1,#e2e5ef); }
-.tds-ko-meta.final-meta { background: #faeeda; color: #854f0b; }
-.tds-ko-meta .winner-label { margin-left: auto; font-weight: 600; }
 
-.tds-ko-dots {
-  position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
-  display: flex; flex-direction: column; gap: 5px;
-}
-.tds-ko-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--border-1,#e2e5ef); transition: background .2s, transform .2s; cursor: pointer; }
-.tds-ko-dot.active { background: var(--accent,#4f6ef7); transform: scale(1.4); }
 
-.tds-ko-nav {
-  position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-  display: flex; align-items: center; gap: 12px;
-  background: var(--panel, #151c28); border: 0.5px solid var(--border, #232d40);
-  border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 500;
-}
-.tds-ko-navbtn { background: none; border: none; cursor: pointer; display: flex; align-items: center; color: var(--text-2,#6b7280); padding: 2px; }
-.tds-ko-navbtn:disabled { opacity: .3; cursor: default; }
 
 /* Import form */
 .tf-import-tabs {
@@ -9007,50 +8737,6 @@ tbody tr:last-child td { border-bottom: none; }
   font-size: 12px; font-weight: 600; color: #3b6d11;
   background: #eaf3de; border-radius: 8px; padding: 8px 12px;
   margin-bottom: 12px;
-}
-
-/* Dashboard toernooi banner */
-.dash-toernooi-banner {
-  display: flex; align-items: center; gap: 12px;
-  padding: 12px 16px;
-  background: linear-gradient(135deg, #faeeda 0%, #fef3e0 100%);
-  border: 0.5px solid #fac775;
-  border-radius: 12px;
-  cursor: pointer;
-  margin-bottom: 12px;
-  transition: border-color .15s;
-}
-.dash-toernooi-banner:hover { border-color: #ef9f27; }
-.dtb-icon { font-size: 24px; flex-shrink: 0; }
-.dtb-text { flex: 1; min-width: 0; }
-.dtb-naam { font-size: 14px; font-weight: 600; color: #633806; }
-.dtb-meta { font-size: 12px; color: #854f0b; margin-top: 2px; }
-.dtb-badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: #ef9f27; color: #fff; flex-shrink: 0; }
-
-/* Programma week-strip toernooi-dag */
-.prog-day-cell.has-toernooi { border-color: #fac775 !important; background: #fef8ef !important; }
-.prog-day-cell.has-toernooi .prog-day-badge-toernooi {
-  font-size: 9px; font-weight: 600; color: #854f0b;
-  display: flex; align-items: center; gap: 2px; margin-top: 2px;
-}
-
-
-/* ── Toernooi-rij in aankomende lijst (s36g) ── */
-.up-row-toernooi {
-  border-left: 3px solid #fac775 !important;
-  background: linear-gradient(90deg, rgba(250,206,122,.09) 0%, transparent 60%);
-}
-.up-row-toernooi:hover {
-  background: linear-gradient(90deg, rgba(250,206,122,.18) 0%, transparent 70%);
-}
-.up-row-toernooi .up-day { color: #854f0b; }
-.up-toernooi-icon {
-  display: inline-flex; align-items: center;
-  color: #ef9f27; margin-right: 5px; vertical-align: middle;
-}
-.up-tag-toernooi {
-  background: #faeeda !important;
-  color: #854f0b !important;
 }
 
 /* ── shAC universal autocomplete dropdown  s36l ── */
@@ -9126,42 +8812,6 @@ tbody tr:last-child td { border-bottom: none; }
   font-size: 12.5px;
 }
 
-/* ── Toernooi modal overlays  s36m ── */
-.modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,.65);
-  z-index: 800;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  padding: 16px;
-  overflow-y: auto;
-}
-.modal-overlay[style*="display: flex"],
-.modal-overlay[style*="display:flex"] {
-  display: flex !important;
-}
-.toernooi-detail-sheet {
-  background: var(--panel, #181b28);
-  border: 1px solid var(--border, #2a2d3e);
-  border-radius: 16px;
-  width: 100%;
-  max-width: 700px;
-  max-height: 88vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,.5);
-  position: relative;
-}
-.modal-overlay .modal-sheet {
-  background: var(--panel, #181b28);
-  border: 1px solid var(--border, #2a2d3e);
-  border-radius: 16px;
-  width: 100%;
-  box-shadow: 0 20px 60px rgba(0,0,0,.5);
-  position: relative;
-}
-
 /* ── Rit programma-picker  s36o ── */
 .rpp-row {
   display: flex;
@@ -9197,58 +8847,7 @@ tbody tr:last-child td { border-bottom: none; }
 }
 
 
-/* Toernooi wedstrijd — scout-knop + chips */
-.tds-scout-btn {
-  display: inline-flex; align-items: center; gap: 3px;
-  background: rgba(78,161,255,.1); border: 0.5px solid rgba(78,161,255,.25);
-  color: var(--accent, #4ea1ff); border-radius: 6px;
-  padding: 3px 8px; font-size: 11px; cursor: pointer;
-  margin-left: auto; flex-shrink: 0;
-  transition: background .15s;
-}
-.tds-scout-btn:hover { background: rgba(78,161,255,.2); }
-.tds-scout-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; grid-column: 1/-1; }
-.tds-scout-chip {
-  display: inline-flex; align-items: center; gap: 4px;
-  background: rgba(34,197,94,.12); color: var(--green, #22c55e);
-  border-radius: 5px; padding: 2px 8px; font-size: 11px; cursor: pointer;
-}
-.tds-scout-chip:hover { background: rgba(34,197,94,.2); }
-.tds-scout-chip-x { font-size: 13px; opacity: .7; }
-
 /* Scout picker overlay */
-.tds-scout-picker-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.55);
-  z-index: 9999; display: flex; align-items: flex-end;
-  justify-content: center;
-}
-.tds-scout-picker-sheet {
-  background: var(--panel-2, #1d2533);
-  border: 0.5px solid var(--border, #232d40);
-  border-radius: 18px 18px 0 0;
-  padding: 20px 18px 32px;
-  width: 100%; max-width: 560px;
-  max-height: 70vh; overflow-y: auto;
-}
-.tds-scout-picker-head {
-  display: flex; align-items: flex-start; gap: 10px;
-  margin-bottom: 12px;
-}
-.tds-scout-picker-title { font-size: 16px; font-weight: 600; flex: 1; }
-.tds-scout-picker-match { font-size: 12px; color: var(--text-3, #6b7689); flex: 1; margin-top: 3px; }
-.tds-scout-picker-close {
-  background: none; border: none; color: var(--text-2); font-size: 22px;
-  cursor: pointer; padding: 0; line-height: 1;
-}
-.tds-sp-results { display: flex; flex-direction: column; gap: 4px; }
-.tds-sp-row {
-  padding: 10px 12px; border-radius: 8px;
-  background: var(--bg-3, #1a2332); cursor: pointer;
-  transition: background .12s;
-}
-.tds-sp-row:hover { background: var(--bg-2, #111722); }
-.tds-sp-naam { font-size: 14px; font-weight: 500; }
-.tds-sp-meta { font-size: 12px; color: var(--text-3, #6b7689); margin-top: 2px; }
 
 /* ══════════════════════════════════════════════════
    PROGRAMMA v76 — Agenda-kolommen layout (pag-*)
@@ -9355,13 +8954,6 @@ tbody tr:last-child td { border-bottom: none; }
 .pag-card:hover { border-color: var(--border-2, rgba(255,255,255,.15)); background: var(--bg-2); }
 .pag-card.status-verwerkt { opacity: .55; }
 
-/* Toernooi card — gouden stijl */
-.pag-card.pag-trn {
-  border-color: rgba(245,197,24,.25);
-  background: rgba(245,197,24,.04);
-}
-.pag-card.pag-trn:hover { border-color: rgba(245,197,24,.5); background: rgba(245,197,24,.09); }
-
 /* Card bovenste rij */
 .pag-card-top {
   display: flex; align-items: center; gap: 4px;
@@ -9425,118 +9017,22 @@ tbody tr:last-child td { border-bottom: none; }
    ══════════════════════════════════════════════════ */
 
 /* Sectie-titel boven standen/wedstrijden */
-.tds-section-title {
-  font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .8px; color: var(--text-3, #8b95b0);
-  margin-bottom: 8px;
-}
 
 /* Standen-wrapper */
-.tds-stand-wrap { margin-bottom: 0; }
 
 /* Standen-tabel */
-.tds-stand {
-  width: 100%; border-collapse: collapse;
-  font-size: 12px; color: var(--text, #e5e9f5);
-  background: var(--bg-2, #111722);
-  border: 1px solid var(--border, rgba(255,255,255,.08));
-  border-radius: 10px; overflow: hidden;
-}
-.tds-stand thead tr { background: var(--bg-3, #141824); }
-.tds-stand th {
-  padding: 6px 4px; text-align: center;
-  font-size: 10px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .5px; color: var(--text-3, #8b95b0);
-  white-space: nowrap;
-}
-.tds-stand th.tds-team, .tds-stand td.tds-team { text-align: left; padding-left: 8px; }
-.tds-stand th.tds-rk, .tds-stand td.tds-rk { width: 22px; color: var(--text-3); }
-.tds-stand td { padding: 7px 4px; text-align: center; border-top: 1px solid var(--border, rgba(255,255,255,.05)); }
-.tds-stand td.pts { font-weight: 700; color: var(--text, #e5e9f5); }
-.tds-stand td.pos { color: #22c55e; }
-.tds-stand td.neg { color: var(--primary, #e30613); }
-.tds-stand tr.leader td { background: rgba(245,197,24,.07); }
-.tds-stand tr.leader td.tds-team { font-weight: 700; color: var(--secondary, #f5c518); }
 
 /* Wedstrijd-rijen */
-.tds-match {
-  display: flex; align-items: center; gap: 6px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border, rgba(255,255,255,.05));
-  flex-wrap: wrap;
-}
-.tds-match:last-child { border-bottom: none; }
-.tds-match-time {
-  font-size: 11px; font-weight: 600; color: var(--secondary, #f5c518);
-  min-width: 36px; flex-shrink: 0;
-}
-.tds-match-teams {
-  flex: 1; display: flex; align-items: center; gap: 6px; min-width: 0;
-}
-.tds-match-home, .tds-match-away {
-  font-size: 12.5px; font-weight: 500; color: var(--text-2, #b0bac9);
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  max-width: 120px;
-}
-.tds-match-home { text-align: right; flex: 1; }
-.tds-match-away { text-align: left; flex: 1; }
-.tds-match-home.winner, .tds-match-away.winner { color: var(--text, #e5e9f5); font-weight: 700; }
-.tds-match-score {
-  font-size: 12px; font-weight: 700; color: var(--text, #e5e9f5);
-  background: var(--bg-3, #141824);
-  border: 1px solid var(--border); border-radius: 6px;
-  padding: 2px 7px; white-space: nowrap; flex-shrink: 0;
-}
-.tds-match-score.pending { color: var(--text-3); background: transparent; border-color: transparent; }
-.tds-match-field { font-size: 10px; color: var(--text-3); background: var(--bg-3); border-radius: 4px; padding: 1px 5px; }
-.tds-match-type-badge { font-size: 10px; color: var(--accent, #60a5fa); background: rgba(96,165,250,.1); border-radius: 4px; padding: 1px 6px; font-weight: 600; }
 
 /* Scout-knop — duidelijk zichtbaar */
-.tds-scout-btn {
-  flex-shrink: 0; padding: 4px 9px; border-radius: 7px;
-  background: rgba(96,165,250,.1); border: 1px solid rgba(96,165,250,.3);
-  color: var(--accent, #60a5fa); font-size: 12px; font-weight: 700;
-  cursor: pointer; transition: background .12s, border-color .12s;
-  white-space: nowrap;
-}
-.tds-scout-btn:hover { background: rgba(96,165,250,.2); border-color: rgba(96,165,250,.5); }
 
 /* Scout picker: "nieuwe speler" rij */
-.tds-sp-new-row {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 8px; padding: 6px 10px; margin-bottom: 6px;
-  background: rgba(96,165,250,.06); border: 1px solid rgba(96,165,250,.2);
-  border-radius: 8px; font-size: 12px; color: var(--text-2);
-}
-.tds-sp-new-add {
-  background: rgba(96,165,250,.15); border: 1px solid rgba(96,165,250,.4);
-  color: var(--accent, #60a5fa); padding: 4px 10px; border-radius: 7px;
-  font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap;
-  transition: background .12s;
-}
-.tds-sp-new-add:hover { background: rgba(96,165,250,.28); }
 
 /* ============================================================
    v77 — Scout picker fase-2 + multi-select + match detail
    ============================================================ */
 
 /* ── Scout picker fase 2 ── */
-.tds-sp-selected-naam {
-  font-size: 15px; font-weight: 600; color: var(--text-1,#e2e8f0);
-  padding: 10px 0 6px; border-bottom: 1px solid var(--border,#2a2d3e);
-  margin-bottom: 10px;
-}
-.tds-sp-notitie-area {
-  width: 100%; box-sizing: border-box;
-  background: var(--input-bg, #1a1d2e); border: 1px solid var(--border,#2a2d3e);
-  color: var(--text-1,#e2e8f0); border-radius: 8px; padding: 10px 12px;
-  font-size: 13px; line-height: 1.5; resize: vertical; min-height: 90px;
-  font-family: inherit; transition: border-color .15s;
-}
-.tds-sp-notitie-area:focus { border-color: var(--accent,#4f6ef7); outline: none; }
-.tds-sp-fase2-btns {
-  display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px;
-}
 .btn-ghost-sm {
   background: transparent; border: 1px solid var(--border,#2a2d3e);
   color: var(--text-2,#9aa3b7); border-radius: 8px; padding: 7px 16px;
@@ -9550,15 +9046,6 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .btn-primary-sm:hover { opacity: .88; }
 .btn-primary-sm:active { transform: scale(.97); }
-.tds-sp-results { max-height: 220px; overflow-y: auto; }
-.tds-sp-row {
-  padding: 9px 10px; border-radius: 8px; cursor: pointer;
-  transition: background .1s; border-bottom: 1px solid var(--border,#2a2d3e);
-}
-.tds-sp-row:last-child { border-bottom: none; }
-.tds-sp-row:hover { background: var(--hover,#1e2236); }
-.tds-sp-naam { font-size: 13px; font-weight: 600; color: var(--text-1,#e2e8f0); }
-.tds-sp-meta { font-size: 11px; color: var(--text-3,#6b7280); margin-top: 2px; }
 
 /* ── Multi-select leeftijdscategorie ── */
 .tf-multi-cat-wrap { display: flex; flex-direction: column; gap: 6px; }
@@ -9581,259 +9068,24 @@ tbody tr:last-child td { border-bottom: none; }
 .tf-leeftijd-add { width: auto !important; }
 
 /* ── Match detail panel ── */
-.tds-match-detail-overlay {
-  position: fixed; inset: 0; background: rgba(0,0,0,.55);
-  z-index: 2200; display: flex; align-items: flex-end;
-  animation: tds-md-in .2s ease;
-}
 @keyframes tds-md-in { from { opacity:0 } to { opacity:1 } }
-.tds-match-detail-sheet {
-  width: 100%; max-width: 640px; margin: 0 auto;
-  background: var(--bg-card,#141722); border-radius: 20px 20px 0 0;
-  max-height: 88vh; display: flex; flex-direction: column;
-  box-shadow: 0 -8px 40px rgba(0,0,0,.5);
-  animation: tds-sheet-up .25s cubic-bezier(.16,1,.3,1);
-}
 @keyframes tds-sheet-up { from { transform: translateY(100%) } to { transform: translateY(0) } }
-.tds-md-header {
-  display: flex; align-items: flex-start; justify-content: space-between;
-  padding: 18px 18px 12px; border-bottom: 1px solid var(--border,#2a2d3e);
-  gap: 12px; flex-shrink: 0;
-}
-.tds-md-header-info { flex: 1; min-width: 0; }
-.tds-md-title {
-  font-size: 15px; font-weight: 700; color: var(--text-1,#e2e8f0);
-  line-height: 1.3;
-}
-.tds-md-vs { color: var(--text-3,#6b7280); font-weight: 400; margin: 0 4px; }
-.tds-md-sub {
-  font-size: 11px; color: var(--text-3,#6b7280); margin-top: 3px;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-}
-.tds-md-close {
-  background: var(--hover,#1e2236); border: none; color: var(--text-2,#9aa3b7);
-  width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
-  font-size: 18px; display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; transition: background .12s;
-}
-.tds-md-close:hover { background: var(--border,#2a2d3e); color: var(--text-1,#e2e8f0); }
 
 /* Score row */
-.tds-md-score-row {
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-  padding: 14px 18px 10px; background: var(--bg-2,#0f1117);
-  border-bottom: 1px solid var(--border,#2a2d3e); flex-shrink: 0;
-}
-.tds-md-score-team {
-  font-size: 12px; font-weight: 600; color: var(--text-2,#9aa3b7);
-  max-width: 110px; text-align: center; overflow: hidden;
-  text-overflow: ellipsis; white-space: nowrap;
-}
-.tds-md-score-inputs { display: flex; align-items: center; gap: 6px; }
-.tds-md-score-input {
-  width: 52px; height: 44px; text-align: center; font-size: 22px; font-weight: 700;
-  background: var(--input-bg,#1a1d2e); border: 1.5px solid var(--border,#2a2d3e);
-  color: var(--text-1,#e2e8f0); border-radius: 10px; -moz-appearance: textfield;
-}
-.tds-md-score-input::-webkit-inner-spin-button,
-.tds-md-score-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
-.tds-md-score-input:focus { border-color: var(--accent,#4f6ef7); outline: none; }
-.tds-md-score-sep { font-size: 24px; font-weight: 800; color: var(--text-3,#6b7280); }
 
 /* Body + footer */
-.tds-md-body {
-  flex: 1; overflow-y: auto; padding: 14px 18px 0;
-}
-.tds-md-section-title {
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: .08em; color: var(--text-3,#6b7280); margin-bottom: 8px;
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-}
-.tds-md-notitie-area {
-  width: 100%; box-sizing: border-box;
-  background: var(--input-bg,#1a1d2e); border: 1px solid var(--border,#2a2d3e);
-  color: var(--text-1,#e2e8f0); border-radius: 10px; padding: 10px 12px;
-  font-size: 13px; line-height: 1.6; resize: vertical; min-height: 90px;
-  font-family: inherit; transition: border-color .15s;
-}
-.tds-md-notitie-area:focus { border-color: var(--accent,#4f6ef7); outline: none; }
-.tds-md-scout-add-btn {
-  background: rgba(79,110,247,.15); border: 1px solid rgba(79,110,247,.3);
-  color: var(--accent,#4f6ef7); border-radius: 16px; padding: 3px 12px;
-  font-size: 11px; font-weight: 600; cursor: pointer; transition: background .12s;
-}
-.tds-md-scout-add-btn:hover { background: rgba(79,110,247,.28); }
-.tds-md-scout-row {
-  background: var(--bg-2,#0f1117); border: 1px solid var(--border,#2a2d3e);
-  border-radius: 10px; padding: 10px 12px; margin-bottom: 8px;
-}
-.tds-md-scout-top {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 6px;
-}
-.tds-md-scout-naam { font-size: 13px; font-weight: 600; color: var(--text-1,#e2e8f0); }
-.tds-md-scout-del {
-  background: none; border: none; color: var(--text-3,#6b7280);
-  font-size: 18px; cursor: pointer; line-height: 1; padding: 0 4px;
-  transition: color .1s;
-}
-.tds-md-scout-del:hover { color: #e53e3e; }
-.tds-md-scout-notitie {
-  width: 100%; box-sizing: border-box; font-size: 12px; border-radius: 8px;
-  background: var(--input-bg,#1a1d2e); min-height: 52px; resize: vertical;
-}
-.tds-md-footer {
-  display: flex; gap: 8px; justify-content: flex-end;
-  padding: 12px 18px; border-top: 1px solid var(--border,#2a2d3e);
-  flex-shrink: 0;
-}
-
-/* ── Toernooi match-row klikbaar indicator ── */
-.tds-match-clickable {
-  cursor: pointer; transition: background .12s, transform .08s;
-  border-radius: 10px; padding: 8px 10px; margin-bottom: 4px;
-  border: 1px solid var(--border,#2a2d3e);
-  background: var(--bg-card,#141722);
-}
-.tds-match-clickable:hover { background: var(--hover,#1e2236); transform: translateX(2px); }
-.tds-match-clickable:active { transform: scale(.99); }
-.tds-match-main { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.tds-match-meta-row {
-  display: flex; align-items: center; gap: 8px; margin-top: 5px;
-  padding-top: 5px; border-top: 1px solid var(--border,#2a2d3e);
-}
-.tds-match-notitie-preview {
-  font-size: 11px; color: var(--text-2,#9aa3b7); flex: 1;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-}
-.tds-scouted-badge {
-  font-size: 11px; font-weight: 600; color: var(--accent,#4f6ef7);
-  background: rgba(79,110,247,.12); border-radius: 12px; padding: 2px 7px;
-  flex-shrink: 0;
-}
-.tds-match-score.played {
-  background: var(--bg-2,#0f1117); border-radius: 6px; padding: 2px 8px;
-  font-weight: 700; font-size: 14px; color: var(--text-1,#e2e8f0);
-}
-.tds-match-score.pending { color: var(--text-3,#6b7280); font-size: 14px; }
-.tds-match-type-badge.finale {
-  background: rgba(245,197,66,.2); color: var(--gold,#f5c542);
-  border: 1px solid rgba(245,197,66,.35); border-radius: 8px;
-  padding: 2px 8px; font-size: 10px; font-weight: 700;
-}
-.tds-match-hint {
-  font-size: 10px; font-weight: 400; text-transform: none;
-  letter-spacing: 0; color: var(--text-3,#6b7280); font-style: italic;
-}
-
-/* ── Toernooi kaart in Wedstrijden tab — expandable matches ── */
-.tc-matches-toggle {
-  display: flex; align-items: center; justify-content: space-between;
-  width: 100%; background: var(--bg-2,#0f1117);
-  border: 1px solid var(--border,#2a2d3e); border-radius: 8px;
-  padding: 8px 12px; margin-top: 8px; cursor: pointer;
-  color: var(--accent,#4f6ef7); font-size: 12px; font-weight: 600;
-  transition: background .12s;
-}
-.tc-matches-toggle:hover { background: rgba(79,110,247,.08); }
-.tc-toggle-arrow { transition: transform .2s; display: inline-block; }
-.tc-matches-toggle.open .tc-toggle-arrow { transform: rotate(180deg); }
-.trn-matches-wrap { margin-top: 4px; }
-.trn-match-row {
-  display: flex; align-items: center; gap: 8px; padding: 8px 10px;
-  border-radius: 8px; cursor: pointer; border-bottom: 1px solid var(--border,#2a2d3e);
-  transition: background .1s; font-size: 12px;
-}
-.trn-match-row:last-child { border-bottom: none; }
-.trn-match-row:hover { background: var(--hover,#1e2236); }
-.trn-mr-time { color: var(--text-3,#6b7280); min-width: 38px; flex-shrink: 0; }
-.trn-mr-teams { flex: 1; color: var(--text-1,#e2e8f0); font-weight: 500; min-width: 0;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.trn-mr-poule { color: var(--text-3,#6b7280); font-size: 10px; min-width: 50px;
-  flex-shrink: 0; text-align: right; }
-.trn-mr-badges { color: var(--accent,#4f6ef7); font-size: 11px; flex-shrink: 0; }
 
 /* ── Standen verbetering ── */
-.tds-stand tr.last td { color: var(--text-3,#6b7280); }
-.tds-section-title { margin-bottom: 10px; }
-.tds-empty {
-  text-align: center; padding: 20px; color: var(--text-3,#6b7280);
-  font-size: 13px;
-}
-
-/* ── Toernooi header meta verbeterd ── */
-.tds-header { 
-  background: linear-gradient(135deg, rgba(79,110,247,.08), rgba(245,197,66,.05));
-  border-bottom: 1px solid var(--border,#2a2d3e);
-}
-.tds-naam { font-size: 18px; font-weight: 700; color: var(--text-1,#e2e8f0); line-height: 1.2; }
-.tds-meta { font-size: 12px; color: var(--text-3,#6b7280); margin-top: 3px; }
 
 /* ── Toernooi card header clickable ── */
 .tc-header { cursor: pointer; transition: opacity .12s; }
 .tc-header:hover { opacity: .85; }
 
 /* ── v79: Elftal labels in toernooi wedstrijdrijen ── */
-.tds-elftal-label {
-  display: inline-block; margin-left: 4px;
-  font-size: 10px; font-weight: 600; color: var(--primary,#4f6ef7);
-  background: rgba(79,110,247,.12); border-radius: 4px;
-  padding: 1px 5px; vertical-align: middle; letter-spacing: .02em;
-}
-.tds-md-elftal-row {
-  display: flex; align-items: center; gap: 8px;
-  padding: 10px 16px; border-bottom: 0.5px solid var(--border-1,#2a2d3e);
-  background: var(--bg-2,#1a1d2e);
-}
-.tds-md-elftal-input {
-  flex: 1; font-size: 12px; padding: 6px 10px !important;
-  height: 32px !important; min-width: 0;
-}
-.tds-md-elftal-sep {
-  font-size: 11px; color: var(--text-3,#6b7280); flex-shrink: 0;
-}
 
 /* ── v79: Toernooi import progress indicator ── */
-.tf-progress-wrap {
-  margin: 12px 0 4px;
-  display: none;
-}
-.tf-progress-wrap.active { display: block; }
-.tf-progress-bar-track {
-  height: 4px; background: var(--border-1,#2a2d3e);
-  border-radius: 4px; overflow: hidden; margin-bottom: 10px;
-}
-.tf-progress-bar-fill {
-  height: 100%; width: 0%; border-radius: 4px;
-  background: linear-gradient(90deg, #4f6ef7, #e30613);
-  transition: width .5s ease;
-}
-.tf-progress-steps {
-  display: flex; gap: 6px; flex-direction: column;
-}
-.tf-progress-step {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 12px; color: var(--text-3,#6b7280); line-height: 1.4;
-  transition: color .3s;
-}
-.tf-progress-step.active { color: var(--text-1,#e2e8f0); }
-.tf-progress-step.done { color: #5cb85c; }
-.tf-progress-step.error { color: #e05252; }
-.tf-step-icon {
-  width: 16px; height: 16px; border-radius: 50%; flex-shrink: 0;
-  border: 1.5px solid var(--border-1,#2a2d3e);
-  display: flex; align-items: center; justify-content: center;
-  font-size: 9px; transition: all .3s;
-}
-.tf-progress-step.active .tf-step-icon {
-  border-color: #4f6ef7;
-  animation: tf-spin 1s linear infinite;
-}
-.tf-progress-step.done .tf-step-icon { border-color: #5cb85c; background: #5cb85c; color: #fff; }
-.tf-progress-step.error .tf-step-icon { border-color: #e05252; background: #e05252; color: #fff; }
 @keyframes tf-spin {
   from { transform: rotate(0deg); } to { transform: rotate(360deg); }
 }
 
-/* ── v79: delete button in tds-header ── */
-.tds-delete-btn:hover { background: rgba(224,82,82,.1) !important; }
+

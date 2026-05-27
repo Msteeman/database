@@ -15269,10 +15269,28 @@ function progDetailHTML(it){
 
 function progSpelerRowHTML(s){
   const hasFull = !!s.volledig;
+  // Zoek de bekende speler op voor rapport-teller
+  let nRapporten = 0, isKnown = false;
+  try {
+    const vn = s.voornaam || (s.naam||'').split(' ')[0] || '';
+    const an = s.achternaam || (s.naam||'').split(' ').slice(1).join(' ') || '';
+    const match = (vn && an) ? findExistingPlayer(vn, an, s.geboorte||'') : null;
+    if(match && match.player){
+      nRapporten = (reportsForPlayer(match.player.id) || []).length;
+      isKnown = true;
+    }
+  } catch(_){}
+  const next = nRapporten + 1;
+  const nth = next === 1 ? '1e' : next === 2 ? '2e' : next === 3 ? '3e' : `${next}e`;
+  const koppelBadge = `<span class="prog-speler-koppel" title="${isKnown ? nRapporten+' eerdere rapporten' : 'Nieuw in het systeem'}">
+    <span class="prog-koppel-dot"></span>${nth} rapport
+  </span>`;
   return `
     <div class="prog-speler-row" data-prog-speler-id="${s.id}">
       <div class="prog-speler-main">
-        <div class="prog-speler-naam">${escapeHtml(s.naam || '(onbenoemd)')}${s.rugnummer ? ` <span style="color:var(--text-3); font-weight:500;">#${escapeHtml(s.rugnummer)}</span>` : ''}</div>
+        <div class="prog-speler-naam">${escapeHtml(s.naam || '(onbenoemd)')}${s.rugnummer ? ` <span style="color:var(--text-3); font-weight:500;">#${escapeHtml(s.rugnummer)}</span>` : ''}
+          ${koppelBadge}
+        </div>
         <div class="prog-speler-sub">
           ${[s.club, s.positie].filter(Boolean).map(escapeHtml).join(' · ') || 'geen extra info'}
           ${s.voor_notities ? ` · <em style="color:var(--text-2);">${escapeHtml(s.voor_notities.slice(0,60))}${s.voor_notities.length>60?'…':''}</em>` : ''}
@@ -15787,21 +15805,37 @@ function renderKnownPlayerBanner(){
   if(!vn || !an){ el.style.display = 'none'; el.innerHTML = ''; return; }
   let match = null;
   try { match = findExistingPlayer(vn, an, gb); } catch(_){}
-  if(!match || !match.player){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  if(!match || !match.player){
+    // Nieuwe speler: toon "1e rapport" zodra naam volledig is
+    if(vn && an){
+      el.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:18px; line-height:1; flex-shrink:0;">🟢</span>
+          <div>
+            <div style="font-weight:700; color:#4ade80; font-size:13px;">Gekoppeld — 1e rapport</div>
+            <div style="margin-top:2px; color:#bbf7d0;">${escapeHtml(vn)} ${escapeHtml(an)} · nieuw in het systeem</div>
+          </div>
+        </div>`;
+      el.style.display = '';
+    } else {
+      el.style.display = 'none'; el.innerHTML = '';
+    }
+    return;
+  }
   const p = match.player;
   let n = 0;
   try { n = (reportsForPlayer(p.id) || []).length; } catch(_){}
   const next = n + 1;
-  const nth = (next === 1) ? '1e' : (next === 2) ? '2e' : (next === 3) ? '3e' : (next + 'e');
+  const nth = next === 1 ? '1e' : next === 2 ? '2e' : next === 3 ? '3e' : `${next}e`;
   const naam = p.naam || [p.voornaam, p.achternaam].filter(Boolean).join(' ');
-  const safeName = escapeHtml(naam);
-  el.innerHTML = `<div style="display:flex; align-items:flex-start; gap:8px;">
-    <span style="font-size:14px; line-height:1;">ℹ️</span>
-    <div>
-      <div style="font-weight:600; color:#bbf7d0;">Deze speler is al bekend</div>
-      <div style="margin-top:2px;">Dit wordt het <strong>${nth} spelersrapport</strong> van ${safeName}${n>0 ? ` (${n} eerder)` : ''}.</div>
-    </div>
-  </div>`;
+  el.innerHTML = `
+    <div style="display:flex; align-items:center; gap:8px;">
+      <span style="font-size:18px; line-height:1; flex-shrink:0;">🟢</span>
+      <div>
+        <div style="font-weight:700; color:#4ade80; font-size:13px;">Gekoppeld — ${nth} rapport</div>
+        <div style="margin-top:2px; color:#bbf7d0;">${escapeHtml(naam)}${n > 0 ? ` · ${n} eerdere rapport${n===1?'':'en'}` : ' · nieuw in het systeem'}</div>
+      </div>
+    </div>`;
   el.style.display = '';
 }
 window.renderKnownPlayerBanner = renderKnownPlayerBanner;
@@ -15920,7 +15954,23 @@ function pmppRenderKnownBanner(){
   if(!vn || !an){ el.style.display = 'none'; el.innerHTML = ''; return; }
   let match = null;
   try { match = findExistingPlayer(vn, an, gb); } catch(_){}
-  if(!match || !match.player){ el.style.display = 'none'; el.innerHTML = ''; return; }
+  if(!match || !match.player){
+    // Nieuwe speler: toon "1e rapport" zodra naam volledig is
+    if(vn && an){
+      el.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span style="font-size:18px; line-height:1; flex-shrink:0;">🟢</span>
+          <div>
+            <div style="font-weight:700; color:#4ade80; font-size:13px;">Gekoppeld — 1e rapport</div>
+            <div style="margin-top:2px; color:#bbf7d0;">${escapeHtml(vn)} ${escapeHtml(an)} · nieuw in het systeem</div>
+          </div>
+        </div>`;
+      el.style.display = '';
+    } else {
+      el.style.display = 'none'; el.innerHTML = '';
+    }
+    return;
+  }
   const p = match.player;
   let n = 0;
   try { n = (reportsForPlayer(p.id) || []).length; } catch(_){}
@@ -17742,11 +17792,22 @@ function initApp(){
   // Speler in programma modal
   shWireClubAC(document.getElementById('pp-club'));
 
-  // ── s36l: Leeftijdscategorie AC op selects ──
-  ['mr-leeftijd','t-leeftijd','a-leeftijd','f-elftal'].forEach(id => {
-    shUpgradeSelectToAC(id);
+  // ── Elftal/leeftijdscategorie autocomplete op alle tekstvelden ──
+  ['f-elftal','pm-thuis-elftal','pm-uit-elftal','f-w-thuis-elftal','f-w-uit-elftal','t-elftal','mr-elftal'].forEach(id => {
+    shWireLeeftijdAC(document.getElementById(id));
   });
-  // Toernooi-form leeftijdscategorie: multi-select tags-UI — geen AC nodig
+  // Wir ook dynamisch aangemaakte elftal-inputs via delegatie
+  document.addEventListener('focusin', e => {
+    const el = e.target;
+    if(el && el.tagName === 'INPUT' && (
+      el.getAttribute('data-picker') === 'elftal' ||
+      (el.placeholder||'').toLowerCase().includes('o.1') ||
+      (el.id||'').includes('elftal')
+    ) && !el._shElftalWired){
+      el._shElftalWired = true;
+      shWireLeeftijdAC(el);
+    }
+  });
 }
 
 function initAuthForms(){
@@ -17799,6 +17860,9 @@ function initAuthForms(){
       document.removeEventListener('keydown', onKey);
     }
   });
+  // Tap/klik op overlay om te sluiten (mobiel)
+  overlay.addEventListener('click', dismiss, { once: true });
+  overlay.addEventListener('touchstart', function onTouch(){ dismiss(); overlay.removeEventListener('touchstart', onTouch); }, { passive: true });
   setTimeout(dismiss, holdMs);
 })();
 
@@ -17993,39 +18057,72 @@ function shWireClubAC(input){
     const q = input.value.trim().toLowerCase();
     if(!q || q.length < 2){ window.shAC?.close(); return; }
     const clubs = (typeof HV_CLUBS !== 'undefined') ? HV_CLUBS : [];
-    const matches = clubs
-      .filter(c => c.naam && (
-        c.naam.toLowerCase().includes(q) ||
-        (c.keys||[]).some(k => k.includes(q))
-      ))
-      .slice(0, 12)
-      .map(c => ({
-        label:     c.naam,
-        primary:   c.naam,
-        secondary: [c.plaats, c.sportpark].filter(Boolean).join(' \xb7 ')
-      }));
-    if(!matches.length){ window.shAC?.close(); return; }
-    window.shAC?.show(input, matches, item => {
+    // Splits in starts-with (prioriteit) en contains (fallback)
+    const startsWith = [], contains = [];
+    for(const c of clubs){
+      if(!c.naam) continue;
+      const n = c.naam.toLowerCase();
+      const keys = c.keys||[];
+      if(n.startsWith(q) || keys.some(k => k.startsWith(q))) startsWith.push(c);
+      else if(n.includes(q) || keys.some(k => k.includes(q))) contains.push(c);
+    }
+    const merged = [...startsWith, ...contains].slice(0, 12);
+    if(!merged.length){ window.shAC?.close(); return; }
+    const items = merged.map(c => ({
+      label:     c.naam,
+      primary:   c.naam,
+      secondary: [c.plaats, c.sportpark].filter(Boolean).join(' \xb7 ')
+    }));
+    window.shAC?.show(input, items, item => {
       input.value = item.label;
       input.dispatchEvent(new Event('change', {bubbles:true}));
     });
   });
-  input.addEventListener('keydown', e => {
-    if(window.shAC?.onKey(e)) e.preventDefault();
-  });
+  input.addEventListener('keydown', e => { if(window.shAC?.onKey(e)) e.preventDefault(); });
   input.addEventListener('blur', () => setTimeout(() => window.shAC?.close(), 150));
 }
 
-/**
- * Toernooi-form leeftijdscategorie is vervangen door multi-select tags-UI.
- * Deze functie is een no-op zodat oude aanroepen geen ReferenceError geven.
- */
-function shWireLeeftijdAC(input){ /* no-op */ if(!input) return; }
+// Elftal/leeftijdscategorie autocomplete — O.8-1 t/m O.23-10
+const _SH_ELFTALLEN = ["O.8-1", "O.8-2", "O.8-3", "O.8-4", "O.8-5", "O.8-6", "O.8-7", "O.8-8", "O.8-9", "O.8-10", "O.9-1", "O.9-2", "O.9-3", "O.9-4", "O.9-5", "O.9-6", "O.9-7", "O.9-8", "O.9-9", "O.9-10", "O.10-1", "O.10-2", "O.10-3", "O.10-4", "O.10-5", "O.10-6", "O.10-7", "O.10-8", "O.10-9", "O.10-10", "O.11-1", "O.11-2", "O.11-3", "O.11-4", "O.11-5", "O.11-6", "O.11-7", "O.11-8", "O.11-9", "O.11-10", "O.12-1", "O.12-2", "O.12-3", "O.12-4", "O.12-5", "O.12-6", "O.12-7", "O.12-8", "O.12-9", "O.12-10", "O.13-1", "O.13-2", "O.13-3", "O.13-4", "O.13-5", "O.13-6", "O.13-7", "O.13-8", "O.13-9", "O.13-10", "O.14-1", "O.14-2", "O.14-3", "O.14-4", "O.14-5", "O.14-6", "O.14-7", "O.14-8", "O.14-9", "O.14-10", "O.15-1", "O.15-2", "O.15-3", "O.15-4", "O.15-5", "O.15-6", "O.15-7", "O.15-8", "O.15-9", "O.15-10", "O.16-1", "O.16-2", "O.16-3", "O.16-4", "O.16-5", "O.16-6", "O.16-7", "O.16-8", "O.16-9", "O.16-10", "O.17-1", "O.17-2", "O.17-3", "O.17-4", "O.17-5", "O.17-6", "O.17-7", "O.17-8", "O.17-9", "O.17-10", "O.18-1", "O.18-2", "O.18-3", "O.18-4", "O.18-5", "O.18-6", "O.18-7", "O.18-8", "O.18-9", "O.18-10", "O.19-1", "O.19-2", "O.19-3", "O.19-4", "O.19-5", "O.19-6", "O.19-7", "O.19-8", "O.19-9", "O.19-10", "O.20-1", "O.20-2", "O.20-3", "O.20-4", "O.20-5", "O.20-6", "O.20-7", "O.20-8", "O.20-9", "O.20-10", "O.21-1", "O.21-2", "O.21-3", "O.21-4", "O.21-5", "O.21-6", "O.21-7", "O.21-8", "O.21-9", "O.21-10", "O.22-1", "O.22-2", "O.22-3", "O.22-4", "O.22-5", "O.22-6", "O.22-7", "O.22-8", "O.22-9", "O.22-10", "O.23-1", "O.23-2", "O.23-3", "O.23-4", "O.23-5", "O.23-6", "O.23-7", "O.23-8", "O.23-9", "O.23-10"];
+
+function shWireLeeftijdAC(input){
+  if(!input) return;
+  input.setAttribute('autocomplete','off');
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase().replace(/[\s.]/g, '');
+    if(!q || q.length < 1){ window.shAC?.close(); return; }
+    // Match: "16" → O.16-*, "o16" → O.16-*, "o.16" → O.16-*, "o16-1" → O.16-1
+    const matches = _SH_ELFTALLEN.filter(e => {
+      const norm = e.toLowerCase().replace(/[\s.]/g, ''); // "o16-1"
+      const justAge = norm.replace(/-\d+$/, '');          // "o16"
+      return norm.startsWith(q) || justAge.endsWith(q) || norm.includes(q);
+    }).slice(0, 12);
+    if(!matches.length){ window.shAC?.close(); return; }
+    const items = matches.map(e => ({ label: e, primary: e, secondary: '' }));
+    window.shAC?.show(input, items, item => {
+      input.value = item.label;
+      input.dispatchEvent(new Event('change', {bubbles:true}));
+    });
+  });
+  input.addEventListener('keydown', e => { if(window.shAC?.onKey(e)) e.preventDefault(); });
+  input.addEventListener('blur', () => setTimeout(() => window.shAC?.close(), 150));
+}
 
 /**
  * Upgrade select-element naar AC-input. Huidig gedrag: behoud select as-is.
  */
 function shUpgradeSelectToAC(id){ /* no-op */ }
+
+// ── Wedstrijden subview toggle (enkel 'wedstrijden' resterend na verwijdering toernooien) ──
+function switchMatchesSubview(sub){
+  // Wedstrijden subview is nu de enige — functie blijft voor forward-compat
+  const btn = document.getElementById('msv-'+sub);
+  document.querySelectorAll('.msv-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  // Render matches als we naar 'wedstrijden' gaan
+  if(sub === 'wedstrijden' && typeof renderMatchReports === 'function') renderMatchReports();
+}
+window.switchMatchesSubview = switchMatchesSubview;
 
 // ── Bootstrap ──────────────────────────────────────────────────────────────────
 onAuthStateChanged(auth, async (user) => {

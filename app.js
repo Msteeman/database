@@ -5984,20 +5984,28 @@ function renderActiveScouting(){
           sp.club || ''
         ].filter(Boolean).join(' · ');
         const conceptTag = concept ? `<div class="sa-tile-concept-tag">concept</div>` : '';
-        // s35dg Fase C+D: tijdens live alleen spelersnotitie — geen volledig rapport meer
-        // s35dg-hotfix4: chip-link inline achter naam, geen aparte "+ Nieuwe spelersnotitie"-knop
+        // s83: zoek bestaande snelnotitie voor inline panel
+        const existingSn = (prog.snelnotities || []).find(s => s && s.spelerKey === sp.id);
+        const snelTekst  = existingSn ? (existingSn.tekst || '') : '';
+        const isOpvallend = existingSn ? !!existingSn.is_opvallend : false;
         const matchedId = player ? player.id : '';
-        const actsHtml = matchedId ? `<div class="sa-tile-acts">
-          <button type="button" data-tile-act="open-player" data-player-id="${escapeHtml(matchedId)}">Open speler</button>
-        </div>` : '';
-        return `<div class="${cls}" data-prog-id="${escapeHtml(prog.id)}" data-sp-idx="${i}" data-player-id="${player ? escapeHtml(player.id) : ''}" title="Klik om uit te klappen">
+        // s83: inline panel — mini textarea + opvallend knop + optioneel profiel-link
+        const panelHtml = `
+          <textarea class="sa-tile-snel-ta" rows="3" placeholder="Aantekening…">${escapeHtml(snelTekst)}</textarea>
+          <div class="sa-tile-save-status"></div>
+          <div class="sa-tile-acts-row">
+            <button type="button" class="sa-tile-opvallend-btn${isOpvallend ? ' is-opvallend' : ''}" data-tile-act="toggle-opvallend">
+              ${isOpvallend ? '⭐ Opgevallen' : '☆ Opvallend'}
+            </button>
+            ${matchedId ? `<button type="button" class="sa-tile-prof-btn" data-tile-act="open-player" data-player-id="${escapeHtml(matchedId)}">Profiel</button>` : ''}
+          </div>`;
+        return `<div class="${cls}${isOpvallend ? ' tile-opvallend' : ''}" data-prog-id="${escapeHtml(prog.id)}" data-sp-idx="${i}" data-player-id="${matchedId ? escapeHtml(matchedId) : ''}" title="Klik om uit te klappen">
           <button type="button" class="sa-tile-close" data-tile-act="close" aria-label="Sluiten" style="display:none">×</button>
-          <div class="sa-tile-name">${escapeHtml(naam)}</div>
-          <span class="sa-tile-snelnote-chip" data-tile-act="new-snel-notitie">— spelersnotitie</span>
+          <div class="sa-tile-name">${escapeHtml(naam)}${isOpvallend ? '<span class="sa-tile-star" aria-hidden="true">⭐</span>' : ''}</div>
           ${meta ? `<div class="sa-tile-meta">${escapeHtml(meta)}</div>` : ''}
           ${conceptTag}
           <div class="sa-tile-panel">
-            ${actsHtml}
+            ${panelHtml}
           </div>
         </div>`;
       }).join('');
@@ -6222,6 +6230,42 @@ function renderActiveScouting(){
           if(pid && typeof openDetail === 'function') openDetail(pid);
           return;
         }
+        // s83: toggle-opvallend — sla is_opvallend flag op in snelnotitie
+        if(act === 'toggle-opvallend'){
+          const progId2 = tile.dataset.progId;
+          const spIdx2  = parseInt(tile.dataset.spIdx, 10);
+          const prog2   = programmaCache.find(p => p.id === progId2);
+          if(!prog2) return;
+          const sp2 = (prog2.spelers||[])[spIdx2];
+          if(!sp2) return;
+          if(!Array.isArray(prog2.snelnotities)) prog2.snelnotities = [];
+          let sn2 = prog2.snelnotities.find(s => s && s.spelerKey === sp2.id);
+          if(!sn2){
+            const ta2 = tile.querySelector('.sa-tile-snel-ta');
+            sn2 = { id: 'sn_'+(sp2.id||Date.now()), naam: sp2.naam||[sp2.voornaam,sp2.achternaam].filter(Boolean).join(' ')||'', rugnummer: sp2.rugnummer||'', positie: sp2.positie||'', tekst: ta2 ? ta2.value.trim() : '', spelerKey: sp2.id, created: Date.now() };
+            prog2.snelnotities.push(sn2);
+          }
+          sn2.is_opvallend = !sn2.is_opvallend;
+          prog2.modified = Date.now();
+          // Update knop + tile klasse + ster in naam
+          if(sn2.is_opvallend){
+            actBtn.textContent = '⭐ Opgevallen';
+            actBtn.classList.add('is-opvallend');
+            tile.classList.add('tile-opvallend');
+          } else {
+            actBtn.textContent = '☆ Opvallend';
+            actBtn.classList.remove('is-opvallend');
+            tile.classList.remove('tile-opvallend');
+          }
+          const nameEl2 = tile.querySelector('.sa-tile-name');
+          if(nameEl2){
+            const star2 = nameEl2.querySelector('.sa-tile-star');
+            if(sn2.is_opvallend && !star2) nameEl2.insertAdjacentHTML('beforeend','<span class="sa-tile-star" aria-hidden="true">⭐</span>');
+            else if(!sn2.is_opvallend && star2) star2.remove();
+          }
+          if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog2).catch(()=>{});
+          return;
+        }
         // s35ca-1: 'edit-voorrap' handler verwijderd — voor-rapport flow weg
         return;
       }
@@ -6241,6 +6285,52 @@ function renderActiveScouting(){
       tile.classList.toggle('open', !isOpen);
       const x = tile.querySelector('.sa-tile-close');
       if(x) x.style.display = isOpen ? 'none' : '';
+      // s83: wire textarea auto-save bij eerste keer openen
+      if(!isOpen){
+        const ta = tile.querySelector('.sa-tile-snel-ta');
+        if(ta && !ta._wired){
+          ta._wired = true;
+          let saveTm;
+          const saveStatus = tile.querySelector('.sa-tile-save-status');
+          const doTileSave = async () => {
+            const pid3 = tile.dataset.progId;
+            const spi3 = parseInt(tile.dataset.spIdx, 10);
+            const pr3  = programmaCache.find(p => p.id === pid3);
+            if(!pr3) return;
+            const sp3 = (pr3.spelers||[])[spi3];
+            if(!sp3) return;
+            if(!Array.isArray(pr3.snelnotities)) pr3.snelnotities = [];
+            let sn3 = pr3.snelnotities.find(s => s && s.spelerKey === sp3.id);
+            const tekst3 = ta.value.trim();
+            if(!sn3){
+              sn3 = { id: 'sn_'+(sp3.id||Date.now()), naam: sp3.naam||[sp3.voornaam,sp3.achternaam].filter(Boolean).join(' ')||'', rugnummer: sp3.rugnummer||'', positie: sp3.positie||'', tekst: tekst3, spelerKey: sp3.id, created: Date.now() };
+              pr3.snelnotities.push(sn3);
+            } else {
+              sn3.tekst = tekst3;
+            }
+            pr3.modified = Date.now();
+            try {
+              if(typeof saveProgrammaItem === 'function') await saveProgrammaItem(pr3);
+              if(saveStatus){ saveStatus.textContent = '✓'; saveStatus.style.color = '#4ade80'; }
+              setTimeout(() => { if(saveStatus) saveStatus.textContent = ''; }, 1200);
+            } catch(_){
+              if(saveStatus){ saveStatus.textContent = '!'; saveStatus.style.color = '#ef4444'; }
+            }
+          };
+          ta.addEventListener('input', () => {
+            if(saveStatus){ saveStatus.textContent = '…'; saveStatus.style.color = '#9aa3b7'; }
+            clearTimeout(saveTm);
+            saveTm = setTimeout(doTileSave, 700);
+          });
+          ta.addEventListener('focusout', (ev) => {
+            if(!tile.contains(ev.relatedTarget)){
+              clearTimeout(saveTm);
+              doTileSave();
+            }
+          });
+        }
+        if(ta) setTimeout(() => ta.focus(), 60);
+      }
     });
   });
 
@@ -18070,7 +18160,6 @@ function shWireClubAC(input){
     const q = input.value.trim().toLowerCase();
     if(!q || q.length < 2){ window.shAC?.close(); return; }
     const clubs = (typeof HV_CLUBS !== 'undefined') ? HV_CLUBS : [];
-    // Splits in starts-with (prioriteit) en contains (fallback)
     const startsWith = [], contains = [];
     for(const c of clubs){
       if(!c.naam) continue;
@@ -18082,36 +18171,9 @@ function shWireClubAC(input){
     const merged = [...startsWith, ...contains].slice(0, 12);
     if(!merged.length){ window.shAC?.close(); return; }
     const items = merged.map(c => ({
-      label:     c.naam,
-      primary:   c.naam,
-      secondary: [c.plaats, c.sportpark].filter(Boolean).join(' \xb7 ')
+      label: c.naam, primary: c.naam,
+      secondary: [c.plaats, c.sportpark].filter(Boolean).join(' · ')
     }));
-    window.shAC?.show(input, items, item => {
-      input.value = item.label;
-      input.dispatchEvent(new Event('change', {bubbles:true}));
-    });
-  });
-  input.addEventListener('keydown', e => { if(window.shAC?.onKey(e)) e.preventDefault(); });
-  input.addEventListener('blur', () => setTimeout(() => window.shAC?.close(), 150));
-}
-
-// Elftal/leeftijdscategorie autocomplete — O.8-1 t/m O.23-10
-const _SH_ELFTALLEN = ["O.8-1", "O.8-2", "O.8-3", "O.8-4", "O.8-5", "O.8-6", "O.8-7", "O.8-8", "O.8-9", "O.8-10", "O.9-1", "O.9-2", "O.9-3", "O.9-4", "O.9-5", "O.9-6", "O.9-7", "O.9-8", "O.9-9", "O.9-10", "O.10-1", "O.10-2", "O.10-3", "O.10-4", "O.10-5", "O.10-6", "O.10-7", "O.10-8", "O.10-9", "O.10-10", "O.11-1", "O.11-2", "O.11-3", "O.11-4", "O.11-5", "O.11-6", "O.11-7", "O.11-8", "O.11-9", "O.11-10", "O.12-1", "O.12-2", "O.12-3", "O.12-4", "O.12-5", "O.12-6", "O.12-7", "O.12-8", "O.12-9", "O.12-10", "O.13-1", "O.13-2", "O.13-3", "O.13-4", "O.13-5", "O.13-6", "O.13-7", "O.13-8", "O.13-9", "O.13-10", "O.14-1", "O.14-2", "O.14-3", "O.14-4", "O.14-5", "O.14-6", "O.14-7", "O.14-8", "O.14-9", "O.14-10", "O.15-1", "O.15-2", "O.15-3", "O.15-4", "O.15-5", "O.15-6", "O.15-7", "O.15-8", "O.15-9", "O.15-10", "O.16-1", "O.16-2", "O.16-3", "O.16-4", "O.16-5", "O.16-6", "O.16-7", "O.16-8", "O.16-9", "O.16-10", "O.17-1", "O.17-2", "O.17-3", "O.17-4", "O.17-5", "O.17-6", "O.17-7", "O.17-8", "O.17-9", "O.17-10", "O.18-1", "O.18-2", "O.18-3", "O.18-4", "O.18-5", "O.18-6", "O.18-7", "O.18-8", "O.18-9", "O.18-10", "O.19-1", "O.19-2", "O.19-3", "O.19-4", "O.19-5", "O.19-6", "O.19-7", "O.19-8", "O.19-9", "O.19-10", "O.20-1", "O.20-2", "O.20-3", "O.20-4", "O.20-5", "O.20-6", "O.20-7", "O.20-8", "O.20-9", "O.20-10", "O.21-1", "O.21-2", "O.21-3", "O.21-4", "O.21-5", "O.21-6", "O.21-7", "O.21-8", "O.21-9", "O.21-10", "O.22-1", "O.22-2", "O.22-3", "O.22-4", "O.22-5", "O.22-6", "O.22-7", "O.22-8", "O.22-9", "O.22-10", "O.23-1", "O.23-2", "O.23-3", "O.23-4", "O.23-5", "O.23-6", "O.23-7", "O.23-8", "O.23-9", "O.23-10"];
-
-function shWireLeeftijdAC(input){
-  if(!input) return;
-  input.setAttribute('autocomplete','off');
-  input.addEventListener('input', () => {
-    const q = input.value.trim().toLowerCase().replace(/[\s.]/g, '');
-    if(!q || q.length < 1){ window.shAC?.close(); return; }
-    // Match: "16" → O.16-*, "o16" → O.16-*, "o.16" → O.16-*, "o16-1" → O.16-1
-    const matches = _SH_ELFTALLEN.filter(e => {
-      const norm = e.toLowerCase().replace(/[\s.]/g, ''); // "o16-1"
-      const justAge = norm.replace(/-\d+$/, '');          // "o16"
-      return norm.startsWith(q) || justAge.endsWith(q) || norm.includes(q);
-    }).slice(0, 12);
-    if(!matches.length){ window.shAC?.close(); return; }
-    const items = matches.map(e => ({ label: e, primary: e, secondary: '' }));
     window.shAC?.show(input, items, item => {
       input.value = item.label;
       input.dispatchEvent(new Event('change', {bubbles:true}));
@@ -18125,6 +18187,39 @@ function shWireLeeftijdAC(input){
  * Upgrade select-element naar AC-input. Huidig gedrag: behoud select as-is.
  */
 function shUpgradeSelectToAC(id){ /* no-op */ }
+
+// s80: leeftijdscategorie autocomplete (O.8-1 t/m O.23-10)
+const _SH_ELFTALLEN = (function(){
+  const out = [];
+  for(let age = 8; age <= 23; age++){
+    const max = age <= 9 ? 8 : age <= 11 ? 10 : age <= 13 ? 10 : age <= 15 ? 10 : age <= 17 ? 10 : age <= 19 ? 10 : age <= 23 ? 10 : 10;
+    for(let nr = 1; nr <= max; nr++) out.push('O.' + age + '-' + nr);
+  }
+  return out;
+})();
+
+function shWireLeeftijdAC(input){
+  if(!input) return;
+  input.setAttribute('autocomplete','off');
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase().replace(/[\s.]/g, '');
+    if(!q || q.length < 1){ window.shAC?.close(); return; }
+    const matches = _SH_ELFTALLEN.filter(e => {
+      const norm = e.toLowerCase().replace(/[\s.]/g, '');
+      const justAge = norm.replace(/-\d+$/, '');
+      return norm.startsWith(q) || justAge.endsWith(q) || norm.includes(q);
+    }).slice(0, 12);
+    if(!matches.length){ window.shAC?.close(); return; }
+    const items = matches.map(e => ({ label: e, primary: e, secondary: '' }));
+    window.shAC?.show(input, items, item => {
+      input.value = item.label;
+      input.dispatchEvent(new Event('change', {bubbles:true}));
+    });
+  });
+  input.addEventListener('keydown', e => { if(window.shAC?.onKey(e)) e.preventDefault(); });
+  input.addEventListener('blur', () => setTimeout(() => window.shAC?.close(), 150));
+}
+
 
 // ── Wedstrijden subview toggle (enkel 'wedstrijden' resterend na verwijdering toernooien) ──
 function switchMatchesSubview(sub){

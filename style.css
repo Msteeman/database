@@ -1278,6 +1278,47 @@ a { color: var(--accent); text-decoration: none; }
   padding-top: 10px;
   border-top: 1px solid var(--border-2);
 }
+
+/* s83: inline notitie textarea */
+.sa-tile-snel-ta {
+  width: 100%; box-sizing: border-box;
+  background: rgba(10,12,18,0.7);
+  border: 1px solid var(--border-2, #2d3242);
+  border-radius: 7px;
+  padding: 8px 10px;
+  color: var(--text-1, #e5e9f5);
+  font-family: inherit; font-size: 13px; line-height: 1.45;
+  resize: vertical; outline: none;
+  transition: border-color .15s;
+}
+.sa-tile-snel-ta:focus { border-color: #4ea1ff; }
+.sa-tile-save-status {
+  font-size: 11px; color: #9aa3b7;
+  text-align: right; height: 15px; margin-top: 2px;
+  min-height: 15px;
+}
+.sa-tile-acts-row {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px;
+}
+.sa-tile-acts-row button {
+  padding: 5px 10px; font-size: 12px; font-weight: 600;
+  border-radius: 7px;
+  border: 1px solid var(--border-2, #2d3242);
+  background: var(--bg-2, #141820);
+  color: var(--text-1, #e5e9f5);
+  cursor: pointer; transition: .12s;
+}
+.sa-tile-acts-row button:hover { border-color: #4ea1ff; color: #4ea1ff; }
+.sa-tile-opvallend-btn { order: 0; }
+.sa-tile-opvallend-btn.is-opvallend {
+  background: rgba(245,197,24,0.12);
+  border-color: #f5c518; color: #f5c518;
+}
+.sa-tile-prof-btn { order: 1; }
+/* s83: opvallend-state visual op tile */
+.sa-tile.tile-opvallend { border-color: rgba(245,197,24,0.45); }
+.sa-tile-star { margin-left: 4px; font-size: 12px; }
+
 /* s35ca-1: .sa-tile-voorrap CSS verwijderd */
 .sa-tile-acts {
   display: flex; gap: 6px; flex-wrap: wrap;

@@ -127,6 +127,27 @@
   <div class="spinner"></div>
   <div class="loader-text">Verbinden met cloud...</div>
 </div>
+<!-- Fallback: als app.js niet laadt (CDN-fout), toon login na 10s -->
+<script>
+(function(){
+  var shown = false;
+  function showLoginFallback(){
+    if(shown) return;
+    var app = document.getElementById('app');
+    if(app && app.style.display === 'block') return; // al ingelogd
+    shown = true;
+    var ld = document.getElementById('loader');
+    var lo = document.getElementById('login-overlay');
+    if(ld) ld.style.display = 'none';
+    if(lo) lo.style.display = 'flex';
+    var e = document.getElementById('login-email');
+    if(e) setTimeout(function(){ e.focus(); }, 100);
+  }
+  setTimeout(showLoginFallback, 10000);
+  // Luister ook op window.__loginReady zodat app.js de timer kan annuleren
+  window.__cancelLoginFallback = function(){ shown = true; };
+})();
+</script>
 
 <!-- =================== LOGIN OVERLAY =================== -->
 <div id="login-overlay" style="display:none;">

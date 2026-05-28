@@ -6063,9 +6063,7 @@ async function _obsSubmit(e){
 Speler: ${naam || omschr || 'Naam onbekend'}${rug ? ` (nr ${rug})` : ''}
 Club: ${club || 'Onbekend'}
 Positie: ${positie || 'Onbekend'}
-${filledCount > 0 ? 'Al ingevuld:
-' + Object.entries(filled).map(([k,v])=>`- ${k}: ${v}`).join('
-') : ''}
+${filledCount > 0 ? 'Al ingevuld:\n' + Object.entries(filled).map(([k,v])=>`- ${k}: ${v}`).join('\n') : ''}
 
 Geef suggesties voor de volgende termen (alleen de ontbrekende): ${missing.join(', ')}
 

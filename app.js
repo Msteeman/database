@@ -18284,6 +18284,7 @@ function switchMatchesSubview(sub){
 window.switchMatchesSubview = switchMatchesSubview;
 onAuthStateChanged(auth, async (user) => {
   if(user){
+    currentUser = user;
     try {
       await initApp();
       subscribeData();
@@ -18297,6 +18298,7 @@ onAuthStateChanged(auth, async (user) => {
       showLogin();
     }
   } else {
+    currentUser = null;
     showLogin();
   }
 });

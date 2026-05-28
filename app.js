@@ -18402,7 +18402,8 @@ async function loadUserRole(){
   }, true);
 
   window.addEventListener('scroll', () => { if(_inp) _pos(_inp); }, true);
-  window.addEventListener('resize', () => { if(_inp) _clos
+  window.addEventListener('resize', () => { if(_inp) _close(); }, true);
+})();
 function shWireClubAC(input){
   if(!input) return;
   input.setAttribute('autocomplete','off');

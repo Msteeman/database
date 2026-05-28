@@ -1,12 +1,13 @@
 /* Scouting Platform — Service Worker
    Bump CACHE_VERSION whenever you ship a new index.html so users get the latest. */
-const CACHE_VERSION = 'sh-v94-elftallen-observatie';
+const CACHE_VERSION = 'sh-v95-split-files';
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-rt`;
 
 const CORE_ASSETS = [
   './',
   './index.html',
+  './clubs-data.js',
   './manifest.webmanifest',
   './icon-192.png',
   './icon-512.png',

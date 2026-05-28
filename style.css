@@ -9444,3 +9444,17 @@ items: center; gap: 4px;
   background: rgba(255,255,255,.04); border-radius: 6px; padding: 4px 8px; margin-top: 4px;
 }
 .elf-empty { padding: 40px 0; text-align: center; color: var(--text-2,#9aa3b7); font-size: 14px; }
+
+/* ── Observatie AI aanvullen knop ──────────────────────────────────────────── */
+.obs-ai-row {
+  display: flex; align-items: center; gap: 10px; padding: 2px 0 6px;
+}
+.obs-btn-ai {
+  background: linear-gradient(135deg, rgba(79,110,247,.2), rgba(138,79,247,.2));
+  border: 1px solid rgba(138,79,247,.4); color: var(--accent,#4f6ef7);
+  border-radius: 8px; padding: 7px 16px; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.obs-btn-ai:hover { background: linear-gradient(135deg, rgba(79,110,247,.35), rgba(138,79,247,.35)); }
+.obs-btn-ai:disabled { opacity: .5; cursor: not-allowed; }
+.obs-ai-hint { font-size: 12px; color: var(--text-2,#9aa3b7); }

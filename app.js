@@ -32,7 +32,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-await setPersistence(auth, browserLocalPersistence);
+try { await setPersistence(auth, browserLocalPersistence); } catch(e) { console.warn('setPersistence failed (non-fatal):', e); }
 
 /* =============== CONFIG =============== */
 const AUTO_LOGOUT_MS = 30 * 60 * 1000;
@@ -4991,7 +4991,17 @@ window.tryLogin = async function tryLogin(){
     btn.disabled = false; btn.textContent = 'Inloggen';
   }
 }
+// Fallback: toon login na 8s ook als onAuthStateChanged niet vuurt (bv. CDN timeout)
+let _loginShown = false;
+setTimeout(() => {
+  if(!_loginShown && !document.getElementById('app')?.style?.display?.includes('block')){
+    console.warn('Login fallback timer triggered');
+    showLogin();
+  }
+}, 8000);
+
 function showLogin(){
+  _loginShown = true;
   const _ld = document.getElementById('loader');
   const _lo = document.getElementById('login-overlay');
   const _ap = document.getElementById('app');

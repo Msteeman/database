@@ -18283,6 +18283,20 @@ function switchMatchesSubview(sub){
 }
 window.switchMatchesSubview = switchMatchesSubview;
 onAuthStateChanged(auth, async (user) => {
-  if(user){ await initApp(); subscribeData(); showApp(); go('dashboard'); loadUserRole(); }
-  else { showLogin(); }
+  if(user){
+    try {
+      await initApp();
+      subscribeData();
+      showApp();
+      go('dashboard');
+      loadUserRole();
+    } catch(err){
+      console.error('Bootstrap fout:', err);
+      const errEl = document.getElementById('login-error');
+      if(errEl) errEl.textContent = 'Laad-fout: ' + (err && err.message ? err.message : String(err));
+      showLogin();
+    }
+  } else {
+    showLogin();
+  }
 });

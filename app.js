@@ -6129,6 +6129,26 @@ function renderActiveScouting(){
           <button class="btn-ghost sa-grad" data-sa-act="add-player" data-progid="${escapeHtml(prog.id)}">+ Speler</button>
           <button class="btn-ghost sa-grad sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}">+ Wedstrijdnotitie</button>
         </div>
+        ${(()=>{
+          // s92: toon opgeslagen snelnotities van ongekoppelde spelers
+          const _linkedKeys = new Set((prog.spelers||[]).map(s => s && s.id).filter(Boolean));
+          const _unsaved = (prog.snelnotities||[]).filter(sn => sn && sn.naam && !_linkedKeys.has(sn.spelerKey));
+          if(!_unsaved.length) return '';
+          return `<div class="sa-saved-sns" style="margin-top:10px; border-top:1px solid var(--border,#2a2f3a); padding-top:8px;">
+            <div style="font-size:10.5px; color:var(--text-3,#8b93a8); text-transform:uppercase; letter-spacing:.6px; font-weight:700; margin-bottom:6px;">Opgeslagen notities (${_unsaved.length})</div>
+            ${_unsaved.map(sn => {
+              const _snNaam = escapeHtml(sn.naam||'?') + (sn.rugnummer ? ` <span style="color:var(--text-3)">#${escapeHtml(String(sn.rugnummer))}</span>` : '') + (sn.positie ? ` <span style="color:var(--text-3)">· ${escapeHtml(sn.positie)}</span>` : '');
+              const _snTekst = (sn.tekst||'').replace(/^[a-z]+:\s*/gmi, '').replace(/\n+/g,' · ').trim();
+              return `<div class="sa-saved-sn-row" style="background:rgba(245,200,66,0.06); border:1px solid rgba(245,200,66,0.18); border-radius:8px; padding:7px 10px; margin-bottom:5px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                <div style="flex:1; min-width:0;">
+                  <div style="font-size:12.5px; font-weight:700; color:var(--text-1,#e5e9f5);">${_snNaam}</div>
+                  ${_snTekst ? `<div style="font-size:11.5px; color:var(--text-3,#8b93a8); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(_snTekst.slice(0,80))}</div>` : ''}
+                </div>
+                ${sn.is_opvallend ? '<span style="font-size:14px;">⭐</span>' : ''}
+              </div>`;
+            }).join('')}
+          </div>`;
+        })()}
       </div>`;
   }).join('');
 
@@ -6843,10 +6863,16 @@ function renderTodayMatches(){
   const dd = String(now.getDate()).padStart(2,'0');
   const today = `${yyyy}-${mm}-${dd}`;
   // s35ba: filter active wedstrijd (bezig of warmup) — die staat al boven in geel
+  // s91: verberg ook wedstrijden waarvan het window al voorbij is (afgelopen)
   const __nowF = new Date();
   const items = programmaCache.filter(p => {
     if(!p || p.datum !== today) return false;
     if(typeof isMatchInWindow === 'function' && isMatchInWindow(p, __nowF)) return false;
+    // Verberg afgelopen wedstrijden: window bestaat én is al voorbij
+    if(typeof getMatchWindow === 'function'){
+      const w = getMatchWindow(p);
+      if(w && w.end < __nowF) return false;
+    }
     return true;
   });
   if(items.length === 0){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
@@ -18295,9 +18321,29 @@ function shWireLeeftijdAC(input){
   if(!input) return;
   input.setAttribute('autocomplete','off');
   input.addEventListener('input', () => {
-    const q = input.value.trim().toLowerCase().replace(/[\s.]/g, '');
+    const raw = input.value.trim();
+    const q = raw.toLowerCase().replace(/[\s.]/g, '');
     if(!q){ window.shAC?.close(); return; }
-    const matches = _SH_ELFTALLEN.filter(e => { const n=e.toLowerCase().replace(/[\s.]/g,''); return n.startsWith(q)||n.replace(/-\d+$/,'').endsWith(q)||n.includes(q); }).slice(0,12);
+    // s92: slimmere matching — "9" of "o9" toont O.9-x; "9-3" toont O.9-3
+    const numOnly = q.match(/^(\d{1,2})$/);
+    const oNum    = q.match(/^o(\d{1,2})$/);
+    const numDash = q.match(/^(\d{1,2})-(\d*)$/);
+    const oNumDash= q.match(/^o(\d{1,2})-?(\d*)$/);
+    const ageQ = numOnly?.[1] || oNum?.[1] || numDash?.[1] || oNumDash?.[1];
+    const teamQ = numDash?.[2] || oNumDash?.[2] || '';
+    let matches;
+    if(ageQ){
+      matches = _SH_ELFTALLEN.filter(e => {
+        const n = e.toLowerCase().replace(/[\s.]/g,'');
+        const [,a,t] = n.match(/^o(\d+)-(\d+)$/) || [];
+        if(!a) return false;
+        if(a !== ageQ) return false;
+        return !teamQ || t.startsWith(teamQ);
+      });
+    } else {
+      matches = _SH_ELFTALLEN.filter(e => { const n=e.toLowerCase().replace(/[\s.]/g,''); return n.startsWith(q); });
+    }
+    matches = matches.slice(0,10);
     if(!matches.length){ window.shAC?.close(); return; }
     window.shAC?.show(input, matches.map(e=>({label:e,primary:e,secondary:''})), item => { input.value=item.label; input.dispatchEvent(new Event('change',{bubbles:true})); });
   });

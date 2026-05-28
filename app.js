@@ -6021,9 +6021,21 @@ function renderActiveScouting(){
         const snelTekst  = existingSn ? (existingSn.tekst || '') : '';
         const isOpvallend = existingSn ? !!existingSn.is_opvallend : false;
         const matchedId = player ? player.id : '';
-        // s83: inline panel — mini textarea + opvallend knop + optioneel profiel-link
+        // s92: inline panel — structured 8-field form (same terms as sa-snel-form)
+        const _TILE_TERMS = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
+        const _TILE_TERM_PH = {techniek:'bv. scherp, snel',inzicht:'bv. leest spel goed',mentaliteit:'bv. werkt hard, leidt',explosiviteit:'bv. eerste 5m sterk',sprinten:'bv. topsnelheid hoog',duelleren:'bv. wint 1-op-1',wendbaarheid:'bv. soepel, lichtvoetig',algemeen:'bv. interessante speler'};
+        const _parseTileTerm = (tekst, term) => {
+          const re = new RegExp('^\\s*' + term + '\\s*:\\s*(.*)$', 'mi');
+          const m = tekst.match(re);
+          if(!m || !m[1]) return '';
+          const v = m[1].trim();
+          if(_TILE_TERMS.indexOf(v.toLowerCase().replace(/:\s*$/, '')) >= 0) return '';
+          return v;
+        };
         const panelHtml = `
-          <textarea class="sa-tile-snel-ta" rows="3" placeholder="Aantekening…">${escapeHtml(snelTekst)}</textarea>
+          <div class="sa-tile-terms">
+            ${_TILE_TERMS.map(t => `<div class="sa-snel-term-row"><span class="sa-snel-term-label">${t}</span><input class="sa-tile-term-in" data-term="${t}" type="text" placeholder="${escapeHtml(_TILE_TERM_PH[t]||'')}" value="${escapeHtml(_parseTileTerm(snelTekst, t))}" /></div>`).join('')}
+          </div>
           <div class="sa-tile-save-status"></div>
           <div class="sa-tile-acts-row">
             <button type="button" class="sa-tile-opvallend-btn${isOpvallend ? ' is-opvallend' : ''}" data-tile-act="toggle-opvallend">
@@ -6045,11 +6057,17 @@ function renderActiveScouting(){
     return `
       <div class="sa-card is-live-card" data-prog-id="${escapeHtml(prog.id)}">
         <div class="sa-header" data-sa-collapse="1">
-          <div>
+          <div style="flex:1; min-width:0;">
             <div class="sa-title"><span class="sa-pulse"></span> Bezig met scouten — ${teams}</div>
             <div class="sa-meta">${metaParts.join('<span style=\"opacity:.3\">|</span>')}</div>
           </div>
-          <div class="sa-status ${status}">${statusLabel}</div>
+          <div class="sa-header-right">
+            <div class="sa-status ${status}">${statusLabel}</div>
+            <div class="sa-header-acts">
+              <button class="btn-ghost sa-grad sa-trigger-snel" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}" title="Spelersnotitie toevoegen">+ Notitie</button>
+              <button class="btn-ghost sa-grad sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}" title="Wedstrijdnotitie toevoegen">+ Wedstrijd</button>
+            </div>
+          </div>
           <span class="sa-collapse-chev" aria-hidden="true">&#9662;</span>
         </div>
         <div class="sa-players-title">Spelers (${spelers.length})</div>
@@ -6124,18 +6142,17 @@ function renderActiveScouting(){
           <textarea class="sa-snel-wstr-tekst" placeholder="Tactiek, score, weer, opvallende momenten..."></textarea>
           <!-- s35bg: onderaan-instructie weg (heading is nu close-trigger) -->
         </div>
-        <div class="sa-actions">
-          <button class="btn-ghost sa-grad sa-trigger-snel" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}">+ Spelersnotitie</button>
-          <button class="btn-ghost sa-grad" data-sa-act="add-player" data-progid="${escapeHtml(prog.id)}">+ Speler</button>
-          <button class="btn-ghost sa-grad sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}">+ Wedstrijdnotitie</button>
-        </div>
         ${(()=>{
           // s92: toon opgeslagen snelnotities van ongekoppelde spelers
           const _linkedKeys = new Set((prog.spelers||[]).map(s => s && s.id).filter(Boolean));
           const _unsaved = (prog.snelnotities||[]).filter(sn => sn && sn.naam && !_linkedKeys.has(sn.spelerKey));
           if(!_unsaved.length) return '';
-          return `<div class="sa-saved-sns" style="margin-top:10px; border-top:1px solid var(--border,#2a2f3a); padding-top:8px;">
-            <div style="font-size:10.5px; color:var(--text-3,#8b93a8); text-transform:uppercase; letter-spacing:.6px; font-weight:700; margin-bottom:6px;">Opgeslagen notities (${_unsaved.length})</div>
+          return `<div class="sa-saved-sns" style="margin-top:10px; border-top:1px solid var(--border,#2a2f3a); padding-top:8px;" data-progid="${escapeHtml(prog.id)}">
+            <div class="sa-saved-sns-hdr" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; margin-bottom:0;">
+              <span style="font-size:10.5px; color:var(--text-3,#8b93a8); text-transform:uppercase; letter-spacing:.6px; font-weight:700;">Opgeslagen notities (${_unsaved.length})</span>
+              <span class="sa-saved-sns-chev" style="color:var(--muted,#9aa3b7); font-size:12px; transition:transform .2s;">&#9656;</span>
+            </div>
+            <div class="sa-saved-sns-body" style="display:none; margin-top:6px;">
             ${_unsaved.map(sn => {
               const _snNaam = escapeHtml(sn.naam||'?') + (sn.rugnummer ? ` <span style="color:var(--text-3)">#${escapeHtml(String(sn.rugnummer))}</span>` : '') + (sn.positie ? ` <span style="color:var(--text-3)">· ${escapeHtml(sn.positie)}</span>` : '');
               const _snTekst = (sn.tekst||'').replace(/^[a-z]+:\s*/gmi, '').replace(/\n+/g,' · ').trim();
@@ -6147,6 +6164,7 @@ function renderActiveScouting(){
                 ${sn.is_opvallend ? '<span style="font-size:14px;">⭐</span>' : ''}
               </div>`;
             }).join('')}
+            </div>
           </div>`;
         })()}
       </div>`;
@@ -6181,6 +6199,20 @@ function renderActiveScouting(){
       }
     });
   } catch(e){ console.warn('sa-collapse', e); }
+
+  // s92: opgeslagen notities toggle (collapsible)
+  wrap.querySelectorAll('.sa-saved-sns-hdr').forEach(hdr => {
+    hdr.addEventListener('click', () => {
+      const sns = hdr.closest('.sa-saved-sns');
+      if(!sns) return;
+      const body = sns.querySelector('.sa-saved-sns-body');
+      const chev = sns.querySelector('.sa-saved-sns-chev');
+      const isOpen = body && body.style.display !== 'none';
+      if(body) body.style.display = isOpen ? 'none' : '';
+      if(chev) chev.style.transform = isOpen ? 'rotate(-90deg)' : '';
+      sns.classList.toggle('sn-collapsed', isOpen);
+    });
+  });
 
   // s35ap (#2): tile-klik -> inline uitklappen (toont voor-rapport + acties)
   function __saOpenReport(tile){
@@ -6293,8 +6325,10 @@ function renderActiveScouting(){
           if(!Array.isArray(prog2.snelnotities)) prog2.snelnotities = [];
           let sn2 = prog2.snelnotities.find(s => s && s.spelerKey === sp2.id);
           if(!sn2){
-            const ta2 = tile.querySelector('.sa-tile-snel-ta');
-            sn2 = { id: 'sn_'+(sp2.id||Date.now()), naam: sp2.naam||[sp2.voornaam,sp2.achternaam].filter(Boolean).join(' ')||'', rugnummer: sp2.rugnummer||'', positie: sp2.positie||'', tekst: ta2 ? ta2.value.trim() : '', spelerKey: sp2.id, created: Date.now() };
+            const _ta2terms = Array.from(tile.querySelectorAll('.sa-tile-term-in'));
+            const _TTMS = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
+            const _ta2tekst = _TTMS.map(t => { const el = _ta2terms.find(x => x.dataset.term === t); return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : ''); }).join('\n');
+            sn2 = { id: 'sn_'+(sp2.id||Date.now()), naam: sp2.naam||[sp2.voornaam,sp2.achternaam].filter(Boolean).join(' ')||'', rugnummer: sp2.rugnummer||'', positie: sp2.positie||'', tekst: _ta2tekst, spelerKey: sp2.id, created: Date.now() };
             prog2.snelnotities.push(sn2);
           }
           sn2.is_opvallend = !sn2.is_opvallend;
@@ -6337,13 +6371,15 @@ function renderActiveScouting(){
       tile.classList.toggle('open', !isOpen);
       const x = tile.querySelector('.sa-tile-close');
       if(x) x.style.display = isOpen ? 'none' : '';
-      // s83: wire textarea auto-save bij eerste keer openen
+      // s92: wire structured term inputs auto-save bij eerste keer openen
       if(!isOpen){
-        const ta = tile.querySelector('.sa-tile-snel-ta');
-        if(ta && !ta._wired){
-          ta._wired = true;
+        const tileTermIns = Array.from(tile.querySelectorAll('.sa-tile-term-in'));
+        if(tileTermIns.length && !tileTermIns[0]._wired){
+          tileTermIns.forEach(el => el._wired = true);
           let saveTm;
           const saveStatus = tile.querySelector('.sa-tile-save-status');
+          const _TERMS3 = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
+          const composeTileTekst = () => _TERMS3.map(t => { const el = tileTermIns.find(x => x.dataset.term === t); return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : ''); }).join('\n');
           const doTileSave = async () => {
             const pid3 = tile.dataset.progId;
             const spi3 = parseInt(tile.dataset.spIdx, 10);
@@ -6351,9 +6387,14 @@ function renderActiveScouting(){
             if(!pr3) return;
             const sp3 = (pr3.spelers||[])[spi3];
             if(!sp3) return;
+            // s92: respect lock — no writes after match ends + 5 min
+            if(typeof _shIsMatchLocked === 'function' && _shIsMatchLocked(pr3)){
+              if(saveStatus){ saveStatus.textContent = 'op slot'; saveStatus.style.color = '#fbbf24'; }
+              return;
+            }
             if(!Array.isArray(pr3.snelnotities)) pr3.snelnotities = [];
             let sn3 = pr3.snelnotities.find(s => s && s.spelerKey === sp3.id);
-            const tekst3 = ta.value.trim();
+            const tekst3 = composeTileTekst();
             if(!sn3){
               sn3 = { id: 'sn_'+(sp3.id||Date.now()), naam: sp3.naam||[sp3.voornaam,sp3.achternaam].filter(Boolean).join(' ')||'', rugnummer: sp3.rugnummer||'', positie: sp3.positie||'', tekst: tekst3, spelerKey: sp3.id, created: Date.now() };
               pr3.snelnotities.push(sn3);
@@ -6369,19 +6410,21 @@ function renderActiveScouting(){
               if(saveStatus){ saveStatus.textContent = '!'; saveStatus.style.color = '#ef4444'; }
             }
           };
-          ta.addEventListener('input', () => {
-            if(saveStatus){ saveStatus.textContent = '…'; saveStatus.style.color = '#9aa3b7'; }
-            clearTimeout(saveTm);
-            saveTm = setTimeout(doTileSave, 700);
+          tileTermIns.forEach(el => {
+            el.addEventListener('input', () => {
+              if(saveStatus){ saveStatus.textContent = '…'; saveStatus.style.color = '#9aa3b7'; }
+              clearTimeout(saveTm);
+              saveTm = setTimeout(doTileSave, 700);
+            });
           });
-          ta.addEventListener('focusout', (ev) => {
+          tile.addEventListener('focusout', (ev) => {
             if(!tile.contains(ev.relatedTarget)){
               clearTimeout(saveTm);
               doTileSave();
             }
-          });
+          }, { once: false });
         }
-        if(ta) setTimeout(() => ta.focus(), 60);
+        if(tileTermIns[0]) setTimeout(() => tileTermIns[0].focus(), 60);
       }
     });
   });
@@ -7268,15 +7311,35 @@ function renderVandaagBanner(){
       </div>`;
   }).join('');
 
+  // s92: herstel collapse-staat uit localStorage
+  let dvbCollapsed = false;
+  try { dvbCollapsed = localStorage.getItem('dvb_collapsed') === '1'; } catch(_){}
+
   wrap.innerHTML = `
-    <div class="dash-vandaag-banner">
+    <div class="dash-vandaag-banner${dvbCollapsed ? ' dvb-collapsed' : ''}">
       <div class="dvb-header">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        Vandaag op het programma
+        <span style="display:flex; align-items:center; gap:7px; flex:1;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Vandaag op het programma (${items.length})
+        </span>
+        <button class="dvb-collapse-btn" title="${dvbCollapsed ? 'Uitklappen' : 'Inklappen'}">&#9660;</button>
       </div>
-      ${cards}
+      <div class="dvb-body">
+        ${cards}
+      </div>
     </div>`;
   wrap.style.display = 'block';
+
+  // Collapse toggle
+  const dvbBanner = wrap.querySelector('.dash-vandaag-banner');
+  const dvbBtn = wrap.querySelector('.dvb-collapse-btn');
+  if(dvbBtn && dvbBanner){
+    dvbBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const collapsed = dvbBanner.classList.toggle('dvb-collapsed');
+      try { localStorage.setItem('dvb_collapsed', collapsed ? '1' : '0'); } catch(_){}
+    });
+  }
 
   // Klik op "Bekijk →" → ga naar programma-tab en open het item
   wrap.querySelectorAll('[data-dvb-progid]').forEach(el => {
@@ -12703,56 +12766,87 @@ function renderMatches(){
 
     // s18b: kind === 'report' niet meer getoond in wedstrijden-overzicht
 
-    // s84: programma-item — post-match kaart met opvolgen-sectie en pre-fill rapport
+    // s93: programma-item — clean post-match kaart (punten 7-17)
     if(m.kind === 'programma'){
       const _shKeyP = _shMatchKey(m);
-      const _shIsVerwerktP = shIsWedstrijdVerwerkt(_shKeyP);
       const _progP = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === m.progId) : null;
-      const _hasConceptP = _progP && _progP.wedstrijdrapport && _progP.wedstrijdrapport.status === 'concept';
       const _spelers = _progP ? (_progP.spelers || []) : [];
       const _sns = _progP ? (_progP.snelnotities || []) : [];
-      const _opvallendCount = _sns.filter(sn => sn && sn.is_opvallend).length;
-      const _snsP = _sns.length;
-      const _wnsP = _progP ? (_progP.wedstrijdnotities || []).length : 0;
-      const ageBadgeP = m.age ? `<span class="match-age-badge">${escapeHtml(m.age)}</span>` : '';
-      const statusPillP = _shIsVerwerktP
-        ? `<span class="match-status-pill" style="background:rgba(127,217,158,.18);color:#7fd99e;border:1px solid rgba(127,217,158,.3);">✓ Verwerkt</span>`
-        : (_hasConceptP
-            ? `<span class="match-status-pill" style="background:rgba(245,200,66,.15);color:#f5c842;border:1px solid rgba(245,200,66,.3);">📝 Concept</span>`
-            : `<span class="match-status-pill" style="background:rgba(99,102,241,.15);color:#818cf8;border:1px solid rgba(99,102,241,.3);">📋 Programma</span>`);
-      // s84: samenvatting — spelers + opgevallen teller
-      const _sumParts = [];
-      if(_spelers.length > 0) _sumParts.push(_spelers.length + ' speler' + (_spelers.length===1?'':'s'));
-      if(_opvallendCount > 0) _sumParts.push('<span style="color:#f5c518">\u2b50 ' + _opvallendCount + ' opgevallen</span>');
-      else if(_snsP > 0) _sumParts.push(_snsP + ' notitie' + (_snsP===1?'':'s'));
-      const summaryMetaP = _sumParts.length ? `<span class="match-players-count">${_sumParts.join(' \u00b7 ')}</span>` : '';
-      // s84: dropdown rijen — opvallende spelers eerst, dan overige met notitie
+      const _wstr = _progP ? _progP.wedstrijdrapport : null;
+      // s93: trigger auto-conversie notities → concept-spelersrapporten (punt 7)
+      try { if(typeof _shConvertNotesToDrafts === 'function' && _progP) _shConvertNotesToDrafts(_progP); } catch(_){}
+      // s93: elftal in naam (punt 13)
+      const _thuisF = _progP && _progP.thuis_elftal ? `${_progP.thuis||m.thuis} ${_progP.thuis_elftal}` : (m.thuis||'?');
+      const _uitF   = _progP && _progP.uit_elftal   ? `${_progP.uit||m.uit} ${_progP.uit_elftal}`     : (m.uit||'?');
+      // s93: per-speler verwerkt check (punt 15)
+      const _linkedKeys = new Set(_spelers.map(sp => sp && sp.id).filter(Boolean));
+      const _unlinkedSns = _sns.filter(sn => sn && sn.naam && !_linkedKeys.has(sn.spelerKey));
+      const _allSpVerwerkt = _spelers.length === 0 ? true : _spelers.every(sp => {
+        const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(m.progId, sp.id) : null;
+        return concept && !_shPlayerIsConcept(concept);
+      });
+      const _wstrVerwerkt = _wstr && (_wstr.status === 'ingediend' || _wstr.status === 'verwerkt');
+      // s93: groen vinkje alleen als: items aanwezig + alles verwerkt (punt 14)
+      const _hasItems = _spelers.length > 0 || !!_wstr;
+      const _allVerwerkt = _hasItems && _allSpVerwerkt && _wstrVerwerkt && _unlinkedSns.length === 0;
+      // s93: dropdown rows
       let _dropRows = '';
-      if(_spelers.length > 0){
-        const _opvSp = _spelers.filter(sp => { const sn=_sns.find(s=>s&&s.spelerKey===sp.id); return sn&&sn.is_opvallend; });
-        const _ovSp  = _spelers.filter(sp => { const sn=_sns.find(s=>s&&s.spelerKey===sp.id); return !(sn&&sn.is_opvallend); });
-        if(_opvSp.length){
-          _dropRows += `<div class="pm-drop-section">\u2b50 Opvolgen (${_opvSp.length})</div>`;
-          _dropRows += _opvSp.map(sp => {
-            const sn = _sns.find(s=>s&&s.spelerKey===sp.id);
-            const naam = sp.naam||[sp.voornaam,sp.achternaam].filter(Boolean).join(' ')||'?';
-            const prev = sn&&sn.tekst ? escapeHtml(sn.tekst.slice(0,80))+(sn.tekst.length>80?'\u2026':'') : '';
-            return `<div class="pm-drop-row is-opv"><div class="pm-drop-info"><div class="pm-drop-name">${escapeHtml(naam)}</div>${prev?`<div class="pm-drop-note">${prev}</div>`:''}</div><button type="button" class="pm-drop-btn" data-pm-rapport="${escapeHtml(m.progId)}" data-pm-sp-id="${escapeHtml(sp.id)}">\u2192 Rapport</button></div>`;
-          }).join('');
-        }
-        if(_ovSp.length){
-          _dropRows += `<div class="pm-drop-section">Spelers (${_ovSp.length})</div>`;
-          _dropRows += _ovSp.map(sp => {
-            const sn = _sns.find(s=>s&&s.spelerKey===sp.id);
-            const naam = sp.naam||[sp.voornaam,sp.achternaam].filter(Boolean).join(' ')||'?';
-            const prev = sn&&sn.tekst ? escapeHtml(sn.tekst.slice(0,60))+(sn.tekst.length>60?'\u2026':'') : '';
-            return `<div class="pm-drop-row"><div class="pm-drop-info"><div class="pm-drop-name">${escapeHtml(naam)}</div>${prev?`<div class="pm-drop-note">${prev}</div>`:''}</div><button type="button" class="pm-drop-btn secondary" data-pm-rapport="${escapeHtml(m.progId)}" data-pm-sp-id="${escapeHtml(sp.id)}">\u2192 Rapport</button></div>`;
+      // Spelersrapporten
+      if(_spelers.length > 0 || _unlinkedSns.length > 0){
+        _dropRows += `<div class="pm-section-hdr">Spelersrapporten</div>`;
+        _dropRows += _spelers.map(sp => {
+          const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(m.progId, sp.id) : null;
+          const isVerwerkt = concept && !_shPlayerIsConcept(concept);
+          const naam = sp.naam||[sp.voornaam,sp.achternaam].filter(Boolean).join(' ')||'?';
+          const sn = _sns.find(s => s && s.spelerKey === sp.id);
+          const prev = sn && sn.tekst ? escapeHtml(sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' \u00b7 ').trim().slice(0,60)) : '';
+          return `<div class="pm-item-row">
+            <div class="pm-item-info">
+              <span class="pm-item-name">${escapeHtml(naam)}${sn&&sn.is_opvallend?' \u2b50':''}</span>
+              ${sp.positie ? `<span class="pm-item-pos">${escapeHtml(sp.positie)}</span>` : ''}
+              ${prev && !isVerwerkt ? `<div class="pm-item-preview">${prev}</div>` : ''}
+            </div>
+            <div class="pm-item-acts">
+              ${isVerwerkt
+                ? `<span class="pm-item-done">\u2713</span><button type="button" class="pm-item-link" data-player-id="${escapeHtml(concept.id)}" title="Naar profiel">Profiel</button>`
+                : `<button type="button" class="pm-item-btn${concept?' ':' new'}" data-pm-rapport="${escapeHtml(m.progId)}" data-pm-sp-id="${escapeHtml(sp.id)}">${concept ? '\u2192 Open' : '\u2192 Rapport'}</button>`
+              }
+            </div>
+          </div>`;
+        }).join('');
+        if(_unlinkedSns.length > 0){
+          _dropRows += `<div class="pm-section-hdr pm-section-sub">Losse notities (${_unlinkedSns.length})</div>`;
+          _dropRows += _unlinkedSns.map(sn => {
+            const prev = sn.tekst ? escapeHtml(sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' \u00b7 ').trim().slice(0,60)) : '';
+            return `<div class="pm-item-row">
+              <div class="pm-item-info">
+                <span class="pm-item-name">${escapeHtml(sn.naam||'?')}${sn.is_opvallend?' \u2b50':''}</span>
+                ${prev ? `<div class="pm-item-preview">${prev}</div>` : ''}
+              </div>
+              <div class="pm-item-acts">
+                <button type="button" class="pm-item-btn new" data-pm-sn-rapport="${escapeHtml(m.progId)}" data-pm-sn-id="${escapeHtml(sn.id||'')}">\u2192 Rapport</button>
+              </div>
+            </div>`;
           }).join('');
         }
       }
-      const _chevP = _dropRows ? `<span class="match-chevron pm-chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>` : '';
+      // Wedstrijdrapport
+      _dropRows += `<div class="pm-section-hdr">Wedstrijdrapport</div>`;
+      const _wstrPrev = _wstr && _wstr.tekst ? escapeHtml(_wstr.tekst.slice(0,80)) + (_wstr.tekst.length>80?'\u2026':'') : '';
+      _dropRows += `<div class="pm-item-row">
+        <div class="pm-item-info">
+          ${_wstrPrev ? `<div class="pm-item-preview">${_wstrPrev}</div>` : `<span class="pm-item-empty">Nog geen wedstrijdrapport</span>`}
+        </div>
+        <div class="pm-item-acts">
+          ${_wstrVerwerkt
+            ? `<span class="pm-item-done">\u2713</span>`
+            : `<button type="button" class="pm-item-btn wstr${_wstr?'':' new'}" data-pm-wstr="${escapeHtml(m.progId)}">${_wstr ? '\u2192 Open' : '\u2192 Schrijven'}</button>`
+          }
+        </div>
+      </div>`;
+      const _chevP = `<span class="match-chevron pm-chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;
       html += `
-        <div class="match-card pm-card${_shIsVerwerktP?' locked':''}" data-prog-match-id="${escapeHtml(m.progId)}" data-match-key="${escapeHtml(_shKeyP)}">
+        <div class="match-card pm-card" data-prog-match-id="${escapeHtml(m.progId)}" data-match-key="${escapeHtml(_shKeyP)}">
           <div class="match-date pm-toggle">
             <div class="match-date-day">${d.day}</div>
             <div class="match-date-month">${d.month}</div>
@@ -12760,22 +12854,14 @@ function renderMatches(){
           </div>
           <div class="match-teams pm-toggle">
             <div class="match-teams-row">
-              <span class="match-team-home">${thuisClean}</span>
-              <span class="match-vs">vs</span>
-              <span class="match-team-away">${uitClean}</span>
-              ${_chevP}
+              <span class="match-team-home">${escapeHtml(_thuisF)}</span>
+              <span class="match-vs">\u2014</span>
+              <span class="match-team-away">${escapeHtml(_uitF)}</span>
+              ${_allVerwerkt ? '<span class="pm-done-badge">\u2713</span>' : _chevP}
             </div>
-            <div class="match-meta">
-              ${statusPillP}
-              ${ageBadgeP}
-              ${summaryMetaP}
-            </div>
-            ${_shBannerHTML(m)}
+            ${_progP && (_progP.tijd || _progP.leeftijd) ? `<div class="match-meta"><span class="match-players-count">${[_progP.tijd, _progP.leeftijd].filter(Boolean).map(escapeHtml).join(' \u00b7 ')}</span></div>` : ''}
           </div>
-          <div class="match-report-click-hint" aria-hidden="true">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-          </div>
-          ${_dropRows ? `<div class="match-dropdown pm-dropdown" style="display:none">${_dropRows}</div>` : ''}
+          <div class="match-dropdown pm-dropdown" style="display:none">${_dropRows}</div>
         </div>
       `;
       return;
@@ -13111,12 +13197,12 @@ function renderMatches(){
   list.querySelectorAll('.pm-card').forEach(card => {
     // Expand/collapse via toggle-zone
     card.addEventListener('click', (e) => {
-      const btn = e.target.closest('[data-pm-rapport]');
-      if(btn){
-        // → Rapport knop: open spelersrapport pre-fill
+      // s93: spelersrapport knop
+      const btnRapport = e.target.closest('[data-pm-rapport]');
+      if(btnRapport){
         e.stopPropagation();
-        const progId = btn.dataset.pmRapport;
-        const spId   = btn.dataset.pmSpId;
+        const progId = btnRapport.dataset.pmRapport;
+        const spId   = btnRapport.dataset.pmSpId;
         const prog   = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === progId) : null;
         if(!prog){ if(typeof toast === 'function') toast('Wedstrijd niet gevonden', true); return; }
         const sp = (prog.spelers||[]).find(s => s && s.id === spId);
@@ -13124,6 +13210,38 @@ function renderMatches(){
         const { player } = (typeof findPlayerMatch === 'function') ? findPlayerMatch(sp) : { player: null };
         const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(prog.id, sp.id) : null;
         if(typeof openScoutingPlayerForm === 'function') openScoutingPlayerForm(prog, sp, player, concept);
+        return;
+      }
+      // s93: losse notitie → rapport knop
+      const btnSnRapport = e.target.closest('[data-pm-sn-rapport]');
+      if(btnSnRapport){
+        e.stopPropagation();
+        const progId2 = btnSnRapport.dataset.pmSnRapport;
+        const snId    = btnSnRapport.dataset.pmSnId;
+        const prog2   = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === progId2) : null;
+        if(!prog2){ if(typeof toast === 'function') toast('Wedstrijd niet gevonden', true); return; }
+        const sns2 = prog2.snelnotities || [];
+        const snIdx2 = sns2.findIndex(s => s && (s.id === snId || (s.id == null && snId === '')));
+        if(snIdx2 < 0){ if(typeof toast === 'function') toast('Notitie niet gevonden', true); return; }
+        if(typeof _shConvertSnelToRapport === 'function') _shConvertSnelToRapport(progId2, snIdx2);
+        return;
+      }
+      // s93: wedstrijdrapport knop
+      const btnWstr = e.target.closest('[data-pm-wstr]');
+      if(btnWstr){
+        e.stopPropagation();
+        const progId3 = btnWstr.dataset.pmWstr;
+        const prog3   = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === progId3) : null;
+        if(!prog3){ if(typeof toast === 'function') toast('Wedstrijd niet gevonden', true); return; }
+        if(typeof _shOpenEditModal === 'function') _shOpenEditModal({ kind:'programma', id:progId3, progId:progId3, datum:prog3.datum, thuis:prog3.thuis, uit:prog3.uit, age:prog3.leeftijd||'', players:[], _focusWstr: true });
+        return;
+      }
+      // s93: profiel-knop (verwerkte spelers)
+      const btnLink = e.target.closest('.pm-item-link[data-player-id]');
+      if(btnLink){
+        e.stopPropagation();
+        const pid = btnLink.dataset.playerId;
+        if(pid && typeof openDetail === 'function') openDetail(pid);
         return;
       }
       // Edit-modal op klik op datum/teams (niet op knop/link)
@@ -18284,14 +18402,7 @@ async function loadUserRole(){
   }, true);
 
   window.addEventListener('scroll', () => { if(_inp) _pos(_inp); }, true);
-  window.addEventListener('resize', () => { if(_inp) _close(); });
-})();
-
-// ── shWireClubAC / shWireLeeftijdAC / shUpgradeSelectToAC ──────────────
-/**
- * Wire HV_CLUBS-autocomplete op een tekst-input.
- * Typ 2+ tekens → dropdown met max 12 overeenkomsten.
- */
+  window.addEventListener('resize', () => { if(_inp) _clos
 function shWireClubAC(input){
   if(!input) return;
   input.setAttribute('autocomplete','off');
@@ -18321,29 +18432,9 @@ function shWireLeeftijdAC(input){
   if(!input) return;
   input.setAttribute('autocomplete','off');
   input.addEventListener('input', () => {
-    const raw = input.value.trim();
-    const q = raw.toLowerCase().replace(/[\s.]/g, '');
+    const q = input.value.trim().toLowerCase().replace(/[\s.]/g, '');
     if(!q){ window.shAC?.close(); return; }
-    // s92: slimmere matching — "9" of "o9" toont O.9-x; "9-3" toont O.9-3
-    const numOnly = q.match(/^(\d{1,2})$/);
-    const oNum    = q.match(/^o(\d{1,2})$/);
-    const numDash = q.match(/^(\d{1,2})-(\d*)$/);
-    const oNumDash= q.match(/^o(\d{1,2})-?(\d*)$/);
-    const ageQ = numOnly?.[1] || oNum?.[1] || numDash?.[1] || oNumDash?.[1];
-    const teamQ = numDash?.[2] || oNumDash?.[2] || '';
-    let matches;
-    if(ageQ){
-      matches = _SH_ELFTALLEN.filter(e => {
-        const n = e.toLowerCase().replace(/[\s.]/g,'');
-        const [,a,t] = n.match(/^o(\d+)-(\d+)$/) || [];
-        if(!a) return false;
-        if(a !== ageQ) return false;
-        return !teamQ || t.startsWith(teamQ);
-      });
-    } else {
-      matches = _SH_ELFTALLEN.filter(e => { const n=e.toLowerCase().replace(/[\s.]/g,''); return n.startsWith(q); });
-    }
-    matches = matches.slice(0,10);
+    const matches = _SH_ELFTALLEN.filter(e => { const n=e.toLowerCase().replace(/[\s.]/g,''); return n.startsWith(q)||n.replace(/-\d+$/,'').endsWith(q)||n.includes(q); }).slice(0,12);
     if(!matches.length){ window.shAC?.close(); return; }
     window.shAC?.show(input, matches.map(e=>({label:e,primary:e,secondary:''})), item => { input.value=item.label; input.dispatchEvent(new Event('change',{bubbles:true})); });
   });

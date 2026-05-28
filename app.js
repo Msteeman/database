@@ -18576,7 +18576,7 @@ function initApp(){
   });
   $('#contact-search')?.addEventListener('input', renderContacts);
   $('#contact-sort')?.addEventListener('change', renderContacts);
-});
+}
 
 // ── shAC — Universele autocomplete engine ────────────────────────────────────
 window.shAC = (function(){

@@ -2983,6 +2983,23 @@ function formatDate(iso){
   catch(e){ return iso; }
 }
 function todayISO(){ return new Date().toISOString().slice(0,10); }
+// ── Modal dirty-guard (s91) ─────────────────────────────────────────────────
+// Toont een bevestiging als de gebruiker een formulier-modal wegklikt terwijl
+// er niet-opgeslagen inhoud is. Gebruik _shMarkDirty(key) op input/change,
+// _shResetDirty(key) bij openen of succesvolle opslag, en vervang de backdrop-
+// click-handler door _shGuardClose(key, closeFn).
+const _shDirtyFlags = {};
+function _shMarkDirty(k){ _shDirtyFlags[k] = true; }
+function _shResetDirty(k){ _shDirtyFlags[k] = false; }
+function _shGuardClose(k, closeFn){
+  if(_shDirtyFlags[k]){
+    if(!confirm('Je hebt niet-opgeslagen wijzigingen. Toch sluiten?')) return;
+  }
+  _shResetDirty(k);
+  closeFn();
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 function toast(msg, isError=false){
   const t = $('#toast');
   t.textContent = msg;
@@ -4528,6 +4545,7 @@ async function refreshAllAdressen(){
 }
 
 function openContactModal(id){
+  _shResetDirty('contact'); // s91
   const bd = $('#contact-backdrop');
   const titleEl = $('#contact-modal-title');
   const delBtn = $('#contact-delete');
@@ -4549,6 +4567,7 @@ function openContactModal(id){
 }
 
 function closeContactModal(){
+  _shResetDirty('contact'); // s91
   $('#contact-backdrop').classList.remove('open');
 }
 
@@ -4581,6 +4600,7 @@ async function submitContactForm(e){
 
 /* =============== MATCH-REPORT MODAL =============== */
 function openMatchReportModal(id){
+  _shResetDirty('mreport'); // s91
   const bd = $('#mreport-backdrop');
   const titleEl = $('#mreport-modal-title');
   const delBtn = $('#mreport-delete');
@@ -4644,6 +4664,7 @@ function openMatchReportModal(id){
 }
 
 function closeMatchReportModal(){
+  _shResetDirty('mreport'); // s91
   $('#mreport-backdrop').classList.remove('open');
 }
 
@@ -7205,7 +7226,7 @@ function renderVandaagBanner(){
     const thuisClean = it.thuis_elftal ? `${it.thuis} ${it.thuis_elftal}` : (it.thuis || '?');
     const uitClean   = it.uit_elftal   ? `${it.uit} ${it.uit_elftal}`     : (it.uit   || '?');
     const n = Array.isArray(it.spelers) ? it.spelers.length : 0;
-    const spelersLabel = n > 0 ? `${spelersLabel}` : '';
+    // spelersLabel was unused + had temporal dead zone bug — gebruik n direct in template
     const tijdLabel = it.tijd ? `<span class="dvb-tijd">${escapeHtml(it.tijd)}</span>` : '';
     const ageLabel = it.leeftijd ? `<span class="dvb-tag">${escapeHtml(it.leeftijd)}</span>` : '';
     return `
@@ -15667,6 +15688,7 @@ function _pmUpdateTypeUI(type){
 }
 
 function openProgMatchModal(progId, defaultDate){
+  _shResetDirty('progMatch'); // s91: reset dirty-flag bij elke open
   const it = progId ? programmaCache.find(p => p.id === progId) : null;
   const type = it ? (it.type || 'wedstrijd') : 'wedstrijd';
   $('#prog-match-title').textContent = it ? 'Afspraak bewerken' : 'Afspraak inplannen';
@@ -15742,7 +15764,7 @@ function openProgMatchModal(progId, defaultDate){
   })();
   setTimeout(()=> $('#pm-datum').focus(), 80);
 }
-function closeProgMatchModal(){ hideModal('prog-match-backdrop'); }
+function closeProgMatchModal(){ _shResetDirty('progMatch'); hideModal('prog-match-backdrop'); }
 
 let __savingProgMatch = false;
 async function saveProgMatchFromForm(e){
@@ -16989,11 +17011,14 @@ function wireProgrammaUI(){
   });
 
   // Plan match modal
-  $('#prog-match-close')?.addEventListener('click', closeProgMatchModal);
-  $('#pm-cancel')?.addEventListener('click', closeProgMatchModal);
+  $('#prog-match-close')?.addEventListener('click', () => _shGuardClose('progMatch', closeProgMatchModal));
+  $('#pm-cancel')?.addEventListener('click', () => _shGuardClose('progMatch', closeProgMatchModal));
   $('#prog-match-form')?.addEventListener('submit', saveProgMatchFromForm);
   $('#pm-delete')?.addEventListener('click', deleteProgMatchFromForm);
-  $('#prog-match-backdrop')?.addEventListener('click', e => { if(e.target.id === 'prog-match-backdrop') closeProgMatchModal(); });
+  $('#prog-match-backdrop')?.addEventListener('click', e => { if(e.target.id === 'prog-match-backdrop') _shGuardClose('progMatch', closeProgMatchModal); });
+  // s91: markeer dirty bij elke input/change in het formulier
+  $('#prog-match-form')?.addEventListener('input', () => _shMarkDirty('progMatch'));
+  $('#prog-match-form')?.addEventListener('change', () => _shMarkDirty('progMatch'));
 
   // Plan player modal — s35p: alle sluit-acties triggeren auto-save
   $('#prog-player-close')?.addEventListener('click', autoSaveProgPlayerOnClose);
@@ -17843,11 +17868,13 @@ function initApp(){
 
   // Contacts
   $('#contact-new-btn')?.addEventListener('click', ()=> openContactModal());
-  $('#contact-close')?.addEventListener('click', closeContactModal);
-  $('#contact-cancel')?.addEventListener('click', closeContactModal);
+  $('#contact-close')?.addEventListener('click', () => _shGuardClose('contact', closeContactModal));
+  $('#contact-cancel')?.addEventListener('click', () => _shGuardClose('contact', closeContactModal));
   $('#contact-backdrop')?.addEventListener('click', e=>{
-    if(e.target.id === 'contact-backdrop') closeContactModal();
+    if(e.target.id === 'contact-backdrop') _shGuardClose('contact', closeContactModal);
   });
+  $('#contact-form')?.addEventListener('input', () => _shMarkDirty('contact')); // s91
+  $('#contact-form')?.addEventListener('change', () => _shMarkDirty('contact')); // s91
   $('#contact-form')?.addEventListener('submit', submitContactForm);
   // Auto-format NL telefoonnummer: "(+316) XX XX XX XX"
   $('#c-tel')?.addEventListener('input', e => {
@@ -17899,11 +17926,13 @@ function initApp(){
 
   // Match-report modal
   $('#match-report-new-btn')?.addEventListener('click', ()=> openMatchReportModal());
-  $('#mreport-close')?.addEventListener('click', closeMatchReportModal);
-  $('#mreport-cancel')?.addEventListener('click', closeMatchReportModal);
+  $('#mreport-close')?.addEventListener('click', () => _shGuardClose('mreport', closeMatchReportModal));
+  $('#mreport-cancel')?.addEventListener('click', () => _shGuardClose('mreport', closeMatchReportModal));
   $('#mreport-backdrop')?.addEventListener('click', e=>{
-    if(e.target.id === 'mreport-backdrop') closeMatchReportModal();
+    if(e.target.id === 'mreport-backdrop') _shGuardClose('mreport', closeMatchReportModal);
   });
+  $('#mreport-form')?.addEventListener('input', () => _shMarkDirty('mreport')); // s91
+  $('#mreport-form')?.addEventListener('change', () => _shMarkDirty('mreport')); // s91
   $('#mreport-form')?.addEventListener('submit', submitMatchReportForm);
   $('#mreport-delete')?.addEventListener('click', async ()=>{
     const id = $('#mr-id').value;

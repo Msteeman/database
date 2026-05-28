@@ -4969,9 +4969,10 @@ function authErrorNL(code){
     'auth/email-already-in-use': 'Dit e-mailadres is al in gebruik.',
     'auth/weak-password': 'Wachtwoord moet minimaal 6 tekens zijn.',
     'auth/too-many-requests': 'Te veel pogingen — probeer later opnieuw.',
-    'auth/network-request-failed': 'Geen internetverbinding.'
+    'auth/network-request-failed': 'Geen internetverbinding.',
+    'auth/unauthorized-domain': 'Dit domein is niet toegestaan in Firebase. Voeg msteeman.github.io toe aan Authorized Domains in de Firebase Console.'
   };
-  return map[code] || 'Er ging iets mis. Probeer opnieuw.';
+  return map[code] || `Er ging iets mis (${code}). Probeer opnieuw.`;
 }
 window.tryLogin = async function tryLogin(){
   const btn = $('#login-btn');
@@ -18243,77 +18244,35 @@ function shWireClubAC(input){
     }
     const merged = [...startsWith, ...contains].slice(0, 12);
     if(!merged.length){ window.shAC?.close(); return; }
-    const items = merged.map(c => ({
-      label: c.naam, primary: c.naam,
-      secondary: [c.plaats, c.sportpark].filter(Boolean).join(' · ')
-    }));
-    window.shAC?.show(input, items, item => {
-      input.value = item.label;
-      input.dispatchEvent(new Event('change', {bubbles:true}));
-    });
+    const items = merged.map(c => ({label: c.naam, primary: c.naam, secondary: [c.plaats, c.sportpark].filter(Boolean).join(' · ')}));
+    window.shAC?.show(input, items, item => { input.value = item.label; input.dispatchEvent(new Event('change', {bubbles:true})); });
   });
   input.addEventListener('keydown', e => { if(window.shAC?.onKey(e)) e.preventDefault(); });
   input.addEventListener('blur', () => setTimeout(() => window.shAC?.close(), 150));
 }
-
-/**
- * Upgrade select-element naar AC-input. Huidig gedrag: behoud select as-is.
- */
 function shUpgradeSelectToAC(id){ /* no-op */ }
-
-// s80: leeftijdscategorie autocomplete (O.8-1 t/m O.23-10)
-const _SH_ELFTALLEN = (function(){
-  const out = [];
-  for(let age = 8; age <= 23; age++){
-    const max = age <= 9 ? 8 : age <= 11 ? 10 : age <= 13 ? 10 : age <= 15 ? 10 : age <= 17 ? 10 : age <= 19 ? 10 : age <= 23 ? 10 : 10;
-    for(let nr = 1; nr <= max; nr++) out.push('O.' + age + '-' + nr);
-  }
-  return out;
-})();
-
+const _SH_ELFTALLEN = (function(){ const out = []; for(let age=8;age<=23;age++){ const max=10; for(let nr=1;nr<=max;nr++) out.push('O.'+age+'-'+nr); } return out; })();
 function shWireLeeftijdAC(input){
   if(!input) return;
   input.setAttribute('autocomplete','off');
   input.addEventListener('input', () => {
     const q = input.value.trim().toLowerCase().replace(/[\s.]/g, '');
-    if(!q || q.length < 1){ window.shAC?.close(); return; }
-    const matches = _SH_ELFTALLEN.filter(e => {
-      const norm = e.toLowerCase().replace(/[\s.]/g, '');
-      const justAge = norm.replace(/-\d+$/, '');
-      return norm.startsWith(q) || justAge.endsWith(q) || norm.includes(q);
-    }).slice(0, 12);
+    if(!q){ window.shAC?.close(); return; }
+    const matches = _SH_ELFTALLEN.filter(e => { const n=e.toLowerCase().replace(/[\s.]/g,''); return n.startsWith(q)||n.replace(/-\d+$/,'').endsWith(q)||n.includes(q); }).slice(0,12);
     if(!matches.length){ window.shAC?.close(); return; }
-    const items = matches.map(e => ({ label: e, primary: e, secondary: '' }));
-    window.shAC?.show(input, items, item => {
-      input.value = item.label;
-      input.dispatchEvent(new Event('change', {bubbles:true}));
-    });
+    window.shAC?.show(input, matches.map(e=>({label:e,primary:e,secondary:''})), item => { input.value=item.label; input.dispatchEvent(new Event('change',{bubbles:true})); });
   });
   input.addEventListener('keydown', e => { if(window.shAC?.onKey(e)) e.preventDefault(); });
   input.addEventListener('blur', () => setTimeout(() => window.shAC?.close(), 150));
 }
-
-
-// ── Wedstrijden subview toggle (enkel 'wedstrijden' resterend na verwijdering toernooien) ──
 function switchMatchesSubview(sub){
-  // Wedstrijden subview is nu de enige — functie blijft voor forward-compat
   const btn = document.getElementById('msv-'+sub);
   document.querySelectorAll('.msv-btn').forEach(b => b.classList.remove('active'));
   if(btn) btn.classList.add('active');
-  // Render matches als we naar 'wedstrijden' gaan
   if(sub === 'wedstrijden' && typeof renderMatchReports === 'function') renderMatchReports();
 }
 window.switchMatchesSubview = switchMatchesSubview;
-
-// ── Bootstrap ──
 onAuthStateChanged(auth, async (user) => {
-  if(user){
-    await initApp();
-    subscribeData();
-    showApp();
-    go('dashboard');
-    loadUserRole();
-  } else {
-    showLogin();
-  }
+  if(user){ await initApp(); subscribeData(); showApp(); go('dashboard'); loadUserRole(); }
+  else { showLogin(); }
 });

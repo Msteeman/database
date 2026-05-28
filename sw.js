@@ -31,7 +31,12 @@ self.addEventListener('activate', (event) => {
       Promise.all(
         keys.filter((k) => !k.startsWith(CACHE_VERSION)).map((k) => caches.delete(k))
       )
-    ).then(() => self.clients.claim())
+    ).then(() => self.clients.claim()).then(() => {
+      // Stuur alle open tabs een reload-signaal zodat nieuwe app.js geladen wordt
+      return self.clients.matchAll({ type: 'window' }).then(clients => {
+        clients.forEach(client => client.navigate(client.url));
+      });
+    })
   );
 });
 

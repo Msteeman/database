@@ -5376,6 +5376,7 @@ function go(view){
   if(view === 'dashboard') renderDashboard();
   if(view === 'database')  renderDatabase();
   if(view === 'compare')   { renderCompare(); shUpdateCmpUI(); }
+  if(view === 'elftallen') renderElftallen();
   if(view === 'matches')   renderMatches();
   if(view === 'pitch')     renderPitch();
   if(view === 'report')    {
@@ -5866,6 +5867,144 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
 }
 window.openScoutingPlayerForm = openScoutingPlayerForm;
 
+/* ================================================================
+   s102: OBSERVATIE RAPPORT — vereenvoudigd rapport voor opgevallen spelers
+   ================================================================ */
+const _OBS_TERMS = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
+const _OBS_TERM_PH = {techniek:'bv. scherp, snel',inzicht:'bv. leest spel goed',mentaliteit:'bv. werkt hard',explosiviteit:'bv. eerste 5m sterk',sprinten:'bv. topsnelheid hoog',duelleren:'bv. wint 1-op-1',wendbaarheid:'bv. soepel, lichtvoetig',algemeen:'bv. interessante speler'};
+
+function _obsParseTermFromTekst(tekst, term){
+  const re = new RegExp('^\\s*' + term + '\\s*:\\s*(.*)', 'mi');
+  const m = (tekst||'').match(re);
+  return (m && m[1]) ? m[1].trim() : '';
+}
+
+function openObservatieForm(prog, sn){
+  const bd = document.getElementById('obs-backdrop');
+  if(!bd) return;
+  // Pre-fill terms from snelnotitie tekst
+  const termsEl = document.getElementById('obs-terms');
+  if(termsEl){
+    termsEl.innerHTML = _OBS_TERMS.map(t => `
+      <div class="obs-term-row">
+        <span class="obs-term-label">${t}</span>
+        <input class="obs-term-in" data-term="${t}" type="text" placeholder="${escapeHtml(_OBS_TERM_PH[t]||'')}" value="${escapeHtml(_obsParseTermFromTekst(sn && sn.tekst, t))}" />
+      </div>`).join('');
+  }
+  // Pre-fill player info from snelnotitie
+  const setV = (id, v) => { const el = document.getElementById(id); if(el && v) el.value = v; else if(el) el.value = ''; };
+  setV('obs-naam', sn && (sn.naam||''));
+  setV('obs-rug', sn && (sn.rugnummer||''));
+  setV('obs-omschrijving', '');
+  setV('obs-positie', sn && (sn.positie||''));
+  setV('obs-club', sn && (sn.club || (prog && (prog.uit||prog.thuis)||'')));
+  setV('obs-niveau', '');
+  setV('obs-advies', '');
+  // Wire club autocomplete
+  const clubIn = document.getElementById('obs-club');
+  if(clubIn && typeof shWireClubAC === 'function' && !clubIn._obsAcWired){
+    clubIn._obsAcWired = true;
+    shWireClubAC(clubIn);
+  }
+  // Wedstrijd context
+  const ctxEl = document.getElementById('obs-wedstrijd-ctx');
+  if(ctxEl && prog){
+    ctxEl.style.display = '';
+    ctxEl.innerHTML = `<div class="obs-wstr-info"><span>${escapeHtml(prog.datum||'')} · ${escapeHtml(prog.thuis||'?')} vs ${escapeHtml(prog.uit||'?')}${prog.leeftijd?' · '+escapeHtml(prog.leeftijd):''}</span></div>`;
+  }
+  // Sub-title
+  const sub = document.getElementById('obs-modal-sub');
+  if(sub) sub.textContent = prog ? `${prog.thuis||''} vs ${prog.uit||''} — ${prog.datum||''}` : 'Opgevallen speler';
+  // Store context for submit
+  bd._obsContext = { prog, sn };
+  bd.style.display = 'flex';
+  setTimeout(() => { const n = document.getElementById('obs-naam'); if(n) n.focus(); }, 80);
+}
+window.openObservatieForm = openObservatieForm;
+
+function _obsClose(){
+  const bd = document.getElementById('obs-backdrop');
+  if(bd) bd.style.display = 'none';
+}
+
+async function _obsSubmit(e){
+  if(e) e.preventDefault();
+  const btn = document.getElementById('obs-submit');
+  if(btn){ btn.disabled = true; btn.textContent = 'Opslaan...'; }
+  try {
+    const bd = document.getElementById('obs-backdrop');
+    const ctx = bd && bd._obsContext ? bd._obsContext : {};
+    const prog = ctx.prog;
+    const sn = ctx.sn;
+    const naam = (document.getElementById('obs-naam')?.value||'').trim();
+    const omschrijving = (document.getElementById('obs-omschrijving')?.value||'').trim();
+    const rug = (document.getElementById('obs-rug')?.value||'').trim();
+    const positie = (document.getElementById('obs-positie')?.value||'').trim();
+    const club = (document.getElementById('obs-club')?.value||'').trim();
+    const niveau = document.getElementById('obs-niveau')?.value||'';
+    const advies = document.getElementById('obs-advies')?.value||'';
+    // Compose tekst from term inputs
+    const termIns = Array.from(document.querySelectorAll('.obs-term-in'));
+    const tekst = _OBS_TERMS.map(t => { const el = termIns.find(x => x.dataset.term === t); return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : ''); }).join('\n');
+    // Split naam into voornaam/achternaam
+    let voornaam = '', achternaam = '';
+    if(naam){
+      const parts = naam.split(/\s+/);
+      voornaam = parts[0] || '';
+      achternaam = parts.slice(1).join(' ');
+    }
+    const displayNaam = naam || omschrijving || 'Onbekende speler';
+    const rec = {
+      id: 'obs_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      naam: displayNaam,
+      voornaam, achternaam,
+      naam_onbekend: !naam,
+      omschrijving: naam ? '' : omschrijving,
+      club, positie,
+      rugnummer: rug,
+      notities: tekst,
+      huidig_niveau: niveau,
+      potentieel_niveau: '',
+      advies: advies,
+      rapport_type: 'observatie',
+      concept: false,
+      status: 'observatie',
+      is_opvallend: sn && sn.is_opvallend ? true : false,
+      wedstrijd_datum: prog && prog.datum ? prog.datum : '',
+      wedstrijd_thuis: prog && prog.thuis ? prog.thuis : '',
+      wedstrijd_uit: prog && prog.uit ? prog.uit : '',
+      wedstrijd_leeftijd: prog && prog.leeftijd ? prog.leeftijd : '',
+      created: Date.now(),
+      modified: Date.now(),
+      scout: (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.displayName || currentUser.email || '') : '',
+    };
+    if(typeof savePlayer === 'function') await savePlayer(rec);
+    _obsClose();
+    if(typeof toast === 'function') toast('Observatie opgeslagen');
+    // Re-render if in scouting view
+    if(typeof renderActiveScouting === 'function') setTimeout(renderActiveScouting, 300);
+  } catch(err){
+    console.error('obs submit error', err);
+    if(typeof toast === 'function') toast('Fout bij opslaan', true);
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = 'Opslaan als observatie'; }
+  }
+}
+
+// Wire observatie modal buttons (one-time)
+(function _wireObsModal(){
+  document.addEventListener('DOMContentLoaded', () => {
+    const close = document.getElementById('obs-modal-close');
+    const cancel = document.getElementById('obs-cancel');
+    const form = document.getElementById('obs-form');
+    const bd = document.getElementById('obs-backdrop');
+    if(close) close.addEventListener('click', _obsClose);
+    if(cancel) cancel.addEventListener('click', _obsClose);
+    if(bd) bd.addEventListener('click', e => { if(e.target === bd) _obsClose(); });
+    if(form) form.addEventListener('submit', _obsSubmit);
+  });
+})();
+
 // s35ca-1: injectVoorRapportBlock verwijderd — voor-rapport UI uitgeschakeld
 
 function injectScoutingBanner(prog, progSp, matchedPlayer){
@@ -6156,12 +6295,22 @@ function renderActiveScouting(){
             ${_unsaved.map(sn => {
               const _snNaam = escapeHtml(sn.naam||'?') + (sn.rugnummer ? ` <span style="color:var(--text-3)">#${escapeHtml(String(sn.rugnummer))}</span>` : '') + (sn.positie ? ` <span style="color:var(--text-3)">· ${escapeHtml(sn.positie)}</span>` : '');
               const _snTekst = (sn.tekst||'').replace(/^[a-z]+:\s*/gmi, '').replace(/\n+/g,' · ').trim();
-              return `<div class="sa-saved-sn-row" style="background:rgba(245,200,66,0.06); border:1px solid rgba(245,200,66,0.18); border-radius:8px; padding:7px 10px; margin-bottom:5px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                <div style="flex:1; min-width:0;">
-                  <div style="font-size:12.5px; font-weight:700; color:var(--text-1,#e5e9f5);">${_snNaam}</div>
-                  ${_snTekst ? `<div style="font-size:11.5px; color:var(--text-3,#8b93a8); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(_snTekst.slice(0,80))}</div>` : ''}
+              const _EDIT_TERMS = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
+              const _parseSNTerm = (tekst, term) => { const re = new RegExp('^\\s*' + term + '\\s*:\\s*(.*)', 'mi'); const mv = tekst.match(re); return (mv && mv[1]) ? mv[1].trim() : ''; };
+              const _termFields = _EDIT_TERMS.map(t => `<div class="sa-snel-term-row"><span class="sa-snel-term-label">${t}</span><input class="sn-edit-term-in" data-term="${t}" type="text" value="${escapeHtml(_parseSNTerm(sn.tekst||'', t))}" /></div>`).join('');
+              return `<div class="sa-saved-sn-row" data-sn-id="${escapeHtml(sn.id||'')}" data-prog-id="${escapeHtml(prog.id)}" style="background:rgba(245,200,66,0.06); border:1px solid rgba(245,200,66,0.18); border-radius:8px; padding:7px 10px; margin-bottom:5px;">
+                <div class="sn-row-header" style="display:flex; align-items:center; justify-content:space-between; gap:8px; cursor:pointer;">
+                  <div style="flex:1; min-width:0;">
+                    <div style="font-size:12.5px; font-weight:700; color:var(--text-1,#e5e9f5);">${_snNaam}</div>
+                    ${_snTekst ? `<div class="sn-row-preview" style="font-size:11.5px; color:var(--text-3,#8b93a8); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${escapeHtml(_snTekst.slice(0,80))}</div>` : ''}
+                  </div>
+                  <span style="font-size:14px; flex-shrink:0;">${sn.is_opvallend ? '⭐' : ''}&#9656;</span>
                 </div>
-                ${sn.is_opvallend ? '<span style="font-size:14px;">⭐</span>' : ''}
+                <div class="sn-row-edit" style="display:none; margin-top:8px;">
+                  <div class="sa-tile-terms">${_termFields}</div>
+                  <div class="sn-edit-status" style="font-size:10.5px; color:var(--text-3); margin-top:3px; min-height:14px;"></div>
+                  <button type="button" class="sn-obs-btn" data-sn-obs="1" style="margin-top:6px; padding:5px 12px; font-size:11.5px; font-weight:600; border-radius:7px; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); color:#818cf8; cursor:pointer;">→ Opslaan als Observatie</button>
+                </div>
               </div>`;
             }).join('')}
             </div>
@@ -6211,6 +6360,64 @@ function renderActiveScouting(){
       if(body) body.style.display = isOpen ? 'none' : '';
       if(chev) chev.style.transform = isOpen ? 'rotate(-90deg)' : '';
       sns.classList.toggle('sn-collapsed', isOpen);
+    });
+  });
+
+  // s101: opgeslagen notitie inline bewerken
+  wrap.querySelectorAll('.sa-saved-sn-row').forEach(row => {
+    const hdr = row.querySelector('.sn-row-header');
+    const editDiv = row.querySelector('.sn-row-edit');
+    const preview = row.querySelector('.sn-row-preview');
+    if(!hdr || !editDiv) return;
+    hdr.addEventListener('click', () => {
+      const isOpen = editDiv.style.display !== 'none';
+      editDiv.style.display = isOpen ? 'none' : '';
+      hdr.querySelector('span:last-child').innerHTML = isOpen ? (row.dataset.opvallend === '1' ? '⭐' : '') + '&#9656;' : (row.dataset.opvallend === '1' ? '⭐' : '') + '&#9660;';
+      if(!isOpen && !editDiv._wired){
+        editDiv._wired = true;
+        const snId = row.dataset.snId;
+        const progId = row.dataset.progId;
+        const termIns = Array.from(editDiv.querySelectorAll('.sn-edit-term-in'));
+        const statusEl = editDiv.querySelector('.sn-edit-status');
+        const _TERMS_EDIT = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
+        const composeTekst = () => _TERMS_EDIT.map(t => { const el = termIns.find(x => x.dataset.term === t); return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : ''); }).join('\n');
+        let saveTm;
+        const doSave = async () => {
+          try {
+            const prog = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === progId) : null;
+            if(!prog) return;
+            const sns = prog.snelnotities || [];
+            const idx = sns.findIndex(s => s && s.id === snId);
+            if(idx < 0) return;
+            const newTekst = composeTekst();
+            sns[idx] = { ...sns[idx], tekst: newTekst, modified: Date.now() };
+            prog.snelnotities = sns;
+            if(typeof saveProgramma === 'function') await saveProgramma(prog);
+            if(statusEl){ statusEl.textContent = 'opgeslagen'; setTimeout(() => { if(statusEl) statusEl.textContent = ''; }, 1500); }
+            // Update preview
+            const newPrev = newTekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' · ').trim();
+            if(preview) preview.textContent = newPrev.slice(0,80);
+          } catch(e){ if(statusEl) statusEl.textContent = 'fout bij opslaan'; }
+        };
+        termIns.forEach(el => {
+          el.addEventListener('input', () => { clearTimeout(saveTm); saveTm = setTimeout(doSave, 900); });
+        });
+        editDiv.addEventListener('focusout', (ev) => {
+          if(!editDiv.contains(ev.relatedTarget)){ clearTimeout(saveTm); doSave(); }
+        });
+        // s102: → Observatie knop
+        const obsBtn = editDiv.querySelector('[data-sn-obs]');
+        if(obsBtn){
+          obsBtn.addEventListener('click', () => {
+            clearTimeout(saveTm);
+            doSave();
+            const prog2 = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === progId) : null;
+            const sn2 = prog2 && prog2.snelnotities ? prog2.snelnotities.find(s => s && s.id === snId) : null;
+            if(typeof openObservatieForm === 'function') openObservatieForm(prog2, sn2 || { id: snId, tekst: composeTekst() });
+          });
+        }
+        setTimeout(() => { if(termIns[0]) termIns[0].focus(); }, 50);
+      }
     });
   });
 
@@ -9877,6 +10084,153 @@ function cmpOverallScore(p){
 }
 function cmpColorFor(idx){ return CMP_COLORS[idx % CMP_COLORS.length]; }
 
+// ── Elftallen zoeken ──────────────────────────────────────────────────────────
+function renderElftallen(){
+  const players = loadPlayers();
+  const input = document.getElementById('elf-search-input');
+  const chipsEl = document.getElementById('elf-club-chips');
+  const resultsEl = document.getElementById('elf-results');
+  if(!resultsEl) return;
+
+  // Wire up search button + enter key (only once)
+  if(!input?._elfWired){
+    if(input){
+      input._elfWired = true;
+      const btn = document.getElementById('elf-search-btn');
+      if(btn) btn.addEventListener('click', () => _elfDoSearch(input.value.trim()));
+      input.addEventListener('keydown', e => { if(e.key === 'Enter') _elfDoSearch(input.value.trim()); });
+    }
+    // Build club chips from all scouted clubs
+    _elfBuildChips(players, chipsEl, input);
+  }
+
+  // If there's already a query, show results
+  const q = (input?.value || '').trim();
+  if(q) {
+    _elfDoSearch(q);
+  } else {
+    _elfShowAll(players, resultsEl);
+  }
+}
+
+function _elfBuildChips(players, chipsEl, input){
+  if(!chipsEl) return;
+  // Gather unique clubs
+  const clubSet = new Set();
+  players.forEach(p => {
+    const cl = (p.club || '').trim();
+    if(cl) clubSet.add(cl);
+  });
+  const clubs = [...clubSet].sort((a,b) => a.localeCompare(b, 'nl'));
+  chipsEl.innerHTML = clubs.map(cl =>
+    `<button type="button" class="elf-chip" onclick="window._elfChipClick(${JSON.stringify(cl)})">${escapeHtml(cl)}</button>`
+  ).join('');
+}
+
+window._elfChipClick = function(club){
+  const input = document.getElementById('elf-search-input');
+  if(input){ input.value = club; }
+  _elfDoSearch(club);
+};
+
+function _elfDoSearch(query){
+  const players = loadPlayers();
+  const resultsEl = document.getElementById('elf-results');
+  if(!resultsEl) return;
+
+  if(!query){
+    _elfShowAll(players, resultsEl);
+    return;
+  }
+
+  const q = query.toLowerCase().trim();
+  // Match against club, elftal, wedstrijd_thuis, wedstrijd_uit
+  const matched = players.filter(p => {
+    if(!p || !p.id) return false;
+    const club = (p.club || '').toLowerCase();
+    const elftal = (p.elftal || deriveElftalFromReport(p) || '').toLowerCase();
+    const thuis = (p.wedstrijd_thuis || '').toLowerCase();
+    const uit = (p.wedstrijd_uit || '').toLowerCase();
+    const naam = (p.naam || '').toLowerCase();
+    return club.includes(q) || elftal.includes(q) || thuis.includes(q) || uit.includes(q) || naam.includes(q);
+  });
+
+  _elfRenderResults(matched, resultsEl, query);
+}
+
+function _elfShowAll(players, resultsEl){
+  // Show all players grouped by club
+  _elfRenderResults(players, resultsEl, '');
+}
+
+function _elfRenderResults(players, resultsEl, query){
+  if(!players.length){
+    resultsEl.innerHTML = `<div class="elf-empty">Geen spelers gevonden${query ? ' voor <strong>' + escapeHtml(query) + '</strong>' : ''}.</div>`;
+    return;
+  }
+
+  // Group by club → elftal
+  const groups = new Map(); // key = "club||elftal"
+  players.forEach(p => {
+    const club = (p.club || 'Onbekende club').trim();
+    const elftal = (p.elftal || deriveElftalFromReport(p) || '').trim();
+    const groupKey = club + '||' + elftal;
+    if(!groups.has(groupKey)) groups.set(groupKey, { club, elftal, players: [] });
+    groups.get(groupKey).players.push(p);
+  });
+
+  // Sort groups: by club then elftal
+  const sorted = [...groups.values()].sort((a,b) => {
+    const cl = a.club.localeCompare(b.club, 'nl');
+    if(cl !== 0) return cl;
+    return a.elftal.localeCompare(b.elftal, 'nl');
+  });
+
+  const NIVEAU_LABEL = { A:'A – Toptalent', B:'B – Belofte', C:'C – Gemiddeld', D:'D – Beperkt' };
+  const ADVIES_LABEL = { volgen:'Volgen', terugkomen:'Terugkomen', niet_volgen:'Niet volgen', onbekend:'Onbekend' };
+
+  let html = '';
+  sorted.forEach(g => {
+    const playerCount = g.players.length;
+    const header = g.elftal
+      ? `${escapeHtml(g.club)} <span class="elf-group-elftal">${escapeHtml(g.elftal)}</span>`
+      : escapeHtml(g.club);
+    html += `<div class="elf-group">
+  <div class="elf-group-header">${header}<span class="elf-group-count">${playerCount} speler${playerCount===1?'':'s'}</span></div>
+  <div class="elf-group-players">`;
+
+    g.players.forEach(p => {
+      const naam = p.naam ? escapeHtml(p.naam) : `<em class="elf-unnamed">Naam onbekend</em>`;
+      const pos = positionLabel(p.positie) || '';
+      const hn = p.huidig_niveau ? (NIVEAU_LABEL[p.huidig_niveau] || p.huidig_niveau) : '';
+      const pn = p.potentieel_niveau ? (NIVEAU_LABEL[p.potentieel_niveau] || p.potentieel_niveau) : '';
+      const adv = p.advies ? (ADVIES_LABEL[p.advies] || p.advies) : (p.conclusie ? escapeHtml(p.conclusie.slice(0,40)) : '');
+      const isObs = p.rapport_type === 'observatie';
+      const typeBadge = isObs
+        ? `<span class="elf-badge elf-badge-obs">OBS</span>`
+        : `<span class="elf-badge elf-badge-rapport">Rapport</span>`;
+
+      const metaParts = [pos, hn ? `Huidig: ${hn}` : '', pn ? `Potentie: ${pn}` : ''].filter(Boolean);
+      const metaHtml = metaParts.length ? `<div class="elf-player-meta">${metaParts.map(escapeHtml).join(' · ')}</div>` : '';
+      const advHtml = adv ? `<div class="elf-player-advies">${escapeHtml(adv)}</div>` : '';
+
+      html += `<div class="elf-player-card" onclick="openDetail(${JSON.stringify(p.id)})">
+  <div class="elf-player-top">
+    <div class="elf-player-naam">${naam}</div>
+    ${typeBadge}
+  </div>
+  ${metaHtml}
+  ${advHtml}
+</div>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  resultsEl.innerHTML = html;
+}
+window.renderElftallen = renderElftallen;
+
 function renderCompare(){
   // Default selection: if nothing chosen yet but there is something pending, keep it
   renderComparePicker();
@@ -12946,6 +13300,10 @@ function renderMatches(){
     if(typeof programmaCache !== 'undefined' && Array.isArray(programmaCache)){
       programmaCache.forEach(p => {
         if(!p || !p.datum) return;
+        // s100: sla verwerkte items over (zowel Firestore- als localStorage-verwerkt)
+        if(p.status === 'verwerkt') return;
+        const _pKey = [p.datum, (p.thuis||'').toLowerCase(), (p.uit||'').toLowerCase()].join('|');
+        if(typeof shIsWedstrijdVerwerkt === 'function' && shIsWedstrijdVerwerkt(_pKey)) return;
         const hasConcept = p.wedstrijdrapport && p.wedstrijdrapport.status === 'concept';
         const hasSnel = Array.isArray(p.snelnotities) && p.snelnotities.some(sn => sn && (sn.naam || '').trim());
         if(hasConcept || hasSnel) _conceptItems.push(p);
@@ -16928,9 +17286,12 @@ function shUpdateMatchesNavBadge(){
       const today = new Date(); today.setHours(0,0,0,0);
       n = programmaCache.filter(it => {
         if(!it || it.status === 'verwerkt' || !it.datum) return false;
+        // s100: ook localStorage-verwerkt meenemen
+        const _itKey = [it.datum, (it.thuis||'').toLowerCase(), (it.uit||'').toLowerCase()].join('|');
+        if(typeof shIsWedstrijdVerwerkt === 'function' && shIsWedstrijdVerwerkt(_itKey)) return false;
         const d = parseIsoDate(it.datum);
         if(!d) return false;
-        return d < today; // datum < vandaag = afgelopen, nog te verwerken
+        return d < today;
       }).length;
     }
   } catch(_){}
@@ -18044,366 +18405,80 @@ function initApp(){
   });
   $('#contact-search')?.addEventListener('input', renderContacts);
   $('#contact-sort')?.addEventListener('change', renderContacts);
+});
 
-  // Adresboek filters
-  $('#adresboek-search')?.addEventListener('input', renderAdresboek);
-  $('#adresboek-sort')?.addEventListener('change', renderAdresboek);
-  $('#adresboek-refresh')?.addEventListener('click', refreshAllAdressen);
-  // v70h-s23: alfabetbalk event-delegation
-  document.getElementById('adresboek-alphabet')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('.alphabet-letter');
-    if(!btn || btn.classList.contains('disabled')) return;
-    _adresboekLetter = btn.dataset.letter || 'A';
-    const searchEl = document.getElementById('adresboek-search');
-    if(searchEl) searchEl.value = '';
-    renderAdresboek();
-  });
-  // v70h-s24: provincie-chips event-delegation
-  document.getElementById('adresboek-provincies')?.addEventListener('click', (e) => {
-    const btn = e.target.closest('.province-chip');
-    if(!btn || btn.classList.contains('disabled')) return;
-    _adresboekProvincie = btn.dataset.prov || '';
-    const searchEl = document.getElementById('adresboek-search');
-    if(searchEl) searchEl.value = '';
-    renderAdresboek();
-  });
+// ── shAC — Universele autocomplete engine ────────────────────────────────────
+window.shAC = (function(){
+  let _inp = null, _items = [], _cb = null, _sel = -1;
+  let _box = null;
 
-  // Match-report modal
-  $('#match-report-new-btn')?.addEventListener('click', ()=> openMatchReportModal());
-  $('#mreport-close')?.addEventListener('click', () => _shGuardClose('mreport', closeMatchReportModal));
-  $('#mreport-cancel')?.addEventListener('click', () => _shGuardClose('mreport', closeMatchReportModal));
-  $('#mreport-backdrop')?.addEventListener('click', e=>{
-    if(e.target.id === 'mreport-backdrop') _shGuardClose('mreport', closeMatchReportModal);
-  });
-  $('#mreport-form')?.addEventListener('input', () => _shMarkDirty('mreport')); // s91
-  $('#mreport-form')?.addEventListener('change', () => _shMarkDirty('mreport')); // s91
-  $('#mreport-form')?.addEventListener('submit', submitMatchReportForm);
-  $('#mreport-delete')?.addEventListener('click', async ()=>{
-    const id = $('#mr-id').value;
-    if(!id) return;
-    if(!confirm('Wedstrijdrapport verwijderen?')) return;
-    try {
-      await deleteMatchReport(id);
-      closeMatchReportModal();
-      toast('Wedstrijdrapport verwijderd');
-    } catch(_) {}
-  });
-
-  // Tips
-  $('#tip-new-btn')?.addEventListener('click', ()=> openTipModal());
-  $('#tip-close')?.addEventListener('click', closeTipModal);
-  $('#tip-cancel')?.addEventListener('click', closeTipModal);
-  $('#tip-backdrop')?.addEventListener('click', e=>{
-    if(e.target.id === 'tip-backdrop') closeTipModal();
-  });
-  $('#tip-form')?.addEventListener('submit', submitTipForm);
-  $('#tip-delete')?.addEventListener('click', async ()=>{
-    const id = $('#t-id').value;
-    if(!id) return;
-    const t = tipsCache.find(x => x.id === id);
-    const speler = t?.speler || 'deze tip';
-    if(!confirm(`Weet je zeker dat je de tip over ${speler} wilt verwijderen?`)) return;
-    try {
-      await deleteTip(id);
-      closeTipModal();
-      toast('Tip verwijderd');
-    } catch(_) {}
-  });
-  $('#tip-search')?.addEventListener('input', renderTips);
-  $('#tip-sort')?.addEventListener('change', renderTips);
-  $('#tip-filter-status')?.addEventListener('change', renderTips);
-
-  // ── Instellingen knop ──
-  document.getElementById('sidebar-settings-btn')?.addEventListener('click', () => {
-    const bd = document.getElementById('settings-modal-backdrop');
-    if(bd) bd.classList.add('show');
-  });
-  document.getElementById('settings-close-btn')?.addEventListener('click', () => {
-    const bd = document.getElementById('settings-modal-backdrop');
-    if(bd) bd.classList.remove('show');
-  });
-  document.getElementById('settings-modal-backdrop')?.addEventListener('click', e => {
-    if(e.target.id === 'settings-modal-backdrop'){
-      e.currentTarget.classList.remove('show');
-    }
-  });
-
-  // ── "Nieuw" knoppen (nav + bottom nav) → naar Programma + modal openen ──
-  function _goNieuw(){
-    if(typeof go === 'function') go('programma');
-    setTimeout(() => {
-      if(typeof openProgMatchModal === 'function') openProgMatchModal(null, isoDateStr(new Date()));
-    }, 80);
-  }
-  document.getElementById('nav-new-report-btn')?.addEventListener('click', _goNieuw);
-  document.getElementById('bn-new-report-btn')?.addEventListener('click', _goNieuw);
-
-  // ── s36l: Club autocomplete op alle statische clubvelden ──
-  // Spelersrapport
-  shWireClubAC(document.getElementById('f-club'));
-  shWireClubAC(document.getElementById('f-w-thuis'));
-  shWireClubAC(document.getElementById('f-w-uit'));
-  // Wedstrijdrapport modal
-  shWireClubAC(document.getElementById('mr-thuis'));
-  shWireClubAC(document.getElementById('mr-uit'));
-  // Programma modal
-  shWireClubAC(document.getElementById('pm-thuis'));
-  shWireClubAC(document.getElementById('pm-uit'));
-  // Speler in programma modal
-  shWireClubAC(document.getElementById('pp-club'));
-
-  // ── Elftal/leeftijdscategorie autocomplete op alle tekstvelden ──
-  ['f-elftal','pm-thuis-elftal','pm-uit-elftal','f-w-thuis-elftal','f-w-uit-elftal','t-elftal','mr-elftal'].forEach(id => {
-    shWireLeeftijdAC(document.getElementById(id));
-  });
-  // Wir ook dynamisch aangemaakte elftal-inputs via delegatie
-  document.addEventListener('focusin', e => {
-    const el = e.target;
-    if(el && el.tagName === 'INPUT' && (
-      el.getAttribute('data-picker') === 'elftal' ||
-      (el.placeholder||'').toLowerCase().includes('o.1') ||
-      (el.id||'').includes('elftal')
-    ) && !el._shElftalWired){
-      el._shElftalWired = true;
-      shWireLeeftijdAC(el);
-    }
-  });
-}
-
-function initAuthForms(){
-  $('#login-btn').addEventListener('click', tryLogin);
-  $('#login-pw').addEventListener('keydown', e=>{ if(e.key==='Enter') tryLogin(); });
-  $('#login-email').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#login-pw').focus(); });
-  const brand = document.getElementById('brand-logo');
-  if(brand){
-    const goDash = ()=>{ if(typeof go === 'function') go('dashboard'); };
-    brand.addEventListener('click', goDash);
-    brand.addEventListener('keydown', e=>{
-      if(e.key === 'Enter' || e.key === ' '){ e.preventDefault(); goDash(); }
+  function _ensureBox(){
+    if(_box && document.body.contains(_box)) return;
+    _box = document.createElement('div');
+    _box.className = 'sh-ac-box';
+    _box.style.cssText = 'position:fixed;z-index:99999;background:var(--bg-card,#1a1e2e);border:1px solid var(--border,#2a2f45);border-radius:10px;box-shadow:0 8px 32px rgba(0,0,0,.45);overflow:hidden;max-height:240px;overflow-y:auto;min-width:200px;';
+    document.body.appendChild(_box);
+    _box.addEventListener('mousedown', e => {
+      const li = e.target.closest('[data-ac-idx]');
+      if(li){ e.preventDefault(); _pick(+li.dataset.acIdx); }
     });
-
-    }
-
   }
 
-
-
-/* =============== CINEMATIC INTRO =============== */
-(function setupIntro(){
-  const overlay = document.getElementById('intro-overlay');
-  if(!overlay) return;
-  try {
-    if(localStorage.getItem('sh_intro_seen') === '1'){
-      overlay.classList.add('intro-hide','intro-gone');
-      return;
-    }
-  } catch(e){}
-  const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const holdMs = prefersReduced ? 800 : 6000;
-  const outMs  = prefersReduced ? 200 : 1000;
-  let dismissed = false;
-  function dismiss(){
-    if(dismissed) return;
-    dismissed = true;
-    overlay.classList.add('intro-out');
-    setTimeout(() => {
-      overlay.classList.add('intro-hide');
-    }, Math.max(0, outMs - 250));
-    setTimeout(() => {
-      overlay.classList.add('intro-gone');
-      try { localStorage.setItem('sh_intro_seen', '1'); } catch(e){}
-    }, outMs + 600);
+  function _pos(){
+    if(!_inp || !_box) return;
+    const r = _inp.getBoundingClientRect();
+    _box.style.left = r.left + 'px';
+    _box.style.top  = (r.bottom + 2) + 'px';
+    _box.style.width = Math.max(r.width, 220) + 'px';
   }
-  document.addEventListener('keydown', function onKey(e){
-    if(e.key === 'Escape' || e.key === 'Enter' || e.key === ' '){
-      dismiss();
-      document.removeEventListener('keydown', onKey);
-    }
-  });
-  // Tap/klik op overlay om te sluiten (mobiel)
-  overlay.addEventListener('click', dismiss, { once: true });
-  overlay.addEventListener('touchstart', function onTouch(){ dismiss(); overlay.removeEventListener('touchstart', onTouch); }, { passive: true });
-  setTimeout(dismiss, holdMs);
-})();
-
-/* ============================================================
-   s35cg: ROLLEN-SYSTEEM
-   Scouts | Coordinatoren | Admin
-   - Rol komt uit users/{uid}.role (scout|coordinator|admin)
-   - Team komt uit users/{uid}.teamId (default 'demo_team')
-   - ADMIN_EMAILS = hardcoded super-admin (alleen Marcel)
-   ============================================================ */
-const ADMIN_EMAILS = ['marcelsteeman1@gmail.com'];
-let currentUserRole = 'scout';
-let currentUserTeamId = '';
-let teamScoutsCache = []; // [{uid, email, displayName, role, teamId}]
-
-async function loadUserRole(){
-  try {
-    if(!currentUser) return;
-    const uref = doc(db, 'users', currentUser.uid);
-    const usnap = await getDoc(uref);
-    let role = 'scout';
-    let teamId = '';
-    let displayName = currentUser.displayName || '';
-    if(usnap.exists()){
-      const d = usnap.data() || {};
-      role = (d.role || 'scout').toLowerCase();
-      /* s35cj: lege teamId blijft leeg (was 'demo_team') */
-      teamId = (typeof d.teamId === 'string') ? d.teamId : '';
-      displayName = d.displayName || displayName;
-    } else {
-      /* Eerste login: stamp user-doc */
-      try {
-        await setDoc(uref, {
-          email: currentUser.email || '',
-          displayName: displayName,
-          role: 'scout',
-          teamId: '',
-          created: Date.now()
-        }, { merge: true });
-      } catch(e){ console.warn('user-doc create skipped', e); }
-    }
-    /* ADMIN_EMAILS override: Marcel wordt altijd admin */
-    if(currentUser.email && ADMIN_EMAILS.includes(currentUser.email.toLowerCase())){
-      role = 'admin';
-      /* Sync naar Firestore zodat rules kloppen */
-      try {
-        await setDoc(uref, { role: 'admin', email: currentUser.email }, { merge: true });
-      } catch(e){ /* niet kritisch */ }
-    }
-    currentUserRole = role;
-    currentUserTeamId = teamId;
-    // Sidebar scout-naam + initialen dynamisch zetten
-    try {
-      const _nameEl = document.getElementById('scout-name');
-      const _initsEl = document.getElementById('scout-avatar-initials');
-      const _imgEl = document.getElementById('scout-avatar-img');
-      let _dispName = displayName || currentUser.displayName || '';
-      // Demo-fallback: als naam leeg is, toon een nette demo-naam
-      if(!_dispName && __shIsDemoUser()) _dispName = 'Demo Scout';
-      if(!_dispName) _dispName = (currentUser.email || '').split('@')[0];
-      if(_nameEl) _nameEl.textContent = _dispName;
-      if(_initsEl){
-        const parts = _dispName.trim().split(/\s+/);
-        const initials = parts.length >= 2
-          ? (parts[0][0] + parts[parts.length-1][0]).toUpperCase()
-          : _dispName.slice(0,2).toUpperCase();
-        _initsEl.textContent = initials;
-      }
-      // Profielfoto als Firebase photo beschikbaar is
-      if(_imgEl && currentUser.photoURL){
-        _imgEl.src = currentUser.photoURL;
-        _imgEl.style.display = 'block';
-        if(_initsEl) _initsEl.style.display = 'none';
-      } else {
-        if(_imgEl) _imgEl.style.display = 'none';
-        if(_initsEl) _initsEl.style.display = 'flex';
-      }
-    } catch(_){ /* niet kritisch */ }
-  } catch(err){
-    console.warn('loadUserRole failed', err);
-  }
-}
-
-/* ============================================================
-   shAC — Universele autocomplete engine  s36l
-   ============================================================ */
-(function(){
-  const DD_ID = 'sh-ac-dropdown';
-  let _inp = null, _items = [], _cursor = -1, _onPick = null;
-
-  function _dd(){
-    let el = document.getElementById(DD_ID);
-    if(!el){
-      el = document.createElement('div');
-      el.id = DD_ID;
-      el.className = 'sh-ac-dd';
-      el.setAttribute('role','listbox');
-      document.body.appendChild(el);
-    }
-    return el;
-  }
-
-  function _pos(input){
-    const r = input.getBoundingClientRect();
-    const dd = _dd();
-    const isGrid = dd.classList.contains('sh-ac-dd--grid');
-    // position:fixed — viewport coords, geen scroll offset
-    // Grid-modus: minimaal 260px breed zodat 3 kolommen passen
-    const minW = isGrid ? Math.max(r.width, 260) : r.width;
-    dd.style.left  = r.left + 'px';
-    dd.style.width = minW + 'px';
-    const maxH = isGrid ? 320 : 260;
-    if(r.bottom + maxH > window.innerHeight){
-      dd.style.top    = '';
-      dd.style.bottom = (window.innerHeight - r.top + 2) + 'px';
-    } else {
-      dd.style.bottom = '';
-      dd.style.top    = (r.bottom + 2) + 'px';
-    }
-  }
-
-  function _esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
   function _render(){
-    const dd = _dd();
-    if(!_items.length || !_inp){ dd.style.display='none'; return; }
-    const useGrid = _items.length > 3 && _items.every(it => it.col3);
-    if(useGrid){
-      dd.innerHTML = _items.map((it,i)=>`
-        <div class="sh-ac-item${i===_cursor?' sh-ac-active':''}" data-idx="${i}">
-          <span class="sh-ac-col1">${_esc(it.col1||it.primary||it.label)}</span>
-          <span class="sh-ac-col2">${_esc(it.col2||it.secondary||'')}</span>
-          <span class="sh-ac-col3 sh-ac-muted">${_esc(it.col3||'')}</span>
-        </div>`).join('');
-    } else {
-      dd.innerHTML = _items.map((it,i)=>`
-        <div class="sh-ac-item${i===_cursor?' sh-ac-active':''}" data-idx="${i}">
-          <span class="sh-ac-primary">${_esc(it.primary||it.label)}</span>
-          ${it.secondary?`<span class="sh-ac-secondary">${_esc(it.secondary)}</span>`:''}
-        </div>`).join('');
-    }
-    dd.style.display='block';
-    _pos(_inp);
-    dd.querySelectorAll('.sh-ac-item').forEach(el=>{
-      el.addEventListener('mousedown', e=>{ e.preventDefault(); _pick(parseInt(el.dataset.idx)); });
-    });
+    if(!_box) return;
+    _box.innerHTML = _items.map((it,i) => {
+      const primary = escapeHtml(it.primary || it.label || '');
+      const secondary = it.secondary ? `<div style="font-size:11px;color:var(--text-2,#9aa3b7);margin-top:1px;">${escapeHtml(it.secondary)}</div>` : '';
+      const bg = i === _sel ? 'background:var(--hover,#1e2236);' : '';
+      return `<div data-ac-idx="${i}" style="padding:9px 14px;cursor:pointer;${bg}" onmouseover="this.style.background='var(--hover,#1e2236)'" onmouseout="this.style.background='${i===_sel?'var(--hover,#1e2236)':''}'">
+        <div style="font-size:14px;color:var(--text-1,#e2e8f0);font-weight:500;">${primary}</div>${secondary}
+      </div>`;
+    }).join('');
   }
 
-  function _pick(i){
-    if(i<0||i>=_items.length) return;
-    _cursor=i;
-    if(typeof _onPick==='function') _onPick(_items[i]);
+  function _pick(idx){
+    if(idx < 0 || idx >= _items.length) return;
+    if(_cb) _cb(_items[idx]);
     _close();
   }
 
   function _close(){
-    const dd=_dd(); if(dd) dd.style.display='none';
-    _inp=null; _items=[]; _cursor=-1;
+    _sel = -1;
+    _items = [];
+    _inp = null;
+    _cb = null;
+    if(_box){ _box.innerHTML = ''; _box.style.display = 'none'; }
   }
 
-  window.shAC = {
-    show(input, items, onPick){ _inp=input; _items=items; _cursor=-1; _onPick=onPick; _render(); },
+  return {
+    show(input, items, cb){
+      _ensureBox();
+      _inp = input; _items = items; _cb = cb; _sel = -1;
+      _box.style.display = 'block';
+      _pos();
+      _render();
+    },
     close: _close,
     onKey(e){
       if(!_items.length) return false;
-      if(e.key==='ArrowDown'){ _cursor=Math.min(_cursor+1,_items.length-1); _render(); return true; }
-      if(e.key==='ArrowUp'){ _cursor=Math.max(_cursor-1,0); _render(); return true; }
-      if(e.key==='Enter'&&_cursor>=0){ _pick(_cursor); return true; }
-      if(e.key==='Escape'){ _close(); return true; }
+      if(e.key === 'ArrowDown'){ _sel = Math.min(_sel+1, _items.length-1); _render(); return true; }
+      if(e.key === 'ArrowUp'){ _sel = Math.max(_sel-1, -1); _render(); return true; }
+      if(e.key === 'Enter' && _sel >= 0){ _pick(_sel); return true; }
+      if(e.key === 'Escape'){ _close(); return true; }
       return false;
     }
   };
-
-  document.addEventListener('mousedown', e=>{
-    const dd=_dd();
-    if(dd && !dd.contains(e.target) && e.target !== _inp) _close();
-  }, true);
-
-  window.addEventListener('scroll', () => { if(_inp) _pos(_inp); }, true);
   window.addEventListener('resize', () => { if(_inp) _close(); }, true);
 })();
+
 function shWireClubAC(input){
   if(!input) return;
   input.setAttribute('autocomplete','off');
@@ -18449,6 +18524,25 @@ function switchMatchesSubview(sub){
   if(sub === 'wedstrijden' && typeof renderMatchReports === 'function') renderMatchReports();
 }
 window.switchMatchesSubview = switchMatchesSubview;
+
+// ── Intro overlay dismiss ────────────────────────────────────────────────────
+(function setupIntro(){
+  function dismiss(){
+    const overlay = document.getElementById('intro-overlay');
+    if(!overlay) return;
+    overlay.classList.add('intro-gone');
+  }
+  function wire(){
+    const overlay = document.getElementById('intro-overlay');
+    if(!overlay) return;
+    overlay.addEventListener('click', dismiss);
+    overlay.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') dismiss(); });
+    setTimeout(dismiss, 6000);
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+  else wire();
+})();
+
 onAuthStateChanged(auth, async (user) => {
   if(user){
     currentUser = user;

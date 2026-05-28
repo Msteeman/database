@@ -593,6 +593,10 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Admin
         </button>
+        <button class="nav-item" data-view="elftallen">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          Elftallen
+        </button>
         <button class="nav-item" data-view="compare">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/><path d="M12 8v8"/></svg>
           Vergelijken
@@ -866,6 +870,24 @@
       </section>
 
       <!-- ====== VERGELIJKEN ====== -->
+      <!-- =================== ELFTALLEN VIEW (s103) =================== -->
+      <section class="view" id="view-elftallen">
+        <div class="topbar">
+          <div>
+            <div class="page-title">Elftallen</div>
+            <div class="page-sub">Zoek op club en elftal — bekijk alle spelers die je hebt gezien.</div>
+          </div>
+        </div>
+        <div style="padding: 12px 16px 0;">
+          <div class="elf-search-row">
+            <input id="elf-search-input" type="text" class="elf-search-in" placeholder="Zoek bijv. Roda&#39;46 O.10-1 of Quick 1888..." autocomplete="off" />
+            <button type="button" class="elf-search-btn" id="elf-search-btn">Zoeken</button>
+          </div>
+          <div id="elf-club-chips" class="elf-club-chips"></div>
+        </div>
+        <div id="elf-results" class="elf-results" style="padding: 0 16px 24px;"></div>
+      </section>
+
       <section class="view" id="view-compare">
         <div class="topbar">
           <div>
@@ -1303,7 +1325,7 @@ algemeen:</textarea>
             <div class="field-row three">
               <div class="field">
                 <label>Elftal</label>
-                <input id="f-elftal" type="text" placeholder="Bijv. O.15-1" autocomplete="off" list="elftal-suggestions" data-picker="elftal" />
+                <input id="f-elftal" type="text" placeholder="Bijv. O.15-1" autocomplete="off" data-picker="elftal" />
               </div>
               <div class="field">
                 <label>Rugnummer</label>
@@ -2346,11 +2368,11 @@ algemeen:</textarea>
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Elftal thuis (optioneel)</label>
-            <input id="pm-thuis-elftal" type="text" placeholder="bv. O.16-1" autocomplete="off" maxlength="20" list="elftal-suggestions" data-picker="elftal" />
+            <input id="pm-thuis-elftal" type="text" placeholder="bv. O.16-1" autocomplete="off" maxlength="20" data-picker="elftal" />
           </div>
           <div class="field">
             <label>Elftal uit (optioneel)</label>
-            <input id="pm-uit-elftal" type="text" placeholder="bv. O.16-2" autocomplete="off" maxlength="20" list="elftal-suggestions" data-picker="elftal" />
+            <input id="pm-uit-elftal" type="text" placeholder="bv. O.16-2" autocomplete="off" maxlength="20" data-picker="elftal" />
           </div>
         </div>
         <div class="field-row" style="margin-top:12px;">
@@ -2862,6 +2884,86 @@ algemeen:</textarea>
   </div>
 </div>
 
+
+<!-- =================== OBSERVATIE MODAL (s102) =================== -->
+<div class="obs-backdrop" id="obs-backdrop" style="display:none;">
+  <div class="obs-modal" id="obs-modal">
+    <div class="obs-modal-header">
+      <div>
+        <div class="obs-modal-title">Observatie</div>
+        <div class="obs-modal-sub" id="obs-modal-sub">Opgevallen speler</div>
+      </div>
+      <button class="obs-modal-close" id="obs-modal-close" type="button">×</button>
+    </div>
+    <form id="obs-form" autocomplete="off">
+      <div class="obs-section-label">Speler</div>
+      <div class="obs-row">
+        <div class="obs-field obs-field-grow">
+          <label>Naam <span class="obs-opt">(optioneel)</span></label>
+          <input id="obs-naam" type="text" placeholder="Voornaam Achternaam" />
+        </div>
+        <div class="obs-field obs-field-sm">
+          <label>Rugnummer</label>
+          <input id="obs-rug" type="text" placeholder="#" maxlength="3" />
+        </div>
+      </div>
+      <div class="obs-row">
+        <div class="obs-field obs-field-grow">
+          <label>Omschrijving <span class="obs-opt">(als naam onbekend)</span></label>
+          <input id="obs-omschrijving" type="text" placeholder="Bijv. lange spits met nr 9, rode haren" />
+        </div>
+      </div>
+      <div class="obs-row">
+        <div class="obs-field obs-field-grow">
+          <label>Club</label>
+          <input id="obs-club" type="text" placeholder="Clubnaam" autocomplete="off" />
+        </div>
+        <div class="obs-field obs-field-sm">
+          <label>Positie</label>
+          <input id="obs-positie" type="text" placeholder="Bijv. spits" />
+        </div>
+      </div>
+
+      <div class="obs-section-label" style="margin-top:14px;">Notities per aspect</div>
+      <div class="obs-terms" id="obs-terms">
+        <!-- dynamisch gevuld door JS -->
+      </div>
+
+      <div class="obs-section-label" style="margin-top:14px;">Beoordeling</div>
+      <div class="obs-row">
+        <div class="obs-field obs-field-sm">
+          <label>Huidig niveau</label>
+          <select id="obs-niveau">
+            <option value="">—</option>
+            <option value="A">A — Toptaient</option>
+            <option value="B">B — Regionaal talent</option>
+            <option value="C">C — Aardig</option>
+            <option value="D">D — Matig</option>
+          </select>
+        </div>
+        <div class="obs-field obs-field-grow">
+          <label>Advies</label>
+          <select id="obs-advies">
+            <option value="">—</option>
+            <option value="direct_contracteren">Direct contracteren</option>
+            <option value="volgen">Blijven volgen</option>
+            <option value="nog_volgen">Nog een keer zien</option>
+            <option value="geen_interesse">Geen interesse</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="obs-wedstrijd-ctx" class="obs-wstr-ctx" style="display:none;">
+        <!-- wedstrijd context (read-only) -->
+      </div>
+
+      <div class="obs-actions">
+        <button type="button" class="btn btn-secondary" id="obs-cancel">Annuleren</button>
+        <button type="submit" class="btn btn-primary" id="obs-submit">Opslaan als observatie</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <!-- =================== CHANGELOG MODAL (s35bk-3) =================== -->
 <div class="changelog-backdrop" id="changelog-backdrop">

@@ -18700,17 +18700,23 @@ window.switchMatchesSubview = switchMatchesSubview;
 
 // ── Intro overlay dismiss ────────────────────────────────────────────────────
 (function setupIntro(){
+  var _dismissed = false;
   function dismiss(){
-    const overlay = document.getElementById('intro-overlay');
+    if(_dismissed) return;
+    _dismissed = true;
+    var overlay = document.getElementById('intro-overlay');
     if(!overlay) return;
     overlay.classList.add('intro-gone');
   }
   function wire(){
-    const overlay = document.getElementById('intro-overlay');
-    if(!overlay) return;
+    var overlay = document.getElementById('intro-overlay');
+    if(!overlay){ setTimeout(dismiss, 100); return; }
+    // Dismiss op elke interactie: click, touch, keydown
     overlay.addEventListener('click', dismiss);
-    overlay.addEventListener('keydown', e => { if(e.key === 'Enter' || e.key === ' ') dismiss(); });
-    setTimeout(dismiss, 6000);
+    document.addEventListener('keydown', dismiss, {once: true});
+    document.addEventListener('touchstart', dismiss, {once: true, passive: true});
+    // Auto-dismiss na 3 seconden
+    setTimeout(dismiss, 3000);
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
   else wire();

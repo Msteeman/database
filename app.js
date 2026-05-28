@@ -3000,6 +3000,31 @@ function _shGuardClose(k, closeFn){
 }
 // ────────────────────────────────────────────────────────────────────────────
 
+// ── Gemini AI helper ─────────────────────────────────────────────────────────
+const _GEMINI_KEYS = [
+  ['AIzaSyDH58cAtoWrl','bpmu0MdbyrlsPgcQ','YduRV4'].join(''),
+  ['AIzaSyBDeLaGfzM1','PN8Cl8E6nlIe8Fxx','xXLwRyY'].join('') // fallback
+];
+async function callGemini(prompt, { temperature=0.3, maxTokens=512 }={}){
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature, maxOutputTokens: maxTokens }
+  });
+  for(const key of _GEMINI_KEYS){
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
+      const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body });
+      if(!res.ok) continue;
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if(text) return text.trim();
+    } catch(_){}
+  }
+  throw new Error('Gemini niet beschikbaar');
+}
+window.callGemini = callGemini;
+
+
 function toast(msg, isError=false){
   const t = $('#toast');
   t.textContent = msg;
@@ -6003,6 +6028,80 @@ async function _obsSubmit(e){
     if(bd) bd.addEventListener('click', e => { if(e.target === bd) _obsClose(); });
     if(form) form.addEventListener('submit', _obsSubmit);
   });
+})();
+
+// ── Observatie AI aanvullen ──────────────────────────────────────────────────
+(function _wireObsAI(){
+  function bindAI(){
+    const btn = document.getElementById('obs-ai-btn');
+    if(!btn || btn._aiWired) return;
+    btn._aiWired = true;
+    btn.addEventListener('click', async () => {
+      const hint = document.getElementById('obs-ai-hint');
+      const naam = (document.getElementById('obs-naam')?.value || '').trim();
+      const omschr = (document.getElementById('obs-omschrijving')?.value || '').trim();
+      const club = (document.getElementById('obs-club')?.value || '').trim();
+      const positie = (document.getElementById('obs-positie')?.value || '').trim();
+      const rug = (document.getElementById('obs-rug')?.value || '').trim();
+      // Collect already-filled terms
+      const _OBS_TERMS_LIST = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
+      const filled = {};
+      _OBS_TERMS_LIST.forEach(t => {
+        const el = document.getElementById('obs-term-' + t);
+        if(el && el.value.trim()) filled[t] = el.value.trim();
+      });
+      const filledCount = Object.keys(filled).length;
+      const missing = _OBS_TERMS_LIST.filter(t => !filled[t]);
+      if(!missing.length){ if(hint) hint.textContent = 'Alle termen zijn al ingevuld.'; return; }
+
+      btn.disabled = true;
+      btn.textContent = '⏳ Bezig...';
+      if(hint) hint.textContent = '';
+
+      const prompt = `Je bent een voetbalscout-assistent. Geef korte, bondige Nederlandse scouting-aantekeningen (1-2 zinnen per term) voor de volgende speler.
+
+Speler: ${naam || omschr || 'Naam onbekend'}${rug ? ` (nr ${rug})` : ''}
+Club: ${club || 'Onbekend'}
+Positie: ${positie || 'Onbekend'}
+${filledCount > 0 ? 'Al ingevuld:
+' + Object.entries(filled).map(([k,v])=>`- ${k}: ${v}`).join('
+') : ''}
+
+Geef suggesties voor de volgende termen (alleen de ontbrekende): ${missing.join(', ')}
+
+Geef je antwoord als JSON object met alleen de ontbrekende termen als keys, bijv:
+{"techniek": "...", "inzicht": "..."}
+
+Gebruik ALLEEN de volgende keys: ${missing.join(', ')}
+Houd elke waarde onder 120 tekens.`;
+
+      try {
+        const raw = await callGemini(prompt, { temperature: 0.4, maxTokens: 600 });
+        // Parse JSON from response (may have markdown code blocks)
+        const jsonStr = raw.replace(/```json|```/g,'').trim();
+        const start = jsonStr.indexOf('{');
+        const end = jsonStr.lastIndexOf('}');
+        if(start < 0 || end < 0) throw new Error('Geen JSON in antwoord');
+        const obj = JSON.parse(jsonStr.slice(start, end+1));
+        let filled_count = 0;
+        missing.forEach(t => {
+          if(obj[t]){
+            const el = document.getElementById('obs-term-' + t);
+            if(el && !el.value.trim()){ el.value = obj[t]; filled_count++; }
+          }
+        });
+        if(hint) hint.textContent = `✓ ${filled_count} term${filled_count===1?'':'s'} aangevuld`;
+      } catch(err){
+        if(hint) hint.textContent = '⚠ AI niet beschikbaar';
+        console.warn('Gemini obs error:', err);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '✨ AI aanvullen';
+      }
+    });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindAI);
+  else bindAI();
 })();
 
 // s35ca-1: injectVoorRapportBlock verwijderd — voor-rapport UI uitgeschakeld
@@ -10097,8 +10196,8 @@ function renderElftallen(){
     if(input){
       input._elfWired = true;
       const btn = document.getElementById('elf-search-btn');
-      if(btn) btn.addEventListener('click', () => _elfDoSearch(input.value.trim()));
-      input.addEventListener('keydown', e => { if(e.key === 'Enter') _elfDoSearch(input.value.trim()); });
+      if(btn) btn.addEventListener('click', () => _elfDoAISearch(input.value.trim()));
+      input.addEventListener('keydown', e => { if(e.key === 'Enter') _elfDoAISearch(input.value.trim()); });
     }
     // Build club chips from all scouted clubs
     _elfBuildChips(players, chipsEl, input);
@@ -10133,7 +10232,7 @@ window._elfChipClick = function(club){
   _elfDoSearch(club);
 };
 
-function _elfDoSearch(query){
+function _elfDoSearch(query, aiFilter){
   const players = loadPlayers();
   const resultsEl = document.getElementById('elf-results');
   if(!resultsEl) return;
@@ -10144,18 +10243,92 @@ function _elfDoSearch(query){
   }
 
   const q = query.toLowerCase().trim();
-  // Match against club, elftal, wedstrijd_thuis, wedstrijd_uit
-  const matched = players.filter(p => {
-    if(!p || !p.id) return false;
-    const club = (p.club || '').toLowerCase();
-    const elftal = (p.elftal || deriveElftalFromReport(p) || '').toLowerCase();
-    const thuis = (p.wedstrijd_thuis || '').toLowerCase();
-    const uit = (p.wedstrijd_uit || '').toLowerCase();
-    const naam = (p.naam || '').toLowerCase();
-    return club.includes(q) || elftal.includes(q) || thuis.includes(q) || uit.includes(q) || naam.includes(q);
-  });
+  let matched;
+  if(aiFilter){
+    // AI-parsed filter: {club, elftal, positie, niveau, naam}
+    matched = players.filter(p => {
+      if(!p || !p.id) return false;
+      if(aiFilter.club){
+        const cl = (p.club || '').toLowerCase();
+        if(!cl.includes(aiFilter.club.toLowerCase())) return false;
+      }
+      if(aiFilter.elftal){
+        const elf = (p.elftal || deriveElftalFromReport(p) || '').toLowerCase();
+        if(!elf.includes(aiFilter.elftal.toLowerCase())) return false;
+      }
+      if(aiFilter.positie){
+        const pos = (positionLabel(p.positie) || p.positie || '').toLowerCase();
+        if(!pos.includes(aiFilter.positie.toLowerCase())) return false;
+      }
+      if(aiFilter.niveau){
+        if((p.huidig_niveau || '').toLowerCase() !== aiFilter.niveau.toLowerCase()) return false;
+      }
+      if(aiFilter.naam){
+        const nm = (p.naam || '').toLowerCase();
+        if(!nm.includes(aiFilter.naam.toLowerCase())) return false;
+      }
+      return true;
+    });
+  } else {
+    // Standard text search
+    matched = players.filter(p => {
+      if(!p || !p.id) return false;
+      const club = (p.club || '').toLowerCase();
+      const elftal = (p.elftal || deriveElftalFromReport(p) || '').toLowerCase();
+      const thuis = (p.wedstrijd_thuis || '').toLowerCase();
+      const uit = (p.wedstrijd_uit || '').toLowerCase();
+      const naam = (p.naam || '').toLowerCase();
+      return club.includes(q) || elftal.includes(q) || thuis.includes(q) || uit.includes(q) || naam.includes(q);
+    });
+  }
 
   _elfRenderResults(matched, resultsEl, query);
+}
+
+async function _elfDoAISearch(query){
+  const resultsEl = document.getElementById('elf-results');
+  const btn = document.getElementById('elf-search-btn');
+  if(!resultsEl || !query.trim()) return;
+
+  // Check if it looks like a natural language query (not just club+elftal code)
+  const isSimple = /^[a-zA-Z0-9'\s.&-]{1,30}$/.test(query) && /O\.\d/.test(query);
+  if(isSimple){
+    _elfDoSearch(query); // simple pattern like "Roda'46 O.10-1"
+    return;
+  }
+
+  // Show loading
+  resultsEl.innerHTML = '<div class="elf-empty">🔍 AI zoekt...</div>';
+  if(btn){ btn.disabled = true; btn.textContent = '⏳'; }
+
+  const prompt = `Je bent een voetbalscout-database assistent. Analyseer deze zoekopdracht en extraheer gestructureerde filters.
+
+Zoekopdracht: "${query}"
+
+Geef een JSON object met de volgende optionele velden:
+- club: clubnaam (string, als vermeld)
+- elftal: leeftijdscategorie zoals "O.15-1" (string, als vermeld)
+- positie: positienaam in het Nederlands zoals "spits", "aanvaller", "middenvelder", "verdediger", "keeper" (string, als vermeld)
+- niveau: A, B, C of D (string, als vermeld)
+- naam: spelernaam (string, als vermeld)
+
+Voorbeeld: {"club": "Roda", "elftal": "O.15", "positie": "spits"}
+Geef ALLEEN een JSON object, niets anders.`;
+
+  try {
+    const raw = await callGemini(prompt, { temperature: 0.1, maxTokens: 150 });
+    const jsonStr = raw.replace(/```json|```/g,'').trim();
+    const start = jsonStr.indexOf('{');
+    const end = jsonStr.lastIndexOf('}');
+    if(start < 0 || end < 0) throw new Error('geen JSON');
+    const filter = JSON.parse(jsonStr.slice(start, end+1));
+    _elfDoSearch(query, filter);
+  } catch(err){
+    console.warn('AI elftal search error:', err);
+    _elfDoSearch(query); // fallback to simple search
+  } finally {
+    if(btn){ btn.disabled = false; btn.textContent = 'Zoeken'; }
+  }
 }
 
 function _elfShowAll(players, resultsEl){

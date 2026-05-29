@@ -7096,18 +7096,14 @@ function renderActiveScouting(){
         }
         if(naamIn) naamIn.focus();
       } else if(act === 'add-observatie'){
-        // Observatieformulier voor opgevallen speler — aanmaken als obs-draft in snelnotities
+        // Elke klik = nieuwe obs-draft (meerdere opgevallen spelers per wedstrijd mogelijk)
         const _obsProg = programmaCache && programmaCache.find(p => p && p.id === progId);
         if(_obsProg && typeof openObservatieForm === 'function'){
-          // Maak/zoek obs-draft snelnotitie zodat het persistent is tijdens de wedstrijd
           if(!Array.isArray(_obsProg.snelnotities)) _obsProg.snelnotities = [];
-          // Zoek een openstaande (niet-ingediende) obs-draft
-          let _obsDraft = _obsProg.snelnotities.find(s => s && s.rapport_type === 'observatie' && s.obs_draft === true);
-          if(!_obsDraft){
-            _obsDraft = { id: 'obs_' + Date.now() + '_' + Math.random().toString(36).slice(2,5), rapport_type: 'observatie', obs_draft: true, naam: '', tekst: '', created: Date.now() };
-            _obsProg.snelnotities.push(_obsDraft);
-            if(typeof saveProgrammaItem === 'function') saveProgrammaItem(_obsProg).catch(()=>{});
-          }
+          // Altijd een NIEUWE draft aanmaken — bestaande blijven bewaard
+          const _obsDraft = { id: 'obs_' + Date.now() + '_' + Math.random().toString(36).slice(2,5), rapport_type: 'observatie', obs_draft: true, naam: '', tekst: '', created: Date.now() };
+          _obsProg.snelnotities.push(_obsDraft);
+          if(typeof saveProgrammaItem === 'function') saveProgrammaItem(_obsProg).catch(()=>{});
           openObservatieForm(_obsProg, _obsDraft);
         }
       } else if(act === 'add-snel-wstr'){

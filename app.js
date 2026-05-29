@@ -6500,6 +6500,7 @@ function renderActiveScouting(){
           el.addEventListener('input', () => { clearTimeout(saveTm); saveTm = setTimeout(doSave, 900); });
         });
         editDiv.addEventListener('focusout', (ev) => {
+          if(!ev.relatedTarget) return; // klik op label/span — niet sluiten
           if(!editDiv.contains(ev.relatedTarget)){ clearTimeout(saveTm); doSave(); }
         });
         // s102: → Observatie knop
@@ -6722,6 +6723,7 @@ function renderActiveScouting(){
             });
           });
           tile.addEventListener('focusout', (ev) => {
+            if(!ev.relatedTarget) return; // klik op niet-focusbaar element (label/span) — niet sluiten
             if(!tile.contains(ev.relatedTarget)){
               clearTimeout(saveTm);
               doTileSave();
@@ -6929,7 +6931,7 @@ function renderActiveScouting(){
           if(posIn) posIn.addEventListener('change', onInput);
           // s-blur-save: direct opslaan als gebruiker het formulier verlaat (wegklikt)
           form.addEventListener('focusout', (e) => {
-            // Controleer of focus nog binnen het form blijft (bv. naar volgend veld)
+            if(!e.relatedTarget) return; // klik op label/span — niet sluiten
             if(form.contains(e.relatedTarget)) return;
             if(debTimer){ clearTimeout(debTimer); debTimer = null; }
             doAutoSave();
@@ -16401,6 +16403,21 @@ function openProgMatchModal(progId, defaultDate){
   // s35dg Fase A: reset speler-koppel buffer + UI bij elke open
   try { if(typeof pmppResetUI === 'function') pmppResetUI(); } catch(_){}
   showModal('prog-match-backdrop');
+  // Wire club/elftal AC bij elke open (dynamische modal)
+  try {
+    ['pm-thuis','pm-uit','f-club','f-w-thuis','f-w-uit','mr-thuis','mr-uit'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el && !el._shClubACWired && typeof shWireClubAC === 'function'){
+        shWireClubAC(el); el._shClubACWired = true;
+      }
+    });
+    ['pm-thuis-elftal','pm-uit-elftal','f-elftal','mr-elftal'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el && !el._shElftalACWired && typeof shWireLeeftijdAC === 'function'){
+        shWireLeeftijdAC(el); el._shElftalACWired = true;
+      }
+    });
+  } catch(_){}
   // v70h-s35a: auto-fill sportpark + plaats uit CLUB_ADRESSEN zodra thuisclub gekozen wordt.
   (function(){
     const thuis = $('#pm-thuis');
@@ -18576,6 +18593,31 @@ function initApp(){
   });
   $('#contact-search')?.addEventListener('input', renderContacts);
   $('#contact-sort')?.addEventListener('change', renderContacts);
+
+  // Wire club-AC en elftal-AC op alle velden met data-picker attribuut
+  try {
+    // Club autocomplete op alle [data-picker="club"] inputs
+    document.querySelectorAll('[data-picker="club"]').forEach(el => {
+      if(!el._shClubACWired && typeof shWireClubAC === 'function'){
+        shWireClubAC(el);
+        el._shClubACWired = true;
+      }
+    });
+    // Elftal autocomplete op alle [data-picker="elftal"] inputs
+    document.querySelectorAll('[data-picker="elftal"]').forEach(el => {
+      if(!el._shElftalACWired && typeof shWireLeeftijdAC === 'function'){
+        shWireLeeftijdAC(el);
+        el._shElftalACWired = true;
+      }
+    });
+    // Zorg dat datalist element bestaat voor native browser fallback
+    if(!document.getElementById('club-suggestions')){
+      const dl = document.createElement('datalist');
+      dl.id = 'club-suggestions';
+      document.body.appendChild(dl);
+      if(typeof fillClubDatalist === 'function') fillClubDatalist();
+    }
+  } catch(_){}
 }
 
 // ── shAC — Universele autocomplete engine ────────────────────────────────────

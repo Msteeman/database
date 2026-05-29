@@ -97,6 +97,24 @@
   border-color: var(--gold,#f5c842);
   background: #0d1018;
 }
+/* sn-edit-term-in: inputs in "Opgeslagen notities" edit form — zelfde stijl als sa-snel-term-input */
+.sn-edit-term-in {
+  width: 100%;
+  background: #0a0c12;
+  border: 1px solid var(--border2,#2d3242);
+  border-radius: 6px;
+  padding: 9px 11px;
+  color: var(--text,#e5e9f5);
+  font-family: inherit;
+  font-size: 13.5px;
+  outline: none;
+  transition: border-color .15s, background .15s;
+  box-sizing: border-box;
+}
+.sn-edit-term-in:focus {
+  border-color: var(--gold,#f5c842);
+  background: #0d1018;
+}
 /* s35bf: trigger-knop "open" state — duidelijk zichtbaar wanneer form open is */
 .sa-trigger-snel.is-open {
   background: rgba(245,200,66,0.18) !important;

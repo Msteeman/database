@@ -10191,217 +10191,189 @@ function renderElftallen(){
   const resultsEl = document.getElementById('elf-results');
   if(!resultsEl) return;
 
-  // Wire up search button + enter key (only once)
   if(!input?._elfWired){
     if(input){
       input._elfWired = true;
+      if(typeof shWireClubAC === 'function') shWireClubAC(input);
+      const doSearch = () => {
+        const v = input.value.trim();
+        if(v) _elfShowClub(v, players);
+        else _elfShowOverview(players, resultsEl);
+      };
+      input.addEventListener('change', doSearch);
+      input.addEventListener('keydown', e => { if(e.key === 'Enter') doSearch(); });
       const btn = document.getElementById('elf-search-btn');
-      if(btn) btn.addEventListener('click', () => _elfDoAISearch(input.value.trim()));
-      input.addEventListener('keydown', e => { if(e.key === 'Enter') _elfDoAISearch(input.value.trim()); });
+      if(btn){
+        btn.textContent = 'Wis';
+        btn.addEventListener('click', () => { input.value = ''; _elfShowOverview(loadPlayers(), resultsEl); });
+      }
     }
-    // Build club chips from all scouted clubs
-    _elfBuildChips(players, chipsEl, input);
+    if(chipsEl) chipsEl.style.display = 'none';
   }
 
-  // If there's already a query, show results
   const q = (input?.value || '').trim();
-  if(q) {
-    _elfDoSearch(q);
-  } else {
-    _elfShowAll(players, resultsEl);
+  if(q) _elfShowClub(q, players);
+  else _elfShowOverview(players, resultsEl);
+}
+
+function _elfShowOverview(players, resultsEl){
+  if(!resultsEl) return;
+  if(!players.length){
+    resultsEl.innerHTML = '<div class="elf-empty">Nog geen spelers gescout. Voeg een spelerrapport toe om te beginnen.</div>';
+    return;
   }
-}
-
-function _elfBuildChips(players, chipsEl, input){
-  if(!chipsEl) return;
-  // Gather unique clubs
-  const clubSet = new Set();
+  const clubMap = new Map();
   players.forEach(p => {
-    const cl = (p.club || '').trim();
-    if(cl) clubSet.add(cl);
+    const club = (p.club || 'Onbekende club').trim();
+    if(!clubMap.has(club)) clubMap.set(club, []);
+    clubMap.get(club).push(p);
   });
-  const clubs = [...clubSet].sort((a,b) => a.localeCompare(b, 'nl'));
-  chipsEl.innerHTML = clubs.map(cl =>
-    `<button type="button" class="elf-chip" onclick="window._elfChipClick(${JSON.stringify(cl)})">${escapeHtml(cl)}</button>`
-  ).join('');
+  const clubs = [...clubMap.entries()].sort((a,b) => b[1].length - a[1].length || a[0].localeCompare(b[0],'nl'));
+
+  let html = `<div class="elf-overview-title">Gescoutte clubs <span class="elf-ov-count">${clubs.length}</span></div>`;
+  html += '<div class="elf-clubs-grid">';
+  clubs.forEach(([club, ps]) => {
+    const nRapport = ps.filter(p => p.rapport_type !== 'observatie').length;
+    const nObs = ps.filter(p => p.rapport_type === 'observatie').length;
+    const uniqTeams = new Set(ps.map(p => (p.elftal||deriveElftalFromReport(p)||'').trim()).filter(Boolean)).size;
+    html += `<div class="elf-club-card" onclick="window._elfClubCardClick(${JSON.stringify(club)})">
+  <div class="elf-cc-initials">${escapeHtml(club.replace(/^[^A-Za-z0-9]*/,'').slice(0,2).toUpperCase())}</div>
+  <div class="elf-cc-body">
+    <div class="elf-cc-naam">${escapeHtml(club)}</div>
+    <div class="elf-cc-stats">
+      <span class="elf-cc-stat"><b>${ps.length}</b> speler${ps.length===1?'':'s'}</span>
+      ${uniqTeams ? `<span class="elf-cc-dot">·</span><span class="elf-cc-stat"><b>${uniqTeams}</b> elftal${uniqTeams===1?'':'len'}</span>` : ''}
+      ${nRapport ? `<span class="elf-cc-badge elf-cc-badge-r">${nRapport}R</span>` : ''}
+      ${nObs ? `<span class="elf-cc-badge elf-cc-badge-o">${nObs}O</span>` : ''}
+    </div>
+  </div>
+  <div class="elf-cc-arrow">›</div>
+</div>`;
+  });
+  html += '</div>';
+  resultsEl.innerHTML = html;
 }
 
-window._elfChipClick = function(club){
+window._elfClubCardClick = function(club){
   const input = document.getElementById('elf-search-input');
-  if(input){ input.value = club; }
-  _elfDoSearch(club);
+  if(input) input.value = club;
+  _elfShowClub(club);
 };
 
-function _elfDoSearch(query, aiFilter){
-  const players = loadPlayers();
+function _elfShowClub(clubName, _players){
+  const players = _players || loadPlayers();
   const resultsEl = document.getElementById('elf-results');
   if(!resultsEl) return;
 
-  if(!query){
-    _elfShowAll(players, resultsEl);
-    return;
-  }
+  const q = clubName.toLowerCase();
+  const clubPlayers = players.filter(p => (p.club||'').toLowerCase().includes(q));
 
-  const q = query.toLowerCase().trim();
-  let matched;
-  if(aiFilter){
-    // AI-parsed filter: {club, elftal, positie, niveau, naam}
-    matched = players.filter(p => {
-      if(!p || !p.id) return false;
-      if(aiFilter.club){
-        const cl = (p.club || '').toLowerCase();
-        if(!cl.includes(aiFilter.club.toLowerCase())) return false;
-      }
-      if(aiFilter.elftal){
-        const elf = (p.elftal || deriveElftalFromReport(p) || '').toLowerCase();
-        if(!elf.includes(aiFilter.elftal.toLowerCase())) return false;
-      }
-      if(aiFilter.positie){
-        const pos = (positionLabel(p.positie) || p.positie || '').toLowerCase();
-        if(!pos.includes(aiFilter.positie.toLowerCase())) return false;
-      }
-      if(aiFilter.niveau){
-        if((p.huidig_niveau || '').toLowerCase() !== aiFilter.niveau.toLowerCase()) return false;
-      }
-      if(aiFilter.naam){
-        const nm = (p.naam || '').toLowerCase();
-        if(!nm.includes(aiFilter.naam.toLowerCase())) return false;
-      }
-      return true;
-    });
-  } else {
-    // Standard text search
-    matched = players.filter(p => {
-      if(!p || !p.id) return false;
-      const club = (p.club || '').toLowerCase();
-      const elftal = (p.elftal || deriveElftalFromReport(p) || '').toLowerCase();
-      const thuis = (p.wedstrijd_thuis || '').toLowerCase();
-      const uit = (p.wedstrijd_uit || '').toLowerCase();
-      const naam = (p.naam || '').toLowerCase();
-      return club.includes(q) || elftal.includes(q) || thuis.includes(q) || uit.includes(q) || naam.includes(q);
-    });
-  }
-
-  _elfRenderResults(matched, resultsEl, query);
-}
-
-async function _elfDoAISearch(query){
-  const resultsEl = document.getElementById('elf-results');
-  const btn = document.getElementById('elf-search-btn');
-  if(!resultsEl || !query.trim()) return;
-
-  // Check if it looks like a natural language query (not just club+elftal code)
-  const isSimple = /^[a-zA-Z0-9'\s.&-]{1,30}$/.test(query) && /O\.\d/.test(query);
-  if(isSimple){
-    _elfDoSearch(query); // simple pattern like "Roda'46 O.10-1"
-    return;
-  }
-
-  // Show loading
-  resultsEl.innerHTML = '<div class="elf-empty">🔍 AI zoekt...</div>';
-  if(btn){ btn.disabled = true; btn.textContent = '⏳'; }
-
-  const prompt = `Je bent een voetbalscout-database assistent. Analyseer deze zoekopdracht en extraheer gestructureerde filters.
-
-Zoekopdracht: "${query}"
-
-Geef een JSON object met de volgende optionele velden:
-- club: clubnaam (string, als vermeld)
-- elftal: leeftijdscategorie zoals "O.15-1" (string, als vermeld)
-- positie: positienaam in het Nederlands zoals "spits", "aanvaller", "middenvelder", "verdediger", "keeper" (string, als vermeld)
-- niveau: A, B, C of D (string, als vermeld)
-- naam: spelernaam (string, als vermeld)
-
-Voorbeeld: {"club": "Roda", "elftal": "O.15", "positie": "spits"}
-Geef ALLEEN een JSON object, niets anders.`;
-
-  try {
-    const raw = await callGemini(prompt, { temperature: 0.1, maxTokens: 150 });
-    const jsonStr = raw.replace(/```json|```/g,'').trim();
-    const start = jsonStr.indexOf('{');
-    const end = jsonStr.lastIndexOf('}');
-    if(start < 0 || end < 0) throw new Error('geen JSON');
-    const filter = JSON.parse(jsonStr.slice(start, end+1));
-    _elfDoSearch(query, filter);
-  } catch(err){
-    console.warn('AI elftal search error:', err);
-    _elfDoSearch(query); // fallback to simple search
-  } finally {
-    if(btn){ btn.disabled = false; btn.textContent = 'Zoeken'; }
-  }
-}
-
-function _elfShowAll(players, resultsEl){
-  // Show all players grouped by club
-  _elfRenderResults(players, resultsEl, '');
-}
-
-function _elfRenderResults(players, resultsEl, query){
-  if(!players.length){
-    resultsEl.innerHTML = `<div class="elf-empty">Geen spelers gevonden${query ? ' voor <strong>' + escapeHtml(query) + '</strong>' : ''}.</div>`;
-    return;
-  }
-
-  // Group by club → elftal
-  const groups = new Map(); // key = "club||elftal"
-  players.forEach(p => {
-    const club = (p.club || 'Onbekende club').trim();
-    const elftal = (p.elftal || deriveElftalFromReport(p) || '').trim();
-    const groupKey = club + '||' + elftal;
-    if(!groups.has(groupKey)) groups.set(groupKey, { club, elftal, players: [] });
-    groups.get(groupKey).players.push(p);
+  const teamMap = new Map();
+  clubPlayers.forEach(p => {
+    const elftal = (p.elftal || deriveElftalFromReport(p)||'').trim();
+    if(elftal){
+      if(!teamMap.has(elftal)) teamMap.set(elftal, []);
+      teamMap.get(elftal).push(p);
+    }
   });
 
-  // Sort groups: by club then elftal
-  const sorted = [...groups.values()].sort((a,b) => {
-    const cl = a.club.localeCompare(b.club, 'nl');
-    if(cl !== 0) return cl;
-    return a.elftal.localeCompare(b.elftal, 'nl');
-  });
+  const displayClub = clubPlayers.length ? (clubPlayers[0].club || clubName) : clubName;
+  const totalPlayers = clubPlayers.length;
+  const totalTeams = teamMap.size;
 
-  const NIVEAU_LABEL = { A:'A – Toptalent', B:'B – Belofte', C:'C – Gemiddeld', D:'D – Beperkt' };
-  const ADVIES_LABEL = { volgen:'Volgen', terugkomen:'Terugkomen', niet_volgen:'Niet volgen', onbekend:'Onbekend' };
-
-  let html = '';
-  sorted.forEach(g => {
-    const playerCount = g.players.length;
-    const header = g.elftal
-      ? `${escapeHtml(g.club)} <span class="elf-group-elftal">${escapeHtml(g.elftal)}</span>`
-      : escapeHtml(g.club);
-    html += `<div class="elf-group">
-  <div class="elf-group-header">${header}<span class="elf-group-count">${playerCount} speler${playerCount===1?'':'s'}</span></div>
-  <div class="elf-group-players">`;
-
-    g.players.forEach(p => {
-      const naam = p.naam ? escapeHtml(p.naam) : `<em class="elf-unnamed">Naam onbekend</em>`;
-      const pos = positionLabel(p.positie) || '';
-      const hn = p.huidig_niveau ? (NIVEAU_LABEL[p.huidig_niveau] || p.huidig_niveau) : '';
-      const pn = p.potentieel_niveau ? (NIVEAU_LABEL[p.potentieel_niveau] || p.potentieel_niveau) : '';
-      const adv = p.advies ? (ADVIES_LABEL[p.advies] || p.advies) : (p.conclusie ? escapeHtml(p.conclusie.slice(0,40)) : '');
-      const isObs = p.rapport_type === 'observatie';
-      const typeBadge = isObs
-        ? `<span class="elf-badge elf-badge-obs">OBS</span>`
-        : `<span class="elf-badge elf-badge-rapport">Rapport</span>`;
-
-      const metaParts = [pos, hn ? `Huidig: ${hn}` : '', pn ? `Potentie: ${pn}` : ''].filter(Boolean);
-      const metaHtml = metaParts.length ? `<div class="elf-player-meta">${metaParts.map(escapeHtml).join(' · ')}</div>` : '';
-      const advHtml = adv ? `<div class="elf-player-advies">${escapeHtml(adv)}</div>` : '';
-
-      html += `<div class="elf-player-card" onclick="openDetail(${JSON.stringify(p.id)})">
-  <div class="elf-player-top">
-    <div class="elf-player-naam">${naam}</div>
-    ${typeBadge}
+  let html = `<div class="elf-club-header">
+  <div class="elf-ch-logo">${escapeHtml(displayClub.replace(/^[^A-Za-z0-9]*/,'').slice(0,2).toUpperCase())}</div>
+  <div class="elf-ch-info">
+    <div class="elf-ch-naam">${escapeHtml(displayClub)}</div>
+    <div class="elf-ch-sub">${totalPlayers} speler${totalPlayers===1?'':'s'} gescout · ${totalTeams} elftal${totalTeams===1?'':'len'}</div>
   </div>
-  ${metaHtml}
-  ${advHtml}
+  <button class="elf-ch-back" onclick="window._elfBackToOverview()">← Clubs</button>
 </div>`;
-    });
 
-    html += `</div></div>`;
-  });
+  html += '<div class="elf-age-grid">';
+  for(let age=8; age<=23; age++){
+    const ageLabel = 'O.'+age;
+    let hasAnyInAge = false;
+    for(let nr=1; nr<=10; nr++){ if(teamMap.has(ageLabel+'-'+nr)){ hasAnyInAge=true; break; } }
+    const rowClass = hasAnyInAge ? 'elf-age-row elf-age-row-active' : 'elf-age-row';
+    html += `<div class="${rowClass}"><div class="elf-age-label">${ageLabel}</div><div class="elf-age-teams">`;
+    for(let nr=1; nr<=10; nr++){
+      const key = ageLabel+'-'+nr;
+      const ps = teamMap.get(key)||[];
+      const hasPl = ps.length > 0;
+      html += hasPl
+        ? `<div class="elf-team-cell elf-team-has" data-team="${key}" onclick="window._elfToggleTeam(this,'${key}')"><span class="elf-tc-nr">${nr}</span><span class="elf-tc-count">${ps.length}</span></div>`
+        : `<div class="elf-team-cell elf-team-empty"><span class="elf-tc-nr">${nr}</span></div>`;
+    }
+    html += '</div></div>';
+  }
+  html += '</div>';
+  html += '<div id="elf-team-detail" class="elf-team-detail" style="display:none"></div>';
+
+  const unassigned = clubPlayers.filter(p => !(p.elftal||deriveElftalFromReport(p)||'').trim());
+  if(unassigned.length){
+    html += `<div class="elf-unassigned">
+  <div class="elf-unassigned-title">Zonder elftal (${unassigned.length})</div>
+  <div class="elf-group-players">`;
+    unassigned.forEach(p => { html += _elfPlayerCardHtml(p); });
+    html += '</div></div>';
+  }
 
   resultsEl.innerHTML = html;
+  resultsEl._teamMap = teamMap;
 }
+
+window._elfToggleTeam = function(cell, teamKey){
+  const detailEl = document.getElementById('elf-team-detail');
+  const resultsEl = document.getElementById('elf-results');
+  if(!detailEl || !resultsEl) return;
+  const teamMap = resultsEl._teamMap;
+  const ps = (teamMap && teamMap.get(teamKey)) || [];
+
+  if(cell._active){
+    cell._active = false;
+    cell.classList.remove('elf-team-active');
+    detailEl.style.display = 'none';
+    detailEl.innerHTML = '';
+    return;
+  }
+  document.querySelectorAll('.elf-team-active').forEach(c => { c._active=false; c.classList.remove('elf-team-active'); });
+  cell._active = true;
+  cell.classList.add('elf-team-active');
+
+  let html = `<div class="elf-td-header">${escapeHtml(teamKey)}<span class="elf-td-count">${ps.length} speler${ps.length===1?'':'s'}</span></div>`;
+  html += '<div class="elf-td-players">';
+  ps.forEach(p => { html += _elfPlayerCardHtml(p); });
+  html += '</div>';
+  detailEl.innerHTML = html;
+  detailEl.style.display = '';
+  setTimeout(() => detailEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+};
+
+window._elfBackToOverview = function(){
+  const input = document.getElementById('elf-search-input');
+  if(input) input.value = '';
+  const resultsEl = document.getElementById('elf-results');
+  if(resultsEl) _elfShowOverview(loadPlayers(), resultsEl);
+};
+
+function _elfPlayerCardHtml(p){
+  const NIVEAU_LABEL = { A:'A – Toptalent', B:'B – Belofte', C:'C – Gemiddeld', D:'D – Beperkt' };
+  const naam = p.naam ? escapeHtml(p.naam) : '<em class="elf-unnamed">Naam onbekend</em>';
+  const pos = positionLabel(p.positie) || '';
+  const hn = p.huidig_niveau ? (NIVEAU_LABEL[p.huidig_niveau]||p.huidig_niveau) : '';
+  const isObs = p.rapport_type === 'observatie';
+  const typeBadge = isObs
+    ? '<span class="elf-badge elf-badge-obs">OBS</span>'
+    : '<span class="elf-badge elf-badge-rapport">Rapport</span>';
+  const meta = [pos, hn].filter(Boolean).join(' \xb7 ');
+  return `<div class="elf-player-card" onclick="openDetail(${JSON.stringify(p.id)})">
+  <div class="elf-player-top"><div class="elf-player-naam">${naam}</div>${typeBadge}</div>
+  ${meta ? `<div class="elf-player-meta">${escapeHtml(meta)}</div>` : ''}
+</div>`;
+}
+
+function _elfDoSearch(query){ _elfShowClub(query); }
 window.renderElftallen = renderElftallen;
 
 function renderCompare(){
@@ -18697,7 +18669,7 @@ function shWireClubAC(input){
   input.setAttribute('autocomplete','off');
   input.addEventListener('input', () => {
     const q = input.value.trim().toLowerCase();
-    if(!q || q.length < 2){ window.shAC?.close(); return; }
+    if(!q){ window.shAC?.close(); return; }
     const clubs = (typeof HV_CLUBS !== 'undefined') ? HV_CLUBS : [];
     const startsWith = [], contains = [];
     for(const c of clubs){
@@ -18721,11 +18693,36 @@ function shWireLeeftijdAC(input){
   if(!input) return;
   input.setAttribute('autocomplete','off');
   input.addEventListener('input', () => {
-    const q = input.value.trim().toLowerCase().replace(/[\s.]/g, '');
-    if(!q){ window.shAC?.close(); return; }
-    const matches = _SH_ELFTALLEN.filter(e => { const n=e.toLowerCase().replace(/[\s.]/g,''); return n.startsWith(q)||n.replace(/-\d+$/,'').endsWith(q)||n.includes(q); }).slice(0,12);
+    const raw = input.value.trim();
+    if(!raw){ window.shAC?.close(); return; }
+    // Typed a number like "8","10","15" -> exact age match
+    const numMatch = raw.match(/^(\d{1,2})(-(\d{1,2}))?$/);
+    let matches;
+    if(numMatch){
+      const age = parseInt(numMatch[1]);
+      const teamNr = numMatch[3] ? parseInt(numMatch[3]) : null;
+      if(age >= 8 && age <= 23){
+        matches = _SH_ELFTALLEN.filter(e => {
+          const parts = e.split(/[.\-]/); // ["O","8","1"]
+          if(parseInt(parts[1]) !== age) return false;
+          if(teamNr !== null) return parseInt(parts[2]) === teamNr;
+          return true;
+        });
+      } else { matches = []; }
+    } else {
+      // Text like "O.8", "O.8-1", "o8" etc
+      const q = raw.toLowerCase().replace(/[\s.]/g, '');
+      matches = _SH_ELFTALLEN.filter(e => {
+        const n = e.toLowerCase().replace(/[\s.]/g, '');
+        return n.startsWith(q);
+      });
+    }
+    matches = matches.slice(0, 12);
     if(!matches.length){ window.shAC?.close(); return; }
-    window.shAC?.show(input, matches.map(e=>({label:e,primary:e,secondary:''})), item => { input.value=item.label; input.dispatchEvent(new Event('change',{bubbles:true})); });
+    window.shAC?.show(input, matches.map(e=>({label:e,primary:e,secondary:''})), item => {
+      input.value = item.label;
+      input.dispatchEvent(new Event('change', {bubbles:true}));
+    });
   });
   input.addEventListener('keydown', e => { if(window.shAC?.onKey(e)) e.preventDefault(); });
   input.addEventListener('blur', () => setTimeout(() => window.shAC?.close(), 150));

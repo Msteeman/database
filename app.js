@@ -18720,6 +18720,26 @@ window.switchMatchesSubview = switchMatchesSubview;
   else wire();
 })();
 
+// s35cg: laad gebruikersrol vanuit Firestore (coordinator/admin check)
+async function loadUserRole(){
+  try {
+    if(!currentUser) return;
+    const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const db = getFirestore();
+    const snap = await getDoc(doc(db, 'users', currentUser.uid));
+    const role = snap.exists() ? (snap.data().role || 'scout') : 'scout';
+    window._shUserRole = role;
+    // Coordinator-features tonen/verbergen
+    document.querySelectorAll('[data-role-min="coordinator"]').forEach(el => {
+      el.style.display = (role === 'coordinator' || role === 'admin') ? '' : 'none';
+    });
+  } catch(_){
+    // Geen rol-data beschikbaar — geen probleem, app werkt als standaard scout
+    window._shUserRole = 'scout';
+  }
+}
+window.loadUserRole = loadUserRole;
+
 onAuthStateChanged(auth, async (user) => {
   if(user){
     currentUser = user;

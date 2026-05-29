@@ -5883,6 +5883,47 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
       // einde s35ak
       // s35ad: s35ab synchroon-schrijf verwijderd — die maakte duplicaten.
       // doSave() (autosave 800ms) zorgt nu zelf voor uid + initiele save.
+
+      // ── Snelnotitie terms → rapport-velden ──────────────────────────────
+      // Zoek de snelnotitie voor deze speler en vul per-onderdeel tekstvelden
+      try {
+        const _snMap = {
+          'techniek':     'f-tekst-techniek',
+          'inzicht':      'f-tekst-inzicht',
+          'mentaliteit':  'f-tekst-grit',
+          'explosiviteit':'f-tekst-explosiviteit',
+          'sprinten':     'f-tekst-sprinten',
+          'duelleren':    'f-tekst-duelleren',
+          'wendbaarheid': 'f-tekst-wendbaarheid',
+          'algemeen':     'f-notities'
+        };
+        const _parseSNTerm = (tekst, term) => {
+          if(!tekst) return '';
+          const re = new RegExp('^\\s*' + term + '\\s*:\\s*(.*)', 'mi');
+          const m2 = tekst.match(re);
+          return (m2 && m2[1]) ? m2[1].trim() : '';
+        };
+        // Haal snelnotitie op: eerst via spelerKey, dan via concept.opmerkingen
+        let _snTekst = '';
+        if(Array.isArray(prog.snelnotities)){
+          const _sn = prog.snelnotities.find(s => s && s.spelerKey === progSp.id);
+          if(_sn && _sn.tekst) _snTekst = _sn.tekst;
+        }
+        // Fallback: als concept al opmerkingen heeft, gebruik die
+        if(!_snTekst && slotConceptHint && slotConceptHint.opmerkingen)
+          _snTekst = slotConceptHint.opmerkingen;
+        if(_snTekst){
+          Object.entries(_snMap).forEach(([term, fid]) => {
+            const val = _parseSNTerm(_snTekst, term);
+            if(val){
+              const el = document.getElementById(fid);
+              if(el && !el.value) el.value = val;
+            }
+          });
+        }
+      } catch(_snErr){ console.warn('sn-map', _snErr); }
+      // ────────────────────────────────────────────────────────────────────
+
       // Banner met concept-status
       injectScoutingBanner(prog, progSp, matchedPlayer);
       // s35am (#6): voor-rapport (progSp.voor_notities) read-only bovenaan rapport.
@@ -5923,6 +5964,14 @@ function openObservatieForm(prog, sn){
   setV('obs-omschrijving', '');
   setV('obs-positie', sn && (sn.positie||''));
   setV('obs-club', sn && (sn.club || (prog && (prog.uit||prog.thuis)||'')));
+  // elftal: uit snelnotitie, anders uit programma
+  const _obsElftal = (sn && sn.elftal) || (prog && ((prog.thuis_elftal||'').trim() || (prog.uit_elftal||'').trim() || (prog.leeftijd||'').trim())) || '';
+  setV('obs-elftal', _obsElftal);
+  // Hersluit knoppen bij elke open (voorkomt z-index/focus problemen)
+  const _obsCloseEl = document.getElementById('obs-modal-close');
+  const _obsCancelEl = document.getElementById('obs-cancel');
+  if(_obsCloseEl) _obsCloseEl.onclick = _obsClose;
+  if(_obsCancelEl) _obsCancelEl.onclick = _obsClose;
   setV('obs-niveau', '');
   setV('obs-advies', '');
   // Wire club autocomplete
@@ -5930,6 +5979,11 @@ function openObservatieForm(prog, sn){
   if(clubIn && typeof shWireClubAC === 'function' && !clubIn._obsAcWired){
     clubIn._obsAcWired = true;
     shWireClubAC(clubIn);
+  }
+  const elftIn = document.getElementById('obs-elftal');
+  if(elftIn && typeof shWireLeeftijdAC === 'function' && !elftIn._obsAcWired){
+    elftIn._obsAcWired = true;
+    shWireLeeftijdAC(elftIn);
   }
   // Wedstrijd context
   const ctxEl = document.getElementById('obs-wedstrijd-ctx');
@@ -5965,6 +6019,7 @@ async function _obsSubmit(e){
     const omschrijving = (document.getElementById('obs-omschrijving')?.value||'').trim();
     const rug = (document.getElementById('obs-rug')?.value||'').trim();
     const positie = (document.getElementById('obs-positie')?.value||'').trim();
+    const elftal = (document.getElementById('obs-elftal')?.value||'').trim();
     const club = (document.getElementById('obs-club')?.value||'').trim();
     const niveau = document.getElementById('obs-niveau')?.value||'';
     const advies = document.getElementById('obs-advies')?.value||'';
@@ -5985,7 +6040,7 @@ async function _obsSubmit(e){
       voornaam, achternaam,
       naam_onbekend: !naam,
       omschrijving: naam ? '' : omschrijving,
-      club, positie,
+      club, positie, elftal,
       rugnummer: rug,
       notities: tekst,
       huidig_niveau: niveau,
@@ -6301,6 +6356,7 @@ function renderActiveScouting(){
             <div class="sa-status ${status}">${statusLabel}</div>
             <div class="sa-header-acts">
               <button class="btn-ghost sa-grad sa-trigger-snel" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}" title="Spelersnotitie toevoegen">+ Notitie</button>
+              <button class="btn-ghost sa-grad sa-trigger-obs" data-sa-act="add-observatie" data-progid="${escapeHtml(prog.id)}" title="Directe observatie voor nieuwe speler">+ Observatie</button>
               <button class="btn-ghost sa-grad sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}" title="Wedstrijdnotitie toevoegen">+ Wedstrijd</button>
             </div>
           </div>
@@ -6747,6 +6803,7 @@ function renderActiveScouting(){
       // alleen via tab Wedstrijden.
       if(act === 'add-snel-notitie' || act === 'edit-snel-notitie' ||
          act === 'add-snel-wstr' || act === 'edit-snel-wstr' || act === 'del-snel-wstr' ||
+         act === 'add-observatie' ||
          act === 'convert-snel-to-rapport'){
         const __lockProg = programmaCache.find(p => p.id === progId);
         if(__lockProg && typeof _shIsMatchLocked === 'function' && _shIsMatchLocked(__lockProg)){
@@ -6989,6 +7046,12 @@ function renderActiveScouting(){
           try { form.scrollIntoView({behavior:'smooth', block:'center'}); } catch(_){}
         }
         if(naamIn) naamIn.focus();
+      } else if(act === 'add-observatie'){
+        // Direct observatieformulier openen voor nieuwe/onbekende speler
+        const _obsProg = programmaCache.find(p => p && p.id === progId);
+        if(_obsProg && typeof openObservatieForm === 'function'){
+          openObservatieForm(_obsProg, {});
+        }
       } else if(act === 'add-snel-wstr'){
         // s35be: snel wedstrijdnotitie (vrije tekst — tactiek/score/weer).
         // s35bm: trigger-toggle verwijderd, no-op bij re-click.
@@ -13287,7 +13350,7 @@ function renderMatches(){
                 ${prev ? `<div class="pm-item-preview">${prev}</div>` : ''}
               </div>
               <div class="pm-item-acts">
-                <button type="button" class="pm-item-btn new" data-pm-sn-rapport="${escapeHtml(m.progId)}" data-pm-sn-id="${escapeHtml(sn.id||'')}">\u2192 Rapport</button>
+                <button type="button" class="pm-item-btn new" data-pm-sn-obs="${escapeHtml(m.progId)}" data-pm-sn-id="${escapeHtml(sn.id||'')}">\u2192 Observatie</button>
               </div>
             </div>`;
           }).join('');
@@ -13300,9 +13363,7 @@ function renderMatches(){
         <textarea class="pm-wstr-ta" data-pm-wstr-prog="${escapeHtml(m.progId)}" rows="3"
           placeholder="Tactiek, score, sfeer, bijzonderheden...">${escapeHtml(_wstrInitTekst)}</textarea>
         <div class="pm-wstr-actions">
-          ${_wstrVerwerkt
-            ? `<span class="pm-item-done">✓ Ingediend</span>`
-            : `<button type="button" class="pm-item-btn wstr new" data-pm-wstr="${escapeHtml(m.progId)}">→ Volledig rapport</button>`}
+          ${_wstrVerwerkt ? `<span class="pm-item-done">✓ Ingediend</span>` : ''}
         </div>
       </div>`;
       const _chevP = `<span class="match-chevron pm-chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;
@@ -13632,18 +13693,16 @@ function renderMatches(){
         if(typeof openScoutingPlayerForm === 'function') openScoutingPlayerForm(prog, sp, player, concept);
         return;
       }
-      // s93: losse notitie → rapport knop
-      const btnSnRapport = e.target.closest('[data-pm-sn-rapport]');
-      if(btnSnRapport){
+      // s93: losse notitie → observatie knop
+      const btnSnObs = e.target.closest('[data-pm-sn-obs]');
+      if(btnSnObs){
         e.stopPropagation();
-        const progId2 = btnSnRapport.dataset.pmSnRapport;
-        const snId    = btnSnRapport.dataset.pmSnId;
+        const progId2 = btnSnObs.dataset.pmSnObs;
+        const snId    = btnSnObs.dataset.pmSnId;
         const prog2   = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === progId2) : null;
         if(!prog2){ if(typeof toast === 'function') toast('Wedstrijd niet gevonden', true); return; }
-        const sns2 = prog2.snelnotities || [];
-        const snIdx2 = sns2.findIndex(s => s && (s.id === snId || (s.id == null && snId === '')));
-        if(snIdx2 < 0){ if(typeof toast === 'function') toast('Notitie niet gevonden', true); return; }
-        if(typeof _shConvertSnelToRapport === 'function') _shConvertSnelToRapport(progId2, snIdx2);
+        const sn2     = (prog2.snelnotities||[]).find(s => s && (s.id === snId || (s.id == null && snId === '')));
+        if(typeof openObservatieForm === 'function') openObservatieForm(prog2, sn2 || {});
         return;
       }
       // s93: wedstrijdrapport knop

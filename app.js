@@ -10195,185 +10195,148 @@ function renderElftallen(){
     if(input){
       input._elfWired = true;
       if(typeof shWireClubAC === 'function') shWireClubAC(input);
-      const doSearch = () => {
-        const v = input.value.trim();
-        if(v) _elfShowClub(v, players);
-        else _elfShowOverview(players, resultsEl);
-      };
+      const doSearch = () => _elfShowTeamTiles(loadPlayers(), resultsEl, input.value.trim());
+      input.addEventListener('input', doSearch);
       input.addEventListener('change', doSearch);
       input.addEventListener('keydown', e => { if(e.key === 'Enter') doSearch(); });
       const btn = document.getElementById('elf-search-btn');
       if(btn){
         btn.textContent = 'Wis';
-        btn.addEventListener('click', () => { input.value = ''; _elfShowOverview(loadPlayers(), resultsEl); });
+        btn.addEventListener('click', () => { input.value = ''; _elfShowTeamTiles(loadPlayers(), resultsEl, ''); });
       }
     }
     if(chipsEl) chipsEl.style.display = 'none';
   }
 
   const q = (input?.value || '').trim();
-  if(q) _elfShowClub(q, players);
-  else _elfShowOverview(players, resultsEl);
+  _elfShowTeamTiles(players, resultsEl, q);
 }
 
-function _elfShowOverview(players, resultsEl){
-  if(!resultsEl) return;
-  if(!players.length){
-    resultsEl.innerHTML = '<div class="elf-empty">Nog geen spelers gescout. Voeg een spelerrapport toe om te beginnen.</div>';
-    return;
-  }
-  const clubMap = new Map();
-  players.forEach(p => {
-    const club = (p.club || 'Onbekende club').trim();
-    if(!clubMap.has(club)) clubMap.set(club, []);
-    clubMap.get(club).push(p);
-  });
-  const clubs = [...clubMap.entries()].sort((a,b) => b[1].length - a[1].length || a[0].localeCompare(b[0],'nl'));
-
-  let html = `<div class="elf-overview-title">Gescoutte clubs <span class="elf-ov-count">${clubs.length}</span></div>`;
-  html += '<div class="elf-clubs-grid">';
-  clubs.forEach(([club, ps]) => {
-    const nRapport = ps.filter(p => p.rapport_type !== 'observatie').length;
-    const nObs = ps.filter(p => p.rapport_type === 'observatie').length;
-    const uniqTeams = new Set(ps.map(p => (p.elftal||deriveElftalFromReport(p)||'').trim()).filter(Boolean)).size;
-    html += `<div class="elf-club-card" onclick="window._elfClubCardClick(${JSON.stringify(club)})">
-  <div class="elf-cc-initials">${escapeHtml(club.replace(/^[^A-Za-z0-9]*/,'').slice(0,2).toUpperCase())}</div>
-  <div class="elf-cc-body">
-    <div class="elf-cc-naam">${escapeHtml(club)}</div>
-    <div class="elf-cc-stats">
-      <span class="elf-cc-stat"><b>${ps.length}</b> speler${ps.length===1?'':'s'}</span>
-      ${uniqTeams ? `<span class="elf-cc-dot">·</span><span class="elf-cc-stat"><b>${uniqTeams}</b> elftal${uniqTeams===1?'':'len'}</span>` : ''}
-      ${nRapport ? `<span class="elf-cc-badge elf-cc-badge-r">${nRapport}R</span>` : ''}
-      ${nObs ? `<span class="elf-cc-badge elf-cc-badge-o">${nObs}O</span>` : ''}
-    </div>
-  </div>
-  <div class="elf-cc-arrow">›</div>
-</div>`;
-  });
-  html += '</div>';
-  resultsEl.innerHTML = html;
-}
-
-window._elfClubCardClick = function(club){
-  const input = document.getElementById('elf-search-input');
-  if(input) input.value = club;
-  _elfShowClub(club);
-};
-
-function _elfShowClub(clubName, _players){
-  const players = _players || loadPlayers();
-  const resultsEl = document.getElementById('elf-results');
-  if(!resultsEl) return;
-
-  const q = clubName.toLowerCase();
-  const clubPlayers = players.filter(p => (p.club||'').toLowerCase().includes(q));
-
+function _elfBuildTeamMap(players){
   const teamMap = new Map();
-  clubPlayers.forEach(p => {
-    const elftal = (p.elftal || deriveElftalFromReport(p)||'').trim();
-    if(elftal){
-      if(!teamMap.has(elftal)) teamMap.set(elftal, []);
-      teamMap.get(elftal).push(p);
-    }
+  players.forEach(p => {
+    const club  = (p.club  || 'Onbekende club').trim();
+    const elftal = (p.elftal || deriveElftalFromReport(p) || '').trim();
+    const key = club + '\x00' + elftal;
+    if(!teamMap.has(key)) teamMap.set(key, { club, elftal, players: [] });
+    teamMap.get(key).players.push(p);
   });
+  return teamMap;
+}
 
-  const displayClub = clubPlayers.length ? (clubPlayers[0].club || clubName) : clubName;
-  const totalPlayers = clubPlayers.length;
-  const totalTeams = teamMap.size;
+function _elfTeamColor(elftal){
+  const m = elftal.match(/O\.(\d+)/);
+  const age = m ? parseInt(m[1]) : 15;
+  if(age <= 10) return 'elf-tile-green';
+  if(age <= 13) return 'elf-tile-blue';
+  if(age <= 16) return 'elf-tile-purple';
+  if(age <= 19) return 'elf-tile-gold';
+  return 'elf-tile-red';
+}
 
-  let html = `<div class="elf-club-header">
-  <div class="elf-ch-logo">${escapeHtml(displayClub.replace(/^[^A-Za-z0-9]*/,'').slice(0,2).toUpperCase())}</div>
-  <div class="elf-ch-info">
-    <div class="elf-ch-naam">${escapeHtml(displayClub)}</div>
-    <div class="elf-ch-sub">${totalPlayers} speler${totalPlayers===1?'':'s'} gescout · ${totalTeams} elftal${totalTeams===1?'':'len'}</div>
-  </div>
-  <button class="elf-ch-back" onclick="window._elfBackToOverview()">← Clubs</button>
-</div>`;
+function _elfShowTeamTiles(players, resultsEl, query){
+  if(!resultsEl) return;
+  const teamMap = _elfBuildTeamMap(players);
+  const q = query.toLowerCase();
 
-  html += '<div class="elf-age-grid">';
-  for(let age=8; age<=23; age++){
-    const ageLabel = 'O.'+age;
-    let hasAnyInAge = false;
-    for(let nr=1; nr<=10; nr++){ if(teamMap.has(ageLabel+'-'+nr)){ hasAnyInAge=true; break; } }
-    const rowClass = hasAnyInAge ? 'elf-age-row elf-age-row-active' : 'elf-age-row';
-    html += `<div class="${rowClass}"><div class="elf-age-label">${ageLabel}</div><div class="elf-age-teams">`;
-    for(let nr=1; nr<=10; nr++){
-      const key = ageLabel+'-'+nr;
-      const ps = teamMap.get(key)||[];
-      const hasPl = ps.length > 0;
-      html += hasPl
-        ? `<div class="elf-team-cell elf-team-has" data-team="${key}" onclick="window._elfToggleTeam(this,'${key}')"><span class="elf-tc-nr">${nr}</span><span class="elf-tc-count">${ps.length}</span></div>`
-        : `<div class="elf-team-cell elf-team-empty"><span class="elf-tc-nr">${nr}</span></div>`;
-    }
-    html += '</div></div>';
+  let teams = [...teamMap.values()].filter(t => t.elftal);
+  if(q) teams = teams.filter(t => t.club.toLowerCase().includes(q) || t.elftal.toLowerCase().includes(q));
+  teams.sort((a,b) => { const cl = a.club.localeCompare(b.club,'nl'); return cl !== 0 ? cl : a.elftal.localeCompare(b.elftal,'nl'); });
+
+  if(!teams.length){
+    resultsEl.innerHTML = `<div class="elf-empty">${q ? `Geen elftallen gevonden voor <strong>${escapeHtml(query)}</strong>.` : 'Nog geen spelers gescout.'}</div>`;
+    return;
   }
-  html += '</div>';
-  html += '<div id="elf-team-detail" class="elf-team-detail" style="display:none"></div>';
 
-  const unassigned = clubPlayers.filter(p => !(p.elftal||deriveElftalFromReport(p)||'').trim());
-  if(unassigned.length){
-    html += `<div class="elf-unassigned">
-  <div class="elf-unassigned-title">Zonder elftal (${unassigned.length})</div>
-  <div class="elf-group-players">`;
-    unassigned.forEach(p => { html += _elfPlayerCardHtml(p); });
-    html += '</div></div>';
+  let html = `<div class="elf-section-label">Elftallen <span class="elf-section-count">${teams.length}</span></div>`;
+  html += '<div class="elf-tiles-grid">';
+  teams.forEach(t => {
+    const nR = t.players.filter(p => p.rapport_type !== 'observatie').length;
+    const nO = t.players.filter(p => p.rapport_type === 'observatie').length;
+    const col = _elfTeamColor(t.elftal);
+    html += `<div class="elf-tile ${col}" onclick="window._elfOpenTeam(${JSON.stringify(t.club)},${JSON.stringify(t.elftal)})">
+  <div class="elf-tile-elftal">${escapeHtml(t.elftal)}</div>
+  <div class="elf-tile-club">${escapeHtml(t.club)}</div>
+  <div class="elf-tile-footer">
+    <span class="elf-tile-players">${t.players.length} speler${t.players.length===1?'':'s'}</span>
+    <span class="elf-tile-badges">${nR?`<span class="elf-tbadge elf-tbadge-r">${nR}R</span>`:''}${nO?`<span class="elf-tbadge elf-tbadge-o">${nO}O</span>`:''}</span>
+  </div>
+</div>`;
+  });
+  html += '</div>';
+
+  // Unassigned row
+  const unassigned = players.filter(p => !(p.elftal||deriveElftalFromReport(p)||'').trim());
+  if(unassigned.length && !q){
+    html += `<div class="elf-unassigned-row" onclick="window._elfOpenUnassigned()">
+  <span>&#9679; ${unassigned.length} speler${unassigned.length===1?'':'s'} zonder elftal</span>
+  <span class="elf-ua-arrow">›</span>
+</div>`;
   }
 
   resultsEl.innerHTML = html;
-  resultsEl._teamMap = teamMap;
 }
 
-window._elfToggleTeam = function(cell, teamKey){
-  const detailEl = document.getElementById('elf-team-detail');
-  const resultsEl = document.getElementById('elf-results');
-  if(!detailEl || !resultsEl) return;
-  const teamMap = resultsEl._teamMap;
-  const ps = (teamMap && teamMap.get(teamKey)) || [];
-
-  if(cell._active){
-    cell._active = false;
-    cell.classList.remove('elf-team-active');
-    detailEl.style.display = 'none';
-    detailEl.innerHTML = '';
-    return;
-  }
-  document.querySelectorAll('.elf-team-active').forEach(c => { c._active=false; c.classList.remove('elf-team-active'); });
-  cell._active = true;
-  cell.classList.add('elf-team-active');
-
-  let html = `<div class="elf-td-header">${escapeHtml(teamKey)}<span class="elf-td-count">${ps.length} speler${ps.length===1?'':'s'}</span></div>`;
-  html += '<div class="elf-td-players">';
-  ps.forEach(p => { html += _elfPlayerCardHtml(p); });
-  html += '</div>';
-  detailEl.innerHTML = html;
-  detailEl.style.display = '';
-  setTimeout(() => detailEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
+window._elfOpenTeam = function(club, elftal){
+  const ps = loadPlayers().filter(p => {
+    const pc = (p.club||'').trim();
+    const pe = (p.elftal||deriveElftalFromReport(p)||'').trim();
+    return pc === club && pe === elftal;
+  });
+  _elfShowPlayerTiles(club, elftal, ps);
 };
 
-window._elfBackToOverview = function(){
-  const input = document.getElementById('elf-search-input');
-  if(input) input.value = '';
-  const resultsEl = document.getElementById('elf-results');
-  if(resultsEl) _elfShowOverview(loadPlayers(), resultsEl);
+window._elfOpenUnassigned = function(){
+  const ps = loadPlayers().filter(p => !(p.elftal||deriveElftalFromReport(p)||'').trim());
+  _elfShowPlayerTiles('', 'Zonder elftal', ps);
 };
 
-function _elfPlayerCardHtml(p){
-  const NIVEAU_LABEL = { A:'A – Toptalent', B:'B – Belofte', C:'C – Gemiddeld', D:'D – Beperkt' };
-  const naam = p.naam ? escapeHtml(p.naam) : '<em class="elf-unnamed">Naam onbekend</em>';
-  const pos = positionLabel(p.positie) || '';
-  const hn = p.huidig_niveau ? (NIVEAU_LABEL[p.huidig_niveau]||p.huidig_niveau) : '';
-  const isObs = p.rapport_type === 'observatie';
-  const typeBadge = isObs
-    ? '<span class="elf-badge elf-badge-obs">OBS</span>'
-    : '<span class="elf-badge elf-badge-rapport">Rapport</span>';
-  const meta = [pos, hn].filter(Boolean).join(' \xb7 ');
-  return `<div class="elf-player-card" onclick="openDetail(${JSON.stringify(p.id)})">
-  <div class="elf-player-top"><div class="elf-player-naam">${naam}</div>${typeBadge}</div>
-  ${meta ? `<div class="elf-player-meta">${escapeHtml(meta)}</div>` : ''}
+function _elfShowPlayerTiles(club, elftal, players){
+  const resultsEl = document.getElementById('elf-results');
+  if(!resultsEl) return;
+  const NIVEAU = { A:'Toptalent', B:'Belofte', C:'Gemiddeld', D:'Beperkt' };
+
+  let html = `<div class="elf-back-bar">
+  <button class="elf-back-btn" onclick="window._elfBackToTiles()">&#8592; Terug</button>
+  <div class="elf-back-info">
+    <div class="elf-back-elftal">${escapeHtml(elftal)}</div>
+    ${club ? `<div class="elf-back-club">${escapeHtml(club)}</div>` : ''}
+  </div>
+  <div class="elf-back-count">${players.length} speler${players.length===1?'':'s'}</div>
 </div>`;
+
+  html += '<div class="elf-player-tiles-grid">';
+  players.forEach(p => {
+    const naam = p.naam || 'Naam onbekend';
+    const pos  = positionLabel(p.positie) || '';
+    const hn   = p.huidig_niveau ? (NIVEAU[p.huidig_niveau]||p.huidig_niveau) : '';
+    const pn   = p.potentieel_niveau ? (NIVEAU[p.potentieel_niveau]||p.potentieel_niveau) : '';
+    const isObs = p.rapport_type === 'observatie';
+    const typeClass = isObs ? 'elf-ptile-obs' : 'elf-ptile-rapport';
+    const typeLabel = isObs ? 'OBS' : 'Rapport';
+    const niveauClass = p.huidig_niveau ? `elf-niv-${p.huidig_niveau.toLowerCase()}` : '';
+
+    html += `<div class="elf-player-tile ${typeClass}" onclick="openDetail(${JSON.stringify(p.id)})">
+  <div class="elf-pt-header">
+    <span class="elf-pt-naam">${escapeHtml(naam)}</span>
+    <span class="elf-pt-type">${typeLabel}</span>
+  </div>
+  ${pos ? `<div class="elf-pt-pos">${escapeHtml(pos)}</div>` : ''}
+  ${hn  ? `<div class="elf-pt-niveau ${niveauClass}">${escapeHtml(hn)}${pn && pn!==hn?' → '+escapeHtml(pn):''}</div>` : ''}
+</div>`;
+  });
+  html += '</div>';
+  resultsEl.innerHTML = html;
 }
 
-function _elfDoSearch(query){ _elfShowClub(query); }
+window._elfBackToTiles = function(){
+  const input = document.getElementById('elf-search-input');
+  const q = (input?.value||'').trim();
+  const resultsEl = document.getElementById('elf-results');
+  if(resultsEl) _elfShowTeamTiles(loadPlayers(), resultsEl, q);
+};
+
+function _elfDoSearch(query){ _elfShowTeamTiles(loadPlayers(), document.getElementById('elf-results'), query); }
 window.renderElftallen = renderElftallen;
 
 function renderCompare(){

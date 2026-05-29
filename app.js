@@ -5948,13 +5948,23 @@ function _obsParseTermFromTekst(tekst, term){
 function openObservatieForm(prog, sn){
   const bd = document.getElementById('obs-backdrop');
   if(!bd) return;
-  // Pre-fill terms from snelnotitie tekst
+  // Alleen tekst parsen als sn een naam heeft (niet leeg/nieuw) + tekst geldig is
+  const _isNewDraft = !sn || !sn.naam;
+  const _obsTermTekst = _isNewDraft ? '' : (sn && sn.tekst || '');
+  // Valideer: als een parsed waarde zelf een termnaam is (bijv "mentaliteit:") → corruptie, negeer
+  const _safeObsTermVal = (tekst, term) => {
+    const v = _obsParseTermFromTekst(tekst, term);
+    if(!v) return '';
+    // Corruptie-check: waarde eindigt met ':' of is zelf een termnaam → leeg
+    if(/^[a-z]+:?$/.test(v)) return '';
+    return v;
+  };
   const termsEl = document.getElementById('obs-terms');
   if(termsEl){
     termsEl.innerHTML = _OBS_TERMS.map(t => `
       <div class="obs-term-row">
         <span class="obs-term-label">${t}</span>
-        <input class="obs-term-in" data-term="${t}" type="text" placeholder="${escapeHtml(_OBS_TERM_PH[t]||'')}" value="${escapeHtml(_obsParseTermFromTekst(sn && sn.tekst, t))}" />
+        <input class="obs-term-in" data-term="${t}" type="text" placeholder="${escapeHtml(_OBS_TERM_PH[t]||'')}" value="${escapeHtml(_safeObsTermVal(_obsTermTekst, t))}" />
       </div>`).join('');
   }
   // Pre-fill player info from snelnotitie
@@ -6385,6 +6395,11 @@ function renderActiveScouting(){
           <div class="sa-tile-name">${escapeHtml(naam)}${isOpvallend ? '<span class="sa-tile-star" aria-hidden="true">⭐</span>' : ''}</div>
           ${meta ? `<div class="sa-tile-meta">${escapeHtml(meta)}</div>` : ''}
           ${conceptTag}
+          <div class="sa-tile-obs-header">
+            <div class="sa-tile-obs-naam">${escapeHtml(naam)}</div>
+            ${meta ? `<div class="sa-tile-obs-sub">${escapeHtml(meta)}</div>` : ''}
+            <button type="button" class="sa-tile-obs-close" data-tile-act="close">×</button>
+          </div>
           <div class="sa-tile-panel">
             ${panelHtml}
           </div>

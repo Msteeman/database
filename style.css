@@ -9807,3 +9807,43 @@ tr.db-row-obs td:first-child {
 .sa-obs-draft-arrow {
   font-size: 14px; color: #a48dff; flex-shrink: 0;
 }
+
+/* ── Tile obs-header: zelfde look als obs-modal header ──────────────────── */
+.sa-tile-obs-header {
+  display: none;  /* alleen zichtbaar als tile open is */
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid rgba(124,95,245,0.2);
+  gap: 10px;
+  margin: -10px -12px 0;  /* negatieve margin om card-padding te overbruggen */
+}
+.sa-tile.open .sa-tile-obs-header { display: flex; }
+.sa-tile.open .sa-tile-name,
+.sa-tile.open .sa-tile-meta,
+.sa-tile.open .sa-tile-close { display: none !important; }
+.sa-tile-obs-naam {
+  font-size: 14px;
+  font-weight: 700;
+  color: #c4b0ff;
+  flex: 1;
+  min-width: 0;
+}
+.sa-tile-obs-sub {
+  font-size: 11px;
+  color: #a48dff;
+  margin-top: 2px;
+}
+.sa-tile-obs-close {
+  background: none;
+  border: none;
+  color: #a48dff;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 2px;
+  line-height: 1;
+  flex-shrink: 0;
+  opacity: .7;
+  transition: opacity .12s;
+}
+.sa-tile-obs-close:hover { opacity: 1; }

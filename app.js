@@ -6105,8 +6105,10 @@ async function _obsSubmit(e){
     }
     _obsClose();
     if(typeof toast === 'function') toast('Observatie opgeslagen ✓');
-    // Herlaad enkel het dashboard als we in de dashboard-view zitten
-    if(typeof renderDashboardAgenda === 'function') setTimeout(renderDashboardAgenda, 250);
+    // Zachte update: alleen activeScouting, geen full re-render (voorkomt intro-flash)
+    setTimeout(() => {
+      if(typeof renderActiveScouting === 'function') renderActiveScouting();
+    }, 200);
   } catch(err){
     console.error('obs submit error', err);
     if(typeof toast === 'function') toast('Fout bij opslaan', true);
@@ -6456,6 +6458,31 @@ function renderActiveScouting(){
           <textarea class="sa-snel-tekst" style="display:none;" aria-hidden="true"></textarea>
           </div><!-- /sa-snel-form-body -->
         </div>
+        ${(()=>{
+          // Opgevallen spelers: obs-drafts als paarse heropen-kaartjes
+          const _obsDrafts = (prog.snelnotities||[]).filter(sn => sn && sn.rapport_type === 'observatie' && sn.obs_draft === true && sn.ingediend !== true);
+          if(!_obsDrafts.length) return '';
+          return `<div class="sa-obs-drafts-section" data-progid="${escapeHtml(prog.id)}">
+            <div class="sa-obs-drafts-hdr">
+              <span class="sa-obs-drafts-icon">👁</span>
+              <span class="sa-obs-drafts-title">Opgevallen spelers (${_obsDrafts.length})</span>
+            </div>
+            ${_obsDrafts.map(sn => {
+              const _nm = escapeHtml(sn.naam || 'Nieuwe speler');
+              const _cl = escapeHtml(sn.club || '');
+              const _pos = escapeHtml(sn.positie || '');
+              const _sub = [_cl, _pos].filter(Boolean).join(' · ');
+              return `<div class="sa-obs-draft-card" data-obs-progid="${escapeHtml(prog.id)}" data-obs-snid="${escapeHtml(sn.id||'')}">
+                <div class="sa-obs-draft-avatar">👁</div>
+                <div class="sa-obs-draft-info">
+                  <div class="sa-obs-draft-naam">${_nm}</div>
+                  ${_sub ? `<div class="sa-obs-draft-sub">${_sub}</div>` : ''}
+                </div>
+                <div class="sa-obs-draft-arrow">→</div>
+              </div>`;
+            }).join('')}
+          </div>`;
+        })()}
         ${(prog.wedstrijdnotities && prog.wedstrijdnotities.length) ? `
         <div class="sa-wstrnotities-wrap" style="margin-top:10px; border-top:1px solid var(--border,#2a2f3a); padding-top:8px;">
           <div class="sa-wstr-toggle-row" data-sa-act="toggle-wstr" data-progid="${escapeHtml(prog.id)}" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; padding:4px 0;">
@@ -6485,7 +6512,7 @@ function renderActiveScouting(){
         ${(()=>{
           // s92: toon opgeslagen snelnotities van ongekoppelde spelers
           const _linkedKeys = new Set((prog.spelers||[]).map(s => s && s.id).filter(Boolean));
-          const _unsaved = (prog.snelnotities||[]).filter(sn => sn && sn.naam && !_linkedKeys.has(sn.spelerKey));
+          const _unsaved = (prog.snelnotities||[]).filter(sn => sn && sn.naam && !_linkedKeys.has(sn.spelerKey) && !(sn.rapport_type === 'observatie'));
           if(!_unsaved.length) return '';
           return `<div class="sa-saved-sns" style="margin-top:10px; border-top:1px solid var(--border,#2a2f3a); padding-top:8px;" data-progid="${escapeHtml(prog.id)}">
             <div class="sa-saved-sns-hdr" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; margin-bottom:0;">
@@ -6838,6 +6865,18 @@ function renderActiveScouting(){
         }
         if(tileTermIns[0]) setTimeout(() => tileTermIns[0].focus(), 60);
       }
+    });
+  });
+
+  // Opgevallen speler heropen-kaartjes
+  wrap.querySelectorAll('.sa-obs-draft-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const progId = card.dataset.obsProgid;
+      const snId   = card.dataset.obsSnid;
+      const prog2  = programmaCache && programmaCache.find(p => p && p.id === progId);
+      if(!prog2) return;
+      const sn2 = (prog2.snelnotities||[]).find(s => s && s.id === snId);
+      if(typeof openObservatieForm === 'function') openObservatieForm(prog2, sn2 || {});
     });
   });
 

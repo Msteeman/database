@@ -1378,8 +1378,9 @@ a { color: var(--accent); text-decoration: none; }
 .sa-tile { position: relative; }
 .sa-tile.open {
   grid-column: 1 / -1;
-  background: rgba(78,161,255,0.05);
-  border-color: rgba(78,161,255,0.45);
+  background: var(--bg-card, #12151e);
+  border-color: rgba(124,95,245,0.45);
+  border-radius: 14px;
   cursor: default;
 }
 .sa-tile.open:hover { transform: none; }
@@ -1389,8 +1390,15 @@ a { color: var(--accent); text-decoration: none; }
   margin-top: 0;
   padding: 14px 16px 16px;
   background: var(--bg-card, #12151e);
-  border-top: 1px solid var(--border, #2a2f3a);
+  border-top: 1px solid rgba(124,95,245,0.2);
   border-radius: 0 0 13px 13px;
+}
+/* Naam-balk van open tile: paars accent + obs-modal header stijl */
+.sa-tile.open .sa-tile-name {
+  color: #c4b0ff;
+}
+.sa-tile.linked.open {
+  border-color: rgba(124,95,245,0.55);
 }
 
 /* s92: tile structured 8-field form — obs-modal stijl */
@@ -9743,4 +9751,59 @@ tr.db-row-obs td:first-child {
 .recent-avatar.avatar-obs {
   background: linear-gradient(135deg, #7c5ff5 0%, #5b3ee0 100%) !important;
   color: #fff !important;
+}
+
+/* ── Opgevallen spelers sectie op live dashboard ──────────────────────────── */
+.sa-obs-drafts-section {
+  margin-top: 12px;
+  border-top: 1px solid rgba(124,95,245,0.25);
+  padding-top: 10px;
+}
+.sa-obs-drafts-hdr {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.sa-obs-drafts-icon { font-size: 13px; }
+.sa-obs-drafts-title {
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: #a48dff;
+}
+.sa-obs-draft-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(135deg, rgba(124,95,245,0.12) 0%, rgba(91,62,224,0.06) 100%);
+  border: 1px solid rgba(124,95,245,0.35);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 7px;
+  cursor: pointer;
+  transition: background .13s, border-color .13s;
+}
+.sa-obs-draft-card:hover {
+  background: linear-gradient(135deg, rgba(124,95,245,0.22) 0%, rgba(91,62,224,0.12) 100%);
+  border-color: rgba(124,95,245,0.6);
+}
+.sa-obs-draft-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7c5ff5, #5b3ee0);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; flex-shrink: 0;
+}
+.sa-obs-draft-info { flex: 1; min-width: 0; }
+.sa-obs-draft-naam {
+  font-size: 13px; font-weight: 700;
+  color: var(--text, #e5e9f5);
+}
+.sa-obs-draft-sub {
+  font-size: 11px; color: #a48dff; margin-top: 1px;
+}
+.sa-obs-draft-arrow {
+  font-size: 14px; color: #a48dff; flex-shrink: 0;
 }

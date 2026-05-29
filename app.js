@@ -6406,7 +6406,7 @@ function renderActiveScouting(){
                 <div class="sn-row-edit" style="display:none; margin-top:8px;">
                   <div class="sa-tile-terms">${_termFields}</div>
                   <div class="sn-edit-status" style="font-size:10.5px; color:var(--text-3); margin-top:3px; min-height:14px;"></div>
-                  <button type="button" class="sn-obs-btn" data-sn-obs="1" style="margin-top:6px; padding:5px 12px; font-size:11.5px; font-weight:600; border-radius:7px; background:rgba(99,102,241,0.12); border:1px solid rgba(99,102,241,0.3); color:#818cf8; cursor:pointer;">→ Opslaan als Observatie</button>
+                  <!-- Observatie-knop verwijderd: gebruik Wedstrijden-tab → → Observatie -->
                 </div>
               </div>`;
             }).join('')}
@@ -6660,7 +6660,8 @@ function renderActiveScouting(){
         // s35ca-1: 'edit-voorrap' handler verwijderd — voor-rapport flow weg
         return;
       }
-      // tile zelf: toggle uitklappen
+      // tile zelf: toggle uitklappen — klik op input/textarea niet sluiten
+      if(e.target.matches('input, textarea, select')) return;
       const isOpen = tile.classList.contains('open');
       // sluit andere tiles in dezelfde sa-card
       const card = tile.closest('.sa-card');
@@ -9468,22 +9469,33 @@ function _shOpenEditModal(m){
   if(players.length === 0){
     html += `<div class="wstr-edit-empty">Nog géén spelers gekoppeld aan deze wedstrijd.</div>`;
   } else {
+    // Zoek bijbehorende snelnotitie via spelerKey (voor preview)
+    const _editLinkedProgs = (typeof _shFindLinkedPrograms === 'function') ? _shFindLinkedPrograms(m) : [];
     html += players.map(pl => {
       const initials = (pl.naam || '?').split(/\s+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
       const posLabel = (typeof positionLabel === 'function' ? (positionLabel(pl.positie) || pl.positie || '') : (pl.positie || ''));
       const sub = [posLabel, pl.club].filter(Boolean).join(' • ');
       const isConcept = _shPlayerIsConcept(pl);
       const conceptBadge = isConcept ? `<span class="mdr-concept-badge">Concept</span>` : '';
-      const submitBtn = isConcept ? `<button type="button" class="wstr-edit-mini-btn primary" data-edit-submit="${escapeHtml(pl.id)}" title="Direct indienen">→ Indienen</button>` : '';
+      // Zoek snelnotitie voor deze speler
+      const _spKey = pl.programma_link && pl.programma_link.spelerKey;
+      let _snPrev = '';
+      if(_spKey){
+        const _snProg = _editLinkedProgs.find(p => p.id === (pl.programma_link && pl.programma_link.progId)) || _editLinkedProgs[0];
+        const _sn = _snProg && Array.isArray(_snProg.snelnotities) && _snProg.snelnotities.find(s => s && s.spelerKey === _spKey);
+        if(_sn && _sn.tekst){
+          _snPrev = _sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' · ').trim().slice(0,120);
+        }
+      }
       return `<div class="wstr-edit-item${isConcept?' is-concept':''}">
         <div class="wstr-edit-item-avatar">${escapeHtml(initials || '?')}</div>
         <div class="wstr-edit-item-main">
           <div class="wstr-edit-item-name">${escapeHtml(pl.naam || '—')}${conceptBadge}</div>
           ${sub ? `<div class="wstr-edit-item-sub">${escapeHtml(sub)}</div>` : ''}
+          ${_snPrev ? `<div class="wstr-edit-item-sn-prev">${escapeHtml(_snPrev)}</div>` : ''}
         </div>
         <div class="wstr-edit-item-actions">
-          ${submitBtn}
-          <button type="button" class="wstr-edit-mini-btn" data-edit-player="${escapeHtml(pl.id)}" title="Open rapport">Openen</button>
+          <button type="button" class="wstr-edit-mini-btn primary" data-edit-player="${escapeHtml(pl.id)}" title="Aanvullen en indienen als spelersrapport">→ Spelersrapport</button>
         </div>
       </div>`;
     }).join('');
@@ -9510,7 +9522,7 @@ function _shOpenEditModal(m){
           <div class="wstr-edit-note-title">${num}${escapeHtml(naam)}</div>
           ${tekst ? `<div class="wstr-edit-note-text">${escapeHtml(tekst)}</div>` : '<div class="wstr-edit-note-text" style="font-style:italic;opacity:0.7;">(geen tekst)</div>'}
         </div>
-        <button type="button" class="wstr-edit-note-action" data-edit-snel-prog="${escapeHtml(progId)}" data-edit-snel-idx="${snIdx}">Openen</button>
+        <button type="button" class="wstr-edit-note-action obs" data-edit-snel-obs="${escapeHtml(progId)}" data-edit-snel-obs-idx="${snIdx}">→ Observatie</button>
       </div>`;
     }).join('');
   }
@@ -9618,13 +9630,18 @@ function _shOpenEditModal(m){
       setTimeout(() => { if(window.__shCurrentEditMatch) _shOpenEditModal(window.__shCurrentEditMatch); }, 220);
     });
   });
-  bodyEl.querySelectorAll('[data-edit-snel-prog]').forEach(btn => {
+  // Nieuwe handler: → Observatie knop (niet-gekoppelde snelnotitie → observatieformulier)
+  bodyEl.querySelectorAll('[data-edit-snel-obs]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      const progId = btn.dataset.editSnelProg;
-      const idx = parseInt(btn.dataset.editSnelIdx, 10);
+      const progId = btn.dataset.editSnelObs;
+      const idx = parseInt(btn.dataset.editSnelObsIdx, 10);
+      const prog = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === progId) : null;
+      const sn = prog && Array.isArray(prog.snelnotities) ? prog.snelnotities[idx] : null;
       _shCloseEditModal();
-      _shConvertSnelToRapport(progId, idx);
+      if(typeof openObservatieForm === 'function'){
+        openObservatieForm(prog, sn || {});
+      }
     });
   });
   bodyEl.querySelectorAll('[data-edit-wstr-prog]').forEach(btn => {

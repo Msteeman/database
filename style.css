@@ -1230,7 +1230,7 @@ a { color: var(--accent); text-decoration: none; }
 .sa-tile-meta { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sa-empty-players { font-size: 12px; color: var(--text-3); font-style: italic; padding: 6px 0; }
 .sa-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.sa-actions .btn-ghost { font-size: 12px; padding: 6px 12px; }
+.sa-actions .btn-ghost { font-size: 13.5px; padding: 10px 18px; border-radius: 9px; }
 /* ===== s35bl: gradient op de drie spelers-uitklap actie-knoppen ===== */
 .sa-actions .sa-grad {
   background: linear-gradient(135deg, #ff8189 0%, #e30613 55%, #f5c518 100%);
@@ -6227,6 +6227,9 @@ tbody tr:last-child td { border-bottom: none; }
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
 }
 .wstr-edit-item-sub { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+.wstr-edit-item-sn-prev { font-size: 11px; color: var(--text-3); margin-top: 4px; font-style: italic; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.8; }
+.wstr-edit-note-action.obs { background: rgba(99,102,241,0.15); border-color: rgba(99,102,241,0.4); color: #818cf8; }
+.wstr-edit-note-action.obs:hover { background: rgba(99,102,241,0.25); }
 .wstr-edit-item-actions {
   display: flex; gap: 6px; flex-shrink: 0;
 }

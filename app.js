@@ -10225,7 +10225,7 @@ function _elfShowTeamTiles(players, resultsEl, query){
   teams.sort((a,b) => { const cl = a.club.localeCompare(b.club,'nl'); return cl !== 0 ? cl : a.elftal.localeCompare(b.elftal,'nl'); });
 
   if(!teams.length){
-    resultsEl.innerHTML = `<div class="elf-empty">${q ? `Geen elftallen gevonden voor <strong>${escapeHtml(query)}</strong>.` : 'Nog geen spelers gescout.'}</div>`;
+    resultsEl.innerHTML = `<div class="elf-empty">${q ? 'Geen elftallen gevonden voor <strong>'+escapeHtml(query)+'</strong>.' : 'Nog geen spelers gescout.'}</div>`;
     return;
   }
 
@@ -10235,30 +10235,33 @@ function _elfShowTeamTiles(players, resultsEl, query){
     const nR = t.players.filter(p => p.rapport_type !== 'observatie').length;
     const nO = t.players.filter(p => p.rapport_type === 'observatie').length;
     const col = _elfTeamColor(t.elftal);
-    html += `<div class="elf-tile ${col}" onclick="window._elfOpenTeam(${JSON.stringify(t.club)},${JSON.stringify(t.elftal)})">
+    html += `<div class="elf-tile ${col}" data-elf-club="${escapeAttr(t.club)}" data-elf-team="${escapeAttr(t.elftal)}">
   <div class="elf-tile-elftal">${escapeHtml(t.elftal)}</div>
   <div class="elf-tile-club">${escapeHtml(t.club)}</div>
   <div class="elf-tile-footer">
     <span class="elf-tile-players">${t.players.length} speler${t.players.length===1?'':'s'}</span>
-    <span class="elf-tile-badges">${nR?`<span class="elf-tbadge elf-tbadge-r">${nR}R</span>`:''}${nO?`<span class="elf-tbadge elf-tbadge-o">${nO}O</span>`:''}</span>
+    <span class="elf-tile-badges">${nR?'<span class="elf-tbadge elf-tbadge-r">'+nR+'R</span>':''}${nO?'<span class="elf-tbadge elf-tbadge-o">'+nO+'O</span>':''}</span>
   </div>
 </div>`;
   });
   html += '</div>';
 
-  // Unassigned row
   const unassigned = players.filter(p => !(p.elftal||deriveElftalFromReport(p)||'').trim());
   if(unassigned.length && !q){
-    html += `<div class="elf-unassigned-row" onclick="window._elfOpenUnassigned()">
-  <span>&#9679; ${unassigned.length} speler${unassigned.length===1?'':'s'} zonder elftal</span>
-  <span class="elf-ua-arrow">›</span>
-</div>`;
+    html += '<div class="elf-unassigned-row" id="elf-unassigned-btn"><span>&#9679; '+unassigned.length+' speler'+(unassigned.length===1?'':'s')+' zonder elftal</span><span class="elf-ua-arrow">›</span></div>';
   }
 
   resultsEl.innerHTML = html;
+  // Event delegation — no inline onclick (avoids escaping issues)
+  resultsEl.querySelectorAll('.elf-tile[data-elf-club]').forEach(tile => {
+    tile.addEventListener('click', () => _elfOpenTeam(tile.dataset.elfClub, tile.dataset.elfTeam));
+  });
+  const uaBtn = resultsEl.querySelector('#elf-unassigned-btn');
+  if(uaBtn) uaBtn.addEventListener('click', window._elfOpenUnassigned);
 }
 
-window._elfOpenTeam = function(club, elftal){
+function _elfOpenTeam(club, elftal){
+  window._elfOpenTeam = _elfOpenTeam;
   const ps = loadPlayers().filter(p => {
     const pc = (p.club||'').trim();
     const pe = (p.elftal||deriveElftalFromReport(p)||'').trim();

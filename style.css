@@ -6387,14 +6387,7 @@ tbody tr:last-child td { border-bottom: none; }
   margin-left: 6px;
 }
 .match-dropdown-row .mdr-submit:hover { filter: brightness(1.15); }
-.match-dropdown-row .mdr-concept-badge {
-  background: rgba(245,200,66,0.18); color: #f5c842;
-  border: 1px solid rgba(245,200,66,0.45);
-  font-size: 9.5px; font-weight: 800;
-  padding: 2px 6px; border-radius: 4px;
-  text-transform: uppercase; letter-spacing: 0.06em;
-  margin-left: 6px;
-}
+.match-dropdown-row .mdr-concept-badge { display:inline-block; font-size:9px; font-weight:700; background:rgba(255,255,255,.07); color:var(--text-2,#9aa3b7); border:1px solid var(--border2,#2d3242); border-radius:4px; padding:1px 5px; margin-left:5px; vertical-align:middle; }
 
 /* Verwerk-toggle (lock pill) */
 .match-verwerk-toggle {
@@ -8789,8 +8782,8 @@ tbody tr:last-child td { border-bottom: none; }
 .cc-vs { color: var(--text-3, #5a6478); font-weight: 400; }
 .cc-meta { display: flex; align-items: center; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
 .cc-badge { font-size: 10.5px; font-weight: 600; padding: 2px 7px; border-radius: 5px; }
-.cc-badge-rapport { background: rgba(245,200,66,.18); color: #f5c842; }
-.cc-badge-snel { background: rgba(99,179,237,.15); color: #63b3ed; }
+.cc-badge-rapport { background: rgba(255,255,255,.07); color: var(--text-2,#9aa3b7); }
+.cc-badge-snel { background: rgba(255,255,255,.07); color: var(--text-2,#9aa3b7); }
 .cc-age { font-size: 10px; color: var(--text-3, #5a6478); }
 .cc-arrow { color: var(--text-3, #5a6478); flex-shrink: 0; }
 
@@ -9549,3 +9542,27 @@ items: center; gap: 4px;
 .obs-btn-ai:hover { background: linear-gradient(135deg, rgba(79,110,247,.35), rgba(138,79,247,.35)); }
 .obs-btn-ai:disabled { opacity: .5; cursor: not-allowed; }
 .obs-ai-hint { font-size: 12px; color: var(--text-2,#9aa3b7); }
+
+/* Inline wedstrijdnotitie in pm-card */
+.pm-wstr-inline { padding:8px 12px 10px; }
+.pm-wstr-ta {
+  width:100%; min-height:64px; background:var(--bg-3,#0d101a);
+  border:1px solid var(--border2,#2d3242); border-radius:8px;
+  padding:9px 11px; color:var(--text,#e5e9f5); font-size:13px;
+  font-family:inherit; resize:vertical; outline:none; transition:border-color .15s;
+  box-sizing:border-box; display:block;
+}
+.pm-wstr-ta:focus { border-color:var(--accent,#4f6ef7); }
+.pm-wstr-actions { display:flex; justify-content:flex-end; margin-top:6px; }
+
+/* Live scouting wedstrijdnotitie */
+.lsm-wstr-section { padding:12px 16px 4px; border-top:1px solid var(--border2,#2d3242); margin-top:4px; }
+.lsm-wstr-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--text-2,#9aa3b7); margin-bottom:6px; }
+.lsm-wstr-ta {
+  width:100%; min-height:72px; background:var(--bg-3,#0d101a);
+  border:1px solid var(--border2,#2d3242); border-radius:8px;
+  padding:10px 12px; color:var(--text,#e5e9f5); font-size:13.5px;
+  font-family:inherit; resize:vertical; outline:none; transition:border-color .15s;
+  box-sizing:border-box; display:block;
+}
+.lsm-wstr-ta:focus { border-color:var(--accent,#4f6ef7); }

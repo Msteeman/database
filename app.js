@@ -6408,18 +6408,19 @@ function renderActiveScouting(){
         </div>
         <div class="sa-players-title">Spelers (${spelers.length})</div>
         <div class="sa-tiles">${tilesHtml}</div>
-        <div class="sa-snel-form" data-progid="${escapeHtml(prog.id)}" style="display:none; margin-top:10px; padding:12px; background:rgba(245,200,66,0.06); border:1px solid rgba(245,200,66,0.25); border-radius:10px;">
+        <div class="sa-snel-form" data-progid="${escapeHtml(prog.id)}" style="display:none;">
           <!-- s35bg: heading werkt als sluit-knop -->
-          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; gap:10px;">
-            <div class="sa-snel-close-head" data-progid="${escapeHtml(prog.id)}" style="font-size:11px; color:var(--gold,#f5c842); text-transform:uppercase; letter-spacing:.6px; font-weight:700; cursor:pointer; user-select:none;" title="Klik om te sluiten">+ Nieuwe spelersnotitie — sluiten &times;</div>
-            <div class="sa-snel-status" data-progid="${escapeHtml(prog.id)}" style="font-size:11px; color:var(--text-3,#8b93a8); font-style:italic;">&nbsp;</div>
+          <div class="sa-snel-form-header">
+            <div class="sa-snel-close-head" data-progid="${escapeHtml(prog.id)}" title="Klik om te sluiten">Spelersnotitie &times;</div>
+            <div class="sa-snel-status" data-progid="${escapeHtml(prog.id)}">&nbsp;</div>
           </div>
-          <div style="display:grid; grid-template-columns:1fr 70px; gap:8px; margin-bottom:8px;">
-            <input class="sa-snel-naam" type="text" placeholder="Naam speler" style="background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:8px 11px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13.5px; outline:none;" />
-            <input class="sa-snel-rug" type="text" placeholder="#nr" style="background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:8px 11px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13.5px; outline:none;" />
+          <div class="sa-snel-form-body">
+          <div class="sa-snel-field-row">
+            <input class="sa-snel-naam" type="text" placeholder="Naam speler" />
+            <input class="sa-snel-rug" type="text" placeholder="#nr" />
           </div>
-          <div style="margin-bottom:10px;">
-            <select class="sa-snel-positie" style="width:100%; background:#0a0c12; border:1px solid var(--border2,#2d3242); border-radius:6px; padding:8px 11px; color:var(--text,#e5e9f5); font-family:inherit; font-size:13.5px; outline:none;">
+          <div>
+            <select class="sa-snel-positie">
               <option value="">Positie (optioneel)</option>
               <option value="GK">GK — Keeper</option>
               <option value="LB">LB — Linksback</option>
@@ -6450,7 +6451,7 @@ function renderActiveScouting(){
           </div>
           <!-- hidden tekst-store voor backwards compat met handler/exports -->
           <textarea class="sa-snel-tekst" style="display:none;" aria-hidden="true"></textarea>
-          <!-- s35bg: onderaan-instructie weg (heading is nu close-trigger) -->
+          </div><!-- /sa-snel-form-body -->
         </div>
         ${(prog.wedstrijdnotities && prog.wedstrijdnotities.length) ? `
         <div class="sa-wstrnotities-wrap" style="margin-top:10px; border-top:1px solid var(--border,#2a2f3a); padding-top:8px;">

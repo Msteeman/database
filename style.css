@@ -47,12 +47,71 @@
   transition: color .15s;
 }
 .td-loc-nav:hover { color: var(--gold,#f5c842); }
-/* s35be: structured snel-notitie form */
+/* s35be: structured snel-notitie form — styled like obs-modal */
+.sa-snel-form {
+  margin-top: 10px;
+  background: var(--bg-card, #12151e);
+  border: 1px solid rgba(245,200,66,0.28);
+  border-radius: 14px;
+  overflow: hidden;
+}
+.sa-snel-form-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px 10px;
+  border-bottom: 1px solid var(--border, #2a2f3a);
+  gap: 10px;
+}
+.sa-snel-close-head {
+  font-size: 11px;
+  color: var(--gold, #f5c842);
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  font-weight: 700;
+  cursor: pointer;
+  user-select: none;
+}
+.sa-snel-status {
+  font-size: 11px;
+  color: var(--text-3, #8b93a8);
+  font-style: italic;
+}
+.sa-snel-form-body {
+  padding: 14px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sa-snel-field-row {
+  display: grid;
+  grid-template-columns: 1fr 70px;
+  gap: 8px;
+}
+.sa-snel-naam,
+.sa-snel-rug,
+.sa-snel-positie {
+  width: 100%;
+  background: var(--bg-input, #0d1018);
+  border: 1px solid var(--border2, #2d3242);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--text, #e5e9f5);
+  font-family: inherit;
+  font-size: 13.5px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color .15s;
+}
+.sa-snel-naam:focus,
+.sa-snel-rug:focus,
+.sa-snel-positie:focus {
+  border-color: var(--gold, #f5c842);
+}
 .sa-snel-terms {
   display: flex;
   flex-direction: column;
   gap: 10px;
-  margin-bottom: 6px;
 }
 /* s35bf: structured form stacked — label boven, invulveld eronder */
 .sa-snel-term-row {
@@ -82,10 +141,10 @@
 .sa-snel-term-chev { display: none; }
 .sa-snel-term-input {
   width: 100%;
-  background: #0a0c12;
+  background: var(--bg-input, #0d1018);
   border: 1px solid var(--border2,#2d3242);
-  border-radius: 6px;
-  padding: 9px 11px;
+  border-radius: 8px;
+  padding: 9px 12px;
   color: var(--text,#e5e9f5);
   font-family: inherit;
   font-size: 13.5px;
@@ -100,10 +159,10 @@
 /* sn-edit-term-in: inputs in "Opgeslagen notities" edit form — zelfde stijl als sa-snel-term-input */
 .sn-edit-term-in {
   width: 100%;
-  background: #0a0c12;
+  background: var(--bg-input, #0d1018);
   border: 1px solid var(--border2,#2d3242);
-  border-radius: 6px;
-  padding: 9px 11px;
+  border-radius: 8px;
+  padding: 9px 12px;
   color: var(--text,#e5e9f5);
   font-family: inherit;
   font-size: 13.5px;

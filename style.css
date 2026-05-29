@@ -1288,18 +1288,53 @@ a { color: var(--accent); text-decoration: none; }
 .sa-tile-snelnote-chip:hover { opacity: 1; text-decoration: underline; }
 .sa-tile-meta { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sa-empty-players { font-size: 12px; color: var(--text-3); font-style: italic; padding: 6px 0; }
-.sa-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
-.sa-actions .btn-ghost { font-size: 13.5px; padding: 10px 18px; border-radius: 9px; }
-/* ===== s35bl: gradient op de drie spelers-uitklap actie-knoppen ===== */
-.sa-actions .sa-grad {
-  background: linear-gradient(135deg, #ff8189 0%, #e30613 55%, #f5c518 100%);
-  border: 0;
-  color: #fff;
+.sa-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+
+/* ===== Live dashboard actieknoppen — twee stijlen ===== */
+.sa-live-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  font-family: inherit;
+  font-size: 13.5px;
   font-weight: 600;
-  box-shadow: 0 2px 8px rgba(227,6,19,.28);
-  transition: filter .12s, transform .12s;
+  cursor: pointer;
+  transition: filter .14s, transform .14s, box-shadow .14s;
+  user-select: none;
+  white-space: nowrap;
+  flex: 1;
+  justify-content: center;
+  min-width: 140px;
 }
-.sa-actions .sa-grad:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.sa-live-btn:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.sa-live-btn:active { transform: translateY(0); filter: brightness(.96); }
+.sa-live-btn-icon { font-size: 15px; line-height: 1; }
+.sa-live-btn-label { letter-spacing: .01em; }
+
+/* Opgevallen speler — paars/indigo */
+.sa-live-btn-obs {
+  background: linear-gradient(135deg, #7c5ff5 0%, #5b3ee0 100%);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(92,62,224,.35);
+}
+.sa-live-btn-obs.is-open {
+  background: linear-gradient(135deg, #9b7fff 0%, #7c5ff5 100%);
+  box-shadow: 0 0 0 2px rgba(124,95,245,.5);
+}
+
+/* Wedstrijdnotitie — rood/oranje */
+.sa-live-btn-wstr {
+  background: linear-gradient(135deg, #ff6b6b 0%, #e30613 100%);
+  color: #fff;
+  box-shadow: 0 3px 12px rgba(227,6,19,.30);
+}
+.sa-live-btn-wstr.is-open {
+  background: linear-gradient(135deg, #ff8189 0%, #ff6b6b 100%);
+  box-shadow: 0 0 0 2px rgba(255,107,107,.5);
+}
 /* ===== s35bl: inklapbare sa-card op mobiel ===== */
 .sa-header { cursor: pointer; user-select: none; }
 .sa-header .sa-collapse-chev {
@@ -1351,45 +1386,61 @@ a { color: var(--accent); text-decoration: none; }
 .sa-tile-panel { display: none; }
 .sa-tile.open .sa-tile-panel {
   display: block;
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid var(--border-2);
+  margin-top: 0;
+  padding: 14px 16px 16px;
+  background: var(--bg-card, #12151e);
+  border-top: 1px solid var(--border, #2a2f3a);
+  border-radius: 0 0 13px 13px;
+}
+
+/* s92: tile structured 8-field form — obs-modal stijl */
+.sa-tile-terms {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.sa-tile-terms .sa-snel-term-row { padding: 0; }
+.sa-tile-terms .sa-snel-term-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .5px;
+  color: var(--text-3, #8b93a8);
+  margin-bottom: 4px;
+}
+.sa-tile-term-in {
+  width: 100%; box-sizing: border-box;
+  background: var(--bg-input, #0d1018);
+  border: 1px solid var(--border2, #2d3242);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--text, #e5e9f5);
+  font-family: inherit; font-size: 13.5px;
+  outline: none;
+  transition: border-color .15s, background .15s;
+}
+.sa-tile-term-in:focus {
+  border-color: var(--gold, #f5c842);
+  background: #0d1018;
+}
+.sa-tile-terms .sa-snel-term-row:focus-within .sa-snel-term-label {
+  color: var(--gold, #f5c842);
 }
 
 /* s83: inline notitie textarea */
 .sa-tile-snel-ta {
   width: 100%; box-sizing: border-box;
-  background: rgba(10,12,18,0.7);
-  border: 1px solid var(--border-2, #2d3242);
-  border-radius: 7px;
-  padding: 8px 10px;
-  color: var(--text-1, #e5e9f5);
-  font-family: inherit; font-size: 13px; line-height: 1.45;
+  background: var(--bg-input, #0d1018);
+  border: 1px solid var(--border2, #2d3242);
+  border-radius: 8px;
+  padding: 9px 12px;
+  color: var(--text, #e5e9f5);
+  font-family: inherit; font-size: 13.5px; line-height: 1.5;
   resize: vertical; outline: none;
   transition: border-color .15s;
 }
-.sa-tile-snel-ta:focus { border-color: #4ea1ff; }
-/* s92: tile structured 8-field form */
-.sa-tile-terms {
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  margin-bottom: 4px;
-}
-.sa-tile-terms .sa-snel-term-row { padding: 1px 0; }
-.sa-tile-terms .sa-snel-term-label { font-size: 10px; margin-bottom: 2px; }
-.sa-tile-term-in {
-  width: 100%; box-sizing: border-box;
-  background: rgba(10,12,18,0.7);
-  border: 1px solid var(--border-2, #2d3242);
-  border-radius: 6px;
-  padding: 6px 9px;
-  color: var(--text-1, #e5e9f5);
-  font-family: inherit; font-size: 12.5px;
-  outline: none;
-  transition: border-color .15s;
-}
-.sa-tile-term-in:focus { border-color: #4ea1ff; background: #0d1018; }
+.sa-tile-snel-ta:focus { border-color: var(--gold, #f5c842); }
 /* s92: header action buttons */
 .sa-header-right {
   display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0;
@@ -1415,28 +1466,35 @@ a { color: var(--accent); text-decoration: none; }
 .sa-saved-sns-chev { transition: transform .2s; }
 .sa-saved-sns.sn-collapsed .sa-saved-sns-chev { transform: rotate(-90deg); }
 .sa-tile-save-status {
-  font-size: 11px; color: #9aa3b7;
-  text-align: right; height: 15px; margin-top: 2px;
-  min-height: 15px;
+  font-size: 11px; color: var(--text-3, #8b93a8);
+  text-align: right; height: 15px; margin-top: 4px;
+  min-height: 15px; font-style: italic;
 }
 .sa-tile-acts-row {
-  display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px;
+  display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px;
 }
 .sa-tile-acts-row button {
-  padding: 5px 10px; font-size: 12px; font-weight: 600;
-  border-radius: 7px;
-  border: 1px solid var(--border-2, #2d3242);
-  background: var(--bg-2, #141820);
-  color: var(--text-1, #e5e9f5);
-  cursor: pointer; transition: .12s;
+  flex: 1;
+  padding: 9px 12px; font-size: 12.5px; font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid var(--border2, #2d3242);
+  background: var(--bg-input, #0d1018);
+  color: var(--text, #e5e9f5);
+  cursor: pointer; transition: border-color .12s, color .12s;
+  min-width: 90px; text-align: center;
 }
-.sa-tile-acts-row button:hover { border-color: #4ea1ff; color: #4ea1ff; }
+.sa-tile-acts-row button:hover { border-color: var(--gold, #f5c842); color: var(--gold, #f5c842); }
 .sa-tile-opvallend-btn { order: 0; }
 .sa-tile-opvallend-btn.is-opvallend {
-  background: rgba(245,197,24,0.12);
+  background: rgba(245,197,24,0.10);
   border-color: #f5c518; color: #f5c518;
 }
-.sa-tile-prof-btn { order: 1; }
+.sa-tile-prof-btn {
+  order: 1;
+  background: linear-gradient(135deg, #7c5ff5 0%, #5b3ee0 100%);
+  border-color: transparent; color: #fff;
+}
+.sa-tile-prof-btn:hover { opacity: .88; color: #fff !important; border-color: transparent !important; }
 /* s83: opvallend-state visual op tile */
 .sa-tile.tile-opvallend { border-color: rgba(245,197,24,0.45); }
 .sa-tile-star { margin-left: 4px; font-size: 12px; }
@@ -9628,3 +9686,61 @@ items: center; gap: 4px;
   box-sizing:border-box; display:block;
 }
 .lsm-wstr-ta:focus { border-color:var(--accent,#4f6ef7); }
+
+/* ── Observatie filter knop in spelersdatabase ──────────────────────────── */
+.db-obs-filter-btn {
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(124,95,245,0.45);
+  background: rgba(124,95,245,0.08);
+  color: #a48dff;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background .13s, border-color .13s, color .13s;
+  white-space: nowrap;
+}
+.db-obs-filter-btn:hover {
+  background: rgba(124,95,245,0.16);
+  border-color: rgba(124,95,245,0.7);
+}
+.db-obs-filter-btn.active {
+  background: linear-gradient(135deg, #7c5ff5 0%, #5b3ee0 100%);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(92,62,224,.35);
+}
+
+/* ── Observatie rij in spelersdatabase tabel ───────────────────────────── */
+tr.db-row-obs {
+  background: linear-gradient(90deg, rgba(124,95,245,0.07) 0%, transparent 60%);
+}
+tr.db-row-obs:hover {
+  background: linear-gradient(90deg, rgba(124,95,245,0.14) 0%, rgba(124,95,245,0.04) 100%) !important;
+}
+tr.db-row-obs td:first-child {
+  border-left: 2px solid rgba(124,95,245,0.55);
+}
+
+/* OBS badge naast naam */
+.db-obs-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  background: linear-gradient(135deg, #7c5ff5, #5b3ee0);
+  color: #fff;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+/* Avatar paarse tint voor observatie */
+.recent-avatar.avatar-obs {
+  background: linear-gradient(135deg, #7c5ff5 0%, #5b3ee0 100%) !important;
+  color: #fff !important;
+}

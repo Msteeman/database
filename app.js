@@ -6104,9 +6104,9 @@ async function _obsSubmit(e){
       }
     }
     _obsClose();
-    if(typeof toast === 'function') toast('Observatie opgeslagen');
-    // Re-render if in scouting view
-    if(typeof renderActiveScouting === 'function') setTimeout(renderActiveScouting, 300);
+    if(typeof toast === 'function') toast('Observatie opgeslagen ✓');
+    // Herlaad enkel het dashboard als we in de dashboard-view zitten
+    if(typeof renderDashboardAgenda === 'function') setTimeout(renderDashboardAgenda, 250);
   } catch(err){
     console.error('obs submit error', err);
     if(typeof toast === 'function') toast('Fout bij opslaan', true);
@@ -6399,9 +6399,12 @@ function renderActiveScouting(){
           <div class="sa-header-right">
             <div class="sa-status ${status}">${statusLabel}</div>
             <div class="sa-header-acts">
-              <button class="btn-ghost sa-grad sa-trigger-snel" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}" title="Spelersnotitie toevoegen">+ Notitie</button>
-              <button class="btn-ghost sa-grad sa-trigger-obs" data-sa-act="add-observatie" data-progid="${escapeHtml(prog.id)}" title="Nieuwe speler die opvalt toevoegen">Opgevallen speler</button>
-              <button class="btn-ghost sa-grad sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}" title="Wedstrijdnotitie toevoegen">+ Wedstrijd</button>
+              <button class="sa-live-btn sa-live-btn-obs sa-trigger-obs" data-sa-act="add-observatie" data-progid="${escapeHtml(prog.id)}" title="Opvallende speler noteren">
+                <span class="sa-live-btn-icon">👁</span><span class="sa-live-btn-label">Opgevallen speler</span>
+              </button>
+              <button class="sa-live-btn sa-live-btn-wstr sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}" title="Wedstrijdnotitie toevoegen">
+                <span class="sa-live-btn-icon">📋</span><span class="sa-live-btn-label">Wedstrijdnotitie</span>
+              </button>
             </div>
           </div>
           <span class="sa-collapse-chev" aria-hidden="true">&#9662;</span>
@@ -6761,8 +6764,9 @@ function renderActiveScouting(){
         // s35ca-1: 'edit-voorrap' handler verwijderd — voor-rapport flow weg
         return;
       }
-      // tile zelf: toggle uitklappen — klik op input/textarea niet sluiten
+      // tile zelf: toggle uitklappen — alleen via naam-balk, niet via panel-inhoud
       if(e.target.matches('input, textarea, select')) return;
+      if(e.target.closest('.sa-tile-panel')) return;  // klik in content panel → niet sluiten
       const isOpen = tile.classList.contains('open');
       // sluit andere tiles in dezelfde sa-card
       const card = tile.closest('.sa-card');
@@ -7192,13 +7196,16 @@ function renderActiveScouting(){
         // Click-outside wiring (eenmalig globaal)
         if(!window.__shWstrOutsideWired){
           window.__shWstrOutsideWired = true;
-          document.addEventListener('mousedown', (ev) => {
+          document.addEventListener('click', (ev) => {
             const openForms = document.querySelectorAll('.sa-snel-wstr-form');
             openForms.forEach(f => {
               if(f.style.display !== 'block') return;
               if(f.contains(ev.target)) return;
               if(ev.target.closest('[data-sa-act="add-snel-wstr"]')) return;
               if(ev.target.closest('[data-sa-act="edit-snel-wstr"]')) return;
+              if(ev.target.closest('.sa-snel-close-head')) return;
+              // Alleen sluiten als buiten de kaart geklikt
+              if(ev.target.closest('.sa-card') === f.closest('.sa-card')) return;
               f.style.display = 'none';
               if(typeof f.__shReset === 'function') f.__shReset();
             });
@@ -8706,6 +8713,18 @@ function wireDraftCard(){
     });
   });
 }
+// Wire obs-filter knop (eenmalig)
+(function _wireObsFilterBtn(){
+  document.addEventListener('DOMContentLoaded', () => {
+    const btn = document.getElementById('db-obs-filter-btn');
+    if(!btn) return;
+    btn.addEventListener('click', () => {
+      btn.classList.toggle('active');
+      if(typeof applyFilters === 'function') applyFilters();
+    });
+  });
+})();
+
 function renderDatabase(){
   const players = loadPlayers();
   $('#db-count').textContent = `${players.length} speler${players.length===1?'':'s'}`;
@@ -8775,9 +8794,11 @@ function applyFilters(){
   const fpot = $('#filter-potential').value;
   const fadv = $('#filter-advies').value;
   const fper = $('#filter-period').value;
+  const fobs = document.getElementById('db-obs-filter-btn')?.classList.contains('active') || false;
   const perCutoff = fper ? (Date.now() - parseInt(fper,10)*24*3600*1000) : null;
 
   let filtered = players.filter(p=>{
+    if(fobs && p.rapport_type !== 'observatie') return false;
     if(fp && p.positie !== fp) return false;
     if(fc && p.huidig_niveau !== fc) return false;
     if(fpot && p.potentieel_niveau !== fpot) return false;
@@ -8909,14 +8930,14 @@ function applyFilters(){
             ? `<button type="button" class="db-expand-btn" data-id="${escapeAttr(p.id)}" aria-label="Toon ${_rcount} rapporten" aria-expanded="false" title="${_rcount} rapporten"><span class="db-expand-chev">▸</span><span class="db-expand-count">${_rcount}</span></button>`
             : '';
           return `
-          <tr data-id="${p.id}" class="${dbCheckedIds.includes(p.id)?'db-row-checked':''}">
+          <tr data-id="${p.id}" class="${dbCheckedIds.includes(p.id)?'db-row-checked':''} ${p.rapport_type==='observatie'?'db-row-obs':''}">
             <td class="db-check-col"><input type="checkbox" class="db-check" data-id="${escapeAttr(p.id)}" ${dbCheckedIds.includes(p.id)?'checked':''} aria-label="Selecteer ${escapeAttr(p.naam||'speler')}"/></td>
             <td class="db-expand-col">${_expandCell}</td>
             <td>
               <div style="display:flex; align-items:center; gap:10px;">
-                <div class="recent-avatar" style="width:30px;height:30px;font-size:11px;">${initials(p.naam)}</div>
+                <div class="recent-avatar ${p.rapport_type==='observatie'?'avatar-obs':''}" style="width:30px;height:30px;font-size:11px;">${initials(p.naam)}</div>
                 <div>
-                  <div style="font-weight:600;">${escapeHtml(p.naam)}${p.concept ? '<span class="db-concept-badge">● concept</span>' : ''}</div>
+                  <div style="font-weight:600;">${escapeHtml(p.naam)}${p.rapport_type==='observatie'?'<span class="db-obs-badge">OBS</span>':''}${p.concept ? '<span class="db-concept-badge">● concept</span>' : ''}</div>
                   <div style="font-size:11px; color:var(--text-3);">${p.been||''}</div>
                 </div>
               </div>
@@ -10301,6 +10322,55 @@ function cmpOverallScore(p){
 function cmpColorFor(idx){ return CMP_COLORS[idx % CMP_COLORS.length]; }
 
 // ── Elftallen zoeken ──────────────────────────────────────────────────────────
+function _elfWireClubAC(input){
+  if(!input) return;
+  input.setAttribute('autocomplete', 'off');
+  const box = document.createElement('div');
+  box.className = 'sh-ac-box';
+  input.parentNode.style.position = 'relative';
+  input.insertAdjacentElement('afterend', box);
+  let _sel = -1;
+  function _close(){ box.classList.remove('open'); box.innerHTML = ''; _sel = -1; }
+  function _render(items){
+    if(!items.length){ _close(); return; }
+    box.innerHTML = items.map((it,i) =>
+      `<div class="sh-ac-item" data-idx="${i}">${it.html}</div>`
+    ).join('');
+    box.classList.add('open');
+    _sel = -1;
+    box.querySelectorAll('.sh-ac-item').forEach(el => {
+      el.addEventListener('mousedown', ev => {
+        ev.preventDefault();
+        input.value = items[parseInt(el.dataset.idx)].label;
+        input.dispatchEvent(new Event('change', {bubbles:true}));
+        _close();
+      });
+    });
+  }
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    if(!q || q.length < 1){ _close(); return; }
+    const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
+    const clubs = [...new Set(players.map(p => (p.club||'').trim()).filter(Boolean))];
+    const starts = [], contains = [];
+    clubs.forEach(cl => {
+      const n = cl.toLowerCase();
+      if(n.startsWith(q)) starts.push(cl);
+      else if(n.includes(q)) contains.push(cl);
+    });
+    const merged = [...starts, ...contains].slice(0, 10);
+    _render(merged.map(cl => ({ label: cl, html: cl })));
+  });
+  input.addEventListener('keydown', e => {
+    const items = box.querySelectorAll('.sh-ac-item');
+    if(e.key === 'ArrowDown'){ e.preventDefault(); _sel = Math.min(_sel+1, items.length-1); items.forEach((el,i)=>el.classList.toggle('active',i===_sel)); }
+    else if(e.key === 'ArrowUp'){ e.preventDefault(); _sel = Math.max(_sel-1, 0); items.forEach((el,i)=>el.classList.toggle('active',i===_sel)); }
+    else if(e.key === 'Enter' && _sel >= 0){ e.preventDefault(); items[_sel].dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); }
+    else if(e.key === 'Escape'){ _close(); }
+  });
+  input.addEventListener('blur', () => setTimeout(_close, 150));
+}
+
 function renderElftallen(){
   const players = loadPlayers();
   const input = document.getElementById('elf-search-input');
@@ -10311,7 +10381,8 @@ function renderElftallen(){
   if(!input?._elfWired){
     if(input){
       input._elfWired = true;
-      if(typeof shWireClubAC === 'function') shWireClubAC(input);
+      // Eigen AC: alleen clubs die al in rapporten voorkomen (niet HV_CLUBS)
+      _elfWireClubAC(input);
       const doSearch = () => _elfShowTeamTiles(loadPlayers(), resultsEl, input.value.trim());
       input.addEventListener('input', doSearch);
       input.addEventListener('change', doSearch);
@@ -10458,6 +10529,7 @@ window._elfBackToTiles = function(){
 
 function _elfDoSearch(query){ _elfShowTeamTiles(loadPlayers(), document.getElementById('elf-results'), query); }
 window.renderElftallen = renderElftallen;
+window.openDetail = openDetail;
 
 function renderCompare(){
   // Default selection: if nothing chosen yet but there is something pending, keep it

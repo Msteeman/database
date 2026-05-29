@@ -16148,7 +16148,78 @@ function renderProgramma(){
   const emptyEl = $('#programma-empty');
   if(emptyEl) emptyEl.style.display = hasAnything ? 'none' : 'block';
   setTimeout(() => shStagger(newGrid, '.pag-card'), 0);
+
+  // ── Mobiele dag-strip: één dag tegelijk zichtbaar ────────────────────────
+  _renderMobileDayStrip(days, weekItems);
 }
+
+function _renderMobileDayStrip(days, weekItems){
+  if(!days || !days.length) return;
+  const grid = document.getElementById('programma-grid');
+  if(!grid) return;
+
+  // Zoek of maak de strip container
+  let strip = document.getElementById('prog-mob-strip');
+  if(!strip){
+    strip = document.createElement('div');
+    strip.id = 'prog-mob-strip';
+    grid.parentNode.insertBefore(strip, grid);
+  }
+
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Bouw chips
+  strip.innerHTML = days.map((d, i) => {
+    const isToday = d.getTime() === today.getTime();
+    const abbr = ['MA','DI','WO','DO','VR','ZA','ZO'][i];
+    const dateStr = d.getDate();
+    const hasItems = weekItems.some(p => {
+      const pd = typeof datumToIsoStr === 'function' ? datumToIsoStr(p.datum) : (p.datum||'').slice(0,10);
+      return pd === (typeof isoDateStr === 'function' ? isoDateStr(d) : d.toISOString().slice(0,10));
+    });
+    return `<button class="pmds-chip${isToday?' pmds-today':''}${hasItems?' pmds-has':''}" data-pmds-idx="${i}">
+      <span class="pmds-abbr">${abbr}</span>
+      <span class="pmds-num">${dateStr}</span>
+      ${hasItems ? '<span class="pmds-dot"></span>' : ''}
+    </button>`;
+  }).join('');
+
+  // Bepaal startdag: vandaag als in week, anders eerste dag met items, anders dag 0
+  const todayIdx = days.findIndex(d => d.getTime() === today.getTime());
+  const firstWithItems = days.findIndex((d, i) => weekItems.some(p => {
+    const pd = typeof datumToIsoStr === 'function' ? datumToIsoStr(p.datum) : (p.datum||'').slice(0,10);
+    return pd === (typeof isoDateStr === 'function' ? isoDateStr(d) : d.toISOString().slice(0,10));
+  }));
+  const startIdx = todayIdx >= 0 ? todayIdx : (firstWithItems >= 0 ? firstWithItems : 0);
+  _setMobileActiveDay(startIdx);
+
+  // Wire chips
+  strip.querySelectorAll('.pmds-chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _setMobileActiveDay(parseInt(btn.dataset.pmdsIdx));
+    });
+  });
+}
+
+function _setMobileActiveDay(idx){
+  const strip = document.getElementById('prog-mob-strip');
+  const grid  = document.getElementById('programma-grid');
+  if(!strip || !grid) return;
+
+  // Chip actief
+  strip.querySelectorAll('.pmds-chip').forEach((c, i) => {
+    c.classList.toggle('pmds-active', i === idx);
+  });
+  // Scroll chip in beeld
+  const activeChip = strip.querySelector('.pmds-chip.pmds-active');
+  if(activeChip) activeChip.scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' });
+
+  // Dagkolommen: alleen actieve zichtbaar op mobiel
+  grid.querySelectorAll('.pag-day').forEach((col, i) => {
+    col.classList.toggle('mob-active', i === idx);
+  });
+}
+window._setMobileActiveDay = _setMobileActiveDay;
 
 /* s21: Live scouten modal */
 function openLiveScoutModal(progId){

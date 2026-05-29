@@ -5996,6 +5996,36 @@ function openObservatieForm(prog, sn){
   if(sub) sub.textContent = prog ? `${prog.thuis||''} vs ${prog.uit||''} — ${prog.datum||''}` : 'Opgevallen speler';
   // Store context for submit
   bd._obsContext = { prog, sn };
+
+  // Auto-save naar obs-draft snelnotitie als dit een draft is (heropenbaar tijdens wedstrijd)
+  const _isObsDraft = sn && sn.obs_draft === true && prog;
+  if(_isObsDraft){
+    const _obsAutoSave = () => {
+      try {
+        const _d = (prog.snelnotities||[]).find(s => s && s.id === sn.id);
+        if(!_d) return;
+        _d.naam = (document.getElementById('obs-naam')?.value||'').trim();
+        const _termIns2 = Array.from(document.querySelectorAll('.obs-term-in'));
+        const _tekst2 = (window._OBS_TERMS||[]).map(t => { const el = _termIns2.find(x => x.dataset.term === t); return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : ''); }).join('\n');
+        _d.tekst = _tekst2;
+        _d.club   = (document.getElementById('obs-club')?.value||'').trim();
+        _d.positie= (document.getElementById('obs-positie')?.value||'').trim();
+        _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
+        _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
+        _d.modified = Date.now();
+        if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
+      } catch(_){}
+    };
+    // Wire auto-save op alle invoervelden (debounced 800ms)
+    let _obsAsTm;
+    const _obsInputs = document.querySelectorAll('#obs-form input, #obs-form select, #obs-form textarea');
+    _obsInputs.forEach(el => {
+      el.removeEventListener('input', el._obsAutoSaveHandler||null);
+      el._obsAutoSaveHandler = () => { clearTimeout(_obsAsTm); _obsAsTm = setTimeout(_obsAutoSave, 800); };
+      el.addEventListener('input', el._obsAutoSaveHandler);
+    });
+  }
+
   bd.style.display = 'flex';
   setTimeout(() => { const n = document.getElementById('obs-naam'); if(n) n.focus(); }, 80);
 }
@@ -6059,6 +6089,20 @@ async function _obsSubmit(e){
       scout: (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.displayName || currentUser.email || '') : '',
     };
     if(typeof savePlayer === 'function') await savePlayer(rec);
+    // Verwijder/markeer obs-draft als ingediend in prog.snelnotities
+    const _ctx4 = bd && bd._obsContext;
+    if(_ctx4 && _ctx4.prog && _ctx4.sn && _ctx4.sn.obs_draft){
+      const _prog4 = _ctx4.prog;
+      const _sn4   = _ctx4.sn;
+      const idx4   = (_prog4.snelnotities||[]).findIndex(s => s && s.id === _sn4.id);
+      if(idx4 >= 0){
+        _prog4.snelnotities[idx4].obs_draft = false;
+        _prog4.snelnotities[idx4].ingediend = true;
+        _prog4.snelnotities[idx4].player_id = rec.id;
+        _prog4.modified = Date.now();
+        if(typeof saveProgrammaItem === 'function') saveProgrammaItem(_prog4).catch(()=>{});
+      }
+    }
     _obsClose();
     if(typeof toast === 'function') toast('Observatie opgeslagen');
     // Re-render if in scouting view
@@ -6356,7 +6400,7 @@ function renderActiveScouting(){
             <div class="sa-status ${status}">${statusLabel}</div>
             <div class="sa-header-acts">
               <button class="btn-ghost sa-grad sa-trigger-snel" data-sa-act="add-snel-notitie" data-progid="${escapeHtml(prog.id)}" title="Spelersnotitie toevoegen">+ Notitie</button>
-              <button class="btn-ghost sa-grad sa-trigger-obs" data-sa-act="add-observatie" data-progid="${escapeHtml(prog.id)}" title="Directe observatie voor nieuwe speler">+ Observatie</button>
+              <button class="btn-ghost sa-grad sa-trigger-obs" data-sa-act="add-observatie" data-progid="${escapeHtml(prog.id)}" title="Nieuwe speler die opvalt toevoegen">Opgevallen speler</button>
               <button class="btn-ghost sa-grad sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}" title="Wedstrijdnotitie toevoegen">+ Wedstrijd</button>
             </div>
           </div>
@@ -7047,10 +7091,19 @@ function renderActiveScouting(){
         }
         if(naamIn) naamIn.focus();
       } else if(act === 'add-observatie'){
-        // Direct observatieformulier openen voor nieuwe/onbekende speler
-        const _obsProg = programmaCache.find(p => p && p.id === progId);
+        // Observatieformulier voor opgevallen speler — aanmaken als obs-draft in snelnotities
+        const _obsProg = programmaCache && programmaCache.find(p => p && p.id === progId);
         if(_obsProg && typeof openObservatieForm === 'function'){
-          openObservatieForm(_obsProg, {});
+          // Maak/zoek obs-draft snelnotitie zodat het persistent is tijdens de wedstrijd
+          if(!Array.isArray(_obsProg.snelnotities)) _obsProg.snelnotities = [];
+          // Zoek een openstaande (niet-ingediende) obs-draft
+          let _obsDraft = _obsProg.snelnotities.find(s => s && s.rapport_type === 'observatie' && s.obs_draft === true);
+          if(!_obsDraft){
+            _obsDraft = { id: 'obs_' + Date.now() + '_' + Math.random().toString(36).slice(2,5), rapport_type: 'observatie', obs_draft: true, naam: '', tekst: '', created: Date.now() };
+            _obsProg.snelnotities.push(_obsDraft);
+            if(typeof saveProgrammaItem === 'function') saveProgrammaItem(_obsProg).catch(()=>{});
+          }
+          openObservatieForm(_obsProg, _obsDraft);
         }
       } else if(act === 'add-snel-wstr'){
         // s35be: snel wedstrijdnotitie (vrije tekst — tactiek/score/weer).
@@ -9200,8 +9253,10 @@ function _shCollectSnelNotities(m){
   });
   _shFindLinkedPrograms(m).forEach(p => {
     (p.snelnotities || []).forEach((sn, idx) => {
-      // Skip als notitie voor een gekoppelde speler is (voorkomt dubbeling in "Nieuwe spelersnotities")
+      // Skip als notitie voor een gekoppelde speler is
       if(sn && sn.spelerKey && _linkedSpelerIds.has(sn.spelerKey)) return;
+      // Skip ingediende obs-drafts (al verwerkt als observatie)
+      if(sn && sn.rapport_type === 'observatie' && sn.ingediend === true) return;
       out.push({ progId: p.id, snIdx: idx, sn });
     });
   });
@@ -9569,7 +9624,7 @@ function _shOpenEditModal(m){
   html += `<div class="wstr-edit-section">
     <div class="wstr-edit-section-head">
       <div class="wstr-edit-section-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.3v1h6v-1c0-1 .3-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg></div>
-      <div class="wstr-edit-section-title">Nieuwe spelersnotities</div>
+      <div class="wstr-edit-section-title">Opgevallen spelers</div>
       <div class="wstr-edit-section-count">${sns.length}</div>
     </div>`;
   if(sns.length === 0){
@@ -13341,7 +13396,7 @@ function renderMatches(){
           </div>`;
         }).join('');
         if(_unlinkedSns.length > 0){
-          _dropRows += `<div class="pm-section-hdr pm-section-sub">Losse notities (${_unlinkedSns.length})</div>`;
+          _dropRows += `<div class="pm-section-hdr pm-section-sub">Opgevallen spelers (${_unlinkedSns.length})</div>`;
           _dropRows += _unlinkedSns.map(sn => {
             const prev = sn.tekst ? escapeHtml(sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' \u00b7 ').trim().slice(0,60)) : '';
             return `<div class="pm-item-row">

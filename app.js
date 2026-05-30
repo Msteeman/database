@@ -4079,17 +4079,29 @@ async function _ritRouteKm(lat1, lon1, lat2, lon2){
     console.warn('_ritRouteKm: coördinaten buiten Nederland', {lat1,lon1,lat2,lon2});
     return null; // null = kan niet berekenen
   }
+  // Adaptieve haversine als betrouwbare fallback (NL wegennet factor)
+  const _hav = _ritHaversineKm(lat1, lon1, lat2, lon2);
+  const _roadFactor = _hav < 15 ? 1.35 : _hav < 40 ? 1.22 : 1.15;
+  const _havKm = _hav * _roadFactor;
+
   try {
     const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
-    const res = await fetch(url);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
     if(res.ok){
       const data = await res.json();
       const m = data && data.routes && data.routes[0] && data.routes[0].distance;
-      if(isFinite(m) && m > 0 && m < 800000) return m / 1000; // max 800 km
+      if(isFinite(m) && m > 0 && m < 800000){
+        const osrmKm = m / 1000;
+        // Sanity check: OSRM mag niet meer dan 1.6x haversine zijn
+        if(osrmKm <= _hav * 1.6) return osrmKm;
+        // OSRM geeft onbetrouwbaar resultaat → gebruik haversine
+      }
     }
   } catch(_){}
-  const hav = _ritHaversineKm(lat1, lon1, lat2, lon2) * 1.3;
-  return hav < 800 ? hav : null; // sanity cap
+  return _havKm < 800 ? _havKm : null;
 }
 
 let _ritKmBusy = false;
@@ -4720,6 +4732,21 @@ function closeMatchReportModal(){
   _shResetDirty('mreport'); // s91
   $('#mreport-backdrop').classList.remove('open');
 }
+
+// Wire mreport save (readyState check — ES module draait NA DOMContentLoaded)
+(function _wireMreportSave(){
+  function _doWire(){
+    const btn = document.getElementById('mreport-save-btn');
+    if(btn && !btn._wired){
+      btn._wired = true;
+      btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); submitMatchReportForm(e); });
+    }
+    const cancel = document.getElementById('mreport-cancel');
+    if(cancel && !cancel._wired){ cancel._wired = true; cancel.addEventListener('click', closeMatchReportModal); }
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _doWire);
+  else _doWire();
+})();
 
 async function submitMatchReportForm(e){
   e.preventDefault();
@@ -13578,8 +13605,9 @@ function renderMatches(){
       <div class="pm-wstr-inline">
         <textarea class="pm-wstr-ta" data-pm-wstr-prog="${escapeHtml(m.progId)}" rows="3"
           placeholder="Tactiek, score, sfeer, bijzonderheden...">${escapeHtml(_wstrInitTekst)}</textarea>
-        <div class="pm-wstr-actions">
-          ${_wstrVerwerkt ? `<span class="pm-item-done">✓ Ingediend</span>` : ''}
+        <div class="pm-wstr-actions" style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
+          ${_wstrVerwerkt ? `<span class="pm-item-done">✓ Ingediend</span>` : '<span></span>'}
+          <button type="button" class="wstr-edit-note-action primary" data-pm-wstr-rapport="${escapeHtml(m.progId)}" style="margin:0;">→ Wedstrijdrapport</button>
         </div>
       </div>`;
       const _chevP = `<span class="match-chevron pm-chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;
@@ -13910,7 +13938,14 @@ function renderMatches(){
         return;
       }
       // s93: losse notitie → observatie knop
-      const btnSnObs = e.target.closest('[data-pm-sn-obs]');
+      const btnWstrRapport = e.target.closest('[data-pm-wstr-rapport]');
+    if(btnWstrRapport){
+      e.stopPropagation();
+      const pid = btnWstrRapport.dataset.pmWstrRapport;
+      if(pid && typeof _shConvertWstrNotitieToRapport === 'function') _shConvertWstrNotitieToRapport(pid, 0);
+      return;
+    }
+    const btnSnObs = e.target.closest('[data-pm-sn-obs]');
       if(btnSnObs){
         e.stopPropagation();
         const progId2 = btnSnObs.dataset.pmSnObs;

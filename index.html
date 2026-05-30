@@ -2590,7 +2590,7 @@ algemeen:</textarea>
           <button type="button" class="btn" id="contact-delete" style="display:none; color:#ef4444;">Verwijderen</button>
           <div style="display:flex; gap:10px; margin-left:auto;">
             <button type="button" class="btn" id="contact-cancel">Annuleren</button>
-            <button type="submit" class="btn btn-primary">
+            <button type="button" class="btn btn-primary" id="mreport-save-btn">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               Opslaan
             </button>
@@ -2698,7 +2698,7 @@ algemeen:</textarea>
       <button class="modal-close" id="mreport-close">×</button>
     </div>
     <div class="modal-body">
-      <form id="mreport-form" autocomplete="off">
+      <div id="mreport-form" autocomplete="off">
         <input type="hidden" id="mr-id" />
         <div class="field-row">
           <div class="field">
@@ -2748,7 +2748,7 @@ algemeen:</textarea>
             </button>
           </div>
         </div>
-      </form>
+      </div>
     </div>
   </div>
 </div>

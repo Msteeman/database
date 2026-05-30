@@ -3279,6 +3279,10 @@ function subscribeData(){
     const hasOpenSnelForm = !!document.querySelector(
       '.sa-snel-form[style*="display: block"], .sa-snel-wstr-form[style*="display: block"]'
     );
+    // Skip dashboard re-render als obs-modal of andere overlays open zijn
+    const hasOpenModal = !!document.querySelector(
+      '#obs-backdrop[style*="flex"], #obs-backdrop:not([style*="none"])'
+    ) || (document.getElementById('obs-backdrop') && document.getElementById('obs-backdrop').style.display === 'flex');
     // s35cv: forceer ook een tweede render via rAF zodat de PWA-DOM
     //        de eerste snapshot zeker oppikt (was: blank agenda in app).
     if(currentView === 'programma'){
@@ -3286,7 +3290,7 @@ function subscribeData(){
       requestAnimationFrame(() => { try{ renderProgramma(); }catch(_){ } });
     }
     if(currentView === 'agenda') renderAgenda();
-    if(currentView === 'dashboard' && !hasOpenSnelForm){
+    if(currentView === 'dashboard' && !hasOpenSnelForm && !hasOpenModal){
       renderDashboardAgenda();
     }
     setSync('ok');
@@ -6139,10 +6143,7 @@ async function _obsSubmit(e){
     }
     _obsClose();
     if(typeof toast === 'function') toast('Observatie opgeslagen ✓');
-    // Zachte update: alleen activeScouting, geen full re-render (voorkomt intro-flash)
-    setTimeout(() => {
-      if(typeof renderActiveScouting === 'function') renderActiveScouting();
-    }, 200);
+    // Geen handmatige re-render — Firestore onSnapshot doet dit vanzelf na saveProgrammaItem
   } catch(err){
     console.error('obs submit error', err);
     if(typeof toast === 'function') toast('Fout bij opslaan', true);
@@ -6156,12 +6157,12 @@ async function _obsSubmit(e){
   document.addEventListener('DOMContentLoaded', () => {
     const close = document.getElementById('obs-modal-close');
     const cancel = document.getElementById('obs-cancel');
-    const form = document.getElementById('obs-form');
     const bd = document.getElementById('obs-backdrop');
     if(close) close.addEventListener('click', _obsClose);
     if(cancel) cancel.addEventListener('click', _obsClose);
     if(bd) bd.addEventListener('click', e => { if(e.target === bd) _obsClose(); });
-    if(form) form.addEventListener('submit', _obsSubmit);
+    const submitBtn = document.getElementById('obs-submit');
+    if(submitBtn) submitBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); _obsSubmit(e); });
   });
 })();
 

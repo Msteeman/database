@@ -8183,22 +8183,22 @@ function renderDashboard(){
   const advice1 = players.filter(p => String(p.advies) === '4').length;
 
   $('#kpi-grid').innerHTML = `
-    <div class="kpi-card" data-kpi="all" title="Toon alle spelers">
+    <div class="kpi-card sh-tilt-card" data-kpi="all" title="Toon alle spelers">
       <div class="kpi-label">Totaal spelers</div>
       <div class="kpi-value" data-count-to="${total}">0</div>
       <div class="kpi-sub">in database</div>
     </div>
-    <div class="kpi-card blue" data-kpi="week" title="Toon rapporten van deze week">
+    <div class="kpi-card blue sh-tilt-card" data-kpi="week" title="Toon rapporten van deze week">
       <div class="kpi-label">Deze week</div>
       <div class="kpi-value" data-count-to="${last7}">0</div>
       <div class="kpi-sub">nieuwe rapporten</div>
     </div>
-    <div class="kpi-card green" data-kpi="top" title="Toon toptalenten (potentieel A)">
+    <div class="kpi-card green sh-tilt-card" data-kpi="top" title="Toon toptalenten (potentieel A)">
       <div class="kpi-label">Toptalenten</div>
       <div class="kpi-value" data-count-to="${topPotential}">0</div>
       <div class="kpi-sub">kan doorgroeien naar top</div>
     </div>
-    <div class="kpi-card yellow" data-kpi="admit" title="Toon spelers met advies Direct contracteren">
+    <div class="kpi-card yellow sh-tilt-card" data-kpi="admit" title="Toon spelers met advies Direct contracteren">
       <div class="kpi-label">Direct contracteren</div>
       <div class="kpi-value" data-count-to="${advice1}">0</div>
       <div class="kpi-sub">hoogste advies</div>
@@ -8345,7 +8345,7 @@ function renderDashGaps(){
         }, 0);
         const title = [a.club, a.leeftijd].filter(Boolean).join(' · ') || 'Nieuwe analyse';
         return `
-          <div class="gap-card" data-id="${a.id}">
+          <div class="gap-card sh-tilt-card" data-id="${a.id}">
             <div class="gap-card-title">${escapeHtml(title)}</div>
             <div class="gap-card-sub">
               ${escapeHtml(a.formation||DEFAULT_FORMATION)} · ${gapCount} gap${gapCount===1?'':'s'} · ${linkedCount} rapport${linkedCount===1?'':'en'}
@@ -11485,14 +11485,32 @@ function renderCompareSelected(){
       const initialsStr = ((p.naam||'').split(/\s+/).map(s => s[0]||'').slice(0,2).join('') || '?').toUpperCase();
       const meta = [positionLabel(p.positie), p.club].filter(Boolean).join(' \u00b7 ');
       const grade = (p.huidig_niveau || '-').toUpperCase();
+      const adviesLabels = {'4':'Direct contracteren','3':'Op proef','2':'Monitoren','1':'Geen stap'};
+      const advStr = adviesLabels[String(p.advies)] || '–';
+      const reportCount = reportsForPlayer(p.id).length;
+      const lastDate = p.datum ? formatDate(p.datum) : '–';
       slots.push(`
-        <div class="compare-slot filled" style="--player-color:${col.c};--player-color-2:${col.c2}">
-          <div class="compare-slot-num">#${i+1}</div>
+        <div class="compare-slot filled sh-tilt-card" data-slot-id="${escapeAttr(id)}" style="--player-color:${col.c};--player-color-2:${col.c2}">
+          <div class="compare-slot-inner">
+            <div class="compare-slot-front">
+              <div class="compare-slot-num">#${i+1}</div>
+              <div class="compare-slot-avatar">${escapeHtml(initialsStr)}</div>
+              <div class="compare-slot-name">${escapeHtml(p.naam||'?')}</div>
+              <div class="compare-slot-meta">${escapeHtml(meta||'\u2014')}</div>
+              <div class="compare-slot-grade ${grade}">${escapeHtml(grade)}</div>
+              <div class="compare-slot-flip-hint">klik voor details</div>
+            </div>
+            <div class="compare-slot-back">
+              <div class="compare-slot-num" style="position:static;font-size:10px;width:100%;">#${i+1} ${escapeHtml((p.naam||'?').split(' ')[0])}</div>
+              <div class="compare-slot-back-row"><span class="compare-slot-back-lbl">Advies</span><span class="compare-slot-back-val">${escapeHtml(advStr)}</span></div>
+              <div class="compare-slot-back-row"><span class="compare-slot-back-lbl">Niveau</span><span class="compare-slot-back-val">${escapeHtml(grade)} → ${escapeHtml((p.potentieel_niveau||'?').toUpperCase())}</span></div>
+              <div class="compare-slot-back-row"><span class="compare-slot-back-lbl">Rapporten</span><span class="compare-slot-back-val">${reportCount}</span></div>
+              <div class="compare-slot-back-row"><span class="compare-slot-back-lbl">Gescout</span><span class="compare-slot-back-val">${escapeHtml(lastDate)}</span></div>
+              ${p.wapen ? `<div class="compare-slot-back-row"><span class="compare-slot-back-lbl">Wapen</span><span class="compare-slot-back-val">${escapeHtml(p.wapen)}</span></div>` : ''}
+              <button class="compare-slot-back-open" data-open-id="${escapeAttr(id)}">Profiel openen →</button>
+            </div>
+          </div>
           <button type="button" class="compare-slot-remove" data-remove-id="${escapeAttr(id)}" aria-label="Verwijderen">\u00d7</button>
-          <div class="compare-slot-avatar">${escapeHtml(initialsStr)}</div>
-          <div class="compare-slot-name">${escapeHtml(p.naam||'?')}</div>
-          <div class="compare-slot-meta">${escapeHtml(meta||'\u2014')}</div>
-          <div class="compare-slot-grade ${grade}">${escapeHtml(grade)}</div>
         </div>`);
     } else {
       slots.push(`<div class="compare-slot empty" data-slot-empty><div class="compare-slot-num">#${i+1}</div><div class="compare-slot-add">+</div><div class="compare-slot-add-label">Voeg speler toe</div></div>`);
@@ -11523,6 +11541,20 @@ function renderCompareSelected(){
       renderCompare();
     });
   });
+  // Wire: slot flip (click on filled slot, maar niet op remove)
+  wrap.querySelectorAll('.compare-slot.filled').forEach(slot => {
+    slot.addEventListener('click', (ev) => {
+      if(ev.target.closest('[data-remove-id]') || ev.target.closest('.compare-slot-back-open')) return;
+      slot.classList.toggle('flipped');
+    });
+  });
+  // Wire: back "Profiel openen" knop
+  wrap.querySelectorAll('[data-open-id]').forEach(btn => {
+    btn.addEventListener('click', (ev) => {
+      ev.stopPropagation();
+      if(typeof openDetail === 'function') openDetail(btn.dataset.openId);
+    });
+  });
   // v70h-s31: lege slot → open zoek-/filter-modal
   wrap.querySelectorAll('[data-slot-empty]').forEach(s => {
     s.addEventListener('click', () => {
@@ -11544,11 +11576,74 @@ function renderCompareResults(){
   results.style.display = '';
   const players = cmpSelectedIds.map(cmpPlayerById).filter(Boolean);
   renderCompareGauges(players);
+  renderCompareScatter(players);
   renderCompareRadar(players);
   renderCompareBars(players);
   renderCompareAdvies(players);
   renderCompareStrengths(players);
   renderCompareTable(players);
+}
+
+
+/* ── Vergelijken: Niveau-matrix scatter chart ── */
+function renderCompareScatter(players){
+  const wrap = $('#cmp-scatter');
+  if(!wrap) return;
+  const hasData = players.some(p => p.huidig_niveau || p.potentieel_niveau);
+  if(!hasData){
+    wrap.innerHTML = '<div class="cmp-scatter-no-data">Vul huidig/potentieel niveau in om de matrix te zien.</div>';
+    return;
+  }
+  const W = 400, H = 300, PL = 52, PR = 24, PT = 24, PB = 46;
+  const IW = W - PL - PR, IH = H - PT - PB;
+  const levels = ['D','C','B','A'];
+  const lv = {D:0,C:1,B:2,A:3};
+  const toX = g => g && lv[g] !== undefined ? PL + lv[g] * (IW/3) : null;
+  const toY = g => g && lv[g] !== undefined ? PT + IH - lv[g] * (IH/3) : null;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">`;
+  // Grid
+  for(let i=0;i<4;i++){
+    const x = PL + i*(IW/3), y = PT + i*(IH/3);
+    svg += `<line x1="${x}" y1="${PT}" x2="${x}" y2="${PT+IH}" stroke="rgba(255,255,255,.07)" stroke-width="1"/>`;
+    svg += `<line x1="${PL}" y1="${PT+i*(IH/3)}" x2="${PL+IW}" y2="${PT+i*(IH/3)}" stroke="rgba(255,255,255,.07)" stroke-width="1"/>`;
+    svg += `<text x="${x}" y="${PT+IH+14}" text-anchor="middle" fill="rgba(255,255,255,.38)" font-size="11" font-family="-apple-system,Segoe UI,sans-serif">${levels[i]}</text>`;
+    svg += `<text x="${PL-8}" y="${PT+IH-i*(IH/3)+4}" text-anchor="end" fill="rgba(255,255,255,.38)" font-size="11" font-family="-apple-system,Segoe UI,sans-serif">${levels[i]}</text>`;
+  }
+  // Diagonaal "huidig=potentieel"
+  svg += `<line x1="${PL}" y1="${PT+IH}" x2="${PL+IW}" y2="${PT}" stroke="rgba(255,255,255,.09)" stroke-width="1.2" stroke-dasharray="5 4" class="scatter-ref-line"/>`;
+  svg += `<text x="${PL+IW-4}" y="${PT+8}" text-anchor="end" fill="rgba(255,255,255,.22)" font-size="9" font-family="-apple-system,Segoe UI,sans-serif">huidig = potentieel</text>`;
+  // As-labels
+  svg += `<text x="${PL+IW/2}" y="${H-4}" text-anchor="middle" fill="rgba(255,255,255,.5)" font-size="11" font-weight="600" font-family="-apple-system,Segoe UI,sans-serif">Huidig niveau</text>`;
+  svg += `<text x="12" y="${PT+IH/2}" text-anchor="middle" fill="rgba(255,255,255,.5)" font-size="11" font-weight="600" font-family="-apple-system,Segoe UI,sans-serif" transform="rotate(-90 12 ${PT+IH/2})">Potentieel</text>`;
+  // Speler-bubbles — kleine jitter om overlap te voorkomen
+  const placed = [];
+  players.forEach((p, i) => {
+    const col = cmpColorFor(i);
+    let x = toX(p.huidig_niveau), y = toY(p.potentieel_niveau);
+    if(x === null || y === null) return;
+    // Jitter als twee spelers op zelfde positie staan
+    let jx = 0, jy = 0;
+    for(const pl of placed){ if(Math.abs(pl.x-x)<32 && Math.abs(pl.y-y)<32){ jx=(i%2?1:-1)*18; jy=(i%3?-1:1)*12; } }
+    x += jx; y += jy;
+    placed.push({x,y});
+    const firstName = escapeHtml((p.naam||'?').split(/\s+/)[0]);
+    svg += `<g class="scatter-bubble" data-id="${escapeAttr(p.id)}">
+      <circle class="sb-circle" cx="${x}" cy="${y}" r="22" fill="${col.c}" fill-opacity="0.18" stroke="${col.c}" stroke-width="2"/>
+      <text class="sb-label" x="${x}" y="${y+5}" text-anchor="middle" fill="${col.c}" font-size="13" font-weight="800" font-family="-apple-system,Segoe UI,sans-serif">${escapeHtml(p.huidig_niveau||'?')}</text>
+      <text class="sb-label" x="${x}" y="${y-27}" text-anchor="middle" fill="${col.c}" font-size="10.5" font-weight="700" font-family="-apple-system,Segoe UI,sans-serif">${firstName}</text>
+    </g>`;
+  });
+  svg += '</svg>';
+  wrap.innerHTML = svg;
+  wrap.querySelectorAll('.scatter-bubble').forEach(g => {
+    g.addEventListener('click', () => { if(typeof openDetail === 'function') openDetail(g.dataset.id); });
+    g.addEventListener('mouseenter', () => {
+      g.querySelector('.sb-circle').setAttribute('fill-opacity','0.42');
+    });
+    g.addEventListener('mouseleave', () => {
+      g.querySelector('.sb-circle').setAttribute('fill-opacity','0.18');
+    });
+  });
 }
 
 function renderCompareGauges(players){
@@ -11567,7 +11662,7 @@ function renderCompareGauges(players){
     const potOff = C * (1 - potPct);
     const meta = [positionLabel(p.positie), p.club].filter(Boolean).join(' · ');
     return `
-      <div class="compare-gauge" data-id="${escapeAttr(p.id)}" style="--player-color:${col.c}">
+      <div class="compare-gauge sh-tilt-card" data-id="${escapeAttr(p.id)}" style="--player-color:${col.c}">
         <div class="compare-gauge-name">${escapeHtml(p.naam||'?')}</div>
         <div class="compare-gauge-meta">${escapeHtml(meta||'—')}</div>
         <div class="compare-gauge-ring">
@@ -11764,6 +11859,49 @@ function renderCompareRadar(players){
     const col = cmpColorFor(i);
     return `<span class="compare-legend-item"><span class="compare-legend-dot" style="background:${col.c}"></span>${escapeHtml(p.naam||'?')}</span>`;
   }).join('');
+
+  // Interactieve tooltip op hover
+  const _wrap = canvas.closest('.compare-radar-wrap');
+  if(_wrap){
+    let _tt = _wrap.querySelector('.cmp-radar-tt');
+    if(!_tt){ _tt = document.createElement('div'); _tt.className = 'cmp-radar-tt'; _wrap.appendChild(_tt); }
+    canvas.addEventListener('mousemove', ev => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = (ev.clientX - rect.left) * (W / rect.width);
+      const my = (ev.clientY - rect.top)  * (H / rect.height);
+      // Zoek dichtste as-punt
+      let best = null, bestDist = 9999;
+      for(let i=0;i<N;i++){
+        const a = angle(i);
+        const ax = cx + Math.cos(a)*R, ay = cy + Math.sin(a)*R;
+        const d = Math.hypot(mx-ax, my-ay);
+        if(d < bestDist){ bestDist = d; best = i; }
+      }
+      if(bestDist > 60){ _tt.classList.remove('vis'); return; }
+      const crit = CMP_CRITERIA[best];
+      const rows = players.map((pl, pi) => {
+        const col = cmpColorFor(pi);
+        const b2 = pl.beoordelingen || {};
+        let g2 = b2[crit.key]; if(!g2 && crit.key==='grit_huidig') g2 = b2.drit_huidig;
+        const firstName = (pl.naam||'?').split(/\s+/)[0];
+        return `<div class="cmp-radar-tt-row">
+          <span class="cmp-radar-tt-dot" style="background:${col.c}"></span>
+          <span class="cmp-radar-tt-name">${escapeHtml(firstName)}</span>
+          <span class="cmp-radar-tt-grade ${g2||''}">${escapeHtml(g2||'–')}</span>
+        </div>`;
+      }).join('');
+      _tt.innerHTML = `<div class="cmp-radar-tt-axis">${escapeHtml(crit.label)}</div>${rows}`;
+      // Positie tooltip naast cursor, binnen wrap
+      const wx = ev.clientX - _wrap.getBoundingClientRect().left;
+      const wy = ev.clientY - _wrap.getBoundingClientRect().top;
+      const tw = 160, th = 20 + players.length * 26;
+      const lx = wx + 12 + tw > _wrap.offsetWidth ? wx - tw - 12 : wx + 12;
+      const ly = Math.max(0, Math.min(wy - th/2, _wrap.offsetHeight - th));
+      _tt.style.left = lx + 'px'; _tt.style.top = ly + 'px';
+      _tt.classList.add('vis');
+    });
+    canvas.addEventListener('mouseleave', () => { _tt.classList.remove('vis'); });
+  }
 }
 
 function hexA(hex, alpha){
@@ -12305,28 +12443,53 @@ function renderDetailKPIs(p){
   const hVal = cmpGradeNum(p.huidig_niveau);
   const pVal = cmpGradeNum(p.potentieel_niveau);
   const growth = (hVal && pVal && pVal > hVal) ? `+${pVal - hVal} klasse${pVal-hVal>1?'n':''}` : (hVal && pVal && pVal === hVal ? 'op niveau' : '');
-  wrap.innerHTML = `
-    <div class="dtl-kpi-tile ${accentClass(hn)} advies-badge-anim" style="animation-delay:.05s">
-      <div class="dtl-kpi-label">Huidig niveau</div>
-      <div class="dtl-kpi-value">${escapeHtml(hn||'–')}</div>
-      <div class="dtl-kpi-sub">${growth ? 'Groei: '+escapeHtml(growth) : 'Nu inzetbaar'}</div>
-    </div>
-    <div class="dtl-kpi-tile ${accentClass(pn)} advies-badge-anim" style="animation-delay:.12s">
-      <div class="dtl-kpi-label">Potentieel</div>
-      <div class="dtl-kpi-value">${escapeHtml(pn||'–')}</div>
-      <div class="dtl-kpi-sub">Ceiling bij ontwikkeling</div>
-    </div>
-    <div class="dtl-kpi-tile ${accentClass(gradeForAdvies(p.advies))} advies-badge-anim" style="animation-delay:.19s">
-      <div class="dtl-kpi-label">Advies</div>
-      <div class="dtl-kpi-value small">${escapeHtml(ad)}</div>
-      <div class="dtl-kpi-sub">${p.wapen ? 'Wapen: '+escapeHtml(p.wapen) : 'Scout-conclusie'}</div>
-    </div>
-    <div class="dtl-kpi-tile ${accentClass(scoreGrade)} advies-badge-anim" style="animation-delay:.26s">
-      <div class="dtl-kpi-label">Gem. score</div>
-      <div class="dtl-kpi-value">${score ? score.toFixed(2) : '–'}<span style="font-size:14px;font-weight:600;color:var(--text-3);"> / 4</span></div>
-      <div class="dtl-kpi-sub">${score ? 'Klasse '+scoreGrade : 'Nog geen beoordelingen'}</div>
-    </div>
-  `;
+
+  // Mini criteria bars voor tile-back
+  const b = p.beoordelingen || {};
+  const miniBack = CMP_CRITERIA.map(c => {
+    let g = b[c.key];
+    if(!g && c.key === 'grit_huidig') g = b.drit_huidig;
+    const v = cmpGradeNum(g) || 0;
+    return `<div class="dtl-kpi-mini-row">
+      <span class="dtl-kpi-mini-label">${escapeHtml(c.short)}</span>
+      <div class="dtl-kpi-mini-bar-track"><div class="dtl-kpi-mini-bar-fill g${g||'none'}" style="width:${(v/4*100).toFixed(0)}%"></div></div>
+      <span class="dtl-kpi-mini-grade ${g||''}">${escapeHtml(g||'–')}</span>
+    </div>`;
+  }).join('');
+  const backContent = `<div class="dtl-kpi-back-title">7 criteria</div>${miniBack}`;
+  const hint = `<div class="dtl-kpi-flip-hint">↺ klik voor criteria</div>`;
+
+  const mkTile = (accentCls, delay, front) => `
+    <div class="dtl-kpi-tile ${accentCls} sh-tilt-card advies-badge-anim" style="animation-delay:${delay}s;">
+      <div class="dtl-kpi-inner">
+        <div class="dtl-kpi-front">${front}${hint}</div>
+        <div class="dtl-kpi-back">${backContent}</div>
+      </div>
+    </div>`;
+
+  wrap.innerHTML = [
+    mkTile(accentClass(hn), .05,
+      `<div class="dtl-kpi-label">Huidig niveau</div>
+       <div class="dtl-kpi-value">${escapeHtml(hn||'–')}</div>
+       <div class="dtl-kpi-sub">${growth ? 'Groei: '+escapeHtml(growth) : 'Nu inzetbaar'}</div>`),
+    mkTile(accentClass(pn), .12,
+      `<div class="dtl-kpi-label">Potentieel</div>
+       <div class="dtl-kpi-value">${escapeHtml(pn||'–')}</div>
+       <div class="dtl-kpi-sub">Ceiling bij ontwikkeling</div>`),
+    mkTile(accentClass(gradeForAdvies(p.advies)), .19,
+      `<div class="dtl-kpi-label">Advies</div>
+       <div class="dtl-kpi-value small">${escapeHtml(ad)}</div>
+       <div class="dtl-kpi-sub">${p.wapen ? 'Wapen: '+escapeHtml(p.wapen) : 'Scout-conclusie'}</div>`),
+    mkTile(accentClass(scoreGrade), .26,
+      `<div class="dtl-kpi-label">Gem. score</div>
+       <div class="dtl-kpi-value">${score ? score.toFixed(2) : '–'}<span style="font-size:14px;font-weight:600;color:var(--text-3);"> / 4</span></div>
+       <div class="dtl-kpi-sub">${score ? 'Klasse '+scoreGrade : 'Nog geen beoordelingen'}</div>`)
+  ].join('');
+
+  // Flip on click (maar niet als tilt aan het doen is)
+  wrap.querySelectorAll('.dtl-kpi-tile').forEach(tile => {
+    tile.addEventListener('click', () => tile.classList.toggle('flipped'));
+  });
 }
 
 /* ---- Sterktes & ontwikkelpunten ---- */

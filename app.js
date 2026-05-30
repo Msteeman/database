@@ -3653,7 +3653,6 @@ function _ritShowProgChips(chipsEl){
             if(latEl) latEl.value = String(clubHit.lat);
             if(lonEl) lonEl.value = String(clubHit.lon);
             _ritAddrCoords.set(adres, {lat:clubHit.lat, lon:clubHit.lon});
-            _ritTryAutoKm();
           } else if(typeof _ritNominatimSearch === 'function'){
             _ritNominatimSearch(adres).then(results => {
               if(results && results.length){
@@ -3663,10 +3662,11 @@ function _ritShowProgChips(chipsEl){
                 if(latEl) latEl.value = String(r.lat);
                 if(lonEl) lonEl.value = String(r.lon);
                 _ritAddrCoords.set(adres, {lat:r.lat, lon:r.lon});
-                _ritTryAutoKm();
               }
-            }).catch(()=>{});
+            }).catch(()=>{}).finally(() => { setTimeout(_ritTryAutoKm, 100); });
           }
+          // Altijd km berekenen na chip-selectie (ook als coords via Nominatim komen)
+          setTimeout(_ritTryAutoKm, 400);
         }
       });
     });
@@ -6154,7 +6154,7 @@ async function _obsSubmit(e){
 
 // Wire observatie modal buttons (one-time)
 (function _wireObsModal(){
-  document.addEventListener('DOMContentLoaded', () => {
+  function _doWire(){
     const close = document.getElementById('obs-modal-close');
     const cancel = document.getElementById('obs-cancel');
     const bd = document.getElementById('obs-backdrop');
@@ -6163,7 +6163,13 @@ async function _obsSubmit(e){
     if(bd) bd.addEventListener('click', e => { if(e.target === bd) _obsClose(); });
     const submitBtn = document.getElementById('obs-submit');
     if(submitBtn) submitBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); _obsSubmit(e); });
-  });
+  }
+  // ES modules draaien NA DOMContentLoaded — direct uitvoeren als DOM al klaar is
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', _doWire);
+  } else {
+    _doWire();
+  }
 })();
 
 // ── Observatie AI aanvullen ──────────────────────────────────────────────────

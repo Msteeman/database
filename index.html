@@ -925,6 +925,15 @@
               <div class="cmp-scatter-wrap" id="cmp-scatter"></div>
             </div>
 
+            <!-- HEAD-TO-HEAD -->
+            <div class="card compare-card" id="cmp-h2h-card">
+              <div class="compare-card-title">
+                <span>Head-to-Head</span>
+                <span class="compare-card-sub">Criterion voor criterion — winner per rij gemarkeerd</span>
+              </div>
+              <div id="cmp-h2h"></div>
+            </div>
+
             <div class="compare-twocol">
               <div class="card compare-card">
                 <div class="compare-card-title">
@@ -944,6 +953,36 @@
                 </div>
                 <div class="compare-bars" id="cmp-bars"></div>
               </div>
+            </div>
+
+            <!-- PARALLELLE COÖRDINATEN -->
+            <div class="card compare-card">
+              <div class="compare-card-title">
+                <span>Parallelle coördinaten</span>
+                <span class="compare-card-sub">Elke speler = een lijn door alle 7 criteria — hover voor waarden, klik om te isoleren</span>
+              </div>
+              <div class="cmp-parallel-wrap">
+                <canvas id="cmp-parallel"></canvas>
+              </div>
+              <div class="compare-legend" id="cmp-parallel-legend"></div>
+            </div>
+
+            <!-- CRITERIA HEATMAP -->
+            <div class="card compare-card">
+              <div class="compare-card-title">
+                <span>Criteria heatmap</span>
+                <span class="compare-card-sub">Kleurenraster — groen = sterk, rood = zwak · klik cel = spelersprofiel</span>
+              </div>
+              <div class="cmp-heatmap-wrap" id="cmp-heatmap"></div>
+            </div>
+
+            <!-- DATABASE RANKING / PERCENTILES -->
+            <div class="card compare-card">
+              <div class="compare-card-title">
+                <span>Database ranking</span>
+                <span class="compare-card-sub">Hoe scoort elke speler ten opzichte van alle gescoutede spelers?</span>
+              </div>
+              <div class="cmp-pct-grid" id="cmp-percentiles"></div>
             </div>
 
             <div class="compare-twocol" id="cmp-extra-row">

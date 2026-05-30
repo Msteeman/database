@@ -10151,3 +10151,141 @@ tr.db-row-obs td:first-child {
 .cmp-scatter-no-data {
   text-align: center; padding: 30px; color: var(--text-3); font-size: 13px;
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   SH-CMP2  —  Head-to-Head · Parallel Coords · Heatmap · Percentiles
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Head-to-Head ─────────────────────────────────────────────── */
+.cmp-h2h-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 18px; padding: 0 4px;
+}
+.cmp-h2h-player {
+  font-size: 22px; font-weight: 900; letter-spacing: -.6px;
+}
+.cmp-h2h-player.right { text-align: right; }
+.cmp-h2h-vs {
+  font-size: 11px; font-weight: 700; color: var(--text-3);
+  background: var(--bg-3); padding: 4px 12px; border-radius: 20px;
+  border: 1px solid var(--border-2); letter-spacing: 1px;
+}
+.cmp-h2h-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 5px 6px; border-radius: 8px;
+  transition: background .15s;
+  position: relative;
+}
+.cmp-h2h-row:hover { background: rgba(255,255,255,.04); }
+.cmp-h2h-row.w1 { background: rgba(var(--cmp-c1,255,255,255),.04); }
+.cmp-h2h-row.w2 { background: rgba(var(--cmp-c2,255,255,255),.04); }
+.cmp-h2h-grade {
+  width: 30px; text-align: center;
+  font-size: 16px; font-weight: 900; flex-shrink: 0; line-height: 1;
+}
+.cmp-h2h-grade.A { color: var(--grade-a); }
+.cmp-h2h-grade.B { color: var(--grade-b); }
+.cmp-h2h-grade.C { color: var(--grade-c); }
+.cmp-h2h-grade.D { color: var(--grade-d); }
+.cmp-h2h-grade.none { color: var(--text-3); font-size: 12px; }
+.cmp-h2h-bars {
+  flex: 1; display: flex; align-items: center; gap: 0;
+}
+.cmp-h2h-bar-wrap {
+  flex: 1; height: 20px; display: flex;
+  background: rgba(255,255,255,.05); position: relative;
+  overflow: hidden;
+}
+.cmp-h2h-bar-wrap.left { border-radius: 10px 0 0 10px; justify-content: flex-end; }
+.cmp-h2h-bar-wrap.right { border-radius: 0 10px 10px 0; justify-content: flex-start; }
+.cmp-h2h-divider {
+  width: 2px; flex-shrink: 0; background: var(--border-2); z-index: 1;
+}
+.cmp-h2h-bar {
+  height: 100%; border-radius: inherit;
+  transition: width .65s cubic-bezier(.4,0,.2,1);
+  opacity: .75;
+}
+.cmp-h2h-row.w1 .cmp-h2h-bar.b1 { opacity: 1; box-shadow: 0 0 8px currentColor; }
+.cmp-h2h-row.w2 .cmp-h2h-bar.b2 { opacity: 1; box-shadow: 0 0 8px currentColor; }
+.cmp-h2h-crit {
+  width: 62px; text-align: center; flex-shrink: 0;
+  font-size: 10px; font-weight: 600; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: .4px;
+}
+.cmp-h2h-win-badge {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  font-size: 9px; font-weight: 800; color: #fff;
+  background: rgba(255,255,255,.12); padding: 1px 5px; border-radius: 4px;
+  opacity: 0; transition: opacity .3s .4s;
+}
+.cmp-h2h-row.w1 .cmp-h2h-win-badge.left,
+.cmp-h2h-row.w2 .cmp-h2h-win-badge.right { opacity: 1; }
+.cmp-h2h-win-badge.left { left: 8px; }
+.cmp-h2h-win-badge.right { right: 8px; }
+.cmp-h2h-inactive {
+  text-align: center; padding: 28px; color: var(--text-3); font-size: 13px;
+  font-style: italic;
+}
+.cmp-h2h-summary {
+  display: flex; justify-content: space-between; margin-top: 14px;
+  padding: 10px 8px 0; border-top: 1px solid var(--border);
+  font-size: 12px; font-weight: 700;
+}
+.cmp-h2h-score { font-size: 22px; font-weight: 900; }
+
+/* ── Parallelle coördinaten ───────────────────────────────────── */
+.cmp-parallel-wrap {
+  overflow-x: auto; padding: 8px 0 4px;
+  position: relative;
+}
+#cmp-parallel { display: block; }
+.cmp-parallel-tt {
+  position: fixed; pointer-events: none;
+  background: rgba(8,13,24,.96); border: 1px solid var(--border-2);
+  border-radius: 9px; padding: 9px 14px;
+  font-size: 12px; z-index: 200;
+  opacity: 0; transition: opacity .1s;
+  white-space: nowrap; box-shadow: 0 10px 32px rgba(0,0,0,.6);
+}
+.cmp-parallel-tt.vis { opacity: 1; }
+.cmp-parallel-tt-name { font-weight: 800; font-size: 13px; margin-bottom: 4px; }
+.cmp-parallel-tt-row { display: flex; gap: 8px; line-height: 1.7; font-size: 11px; }
+.cmp-parallel-tt-key { color: var(--text-3); }
+
+/* ── Criteria heatmap ─────────────────────────────────────────── */
+.cmp-heatmap-wrap {
+  overflow-x: auto; padding: 4px 0 8px;
+}
+.heatmap-cell { cursor: pointer; }
+.heatmap-cell rect { transition: filter .15s; }
+.heatmap-cell:hover rect { filter: brightness(1.35); }
+.heatmap-cell text { pointer-events: none; }
+
+/* ── Database ranking / percentiles ──────────────────────────── */
+.cmp-pct-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 24px;
+}
+.cmp-pct-col {}
+.cmp-pct-name { font-size: 17px; font-weight: 900; letter-spacing: -.4px; margin-bottom: 1px; }
+.cmp-pct-sub { font-size: 10px; color: var(--text-3); margin-bottom: 12px; }
+.cmp-pct-row { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+.cmp-pct-label { font-size: 9.5px; color: var(--text-2); flex: 0 0 52px; }
+.cmp-pct-track {
+  flex: 1; height: 7px; border-radius: 4px;
+  background: rgba(255,255,255,.07); overflow: hidden; position: relative;
+}
+.cmp-pct-fill { height: 100%; border-radius: 4px; transition: width .7s cubic-bezier(.4,0,.2,1) var(--delay,0s); }
+.cmp-pct-grade {
+  width: 16px; font-size: 10.5px; font-weight: 800; flex-shrink: 0;
+}
+.cmp-pct-grade.A { color: var(--grade-a); }
+.cmp-pct-grade.B { color: var(--grade-b); }
+.cmp-pct-grade.C { color: var(--grade-c); }
+.cmp-pct-grade.D { color: var(--grade-d); }
+.cmp-pct-rank {
+  font-size: 9px; color: var(--text-3); flex: 0 0 38px; text-align: right;
+  font-weight: 600;
+}
+.cmp-pct-rank.elite { color: var(--grade-a); font-weight: 800; }

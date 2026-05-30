@@ -11577,13 +11577,326 @@ function renderCompareResults(){
   const players = cmpSelectedIds.map(cmpPlayerById).filter(Boolean);
   renderCompareGauges(players);
   renderCompareScatter(players);
+  renderCmpHeadToHead(players);
   renderCompareRadar(players);
   renderCompareBars(players);
+  renderCmpParallelCoords(players);
+  renderCmpHeatmap(players);
+  renderCmpPercentiles(players);
   renderCompareAdvies(players);
   renderCompareStrengths(players);
   renderCompareTable(players);
 }
 
+
+
+/* ── CMP: Head-to-Head ── */
+function renderCmpHeadToHead(players){
+  const wrap = $('#cmp-h2h');
+  const card = $('#cmp-h2h-card');
+  if(!wrap) return;
+  if(players.length < 2){
+    wrap.innerHTML = '<div class="cmp-h2h-inactive">Selecteer 2 of meer spelers voor de head-to-head vergelijking.</div>';
+    return;
+  }
+  const p1 = players[0], p2 = players[1];
+  const col1 = cmpColorFor(0), col2 = cmpColorFor(1);
+  const name1 = escapeHtml((p1.naam||'?').split(/\s+/)[0]);
+  const name2 = escapeHtml((p2.naam||'?').split(/\s+/)[0]);
+
+  let wins1 = 0, wins2 = 0, draws = 0;
+  const rows = CMP_CRITERIA.map((crit, ci) => {
+    const b1 = p1.beoordelingen||{}, b2 = p2.beoordelingen||{};
+    let g1 = b1[crit.key]; if(!g1 && crit.key==='grit_huidig') g1 = b1.drit_huidig;
+    let g2 = b2[crit.key]; if(!g2 && crit.key==='grit_huidig') g2 = b2.drit_huidig;
+    const v1 = cmpGradeNum(g1)||0, v2 = cmpGradeNum(g2)||0;
+    const pct1 = (v1/4*50).toFixed(1), pct2 = (v2/4*50).toFixed(1);
+    const winner = v1>v2?1:v2>v1?2:(v1&&v2?0:-1);
+    if(winner===1) wins1++; else if(winner===2) wins2++; else if(winner===0) draws++;
+    const wCls = winner===1?' w1':winner===2?' w2':'';
+    return `
+      <div class="cmp-h2h-row${wCls}">
+        <div class="cmp-h2h-grade ${g1||'none'}">${escapeHtml(g1||'–')}</div>
+        <div class="cmp-h2h-bars">
+          <div class="cmp-h2h-bar-wrap left">
+            <div class="cmp-h2h-win-badge left">★</div>
+            <div class="cmp-h2h-bar b1 bar-init" data-w="${pct1}" style="width:0;background:${col1.c};"></div>
+          </div>
+          <div class="cmp-h2h-divider"></div>
+          <div class="cmp-h2h-bar-wrap right">
+            <div class="cmp-h2h-bar b2 bar-init" data-w="${pct2}" style="width:0;background:${col2.c};"></div>
+            <div class="cmp-h2h-win-badge right">★</div>
+          </div>
+        </div>
+        <div class="cmp-h2h-crit">${escapeHtml(crit.short)}</div>
+        <div class="cmp-h2h-grade ${g2||'none'}">${escapeHtml(g2||'–')}</div>
+      </div>`;
+  }).join('');
+
+  const score1cls = wins1 > wins2 ? `style="color:${col1.c}"` : '';
+  const score2cls = wins2 > wins1 ? `style="color:${col2.c}"` : '';
+
+  wrap.innerHTML = `
+    <div class="cmp-h2h-header">
+      <div class="cmp-h2h-player" style="color:${col1.c}">${name1}</div>
+      <div class="cmp-h2h-vs">VS</div>
+      <div class="cmp-h2h-player right" style="color:${col2.c}">${name2}</div>
+    </div>
+    ${rows}
+    <div class="cmp-h2h-summary">
+      <div ${score1cls}><span class="cmp-h2h-score">${wins1}</span> gewonnen</div>
+      <div style="color:var(--text-3); font-size:11px; align-self:center;">${draws} gelijk</div>
+      <div ${score2cls} style="text-align:right"><span class="cmp-h2h-score">${wins2}</span> gewonnen</div>
+    </div>`;
+
+  // Animate bars
+  requestAnimationFrame(() => {
+    wrap.querySelectorAll('.cmp-h2h-bar.bar-init').forEach((el, i) => {
+      setTimeout(() => {
+        el.classList.remove('bar-init');
+        el.style.width = el.dataset.w + '%';
+      }, i * 18);
+    });
+  });
+}
+
+/* ── CMP: Parallelle coördinaten ── */
+function renderCmpParallelCoords(players){
+  const canvas = $('#cmp-parallel');
+  const legend = $('#cmp-parallel-legend');
+  if(!canvas || !players.length) return;
+
+  const N = CMP_CRITERIA.length;
+  const W = Math.max(520, Math.min(900, (canvas.parentElement||document.body).offsetWidth - 32));
+  const H = 280;
+  const PL = 38, PR = 30, PT = 44, PB = 28;
+  const IW = W - PL - PR, IH = H - PT - PB;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+
+  const axX = i => PL + i * (IW / (N-1));
+  const grY = g => {
+    const v = cmpGradeNum(g) || 0;
+    return PT + IH - (v/4) * IH;
+  };
+
+  function draw(highlightIdx){
+    ctx.clearRect(0,0,W,H);
+    // Achtergrond rasters
+    ['D','C','B','A'].forEach((g,j) => {
+      const y = PT + IH - (j/3)*IH;
+      ctx.beginPath(); ctx.moveTo(PL,y); ctx.lineTo(PL+IW,y);
+      ctx.strokeStyle = j===3?'rgba(255,255,255,.12)':'rgba(255,255,255,.05)';
+      ctx.lineWidth = j===3?1.2:0.8; ctx.stroke();
+      ctx.fillStyle = 'rgba(255,255,255,.3)';
+      ctx.font = '10px -apple-system,Segoe UI,sans-serif';
+      ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+      ctx.fillText(g, PL-6, y);
+    });
+    // Assen
+    for(let i=0;i<N;i++){
+      const x = axX(i);
+      ctx.beginPath(); ctx.moveTo(x,PT); ctx.lineTo(x,PT+IH);
+      ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1.5; ctx.stroke();
+      ctx.fillStyle = 'rgba(230,236,248,.85)';
+      ctx.font = '600 11px -apple-system,Segoe UI,sans-serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+      ctx.fillText(CMP_CRITERIA[i].short, x, PT-6);
+    }
+    // Speler-lijnen (eerst de niet-gemarkeerde, dan de gemarkeerde bovenop)
+    const order = players.map((_,i)=>i).sort((a,b) => a===highlightIdx?1:b===highlightIdx?-1:0);
+    order.forEach(pi => {
+      const p = players[pi];
+      const col = cmpColorFor(pi);
+      const b = p.beoordelingen||{};
+      const pts = CMP_CRITERIA.map((c,i) => {
+        let g = b[c.key]; if(!g && c.key==='grit_huidig') g = b.drit_huidig;
+        return {x:axX(i), y:grY(g), g, v:cmpGradeNum(g)||0};
+      });
+      const isHL = pi === highlightIdx;
+      // Lijn
+      ctx.beginPath();
+      pts.forEach((pt,i) => { if(i===0) ctx.moveTo(pt.x,pt.y); else ctx.lineTo(pt.x,pt.y); });
+      ctx.strokeStyle = col.c;
+      ctx.lineWidth = isHL ? 3 : 1.8;
+      ctx.globalAlpha = isHL ? 1 : (highlightIdx===-1?0.72:0.22);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      // Punten
+      pts.forEach(pt => {
+        if(!pt.g) return;
+        ctx.beginPath(); ctx.arc(pt.x,pt.y, isHL?6:4, 0, Math.PI*2);
+        ctx.fillStyle = col.c; ctx.globalAlpha = isHL?1:(highlightIdx===-1?0.8:0.25);
+        ctx.fill(); ctx.globalAlpha=1;
+        if(isHL){
+          ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=1.5; ctx.stroke();
+          ctx.fillStyle='#fff'; ctx.font='700 11px -apple-system,Segoe UI,sans-serif';
+          ctx.textAlign='center'; ctx.textBaseline='middle';
+          ctx.fillText(pt.g, pt.x, pt.y);
+        }
+      });
+    });
+    // Middelpunt-as-stippen
+    ctx.beginPath(); ctx.arc(PL-0,PT+IH/2,2.5,0,Math.PI*2);
+    ctx.fillStyle='rgba(255,255,255,.2)'; ctx.fill();
+  }
+
+  draw(-1);
+
+  // Tooltip + hover highlight
+  let _tt = document.querySelector('.cmp-parallel-tt');
+  if(!_tt){ _tt=document.createElement('div'); _tt.className='cmp-parallel-tt'; document.body.appendChild(_tt); }
+
+  canvas.addEventListener('mousemove', ev => {
+    const r = canvas.getBoundingClientRect();
+    const mx = (ev.clientX-r.left)*(W/r.width);
+    // Zoek dichtstbijzijnde as
+    let bestAx = -1, bestD = 9999;
+    for(let i=0;i<N;i++){ const d=Math.abs(mx-axX(i)); if(d<bestD){bestD=d;bestAx=i;} }
+    if(bestD > IW/(N-1)*0.55){ draw(-1); _tt.classList.remove('vis'); return; }
+    // Zoek dichtstbijzijnde speler-punt op die as
+    const my = (ev.clientY-r.top)*(H/r.height);
+    let bestPl = -1, bestPD = 9999;
+    players.forEach((p,pi) => {
+      const b=p.beoordelingen||{}; let g=b[CMP_CRITERIA[bestAx].key];
+      if(!g&&CMP_CRITERIA[bestAx].key==='grit_huidig') g=b.drit_huidig;
+      const py=grY(g); const d=Math.abs(my-py);
+      if(d<bestPD){bestPD=d;bestPl=pi;}
+    });
+    if(bestPD>40){ draw(-1); _tt.classList.remove('vis'); return; }
+    draw(bestPl);
+    // Tooltip
+    const p = players[bestPl], col = cmpColorFor(bestPl);
+    const b = p.beoordelingen||{};
+    const rows = CMP_CRITERIA.map(cr => {
+      let g=b[cr.key]; if(!g&&cr.key==='grit_huidig') g=b.drit_huidig;
+      return `<div class="cmp-parallel-tt-row"><span class="cmp-parallel-tt-key">${escapeHtml(cr.short)}</span> <strong style="color:${g?'var(--grade-'+g.toLowerCase()+')':'var(--text-3)'}">${escapeHtml(g||'–')}</strong></div>`;
+    }).join('');
+    _tt.innerHTML = `<div class="cmp-parallel-tt-name" style="color:${col.c}">${escapeHtml(p.naam||'?')}</div>${rows}`;
+    _tt.style.left = (ev.clientX+14)+'px'; _tt.style.top = (ev.clientY-60)+'px';
+    _tt.classList.add('vis');
+  });
+  canvas.addEventListener('mouseleave', () => { draw(-1); _tt.classList.remove('vis'); });
+  // Klik: ga naar spelersprofiel
+  canvas.addEventListener('click', ev => {
+    const r=canvas.getBoundingClientRect();
+    const mx=(ev.clientX-r.left)*(W/r.width), my=(ev.clientY-r.top)*(H/r.height);
+    let bestPl=-1, bestD=9999;
+    players.forEach((p,pi) => {
+      CMP_CRITERIA.forEach((c,ci) => {
+        const b=p.beoordelingen||{}; let g=b[c.key];
+        if(!g&&c.key==='grit_huidig')g=b.drit_huidig;
+        const d=Math.hypot(mx-axX(ci), my-grY(g));
+        if(d<bestD){bestD=d;bestPl=pi;}
+      });
+    });
+    if(bestD<30 && bestPl>=0 && typeof openDetail==='function') openDetail(players[bestPl].id);
+  });
+
+  if(legend) legend.innerHTML = players.map((p,i) => {
+    const col=cmpColorFor(i);
+    return `<span class="compare-legend-item" style="cursor:pointer" data-hl="${i}"><span class="compare-legend-dot" style="background:${col.c}"></span>${escapeHtml(p.naam||'?')}</span>`;
+  }).join('');
+}
+
+/* ── CMP: Criteria heatmap ── */
+function renderCmpHeatmap(players){
+  const wrap = $('#cmp-heatmap');
+  if(!wrap || !players.length) return;
+  const N = CMP_CRITERIA.length;
+  const CW=52, RH=40, PAD_L=110, PAD_T=52, PAD_B=12, PAD_R=16;
+  const W=PAD_L+N*CW+PAD_R, H=PAD_T+players.length*RH+PAD_B;
+  const gradeFill={A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#ef4444'};
+  let svg=`<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:${W}px;display:block;">`;
+  // Kolom-headers
+  CMP_CRITERIA.forEach((c,i) => {
+    svg+=`<text x="${PAD_L+i*CW+CW/2}" y="${PAD_T-10}" text-anchor="middle" fill="rgba(230,236,248,.75)" font-size="10.5" font-weight="700" font-family="-apple-system,Segoe UI,sans-serif">${escapeHtml(c.short)}</text>`;
+    svg+=`<line x1="${PAD_L+i*CW+CW/2}" y1="${PAD_T-6}" x2="${PAD_L+i*CW+CW/2}" y2="${PAD_T}" stroke="rgba(255,255,255,.1)" stroke-width="1"/>`;
+  });
+  // Rijen
+  players.forEach((p,pi) => {
+    const col=cmpColorFor(pi);
+    const b=p.beoordelingen||{};
+    const y=PAD_T+pi*RH;
+    const firstName=(p.naam||'?').split(/\s+/)[0];
+    svg+=`<text x="${PAD_L-10}" y="${y+RH/2+4}" text-anchor="end" fill="${col.c}" font-size="12" font-weight="800" font-family="-apple-system,Segoe UI,sans-serif">${escapeHtml(firstName)}</text>`;
+    // Kleur-dot naast naam
+    svg+=`<circle cx="${PAD_L-22}" cy="${y+RH/2}" r="4" fill="${col.c}" opacity=".8"/>`;
+    CMP_CRITERIA.forEach((c,ci) => {
+      let g=b[c.key]; if(!g&&c.key==='grit_huidig')g=b.drit_huidig;
+      const x=PAD_L+ci*CW, fill=g?gradeFill[g]:'rgba(255,255,255,.04)';
+      const opacity=g?'0.88':'0.5';
+      svg+=`<g class="heatmap-cell" data-id="${escapeAttr(p.id)}">
+        <rect x="${x+3}" y="${y+4}" width="${CW-6}" height="${RH-8}" rx="6"
+          fill="${fill}" fill-opacity="${opacity}"
+          stroke="${g?fill:'rgba(255,255,255,.07)'}" stroke-width="1"/>
+        <text x="${x+CW/2}" y="${y+RH/2+5}" text-anchor="middle"
+          fill="${g?'#fff':'rgba(255,255,255,.18)'}"
+          font-size="${g?'14':'11'}" font-weight="900"
+          font-family="-apple-system,Segoe UI,sans-serif">${escapeHtml(g||'·')}</text>
+      </g>`;
+    });
+  });
+  svg+='</svg>';
+  wrap.innerHTML=svg;
+  wrap.querySelectorAll('.heatmap-cell').forEach(el => {
+    el.addEventListener('click', () => { if(typeof openDetail==='function') openDetail(el.dataset.id); });
+  });
+}
+
+/* ── CMP: Database percentile ranking ── */
+function renderCmpPercentiles(players){
+  const wrap=$('#cmp-percentiles');
+  if(!wrap||!players.length) return;
+  const all=loadPlayers();
+  const html=players.map((p,pi) => {
+    const col=cmpColorFor(pi);
+    const b=p.beoordelingen||{};
+    const firstName=(p.naam||'?').split(/\s+/)[0];
+    let hasAny=false;
+    const rows=CMP_CRITERIA.map((c,ci) => {
+      let g=b[c.key]; if(!g&&c.key==='grit_huidig')g=b.drit_huidig;
+      if(!g) return '';
+      const v=cmpGradeNum(g)||0;
+      const allVals=all.map(ap => {
+        const ab=ap.beoordelingen||{}; let ag=ab[c.key];
+        if(!ag&&c.key==='grit_huidig')ag=ab.drit_huidig;
+        return cmpGradeNum(ag)||0;
+      }).filter(x=>x>0);
+      if(!allVals.length) return '';
+      hasAny=true;
+      const better=allVals.filter(x=>x<v).length;
+      const pct=Math.round((better/allVals.length)*100);
+      const topPct=100-pct;
+      const isElite=topPct<=25;
+      return `<div class="cmp-pct-row">
+        <span class="cmp-pct-label">${escapeHtml(c.short)}</span>
+        <div class="cmp-pct-track">
+          <div class="cmp-pct-fill" style="width:0;background:${col.c};--delay:${ci*0.06}s" data-w="${pct}"></div>
+        </div>
+        <span class="cmp-pct-grade ${g}">${g}</span>
+        <span class="cmp-pct-rank${isElite?' elite':''}">top ${topPct}%</span>
+      </div>`;
+    }).filter(Boolean).join('');
+    if(!hasAny) return '';
+    return `<div class="cmp-pct-col">
+      <div class="cmp-pct-name" style="color:${col.c}">${escapeHtml(firstName)}</div>
+      <div class="cmp-pct-sub">vs ${all.length} spelers in database</div>
+      ${rows}
+    </div>`;
+  }).filter(Boolean).join('');
+  wrap.innerHTML=html||'<div style="color:var(--text-3);font-size:13px;padding:16px;">Vul beoordelingen in om rankings te zien.</div>';
+  // Animate fills
+  requestAnimationFrame(() => {
+    wrap.querySelectorAll('.cmp-pct-fill[data-w]').forEach(el => {
+      const delay=parseFloat(getComputedStyle(el).getPropertyValue('--delay'))||0;
+      setTimeout(() => { el.style.width=el.dataset.w+'%'; }, delay*1000+60);
+    });
+  });
+}
 
 /* ── Vergelijken: Niveau-matrix scatter chart ── */
 function renderCompareScatter(players){

@@ -4012,9 +4012,7 @@ function _ritSetupSuggest(inputId, boxId, kind){
 
   const fill = async () => {
     const q = (input.value||'').trim();
-    // Reset coords zodra gebruiker handmatig typt (anders blijven oude coords aan nieuw adres hangen)
-    if(latInp) latInp.value = '';
-    if(lonInp) lonInp.value = '';
+    // Coords NIET resetten bij typen — _ritTryAutoKm hergeocodeert als nodig
 
     // Club-adresboek eerst (snelst, geen netwerk)
     const clubs = _ritSearchClubs(q);
@@ -4118,22 +4116,47 @@ async function _ritTryAutoKm(force){
   // Als coords ontbreken: geocode de adrestekst via Nominatim
   let _vLat = vLat, _vLon = vLon, _aLat = aLat, _aLon = aLon;
 
+  // Helper: adres opschonen voor Nominatim (haakjes, extra tekst verwijderen)
+  const _cleanQ = (txt) => {
+    if(!txt) return '';
+    // Verwijder inhoud tussen haakjes: "Sportpark X (SV Club)" → "Sportpark X"
+    let q = txt.replace(/\s*\([^)]*\)/g, '').trim();
+    // Als er een komma is, probeer ook alleen het deel na de komma (plaatsnaam)
+    return q;
+  };
+  const _geocode = async (raw) => {
+    if(!raw || !raw.trim()) return null;
+    const q1 = _cleanQ(raw);
+    // Poging 1: volledig adres
+    let hits = await _ritNominatimSearch(q1).catch(()=>[]);
+    if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
+    // Poging 2: alleen na de komma (plaatsnaam)
+    const afterComma = q1.includes(',') ? q1.split(',').pop().trim() : '';
+    if(afterComma && afterComma !== q1){
+      hits = await _ritNominatimSearch(afterComma).catch(()=>[]);
+      if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
+    }
+    // Poging 3: alleen voor de komma (straatnaam/sportpark)
+    const beforeComma = q1.includes(',') ? q1.split(',')[0].trim() : '';
+    if(beforeComma && beforeComma !== q1){
+      hits = await _ritNominatimSearch(beforeComma).catch(()=>[]);
+      if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
+    }
+    return null;
+  };
+
   if(!isFinite(_vLat) || !isFinite(_vLon)){
     const vtxt = (document.getElementById('rit-vertrek')||{}).value||'';
     if(vtxt.trim()){
-      try{
-        const hits = await _ritNominatimSearch(vtxt.trim());
-        if(hits && hits[0] && isFinite(hits[0].lat)){ _vLat = hits[0].lat; _vLon = hits[0].lon; }
-      }catch(_){}
+      const hit = await _geocode(vtxt);
+      if(hit){ _vLat = hit.lat; _vLon = hit.lon; }
     }
   }
   if(!isFinite(_aLat) || !isFinite(_aLon)){
     const atxt = (document.getElementById('rit-aankomst')||{}).value||'';
     if(atxt.trim()){
-      try{
-        const hits = await _ritNominatimSearch(atxt.trim());
-        if(hits && hits[0] && isFinite(hits[0].lat)){ _aLat = hits[0].lat; _aLon = hits[0].lon; }
-      }catch(_){}
+      const hit = await _geocode(atxt);
+      if(hit){ _aLat = hit.lat; _aLon = hit.lon; }
     }
   }
   if(![_vLat,_vLon,_aLat,_aLon].every(isFinite)){ return; }

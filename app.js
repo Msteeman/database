@@ -6062,11 +6062,14 @@ function openObservatieForm(prog, sn){
   const _isNewDraft = !sn || (!sn.naam && !sn.tekst && !sn.club && !sn.elftal);
   const _obsTermTekst = _isNewDraft ? '' : (sn && sn.tekst || '');
   // Valideer: als een parsed waarde zelf een termnaam is (bijv "mentaliteit:") → corruptie, negeer
+  const _OBS_TERM_RE = new RegExp('^(' + _OBS_TERMS.join('|') + ')\\s*:', 'i');
   const _safeObsTermVal = (tekst, term) => {
     const v = _obsParseTermFromTekst(tekst, term);
     if(!v) return '';
-    // Corruptie-check: waarde eindigt met ':' of is zelf een termnaam → leeg
+    // Corruptie-check 1: waarde is zelf een termnaam (bijv "mentaliteit:")
     if(/^[a-z]+:?$/.test(v)) return '';
+    // Corruptie-check 2: waarde begint met een andere termnaam (bijv "inzicht: dasdasd")
+    if(_OBS_TERM_RE.test(v)) return '';
     return v;
   };
   const termsEl = document.getElementById('obs-terms');
@@ -6126,7 +6129,9 @@ function openObservatieForm(prog, sn){
         if(!_d) return;
         _d.naam = (document.getElementById('obs-naam')?.value||'').trim();
         const _termIns2 = Array.from(document.querySelectorAll('.obs-term-in'));
-        const _tekst2 = (window._OBS_TERMS||[]).map(t => { const el = _termIns2.find(x => x.dataset.term === t); return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : ''); }).join('\n');
+        const _obsTermRe2 = new RegExp('^(' + (_OBS_TERMS||[]).join('|') + ')\\s*:', 'i');
+        const _cleanVal = (v) => _obsTermRe2.test(v) ? '' : v; // verwijder corrupte prefix
+        const _tekst2 = (window._OBS_TERMS||[]).map(t => { const el = _termIns2.find(x => x.dataset.term === t); const val = _cleanVal((el && el.value.trim()) || ''); return t + ':' + (val ? ' ' + val : ''); }).join('\n');
         _d.tekst = _tekst2;
         _d.club   = (document.getElementById('obs-club')?.value||'').trim();
         _d.positie= (document.getElementById('obs-positie')?.value||'').trim();

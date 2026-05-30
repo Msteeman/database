@@ -4073,41 +4073,35 @@ function _ritCoordsValid(lat, lon){
 }
 
 /* OpenRouteService routing + Haversine fallback */
-const _ORS_KEY = ['eyJvcmciOil1YjNjZTM1OTc4NTExMTAw', 'MDFjZjYyNDgiLCJpZCI6Ijc3MzliM2U2', 'NDczYjQyM2NiMWM1ODRkMDBkMjI0NDQ0', 'liwiaCI6Im11cm11cjY0In0='].join('');
+// ORS verwijderd — OSRM gebruikt (geen API key nodig)
 
 async function _ritRouteKm(lat1, lon1, lat2, lon2){
   if(!_ritCoordsValid(lat1, lon1) || !_ritCoordsValid(lat2, lon2)){
     return null;
   }
-  // Adaptieve haversine als fallback
+  // Haversine fallback
   const _hav = _ritHaversineKm(lat1, lon1, lat2, lon2);
   const _roadFactor = _hav < 15 ? 1.35 : _hav < 40 ? 1.22 : 1.15;
   const _havKm = _hav * _roadFactor;
 
-  // Probeer OpenRouteService (nauwkeurig, gratis)
+  // OSRM — gratis, geen API key, goede NL routering
   try {
-    const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${_ORS_KEY}&start=${lon1},${lat1}&end=${lon2},${lat2}`;
+    const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
-    const res = await fetch(url, {
-      headers: { 'Accept': 'application/json, application/geo+json' },
-      signal: controller.signal
-    });
+    const timeout = setTimeout(() => controller.abort(), 7000);
+    const res = await fetch(url, { signal: controller.signal });
     clearTimeout(timeout);
     if(res.ok){
       const data = await res.json();
-      const seg = data && data.features && data.features[0] &&
-                  data.features[0].properties && data.features[0].properties.segments;
-      const dist = seg && seg[0] && seg[0].distance;
+      const dist = data && data.routes && data.routes[0] && data.routes[0].distance;
       if(isFinite(dist) && dist > 0 && dist < 800000){
-        const orsKm = dist / 1000;
-        if(orsKm <= _hav * 1.8) return orsKm;
+        return Math.round(dist / 100) / 10; // afgerond op 0.1 km
       }
     }
   } catch(_){}
 
-  // Fallback: verbeterde haversine
-  return _havKm < 800 ? _havKm : null;
+  // Fallback: haversine * wegfactor
+  return _havKm < 800 ? Math.round(_havKm * 10) / 10 : null;
 }
 
 let _ritKmBusy = false;

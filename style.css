@@ -9919,3 +9919,21 @@ tr.db-row-obs td:first-child {
   transition: opacity .12s;
 }
 .sa-tile-obs-close:hover { opacity: 1; }
+
+/* ── Programma detail: wedstrijdnotities sectie ──────────────────────────── */
+.pmd-section-label {
+  font-size: 10.5px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .6px; color: var(--text-3, #8b93a8);
+  margin-bottom: 8px;
+}
+.pmd-wstrnotitie {
+  background: var(--bg-input, #0d1018);
+  border: 1px solid var(--border2, #2d3242);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text, #e5e9f5);
+  line-height: 1.5;
+  white-space: pre-wrap;
+  margin-bottom: 6px;
+}

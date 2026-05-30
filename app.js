@@ -9776,7 +9776,7 @@ function _shOpenEditModal(m){
           <div class="wstr-edit-note-title">${escapeHtml(titel)}</div>
           ${tekst ? `<div class="wstr-edit-note-text">${escapeHtml(tekst)}</div>` : '<div class="wstr-edit-note-text" style="font-style:italic;opacity:0.7;">(geen tekst)</div>'}
         </div>
-        <button type="button" class="wstr-edit-note-action" data-edit-wstr-prog="${escapeHtml(progId)}" data-edit-wstr-idx="${wnIdx}">Openen</button>
+        <button type="button" class="wstr-edit-note-action primary" data-edit-wstr-prog="${escapeHtml(progId)}" data-edit-wstr-idx="${wnIdx}">→ Wedstrijdrapport</button>
       </div>`;
     }).join('');
   }
@@ -16555,6 +16555,21 @@ function openProgMatchDetailModal(progId){
     routeBtn.dataset.url = '';
   }
 
+  // Wedstrijdnotities tonen in programma detail
+  const _wns = Array.isArray(it.wedstrijdnotities) ? it.wedstrijdnotities : [];
+  const _progNotWrap = document.getElementById('pmd-wstrnotities-wrap');
+  if(_progNotWrap){
+    if(_wns.length > 0){
+      _progNotWrap.style.display = '';
+      _progNotWrap.innerHTML = `<div class="pmd-section-label">Wedstrijdnotities (${_wns.length})</div>` +
+        _wns.map(wn => `<div class="pmd-wstrnotitie">${escapeHtml((wn.tekst||'').trim())}</div>`).join('') +
+        `<button type="button" class="btn btn-primary pmd-wstr-rapport-btn" data-progid="${escapeHtml(progId)}" style="margin-top:10px;width:100%;">→ Wedstrijdrapport invullen</button>`;
+    } else {
+      _progNotWrap.style.display = 'none';
+      _progNotWrap.innerHTML = '';
+    }
+  }
+
   // Bewaar huidige id voor knop-handlers
   $('#prog-match-detail-modal').dataset.progId = progId;
   // s35bu: als wedstrijd afgelopen is -> bewerken via Programma blokkeren,
@@ -16604,6 +16619,24 @@ function openProgMatchDetailModal(progId){
     }
   } catch(_){}
   showModal('prog-match-detail-backdrop');
+
+  // Wire wedstrijdrapport knop
+  const _wstrRapBtn = document.querySelector('.pmd-wstr-rapport-btn');
+  if(_wstrRapBtn){
+    _wstrRapBtn.addEventListener('click', () => {
+      closeProgMatchDetailModal();
+      // Open wedstrijdrapport modal prefilled met eerste wedstrijdnotitie
+      if(typeof _shConvertWstrNotitieToRapport === 'function'){
+        _shConvertWstrNotitieToRapport(progId, 0);
+      } else if(typeof openMatchReportModal === 'function'){
+        openMatchReportModal(null, {
+          datum: it.datum, thuis: it.thuis, uit: it.uit,
+          leeftijd: it.leeftijd, locatie: it.locatie,
+          tekst: _wns.map(wn => (wn.tekst||'').trim()).filter(Boolean).join('\n\n')
+        });
+      }
+    });
+  }
 
   // Speler-rij klik -> open bestaande speler in prog-player-modal
   listEl.querySelectorAll('.pmd-player-row').forEach(row => {

@@ -6054,6 +6054,34 @@ function _obsParseTermFromTekst(tekst, term){
   return (m && m[1]) ? m[1].trim() : '';
 }
 
+// Verbeterde parser: bouwt een map van alle termwaarden uit de tekst
+// Herkent ook corrupte opslag zoals "techniek: explosiviteit: sdasdasd"
+function _obsParseAllTerms(tekst){
+  const result = {};
+  if(!tekst) return result;
+  for(const line of (tekst||'').split('\n')){
+    const clean = line.trim();
+    for(const term of _OBS_TERMS){
+      const prefix = term + ':';
+      if(clean.toLowerCase().startsWith(prefix)){
+        let val = clean.slice(prefix.length).trim();
+        // Check of waarde zelf begint met een andere termnaam (nested corruptie)
+        let targetTerm = term;
+        for(const t2 of _OBS_TERMS){
+          if(t2 !== term && val.toLowerCase().startsWith(t2 + ':')){
+            targetTerm = t2;
+            val = val.slice(t2.length + 1).trim();
+            break;
+          }
+        }
+        if(val) result[targetTerm] = val;
+        break;
+      }
+    }
+  }
+  return result;
+}
+
 function openObservatieForm(prog, sn){
   const bd = document.getElementById('obs-backdrop');
   if(!bd) return;
@@ -6062,22 +6090,14 @@ function openObservatieForm(prog, sn){
   const _isNewDraft = !sn || (!sn.naam && !sn.tekst && !sn.club && !sn.elftal);
   const _obsTermTekst = _isNewDraft ? '' : (sn && sn.tekst || '');
   // Valideer: als een parsed waarde zelf een termnaam is (bijv "mentaliteit:") → corruptie, negeer
-  const _OBS_TERM_RE = new RegExp('^(' + _OBS_TERMS.join('|') + ')\\s*:', 'i');
-  const _safeObsTermVal = (tekst, term) => {
-    const v = _obsParseTermFromTekst(tekst, term);
-    if(!v) return '';
-    // Corruptie-check 1: waarde is zelf een termnaam (bijv "mentaliteit:")
-    if(/^[a-z]+:?$/.test(v)) return '';
-    // Corruptie-check 2: waarde begint met een andere termnaam (bijv "inzicht: dasdasd")
-    if(_OBS_TERM_RE.test(v)) return '';
-    return v;
-  };
+  // Gebruik slimme parser die geneste corruptie herkent
+  const _parsedTerms = _obsParseAllTerms(_obsTermTekst);
   const termsEl = document.getElementById('obs-terms');
   if(termsEl){
     termsEl.innerHTML = _OBS_TERMS.map(t => `
       <div class="obs-term-row">
         <span class="obs-term-label">${t}</span>
-        <input class="obs-term-in" data-term="${t}" type="text" placeholder="${escapeHtml(_OBS_TERM_PH[t]||'')}" value="${escapeHtml(_safeObsTermVal(_obsTermTekst, t))}" />
+        <input class="obs-term-in" data-term="${t}" type="text" placeholder="${escapeHtml(_OBS_TERM_PH[t]||'')}" value="${escapeHtml(_parsedTerms[t]||'')}" />
       </div>`).join('');
   }
   // Pre-fill player info from snelnotitie
@@ -6128,10 +6148,10 @@ function openObservatieForm(prog, sn){
         const _d = (prog.snelnotities||[]).find(s => s && s.id === sn.id);
         if(!_d) return;
         _d.naam = (document.getElementById('obs-naam')?.value||'').trim();
-        const _termIns2 = Array.from(document.querySelectorAll('.obs-term-in'));
-        const _obsTermRe2 = new RegExp('^(' + (_OBS_TERMS||[]).join('|') + ')\\s*:', 'i');
-        const _cleanVal = (v) => _obsTermRe2.test(v) ? '' : v; // verwijder corrupte prefix
-        const _tekst2 = (window._OBS_TERMS||[]).map(t => { const el = _termIns2.find(x => x.dataset.term === t); const val = _cleanVal((el && el.value.trim()) || ''); return t + ':' + (val ? ' ' + val : ''); }).join('\n');
+        // Scoped op #obs-terms container — voorkomt conflict met andere .obs-term-in
+        const _termsContainer2 = document.getElementById('obs-terms');
+        const _termIns2 = _termsContainer2 ? Array.from(_termsContainer2.querySelectorAll('.obs-term-in')) : [];
+        const _tekst2 = (_OBS_TERMS||[]).map(t => { const el = _termIns2.find(x => x.dataset.term === t); const val = (el && el.value.trim()) || ''; return t + ':' + (val ? ' ' + val : ''); }).join('\n');
         _d.tekst = _tekst2;
         _d.club   = (document.getElementById('obs-club')?.value||'').trim();
         _d.positie= (document.getElementById('obs-positie')?.value||'').trim();
@@ -6242,7 +6262,8 @@ async function _obsSubmit(e){
     const niveau = document.getElementById('obs-niveau')?.value||'';
     const advies = document.getElementById('obs-advies')?.value||'';
     // Compose tekst from term inputs
-    const termIns = Array.from(document.querySelectorAll('.obs-term-in'));
+    const _termsContainerSub = document.getElementById('obs-terms');
+    const termIns = _termsContainerSub ? Array.from(_termsContainerSub.querySelectorAll('.obs-term-in')) : Array.from(document.querySelectorAll('.obs-term-in'));
     const tekst = _OBS_TERMS.map(t => { const el = termIns.find(x => x.dataset.term === t); return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : ''); }).join('\n');
     // Split naam into voornaam/achternaam
     let voornaam = '', achternaam = '';

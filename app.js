@@ -6121,6 +6121,25 @@ function openObservatieForm(prog, sn){
     _submitBtn.textContent = _isObsDraft ? 'Opslaan & sluiten' : 'Opslaan als observatie';
   }
 
+  // Verwijder-knop: alleen voor obs-drafts (heropenbare opgevallen spelers)
+  const _obsDelBtn = document.getElementById('obs-delete-btn');
+  if(_obsDelBtn){
+    if(sn && sn.obs_draft === true && prog){
+      _obsDelBtn.style.display = '';
+      _obsDelBtn.onclick = () => {
+        if(!confirm('Opgevallen speler verwijderen?')) return;
+        const idx = (prog.snelnotities||[]).findIndex(s => s && s.id === sn.id);
+        if(idx >= 0) prog.snelnotities.splice(idx, 1);
+        prog.modified = Date.now();
+        if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
+        _obsClose();
+        if(typeof renderActiveScouting === 'function') renderActiveScouting();
+      };
+    } else {
+      _obsDelBtn.style.display = 'none';
+    }
+  }
+
   // Zeker weten dat submit button gewired is (ES module fix)
   const _obsSubmitBtn = document.getElementById('obs-submit');
   if(_obsSubmitBtn && !_obsSubmitBtn._wired){
@@ -6234,7 +6253,8 @@ async function _obsSubmit(e){
     }
     _obsClose();
     if(typeof toast === 'function') toast('Observatie opgeslagen ✓');
-    // Geen handmatige re-render — Firestore onSnapshot doet dit vanzelf na saveProgrammaItem
+    // Direct re-render — niet wachten op Firestore (10sec vertraging)
+    if(typeof renderActiveScouting === 'function') renderActiveScouting();
   } catch(err){
     console.error('obs submit error', err);
     if(typeof toast === 'function') toast('Fout bij opslaan', true);

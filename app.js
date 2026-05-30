@@ -6799,9 +6799,9 @@ function renderActiveScouting(){
         <div class="sa-wstrnotities-wrap" style="margin-top:10px; border-top:1px solid var(--border,#2a2f3a); padding-top:8px;">
           <div class="sa-wstr-toggle-row" data-sa-act="toggle-wstr" data-progid="${escapeHtml(prog.id)}" style="display:flex; align-items:center; justify-content:space-between; cursor:pointer; user-select:none; padding:4px 0;">
             <span style="font-size:11px; color:var(--muted,#9aa3b7); text-transform:uppercase; letter-spacing:.6px; font-weight:600;">Wedstrijdnotities (${prog.wedstrijdnotities.length})</span>
-            <span class="sa-wstr-chev" style="color:var(--muted,#9aa3b7); font-size:12px; transition:transform .2s;">&#9656;</span>
+            <span class="sa-wstr-chev" style="color:var(--muted,#9aa3b7); font-size:12px; transition:transform .2s; transform:rotate(90deg);">&#9656;</span>
           </div>
-          <div class="sa-wstrnotities" data-progid="${escapeHtml(prog.id)}" style="display:none; margin-top:6px;">
+          <div class="sa-wstrnotities" data-progid="${escapeHtml(prog.id)}" style="display:block; margin-top:6px;">
             ${prog.wedstrijdnotities.map((wn, idx) => `
             <div class="sa-wstrnotitie-row" data-sa-act="edit-snel-wstr" data-progid="${escapeHtml(prog.id)}" data-wnidx="${idx}" style="background:rgba(255,107,107,0.06); border:1px solid rgba(255,107,107,0.20); border-radius:8px; padding:8px 10px; margin-bottom:6px; font-size:12.5px; display:flex; justify-content:space-between; align-items:flex-start; gap:8px; cursor:pointer;" title="Klik om te bewerken">
               <div style="flex:1; min-width:0; display:flex; align-items:flex-start; gap:8px;">
@@ -7219,7 +7219,7 @@ function renderActiveScouting(){
         const wstrChev = wstrWrap.querySelector('.sa-wstr-toggle-row .sa-wstr-chev');
         if(wstrBody){
           const isOpen = wstrBody.style.display !== 'none';
-          wstrBody.style.display = isOpen ? 'none' : '';
+          wstrBody.style.display = isOpen ? 'none' : 'block';
           if(wstrChev) wstrChev.style.transform = isOpen ? '' : 'rotate(90deg)';
         }
         return;
@@ -10025,7 +10025,7 @@ function _shOpenEditModal(m){
           <div class="wstr-edit-note-title">${num}${escapeHtml(naam)}</div>
           ${tekst ? `<div class="wstr-edit-note-text">${escapeHtml(tekst)}</div>` : '<div class="wstr-edit-note-text" style="font-style:italic;opacity:0.7;">(geen tekst)</div>'}
         </div>
-        <button type="button" class="wstr-edit-note-action obs" data-edit-snel-obs="${escapeHtml(progId)}" data-edit-snel-obs-idx="${snIdx}">→ Observatie</button>
+        <button type="button" class="wstr-edit-note-action obs" data-edit-snel-obs="${escapeHtml(progId)}" data-edit-snel-obs-idx="${snIdx}">→ Indienen</button>
       </div>`;
     }).join('');
   }
@@ -10113,6 +10113,8 @@ function _shOpenEditModal(m){
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const pid = btn.dataset.editPlayer;
+      // Bewaar match-context zodat we na submit terug kunnen keren
+      window.__shWstrEditReturn = window.__shCurrentEditMatch || null;
       _shCloseEditModal();
       // s35dh fix: open rapport-formulier direct (niet spelersprofiel)
       try {
@@ -10129,6 +10131,7 @@ function _shOpenEditModal(m){
         go('report');
         setTimeout(() => { if(typeof loadIntoForm === 'function') loadIntoForm(_pl); }, 80);
       } catch(_){
+        window.__shWstrEditReturn = null;
         if(typeof openDetail === 'function') openDetail(pid);
       }
     });
@@ -10167,7 +10170,10 @@ function _shOpenEditModal(m){
       const sn = prog && Array.isArray(prog.snelnotities) ? prog.snelnotities[idx] : null;
       _shCloseEditModal();
       if(typeof openObservatieForm === 'function'){
-        openObservatieForm(prog, sn || {});
+        // Open in submit-modus (obs_draft=false): doorloopt het volledige
+        // submit-pad → markeert als ingediend → toont ✓ Ingediend op slot
+        const snForSubmit = sn ? Object.assign({}, sn, { obs_draft: false }) : {};
+        openObservatieForm(prog, snForSubmit);
       }
     });
   });
@@ -14037,7 +14043,15 @@ async function submitReport(e){
       await new Promise(r => setTimeout(r, 700));
       setDirty(false);
       resetReportForm();
-      go('database');
+      // Als geopend vanuit Wedstrijden-tab: keer terug en heropend de match-modal
+      const _returnMatch = window.__shWstrEditReturn || null;
+      window.__shWstrEditReturn = null;
+      if(_returnMatch && typeof _shOpenEditModal === 'function'){
+        go('wedstrijden');
+        setTimeout(() => { try { _shOpenEditModal(_returnMatch); } catch(_){} }, 180);
+      } else {
+        go('database');
+      }
     }
   } catch(e){ /* error already toasted */ }
 }
@@ -17364,9 +17378,15 @@ function openProgMatchDetailModal(progId){
   if(_progNotWrap){
     if(_wns.length > 0){
       _progNotWrap.style.display = '';
-      _progNotWrap.innerHTML = `<div class="pmd-section-label">Wedstrijdnotities (${_wns.length})</div>` +
-        _wns.map(wn => `<div class="pmd-wstrnotitie">${escapeHtml((wn.tekst||'').trim())}</div>`).join('') +
-        `<button type="button" class="btn btn-primary pmd-wstr-rapport-btn" data-progid="${escapeHtml(progId)}" style="margin-top:10px;width:100%;">→ Wedstrijdrapport invullen</button>`;
+      const _wr2 = it.wedstrijdrapport;
+      const _wrIng2 = _wr2 && (_wr2.status === 'ingediend' || _wr2.status === 'verwerkt');
+      const _wrCon2 = _wr2 && _wr2.status === 'concept';
+      const _wstrBtnHtml = _wrIng2
+        ? '<div style="display:flex;align-items:center;gap:8px;margin-top:10px;padding:9px 12px;background:rgba(34,197,94,.08);border:1px solid rgba(34,197,94,.25);border-radius:8px;font-size:13px;font-weight:700;color:#4ade80;"><svg width=\'14\' height=\'14\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2.5\'><polyline points=\'20 6 9 17 4 12\'/></svg> Wedstrijdrapport ingediend</div>'
+        : '<button type="button" class="btn btn-primary pmd-wstr-rapport-btn" data-progid="' + escapeHtml(progId) + '" style="margin-top:10px;width:100%;">' + (_wrCon2 ? '✎ Wedstrijdrapport verder invullen' : '→ Wedstrijdrapport invullen') + '</button>';
+      _progNotWrap.innerHTML = '<div class="pmd-section-label">Wedstrijdnotities (' + _wns.length + ')</div>' +
+        _wns.map(wn => '<div class="pmd-wstrnotitie">' + escapeHtml((wn.tekst||'').trim()) + '</div>').join('') +
+        _wstrBtnHtml;
     } else {
       _progNotWrap.style.display = 'none';
       _progNotWrap.innerHTML = '';

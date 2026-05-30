@@ -4739,6 +4739,24 @@ function closeMatchReportModal(){
   $('#mreport-backdrop').classList.remove('open');
 }
 
+// Wire match-report submit direct (ES module fix — DOMContentLoaded kan al geweest zijn)
+(function _wireMreportSubmit(){
+  function _doWire(){
+    const form = document.getElementById('mreport-form');
+    if(form && !form._wired){
+      form._wired = true;
+      form.addEventListener('submit', submitMatchReportForm);
+    }
+    const btn = document.querySelector('#mreport-form [type="submit"]');
+    if(btn && !btn._wired){
+      btn._wired = true;
+      btn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); submitMatchReportForm(e); });
+    }
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _doWire);
+  else _doWire();
+})();
+
 // Wire mreport save (readyState check — ES module draait NA DOMContentLoaded)
 (function _wireMreportSave(){
   function _doWire(){
@@ -6103,6 +6121,13 @@ function openObservatieForm(prog, sn){
     _submitBtn.textContent = _isObsDraft ? 'Opslaan & sluiten' : 'Opslaan als observatie';
   }
 
+  // Zeker weten dat submit button gewired is (ES module fix)
+  const _obsSubmitBtn = document.getElementById('obs-submit');
+  if(_obsSubmitBtn && !_obsSubmitBtn._wired){
+    _obsSubmitBtn._wired = true;
+    _obsSubmitBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); _obsSubmit(e); });
+  }
+
   bd.style.display = 'flex';
   setTimeout(() => { const n = document.getElementById('obs-naam'); if(n) n.focus(); }, 80);
 }
@@ -6124,9 +6149,26 @@ async function _obsSubmit(e){
   // Tijdens wedstrijd (obs_draft): auto-save heeft al gezorgd voor opslaan — gewoon sluiten
   const _isDraft = sn && sn.obs_draft === true && prog;
   if(_isDraft){
+    // Flush: sla huidige waarden direct op naar geheugen vóór sluiten
+    try {
+      const _d = (prog.snelnotities||[]).find(s => s && s.id === sn.id);
+      if(_d){
+        _d.naam = (document.getElementById('obs-naam')?.value||'').trim();
+        _d.club = (document.getElementById('obs-club')?.value||'').trim();
+        _d.positie = (document.getElementById('obs-positie')?.value||'').trim();
+        _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
+        _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
+        const _ti = Array.from(document.querySelectorAll('.obs-term-in'));
+        _d.tekst = (_OBS_TERMS||[]).map(t => { const el = _ti.find(x => x.dataset.term===t); return t+':'+(el&&el.value.trim()?' '+el.value.trim():''); }).join('\n');
+        _d.modified = Date.now();
+        if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
+      }
+    } catch(_){}
     _obsClose();
     if(typeof toast === 'function') toast('Notitie bewaard ✓');
-    return; // Auto-save op input heeft al alles opgeslagen — geen extra Firestore call
+    // Direct opnieuw renderen vanuit geheugen — paarse kaart verschijnt meteen
+    if(typeof renderActiveScouting === 'function') setTimeout(renderActiveScouting, 60);
+    return;
   }
 
   if(btn){ btn.disabled = true; btn.textContent = 'Opslaan...'; }
@@ -7259,6 +7301,8 @@ function renderActiveScouting(){
           const _obsDraft = { id: 'obs_' + Date.now() + '_' + Math.random().toString(36).slice(2,5), rapport_type: 'observatie', obs_draft: true, naam: '', tekst: '', created: Date.now() };
           _obsProg.snelnotities.push(_obsDraft);
           if(typeof saveProgrammaItem === 'function') saveProgrammaItem(_obsProg).catch(()=>{});
+          // Direct re-render voor snelle UI update (niet wachten op Firestore)
+          if(typeof renderActiveScouting === 'function') renderActiveScouting();
           openObservatieForm(_obsProg, _obsDraft);
         }
       } else if(act === 'add-snel-wstr'){
@@ -9841,7 +9885,15 @@ function _shOpenEditModal(m){
       <button type="button" class="wstr-edit-note-action" data-wr-open-modal="${escapeHtml(wrConceptProg.id)}">Open wedstrijdrapport</button>
     </div>`;
   } else if(wns.length === 0){
-    html += `<div class="wstr-edit-empty">Nog geen wedstrijdrapport — voeg notities toe vanuit Programma of dashboard.</div>`;
+    // Altijd een knop tonen om wedstrijdrapport te openen/maken
+    const _firstProgId = linkedProgs.length ? linkedProgs[0].id : '';
+    html += `<div class="wstr-edit-note wstr">
+      <div class="wstr-edit-note-icon">📝</div>
+      <div class="wstr-edit-note-main">
+        <div class="wstr-edit-note-title" style="opacity:.6;">Nog geen notities</div>
+      </div>
+      ${_firstProgId ? `<button type="button" class="wstr-edit-note-action primary" data-edit-wstr-prog="${escapeHtml(_firstProgId)}" data-edit-wstr-idx="-1">→ Wedstrijdrapport</button>` : ''}
+    </div>`;
   } else {
     html += wns.map(({progId, wnIdx, wn}) => {
       const tekst = ((wn && (wn.tekst || wn.notitie)) || "").trim();

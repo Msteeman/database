@@ -4821,6 +4821,8 @@ async function submitMatchReportForm(e){
     thuis,
     uit,
     opmerking,
+    concept: false,
+    status: 'verwerkt',
     created_at: existing?.created_at || new Date().toISOString(),
     updated_at: new Date().toISOString()
   };
@@ -6273,8 +6275,10 @@ async function _obsSubmit(e){
       achternaam = parts.slice(1).join(' ');
     }
     const displayNaam = naam || omschrijving || 'Onbekende speler';
+    // Gebruik bestaand player_id als de obs-draft al eerder is opgeslagen
+    const _existingPlayerId = (sn && sn.player_id) || null;
     const rec = {
-      id: 'obs_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+      id: _existingPlayerId || ('obs_' + Date.now() + '_' + Math.random().toString(36).slice(2,7)),
       naam: displayNaam,
       voornaam, achternaam,
       naam_onbekend: !naam,
@@ -6298,9 +6302,19 @@ async function _obsSubmit(e){
       scout: (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.displayName || currentUser.email || '') : '',
     };
     if(typeof savePlayer === 'function') await savePlayer(rec);
-    // Verwijder/markeer obs-draft als ingediend in prog.snelnotities
+    // Verwijder oude concept-records met dezelfde naam (voorkomen dubbelen)
+    if(_existingPlayerId === null && rec.naam && typeof loadPlayers === 'function'){
+      const _allP = loadPlayers();
+      const _dups = _allP.filter(p => p && p.id !== rec.id && p.concept === true
+        && p.naam && p.naam.toLowerCase() === rec.naam.toLowerCase()
+        && p.rapport_type !== 'observatie');
+      for(const _dp of _dups){
+        try { if(typeof deletePlayer === 'function') await deletePlayer(_dp.id); } catch(_){}
+      }
+    }
+    // Markeer obs-draft altijd als ingediend (ook als obs_draft al false was)
     const _ctx4 = bd && bd._obsContext;
-    if(_ctx4 && _ctx4.prog && _ctx4.sn && _ctx4.sn.obs_draft){
+    if(_ctx4 && _ctx4.prog && _ctx4.sn){
       const _prog4 = _ctx4.prog;
       const _sn4   = _ctx4.sn;
       const idx4   = (_prog4.snelnotities||[]).findIndex(s => s && s.id === _sn4.id);
@@ -6314,8 +6328,24 @@ async function _obsSubmit(e){
     }
     _obsClose();
     if(typeof toast === 'function') toast('Observatie opgeslagen ✓');
-    // Direct re-render — niet wachten op Firestore (10sec vertraging)
+    // Direct re-render
     if(typeof renderActiveScouting === 'function') renderActiveScouting();
+    // Bied optie om ook spelersrapport in te vullen
+    const _savedPlayerId = rec.id;
+    setTimeout(() => {
+      if(typeof toast === 'function'){
+        // Extra toast met actieknop (via custom toast als beschikbaar)
+        const _toastEl = document.getElementById('toast-msg') || document.getElementById('toast');
+        if(_toastEl) _toastEl.insertAdjacentHTML('afterend',
+          `<div id="obs-rapport-cta" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg-card,#12151e);border:1px solid rgba(124,95,245,.4);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:10px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.4);">
+            <span style="font-size:13px;color:var(--text,#e5e9f5);">Ook voorrapport invullen?</span>
+            <button type="button" onclick="(function(){document.getElementById('obs-rapport-cta')?.remove();if(typeof openDetail==='function') openDetail('${_savedPlayerId}');})()" style="background:linear-gradient(135deg,#7c5ff5,#5b3ee0);border:none;border-radius:7px;color:#fff;font-size:12px;padding:6px 12px;cursor:pointer;font-weight:600;">→ Spelersprofiel</button>
+            <button type="button" onclick="document.getElementById('obs-rapport-cta')?.remove()" style="background:none;border:none;color:var(--text-3);font-size:16px;cursor:pointer;padding:0 4px;">×</button>
+          </div>`
+        );
+        setTimeout(() => document.getElementById('obs-rapport-cta')?.remove(), 8000);
+      }
+    }, 500);
   } catch(err){
     console.error('obs submit error', err);
     if(typeof toast === 'function') toast('Fout bij opslaan', true);
@@ -9553,9 +9583,8 @@ function _shCollectSnelNotities(m){
     (p.snelnotities || []).forEach((sn, idx) => {
       // Skip als notitie voor een gekoppelde speler is
       if(sn && sn.spelerKey && _linkedSpelerIds.has(sn.spelerKey)) return;
-      // Skip ingediende obs-drafts (al verwerkt als observatie)
-      if(sn && sn.rapport_type === 'observatie' && sn.ingediend === true) return;
-      out.push({ progId: p.id, snIdx: idx, sn });
+      // Ingediende obs-drafts: bewaren maar markeren als ingediend
+      out.push({ progId: p.id, snIdx: idx, sn, ingediend: !!(sn && sn.ingediend) });
     });
   });
   return out;
@@ -9928,10 +9957,22 @@ function _shOpenEditModal(m){
   if(sns.length === 0){
     html += `<div class="wstr-edit-empty">Geen openstaande spelersnotities.</div>`;
   } else {
-    html += sns.map(({progId, snIdx, sn}) => {
+    html += sns.map(({progId, snIdx, sn, ingediend}) => {
       const naam = (sn.naam || "Onbenoemde speler").trim();
       const num = sn.rugnummer ? `#${escapeHtml(String(sn.rugnummer))} ` : "";
       const tekst = (sn.tekst || "").trim();
+      if(ingediend){
+        // Ingediend: toon als afgerond item, knop naar spelersdatabase
+        const _pid = sn.player_id || '';
+        return `<div class="wstr-edit-note snel wstr-ingediend">
+          <div class="wstr-edit-note-icon">✅</div>
+          <div class="wstr-edit-note-main">
+            <div class="wstr-edit-note-title">${num}${escapeHtml(naam)}</div>
+            <div class="wstr-edit-note-text" style="color:var(--text-3);font-style:italic;">Ingediend als observatie</div>
+          </div>
+          ${_pid ? `<button type="button" class="wstr-edit-note-action" data-open-player-db="${escapeHtml(_pid)}">→ Database</button>` : ''}
+        </div>`;
+      }
       return `<div class="wstr-edit-note snel">
         <div class="wstr-edit-note-icon">💡</div>
         <div class="wstr-edit-note-main">
@@ -10055,6 +10096,15 @@ function _shOpenEditModal(m){
     });
   });
   // Nieuwe handler: → Observatie knop (niet-gekoppelde snelnotitie → observatieformulier)
+  bodyEl.querySelectorAll('[data-open-player-db]').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const pid = btn.dataset.openPlayerDb;
+      _shCloseEditModal();
+      if(pid && typeof openDetail === 'function') openDetail(pid);
+      else if(typeof go === 'function') go('database');
+    });
+  });
   bodyEl.querySelectorAll('[data-edit-snel-obs]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();

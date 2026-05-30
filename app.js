@@ -6341,16 +6341,52 @@ async function _obsSubmit(e){
       go('report');
       setTimeout(() => {
         try {
+          // Speler
           if($('#f-voornaam')) $('#f-voornaam').value = rec.voornaam || '';
           if($('#f-achternaam')) $('#f-achternaam').value = rec.achternaam || '';
           if(typeof syncNaamHidden === 'function') syncNaamHidden('f');
           if($('#f-club')) $('#f-club').value = rec.club || '';
           if($('#f-positie') && rec.positie) $('#f-positie').value = rec.positie;
           if($('#f-elftal')) $('#f-elftal').value = rec.elftal || '';
+          if(rec.rugnummer && $('#f-rugnummer')) $('#f-rugnummer').value = rec.rugnummer;
+
+          // Wedstrijd
           if(rec.wedstrijd_datum && $('#f-w-datum')) $('#f-w-datum').value = rec.wedstrijd_datum;
           if(rec.wedstrijd_thuis && $('#f-w-thuis')) $('#f-w-thuis').value = rec.wedstrijd_thuis;
           if(rec.wedstrijd_uit && $('#f-w-uit')) $('#f-w-uit').value = rec.wedstrijd_uit;
           if(rec.wedstrijd_leeftijd && $('#f-leeftijd')) $('#f-leeftijd').value = rec.wedstrijd_leeftijd;
+          // Plaats + sportpark uit prog-context
+          const _obsCtxProg = (document.getElementById('obs-backdrop') && document.getElementById('obs-backdrop')._obsContext && document.getElementById('obs-backdrop')._obsContext.prog) || null;
+          if(_obsCtxProg) {
+            if(_obsCtxProg.plaats && $('#f-w-plaats')) $('#f-w-plaats').value = _obsCtxProg.plaats;
+            if(_obsCtxProg.sportpark && $('#f-w-sportpark')) $('#f-w-sportpark').value = _obsCtxProg.sportpark;
+          }
+
+          // Niveau + advies
+          if(rec.huidig_niveau && typeof setPickerValue === 'function') setPickerValue('huidig_niveau', rec.huidig_niveau);
+          if(rec.advies) {
+            const _adviesMap = { direct_contracteren:'4', volgen:'3', nog_volgen:'2', geen_interesse:'1' };
+            const _adviesVal = _adviesMap[rec.advies] || '';
+            if(_adviesVal && $('#f-advies')) $('#f-advies').value = _adviesVal;
+          }
+
+          // Obs-notities opsplitsen naar rapport-tekstvelden
+          if(rec.notities) {
+            const _termMap = { techniek:'f-tekst-techniek', inzicht:'f-tekst-inzicht', mentaliteit:'f-tekst-grit', explosiviteit:'f-tekst-explosiviteit', sprinten:'f-tekst-sprinten', duelleren:'f-tekst-duelleren', wendbaarheid:'f-tekst-wendbaarheid', algemeen:'f-notities' };
+            const _lines = rec.notities.split('\n');
+            for(const line of _lines) {
+              const colon = line.indexOf(':');
+              if(colon < 0) continue;
+              const key = line.slice(0, colon).trim().toLowerCase();
+              const val = line.slice(colon + 1).trim();
+              if(!val) continue;
+              const fieldId = _termMap[key];
+              if(fieldId && $(('#' + fieldId))) $(('#' + fieldId)).value = val;
+            }
+          }
+
+          // Methode default Live
+          if($('#f-methode') && !$('#f-methode').value) $('#f-methode').value = 'Live';
         } catch(_){}
       }, 100);
     }, 600);

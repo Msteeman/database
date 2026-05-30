@@ -6091,6 +6091,12 @@ function openObservatieForm(prog, sn){
     });
   }
 
+  // Knoptekst: draft = "Opslaan" (bewaren), definitief = "Opslaan als observatie"
+  const _submitBtn = document.getElementById('obs-submit');
+  if(_submitBtn){
+    _submitBtn.textContent = _isObsDraft ? 'Opslaan & sluiten' : 'Opslaan als observatie';
+  }
+
   bd.style.display = 'flex';
   setTimeout(() => { const n = document.getElementById('obs-naam'); if(n) n.focus(); }, 80);
 }
@@ -6104,12 +6110,37 @@ function _obsClose(){
 async function _obsSubmit(e){
   if(e) e.preventDefault();
   const btn = document.getElementById('obs-submit');
+  const bd = document.getElementById('obs-backdrop');
+  const ctx = bd && bd._obsContext ? bd._obsContext : {};
+  const prog = ctx.prog;
+  const sn = ctx.sn;
+
+  // Tijdens wedstrijd (obs_draft): alleen opslaan naar draft, NIET definitief indienen
+  const _isDraft = sn && sn.obs_draft === true && prog;
+  if(_isDraft){
+    // Sla huidige waarden op in de draft
+    try {
+      const _d = (prog.snelnotities||[]).find(s => s && s.id === sn.id);
+      if(_d){
+        _d.naam    = (document.getElementById('obs-naam')?.value||'').trim();
+        _d.club    = (document.getElementById('obs-club')?.value||'').trim();
+        _d.positie = (document.getElementById('obs-positie')?.value||'').trim();
+        _d.elftal  = (document.getElementById('obs-elftal')?.value||'').trim();
+        _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
+        const _termIns = Array.from(document.querySelectorAll('.obs-term-in'));
+        _d.tekst = (_OBS_TERMS||[]).map(t => { const el = _termIns.find(x => x.dataset.term === t); return t+':'+(el&&el.value.trim()?' '+el.value.trim():''); }).join('\n');
+        _d.modified = Date.now();
+        if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
+      }
+    } catch(_){}
+    _obsClose();
+    if(typeof toast === 'function') toast('Notitie opgeslagen ✓');
+    return; // Geen savePlayer — blijft zichtbaar op dashboard als kaartje
+  }
+
   if(btn){ btn.disabled = true; btn.textContent = 'Opslaan...'; }
   try {
-    const bd = document.getElementById('obs-backdrop');
-    const ctx = bd && bd._obsContext ? bd._obsContext : {};
-    const prog = ctx.prog;
-    const sn = ctx.sn;
+    // sn/prog al gelezen hierboven
     const naam = (document.getElementById('obs-naam')?.value||'').trim();
     const omschrijving = (document.getElementById('obs-omschrijving')?.value||'').trim();
     const rug = (document.getElementById('obs-rug')?.value||'').trim();

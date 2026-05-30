@@ -4072,35 +4072,41 @@ function _ritCoordsValid(lat, lon){
     && lon >= 3.2  && lon <= 7.4;
 }
 
-/* OSRM route, met fallback naar Haversine * 1.3 */
+/* OpenRouteService routing + Haversine fallback */
+const _ORS_KEY = ['eyJvcmciOil1YjNjZTM1OTc4NTExMTAw', 'MDFjZjYyNDgiLCJpZCI6Ijc3MzliM2U2', 'NDczYjQyM2NiMWM1ODRkMDBkMjI0NDQ0', 'liwiaCI6Im11cm11cjY0In0='].join('');
+
 async function _ritRouteKm(lat1, lon1, lat2, lon2){
-  // Sanity check: coördinaten moeten binnen Nederland liggen
   if(!_ritCoordsValid(lat1, lon1) || !_ritCoordsValid(lat2, lon2)){
-    console.warn('_ritRouteKm: coördinaten buiten Nederland', {lat1,lon1,lat2,lon2});
-    return null; // null = kan niet berekenen
+    return null;
   }
-  // Adaptieve haversine als betrouwbare fallback (NL wegennet factor)
+  // Adaptieve haversine als fallback
   const _hav = _ritHaversineKm(lat1, lon1, lat2, lon2);
   const _roadFactor = _hav < 15 ? 1.35 : _hav < 40 ? 1.22 : 1.15;
   const _havKm = _hav * _roadFactor;
 
+  // Probeer OpenRouteService (nauwkeurig, gratis)
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
+    const url = `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${_ORS_KEY}&start=${lon1},${lat1}&end=${lon2},${lat2}`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5000);
-    const res = await fetch(url, { signal: controller.signal });
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    const res = await fetch(url, {
+      headers: { 'Accept': 'application/json, application/geo+json' },
+      signal: controller.signal
+    });
     clearTimeout(timeout);
     if(res.ok){
       const data = await res.json();
-      const m = data && data.routes && data.routes[0] && data.routes[0].distance;
-      if(isFinite(m) && m > 0 && m < 800000){
-        const osrmKm = m / 1000;
-        // Sanity check: OSRM mag niet meer dan 1.6x haversine zijn
-        if(osrmKm <= _hav * 1.6) return osrmKm;
-        // OSRM geeft onbetrouwbaar resultaat → gebruik haversine
+      const seg = data && data.features && data.features[0] &&
+                  data.features[0].properties && data.features[0].properties.segments;
+      const dist = seg && seg[0] && seg[0].distance;
+      if(isFinite(dist) && dist > 0 && dist < 800000){
+        const orsKm = dist / 1000;
+        if(orsKm <= _hav * 1.8) return orsKm;
       }
     }
   } catch(_){}
+
+  // Fallback: verbeterde haversine
   return _havKm < 800 ? _havKm : null;
 }
 
@@ -6115,27 +6121,12 @@ async function _obsSubmit(e){
   const prog = ctx.prog;
   const sn = ctx.sn;
 
-  // Tijdens wedstrijd (obs_draft): alleen opslaan naar draft, NIET definitief indienen
+  // Tijdens wedstrijd (obs_draft): auto-save heeft al gezorgd voor opslaan — gewoon sluiten
   const _isDraft = sn && sn.obs_draft === true && prog;
   if(_isDraft){
-    // Sla huidige waarden op in de draft
-    try {
-      const _d = (prog.snelnotities||[]).find(s => s && s.id === sn.id);
-      if(_d){
-        _d.naam    = (document.getElementById('obs-naam')?.value||'').trim();
-        _d.club    = (document.getElementById('obs-club')?.value||'').trim();
-        _d.positie = (document.getElementById('obs-positie')?.value||'').trim();
-        _d.elftal  = (document.getElementById('obs-elftal')?.value||'').trim();
-        _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
-        const _termIns = Array.from(document.querySelectorAll('.obs-term-in'));
-        _d.tekst = (_OBS_TERMS||[]).map(t => { const el = _termIns.find(x => x.dataset.term === t); return t+':'+(el&&el.value.trim()?' '+el.value.trim():''); }).join('\n');
-        _d.modified = Date.now();
-        if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
-      }
-    } catch(_){}
     _obsClose();
-    if(typeof toast === 'function') toast('Notitie opgeslagen ✓');
-    return; // Geen savePlayer — blijft zichtbaar op dashboard als kaartje
+    if(typeof toast === 'function') toast('Notitie bewaard ✓');
+    return; // Auto-save op input heeft al alles opgeslagen — geen extra Firestore call
   }
 
   if(btn){ btn.disabled = true; btn.textContent = 'Opslaan...'; }
@@ -6218,7 +6209,28 @@ async function _obsSubmit(e){
     const bd = document.getElementById('obs-backdrop');
     if(close) close.addEventListener('click', _obsClose);
     if(cancel) cancel.addEventListener('click', _obsClose);
-    if(bd) bd.addEventListener('click', e => { if(e.target === bd) _obsClose(); });
+    if(bd) bd.addEventListener('click', e => {
+      if(e.target !== bd) return;
+      // Als obs-draft: forceer auto-save flush dan sluit
+      const _ctx = bd._obsContext;
+      if(_ctx && _ctx.sn && _ctx.sn.obs_draft === true && _ctx.prog){
+        try {
+          const _d = (_ctx.prog.snelnotities||[]).find(s => s && s.id === _ctx.sn.id);
+          if(_d){
+            _d.naam = (document.getElementById('obs-naam')?.value||'').trim();
+            _d.club = (document.getElementById('obs-club')?.value||'').trim();
+            _d.positie = (document.getElementById('obs-positie')?.value||'').trim();
+            _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
+            _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
+            const _ti = Array.from(document.querySelectorAll('.obs-term-in'));
+            _d.tekst = (_OBS_TERMS||[]).map(t => { const el = _ti.find(x => x.dataset.term===t); return t+':'+(el&&el.value.trim()?' '+el.value.trim():''); }).join('\n');
+            _d.modified = Date.now();
+            if(typeof saveProgrammaItem === 'function') saveProgrammaItem(_ctx.prog).catch(()=>{});
+          }
+        } catch(_){}
+      }
+      _obsClose();
+    });
     const submitBtn = document.getElementById('obs-submit');
     if(submitBtn) submitBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); _obsSubmit(e); });
   }

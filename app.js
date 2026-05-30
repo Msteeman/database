@@ -4122,8 +4122,8 @@ async function _ritTryAutoKm(force){
     const vtxt = (document.getElementById('rit-vertrek')||{}).value||'';
     if(vtxt.trim()){
       try{
-        const hits = await _nominatimSearch(vtxt.trim() + ', Nederland');
-        if(hits && hits[0]){ _vLat = parseFloat(hits[0].lat); _vLon = parseFloat(hits[0].lon); }
+        const hits = await _ritNominatimSearch(vtxt.trim());
+        if(hits && hits[0] && isFinite(hits[0].lat)){ _vLat = hits[0].lat; _vLon = hits[0].lon; }
       }catch(_){}
     }
   }
@@ -4131,8 +4131,8 @@ async function _ritTryAutoKm(force){
     const atxt = (document.getElementById('rit-aankomst')||{}).value||'';
     if(atxt.trim()){
       try{
-        const hits = await _nominatimSearch(atxt.trim() + ', Nederland');
-        if(hits && hits[0]){ _aLat = parseFloat(hits[0].lat); _aLon = parseFloat(hits[0].lon); }
+        const hits = await _ritNominatimSearch(atxt.trim());
+        if(hits && hits[0] && isFinite(hits[0].lat)){ _aLat = hits[0].lat; _aLon = hits[0].lon; }
       }catch(_){}
     }
   }
@@ -4140,6 +4140,10 @@ async function _ritTryAutoKm(force){
 
   _ritKmBusy = true;
   const prev = kmInp.placeholder;
+  // Toon direct een haversine schatting als tijdelijke waarde
+  const _havEst = _ritHaversineKm(_vLat, _vLon, _aLat, _aLon);
+  const _havFactor = _havEst < 15 ? 1.35 : _havEst < 40 ? 1.25 : 1.18;
+  if(_havEst > 0) kmInp.value = Math.round(_havEst * _havFactor * 10) / 10;
   kmInp.placeholder = 'Berekenen…';
   try {
     const km = await _ritRouteKm(_vLat, _vLon, _aLat, _aLon);

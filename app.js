@@ -3538,7 +3538,12 @@ function renderRitten(){
 
   list.innerHTML = items.map(r => {
     const datum = _ritFmtDatum(r.datum) + (r.tijd ? '<br><span style="font-size:11px;color:var(--text-3);">' + r.tijd + '</span>' : '');
-    const route = (r.vertrekAdres || '—') + '<span class="rit-arrow">→</span>' + (r.aankomstAdres || '—');
+    const _cleanAdres = (a) => {
+      if(!a) return '—';
+      // Verwijder "Nederland" suffix en trim lang display_name
+      return a.replace(/,?\s*Nederland\s*$/i, '').replace(/,?\s*NL\s*$/i, '').trim().slice(0, 60) || a.slice(0,60) || '—';
+    };
+    const route = _cleanAdres(r.vertrekAdres) + '<span class="rit-arrow">→</span>' + _cleanAdres(r.aankomstAdres);
     const doel = r.doel ? '<div class="rit-doel">' + escapeHtml(r.doel) + '</div>' : '';
     return '<div class="rit-row" data-id="' + r.id + '">' +
       '<div class="rit-datum">' + datum + '</div>' +
@@ -3586,15 +3591,24 @@ function _ritShowProgChips(chipsEl){
     const relevant = (typeof programmaCache !== 'undefined' ? programmaCache : [])
       .filter(p => {
         if(!p || !p.datum) return false;
-        const diff = (new Date(p.datum) - today) / 86400000;
+        // Normaliseer datum (YYYY-MM-DD of DD-MM-YYYY)
+        const ds = (typeof datumToIsoStr === 'function') ? datumToIsoStr(p.datum) : (p.datum||'').slice(0,10);
+        const diff = (new Date(ds + 'T12:00:00') - today) / 86400000;
         return diff >= -2 && diff <= 14;
       })
       .sort((a,b) => a.datum.localeCompare(b.datum));
     if(!relevant.length) return;
+    const _td = new Date(); _td.setHours(0,0,0,0);
+    const _todayStr     = _td.toISOString().slice(0,10);
+    const _yesterdayStr = new Date(_td - 86400000).toISOString().slice(0,10);
+    const _tomorrowStr  = new Date(_td.getTime() + 86400000).toISOString().slice(0,10);
     const dayLabel = (d) => {
-      if(d === dates[0]) return 'Gisteren';
-      if(d === dates[1]) return 'Vandaag';
-      return 'Morgen';
+      const ds = (d||'').slice(0,10);
+      if(ds === _yesterdayStr) return 'Gisteren';
+      if(ds === _todayStr)     return 'Vandaag';
+      if(ds === _tomorrowStr)  return 'Morgen';
+      const dd = new Date(ds + 'T12:00:00');
+      return isNaN(dd) ? ds : dd.getDate() + '-' + (dd.getMonth()+1);
     };
     chipsEl.innerHTML = '<div class="rm-prog-chips-label">Aankomst uit Programma:</div>' +
       relevant.map(p => {
@@ -3839,12 +3853,15 @@ async function _ritGeoLocation(kind){
       const plaats = a.city || a.town || a.village || a.municipality || '';
       adres = [straat, plaats].filter(Boolean).join(', ') || json.display_name || '';
     } catch(e){
-      // Altijd een leesbaar adres proberen — geen rauwe coordinaten tonen
+      // Tweede poging zonder zoom/addressdetails
       try {
         const fb = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`, { headers: { 'Accept-Language': 'nl' } });
         const fj = await fb.json();
-        adres = fj.display_name || (latitude.toFixed(4) + ', ' + longitude.toFixed(4));
-      } catch(_){ adres = latitude.toFixed(4) + ', ' + longitude.toFixed(4); }
+        const fa = fj.address || {};
+        const fStraat = [fa.road, fa.house_number].filter(Boolean).join(' ');
+        const fPlaats = fa.city || fa.town || fa.village || fa.municipality || '';
+        adres = [fStraat, fPlaats].filter(Boolean).join(', ') || fj.display_name || 'Huidige locatie';
+      } catch(_){ adres = 'Huidige locatie'; }
     }
     if(adresEl){ adresEl.value = adres; adresEl.placeholder = 'Adres of plaats'; }
     const latEl = document.getElementById(latId);
@@ -4025,7 +4042,13 @@ function _ritSetupSuggest(inputId, boxId, kind){
   };
   input.addEventListener('focus', fill);
   input.addEventListener('input', fill);
-  input.addEventListener('blur', () => { setTimeout(()=> box.classList.remove('open'), 180); });
+  input.addEventListener('blur', () => {
+    setTimeout(() => {
+      box.classList.remove('open');
+      // Bereken km na handmatig intypen + weggaan uit veld
+      _ritTryAutoKm();
+    }, 200);
+  });
 }
 
 /* Haversine -> hemelsbreed (km) */
@@ -4179,7 +4202,8 @@ function _ritInitListeners(){
 
   _ritSetupSuggest('rit-vertrek', 'rit-vertrek-suggest', 'vertrek');
   _ritSetupSuggest('rit-aankomst', 'rit-aankomst-suggest', 'aankomst');
-  // s35dj: km herberekening via de ⟳ knop (dblclick uitgefaseerd)
+  // s35dj: km herberekening via de ⟳ knop
+  bind('rit-km-herbereken', 'click', () => _ritTryAutoKm(true));
 }
 if(typeof document !== 'undefined'){
   if(document.readyState === 'loading'){
@@ -10493,8 +10517,8 @@ function _elfShowTeamTiles(players, resultsEl, query){
     const nO = t.players.filter(p => p.rapport_type === 'observatie').length;
     const col = _elfTeamColor(t.elftal);
     html += `<div class="elf-tile ${col}" data-elf-club="${escapeAttr(t.club)}" data-elf-team="${escapeAttr(t.elftal)}">
-  <div class="elf-tile-elftal">${escapeHtml(t.elftal)}</div>
   <div class="elf-tile-club">${escapeHtml(t.club)}</div>
+  <div class="elf-tile-elftal">${escapeHtml(t.elftal)}</div>
   <div class="elf-tile-footer">
     <span class="elf-tile-players">${t.players.length} speler${t.players.length===1?'':'s'}</span>
     <span class="elf-tile-badges">${nR?'<span class="elf-tbadge elf-tbadge-r">'+nR+'R</span>':''}${nO?'<span class="elf-tbadge elf-tbadge-o">'+nO+'O</span>':''}</span>
@@ -10557,7 +10581,7 @@ function _elfShowPlayerTiles(club, elftal, players){
     const typeLabel = isObs ? 'OBS' : 'Rapport';
     const niveauClass = p.huidig_niveau ? `elf-niv-${p.huidig_niveau.toLowerCase()}` : '';
 
-    html += `<div class="elf-player-tile ${typeClass}" onclick="openDetail(${JSON.stringify(p.id)})">
+    html += `<div class="elf-player-tile ${typeClass}" data-elf-pid="${escapeAttr(p.id)}">
   <div class="elf-pt-header">
     <span class="elf-pt-naam">${escapeHtml(naam)}</span>
     <span class="elf-pt-type">${typeLabel}</span>
@@ -10568,6 +10592,13 @@ function _elfShowPlayerTiles(club, elftal, players){
   });
   html += '</div>';
   resultsEl.innerHTML = html;
+  // Event delegation — betrouwbaarder dan inline onclick in ES module context
+  resultsEl.querySelectorAll('[data-elf-pid]').forEach(tile => {
+    tile.addEventListener('click', () => {
+      const pid = tile.dataset.elfPid;
+      if(pid && typeof openDetail === 'function') openDetail(pid);
+    });
+  });
 }
 
 window._elfBackToTiles = function(){

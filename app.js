@@ -3200,7 +3200,9 @@ function subscribeData(){
           .then(()=> toast(`${enriched.length} rapport${enriched.length===1?'':'en'} bijgewerkt vanuit adresboek`));
       }
     }
-    if(currentView === 'dashboard') renderDashboard();
+    const _mrSnapOpen = document.getElementById('mreport-backdrop') && document.getElementById('mreport-backdrop').classList.contains('open');
+    const _obsSnapOpen = document.getElementById('obs-backdrop') && document.getElementById('obs-backdrop').style.display === 'flex';
+    if(currentView === 'dashboard' && !_mrSnapOpen && !_obsSnapOpen) renderDashboard();
     if(currentView === 'database') applyFilters();
     try { shUpdateDatabaseNavBadge(); } catch(_){}
     if(currentView === 'pitch' && currentAnalysisId) renderPitchInfo();
@@ -3279,10 +3281,10 @@ function subscribeData(){
     const hasOpenSnelForm = !!document.querySelector(
       '.sa-snel-form[style*="display: block"], .sa-snel-wstr-form[style*="display: block"]'
     );
-    // Skip dashboard re-render als obs-modal of andere overlays open zijn
-    const hasOpenModal = !!document.querySelector(
-      '#obs-backdrop[style*="flex"], #obs-backdrop:not([style*="none"])'
-    ) || (document.getElementById('obs-backdrop') && document.getElementById('obs-backdrop').style.display === 'flex');
+    // Skip dashboard re-render als obs-modal, wedstrijdrapport-modal of andere overlays open zijn
+    const _obsOpen = document.getElementById('obs-backdrop') && document.getElementById('obs-backdrop').style.display === 'flex';
+    const _mrOpen  = document.getElementById('mreport-backdrop') && document.getElementById('mreport-backdrop').classList.contains('open');
+    const hasOpenModal = _obsOpen || _mrOpen;
     // s35cv: forceer ook een tweede render via rAF zodat de PWA-DOM
     //        de eerste snapshot zeker oppikt (was: blank agenda in app).
     if(currentView === 'programma'){
@@ -3912,7 +3914,7 @@ async function _ritNominatimSearch(q){
       lat: parseFloat(it.lat),
       lon: parseFloat(it.lon)
     })).filter(x => x.label && _ritCoordsValid(x.lat, x.lon));
-    _ritSearchCache.set(q, out);
+    if(out.length) _ritSearchCache.set(q, out); // lege resultaten niet cachen
     return out;
   } catch(_){ return []; }
 }
@@ -4047,9 +4049,12 @@ function _ritSetupSuggest(inputId, boxId, kind){
   input.addEventListener('blur', () => {
     setTimeout(() => {
       box.classList.remove('open');
-      // Bereken km na handmatig intypen + weggaan uit veld
       _ritTryAutoKm();
-    }, 200);
+    }, 300);
+  });
+  // Ook bij Enter: direct berekenen
+  input.addEventListener('keydown', (ev) => {
+    if(ev.key === 'Enter') setTimeout(_ritTryAutoKm, 100);
   });
 }
 
@@ -4159,7 +4164,11 @@ async function _ritTryAutoKm(force){
       if(hit){ _aLat = hit.lat; _aLon = hit.lon; }
     }
   }
-  if(![_vLat,_vLon,_aLat,_aLon].every(isFinite)){ return; }
+  if(![_vLat,_vLon,_aLat,_aLon].every(isFinite)){
+    const kmInp2 = document.getElementById('rit-km');
+    if(kmInp2 && !kmInp2.value) kmInp2.placeholder = 'Klik ⟳ Herbereken';
+    return;
+  }
 
   _ritKmBusy = true;
   const prev = kmInp.placeholder;
@@ -6049,7 +6058,8 @@ function openObservatieForm(prog, sn){
   const bd = document.getElementById('obs-backdrop');
   if(!bd) return;
   // Alleen tekst parsen als sn een naam heeft (niet leeg/nieuw) + tekst geldig is
-  const _isNewDraft = !sn || !sn.naam;
+  // Alleen leeg openen als er NIETS is ingevuld (naam, tekst, club zijn allemaal leeg)
+  const _isNewDraft = !sn || (!sn.naam && !sn.tekst && !sn.club && !sn.elftal);
   const _obsTermTekst = _isNewDraft ? '' : (sn && sn.tekst || '');
   // Valideer: als een parsed waarde zelf een termnaam is (bijv "mentaliteit:") → corruptie, negeer
   const _safeObsTermVal = (tekst, term) => {
@@ -6176,6 +6186,10 @@ window.openObservatieForm = openObservatieForm;
 function _obsClose(){
   const bd = document.getElementById('obs-backdrop');
   if(bd) bd.style.display = 'none';
+  // Herrender direct zodat paarse kaartjes meteen zichtbaar zijn
+  setTimeout(() => {
+    try { if(typeof renderActiveScouting === 'function') renderActiveScouting(); } catch(_){}
+  }, 80);
 }
 
 async function _obsSubmit(e){

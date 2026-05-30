@@ -4829,20 +4829,25 @@ async function submitMatchReportForm(e){
 
   try {
     await saveMatchReport(report);
-    closeMatchReportModal();
-    toast(existing ? 'Wedstrijdrapport bijgewerkt' : 'Wedstrijd opgeslagen');
-    if(alsoPlayer){
-      go('report');
-      setTimeout(()=>{
-        try {
-          $('#f-w-datum').value = report.datum || '';
-          $('#f-w-thuis').value = report.thuis || '';
-          $('#f-w-uit').value = report.uit || '';
-          $('#f-w-context').value = report.opmerking || '';
-          if(report.leeftijd) $('#f-leeftijd').value = report.leeftijd;
-        } catch(_){}
-      }, 80);
-    }
+    // Toon "✓ Ingediend" knop vóór sluiten
+    const _mrBtn = document.querySelector('#mreport-modal [type="submit"]');
+    if(_mrBtn){ _mrBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Ingediend'; _mrBtn.disabled = true; }
+    setTimeout(() => {
+      closeMatchReportModal();
+      toast(existing ? 'Wedstrijdrapport bijgewerkt' : 'Wedstrijd opgeslagen');
+      if(alsoPlayer){
+        go('report');
+        setTimeout(()=>{
+          try {
+            $('#f-w-datum').value = report.datum || '';
+            $('#f-w-thuis').value = report.thuis || '';
+            $('#f-w-uit').value = report.uit || '';
+            $('#f-w-context').value = report.opmerking || '';
+            if(report.leeftijd) $('#f-leeftijd').value = report.leeftijd;
+          } catch(_){}
+        }, 80);
+      }
+    }, 600);
   } catch(_) { /* error toast already shown */ }
 }
 
@@ -6326,30 +6331,32 @@ async function _obsSubmit(e){
         if(typeof saveProgrammaItem === 'function') saveProgrammaItem(_prog4).catch(()=>{});
       }
     }
-    _obsClose();
+    if(btn){ btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Ingediend'; btn.disabled = true; }
     if(typeof toast === 'function') toast('Observatie opgeslagen ✓');
     // Direct re-render
     if(typeof renderActiveScouting === 'function') renderActiveScouting();
-    // Bied optie om ook spelersrapport in te vullen
-    const _savedPlayerId = rec.id;
     setTimeout(() => {
-      if(typeof toast === 'function'){
-        // Extra toast met actieknop (via custom toast als beschikbaar)
-        const _toastEl = document.getElementById('toast-msg') || document.getElementById('toast');
-        if(_toastEl) _toastEl.insertAdjacentHTML('afterend',
-          `<div id="obs-rapport-cta" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--bg-card,#12151e);border:1px solid rgba(124,95,245,.4);border-radius:10px;padding:10px 16px;display:flex;align-items:center;gap:10px;z-index:9999;box-shadow:0 4px 20px rgba(0,0,0,.4);">
-            <span style="font-size:13px;color:var(--text,#e5e9f5);">Ook voorrapport invullen?</span>
-            <button type="button" onclick="(function(){document.getElementById('obs-rapport-cta')?.remove();if(typeof openDetail==='function') openDetail('${_savedPlayerId}');})()" style="background:linear-gradient(135deg,#7c5ff5,#5b3ee0);border:none;border-radius:7px;color:#fff;font-size:12px;padding:6px 12px;cursor:pointer;font-weight:600;">→ Spelersprofiel</button>
-            <button type="button" onclick="document.getElementById('obs-rapport-cta')?.remove()" style="background:none;border:none;color:var(--text-3);font-size:16px;cursor:pointer;padding:0 4px;">×</button>
-          </div>`
-        );
-        setTimeout(() => document.getElementById('obs-rapport-cta')?.remove(), 8000);
-      }
-    }, 500);
+      _obsClose();
+      // Direct naar rapport invullen (geen openDetail tussenstap)
+      go('report');
+      setTimeout(() => {
+        try {
+          if($('#f-voornaam')) $('#f-voornaam').value = rec.voornaam || '';
+          if($('#f-achternaam')) $('#f-achternaam').value = rec.achternaam || '';
+          if(typeof syncNaamHidden === 'function') syncNaamHidden('f');
+          if($('#f-club')) $('#f-club').value = rec.club || '';
+          if($('#f-positie') && rec.positie) $('#f-positie').value = rec.positie;
+          if($('#f-elftal')) $('#f-elftal').value = rec.elftal || '';
+          if(rec.wedstrijd_datum && $('#f-w-datum')) $('#f-w-datum').value = rec.wedstrijd_datum;
+          if(rec.wedstrijd_thuis && $('#f-w-thuis')) $('#f-w-thuis').value = rec.wedstrijd_thuis;
+          if(rec.wedstrijd_uit && $('#f-w-uit')) $('#f-w-uit').value = rec.wedstrijd_uit;
+          if(rec.wedstrijd_leeftijd && $('#f-leeftijd')) $('#f-leeftijd').value = rec.wedstrijd_leeftijd;
+        } catch(_){}
+      }, 100);
+    }, 600);
   } catch(err){
     console.error('obs submit error', err);
     if(typeof toast === 'function') toast('Fout bij opslaan', true);
-  } finally {
     if(btn){ btn.disabled = false; btn.textContent = 'Opslaan als observatie'; }
   }
 }
@@ -9932,7 +9939,8 @@ function _shOpenEditModal(m){
           _snPrev = _sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' · ').trim().slice(0,120);
         }
       }
-      return `<div class="wstr-edit-item${isConcept?' is-concept':''}">
+      const _isIngediend = !isConcept; // niet-concept = al ingediend
+      return `<div class="wstr-edit-item${isConcept?' is-concept':''}${_isIngediend?' wstr-ingediend':''}">
         <div class="wstr-edit-item-avatar">${escapeHtml(initials || '?')}</div>
         <div class="wstr-edit-item-main">
           <div class="wstr-edit-item-name">${escapeHtml(pl.naam || '—')}${conceptBadge}</div>
@@ -9940,7 +9948,9 @@ function _shOpenEditModal(m){
           ${_snPrev ? `<div class="wstr-edit-item-sn-prev">${escapeHtml(_snPrev)}</div>` : ''}
         </div>
         <div class="wstr-edit-item-actions">
-          <button type="button" class="wstr-edit-mini-btn primary" data-edit-player="${escapeHtml(pl.id)}" title="Aanvullen en indienen als spelersrapport">→ Spelersrapport</button>
+          ${_isIngediend
+            ? `<button type="button" class="wstr-edit-mini-btn ingediend" data-open-player-db="${escapeHtml(pl.id)}">✓ Ingediend</button>`
+            : `<button type="button" class="wstr-edit-mini-btn primary" data-edit-player="${escapeHtml(pl.id)}" title="Aanvullen en indienen als spelersrapport">→ Spelersrapport</button>`}
         </div>
       </div>`;
     }).join('');
@@ -10096,6 +10106,13 @@ function _shOpenEditModal(m){
     });
   });
   // Nieuwe handler: → Observatie knop (niet-gekoppelde snelnotitie → observatieformulier)
+  bodyEl.querySelectorAll('[data-edit-mr-open]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      _shCloseEditModal();
+      if(typeof openMatchReportModal === 'function') openMatchReportModal(btn.dataset.editMrOpen);
+    });
+  });
   bodyEl.querySelectorAll('[data-open-player-db]').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -13497,12 +13514,19 @@ async function submitReport(e){
     // s35ca-3: toast tekst hangt af van mode
     if(__mode === 'draft'){
       toast(isEdit ? 'Concept bijgewerkt' : 'Concept opgeslagen');
+      setDirty(false);
+      resetReportForm();
+      go('database');
     } else {
       toast(isEdit ? 'Rapport bijgewerkt' : 'Rapport ingediend');
+      // Toon "✓ Ingediend" knop vóór navigeren
+      const _rpBtn = document.getElementById('report-save-btn');
+      if(_rpBtn){ _rpBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Ingediend'; _rpBtn.disabled = true; }
+      await new Promise(r => setTimeout(r, 700));
+      setDirty(false);
+      resetReportForm();
+      go('database');
     }
-    setDirty(false);
-    resetReportForm();
-    go('database');
   } catch(e){ /* error already toasted */ }
 }
 

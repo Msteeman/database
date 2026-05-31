@@ -10329,8 +10329,8 @@ function _shOpenEditModal(m){
   const _matchDatumE = (m.datum||'').trim();
   const _matchThuisE = (m.thuis||'').toLowerCase().trim();
 
-  // Uit playersCache: alle spelers die aan deze wedstrijd gekoppeld zijn
-  const _cacheSpelers = (typeof playersCache !== 'undefined' ? playersCache : []).filter(p => {
+  // Uit loadPlayers() (gedededupliceerd): alle spelers die aan deze wedstrijd gekoppeld zijn
+  const _cacheSpelers = (typeof loadPlayers === 'function' ? loadPlayers() : []).filter(p => {
     if(!p || !p.id) return false;
     const wd = p.wedstrijd || {};
     const pdatum = wd.datum || p.wedstrijd_datum || '';
@@ -13199,10 +13199,21 @@ function renderDetailSummary(p){
     wDatum ? formatDate(wDatum) : ''
   ].filter(Boolean).join(' · ');
 
-  const notitiesStr = (p.notities || '').trim();
-  const notitiesPreview = notitiesStr.length > 160
-    ? escapeHtml(notitiesStr.slice(0, 160)) + '…'
-    : escapeHtml(notitiesStr);
+  // Voor obs: ook de originele snel-notitie tekst ophalen uit programmaCache
+  let notitiesStr = (p.notities || '').trim();
+  if(!notitiesStr && p.rapport_type === 'observatie' && typeof programmaCache !== 'undefined'){
+    try {
+      const _pNaam = (p.naam||'').toLowerCase().trim();
+      for(const prog of programmaCache){
+        if(!prog || !Array.isArray(prog.snelnotities)) continue;
+        const sn = prog.snelnotities.find(s => s && (s.naam||'').toLowerCase().trim() === _pNaam);
+        if(sn && sn.tekst){ notitiesStr = sn.tekst.trim(); break; }
+      }
+    } catch(_){}
+  }
+  const notitiesPreview = notitiesStr.length > 300
+    ? escapeHtml(notitiesStr.slice(0, 300)) + '…'
+    : escapeHtml(notitiesStr).replace(/\n/g,'<br>');
 
   wrap.innerHTML = `
     <div class="card compare-card dtl-summary-card" style="margin-top:0;margin-bottom:16px;">
@@ -14848,9 +14859,10 @@ function renderMatches(){
               <span class="match-team-home">${escapeHtml(_thuisF)}</span>
               <span class="match-vs">\u2014</span>
               <span class="match-team-away">${escapeHtml(_uitF)}</span>
+              ${_progP && _progP.leeftijd ? `<span class="match-age-badge" style="margin-left:6px;">${escapeHtml(_progP.leeftijd)}</span>` : ''}
               ${_allVerwerkt ? '<span class="pm-done-badge pm-done-full">✓ Ingediend</span>' : _chevP}
             </div>
-            ${_progP && (_progP.tijd || _progP.leeftijd) ? `<div class="match-meta"><span class="match-players-count">${[_progP.tijd, _progP.leeftijd].filter(Boolean).map(escapeHtml).join(' \u00b7 ')}</span></div>` : ''}
+            ${_progP && _progP.tijd ? `<div class="match-meta"><span class="match-players-count">${escapeHtml(_progP.tijd)}</span></div>` : ''}
           </div>
           <div class="match-dropdown pm-dropdown" style="display:none">${_dropRows}</div>
         </div>
@@ -14919,11 +14931,11 @@ function renderMatches(){
               <span class="match-team-home">${thuisClean}</span>
               ${scoreHtml}
               <span class="match-team-away">${uitClean}</span>
+              ${ageBadge}
               ${chevron}
             </div>
             <div class="match-meta">
               ${_shIsVerwerktA ? '<span class="match-status-pill verwerkt">✓ Verwerkt</span>' : ''}
-              ${ageBadge}
               ${opstellingMeta}
               ${countMeta}
             </div>

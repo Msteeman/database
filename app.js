@@ -9421,6 +9421,11 @@ function wireDraftCard(){
 })();
 
 function renderDatabase(){
+  // Reset type-filterknoppen bij elke herlaad van de database
+  const _obsBtn = document.getElementById('db-obs-filter-btn');
+  const _rapBtn = document.getElementById('db-rapport-filter-btn');
+  if(_obsBtn) _obsBtn.classList.remove('active');
+  if(_rapBtn) _rapBtn.classList.remove('active');
   const players = loadPlayers().filter(p => !p.concept);
   $('#db-count').textContent = `${players.length} speler${players.length===1?'':'s'}`;
 

@@ -14817,15 +14817,22 @@ function renderMatches(){
           const naam = sp.naam||[sp.voornaam,sp.achternaam].filter(Boolean).join(' ')||'?';
           const sn = _sns.find(s => s && s.spelerKey === sp.id);
           const prev = sn && sn.tekst ? escapeHtml(sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' \u00b7 ').trim().slice(0,60)) : '';
+          const statusBadge = isVerwerkt
+            ? `<span style="font-size:10px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:1px 7px;font-weight:600;">✓ Ingediend</span>`
+            : concept
+              ? `<span style="font-size:10px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3);border-radius:4px;padding:1px 7px;font-weight:600;">Concept</span>`
+              : '';
           return `<div class="pm-item-row">
-            <div class="pm-item-info">
-              <span class="pm-item-name">${escapeHtml(naam)}${sn&&sn.is_opvallend?' \u2b50':''}</span>
+            <div class="pm-item-info" style="flex:1;">
+              <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                <span class="pm-item-name" style="cursor:pointer;" data-player-id="${concept ? escapeHtml(concept.id) : ''}">${escapeHtml(naam)}${sn&&sn.is_opvallend?' \u2b50':''}</span>
+                ${statusBadge}
+              </div>
               ${sp.positie ? `<span class="pm-item-pos">${escapeHtml(sp.positie)}</span>` : ''}
-              ${prev && !isVerwerkt ? `<div class="pm-item-preview">${prev}</div>` : ''}
             </div>
             <div class="pm-item-acts">
               ${isVerwerkt
-                ? `<span class="pm-item-done">\u2713</span><button type="button" class="pm-item-link" data-player-id="${escapeHtml(concept.id)}" title="Naar profiel">Profiel</button>`
+                ? `<button type="button" class="pm-item-link" data-player-id="${escapeHtml(concept.id)}" title="Open rapport">Rapport →</button>`
                 : `<button type="button" class="pm-item-btn${concept?' ':' new'}" data-pm-rapport="${escapeHtml(m.progId)}" data-pm-sp-id="${escapeHtml(sp.id)}">${concept ? '\u2192 Open' : '\u2192 Rapport'}</button>`
               }
             </div>
@@ -14847,17 +14854,27 @@ function renderMatches(){
           }).join('');
         }
       }
-      // Wedstrijdnotitie — inline bewerkbaar
-      const _wstrInitTekst = (_wstr && _wstr.tekst) ? _wstr.tekst : (_progP && _progP.notities ? _progP.notities : '');
-      _dropRows += `<div class="pm-section-hdr">Wedstrijdnotitie</div>
-      <div class="pm-wstr-inline">
-        <textarea class="pm-wstr-ta" data-pm-wstr-prog="${escapeHtml(m.progId)}" rows="3"
-          placeholder="Tactiek, score, sfeer, bijzonderheden...">${escapeHtml(_wstrInitTekst)}</textarea>
-        <div class="pm-wstr-actions" style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
-          ${_wstrVerwerkt ? `<span class="pm-item-done">✓ Ingediend</span>` : '<span></span>'}
-          <button type="button" class="wstr-edit-note-action primary" data-pm-wstr-rapport="${escapeHtml(m.progId)}" style="margin:0;">→ Wedstrijdrapport</button>
-        </div>
-      </div>`;
+      // Wedstrijdrapport — compacte weergave (geen textarea)
+      const _wstrOpmerking = (_wstr && _wstr.opmerking) ? _wstr.opmerking : ((_wstr && _wstr.tekst) ? _wstr.tekst : '');
+      const _wstrShort = _wstrOpmerking ? _wstrOpmerking.replace(/\n+/g,' · ').trim().slice(0,80) + (_wstrOpmerking.length>80?'…':'') : '';
+      if(_wstrVerwerkt){
+        _dropRows += `<div class="pm-section-hdr">Wedstrijdrapport</div>
+        <div class="pm-wstr-inline pm-wstr-done">
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
+            <span class="pm-item-done" style="font-size:13px;">✓ Ingediend</span>
+            <button type="button" class="pm-item-link" data-pm-wstr-readonly="${escapeHtml(m.progId)}" style="font-size:12px;">Bekijk rapport →</button>
+          </div>
+          ${_wstrShort ? `<div style="font-size:11px;color:var(--text-3);margin-top:5px;">${escapeHtml(_wstrShort)}</div>` : ''}
+        </div>`;
+      } else {
+        _dropRows += `<div class="pm-section-hdr">Wedstrijdrapport</div>
+        <div class="pm-wstr-inline">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            ${_wstrShort ? `<span style="font-size:12px;color:var(--text-2);flex:1;margin-right:10px;">${escapeHtml(_wstrShort)}</span>` : '<span style="font-size:12px;color:var(--text-3);">Nog geen rapport</span>'}
+            <button type="button" class="wstr-edit-note-action primary" data-pm-wstr-rapport="${escapeHtml(m.progId)}" style="margin:0;flex-shrink:0;">→ Wedstrijdrapport</button>
+          </div>
+        </div>`;
+      }
       const _chevP = `<span class="match-chevron pm-chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;
       html += `
         <div class="match-card pm-card" data-prog-match-id="${escapeHtml(m.progId)}" data-match-key="${escapeHtml(_shKeyP)}">
@@ -15219,8 +15236,24 @@ function renderMatches(){
         if(typeof _shOpenEditModal === 'function') _shOpenEditModal({ kind:'programma', id:progId3, progId:progId3, datum:prog3.datum, thuis:prog3.thuis, uit:prog3.uit, age:prog3.leeftijd||'', players:[], _focusWstr: true });
         return;
       }
-      // s93: profiel-knop (verwerkte spelers)
-      const btnLink = e.target.closest('.pm-item-link[data-player-id]');
+      // Bekijk ingediend wedstrijdrapport (read-only)
+      const btnWstrReadonly = e.target.closest('[data-pm-wstr-readonly]');
+      if(btnWstrReadonly){
+        e.stopPropagation();
+        const progId_ro = btnWstrReadonly.dataset.pmWstrReadonly;
+        const prog_ro = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === progId_ro) : null;
+        if(prog_ro && prog_ro.wedstrijdrapport){
+          const wr = prog_ro.wedstrijdrapport;
+          // Zoek matchReport id in matchReportsCache op datum+thuis
+          const mrId = (typeof matchReportsCache !== 'undefined')
+            ? (matchReportsCache.find(r => r.datum === prog_ro.datum && (r.thuis||'').toLowerCase() === (prog_ro.thuis||'').toLowerCase())?.id || '')
+            : '';
+          if(typeof openMatchReportModal === 'function') openMatchReportModal(mrId || '');
+        }
+        return;
+      }
+      // s93: profiel-knop (verwerkte spelers) + klikbare spelernaam
+      const btnLink = e.target.closest('.pm-item-link[data-player-id], .pm-item-name[data-player-id]');
       if(btnLink){
         e.stopPropagation();
         const pid = btnLink.dataset.playerId;

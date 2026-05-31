@@ -3182,8 +3182,9 @@ function loadPlayers(){
     if(p && p.rapport_type === 'observatie'){
       const key = [
         (p.naam||'').toLowerCase().trim(),
-        (p.wedstrijd_datum||p.datum||''),
-        (p.wedstrijd_thuis||'').toLowerCase().trim()
+        (p.wedstrijd_datum||p.datum||(p.wedstrijd&&p.wedstrijd.datum)||''),
+        (p.wedstrijd_thuis||(p.wedstrijd&&p.wedstrijd.thuis)||'').toLowerCase().trim(),
+        (p.wedstrijd_uit||(p.wedstrijd&&p.wedstrijd.uit)||'').toLowerCase().trim()
       ].join('|');
       if(seen.has(key)) return; // skip duplicaat
       seen.set(key, true);
@@ -6363,6 +6364,7 @@ async function _obsSubmit(e){
       concept: false,
       status: 'observatie',
       is_opvallend: sn && sn.is_opvallend ? true : false,
+      notities_raw: (sn && sn.tekst) ? sn.tekst.trim() : '',
       datum: prog && prog.datum ? prog.datum : (new Date().toISOString().slice(0,10)),
       // Wedstrijdgegevens als genest object (zelfde structuur als spelersrapporten)
       wedstrijd: {
@@ -10328,15 +10330,21 @@ function _shOpenEditModal(m){
   const _allLinkedProgs = (typeof _shFindLinkedPrograms === 'function') ? _shFindLinkedPrograms(m) : [];
   const _matchDatumE = (m.datum||'').trim();
   const _matchThuisE = (m.thuis||'').toLowerCase().trim();
+  const _matchUitE   = (m.uit||'').toLowerCase().trim();
 
-  // Uit loadPlayers() (gedededupliceerd): alle spelers die aan deze wedstrijd gekoppeld zijn
   const _cacheSpelers = (typeof loadPlayers === 'function' ? loadPlayers() : []).filter(p => {
     if(!p || !p.id) return false;
     const wd = p.wedstrijd || {};
     const pdatum = wd.datum || p.wedstrijd_datum || '';
     const pthuis = (wd.thuis || p.wedstrijd_thuis || '').toLowerCase().trim();
+    const puit   = (wd.uit   || p.wedstrijd_uit   || '').toLowerCase().trim();
     if(!pdatum || pdatum !== _matchDatumE) return false;
-    return pthuis === _matchThuisE || _matchThuisE.startsWith(pthuis) || pthuis.startsWith(_matchThuisE);
+    const thuisMatch = pthuis && (_matchThuisE === pthuis || _matchThuisE.startsWith(pthuis) || pthuis.startsWith(_matchThuisE));
+    if(!thuisMatch) return false;
+    if(puit && _matchUitE){
+      return _matchUitE === puit || _matchUitE.startsWith(puit) || puit.startsWith(_matchUitE);
+    }
+    return true;
   });
 
   // Merge: begin met players uit m.players, voeg cacheSpelers toe die nog niet in de lijst zitten
@@ -11003,18 +11011,9 @@ function _shConfirmVerwerk(){
 
 // Render banner-HTML met spelersnotities + wedstrijdrapport (concept/notitie)
 function _shBannerHTML(m){
-  // Alleen wedstrijdrapport-concept pill tonen (geen gele spelersnotitie banner)
-  try {
-    if(typeof _shConvertNotesToDrafts === 'function'){
-      _shFindLinkedPrograms(m).forEach(p => { _shConvertNotesToDrafts(p); });
-    }
-  } catch(_){}
-  const linked = _shFindLinkedPrograms(m);
-  const conceptProg = linked.find(p => p && p.wedstrijdrapport && p.wedstrijdrapport.status === 'concept');
-  if(!conceptProg) return "";
-  return `<button type="button" class="m-concept-pill" data-wr-open="${escapeHtml(conceptProg.id)}" onclick="event.stopPropagation();">`
-    + `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`
-    + ` Wedstrijdrapport (concept)</button>`;
+  // Geen banners meer in de wedstrijdenkaart
+  try { if(typeof _shConvertNotesToDrafts === 'function') _shFindLinkedPrograms(m).forEach(p => _shConvertNotesToDrafts(p)); } catch(_){}
+  return "";
 }
 
 function cmpPlayerById(id){
@@ -11061,7 +11060,9 @@ function _elfBuildTeamMap(players){
   const teamMap = new Map();
   players.forEach(p => {
     const club  = (p.club  || 'Onbekende club').trim();
-    const elftal = (p.elftal || deriveElftalFromReport(p) || '').trim();
+    // Voor obs: gebruik wedstrijd_leeftijd als elftal fallback
+    const _elfFallback = p.wedstrijd_leeftijd || (p.wedstrijd && p.wedstrijd.leeftijd) || '';
+    const elftal = (p.elftal || deriveElftalFromReport(p) || _elfFallback || '').trim();
     const key = club + '\x00' + elftal;
     if(!teamMap.has(key)) teamMap.set(key, { club, elftal, players: [] });
     teamMap.get(key).players.push(p);
@@ -13200,16 +13201,37 @@ function renderDetailSummary(p){
   ].filter(Boolean).join(' · ');
 
   // Voor obs: ook de originele snel-notitie tekst ophalen uit programmaCache
-  let notitiesStr = (p.notities || '').trim();
-  if(!notitiesStr && p.rapport_type === 'observatie' && typeof programmaCache !== 'undefined'){
-    try {
-      const _pNaam = (p.naam||'').toLowerCase().trim();
-      for(const prog of programmaCache){
-        if(!prog || !Array.isArray(prog.snelnotities)) continue;
-        const sn = prog.snelnotities.find(s => s && (s.naam||'').toLowerCase().trim() === _pNaam);
-        if(sn && sn.tekst){ notitiesStr = sn.tekst.trim(); break; }
-      }
-    } catch(_){}
+  // Voor obs: gebruik notities_raw (originele live-tekst) als primaire bron
+  let notitiesStr = '';
+  if(p.rapport_type === 'observatie'){
+    // notities_raw = ruwe snel-notitie tekst (meest betrouwbaar)
+    notitiesStr = (p.notities_raw || '').trim();
+    // Fallback 1: p.notities - maar filter lege term-headers weg
+    if(!notitiesStr){
+      const raw = (p.notities || '').trim();
+      // Verwijder regels die alleen "term:" bevatten zonder inhoud
+      const meaningful = raw.split('\n').filter(line => {
+        const colonIdx = line.indexOf(':');
+        if(colonIdx < 0) return line.trim().length > 0;
+        return line.slice(colonIdx+1).trim().length > 0;
+      }).join('\n').trim();
+      notitiesStr = meaningful;
+    }
+    // Fallback 2: zoek in programmaCache snel-notities op naam
+    if(!notitiesStr && typeof programmaCache !== 'undefined'){
+      try {
+        const _pNaam = (p.naam||'').toLowerCase().trim();
+        const _pDatum = p.datum || p.wedstrijd_datum || '';
+        for(const prog of programmaCache){
+          if(!prog || !Array.isArray(prog.snelnotities)) continue;
+          if(_pDatum && prog.datum && prog.datum !== _pDatum) continue;
+          const sn = prog.snelnotities.find(s => s && (s.naam||'').toLowerCase().trim() === _pNaam);
+          if(sn && sn.tekst){ notitiesStr = sn.tekst.trim(); break; }
+        }
+      } catch(_){}
+    }
+  } else {
+    notitiesStr = (p.notities || '').trim();
   }
   const notitiesPreview = notitiesStr.length > 300
     ? escapeHtml(notitiesStr.slice(0, 300)) + '…'

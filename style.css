@@ -10289,3 +10289,12 @@ tr.db-row-obs td:first-child {
   font-weight: 600;
 }
 .cmp-pct-rank.elite { color: var(--grade-a); font-weight: 800; }
+
+/* ── wstr-type-label: "Rapport" / "Observatie" in geel ── */
+.wstr-type-label {
+  display: inline-block; font-size: 9.5px; font-weight: 700;
+  padding: 1px 6px; border-radius: 4px; margin-left: 6px;
+  text-transform: uppercase; letter-spacing: .4px; vertical-align: middle;
+}
+.wstr-type-label.rapport     { background: rgba(245,158,11,.18); color: #f5c518; border: 1px solid rgba(245,158,11,.3); }
+.wstr-type-label.observatie  { background: rgba(167,139,250,.18); color: #a78bfa; border: 1px solid rgba(167,139,250,.3); }

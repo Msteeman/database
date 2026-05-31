@@ -6061,29 +6061,23 @@ function _obsParseTermFromTekst(tekst, term){
   return (m && m[1]) ? m[1].trim() : '';
 }
 
-// Verbeterde parser: bouwt een map van alle termwaarden uit de tekst
-// Herkent ook corrupte opslag zoals "techniek: explosiviteit: sdasdasd"
+// Robuuste parser: regex per term zodat shift/corruptie niet kan optreden
 function _obsParseAllTerms(tekst){
   const result = {};
   if(!tekst) return result;
-  for(const line of (tekst||'').split('\n')){
-    const clean = line.trim();
-    for(const term of _OBS_TERMS){
-      const prefix = term + ':';
-      if(clean.toLowerCase().startsWith(prefix)){
-        let val = clean.slice(prefix.length).trim();
-        // Check of waarde zelf begint met een andere termnaam (nested corruptie)
-        let targetTerm = term;
-        for(const t2 of _OBS_TERMS){
-          if(t2 !== term && val.toLowerCase().startsWith(t2 + ':')){
-            targetTerm = t2;
-            val = val.slice(t2.length + 1).trim();
-            break;
-          }
+  for(const term of _OBS_TERMS){
+    // Zoek exacte regel die begint met deze termnaam (case-insensitive, multiline)
+    const re = new RegExp('^\\s*' + term + '\\s*:\\s*(.+)', 'mi');
+    const m = tekst.match(re);
+    if(m && m[1]){
+      let val = m[1].trim();
+      // Verwerp waarden die zelf met een termnaam beginnen (corrupte opslag)
+      for(const t2 of _OBS_TERMS){
+        if(t2 !== term && val.toLowerCase().startsWith(t2 + ':')){
+          val = ''; break;
         }
-        if(val) result[targetTerm] = val;
-        break;
       }
+      if(val) result[term] = val;
     }
   }
   return result;
@@ -6244,7 +6238,8 @@ async function _obsSubmit(e){
         _d.positie = (document.getElementById('obs-positie')?.value||'').trim();
         _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
         _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
-        const _ti = Array.from(document.querySelectorAll('.obs-term-in'));
+        const _obsTerCont = document.getElementById('obs-terms');
+        const _ti = _obsTerCont ? Array.from(_obsTerCont.querySelectorAll('.obs-term-in')) : Array.from(document.querySelectorAll('.obs-term-in'));
         _d.tekst = (_OBS_TERMS||[]).map(t => { const el = _ti.find(x => x.dataset.term===t); return t+':'+(el&&el.value.trim()?' '+el.value.trim():''); }).join('\n');
         _d.modified = Date.now();
         if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
@@ -6417,7 +6412,8 @@ async function _obsSubmit(e){
             _d.positie = (document.getElementById('obs-positie')?.value||'').trim();
             _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
             _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
-            const _ti = Array.from(document.querySelectorAll('.obs-term-in'));
+            const _obsTcBd = document.getElementById('obs-terms');
+            const _ti = _obsTcBd ? Array.from(_obsTcBd.querySelectorAll('.obs-term-in')) : Array.from(document.querySelectorAll('.obs-term-in'));
             _d.tekst = (_OBS_TERMS||[]).map(t => { const el = _ti.find(x => x.dataset.term===t); return t+':'+(el&&el.value.trim()?' '+el.value.trim():''); }).join('\n');
             _d.modified = Date.now();
             if(typeof saveProgrammaItem === 'function') saveProgrammaItem(_ctx.prog).catch(()=>{});
@@ -9074,7 +9070,7 @@ function wireDraftCard(){
 })();
 
 function renderDatabase(){
-  const players = loadPlayers();
+  const players = loadPlayers().filter(p => !p.concept);
   $('#db-count').textContent = `${players.length} speler${players.length===1?'':'s'}`;
 
   const posSel = $('#filter-position');
@@ -9134,7 +9130,9 @@ function buildDbPaginator(totalItems, page, pageSize, position){
     </div>`;
 }
 function applyFilters(){
-  const players = loadPlayers();
+  const allPlayers = loadPlayers();
+  // Concept-records nooit tonen in spelersdatabase — alleen na indienen (concept:false)
+  const players = allPlayers.filter(p => !p.concept);
   $('#db-count').textContent = `${players.length} speler${players.length===1?'':'s'}`;
   const q  = $('#filter-search').value.trim().toLowerCase();
   const fp = $('#filter-position').value;
@@ -9963,8 +9961,7 @@ function _shOpenEditModal(m){
       const posLabel = (typeof positionLabel === 'function' ? (positionLabel(pl.positie) || pl.positie || '') : (pl.positie || ''));
       const sub = [posLabel, pl.club].filter(Boolean).join(' • ');
       const isConcept = _shPlayerIsConcept(pl);
-      const conceptBadge = isConcept ? `<span class="mdr-concept-badge">Concept</span>` : '';
-      // Zoek snelnotitie voor deze speler
+      // Zoek snelnotitie voor preview-tekst
       const _spKey = pl.programma_link && pl.programma_link.spelerKey;
       let _snPrev = '';
       if(_spKey){
@@ -9974,18 +9971,20 @@ function _shOpenEditModal(m){
           _snPrev = _sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' · ').trim().slice(0,120);
         }
       }
-      const _isIngediend = !isConcept; // niet-concept = al ingediend
+      const _isIngediend = !isConcept;
+      // Type-label "Rapport" in geel voor nog in te dienen spelers (geen Concept-badge meer)
+      const _rapportLabel = isConcept ? ` <span class="wstr-type-label rapport">Rapport</span>` : '';
       return `<div class="wstr-edit-item${isConcept?' is-concept':''}${_isIngediend?' wstr-ingediend':''}">
         <div class="wstr-edit-item-avatar">${escapeHtml(initials || '?')}</div>
         <div class="wstr-edit-item-main">
-          <div class="wstr-edit-item-name">${escapeHtml(pl.naam || '—')}${conceptBadge}</div>
+          <div class="wstr-edit-item-name">${escapeHtml(pl.naam || '—')}${_rapportLabel}</div>
           ${sub ? `<div class="wstr-edit-item-sub">${escapeHtml(sub)}</div>` : ''}
           ${_snPrev ? `<div class="wstr-edit-item-sn-prev">${escapeHtml(_snPrev)}</div>` : ''}
         </div>
         <div class="wstr-edit-item-actions">
           ${_isIngediend
             ? `<button type="button" class="wstr-edit-mini-btn ingediend" data-open-player-db="${escapeHtml(pl.id)}">✓ Ingediend</button>`
-            : `<button type="button" class="wstr-edit-mini-btn primary" data-edit-player="${escapeHtml(pl.id)}" title="Aanvullen en indienen als spelersrapport">→ Spelersrapport</button>`}
+            : `<button type="button" class="wstr-edit-mini-btn primary" data-edit-player="${escapeHtml(pl.id)}" title="Aanvullen en indienen als spelersrapport">→ Rapport</button>`}
         </div>
       </div>`;
     }).join('');
@@ -10021,7 +10020,7 @@ function _shOpenEditModal(m){
       return `<div class="wstr-edit-note snel">
         <div class="wstr-edit-note-icon">💡</div>
         <div class="wstr-edit-note-main">
-          <div class="wstr-edit-note-title">${num}${escapeHtml(naam)}</div>
+          <div class="wstr-edit-note-title">${num}${escapeHtml(naam)} <span class="wstr-type-label observatie">Observatie</span></div>
           ${tekst ? `<div class="wstr-edit-note-text">${escapeHtml(tekst)}</div>` : '<div class="wstr-edit-note-text" style="font-style:italic;opacity:0.7;">(geen tekst)</div>'}
         </div>
         <button type="button" class="wstr-edit-note-action obs" data-edit-snel-obs="${escapeHtml(progId)}" data-edit-snel-obs-idx="${snIdx}">→ Indienen</button>

@@ -10426,8 +10426,28 @@ function _shOpenEditModal(m){
   const _openSns = sns.filter(s => !s.ingediend);
   const _ingediendSns = sns.filter(s => s.ingediend);
 
-  // ── Sectie: Spelers ──
-  const _totalSpelers = _allSpelers.length + _ingediendSns.length;
+  // ── Sectie: Spelers — dedup op naam over ALLE bronnen ──
+  const _getoondNamen = new Set();
+
+  // Bouw unieke spelerlijst uit _allSpelers (dedup op naam)
+  const _uniekeSpelers = [];
+  _allSpelers.forEach(pl => {
+    const nk = (pl.naam||'').toLowerCase().trim();
+    if(nk && _getoondNamen.has(nk)) return;
+    if(nk) _getoondNamen.add(nk);
+    _uniekeSpelers.push(pl);
+  });
+
+  // Ingediende snel-notities die NIET al getoond zijn op naam
+  const _uniekeSns = [];
+  _ingediendSns.forEach(({sn}) => {
+    const nk = (sn.naam||'').toLowerCase().trim();
+    if(nk && _getoondNamen.has(nk)) return;
+    if(nk) _getoondNamen.add(nk);
+    _uniekeSns.push(sn);
+  });
+
+  const _totalSpelers = _uniekeSpelers.length + _uniekeSns.length;
   html += `<div class="wstr-edit-section">
     <div class="wstr-edit-section-head">
       <div class="wstr-edit-section-icon">👥</div>
@@ -10435,15 +10455,11 @@ function _shOpenEditModal(m){
       <div class="wstr-edit-section-count">${_totalSpelers}</div>
     </div>`;
 
-  // Ingediende observaties (snel-notities) — skip als player_id al via playersCache getoond wordt
-  // Dedup op naam: elke speler maar 1x tonen (sn én playersCache samen)
-  const _getoondNamen = new Set(_allSpelers.map(p => (p&&p.naam||'').toLowerCase().trim()).filter(Boolean));
-  _ingediendSns.forEach(({sn}) => {
-    const naamKey = (sn.naam||'').toLowerCase().trim();
-    if(naamKey && _getoondNamen.has(naamKey)) return; // al getoond, skip
-    if(naamKey) _getoondNamen.add(naamKey);
+  // Render snel-notitie obs
+  _uniekeSns.forEach(sn => {
     const naam = (sn.naam||'?').trim();
-    html += `<div class="wstr-player-row" ${pid?`data-open-player-db="${escapeHtml(pid)}" style="cursor:pointer;"`:''}>
+    const snPid = sn.player_id || '';
+    html += `<div class="wstr-player-row" ${snPid?`data-open-player-db="${escapeHtml(snPid)}" style="cursor:pointer;"`:''}>
       <span class="wstr-type-dot obs"></span>
       <span class="wstr-player-naam">${escapeHtml(naam)}</span>
       <span class="wstr-type-label observatie">OBS</span>
@@ -10451,8 +10467,8 @@ function _shOpenEditModal(m){
     </div>`;
   });
 
-  // Gekoppelde spelers + cache-spelers
-  _allSpelers.forEach(pl => {
+  // Render playersCache spelers
+  _uniekeSpelers.forEach(pl => {
     const naam = pl.naam || '—';
     const isConcept = typeof _shPlayerIsConcept === 'function' ? _shPlayerIsConcept(pl) : !!pl.concept;
     const isObs = pl.rapport_type === 'observatie';
@@ -10460,7 +10476,6 @@ function _shOpenEditModal(m){
       ? `<span class="wstr-type-label observatie">OBS</span>`
       : `<span class="wstr-type-label rapport">Rapport</span>`;
     if(isConcept){
-      // Nog niet ingediend: knop tonen
       html += `<div class="wstr-player-row">
         <span class="wstr-type-dot ${isObs?'obs':'rapport'}"></span>
         <span class="wstr-player-naam">${escapeHtml(naam)}</span>
@@ -10468,7 +10483,6 @@ function _shOpenEditModal(m){
         <button type="button" class="wstr-edit-mini-btn primary" data-edit-player="${escapeHtml(pl.id)}">→ Indienen</button>
       </div>`;
     } else {
-      // Ingediend: alleen-lezen, klikbaar
       html += `<div class="wstr-player-row" data-open-player-db="${escapeHtml(pl.id)}" style="cursor:pointer;">
         <span class="wstr-type-dot ${isObs?'obs':'rapport'}"></span>
         <span class="wstr-player-naam">${escapeHtml(naam)}</span>
@@ -10481,6 +10495,9 @@ function _shOpenEditModal(m){
   // Open observaties (nog in te dienen)
   _openSns.forEach(({progId, snIdx, sn}) => {
     const naam = (sn.naam||'Onbekend').trim();
+    const nk2 = naam.toLowerCase().trim();
+    if(nk2 && _getoondNamen.has(nk2)) return;
+    if(nk2) _getoondNamen.add(nk2);
     const num = sn.rugnummer ? `#${sn.rugnummer} ` : '';
     html += `<div class="wstr-player-row">
       <span class="wstr-type-dot obs"></span>

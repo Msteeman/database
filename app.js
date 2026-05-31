@@ -4860,6 +4860,8 @@ function closeMatchReportModal(){
     }
     const cancel = document.getElementById('mreport-cancel');
     if(cancel && !cancel._wired){ cancel._wired = true; cancel.addEventListener('click', closeMatchReportModal); }
+    const closeX = document.getElementById('mreport-close');
+    if(closeX && !closeX._wired){ closeX._wired = true; closeX.addEventListener('click', closeMatchReportModal); }
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _doWire);
   else _doWire();
@@ -14809,7 +14811,10 @@ function renderMatches(){
       const _extraPlayers = (typeof playersCache !== 'undefined' ? playersCache : []).filter(p => {
         if(!p || !p.id || _spelerIds.has(p.id)) return false;
         const wd = p.wedstrijd || {};
-        return (wd.datum||'') === _matchDatum && (wd.thuis||'').toLowerCase().trim() === _matchThuis;
+        if(!wd.datum || wd.datum !== _matchDatum) return false;
+        // Fuzzy thuis-match: speler heeft "Go Ahead Eagles", wedstrijd "Go Ahead Eagles O.13-1"
+        const pdThuis = (wd.thuis||'').toLowerCase().trim();
+        return pdThuis === _matchThuis || _matchThuis.startsWith(pdThuis) || pdThuis.startsWith(_matchThuis);
       });
       // s93: trigger auto-conversie notities → concept-spelersrapporten (punt 7)
       try { if(typeof _shConvertNotesToDrafts === 'function' && _progP) _shConvertNotesToDrafts(_progP); } catch(_){}

@@ -10455,10 +10455,16 @@ function _shOpenEditModal(m){
       <div class="wstr-edit-section-count">${_totalSpelers}</div>
     </div>`;
 
-  // Render snel-notitie obs
+  // Sla sn.tekst op in globale map zodat spelersprofiel ze kan tonen
+  window.__shSnTekstMap = window.__shSnTekstMap || {};
   _uniekeSns.forEach(sn => {
     const naam = (sn.naam||'?').trim();
     const snPid = sn.player_id || '';
+    if(sn.tekst){
+      if(snPid) window.__shSnTekstMap[snPid] = sn.tekst;
+      const nk = (sn.naam||'').toLowerCase().trim();
+      if(nk) window.__shSnTekstMap['n:'+nk] = sn.tekst;
+    }
     html += `<div class="wstr-player-row" ${snPid?`data-open-player-db="${escapeHtml(snPid)}" style="cursor:pointer;"`:''}>
       <span class="wstr-type-dot obs"></span>
       <span class="wstr-player-naam">${escapeHtml(naam)}</span>
@@ -10467,8 +10473,29 @@ function _shOpenEditModal(m){
     </div>`;
   });
 
-  // Render playersCache spelers
+  // Render playersCache spelers — zoek ook bijbehorende sn.tekst op
   _uniekeSpelers.forEach(pl => {
+    // Sla ook op via naam zodat spelersprofiel het kan vinden
+    if(pl && pl.naam){
+      const _plNk = (pl.naam||'').toLowerCase().trim();
+      if(!window.__shSnTekstMap['n:'+_plNk]){
+        // Zoek sn.tekst in programmaCache voor deze speler
+        try {
+          if(typeof programmaCache !== 'undefined'){
+            for(const _p2 of programmaCache){
+              if(!_p2 || !Array.isArray(_p2.snelnotities)) continue;
+              for(const _s2 of _p2.snelnotities){
+                if(_s2 && _s2.tekst && (_s2.player_id === pl.id || _s2.__convertedToPlayerId === pl.id || (_s2.naam||'').toLowerCase().trim() === _plNk)){
+                  window.__shSnTekstMap[pl.id] = _s2.tekst;
+                  window.__shSnTekstMap['n:'+_plNk] = _s2.tekst;
+                  break;
+                }
+              }
+            }
+          }
+        } catch(_){}
+      }
+    }
     const naam = pl.naam || '—';
     const isConcept = typeof _shPlayerIsConcept === 'function' ? _shPlayerIsConcept(pl) : !!pl.concept;
     const isObs = pl.rapport_type === 'observatie';
@@ -13096,36 +13123,6 @@ function renderDetailOverview(p){
     <div style="height:16px;"></div>
   `;
   renderDetailKPIs(vp);
-  // DEBUG TIJDELIJK — toont ruwe veldwaarden uit Firebase
-  try {
-    const _dbg = document.createElement('div');
-    _dbg.style.cssText = 'background:#0a0;color:#fff;padding:10px;margin:8px 0;font-size:11px;font-family:monospace;border-radius:6px;word-break:break-all;';
-    const _snLookup = [];
-    if(typeof programmaCache !== 'undefined'){
-      for(const _pr of programmaCache){
-        if(!_pr || !Array.isArray(_pr.snelnotities)) continue;
-        for(const _sn of _pr.snelnotities){
-          if(!_sn) continue;
-          if(_sn.player_id === p.id || _sn.__convertedToPlayerId === p.id || (_sn.naam||'').toLowerCase() === (p.naam||'').toLowerCase()){
-            _snLookup.push('SN['+(_pr.datum||'?')+'] naam='+(_sn.naam||'-')+' tekst='+(_sn.tekst||'-').slice(0,80)+' player_id='+(_sn.player_id||'-')+' conv='+(_sn.__convertedToPlayerId||'-'));
-          }
-        }
-      }
-    }
-    _dbg.innerHTML = '<b>DEBUG:</b><br>'
-      + 'id: '+escapeHtml(p.id||'-')+'<br>'
-      + 'naam: '+escapeHtml(p.naam||'-')+'<br>'
-      + 'concept: '+(p.concept)+'<br>'
-      + 'rapport_type: '+escapeHtml(p.rapport_type||'-')+'<br>'
-      + 'datum: '+escapeHtml(p.datum||'-')+'<br>'
-      + 'wedstrijd_datum: '+escapeHtml(p.wedstrijd_datum||'-')+'<br>'
-      + 'wedstrijd_thuis: '+escapeHtml(p.wedstrijd_thuis||'-')+'<br>'
-      + 'notities: '+escapeHtml((p.notities||'-').slice(0,100))+'<br>'
-      + 'notities_raw: '+escapeHtml((p.notities_raw||'-').slice(0,100))+'<br>'
-      + 'opmerkingen: '+escapeHtml((p.opmerkingen||'-').slice(0,100))+'<br>'
-      + 'SN gevonden: '+(_snLookup.length)+': '+escapeHtml(_snLookup.join(' | ').slice(0,300));
-    document.getElementById('player-view-body')?.prepend(_dbg);
-  } catch(_){}
   renderDetailSummary(vp);
   // DIRECTE notities-fallback: toont altijd als er notities zijn maar renderDetailSummary leeg blijft
   try {
@@ -13363,7 +13360,12 @@ function renderDetailSummary(p){
   const hasWapen   = !!p.wapen;
   const hasWedstrijd = !!(wThuis || wUit || wDatum);
   // Zoek notities in programmaCache (VOOR vroege return) — breed zoeken op id + naam
-  let _notitiesVroeg = (p.notities_raw || p.notities || p.opmerkingen || '').trim();
+  // Primaire bron: globale map gevuld vanuit wedstrijd-popup
+  const _snMapKey = window.__shSnTekstMap && (
+    window.__shSnTekstMap[p.id] ||
+    window.__shSnTekstMap['n:'+(p.naam||'').toLowerCase().trim()]
+  ) || '';
+  let _notitiesVroeg = _snMapKey || (p.notities_raw || p.notities || p.opmerkingen || '').trim();
   if(!_notitiesVroeg && typeof programmaCache !== 'undefined'){
     try {
       const _pId    = p.id || '';

@@ -3166,15 +3166,7 @@ async function syncAllAddressesFromAdresboek(){
 }
 window.syncAllAddressesFromAdresboek = syncAllAddressesFromAdresboek;
 
-function loadPlayers(){
-  const seen = new Set();
-  return playersCache.filter(p => {
-    if(!p || !p.id) return false;
-    if(seen.has(p.id)) return false;
-    seen.add(p.id);
-    return true;
-  });
-}
+function loadPlayers(){ return playersCache; }
 function loadAnalyses(){ return analysesCache; }
 function loadContacts(){ return contactsCache; }
 function loadMatchReports(){ return matchReportsCache; }
@@ -14798,11 +14790,12 @@ function renderMatches(){
       // Ook observaties/rapporten uit playersCache die gekoppeld zijn aan deze wedstrijd
       const _matchDatum = (m.datum||'').trim();
       const _matchThuis = (m.thuis||'').toLowerCase().trim();
+      const _spelerIds = new Set(_spelers.map(sp => sp && sp.id).filter(Boolean));
       const _extraPlayers = (typeof playersCache !== 'undefined' ? playersCache : []).filter(p => {
-        if(!p || _shPlayerIsConcept && _shPlayerIsConcept(p) && p.rapport_type !== 'observatie') return false;
+        if(!p || !p.id || _spelerIds.has(p.id)) return false;
         const wd = p.wedstrijd || {};
         return (wd.datum||'') === _matchDatum && (wd.thuis||'').toLowerCase().trim() === _matchThuis;
-      }).filter(p => !_spelers.some(sp => sp && sp.id === p.id));
+      });
       // s93: trigger auto-conversie notities → concept-spelersrapporten (punt 7)
       try { if(typeof _shConvertNotesToDrafts === 'function' && _progP) _shConvertNotesToDrafts(_progP); } catch(_){}
       // s93: elftal in naam (punt 13)

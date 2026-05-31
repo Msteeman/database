@@ -4900,6 +4900,21 @@ async function submitMatchReportForm(e){
 
   try {
     await saveMatchReport(report);
+    // Update programma-item status naar 'ingediend' als er een prog-koppeling is
+    try {
+      const _mrProgId = (typeof $ === 'function' && $('#mr-prog-id')) ? $('#mr-prog-id').value : '';
+      if(_mrProgId && typeof programmaCache !== 'undefined'){
+        const _linkedProg = programmaCache.find(p => p && p.id === _mrProgId);
+        if(_linkedProg && _linkedProg.wedstrijdrapport){
+          _linkedProg.wedstrijdrapport.status = 'ingediend';
+          _linkedProg.wedstrijdrapport.opmerking = report.opmerking;
+          _linkedProg.modified = Date.now();
+          if(typeof saveProgrammaItem === 'function') saveProgrammaItem(_linkedProg).catch(()=>{});
+        }
+        const _mrProgIdEl2 = document.getElementById('mr-prog-id');
+        if(_mrProgIdEl2) _mrProgIdEl2.value = '';
+      }
+    } catch(_){}
     toast(existing ? 'Wedstrijdrapport bijgewerkt' : 'Wedstrijd opgeslagen');
     _mrShowReadOnly(report);
     if(alsoPlayer){
@@ -10365,10 +10380,12 @@ function _shOpenEditModal(m){
       <div class="wstr-edit-section-count">${_totalSpelers}</div>
     </div>`;
 
-  // Ingediende observaties (snel-notities)
+  // Ingediende observaties (snel-notities) — skip als player_id al via playersCache getoond wordt
+  const _ingSnAlInSpelers = new Set(_allSpelers.map(p => p && p.id).filter(Boolean));
   _ingediendSns.forEach(({sn}) => {
-    const naam = (sn.naam||'?').trim();
     const pid = sn.player_id || '';
+    if(pid && _ingSnAlInSpelers.has(pid)) return; // al getoond via playersCache, skip dubbel
+    const naam = (sn.naam||'?').trim();
     html += `<div class="wstr-player-row" ${pid?`data-open-player-db="${escapeHtml(pid)}" style="cursor:pointer;"`:''}>
       <span class="wstr-type-dot obs"></span>
       <span class="wstr-player-naam">${escapeHtml(naam)}</span>
@@ -10572,6 +10589,9 @@ function _shOpenEditModal(m){
       _shCloseEditModal();
       if(typeof openMatchReportModal === 'function'){
         openMatchReportModal('');
+        // Sla progId op zodat submitMatchReportForm weet welk programma-item te updaten
+        const _mrProgIdEl = document.getElementById('mr-prog-id');
+        if(_mrProgIdEl) _mrProgIdEl.value = progId;
         setTimeout(() => {
           try {
             const wr = prog.wedstrijdrapport || {};
@@ -11444,6 +11464,8 @@ function closeCmpAddModal(){
   if(!bd) return;
   bd.classList.remove('show');
   document.body.style.overflow = '';
+  // Reset wired zodat handlers opnieuw worden gezet bij heropen
+  cmpAddModalState.wired = false;
 }
 window.openCmpAddModal = openCmpAddModal;
 window.closeCmpAddModal = closeCmpAddModal;
@@ -11667,7 +11689,7 @@ function renderCmpAddResults(){
   const fcur = cmpAddModalState.cur;
   const fpot = cmpAddModalState.pot;
 
-  let players = loadPlayers().slice();
+  let players = loadPlayers().filter(p => !p.concept);
   if(q){
     players = players.filter(p => {
       const hay = `${p.naam||''} ${p.club||''} ${positionLabel(p.positie)||''} ${p.positie||''} ${p.linie||''} ${p.elftal||''}`.toLowerCase();
@@ -13217,18 +13239,39 @@ function renderDetailSummary(p){
       }).join('\n').trim();
       notitiesStr = meaningful;
     }
-    // Fallback 2: zoek in programmaCache snel-notities op naam
+    // Fallback 2: zoek in programmaCache snel-notities
     if(!notitiesStr && typeof programmaCache !== 'undefined'){
       try {
-        const _pNaam = (p.naam||'').toLowerCase().trim();
-        const _pDatum = p.datum || p.wedstrijd_datum || '';
-        for(const prog of programmaCache){
+        const _pId    = p.id || '';
+        const _pNaam  = (p.naam||'').toLowerCase().trim();
+        const _pDatum = (p.datum || p.wedstrijd_datum || (p.wedstrijd && p.wedstrijd.datum) || '').trim();
+        outer2: for(const prog of programmaCache){
           if(!prog || !Array.isArray(prog.snelnotities)) continue;
-          if(_pDatum && prog.datum && prog.datum !== _pDatum) continue;
-          const sn = prog.snelnotities.find(s => s && (s.naam||'').toLowerCase().trim() === _pNaam);
-          if(sn && sn.tekst){ notitiesStr = sn.tekst.trim(); break; }
+          for(const sn of prog.snelnotities){
+            if(!sn || !sn.tekst) continue;
+            // Sterkste match: player_id
+            if(_pId && sn.player_id === _pId){
+              notitiesStr = sn.tekst.trim(); break outer2;
+            }
+            // Match op naam (+ optioneel datum)
+            if(_pNaam && (sn.naam||'').toLowerCase().trim() === _pNaam){
+              if(!_pDatum || !prog.datum || prog.datum === _pDatum){
+                notitiesStr = sn.tekst.trim(); break outer2;
+              }
+            }
+          }
         }
       } catch(_){}
+    }
+    // Fallback 3: filter ook structuur-tekst — toon regels met inhoud achter de dubbele punt
+    if(notitiesStr){
+      const _lines = notitiesStr.split('\n').filter(line => {
+        const ci = line.indexOf(':');
+        if(ci < 0) return line.trim().length > 0;
+        return line.slice(ci+1).trim().length > 0;
+      });
+      if(_lines.length > 0) notitiesStr = _lines.join('\n').trim();
+      // Als ALLE regels leeg waren (term: zonder inhoud), toon origineel
     }
   } else {
     notitiesStr = (p.notities || '').trim();
@@ -14778,7 +14821,14 @@ function renderMatches(){
         const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(m.progId, sp.id) : null;
         return concept && !_shPlayerIsConcept(concept);
       });
-      const _wstrVerwerkt = _wstr && (_wstr.status === 'ingediend' || _wstr.status === 'verwerkt');
+      // Check ook matchReportsCache: als er een report bestaat voor deze wedstrijd, is het ingediend
+      const _mrForMatch = (typeof matchReportsCache !== 'undefined') ? matchReportsCache.find(mr => {
+        if(!mr) return false;
+        const _d = (mr.datum||'').trim(); const _th = (mr.thuis||'').toLowerCase().trim(); const _ut = (mr.uit||'').toLowerCase().trim();
+        const _md = (_progP && _progP.datum||'').trim(); const _mt = (_progP && _progP.thuis||'').toLowerCase().trim(); const _mu = (_progP && _progP.uit||'').toLowerCase().trim();
+        return _d === _md && (_th === _mt || _mt.startsWith(_th) || _th.startsWith(_mt)) && (_ut === _mu || _mu.startsWith(_ut) || _ut.startsWith(_mu));
+      }) : null;
+      const _wstrVerwerkt = (_wstr && (_wstr.status === 'ingediend' || _wstr.status === 'verwerkt')) || !!_mrForMatch;
       // groen vinkje: items aanwezig + alles ingediend/verwerkt
       const _hasItems = _spelers.length > 0 || !!_wstr || _sns.some(sn => sn && sn.naam);
       const _allVerwerkt = _hasItems && _allSpVerwerkt && _wstrVerwerkt && _allObsIngediend;

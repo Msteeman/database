@@ -9972,8 +9972,10 @@ function _shOpenEditModal(m){
         }
       }
       const _isIngediend = !isConcept;
-      // Type-label "Rapport" in geel voor nog in te dienen spelers (geen Concept-badge meer)
-      const _rapportLabel = isConcept ? ` <span class="wstr-type-label rapport">Rapport</span>` : '';
+      // Type-label: "Rapport" (geel) vóór indienen, "✓ Ingediend" (groen) erna
+      const _rapportLabel = isConcept
+        ? ` <span class="wstr-type-label rapport">Rapport</span>`
+        : ` <span class="wstr-type-label ingediend">✓ Ingediend</span>`;
       return `<div class="wstr-edit-item${isConcept?' is-concept':''}${_isIngediend?' wstr-ingediend':''}">
         <div class="wstr-edit-item-avatar">${escapeHtml(initials || '?')}</div>
         <div class="wstr-edit-item-main">
@@ -10006,13 +10008,12 @@ function _shOpenEditModal(m){
       const num = sn.rugnummer ? `#${escapeHtml(String(sn.rugnummer))} ` : "";
       const tekst = (sn.tekst || "").trim();
       if(ingediend){
-        // Ingediend: toon als afgerond item, knop naar spelersdatabase
         const _pid = sn.player_id || '';
         return `<div class="wstr-edit-note snel wstr-ingediend">
-          <div class="wstr-edit-note-icon">✅</div>
+          <div class="wstr-edit-note-icon">👁</div>
           <div class="wstr-edit-note-main">
-            <div class="wstr-edit-note-title">${num}${escapeHtml(naam)}</div>
-            <div class="wstr-edit-note-text" style="color:var(--text-3);font-style:italic;">Ingediend als observatie</div>
+            <div class="wstr-edit-note-title">${num}${escapeHtml(naam)} <span class="wstr-type-label ingediend">✓ Ingediend</span></div>
+            ${tekst ? `<div class="wstr-edit-note-text" style="opacity:.5;">${escapeHtml(tekst.slice(0,80))}${tekst.length>80?'…':''}</div>` : ''}
           </div>
           ${_pid ? `<button type="button" class="wstr-edit-note-action" data-open-player-db="${escapeHtml(_pid)}">→ Database</button>` : ''}
         </div>`;

@@ -10298,3 +10298,4 @@ tr.db-row-obs td:first-child {
 }
 .wstr-type-label.rapport     { background: rgba(245,158,11,.18); color: #f5c518; border: 1px solid rgba(245,158,11,.3); }
 .wstr-type-label.observatie  { background: rgba(167,139,250,.18); color: #a78bfa; border: 1px solid rgba(167,139,250,.3); }
+.wstr-type-label.ingediend   { background: rgba(34,197,94,.15); color: #4ade80; border: 1px solid rgba(34,197,94,.3); }

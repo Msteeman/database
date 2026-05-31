@@ -3166,7 +3166,15 @@ async function syncAllAddressesFromAdresboek(){
 }
 window.syncAllAddressesFromAdresboek = syncAllAddressesFromAdresboek;
 
-function loadPlayers(){ return playersCache; }
+function loadPlayers(){
+  const seen = new Set();
+  return playersCache.filter(p => {
+    if(!p || !p.id) return false;
+    if(seen.has(p.id)) return false;
+    seen.add(p.id);
+    return true;
+  });
+}
 function loadAnalyses(){ return analysesCache; }
 function loadContacts(){ return contactsCache; }
 function loadMatchReports(){ return matchReportsCache; }
@@ -8310,10 +8318,10 @@ function renderDashPositions(players){
   const GCOL={A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#ef4444'};
   // Positie-layout op veld (x,y als % van veld 0-100)
   const POS_XY={
-    GK:{x:50,y:88},
-    LB:{x:15,y:70},LCV:{x:33,y:73},CV:{x:50,y:75},RCV:{x:67,y:73},RB:{x:85,y:70},
-    VM:{x:50,y:58},CM:{x:36,y:50},LM:{x:15,y:48},RM:{x:85,y:48},AM:{x:50,y:42},
-    LV:{x:15,y:22},CS:{x:50,y:18},RV:{x:85,y:22}
+    GK:{x:50,y:12},
+    LB:{x:15,y:30},LCV:{x:33,y:27},CV:{x:50,y:25},RCV:{x:67,y:27},RB:{x:85,y:30},
+    VM:{x:50,y:42},CM:{x:36,y:50},LM:{x:15,y:52},RM:{x:85,y:52},AM:{x:50,y:58},
+    LV:{x:15,y:78},CS:{x:50,y:82},RV:{x:85,y:78}
   };
   // Alias-mapping voor legacy codes (lowercase + alternatieven)
   const POS_ALIAS={rmv:'RM',lmv:'LM',dmv:'VM',cmv:'CM',sv:'CS',sp:'CS',cv:'CV',lv:'LV',rv:'RV',lb:'LB',rb:'RB',gk:'GK',vm:'VM',cm:'CM',am:'AM',lm:'LM',rm:'RM',cs:'CS'};
@@ -8491,7 +8499,6 @@ function renderDashboard(){
   renderDashTopCards(players);
   renderDashClubs(players);
   renderDashPositions(players);
-  renderDashFollowUp(players);
   renderGeo();
   renderDashCategories(players);
 }
@@ -13128,7 +13135,7 @@ function renderDetailOverview(p){
     if(mode === 'average') flashReports();
     else renderDetailFullReport(vp);
   };
-  $('#dtl-show-report').addEventListener('click', handleShowReport);
+  const _dsr = document.getElementById('dtl-show-report'); if(_dsr) _dsr.addEventListener('click', handleShowReport);
   const topBtn = document.getElementById('dtl-show-report-top');
   if(topBtn) topBtn.addEventListener('click', handleShowReport);
   const showAvgBtn = document.getElementById('dtl-show-avg');
@@ -14788,6 +14795,14 @@ function renderMatches(){
       const _spelers = _progP ? (_progP.spelers || []) : [];
       const _sns = _progP ? (_progP.snelnotities || []) : [];
       const _wstr = _progP ? _progP.wedstrijdrapport : null;
+      // Ook observaties/rapporten uit playersCache die gekoppeld zijn aan deze wedstrijd
+      const _matchDatum = (m.datum||'').trim();
+      const _matchThuis = (m.thuis||'').toLowerCase().trim();
+      const _extraPlayers = (typeof playersCache !== 'undefined' ? playersCache : []).filter(p => {
+        if(!p || _shPlayerIsConcept && _shPlayerIsConcept(p) && p.rapport_type !== 'observatie') return false;
+        const wd = p.wedstrijd || {};
+        return (wd.datum||'') === _matchDatum && (wd.thuis||'').toLowerCase().trim() === _matchThuis;
+      }).filter(p => !_spelers.some(sp => sp && sp.id === p.id));
       // s93: trigger auto-conversie notities → concept-spelersrapporten (punt 7)
       try { if(typeof _shConvertNotesToDrafts === 'function' && _progP) _shConvertNotesToDrafts(_progP); } catch(_){}
       // s93: elftal in naam (punt 13)
@@ -14809,8 +14824,30 @@ function renderMatches(){
       // s93: dropdown rows
       let _dropRows = '';
       // Spelersrapporten
-      if(_spelers.length > 0 || _unlinkedSns.length > 0){
+      if(_spelers.length > 0 || _unlinkedSns.length > 0 || _extraPlayers.length > 0){
         _dropRows += `<div class="pm-section-hdr">Spelersrapporten</div>`;
+        // Ingediende observaties/rapporten uit playersCache
+        if(_extraPlayers.length > 0){
+          _dropRows += _extraPlayers.map(p => {
+            const isConcept = typeof _shPlayerIsConcept === 'function' ? _shPlayerIsConcept(p) : false;
+            const statusBadge = isConcept
+              ? `<span style="font-size:10px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3);border-radius:4px;padding:1px 7px;font-weight:600;">Concept</span>`
+              : `<span style="font-size:10px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:1px 7px;font-weight:600;">✓ Ingediend</span>`;
+            const posLabel = typeof positionLabel === 'function' ? (positionLabel(p.positie)||p.positie||'') : (p.positie||'');
+            return `<div class="pm-item-row">
+              <div class="pm-item-info" style="flex:1;">
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <span class="pm-item-name" style="cursor:pointer;" data-player-id="${escapeHtml(p.id)}">${escapeHtml(p.naam||'?')}</span>
+                  ${statusBadge}
+                </div>
+                ${posLabel ? `<span class="pm-item-pos">${escapeHtml(posLabel)}</span>` : ''}
+              </div>
+              <div class="pm-item-acts">
+                <button type="button" class="pm-item-link" data-player-id="${escapeHtml(p.id)}">Rapport →</button>
+              </div>
+            </div>`;
+          }).join('');
+        }
         _dropRows += _spelers.map(sp => {
           const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(m.progId, sp.id) : null;
           const isVerwerkt = concept && !_shPlayerIsConcept(concept);

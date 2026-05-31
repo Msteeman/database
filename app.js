@@ -8922,6 +8922,11 @@ function _geoFilterBar(){
     _geoHeatOn = !_geoHeatOn;
     _geoUpdateHeatLayer();
     _geoFilterBar();
+    if(typeof toast === 'function'){
+      toast(_geoHeatOn
+        ? 'Heatmap aan — intensiteit = meer spelers op die locatie'
+        : 'Heatmap uit');
+    }
   });
 }
 
@@ -8940,10 +8945,11 @@ function _geoUpdateHeatLayer(){
   });
   if(!points.length) return;
   _leafletHeatLayer = L.heatLayer(points, {
-    radius: 40,
-    blur: 30,
-    maxZoom: 12,
-    gradient: {0.0:'#1e40af', 0.3:'#7c3aed', 0.6:'#db2777', 1.0:'#f97316'}
+    radius: 55,
+    blur: 35,
+    max: 1.0,
+    minOpacity: 0.45,
+    gradient: {0.0:'#0ea5e9', 0.4:'#a855f7', 0.7:'#ec4899', 1.0:'#f97316'}
   }).addTo(_leafletMap);
 }
 
@@ -13130,10 +13136,21 @@ function renderDetailOverview(p){
   const flashReports = () => {
     const card = document.getElementById('dtl-reports-card');
     if(!card) return;
-    card.scrollIntoView({behavior:'smooth', block:'start'});
+    // Scroll via de dichtstbijzijnde scroll-container
+    const scroller = card.closest('.view') || card.closest('main') || document.documentElement;
+    const cardTop = card.getBoundingClientRect().top + (scroller.scrollTop || window.scrollY) - 80;
+    if(scroller === document.documentElement || scroller === document.body){
+      window.scrollTo({top: cardTop, behavior:'smooth'});
+    } else {
+      scroller.scrollTo({top: scroller.scrollTop + card.getBoundingClientRect().top - 80, behavior:'smooth'});
+    }
     card.classList.remove('flash');
     void card.offsetWidth;
     card.classList.add('flash');
+    // Extra: highlight de rijen even
+    card.querySelectorAll('.dtl-report-row').forEach((r,i)=>{
+      setTimeout(()=>{ r.style.background='rgba(99,102,241,.18)'; setTimeout(()=>{ r.style.background=''; },600); }, i*80);
+    });
   };
   const handleShowReport = () => {
     if(mode === 'average') flashReports();

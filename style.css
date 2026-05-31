@@ -10301,3 +10301,103 @@ tr.db-row-obs td:first-child {
 .wstr-type-label.rapport     { background: rgba(245,158,11,.18); color: #f5c518; border: 1px solid rgba(245,158,11,.3); }
 .wstr-type-label.observatie  { background: rgba(167,139,250,.18); color: #a78bfa; border: 1px solid rgba(167,139,250,.3); }
 .wstr-type-label.ingediend   { background: rgba(34,197,94,.15); color: #4ade80; border: 1px solid rgba(34,197,94,.3); }
+
+/* ═══════════════════════════════════════════════════════════════
+   SH-VISUALS3 — FM-radar tooltip · Criterium flip-cards · Notes grid
+   ═══════════════════════════════════════════════════════════════ */
+
+/* FM-radar tooltip */
+.dtl-pizza-wrap { position: relative; }
+.dtl-fm-radar { display: block; max-width: 100%; }
+.dtl-radar-tt {
+  position: absolute; pointer-events: none;
+  background: rgba(8,13,24,.96); border: 1px solid var(--border-2);
+  border-radius: 9px; padding: 10px 14px; min-width: 140px; max-width: 220px;
+  font-size: 12px; z-index: 20; opacity: 0; transition: opacity .1s;
+  box-shadow: 0 10px 32px rgba(0,0,0,.5);
+}
+.dtl-radar-tt-crit { font-size: 10px; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 3px; }
+.dtl-radar-tt-grade { font-size: 22px; font-weight: 900; line-height: 1; margin-bottom: 4px; }
+.dtl-radar-tt-note { font-size: 11.5px; color: var(--text-2); line-height: 1.5; }
+
+/* Criterium flip-cards */
+.dtl-crit-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+@media (max-width: 900px) { .dtl-crit-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px)  { .dtl-crit-grid { grid-template-columns: repeat(2, 1fr); } }
+.dtl-crit-card {
+  height: 118px; perspective: 700px; cursor: pointer;
+  border-radius: 10px; overflow: visible;
+}
+.dtl-crit-inner {
+  position: relative; width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  transition: transform .5s cubic-bezier(.4,0,.2,1);
+}
+.dtl-crit-card.flipped .dtl-crit-inner { transform: rotateY(180deg); }
+.dtl-crit-front, .dtl-crit-back {
+  position: absolute; inset: 0;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  border-radius: 10px; overflow: hidden;
+}
+.dtl-crit-front {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 5px;
+  padding: 12px;
+}
+.dtl-crit-grade {
+  font-size: 42px; font-weight: 900; color: #fff;
+  line-height: 1; text-shadow: 0 2px 12px rgba(0,0,0,.35);
+}
+.dtl-crit-name {
+  font-size: 10.5px; font-weight: 700; color: rgba(255,255,255,.82);
+  text-transform: uppercase; letter-spacing: .6px;
+}
+.dtl-crit-hint {
+  font-size: 8.5px; color: rgba(255,255,255,.4);
+  text-transform: uppercase; letter-spacing: .5px;
+}
+.dtl-crit-back {
+  transform: rotateY(180deg);
+  background: linear-gradient(145deg, #0c1424, #111e30);
+  border: 1px solid var(--border-2);
+  padding: 12px; display: flex; flex-direction: column; gap: 5px;
+}
+.dtl-crit-back-head {
+  font-size: 10px; font-weight: 800; text-transform: uppercase;
+  letter-spacing: .5px; flex-shrink: 0;
+}
+.dtl-crit-back-text {
+  font-size: 11.5px; color: var(--text-2); line-height: 1.5;
+  overflow: hidden; display: -webkit-box;
+  -webkit-line-clamp: 4; -webkit-box-orient: vertical;
+}
+
+/* Scout-notities vergelijking */
+.cmp-notes-grid { display: flex; flex-direction: column; gap: 1px; }
+.cmp-notes-row {
+  display: flex; gap: 0; border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+}
+.cmp-notes-row:last-child { border-bottom: none; }
+.cmp-notes-crit {
+  flex: 0 0 100px; padding-right: 14px; display: flex;
+  flex-direction: column; gap: 3px; justify-content: flex-start; padding-top: 2px;
+}
+.cmp-notes-crit-name {
+  font-size: 11px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .5px; color: var(--text-2);
+}
+.cmp-notes-crit-winner { font-size: 10px; color: var(--text-3); }
+.cmp-notes-cols { flex: 1; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.cmp-notes-col { display: flex; flex-direction: column; gap: 4px; }
+.cmp-notes-player { font-size: 11px; font-weight: 800; }
+.cmp-notes-grade {
+  display: inline-block; font-size: 12px; font-weight: 800;
+  padding: 1px 8px; border-radius: 4px; width: fit-content;
+}
+.cmp-notes-text { font-size: 12px; color: var(--text-2); line-height: 1.5; }
+.cmp-notes-empty { font-style: italic; opacity: .35; font-size: 11px; }

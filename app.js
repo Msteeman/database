@@ -11597,6 +11597,7 @@ function renderCompareResults(){
   renderCmpHeadToHead(players);
   renderCompareRadar(players);
   renderCompareBars(players);
+  renderCmpNotesGrid(players);
   renderCmpParallelCoords(players);
   renderCmpHeatmap(players);
   renderCmpPercentiles(players);
@@ -11915,6 +11916,41 @@ function renderCmpPercentiles(players){
   });
 }
 
+
+/* ── CMP: Scout-notities vergelijking per criterium ── */
+function renderCmpNotesGrid(players){
+  const wrap = document.getElementById('cmp-notes-grid');
+  if(!wrap || !players.length) return;
+  const GCOL = {A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#ef4444'};
+  const html = CMP_CRITERIA.map(crit => {
+    const cols = players.map((p,pi) => {
+      const col = cmpColorFor(pi);
+      const b = p.beoordelingen || {};
+      let g = b[crit.key]; if(!g&&crit.key==='grit_huidig')g=b.drit_huidig;
+      const tekst = b[crit.key.replace('_huidig','_tekst')]||'';
+      const gc = GCOL[g]||'var(--text-3)';
+      const firstName = (p.naam||'?').split(/\s+/)[0];
+      return `<div class="cmp-notes-col">
+        <div class="cmp-notes-player" style="color:${col.c}">${escapeHtml(firstName)}</div>
+        <div class="cmp-notes-grade" style="background:${gc}20;color:${gc};border:1px solid ${gc}40">${escapeHtml(g||'–')}</div>
+        <div class="cmp-notes-text">${tekst?escapeHtml(tekst):'<span class="cmp-notes-empty">geen notitie</span>'}</div>
+      </div>`;
+    }).join('');
+    const grades = players.map(p => { const b=p.beoordelingen||{}; let g=b[crit.key]; if(!g&&crit.key==='grit_huidig')g=b.drit_huidig; return cmpGradeNum(g)||0; });
+    const best = Math.max(...grades);
+    const winnerIdx = best>0 ? grades.indexOf(best) : -1;
+    const col = winnerIdx>=0 ? cmpColorFor(winnerIdx) : null;
+    return `<div class="cmp-notes-row">
+      <div class="cmp-notes-crit">
+        <div class="cmp-notes-crit-name">${escapeHtml(crit.label)}</div>
+        ${winnerIdx>=0?`<div class="cmp-notes-crit-winner" style="color:${col.c}">★ ${escapeHtml((players[winnerIdx].naam||'?').split(/\s+/)[0])}</div>`:''}
+      </div>
+      <div class="cmp-notes-cols">${cols}</div>
+    </div>`;
+  }).join('');
+  wrap.innerHTML = html || '<div style="color:var(--text-3);padding:16px;font-size:13px;">Vul beoordelingen in om notities te vergelijken.</div>';
+}
+
 /* ── Vergelijken: Niveau-matrix scatter chart ── */
 function renderCompareScatter(players){
   const wrap = $('#cmp-scatter');
@@ -12137,6 +12173,12 @@ function renderCompareRadar(players){
 
   function redrawStatic(){
     ctx.clearRect(0,0,W,H);
+    // FM-stijl gekleurde zones (buiten→binnen)
+    const _polyZ = (r) => { ctx.beginPath(); for(let i=0;i<N;i++){const a=angle(i);if(i===0)ctx.moveTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);else ctx.lineTo(cx+Math.cos(a)*r,cy+Math.sin(a)*r);} ctx.closePath(); };
+    _polyZ(R); ctx.fillStyle='rgba(34,197,94,0.14)'; ctx.fill();
+    _polyZ(R*0.75); ctx.fillStyle='rgba(59,130,246,0.18)'; ctx.fill();
+    _polyZ(R*0.50); ctx.fillStyle='rgba(245,158,11,0.22)'; ctx.fill();
+    _polyZ(R*0.25); ctx.fillStyle='rgba(239,68,68,0.28)'; ctx.fill();
     // Rings
     for(let lvl=1; lvl<=4; lvl++){
       ctx.beginPath();
@@ -12635,18 +12677,18 @@ function renderDetailOverview(p){
     <div class="compare-twocol" style="margin-top:16px;">
       <div class="card compare-card">
         <div class="compare-card-title">
-          <span>Pizza chart — 7 criteria</span>
-          <span class="compare-card-sub">Elke punt vertegenwoordigt een score (D → A). Grotere taartpunt = hogere beoordeling.</span>
+          <span>Radar — 7 criteria</span>
+          <span class="compare-card-sub">FM-stijl · hover op een as voor de notitie · zones: rood (D) → groen (A)</span>
         </div>
         <div class="dtl-pizza-wrap" id="dtl-pizza"></div>
         <div class="dtl-pizza-legend" id="dtl-pizza-legend"></div>
       </div>
       <div class="card compare-card">
         <div class="compare-card-title">
-          <span>Criterium-balken</span>
-          <span class="compare-card-sub">Beoordeling per criterium</span>
+          <span>Criterium-kaartjes</span>
+          <span class="compare-card-sub">Klik een kaartje om de scout-notitie te lezen</span>
         </div>
-        <div class="compare-bars" id="dtl-bars"></div>
+        <div id="dtl-bars"></div>
       </div>
     </div>
 
@@ -12915,75 +12957,92 @@ function renderDetailStrengthsWeaknesses(p){
   `;
 }
 
-/* ---- Pizza chart (segmented radar) ---- */
+/* ---- FM-stijl gekleurde radar (vervangt pizza chart) ---- */
 function renderDetailPizza(p){
   const wrap = $('#dtl-pizza');
   if(!wrap) return;
   const b = p.beoordelingen || {};
   const N = CMP_CRITERIA.length;
-  const W = 480, H = 480;
-  const cx = W/2, cy = H/2, Rmax = 180;
-  const slice = (2 * Math.PI) / N;
-  const PALETTE = ['#22c55e','#3b82f6','#a855f7','#f59e0b','#ef4444','#06b6d4','#ec4899'];
-  function arcPath(a0, a1, r){
-    const x0 = cx + Math.cos(a0)*r;
-    const y0 = cy + Math.sin(a0)*r;
-    const x1 = cx + Math.cos(a1)*r;
-    const y1 = cy + Math.sin(a1)*r;
-    const large = (a1 - a0) > Math.PI ? 1 : 0;
-    return `M ${cx} ${cy} L ${x0} ${y0} A ${r} ${r} 0 ${large} 1 ${x1} ${y1} Z`;
+  const W = 460, H = 460;
+  let canvas = wrap.querySelector('.dtl-fm-radar');
+  if(!canvas){ canvas = document.createElement('canvas'); canvas.className = 'dtl-fm-radar'; wrap.innerHTML = ''; wrap.appendChild(canvas); }
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W*dpr; canvas.height = H*dpr;
+  canvas.style.width = W+'px'; canvas.style.height = H+'px'; canvas.style.maxWidth = '100%';
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  const cx = W/2, cy = H/2+8, R = 165;
+  const angle = i => -Math.PI/2 + (i*2*Math.PI/N);
+  const polyPts = r => Array.from({length:N},(_,i) => ({ x:cx+Math.cos(angle(i))*r, y:cy+Math.sin(angle(i))*r }));
+  const drawPoly = (pts, fill, stroke, lw) => {
+    ctx.beginPath();
+    pts.forEach((p,i) => i===0?ctx.moveTo(p.x,p.y):ctx.lineTo(p.x,p.y));
+    ctx.closePath();
+    if(fill){ ctx.fillStyle=fill; ctx.fill(); }
+    if(stroke){ ctx.strokeStyle=stroke; ctx.lineWidth=lw||1; ctx.stroke(); }
+  };
+  // FM-stijl gekleurde zones (buiten→binnen)
+  drawPoly(polyPts(R),   'rgba(34,197,94,0.22)', null);
+  drawPoly(polyPts(R*0.75),'rgba(59,130,246,0.30)', null);
+  drawPoly(polyPts(R*0.50),'rgba(245,158,11,0.35)', null);
+  drawPoly(polyPts(R*0.25),'rgba(239,68,68,0.42)', null);
+  // Ring-lijnen
+  [0.25,0.5,0.75,1.0].forEach((f,i) => drawPoly(polyPts(R*f), null, i===3?'rgba(255,255,255,.22)':'rgba(255,255,255,.09)', i===3?1.4:0.8));
+  // Spaken
+  for(let i=0;i<N;i++){
+    const a=angle(i); ctx.beginPath(); ctx.moveTo(cx,cy);
+    ctx.lineTo(cx+Math.cos(a)*R, cy+Math.sin(a)*R);
+    ctx.strokeStyle='rgba(255,255,255,.1)'; ctx.lineWidth=1; ctx.stroke();
   }
-  let svg = `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" preserveAspectRatio="xMidYMid meet">`;
-  for(let lvl=1; lvl<=4; lvl++){
-    const r = Rmax * (lvl/4);
-    svg += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="rgba(255,255,255,${lvl===4?0.18:0.07})" stroke-width="${lvl===4?1.2:1}"/>`;
-  }
-  for(let i=0; i<N; i++){
-    const a0 = -Math.PI/2 + i*slice + 0.01;
-    const a1 = -Math.PI/2 + (i+1)*slice - 0.01;
-    let g = b[CMP_CRITERIA[i].key];
-    if(!g && CMP_CRITERIA[i].key === 'grit_huidig') g = b.drit_huidig;
-    const v = cmpGradeNum(g);
-    const r = v ? Rmax * (v/4) : 0;
-    const col = PALETTE[i % PALETTE.length];
-    if(r > 0){
-      svg += `<path d="${arcPath(a0,a1,r)}" fill="${col}" fill-opacity="0.78" stroke="${col}" stroke-width="1.4"/>`;
-    } else {
-      svg += `<path d="${arcPath(a0,a1,Rmax)}" fill="rgba(255,255,255,0.02)" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>`;
-    }
-  }
-  ['D','C','B','A'].forEach((lbl, i) => {
-    const r = Rmax * ((i+1)/4);
-    svg += `<text x="${cx+6}" y="${cy - r + 4}" fill="rgba(255,255,255,0.45)" font-size="10" font-family="-apple-system,Segoe UI,sans-serif">${lbl}</text>`;
+  // Grade-labels
+  ctx.font='600 10px -apple-system,Segoe UI,sans-serif'; ctx.textAlign='center'; ctx.fillStyle='rgba(255,255,255,.45)';
+  ['D','C','B','A'].forEach((g,i) => { const r=R*((i+1)/4); ctx.fillText(g, cx+8, cy-r+4); });
+  // Speler-shape
+  const GCOL = {A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#ef4444'};
+  const pts = CMP_CRITERIA.map((crit,i) => {
+    let g=b[crit.key]; if(!g&&crit.key==='grit_huidig')g=b.drit_huidig;
+    const v=cmpGradeNum(g)||0, r=R*(v/4), a=angle(i);
+    return {x:cx+Math.cos(a)*r, y:cy+Math.sin(a)*r, g, v};
   });
-  for(let i=0; i<N; i++){
-    const a = -Math.PI/2 + i*slice + slice/2;
-    const lx = cx + Math.cos(a)*(Rmax+26);
-    const ly = cy + Math.sin(a)*(Rmax+26);
-    const anchor = Math.abs(Math.cos(a)) < 0.2 ? 'middle' : (Math.cos(a) > 0 ? 'start' : 'end');
-    const baseline = Math.abs(Math.sin(a)) < 0.2 ? 'middle' : (Math.sin(a) > 0 ? 'hanging' : 'auto');
-    svg += `<text x="${lx}" y="${ly}" fill="rgba(232,237,245,0.92)" font-size="12.5" font-weight="600" text-anchor="${anchor}" dominant-baseline="${baseline}" font-family="-apple-system,Segoe UI,sans-serif">${escapeHtml(CMP_CRITERIA[i].label)}</text>`;
-    let g = b[CMP_CRITERIA[i].key];
-    if(!g && CMP_CRITERIA[i].key === 'grit_huidig') g = b.drit_huidig;
-    const v = cmpGradeNum(g);
-    if(v){
-      const r = Rmax * (v/4);
-      const gx = cx + Math.cos(a)*(r - 18);
-      const gy = cy + Math.sin(a)*(r - 18);
-      svg += `<text x="${gx}" y="${gy}" fill="#0b1220" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="middle" font-family="-apple-system,Segoe UI,sans-serif">${escapeHtml((g||'').toUpperCase())}</text>`;
-    }
+  drawPoly(pts,'rgba(255,255,255,0.14)',null);
+  ctx.shadowColor='rgba(255,255,255,.5)'; ctx.shadowBlur=10;
+  drawPoly(pts,null,'rgba(255,255,255,0.88)',2.2);
+  ctx.shadowBlur=0;
+  pts.forEach(pt => {
+    if(!pt.g) return;
+    ctx.beginPath(); ctx.arc(pt.x,pt.y,5.5,0,Math.PI*2);
+    ctx.fillStyle=GCOL[pt.g]||'#fff'; ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=1.5; ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.font='700 10px -apple-system,Segoe UI,sans-serif';
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(pt.g, pt.x, pt.y);
+  });
+  // As-labels
+  ctx.shadowBlur=0; ctx.fillStyle='rgba(230,237,248,.9)'; ctx.font='600 12px -apple-system,Segoe UI,sans-serif';
+  for(let i=0;i<N;i++){
+    const a=angle(i), lx=cx+Math.cos(a)*(R+24), ly=cy+Math.sin(a)*(R+24);
+    ctx.textAlign=Math.abs(Math.cos(a))<0.2?'center':(Math.cos(a)>0?'start':'end');
+    ctx.textBaseline=Math.abs(Math.sin(a))<0.2?'middle':(Math.sin(a)>0?'hanging':'alphabetic');
+    ctx.fillText(CMP_CRITERIA[i].label, lx, ly);
   }
-  svg += `</svg>`;
-  wrap.innerHTML = svg;
-  const legend = $('#dtl-pizza-legend');
-  if(legend){
-    legend.innerHTML = CMP_CRITERIA.map((c,i) => {
-      let g = b[c.key];
-      if(!g && c.key === 'grit_huidig') g = b.drit_huidig;
-      const gradeTxt = g ? g.toUpperCase() : '–';
-      return `<div class="dtl-pizza-legend-row"><span class="dtl-pizza-legend-dot" style="background:${PALETTE[i%PALETTE.length]}"></span>${escapeHtml(c.label)} · <b style="color:var(--text);">${escapeHtml(gradeTxt)}</b></div>`;
-    }).join('');
-  }
+  // Tooltip
+  let _tt = wrap.querySelector('.dtl-radar-tt');
+  if(!_tt){ _tt=document.createElement('div'); _tt.className='dtl-radar-tt'; wrap.style.position='relative'; wrap.appendChild(_tt); }
+  canvas.onmousemove = ev => {
+    const rect=canvas.getBoundingClientRect(), sc=W/rect.width;
+    const mx=(ev.clientX-rect.left)*sc, my=(ev.clientY-rect.top)*sc;
+    let best=-1, bestD=9999;
+    CMP_CRITERIA.forEach((_,i) => { const a=angle(i); const d=Math.hypot(mx-(cx+Math.cos(a)*R), my-(cy+Math.sin(a)*R)); if(d<bestD){bestD=d;best=i;} });
+    if(bestD>44){ _tt.style.opacity='0'; return; }
+    const cr=CMP_CRITERIA[best]; let g=b[cr.key]; if(!g&&cr.key==='grit_huidig')g=b.drit_huidig;
+    const tekst=b[cr.key.replace('_huidig','_tekst')]||'';
+    const gc=GCOL[g]||'var(--text-3)';
+    _tt.innerHTML='<div class="dtl-radar-tt-crit">'+escapeHtml(cr.label)+'</div>'+(g?'<div class="dtl-radar-tt-grade" style="color:'+gc+'">'+escapeHtml(g)+'</div>':'')+'<div class="dtl-radar-tt-note">'+(tekst?escapeHtml(tekst):'<i style="opacity:.4">Geen notitie</i>')+'</div>';
+    _tt.style.left=(ev.offsetX+14)+'px'; _tt.style.top=Math.max(0,ev.offsetY-40)+'px'; _tt.style.opacity='1';
+  };
+  canvas.onmouseleave = () => { _tt.style.opacity='0'; };
+  // Legende
+  const legend=$('#dtl-pizza-legend');
+  if(legend) legend.innerHTML=CMP_CRITERIA.map(cr => { let g=b[cr.key]; if(!g&&cr.key==='grit_huidig')g=b.drit_huidig; const col=GCOL[g]||'var(--text-3)'; return '<div class="dtl-pizza-legend-row"><span class="dtl-pizza-legend-dot" style="background:'+col+'"></span>'+escapeHtml(cr.label)+' · <b style="color:'+col+';">'+escapeHtml(g||'–')+'</b></div>'; }).join('');
 }
 
 function renderDetailGauge(p){
@@ -13236,39 +13295,35 @@ function renderDetailTrend(p){
 function renderDetailBars(p){
   const wrap = $('#dtl-bars');
   if(!wrap) return;
-  const col = cmpColorFor(0);
   const b = p.beoordelingen || {};
-  wrap.innerHTML = CMP_CRITERIA.map(c => {
-    let g = b[c.key];
-    if(!g && c.key === 'grit_huidig') g = b.drit_huidig;
-    const v = cmpGradeNum(g);
-    const pct = v ? (v/4)*100 : 0;
-    const display = g || '–';
-    return `
-      <div class="compare-bar-group">
-        <div class="compare-bar-group-title">
-          <span>${escapeHtml(c.label)}</span>
-          <em>${escapeHtml(display)}</em>
+  const GRAD = {
+    A:'linear-gradient(135deg,#16a34a,#22c55e)',
+    B:'linear-gradient(135deg,#1d4ed8,#3b82f6)',
+    C:'linear-gradient(135deg,#b45309,#f59e0b)',
+    D:'linear-gradient(135deg,#dc2626,#ef4444)',
+  };
+  const GCOL = {A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#ef4444'};
+  wrap.innerHTML = `<div class="dtl-crit-grid">${CMP_CRITERIA.map((crit,i) => {
+    let g=b[crit.key]; if(!g&&crit.key==='grit_huidig')g=b.drit_huidig;
+    const tekst=b[crit.key.replace('_huidig','_tekst')]||'';
+    const fg=GRAD[g]||'linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.03))';
+    const bc=GCOL[g]||'var(--border-2)';
+    return `<div class="dtl-crit-card sh-tilt-card advies-badge-anim" style="animation-delay:${i*0.07}s">
+      <div class="dtl-crit-inner">
+        <div class="dtl-crit-front" style="background:${fg}">
+          <div class="dtl-crit-grade">${escapeHtml(g||'–')}</div>
+          <div class="dtl-crit-name">${escapeHtml(crit.label)}</div>
+          <div class="dtl-crit-hint">${tekst?'↺ notitie':'geen notitie'}</div>
         </div>
-        <div class="compare-bar-rows">
-          <div class="compare-bar-row">
-            <div class="compare-bar-name">&nbsp;</div>
-            <div class="compare-bar-track">
-              <div class="compare-bar-fill bar-init" data-target-w="${pct}" style="width:0;--player-color:${col.c};--player-color-2:${col.c2}"></div>
-            </div>
-            <div class="compare-bar-grade">${escapeHtml(display)}</div>
-          </div>
+        <div class="dtl-crit-back" style="border-color:${bc}">
+          <div class="dtl-crit-back-head" style="color:${bc}">${escapeHtml(crit.label)}${g?' · '+escapeHtml(g):''}</div>
+          <div class="dtl-crit-back-text">${tekst?escapeHtml(tekst):'<span style="opacity:.38;font-style:italic;">Geen notitie ingevuld</span>'}</div>
         </div>
-      </div>`;
-  }).join('');
-  // E2: animate bars
-  requestAnimationFrame(() => {
-    wrap.querySelectorAll('.compare-bar-fill.bar-init').forEach((el, i) => {
-      setTimeout(() => {
-        el.classList.remove('bar-init');
-        el.style.width = el.dataset.targetW + '%';
-      }, i * 50);
-    });
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+  wrap.querySelectorAll('.dtl-crit-card').forEach(card => {
+    card.addEventListener('click', () => card.classList.toggle('flipped'));
   });
 }
 
@@ -13367,17 +13422,25 @@ function renderDetailFullReport(p){
 
     ${scoresBlock}
 
-    <div class="detail-section">
-      <h4>Beoordeling per categorie</h4>
-      <div class="detail-criteria-grid">
-        ${renderCriteriaCard('Functionele techniek / Spelvaardigheden', b.techniek_huidig)}
-        ${renderCriteriaCard('Spelintelligentie / Functioneel tactisch', b.inzicht_huidig)}
-        ${renderCriteriaCard('GRIT / Passie & Attitude', gritVal)}
-        ${atletischBlock}
+    <div class="card compare-card" style="margin-bottom:16px;">
+      <div class="compare-card-title">
+        <span>Radar — 7 criteria</span>
+        <span class="compare-card-sub">Hover op een as voor de notitie · zones: rood (D) → groen (A)</span>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div>
+          <div class="dtl-pizza-wrap" id="dtl-pizza"></div>
+          <div class="dtl-pizza-legend" id="dtl-pizza-legend"></div>
+        </div>
+        <div>
+          <div class="compare-card-title" style="margin-bottom:10px;">
+            <span>Criterium-kaartjes</span>
+            <span class="compare-card-sub">Klik voor notitie</span>
+          </div>
+          <div id="dtl-bars"></div>
+        </div>
       </div>
     </div>
-
-    ${toelichtingBlock}
 
     ${wedstrijdBlock}
 
@@ -13414,6 +13477,8 @@ function renderDetailFullReport(p){
       <button class="btn btn-sm" id="edit-${p.id}">Bewerken</button>
     </div>
   `;
+  if(typeof renderDetailPizza === 'function') renderDetailPizza(p);
+  if(typeof renderDetailBars === 'function') renderDetailBars(p);
   $('#dtl-back-overview').addEventListener('click', ()=> renderDetailOverview(p));
   $(`#del-${p.id}`).addEventListener('click', async ()=>{
     if(confirm('Dit rapport verwijderen?')){

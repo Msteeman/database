@@ -9647,9 +9647,10 @@ items: center; gap: 4px;
 .elf-tile-gold::before   { background:rgba(245,197,66,.7); }
 .elf-tile-red    { background:rgba(239,68,68,.1);  border-color:rgba(239,68,68,.25); }
 .elf-tile-red::before    { background:rgba(239,68,68,.7); }
-.elf-tile-elftal { font-size:17px; font-weight:800; color:var(--text,#e5e9f5); line-height:1.1; }
-.elf-tile-club   { font-size:11px; color:var(--text-2,#9aa3b7); margin-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.elf-tile-footer { display:flex; align-items:center; justify-content:space-between; margin-top:auto; }
+.elf-tile-club   { font-size:16px; font-weight:800; color:var(--text,#e5e9f5); line-height:1.15; margin-bottom:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.elf-tile-elftal { font-size:12px; font-weight:600; color:var(--text-2,#9aa3b7); margin-bottom:4px; }
+.elf-tile-seen   { font-size:11px; color:var(--text-2,#9aa3b7); margin-bottom:6px; }
+.elf-tile-footer { display:flex; align-items:center; justify-content:flex-end; margin-top:auto; }
 .elf-tile-players { font-size:11px; color:var(--text-2,#9aa3b7); }
 .elf-tile-badges { display:flex; gap:4px; }
 .elf-tbadge { font-size:10px; font-weight:700; border-radius:4px; padding:1px 5px; }

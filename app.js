@@ -4723,6 +4723,9 @@ function openMatchReportModal(id){
   $('#mr-also-player').checked = false;
 
   if(titleEl) titleEl.textContent = r ? 'Wedstrijdrapport bewerken' : 'Wedstrijd rapporteren';
+  // Reset submit-knop (kan disabled zijn van vorige submit)
+  const _mrBtnReset = document.querySelector('#mreport-modal [type="submit"]');
+  if(_mrBtnReset){ _mrBtnReset.disabled = false; _mrBtnReset.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Opslaan'; }
   if(delBtn)  delBtn.style.display = r ? '' : 'none';
 
   bd.classList.add('open');
@@ -6175,6 +6178,8 @@ function openObservatieForm(prog, sn){
   // Knoptekst: draft = "Opslaan" (bewaren), definitief = "Opslaan als observatie"
   const _submitBtn = document.getElementById('obs-submit');
   if(_submitBtn){
+    // Reset disabled + innerHTML (kan disabled zijn van vorige submit)
+    _submitBtn.disabled = false;
     _submitBtn.textContent = _isObsDraft ? 'Opslaan & sluiten' : 'Opslaan als observatie';
   }
 
@@ -10839,8 +10844,9 @@ function _elfShowTeamTiles(players, resultsEl, query){
     html += `<div class="elf-tile ${col}" data-elf-club="${escapeAttr(t.club)}" data-elf-team="${escapeAttr(t.elftal)}">
   <div class="elf-tile-club">${escapeHtml(t.club)}</div>
   <div class="elf-tile-elftal">${escapeHtml(t.elftal)}</div>
+  <div class="elf-tile-seen">${t.players.length} speler${t.players.length===1?'':'s'} gezien</div>
   <div class="elf-tile-footer">
-    <span class="elf-tile-players">${t.players.length} speler${t.players.length===1?'':'s'}</span>
+    <span></span>
     <span class="elf-tile-badges">${nR?'<span class="elf-tbadge elf-tbadge-r">'+nR+'R</span>':''}${nO?'<span class="elf-tbadge elf-tbadge-o">'+nO+'O</span>':''}</span>
   </div>
 </div>`;
@@ -13716,6 +13722,9 @@ function refreshPositionDropdowns(){
   if(currentBeoogd) beoogdSel.value = currentBeoogd;
 }
 function resetReportForm(){
+  // Reset Indienen-knop (kan disabled zijn van vorige submit)
+  const _rpReset = document.getElementById('report-save-btn');
+  if(_rpReset){ _rpReset.disabled = false; _rpReset.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Indienen'; }
   if(typeof __shTrace === 'function') __shTrace('reset-report-form', {
     had_ctx: !!window.__shScoutingCtx,
     had_id: !!($('#f-id') && $('#f-id').value)

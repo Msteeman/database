@@ -8851,9 +8851,9 @@ async function ensureMap(){
     maxBounds: L.latLngBounds([50.5, 3.0], [54.0, 8.0]),
     maxBoundsViscosity: 0.6
   });
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
     maxZoom: 19,
-    attribution: '© OpenStreetMap'
+    attribution: '© CartoDB · © OpenStreetMap'
   }).addTo(_leafletMap);
   _leafletLayer = L.layerGroup().addTo(_leafletMap);
   setTimeout(()=> { try { _leafletMap.invalidateSize(); } catch(_){} }, 60);
@@ -8864,10 +8864,21 @@ function clearMarkers(){
   if(_leafletLayer) _leafletLayer.clearLayers();
 }
 
-function buildMarkerIcon(L, label, count, kind){
+const GEO_ADVIES_COLOR = {'4':'#22c55e','3':'#3b82f6','2':'#f59e0b','1':'#ef4444'};
+const GEO_ADVIES_LABEL = {'4':'Direct contracteren','3':'Op proef','2':'Monitoren','1':'Geen stap'};
+let _geoAdviesFilter = ''; // '' = alles tonen
+
+function _geoDominantAdvies(players){
+  const counts = {'4':0,'3':0,'2':0,'1':0};
+  players.forEach(p=>{ if(counts[p.advies]!==undefined) counts[p.advies]++; });
+  return ['4','3','2','1'].find(k=>counts[k]>0) || '';
+}
+
+function buildMarkerIcon(L, label, count, kind, color){
+  const col = color || '#ef4444';
   const html = `
     <div class="scout-marker-inner">
-      <div class="scout-marker-dot">${count}</div>
+      <div class="scout-marker-dot" style="background:${col};box-shadow:0 0 10px ${col}88;">${count}</div>
       <div class="scout-marker-label">${escapeHtml(label)}</div>
     </div>`;
   return L.divIcon({
@@ -8875,6 +8886,29 @@ function buildMarkerIcon(L, label, count, kind){
     html,
     iconSize: [0, 0],
     iconAnchor: [0, 0]
+  });
+}
+
+function _geoFilterBar(){
+  const wrap = document.getElementById('geo-filter-bar');
+  if(!wrap) return;
+  const opts = [
+    {k:'', label:'Alle', col:'rgba(200,210,230,.7)'},
+    {k:'4', label:'Direct contracteren', col:GEO_ADVIES_COLOR['4']},
+    {k:'3', label:'Op proef', col:GEO_ADVIES_COLOR['3']},
+    {k:'2', label:'Monitoren', col:GEO_ADVIES_COLOR['2']},
+    {k:'1', label:'Geen stap', col:GEO_ADVIES_COLOR['1']},
+  ];
+  wrap.innerHTML = opts.map(o=>`
+    <button class="geo-filter-btn${_geoAdviesFilter===o.k?' active':''}" data-k="${o.k}"
+      style="border-color:${o.col};${_geoAdviesFilter===o.k?'background:'+o.col+';color:#000;':'color:'+o.col+';'}">
+      ${_geoAdviesFilter===o.k?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ':''}${o.label}
+    </button>`).join('');
+  wrap.querySelectorAll('.geo-filter-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      _geoAdviesFilter = btn.dataset.k;
+      renderGeo();
+    });
   });
 }
 
@@ -8927,60 +8961,115 @@ async function renderGeoMap(){
   const map = _leafletMap;
   if(!L || !map) return;
   clearMarkers();
-  const players = loadPlayers();
+  _geoFilterBar();
+
+  let players = loadPlayers();
+  if(_geoAdviesFilter) players = players.filter(p => p.advies === _geoAdviesFilter);
+
   const byCity = {};
   players.forEach(p=>{
-    const c = cityForPlayer(p);
-    if(!c) return;
-    if(!byCity[c]) byCity[c] = [];
-    byCity[c].push(p);
+    const ct = cityForPlayer(p);
+    if(!ct) return;
+    if(!byCity[ct]) byCity[ct] = [];
+    byCity[ct].push(p);
   });
   const cities = Object.keys(byCity).sort((a,b)=> byCity[b].length - byCity[a].length);
 
   if(!cities.length){
     $('#geo-list-title').textContent = 'Steden';
-    $('#geo-list-items').innerHTML = '<div class="geo-empty-text">Nog geen rapporten met plaatsgegevens. Vul club of plaats in bij rapporten.</div>';
+    $('#geo-list-items').innerHTML = '<div class="geo-empty-text">Geen rapporten gevonden' + (_geoAdviesFilter ? ' voor dit filter' : ' met plaatsgegevens') + '.</div>';
     map.fitBounds(REGION_BOUNDS);
     return;
   }
 
-  /* Plaats markers, geocode onbekende steden in achtergrond.
-     Buitenlandse clubs (Malmö (SE), Turnhout (BE)) blijven buiten de regiokaart
-     omdat REGION_BOUNDS Utrecht + Veluwe afdekt. */
   const SKIP_CITIES = new Set(['Malmö (SE)','Malmo (SE)','Turnhout (BE)','Malmö','Malmo']);
+  const cityMarkers = {};
   cities.forEach(city=>{
     if(SKIP_CITIES.has(city)) return;
     const coords = coordsForCity(city);
     if(!coords){
-      lookupCityCoords(city).then(c=>{ if(c) scheduleGeoRerender(); });
+      lookupCityCoords(city).then(ct=>{ if(ct) scheduleGeoRerender(); });
       return;
     }
-    const n = byCity[city].length;
-    const icon = buildMarkerIcon(L, city, n, '');
+    const pp = byCity[city];
+    const n = pp.length;
+    const dom = _geoDominantAdvies(pp);
+    const col = GEO_ADVIES_COLOR[dom] || '#64748b';
+    const icon = buildMarkerIcon(L, city, n, '', col);
     const marker = L.marker([coords.lat, coords.lng], { icon }).addTo(_leafletLayer);
-    marker.on('click', ()=>{
-      geoState = {level:'city', city, club:null, team:null};
-      renderGeo();
+    cityMarkers[city] = marker;
+
+    // Rijke popup
+    const topPlayers = pp.slice(0,4);
+    const popRows = topPlayers.map(p=>{
+      const ac = GEO_ADVIES_COLOR[p.advies]||'#64748b';
+      const al = GEO_ADVIES_LABEL[p.advies]||'–';
+      return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.06);">
+        <span style="font-weight:600;font-size:12px;color:#e8edf8;">${escapeHtml(p.naam||'?')}</span>
+        <span style="font-size:10px;background:${ac}22;color:${ac};border:1px solid ${ac}55;border-radius:4px;padding:1px 7px;cursor:pointer;" data-pid="${escapeHtml(p.id)}">${al}</span>
+      </div>`;
+    }).join('');
+    const more = pp.length > 4 ? `<div style="font-size:11px;color:#94a3b8;margin-top:6px;">+${pp.length-4} meer</div>` : '';
+    const popHtml = `
+      <div style="min-width:180px;font-family:-apple-system,Segoe UI,sans-serif;">
+        <div style="font-weight:700;font-size:13px;color:#fff;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:6px;">${escapeHtml(city)} <span style="font-weight:400;color:#94a3b8;">(${n})</span></div>
+        ${popRows}${more}
+        <button style="margin-top:10px;width:100%;background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);color:#a5b4fc;border-radius:5px;padding:5px;font-size:11px;cursor:pointer;" data-city="${escapeHtml(city)}">Bekijk alle spelers →</button>
+      </div>`;
+    const popup = L.popup({
+      className: 'geo-dark-popup',
+      closeButton: false,
+      maxWidth: 240
+    }).setContent(popHtml);
+    marker.bindPopup(popup);
+    marker.on('popupopen', ()=>{
+      marker.getPopup().getElement()?.querySelectorAll('[data-pid]').forEach(el=>{
+        el.addEventListener('click', ()=>{ marker.closePopup(); openDetail(el.dataset.pid); });
+      });
+      marker.getPopup().getElement()?.querySelectorAll('[data-city]').forEach(el=>{
+        el.addEventListener('click', ()=>{
+          marker.closePopup();
+          geoState = {level:'city', city:el.dataset.city, club:null, team:null};
+          renderGeo();
+        });
+      });
     });
   });
+
   map.fitBounds(REGION_BOUNDS, { padding: [20, 20] });
 
-  const visibleCities = cities.filter(c => !SKIP_CITIES.has(c));
+  const visibleCities = cities.filter(ct => !SKIP_CITIES.has(ct));
   $('#geo-list-title').textContent = `Steden (${visibleCities.length})`;
   $('#geo-list-items').innerHTML = visibleCities.map(city=>{
-    const n = byCity[city].length;
+    const pp = byCity[city];
+    const n = pp.length;
+    const dom = _geoDominantAdvies(pp);
+    const col = GEO_ADVIES_COLOR[dom] || '#64748b';
     return `
-      <div class="geo-list-item" data-city="${escapeHtml(city)}">
-        <div class="geo-list-item-icon">${escapeHtml(city[0]||'?')}</div>
+      <div class="geo-list-item" data-city="${escapeHtml(city)}" style="cursor:pointer;">
+        <div class="geo-list-item-icon" style="background:${col}22;color:${col};border:1.5px solid ${col}55;">${escapeHtml(city[0]||'?')}</div>
         <div class="geo-list-item-info">
           <div class="geo-list-item-name">${escapeHtml(city)}</div>
           <div class="geo-list-item-meta">${n} rapport${n===1?'':'en'}</div>
         </div>
-        <div class="geo-list-item-count">${n}</div>
+        <div class="geo-list-item-count" style="background:${col}22;color:${col};">${n}</div>
       </div>`;
   }).join('');
+
   $$('.geo-list-item', $('#geo-list-items')).forEach(el=>{
     el.addEventListener('click', ()=>{
+      const city = el.dataset.city;
+      const coords = coordsForCity(city);
+      // Fly to + open popup op de kaart; bij dubbelklik drill-down
+      if(coords && cityMarkers[city]){
+        map.flyTo([coords.lat, coords.lng], 11, {duration:0.5});
+        setTimeout(()=> cityMarkers[city].openPopup(), 550);
+      } else {
+        geoState = {level:'city', city, club:null, team:null};
+        renderGeo();
+      }
+    });
+    el.addEventListener('dblclick', ()=>{
       geoState = {level:'city', city:el.dataset.city, club:null, team:null};
       renderGeo();
     });

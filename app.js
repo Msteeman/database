@@ -13078,6 +13078,7 @@ function renderDetailOverview(p){
 
     <div class="dtl-kpi-grid" id="dtl-kpi-grid"></div>
 
+    <div id="dtl-obs-card"></div>
     <div id="dtl-summary-card"></div>
 
     <div id="dtl-trend-card"></div>
@@ -13124,6 +13125,7 @@ function renderDetailOverview(p){
   `;
   renderDetailKPIs(vp);
   renderDetailSummary(vp);
+  renderDetailObsCard(p);
   // DIRECTE notities-fallback: toont altijd als er notities zijn maar renderDetailSummary leeg blijft
   try {
     const _dtlSumWrap = document.getElementById('dtl-summary-card');
@@ -13349,6 +13351,69 @@ function renderDetailKPIs(p){
 /* ---- Sterktes & ontwikkelpunten ---- */
 
 /* ---- Scout-samenvatting (wapen + notities + wedstrijd) ---- */
+
+function renderDetailObsCard(p){
+  const wrap = document.getElementById('dtl-obs-card');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  // Verzamel wedstrijd-gegevens uit alle velden
+  const _wd = p.wedstrijd || p.rapport && p.rapport.wedstrijd || {};
+  const wDatum = (p.wedstrijd_datum || _wd.datum || p.datum || '').trim();
+  const wThuis = (p.wedstrijd_thuis || _wd.thuis || '').trim();
+  const wUit   = (p.wedstrijd_uit   || _wd.uit   || '').trim();
+  // Verzamel notities uit alle velden
+  let tekst = (p.notities_raw || p.notities || p.opmerkingen || '').trim();
+  // Zoek in programmaCache als notities leeg zijn
+  if(!tekst && typeof programmaCache !== 'undefined'){
+    try {
+      const pId   = p.id || '';
+      const pNaam = (p.naam||'').toLowerCase().trim();
+      for(const prog of programmaCache){
+        if(!prog || !Array.isArray(prog.snelnotities)) continue;
+        for(const sn of prog.snelnotities){
+          if(!sn) continue;
+          const match = (pId && (sn.player_id === pId || sn.__convertedToPlayerId === pId)) ||
+                        (pNaam && (sn.naam||'').toLowerCase().trim() === pNaam);
+          if(match && sn.tekst){ tekst = sn.tekst.trim(); break; }
+        }
+        if(tekst) break;
+      }
+    } catch(_){}
+  }
+  // Zoek in window.__shSnTekstMap (gevuld vanuit wedstrijd-popup)
+  if(!tekst && window.__shSnTekstMap){
+    tekst = window.__shSnTekstMap[p.id] ||
+            window.__shSnTekstMap['n:'+(p.naam||'').toLowerCase().trim()] || '';
+  }
+  // Filter lege term-regels (bijv. "techniek:" zonder waarde)
+  let toonTekst = '';
+  if(tekst){
+    const lijnen = tekst.split('\n').filter(function(l){
+      const ci = l.indexOf(':');
+      if(ci < 0) return l.trim().length > 0;
+      return l.slice(ci+1).trim().length > 0;
+    });
+    toonTekst = lijnen.join('\n').trim();
+  }
+  // Toon kaart als er iets te tonen is
+  if(!wDatum && !wThuis && !toonTekst) return;
+  const datumStr = wDatum ? formatDate(wDatum) : '';
+  const wstrStr  = (wThuis && wUit) ? (escapeHtml(wThuis) + ' vs ' + escapeHtml(wUit)) : '';
+  const subStr   = [datumStr, wstrStr].filter(Boolean).join(' · ');
+  wrap.innerHTML =
+    '<div class="card compare-card" style="margin-bottom:16px;">' +
+      '<div class="compare-card-title">' +
+        '<span>Scout-observatie</span>' +
+        (subStr ? '<span class="compare-card-sub">' + subStr + '</span>' : '') +
+      '</div>' +
+      '<div style="padding:12px 16px;">' +
+        (toonTekst
+          ? '<div style="font-size:13px;line-height:1.8;color:var(--text);white-space:pre-line;">' + escapeHtml(toonTekst) + '</div>'
+          : '<div style="font-size:12px;color:var(--text-3);">Geen notities ingevuld bij deze observatie.</div>') +
+      '</div>' +
+    '</div>';
+}
+
 function renderDetailSummary(p){
   const wrap = document.getElementById('dtl-summary-card');
   if(!wrap) return;

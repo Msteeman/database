@@ -4796,30 +4796,9 @@ function _mrShowReadOnly(r){
       </div>
       <div><span style="color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;">Opmerking</span><div style="color:var(--text);margin-top:2px;white-space:pre-wrap;">${escapeHtml(r.opmerking||'–')}</div></div>`;
   }
-  // Spelers gezien bij deze wedstrijd
+  // Geen spelerslijst in wedstrijdrapport — clean rapport view
   const pp = document.getElementById('mr-readonly-players');
-  if(pp){
-    const gezien = (playersCache||[]).filter(p => {
-      const wd = (p.wedstrijd)||{};
-      return wd.datum === r.datum &&
-        (wd.thuis||'').toLowerCase().trim() === (r.thuis||'').toLowerCase().trim();
-    });
-    if(gezien.length){
-      const items = gezien.map(p => {
-        const isConcept = _shPlayerIsConcept ? _shPlayerIsConcept(p) : false;
-        const badge = isConcept
-          ? `<span style="font-size:10px;background:rgba(245,158,11,.18);color:#f59e0b;border-radius:4px;padding:1px 6px;">concept</span>`
-          : `<span style="font-size:10px;background:rgba(34,197,94,.15);color:#22c55e;border-radius:4px;padding:1px 6px;">✓ ingediend</span>`;
-        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg-3);border-radius:6px;margin-bottom:6px;">
-          <span style="font-weight:600;color:var(--text);font-size:13px;">${escapeHtml(p.naam||'?')}</span>
-          ${badge}
-        </div>`;
-      }).join('');
-      pp.innerHTML = `<div style="color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Spelers gezien (${gezien.length})</div>${items}`;
-    } else {
-      pp.innerHTML = `<div style="color:var(--text-3);font-size:12px;">Geen spelersrapporten gekoppeld aan deze wedstrijd.</div>`;
-    }
-  }
+  if(pp) pp.innerHTML = '';
   // Sluit-knop
   const closeBtn = document.getElementById('mr-readonly-close');
   if(closeBtn && !closeBtn._wired){ closeBtn._wired=true; closeBtn.addEventListener('click', closeMatchReportModal); }
@@ -8786,6 +8765,7 @@ function renderDashFollowUp(players){
 }
 
 /* ---- Geo widget (Leaflet, regio Utrecht + Veluwe) ---- */
+let _dbTypeFilter = ''; // '' | 'rap' | 'obs'
 let _leafletMap = null;
 let _leafletLayer = null;
 let _leafletHeatLayer = null;
@@ -9400,14 +9380,19 @@ function wireDraftCard(){
 }
 // Wire obs-filter + rapport-filter knop (eenmalig)
 (function _wireObsFilterBtn(){
+  function _syncBtns(){
+    const o = document.getElementById('db-obs-filter-btn');
+    const r = document.getElementById('db-rapport-filter-btn');
+    if(o){ o.classList.toggle('active', _dbTypeFilter === 'obs'); }
+    if(r){ r.classList.toggle('active', _dbTypeFilter === 'rap'); }
+  }
   function _doWire(){
     const obsBtn = document.getElementById('db-obs-filter-btn');
     if(obsBtn && !obsBtn._wired){
       obsBtn._wired = true;
       obsBtn.addEventListener('click', () => {
-        obsBtn.classList.toggle('active');
-        const rapBtn = document.getElementById('db-rapport-filter-btn');
-        if(rapBtn && obsBtn.classList.contains('active')) rapBtn.classList.remove('active');
+        _dbTypeFilter = _dbTypeFilter === 'obs' ? '' : 'obs';
+        _syncBtns();
         if(typeof applyFilters === 'function') applyFilters();
       });
     }
@@ -9415,9 +9400,8 @@ function wireDraftCard(){
     if(rapBtn && !rapBtn._wired){
       rapBtn._wired = true;
       rapBtn.addEventListener('click', () => {
-        rapBtn.classList.toggle('active');
-        const obsBtn2 = document.getElementById('db-obs-filter-btn');
-        if(obsBtn2 && rapBtn.classList.contains('active')) obsBtn2.classList.remove('active');
+        _dbTypeFilter = _dbTypeFilter === 'rap' ? '' : 'rap';
+        _syncBtns();
         if(typeof applyFilters === 'function') applyFilters();
       });
     }
@@ -9427,11 +9411,12 @@ function wireDraftCard(){
 })();
 
 function renderDatabase(){
-  // Reset type-filterknoppen bij elke herlaad van de database
-  const _obsBtn = document.getElementById('db-obs-filter-btn');
-  const _rapBtn = document.getElementById('db-rapport-filter-btn');
-  if(_obsBtn) _obsBtn.classList.remove('active');
-  if(_rapBtn) _rapBtn.classList.remove('active');
+  // Reset typefilter bij navigeren naar database
+  _dbTypeFilter = '';
+  const _obsBtnR = document.getElementById('db-obs-filter-btn');
+  const _rapBtnR = document.getElementById('db-rapport-filter-btn');
+  if(_obsBtnR) _obsBtnR.classList.remove('active');
+  if(_rapBtnR) _rapBtnR.classList.remove('active');
   const players = loadPlayers().filter(p => !p.concept);
   $('#db-count').textContent = `${players.length} speler${players.length===1?'':'s'}`;
 
@@ -9502,8 +9487,8 @@ function applyFilters(){
   const fpot = $('#filter-potential').value;
   const fadv = $('#filter-advies').value;
   const fper = $('#filter-period').value;
-  const fobs = document.getElementById('db-obs-filter-btn')?.classList.contains('active') || false;
-  const frap = document.getElementById('db-rapport-filter-btn')?.classList.contains('active') || false;
+  const fobs = _dbTypeFilter === 'obs';
+  const frap = _dbTypeFilter === 'rap';
   const perCutoff = fper ? (Date.now() - parseInt(fper,10)*24*3600*1000) : null;
 
   let filtered = players.filter(p=>{
@@ -10297,154 +10282,129 @@ function _shOpenEditModal(m){
   const sns = _shCollectSnelNotities(m);
   const wns = _shCollectWedstrijdNotities(m);
 
-  // Body opbouwen
+  // Body opbouwen — vereenvoudigd
   const bodyEl = document.getElementById("wstr-edit-body");
   if(!bodyEl) return;
   let html = "";
 
-  if(m.opmerking){
-    html += `<div class="wstr-edit-section">
-      <div class="wstr-edit-section-head">
-        <div class="wstr-edit-section-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></svg></div>
-        <div class="wstr-edit-section-title">Wedstrijdopmerking</div>
-      </div>
-      <div style="font-size:13px;color:var(--text-2);line-height:1.5;padding:8px 12px;background:var(--bg-2);border-radius:8px;">${escapeHtml(m.opmerking).replace(/\n/g,"<br>")}</div>
-    </div>`;
-  }
+  // ── Alle spelers verzamelen (gekoppeld + observaties + playersCache match) ──
+  const _allLinkedProgs = (typeof _shFindLinkedPrograms === 'function') ? _shFindLinkedPrograms(m) : [];
+  const _matchDatumE = (m.datum||'').trim();
+  const _matchThuisE = (m.thuis||'').toLowerCase().trim();
 
-  // Sectie: Gekoppelde spelers
+  // Uit playersCache: alle spelers die aan deze wedstrijd gekoppeld zijn
+  const _cacheSpelers = (typeof playersCache !== 'undefined' ? playersCache : []).filter(p => {
+    if(!p || !p.id) return false;
+    const wd = p.wedstrijd || {};
+    const pdatum = wd.datum || p.wedstrijd_datum || '';
+    const pthuis = (wd.thuis || p.wedstrijd_thuis || '').toLowerCase().trim();
+    if(!pdatum || pdatum !== _matchDatumE) return false;
+    return pthuis === _matchThuisE || _matchThuisE.startsWith(pthuis) || pthuis.startsWith(_matchThuisE);
+  });
+
+  // Merge: begin met players uit m.players, voeg cacheSpelers toe die nog niet in de lijst zitten
+  const _seenIds = new Set(players.map(p => p && p.id).filter(Boolean));
+  const _allSpelers = [...players];
+  _cacheSpelers.forEach(p => { if(!_seenIds.has(p.id)){ _allSpelers.push(p); _seenIds.add(p.id); } });
+
+  // SNS (snel-notities / openstaande obs)
+  const _openSns = sns.filter(s => !s.ingediend);
+  const _ingediendSns = sns.filter(s => s.ingediend);
+
+  // ── Sectie: Spelers ──
+  const _totalSpelers = _allSpelers.length + _ingediendSns.length;
   html += `<div class="wstr-edit-section">
     <div class="wstr-edit-section-head">
-      <div class="wstr-edit-section-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
-      <div class="wstr-edit-section-title">Gekoppelde spelers</div>
-      <div class="wstr-edit-section-count">${players.length}</div>
+      <div class="wstr-edit-section-icon">👥</div>
+      <div class="wstr-edit-section-title">Spelers</div>
+      <div class="wstr-edit-section-count">${_totalSpelers}</div>
     </div>`;
-  if(players.length === 0){
-    html += `<div class="wstr-edit-empty">Nog géén spelers gekoppeld aan deze wedstrijd.</div>`;
-  } else {
-    // Zoek bijbehorende snelnotitie via spelerKey (voor preview)
-    const _editLinkedProgs = (typeof _shFindLinkedPrograms === 'function') ? _shFindLinkedPrograms(m) : [];
-    html += players.map(pl => {
-      const initials = (pl.naam || '?').split(/\s+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
-      const posLabel = (typeof positionLabel === 'function' ? (positionLabel(pl.positie) || pl.positie || '') : (pl.positie || ''));
-      const sub = [posLabel, pl.club].filter(Boolean).join(' • ');
-      const isConcept = _shPlayerIsConcept(pl);
-      // Zoek snelnotitie voor preview-tekst
-      const _spKey = pl.programma_link && pl.programma_link.spelerKey;
-      let _snPrev = '';
-      if(_spKey){
-        const _snProg = _editLinkedProgs.find(p => p.id === (pl.programma_link && pl.programma_link.progId)) || _editLinkedProgs[0];
-        const _sn = _snProg && Array.isArray(_snProg.snelnotities) && _snProg.snelnotities.find(s => s && s.spelerKey === _spKey);
-        if(_sn && _sn.tekst){
-          _snPrev = _sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' · ').trim().slice(0,120);
-        }
-      }
-      const _isIngediend = !isConcept;
-      // Type-label: "Rapport" (geel) vóór indienen, "✓ Ingediend" (groen) erna
-      const _rapportLabel = isConcept
-        ? ` <span class="wstr-type-label rapport">Rapport</span>`
-        : ` <span class="wstr-type-label ingediend">✓ Ingediend</span>`;
-      return `<div class="wstr-edit-item${isConcept?' is-concept':''}${_isIngediend?' wstr-ingediend':''}">
-        <div class="wstr-edit-item-avatar">${escapeHtml(initials || '?')}</div>
-        <div class="wstr-edit-item-main">
-          <div class="wstr-edit-item-name">${escapeHtml(pl.naam || '—')}${_rapportLabel}</div>
-          ${sub ? `<div class="wstr-edit-item-sub">${escapeHtml(sub)}</div>` : ''}
-          ${_snPrev ? `<div class="wstr-edit-item-sn-prev">${escapeHtml(_snPrev)}</div>` : ''}
-        </div>
-        <div class="wstr-edit-item-actions">
-          ${_isIngediend
-            ? `<button type="button" class="wstr-edit-mini-btn ingediend" data-open-player-db="${escapeHtml(pl.id)}">✓ Ingediend</button>`
-            : `<button type="button" class="wstr-edit-mini-btn primary" data-edit-player="${escapeHtml(pl.id)}" title="Aanvullen en indienen als spelersrapport">→ Rapport</button>`}
-        </div>
+
+  // Ingediende observaties (snel-notities)
+  _ingediendSns.forEach(({sn}) => {
+    const naam = (sn.naam||'?').trim();
+    const pid = sn.player_id || '';
+    html += `<div class="wstr-player-row" ${pid?`data-open-player-db="${escapeHtml(pid)}" style="cursor:pointer;"`:''}>
+      <span class="wstr-type-dot obs"></span>
+      <span class="wstr-player-naam">${escapeHtml(naam)}</span>
+      <span class="wstr-type-label observatie">OBS</span>
+      <span class="wstr-status-label ingediend">✓ Ingediend</span>
+    </div>`;
+  });
+
+  // Gekoppelde spelers + cache-spelers
+  _allSpelers.forEach(pl => {
+    const naam = pl.naam || '—';
+    const isConcept = typeof _shPlayerIsConcept === 'function' ? _shPlayerIsConcept(pl) : !!pl.concept;
+    const isObs = pl.rapport_type === 'observatie';
+    const typeLabel = isObs
+      ? `<span class="wstr-type-label observatie">OBS</span>`
+      : `<span class="wstr-type-label rapport">Rapport</span>`;
+    if(isConcept){
+      // Nog niet ingediend: knop tonen
+      html += `<div class="wstr-player-row">
+        <span class="wstr-type-dot ${isObs?'obs':'rapport'}"></span>
+        <span class="wstr-player-naam">${escapeHtml(naam)}</span>
+        ${typeLabel}
+        <button type="button" class="wstr-edit-mini-btn primary" data-edit-player="${escapeHtml(pl.id)}">→ Indienen</button>
       </div>`;
-    }).join('');
+    } else {
+      // Ingediend: alleen-lezen, klikbaar
+      html += `<div class="wstr-player-row" data-open-player-db="${escapeHtml(pl.id)}" style="cursor:pointer;">
+        <span class="wstr-type-dot ${isObs?'obs':'rapport'}"></span>
+        <span class="wstr-player-naam">${escapeHtml(naam)}</span>
+        ${typeLabel}
+        <span class="wstr-status-label ingediend">✓ Ingediend</span>
+      </div>`;
+    }
+  });
+
+  // Open observaties (nog in te dienen)
+  _openSns.forEach(({progId, snIdx, sn}) => {
+    const naam = (sn.naam||'Onbekend').trim();
+    const num = sn.rugnummer ? `#${sn.rugnummer} ` : '';
+    html += `<div class="wstr-player-row">
+      <span class="wstr-type-dot obs"></span>
+      <span class="wstr-player-naam">${num}${escapeHtml(naam)}</span>
+      <span class="wstr-type-label observatie">OBS</span>
+      <button type="button" class="wstr-edit-mini-btn obs" data-edit-snel-obs="${escapeHtml(progId)}" data-edit-snel-obs-idx="${snIdx}">→ Indienen</button>
+    </div>`;
+  });
+
+  if(_totalSpelers === 0 && _openSns.length === 0){
+    html += `<div class="wstr-edit-empty">Nog geen spelers gekoppeld.</div>`;
   }
   html += `</div>`;
 
-  // Sectie: Nieuwe spelersnotities (s35dg Fase F)
-  html += `<div class="wstr-edit-section">
-    <div class="wstr-edit-section-head">
-      <div class="wstr-edit-section-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.3v1h6v-1c0-1 .3-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg></div>
-      <div class="wstr-edit-section-title">Opgevallen spelers</div>
-      <div class="wstr-edit-section-count">${sns.length}</div>
-    </div>`;
-  if(sns.length === 0){
-    html += `<div class="wstr-edit-empty">Geen openstaande spelersnotities.</div>`;
-  } else {
-    html += sns.map(({progId, snIdx, sn, ingediend}) => {
-      const naam = (sn.naam || "Onbenoemde speler").trim();
-      const num = sn.rugnummer ? `#${escapeHtml(String(sn.rugnummer))} ` : "";
-      const tekst = (sn.tekst || "").trim();
-      if(ingediend){
-        const _pid = sn.player_id || '';
-        return `<div class="wstr-edit-note snel wstr-ingediend">
-          <div class="wstr-edit-note-icon">👁</div>
-          <div class="wstr-edit-note-main">
-            <div class="wstr-edit-note-title">${num}${escapeHtml(naam)} <span class="wstr-type-label ingediend">✓ Ingediend</span></div>
-            ${tekst ? `<div class="wstr-edit-note-text" style="opacity:.5;">${escapeHtml(tekst.slice(0,80))}${tekst.length>80?'…':''}</div>` : ''}
-          </div>
-          ${_pid ? `<button type="button" class="wstr-edit-note-action" data-open-player-db="${escapeHtml(_pid)}">→ Database</button>` : ''}
-        </div>`;
-      }
-      return `<div class="wstr-edit-note snel">
-        <div class="wstr-edit-note-icon">💡</div>
-        <div class="wstr-edit-note-main">
-          <div class="wstr-edit-note-title">${num}${escapeHtml(naam)} <span class="wstr-type-label observatie">Observatie</span></div>
-          ${tekst ? `<div class="wstr-edit-note-text">${escapeHtml(tekst)}</div>` : '<div class="wstr-edit-note-text" style="font-style:italic;opacity:0.7;">(geen tekst)</div>'}
-        </div>
-        <button type="button" class="wstr-edit-note-action obs" data-edit-snel-obs="${escapeHtml(progId)}" data-edit-snel-obs-idx="${snIdx}">→ Indienen</button>
-      </div>`;
-    }).join('');
-  }
-  html += `</div>`;
+  // ── Sectie: Wedstrijdrapport ──
+  const wrConceptProg = _allLinkedProgs.find(p => p && p.wedstrijdrapport && p.wedstrijdrapport.status === 'concept');
+  const wrIngProg = _allLinkedProgs.find(p => p && p.wedstrijdrapport && (p.wedstrijdrapport.status === 'ingediend' || p.wedstrijdrapport.status === 'verwerkt'));
+  const _firstProgId2 = _allLinkedProgs.length ? _allLinkedProgs[0].id : '';
 
-  // Sectie: Wedstrijdrapport (s35dg Fase F)
-  // Bij voorkeur: één concept-record uit prog.wedstrijdrapport. Fallback: ruwe wedstrijdnotities.
-  const linkedProgs = (typeof _shFindLinkedPrograms === 'function') ? _shFindLinkedPrograms(m) : [];
-  const wrConceptProg = linkedProgs.find(p => p && p.wedstrijdrapport && p.wedstrijdrapport.status === 'concept');
   html += `<div class="wstr-edit-section">
     <div class="wstr-edit-section-head">
-      <div class="wstr-edit-section-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+      <div class="wstr-edit-section-icon">📋</div>
       <div class="wstr-edit-section-title">Wedstrijdrapport</div>
-      <div class="wstr-edit-section-count">${wrConceptProg ? 1 : wns.length}</div>
     </div>`;
-  if(wrConceptProg){
-    const wr = wrConceptProg.wedstrijdrapport || {};
-    const tekst = (wr.tekst || "").trim();
-    html += `<div class="wstr-edit-note wstr">
-      <div class="wstr-edit-note-icon">📝</div>
-      <div class="wstr-edit-note-main">
-        <div class="wstr-edit-note-title">Concept</div>
-        ${tekst ? `<div class="wstr-edit-note-text">${escapeHtml(tekst).replace(/\n/g,'<br>')}</div>` : '<div class="wstr-edit-note-text" style="font-style:italic;opacity:0.7;">(nog geen tekst — open om in te vullen)</div>'}
-      </div>
-      <button type="button" class="wstr-edit-note-action" data-wr-open-modal="${escapeHtml(wrConceptProg.id)}">Open wedstrijdrapport</button>
+
+  if(wrIngProg){
+    html += `<div class="wstr-player-row" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:10px 12px;">
+      <span style="color:#3b82f6;font-size:13px;font-weight:600;">📋 Wedstrijdrapport</span>
+      <span class="wstr-status-label" style="background:rgba(59,130,246,.15);color:#3b82f6;border-color:rgba(59,130,246,.3);">✓ Ingediend</span>
+      <button type="button" class="wstr-edit-note-action" data-wr-open-modal="${escapeHtml(wrIngProg.id)}" style="margin-left:auto;">Bekijk →</button>
     </div>`;
-  } else if(wns.length === 0){
-    // Altijd een knop tonen om wedstrijdrapport te openen/maken
-    const _firstProgId = linkedProgs.length ? linkedProgs[0].id : '';
-    html += `<div class="wstr-edit-note wstr">
-      <div class="wstr-edit-note-icon">📝</div>
-      <div class="wstr-edit-note-main">
-        <div class="wstr-edit-note-title" style="opacity:.6;">Nog geen notities</div>
-      </div>
-      ${_firstProgId ? `<button type="button" class="wstr-edit-note-action primary" data-edit-wstr-prog="${escapeHtml(_firstProgId)}" data-edit-wstr-idx="-1">→ Wedstrijdrapport</button>` : ''}
+  } else if(wrConceptProg){
+    html += `<div class="wstr-player-row">
+      <span style="font-size:13px;color:var(--text-2);">📝 Concept aanwezig</span>
+      <button type="button" class="wstr-edit-note-action primary" data-wr-open-modal="${escapeHtml(wrConceptProg.id)}" style="margin-left:auto;">→ Wedstrijdrapport</button>
     </div>`;
   } else {
-    html += wns.map(({progId, wnIdx, wn}) => {
-      const tekst = ((wn && (wn.tekst || wn.notitie)) || "").trim();
-      const titel = (wn && wn.titel) ? wn.titel : "Wedstrijdnotitie";
-      return `<div class="wstr-edit-note wstr">
-        <div class="wstr-edit-note-icon">📝</div>
-        <div class="wstr-edit-note-main">
-          <div class="wstr-edit-note-title">${escapeHtml(titel)}</div>
-          ${tekst ? `<div class="wstr-edit-note-text">${escapeHtml(tekst)}</div>` : '<div class="wstr-edit-note-text" style="font-style:italic;opacity:0.7;">(geen tekst)</div>'}
-        </div>
-        <button type="button" class="wstr-edit-note-action primary" data-edit-wstr-prog="${escapeHtml(progId)}" data-edit-wstr-idx="${wnIdx}">→ Wedstrijdrapport</button>
-      </div>`;
-    }).join('');
+    html += `<div class="wstr-player-row">
+      <span style="font-size:12px;color:var(--text-3);">Nog geen rapport</span>
+      ${_firstProgId2 ? `<button type="button" class="wstr-edit-note-action primary" data-edit-wstr-prog="${escapeHtml(_firstProgId2)}" data-edit-wstr-idx="-1" style="margin-left:auto;">→ Wedstrijdrapport</button>` : ''}
+    </div>`;
   }
   html += `</div>`;
-
   bodyEl.innerHTML = html;
 
   // Footer-acties (preserveer class-namen zodat bestaande handlers werken)
@@ -14918,23 +14878,18 @@ function renderMatches(){
       }
       // Wedstrijdrapport — compacte weergave (geen textarea)
       const _wstrOpmerking = (_wstr && _wstr.opmerking) ? _wstr.opmerking : ((_wstr && _wstr.tekst) ? _wstr.tekst : '');
-      const _wstrShort = _wstrOpmerking ? _wstrOpmerking.replace(/\n+/g,' · ').trim().slice(0,80) + (_wstrOpmerking.length>80?'…':'') : '';
       if(_wstrVerwerkt){
-        _dropRows += `<div class="pm-section-hdr">Wedstrijdrapport</div>
-        <div class="pm-wstr-inline pm-wstr-done">
-          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;">
-            <span class="pm-item-done" style="font-size:13px;">✓ Ingediend</span>
-            <button type="button" class="pm-item-link" data-pm-wstr-readonly="${escapeHtml(m.progId)}" style="font-size:12px;">Bekijk rapport →</button>
+        _dropRows += `<div class="pm-section-hdr" style="color:#3b82f6;">Wedstrijdrapport</div>
+        <div class="pm-wstr-inline" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:7px;padding:8px 12px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:11px;font-weight:700;color:#3b82f6;">✓ Ingediend</span>
+            <button type="button" class="pm-item-link" data-pm-wstr-readonly="${escapeHtml(m.progId)}" style="font-size:12px;margin-left:auto;">Bekijk →</button>
           </div>
-          ${_wstrShort ? `<div style="font-size:11px;color:var(--text-3);margin-top:5px;">${escapeHtml(_wstrShort)}</div>` : ''}
         </div>`;
       } else {
         _dropRows += `<div class="pm-section-hdr">Wedstrijdrapport</div>
         <div class="pm-wstr-inline">
-          <div style="display:flex;align-items:center;justify-content:space-between;">
-            ${_wstrShort ? `<span style="font-size:12px;color:var(--text-2);flex:1;margin-right:10px;">${escapeHtml(_wstrShort)}</span>` : '<span style="font-size:12px;color:var(--text-3);">Nog geen rapport</span>'}
-            <button type="button" class="wstr-edit-note-action primary" data-pm-wstr-rapport="${escapeHtml(m.progId)}" style="margin:0;flex-shrink:0;">→ Wedstrijdrapport</button>
-          </div>
+          <button type="button" class="wstr-edit-note-action primary" data-pm-wstr-rapport="${escapeHtml(m.progId)}" style="margin:0;">→ Wedstrijdrapport</button>
         </div>`;
       }
       const _chevP = `<span class="match-chevron pm-chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;

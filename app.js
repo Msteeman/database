@@ -3172,7 +3172,26 @@ async function syncAllAddressesFromAdresboek(){
 }
 window.syncAllAddressesFromAdresboek = syncAllAddressesFromAdresboek;
 
-function loadPlayers(){ return playersCache; }
+function loadPlayers(){
+  // Dedupliceer obs: per naam+wedstrijd_datum+wedstrijd_thuis: alleen de meest recente
+  const seen = new Map();
+  const result = [];
+  // Eerst sorteren op datum desc zodat de meest recente als eerste wordt gezien
+  const sorted = playersCache.slice().sort((a,b) => (b.modified||b.created||0) - (a.modified||a.created||0));
+  sorted.forEach(p => {
+    if(p && p.rapport_type === 'observatie'){
+      const key = [
+        (p.naam||'').toLowerCase().trim(),
+        (p.wedstrijd_datum||p.datum||''),
+        (p.wedstrijd_thuis||'').toLowerCase().trim()
+      ].join('|');
+      if(seen.has(key)) return; // skip duplicaat
+      seen.set(key, true);
+    }
+    result.push(p);
+  });
+  return result;
+}
 function loadAnalyses(){ return analysesCache; }
 function loadContacts(){ return contactsCache; }
 function loadMatchReports(){ return matchReportsCache; }
@@ -6343,6 +6362,7 @@ async function _obsSubmit(e){
       concept: false,
       status: 'observatie',
       is_opvallend: sn && sn.is_opvallend ? true : false,
+      datum: prog && prog.datum ? prog.datum : (new Date().toISOString().slice(0,10)),
       wedstrijd_datum: prog && prog.datum ? prog.datum : '',
       wedstrijd_thuis: prog && prog.thuis ? prog.thuis : '',
       wedstrijd_uit: prog && prog.uit ? prog.uit : '',
@@ -9383,8 +9403,14 @@ function wireDraftCard(){
   function _syncBtns(){
     const o = document.getElementById('db-obs-filter-btn');
     const r = document.getElementById('db-rapport-filter-btn');
-    if(o){ o.classList.toggle('active', _dbTypeFilter === 'obs'); }
-    if(r){ r.classList.toggle('active', _dbTypeFilter === 'rap'); }
+    if(o){ 
+      o.classList.toggle('active', _dbTypeFilter === 'obs');
+      o.style.opacity = (!_dbTypeFilter || _dbTypeFilter === 'obs') ? '1' : '0.45';
+    }
+    if(r){ 
+      r.classList.toggle('active', _dbTypeFilter === 'rap');
+      r.style.opacity = (!_dbTypeFilter || _dbTypeFilter === 'rap') ? '1' : '0.45';
+    }
   }
   function _doWire(){
     const obsBtn = document.getElementById('db-obs-filter-btn');
@@ -12968,7 +12994,7 @@ function renderDetailOverview(p){
   renderDetailPizza(vp);
   renderDetailBars(vp);
   renderDetailTrend(p);
-  $('#dtl-back-prev').addEventListener('click', () => go(previousViewBeforePlayer || 'database'));
+  document.getElementById('dtl-back-prev')?.addEventListener('click', () => go(previousViewBeforePlayer || 'database'));
   // Vergelijk-knop: toevoegen/verwijderen
   const _dtlCmpToggle = document.getElementById('dtl-cmp-toggle');
   if(_dtlCmpToggle){
@@ -13147,15 +13173,19 @@ function renderDetailSummary(p){
   const wrap = document.getElementById('dtl-summary-card');
   if(!wrap) return;
   const w = p.wedstrijd || {};
+  // Obs records gebruiken flat velden (wedstrijd_datum/thuis/uit)
+  const wThuis = w.thuis || p.wedstrijd_thuis || '';
+  const wUit   = w.uit   || p.wedstrijd_uit   || '';
+  const wDatum = w.datum || p.wedstrijd_datum  || p.datum || '';
   const hasWapen   = !!p.wapen;
   const hasNotities = !!(p.notities || '').trim();
-  const hasWedstrijd = !!(w.thuis || w.uit || w.datum);
+  const hasWedstrijd = !!(wThuis || wUit || wDatum);
   if(!hasWapen && !hasNotities && !hasWedstrijd){ wrap.innerHTML = ''; return; }
 
   const wedstrijdStr = [
-    w.thuis && w.uit ? `${escapeHtml(w.thuis)} vs ${escapeHtml(w.uit)}` : '',
+    wThuis && wUit ? `${escapeHtml(wThuis)} vs ${escapeHtml(wUit)}` : '',
     w.uitslag ? escapeHtml(w.uitslag) : '',
-    w.datum   ? formatDate(w.datum)   : ''
+    wDatum ? formatDate(wDatum) : ''
   ].filter(Boolean).join(' · ');
 
   const notitiesStr = (p.notities || '').trim();

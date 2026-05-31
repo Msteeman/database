@@ -13096,6 +13096,36 @@ function renderDetailOverview(p){
     <div style="height:16px;"></div>
   `;
   renderDetailKPIs(vp);
+  // DEBUG TIJDELIJK — toont ruwe veldwaarden uit Firebase
+  try {
+    const _dbg = document.createElement('div');
+    _dbg.style.cssText = 'background:#0a0;color:#fff;padding:10px;margin:8px 0;font-size:11px;font-family:monospace;border-radius:6px;word-break:break-all;';
+    const _snLookup = [];
+    if(typeof programmaCache !== 'undefined'){
+      for(const _pr of programmaCache){
+        if(!_pr || !Array.isArray(_pr.snelnotities)) continue;
+        for(const _sn of _pr.snelnotities){
+          if(!_sn) continue;
+          if(_sn.player_id === p.id || _sn.__convertedToPlayerId === p.id || (_sn.naam||'').toLowerCase() === (p.naam||'').toLowerCase()){
+            _snLookup.push('SN['+(_pr.datum||'?')+'] naam='+(_sn.naam||'-')+' tekst='+(_sn.tekst||'-').slice(0,80)+' player_id='+(_sn.player_id||'-')+' conv='+(_sn.__convertedToPlayerId||'-'));
+          }
+        }
+      }
+    }
+    _dbg.innerHTML = '<b>DEBUG:</b><br>'
+      + 'id: '+escapeHtml(p.id||'-')+'<br>'
+      + 'naam: '+escapeHtml(p.naam||'-')+'<br>'
+      + 'concept: '+(p.concept)+'<br>'
+      + 'rapport_type: '+escapeHtml(p.rapport_type||'-')+'<br>'
+      + 'datum: '+escapeHtml(p.datum||'-')+'<br>'
+      + 'wedstrijd_datum: '+escapeHtml(p.wedstrijd_datum||'-')+'<br>'
+      + 'wedstrijd_thuis: '+escapeHtml(p.wedstrijd_thuis||'-')+'<br>'
+      + 'notities: '+escapeHtml((p.notities||'-').slice(0,100))+'<br>'
+      + 'notities_raw: '+escapeHtml((p.notities_raw||'-').slice(0,100))+'<br>'
+      + 'opmerkingen: '+escapeHtml((p.opmerkingen||'-').slice(0,100))+'<br>'
+      + 'SN gevonden: '+(_snLookup.length)+': '+escapeHtml(_snLookup.join(' | ').slice(0,300));
+    document.getElementById('player-view-body')?.prepend(_dbg);
+  } catch(_){}
   renderDetailSummary(vp);
   // DIRECTE notities-fallback: toont altijd als er notities zijn maar renderDetailSummary leeg blijft
   try {

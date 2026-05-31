@@ -13288,7 +13288,7 @@ function renderDetailSummary(p){
   const hasWapen   = !!p.wapen;
   const hasWedstrijd = !!(wThuis || wUit || wDatum);
   // Zoek notities in programmaCache (VOOR vroege return) — breed zoeken op id + naam
-  let _notitiesVroeg = (p.notities_raw || p.notities || '').trim();
+  let _notitiesVroeg = (p.notities_raw || p.notities || p.opmerkingen || '').trim();
   if(!_notitiesVroeg && typeof programmaCache !== 'undefined'){
     try {
       const _pId    = p.id || '';

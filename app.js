@@ -6337,10 +6337,14 @@ async function _obsSubmit(e){
     if(typeof renderActiveScouting === 'function') renderActiveScouting();
     setTimeout(() => {
       _obsClose();
-      // Vanuit Wedstrijden-tab → terug naar tab + heropend match-modal
+      // Na submit: terug naar juiste context
       const _obsReturnMatch = window.__shWstrEditReturn || null;
       window.__shWstrEditReturn = null;
-      if(_obsReturnMatch && typeof _shOpenEditModal === 'function'){
+      if(_obsReturnMatch === 'pm-view'){
+        // Vanuit programma matches-dropdown → herrender matches en blijf op pagina
+        if(typeof renderActiveScouting === 'function') renderActiveScouting();
+        if(typeof renderMatches === 'function') setTimeout(renderMatches, 80);
+      } else if(_obsReturnMatch && typeof _shOpenEditModal === 'function'){
         if(typeof renderActiveScouting === 'function') renderActiveScouting();
         go('wedstrijden');
         setTimeout(() => { try { _shOpenEditModal(_obsReturnMatch); } catch(_){} }, 180);
@@ -14335,15 +14339,17 @@ function renderMatches(){
       const _uitF   = _progP && _progP.uit_elftal   ? `${_progP.uit||m.uit} ${_progP.uit_elftal}`     : (m.uit||'?');
       // s93: per-speler verwerkt check (punt 15)
       const _linkedKeys = new Set(_spelers.map(sp => sp && sp.id).filter(Boolean));
-      const _unlinkedSns = _sns.filter(sn => sn && sn.naam && !_linkedKeys.has(sn.spelerKey));
+      // Ingediende obs tellen NIET mee als "openstaand" — alleen nog-niet-ingediende obs
+      const _unlinkedSns = _sns.filter(sn => sn && sn.naam && !_linkedKeys.has(sn.spelerKey) && !sn.ingediend);
+      const _allObsIngediend = _sns.filter(sn => sn && sn.naam && !_linkedKeys.has(sn.spelerKey)).every(sn => sn.ingediend);
       const _allSpVerwerkt = _spelers.length === 0 ? true : _spelers.every(sp => {
         const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(m.progId, sp.id) : null;
         return concept && !_shPlayerIsConcept(concept);
       });
       const _wstrVerwerkt = _wstr && (_wstr.status === 'ingediend' || _wstr.status === 'verwerkt');
-      // s93: groen vinkje alleen als: items aanwezig + alles verwerkt (punt 14)
-      const _hasItems = _spelers.length > 0 || !!_wstr;
-      const _allVerwerkt = _hasItems && _allSpVerwerkt && _wstrVerwerkt && _unlinkedSns.length === 0;
+      // groen vinkje: items aanwezig + alles ingediend/verwerkt
+      const _hasItems = _spelers.length > 0 || !!_wstr || _sns.some(sn => sn && sn.naam);
+      const _allVerwerkt = _hasItems && _allSpVerwerkt && _wstrVerwerkt && _allObsIngediend;
       // s93: dropdown rows
       let _dropRows = '';
       // Spelersrapporten
@@ -14409,7 +14415,7 @@ function renderMatches(){
               <span class="match-team-home">${escapeHtml(_thuisF)}</span>
               <span class="match-vs">\u2014</span>
               <span class="match-team-away">${escapeHtml(_uitF)}</span>
-              ${_allVerwerkt ? '<span class="pm-done-badge">\u2713</span>' : _chevP}
+              ${_allVerwerkt ? '<span class="pm-done-badge pm-done-full">✓ Ingediend</span>' : _chevP}
             </div>
             ${_progP && (_progP.tijd || _progP.leeftijd) ? `<div class="match-meta"><span class="match-players-count">${[_progP.tijd, _progP.leeftijd].filter(Boolean).map(escapeHtml).join(' \u00b7 ')}</span></div>` : ''}
           </div>
@@ -14739,7 +14745,12 @@ function renderMatches(){
         const prog2   = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === progId2) : null;
         if(!prog2){ if(typeof toast === 'function') toast('Wedstrijd niet gevonden', true); return; }
         const sn2     = (prog2.snelnotities||[]).find(s => s && (s.id === snId || (s.id == null && snId === '')));
-        if(typeof openObservatieForm === 'function') openObservatieForm(prog2, sn2 || {});
+        if(typeof openObservatieForm === 'function'){
+          // Open in submit-modus (obs_draft=false) + bewaar context voor terugkeer
+          window.__shWstrEditReturn = 'pm-view';
+          const sn2Submit = sn2 ? Object.assign({}, sn2, { obs_draft: false }) : { obs_draft: false };
+          openObservatieForm(prog2, sn2Submit);
+        }
         return;
       }
       // s93: wedstrijdrapport knop

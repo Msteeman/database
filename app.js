@@ -8174,6 +8174,171 @@ function renderDashboardAgenda(){
 }
 window.renderDashboardAgenda = renderDashboardAgenda;
 
+
+/* ══ DASHBOARD VISUALS ══════════════════════════════════════════ */
+
+/* ① Niveau-donut */
+function renderDashNiveauDonut(players){
+  ['current','potential'].forEach((type,ti) => {
+    const wrap = document.getElementById('dist-'+(type==='current'?'current':'potential'));
+    if(!wrap) return;
+    const key = type==='current'?'huidig_niveau':'potentieel_niveau';
+    const counts = {A:0,B:0,C:0,D:0};
+    players.forEach(p => { if(counts[p[key]]!==undefined) counts[p[key]]++; });
+    const total = Object.values(counts).reduce((a,b)=>a+b,0);
+    if(!total){ wrap.innerHTML='<div style="color:var(--text-3);font-size:12px;padding:8px 0;">Geen data</div>'; return; }
+    const GCOL = {A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#ef4444'};
+    const W=160, H=160, cx=80, cy=80, r=60, innerR=38;
+    let svg=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="overflow:visible">`;
+    // Donut segments
+    let startAngle = -Math.PI/2;
+    Object.entries(counts).forEach(([g,n]) => {
+      if(!n) return;
+      const angle = (n/total)*Math.PI*2;
+      const x1=cx+Math.cos(startAngle)*r, y1=cy+Math.sin(startAngle)*r;
+      const x2=cx+Math.cos(startAngle+angle)*r, y2=cy+Math.sin(startAngle+angle)*r;
+      const xi1=cx+Math.cos(startAngle)*innerR, yi1=cy+Math.sin(startAngle)*innerR;
+      const xi2=cx+Math.cos(startAngle+angle)*innerR, yi2=cy+Math.sin(startAngle+angle)*innerR;
+      const large=angle>Math.PI?1:0;
+      svg+=`<path d="M${xi1},${yi1} L${x1},${y1} A${r},${r} 0 ${large} 1 ${x2},${y2} L${xi2},${yi2} A${innerR},${innerR} 0 ${large} 0 ${xi1},${yi1} Z"
+        fill="${GCOL[g]}" fill-opacity="0.85" class="donut-seg" data-grade="${g}" data-n="${n}" style="cursor:pointer;transition:opacity .2s"/>`;
+      // Label op segment
+      const midA=startAngle+angle/2, lx=cx+Math.cos(midA)*(r+16), ly=cy+Math.sin(midA)*(r+16);
+      if(angle>0.3) svg+=`<text x="${lx}" y="${ly}" text-anchor="middle" dominant-baseline="middle" fill="${GCOL[g]}" font-size="11" font-weight="800" font-family="-apple-system,Segoe UI,sans-serif">${g}</text>`;
+      startAngle+=angle;
+    });
+    // Centrum: totaal
+    svg+=`<text x="${cx}" y="${cy-6}" text-anchor="middle" fill="rgba(255,255,255,.8)" font-size="20" font-weight="900" font-family="-apple-system,Segoe UI,sans-serif">${total}</text>`;
+    svg+=`<text x="${cx}" y="${cy+10}" text-anchor="middle" fill="rgba(255,255,255,.35)" font-size="9" font-family="-apple-system,Segoe UI,sans-serif">${type==='current'?'HUIDIG':'POTENT.'}</text>`;
+    svg+=`</svg>`;
+    // Legend naast donut
+    const legendHtml = Object.entries(counts).filter(([,n])=>n>0).map(([g,n])=>{
+      const pct=Math.round(n/total*100);
+      return `<div class="dash-donut-leg-row"><span class="dash-donut-dot" style="background:${GCOL[g]}"></span><span class="dash-donut-grade" style="color:${GCOL[g]}">${g}</span><span class="dash-donut-n">${n}</span><span class="dash-donut-pct">${pct}%</span></div>`;
+    }).join('');
+    wrap.innerHTML=`<div class="dash-donut-wrap">${svg}<div class="dash-donut-legend">${legendHtml}</div></div>`;
+    // Interactief: klik segment → filter database
+    wrap.querySelectorAll('.donut-seg').forEach(seg=>{
+      seg.addEventListener('mouseenter',()=>seg.style.opacity='0.65');
+      seg.addEventListener('mouseleave',()=>seg.style.opacity='1');
+      seg.addEventListener('click',()=>{
+        const filt=document.getElementById(type==='current'?'filter-current':'filter-potential');
+        if(filt){ filt.value=seg.dataset.grade; if(typeof applyFilters==='function') applyFilters(); if(typeof go==='function') go('database'); }
+      });
+    });
+  });
+}
+
+/* ② Advies-tiles */
+function renderDashAdviesTiles(players){
+  const wrap2 = document.getElementById('dash-advies2');
+  if(!wrap2) return;
+  const labels={'4':'Direct contracteren','3':'Op proef uitnodigen','2':'Periodiek monitoren','1':'Geen vervolgstap'};
+  const icons={'4':'⚡','3':'👁','2':'📅','1':'✗'};
+  const GCOL={'4':'#22c55e','3':'#3b82f6','2':'#f59e0b','1':'#ef4444'};
+  const counts={'4':0,'3':0,'2':0,'1':0};
+  players.forEach(p=>{ if(counts[String(p.advies)]!==undefined) counts[String(p.advies)]++; });
+  wrap2.innerHTML=`<div class="dash-advies-tiles">${['4','3','2','1'].map(k=>`
+    <div class="dash-advies-tile sh-tilt-card" data-advies="${k}" style="border-top:3px solid ${GCOL[k]}">
+      <div class="dat-icon" style="color:${GCOL[k]}">${icons[k]}</div>
+      <div class="dat-n" style="color:${GCOL[k]}">${counts[k]}</div>
+      <div class="dat-label">${labels[k]}</div>
+    </div>`).join('')}</div>`;
+  wrap2.querySelectorAll('.dash-advies-tile').forEach(t=>{
+    t.addEventListener('click',()=>{
+      const fa=document.getElementById('filter-advies');
+      if(fa){ fa.value=t.dataset.advies; if(typeof applyFilters==='function') applyFilters(); if(typeof go==='function') go('database'); }
+    });
+  });
+}
+
+/* ③ Top talenten als mini-scout-cards */
+function renderDashTopCards(players){
+  const gradeScore={A:4,B:3,C:2,D:1};
+  const GCOL={A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#ef4444'};
+  const scored=players
+    .filter(p=>p.potentieel_niveau==='A'||p.potentieel_niveau==='B')
+    .map(p=>({p,score:(gradeScore[p.potentieel_niveau]||0)*0.65+(gradeScore[p.huidig_niveau]||0)*0.35}))
+    .sort((a,b)=>b.score-a.score||a.p.naam.localeCompare(b.p.naam,'nl')).slice(0,6);
+  const wrap=$('#dash-top');
+  if(!scored.length){ wrap.innerHTML='<div class="gap-empty"><div class="icon">○</div><div>Nog geen talenten met potentieel A of B.</div></div>'; return; }
+  wrap.innerHTML=`<div class="dash-talent-grid">${scored.map((x,i)=>{
+    const p=x.p, hc=GCOL[p.huidig_niveau]||'#fff', pc=GCOL[p.potentieel_niveau]||'#fff';
+    const init=((p.naam||'?').split(/\s+/).map(s=>s[0]||'').slice(0,2).join('').toUpperCase());
+    const pos=positionLabel(p.positie)||''; const club=p.club||'';
+    return `<div class="dash-talent-card sh-tilt-card" data-id="${escapeAttr(p.id)}">
+      <div class="dtc-rank">#${i+1}</div>
+      <div class="dtc-avatar" style="border-color:${pc}">${escapeHtml(init)}</div>
+      <div class="dtc-name">${escapeHtml((p.naam||'?').split(/\s+/).slice(0,2).join(' '))}</div>
+      <div class="dtc-meta">${escapeHtml(pos)}${club?' · '+escapeHtml(club):''}</div>
+      <div class="dtc-grades">
+        <span class="dtc-grade-pill" style="background:${hc}22;color:${hc};border:1px solid ${hc}55">Nu ${escapeHtml(p.huidig_niveau||'?')}</span>
+        <span class="dtc-grade-pill" style="background:${pc}22;color:${pc};border:1px solid ${pc}55">Pot ${escapeHtml(p.potentieel_niveau||'?')}</span>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+  wrap.querySelectorAll('.dash-talent-card').forEach(el=>el.addEventListener('click',()=>openDetail(el.dataset.id)));
+}
+
+/* ④ Positiedekking */
+function renderDashPositions(players){
+  const wrap=document.getElementById('dash-positions');
+  if(!wrap) return;
+  const GCOL={A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#ef4444'};
+  // Positie-layout op veld (x,y als % van veld 0-100)
+  const POS_XY={
+    GK:{x:50,y:88},
+    LB:{x:15,y:70},LCV:{x:33,y:73},CV:{x:50,y:75},RCV:{x:67,y:73},RB:{x:85,y:70},
+    VM:{x:50,y:58},CM:{x:36,y:50},LM:{x:15,y:48},RM:{x:85,y:48},AM:{x:50,y:42},
+    LV:{x:15,y:22},CS:{x:50,y:18},RV:{x:85,y:22}
+  };
+  const posCount={}, posBestGrade={};
+  players.forEach(p=>{
+    const pos=p.positie||''; if(!pos||!POS_XY[pos]) return;
+    posCount[pos]=(posCount[pos]||0)+1;
+    const gn=({A:4,B:3,C:2,D:1}[p.huidig_niveau]||0);
+    if(!posBestGrade[pos]||gn>(posBestGrade[pos]||0)) posBestGrade[pos]={n:gn,g:p.huidig_niveau};
+  });
+  const W=280, H=360;
+  let svg=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:100%">`;
+  // Veld
+  svg+=`<rect x="10" y="8" width="${W-20}" height="${H-16}" rx="8" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.15)" stroke-width="1.5"/>`;
+  svg+=`<rect x="80" y="8" width="120" height="40" rx="0" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="1"/>`;
+  svg+=`<rect x="80" y="${H-48}" width="120" height="40" rx="0" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="1"/>`;
+  svg+=`<line x1="10" y1="${H/2}" x2="${W-10}" y2="${H/2}" stroke="rgba(255,255,255,.1)" stroke-width="1"/>`;
+  svg+=`<circle cx="${W/2}" cy="${H/2}" r="30" fill="none" stroke="rgba(255,255,255,.1)" stroke-width="1"/>`;
+  // Posities
+  ALL_POSITIONS.forEach(pos=>{
+    const xy=POS_XY[pos.code]; if(!xy) return;
+    const cx=xy.x/100*W, cy=(100-xy.y)/100*H;
+    const n=posCount[pos.code]||0;
+    const bg=posBestGrade[pos.code];
+    const fill=bg?GCOL[bg.g]:'rgba(255,255,255,.12)';
+    const fillO=n>0?'0.82':'0.18';
+    const r=n>0?Math.min(18,12+n*1.5):10;
+    svg+=`<g class="dash-pos-node" data-pos="${escapeAttr(pos.code)}" style="cursor:pointer">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="${fill}" fill-opacity="${fillO}" stroke="${fill}" stroke-width="${n?2:1}" stroke-opacity="0.7"/>
+      <text x="${cx}" y="${cy-r-4}" text-anchor="middle" fill="rgba(255,255,255,.55)" font-size="8.5" font-family="-apple-system,Segoe UI,sans-serif">${escapeHtml(pos.code)}</text>
+      ${n>0?`<text x="${cx}" y="${cy+4}" text-anchor="middle" fill="#fff" font-size="11" font-weight="800" font-family="-apple-system,Segoe UI,sans-serif">${n}</text>`:'<text x="'+cx+'" y="'+(cy+3)+'" text-anchor="middle" fill="rgba(255,255,255,.25)" font-size="9" font-family="-apple-system,Segoe UI,sans-serif">–</text>'}
+    </g>`;
+  });
+  svg+=`</svg>`;
+  const total=players.length;
+  wrap.innerHTML=`<div class="dash-pos-wrap">${svg}<div class="dash-pos-legend"><div class="dash-pos-leg-title">Meest gescout</div>${
+    Object.entries(posCount).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([code,n])=>{
+      const bg=posBestGrade[code]; const col=bg?GCOL[bg.g]:'var(--text-3)';
+      return `<div class="dash-pos-leg-row"><span style="color:${col};font-weight:700">${escapeHtml(code)}</span><span>${n} speler${n===1?'':'s'}</span></div>`;
+    }).join('')
+  }</div></div>`;
+  // Klik → filter op positie
+  wrap.querySelectorAll('.dash-pos-node').forEach(g=>{
+    g.addEventListener('click',()=>{
+      const fp=document.getElementById('filter-position');
+      if(fp){ fp.value=g.dataset.pos; if(typeof applyFilters==='function') applyFilters(); if(typeof go==='function') go('database'); }
+    });
+  });
+}
+
 function renderDashboard(){
   renderDashboardAgenda(); // s35dj: unified agenda widget
 
@@ -8294,9 +8459,12 @@ function renderDashboard(){
   }, 60);
 
   renderDashGaps();
-  renderDashAdvies(players);
+  renderDashNiveauDonut(players);
+  renderDashAdviesTiles(players);
   renderDashTop(players);
+  renderDashTopCards(players);
   renderDashClubs(players);
+  renderDashPositions(players);
   renderDashFollowUp(players);
   renderGeo();
   renderDashCategories(players);

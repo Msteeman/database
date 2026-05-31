@@ -9406,10 +9406,21 @@ function wireDraftCard(){
       }
       const progid = btn.dataset.progid;
       const spid   = btn.dataset.spid;
+      const snid   = btn.dataset.snid; // snel-notitie concept obs
       const pid    = btn.dataset.pid;
       try {
         const prog = programmaCache.find(p => p.id === progid);
         if(!prog){ go('report'); return; }
+        // Snel-notitie concept obs: open obs-formulier met sn-context
+        if(snid && typeof openObsFormFromSn === 'function'){
+          const sn = (prog.snelnotities||[]).find(s => s && s.id === snid);
+          if(sn){ openObsFormFromSn(prog, sn); return; }
+        }
+        // Fallback via sn-id: zoek snel-notitie op basis van __convertedToPlayerId === pid
+        if(pid && !spid){
+          const sn = (prog.snelnotities||[]).find(s => s && s.__convertedToPlayerId === pid);
+          if(sn && typeof openObsFormFromSn === 'function'){ openObsFormFromSn(prog, sn); return; }
+        }
         const sp = (prog.spelers||[]).find(s => s && s.id === spid);
         if(!sp){ go('report'); return; }
         const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
@@ -9605,6 +9616,43 @@ function applyFilters(){
               </div>
               <div class="actions">
                 <button type="button" class="primary db-draft-resume-btn" data-progid="${escapeHtml(prog.id)}" data-spid="${escapeHtml(sp.id)}" data-pid="${escapeHtml(c.id||'')}">Hier ook verder gaan</button>
+              </div>
+            </div>`);
+        });
+      });
+    }
+  } catch(_){}
+  // Snel-notitie concept obs (van _shConvertSnelToConceptPlayers) — ook tonen in draft-slot
+  try {
+    const _snConceptIds = new Set(_draftParts.map(h => {
+      const m = h.match(/data-pid="([^"]+)"/); return m ? m[1] : '';
+    }).filter(Boolean));
+    if(typeof programmaCache !== 'undefined' && Array.isArray(programmaCache)){
+      programmaCache.forEach(prog => {
+        if(!prog || !Array.isArray(prog.snelnotities)) return;
+        prog.snelnotities.forEach(sn => {
+          if(!sn || sn.ingediend) return; // al ingediend → niet opnieuw tonen
+          const cid = sn.__convertedToPlayerId || '';
+          if(!cid || _snConceptIds.has(cid)) return;
+          // Concept record opzoeken in playersCache
+          const _cp = (typeof playersCache !== 'undefined') ? playersCache.find(p => p && p.id === cid) : null;
+          if(!_cp || !_cp.concept) return; // niet meer concept → al ingediend
+          _snConceptIds.add(cid);
+          const naam = _cp.naam || (sn.naam || 'Onbekende speler');
+          const club = _cp.club || prog.thuis || '';
+          const dag = prog.datum ? new Date(prog.datum).toLocaleDateString('nl-NL', {day:'numeric',month:'long'}) : '';
+          const tsRaw = _cp.modified || _cp.created || (_cp._meta && _cp._meta.ts) || 0;
+          const ts = typeof tsRaw === 'number' ? tsRaw : (tsRaw && typeof tsRaw.toMillis === 'function' ? tsRaw.toMillis() : 0);
+          const ago = _agoOf(ts);
+          _draftParts.push(`
+            <div class="db-draft-card">
+              <div class="info">
+                <div class="badge">Observatie concept${dag ? ' · ' + dag : ''}</div>
+                <div class="title">${escapeHtml(naam)}${club ? ' &middot; ' + escapeHtml(club) : ''}</div>
+                <div class="meta">Nog niet ingediend${ago ? ' &middot; ' + ago : ''}</div>
+              </div>
+              <div class="actions">
+                <button type="button" class="primary db-draft-resume-btn" data-progid="${escapeHtml(prog.id)}" data-snid="${escapeHtml(sn.id||'')}" data-pid="${escapeHtml(cid)}">→ Indienen</button>
               </div>
             </div>`);
         });
@@ -10162,6 +10210,13 @@ function _shConvertNotesToDrafts(prog){
   return true;
 }
 window._shConvertNotesToDrafts = _shConvertNotesToDrafts;
+
+// Helper: open obs-formulier vanuit snel-notitie (ook voor concept obs in draft-slot)
+function openObsFormFromSn(prog, sn){
+  if(!prog || !sn) return;
+  if(typeof openObservatieForm === 'function') openObservatieForm(prog, sn);
+}
+window.openObsFormFromSn = openObsFormFromSn;
 
 // s35dg-hotfix1: zet `prog.snelnotities[]` om naar concept-spelersrapporten in
 // playersCache zodat ze in de spelersdatabase verschijnen en het verwerken-blok

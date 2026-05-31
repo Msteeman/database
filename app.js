@@ -10966,52 +10966,18 @@ function _shConfirmVerwerk(){
 
 // Render banner-HTML met spelersnotities + wedstrijdrapport (concept/notitie)
 function _shBannerHTML(m){
-  // Fase E: trigger auto-conversie notities → concept-wedstrijdrapport bij elke render
+  // Alleen wedstrijdrapport-concept pill tonen (geen gele spelersnotitie banner)
   try {
     if(typeof _shConvertNotesToDrafts === 'function'){
       _shFindLinkedPrograms(m).forEach(p => { _shConvertNotesToDrafts(p); });
     }
   } catch(_){}
-  const sns = _shCollectSnelNotities(m);
-  const wns = _shCollectWedstrijdNotities(m);
   const linked = _shFindLinkedPrograms(m);
   const conceptProg = linked.find(p => p && p.wedstrijdrapport && p.wedstrijdrapport.status === 'concept');
-  if(sns.length === 0 && wns.length === 0 && !conceptProg) return "";
-  let html = "";
-  if(sns.length){
-    const chips = sns.map(({progId, snIdx, sn}) => {
-      const naam = (sn.naam || "Onbenoemde speler").trim();
-      const num = sn.rugnummer ? "#" + escapeHtml(String(sn.rugnummer)) + " " : "";
-      return `<button type="button" class="m-snel-chip" data-snel-prog="${escapeHtml(progId)}" data-snel-idx="${snIdx}" title="Open spelersnotitie">`
-        + `<span>💡 ${num}${escapeHtml(naam)}</span>`
-        + `<span class="m-snel-chip-arrow"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></span>`
-        + `</button>`;
-    }).join("");
-    html += `<div class="m-snel-banner" onclick="event.stopPropagation()">`
-      + `<div class="m-snel-banner-head"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.7.5 1 1.3 1 2.3v1h6v-1c0-1 .3-1.8 1-2.3A7 7 0 0 0 12 2z"/></svg>`
-      + `Open spelersnotitie${sns.length===1?"":"s"} (${sns.length}) — klik om naar volledig rapport om te zetten</div>`
-      + `<div class="m-snel-chips">${chips}</div>`
-      + `</div>`;
-  }
-  if(conceptProg){
-    // s36: vereenvoudigd concept-label — enkel klikbare pill, geen tekst blok
-    html += `<button type="button" class="m-concept-pill" data-wr-open="${escapeHtml(conceptProg.id)}" onclick="event.stopPropagation();">`
-      + `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`
-      + ` Wedstrijdrapport (concept) — klik om te openen</button>`;
-  } else if(wns.length){
-    const txt = wns.map(({wn}) => {
-      if(!wn) return "";
-      const t = (wn.tekst || wn.notitie || "").trim();
-      return t ? escapeHtml(t).replace(/\n/g, "<br>") : "";
-    }).filter(Boolean).join("<br><br>");
-    if(txt){
-      html += `<div class="m-wstrnote-banner" onclick="event.stopPropagation()">`
-        + `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`
-        + `<div class="m-wstrnote-banner-text"><strong>Wedstrijdnotitie</strong>${txt}</div>`
-        + `</div>`;
-    }
-  }
-  return html;
+  if(!conceptProg) return "";
+  return `<button type="button" class="m-concept-pill" data-wr-open="${escapeHtml(conceptProg.id)}" onclick="event.stopPropagation();">`
+    + `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`
+    + ` Wedstrijdrapport (concept)</button>`;
 }
 
 function cmpPlayerById(id){
@@ -11023,74 +10989,6 @@ function cmpPlayerById(id){
     if(reports.length >= 2) return buildAvgPlayer(p);
     return buildPlayerFromReport(p, reports[0]);
   } catch(_){ return p; }
-}
-function cmpGradeNum(g){ return CMP_GRADE_VAL[g] || 0; }
-function cmpGradeFromNum(n){
-  if(n >= 3.5) return 'A';
-  if(n >= 2.5) return 'B';
-  if(n >= 1.5) return 'C';
-  if(n >= 0.5) return 'D';
-  return '-';
-}
-function cmpOverallScore(p){
-  const b = p.beoordelingen || {};
-  let vals = CMP_CRITERIA.map(c => cmpGradeNum(b[c.key] === 'A' && c.key === 'grit_huidig' && !b[c.key] ? b.drit_huidig : b[c.key])).filter(v => v>0);
-  // include final huidig_niveau as a heavier weight signal
-  const hn = cmpGradeNum(p.huidig_niveau);
-  if(hn) vals.push(hn, hn);
-  if(!vals.length) return 0;
-  return vals.reduce((a,b)=>a+b,0) / vals.length;
-}
-function cmpColorFor(idx){ return CMP_COLORS[idx % CMP_COLORS.length]; }
-
-// ── Elftallen zoeken ──────────────────────────────────────────────────────────
-function _elfWireClubAC(input){
-  if(!input) return;
-  input.setAttribute('autocomplete', 'off');
-  const box = document.createElement('div');
-  box.className = 'sh-ac-box';
-  input.parentNode.style.position = 'relative';
-  input.insertAdjacentElement('afterend', box);
-  let _sel = -1;
-  function _close(){ box.classList.remove('open'); box.innerHTML = ''; _sel = -1; }
-  function _render(items){
-    if(!items.length){ _close(); return; }
-    box.innerHTML = items.map((it,i) =>
-      `<div class="sh-ac-item" data-idx="${i}">${it.html}</div>`
-    ).join('');
-    box.classList.add('open');
-    _sel = -1;
-    box.querySelectorAll('.sh-ac-item').forEach(el => {
-      el.addEventListener('mousedown', ev => {
-        ev.preventDefault();
-        input.value = items[parseInt(el.dataset.idx)].label;
-        input.dispatchEvent(new Event('change', {bubbles:true}));
-        _close();
-      });
-    });
-  }
-  input.addEventListener('input', () => {
-    const q = input.value.trim().toLowerCase();
-    if(!q || q.length < 1){ _close(); return; }
-    const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
-    const clubs = [...new Set(players.map(p => (p.club||'').trim()).filter(Boolean))];
-    const starts = [], contains = [];
-    clubs.forEach(cl => {
-      const n = cl.toLowerCase();
-      if(n.startsWith(q)) starts.push(cl);
-      else if(n.includes(q)) contains.push(cl);
-    });
-    const merged = [...starts, ...contains].slice(0, 10);
-    _render(merged.map(cl => ({ label: cl, html: cl })));
-  });
-  input.addEventListener('keydown', e => {
-    const items = box.querySelectorAll('.sh-ac-item');
-    if(e.key === 'ArrowDown'){ e.preventDefault(); _sel = Math.min(_sel+1, items.length-1); items.forEach((el,i)=>el.classList.toggle('active',i===_sel)); }
-    else if(e.key === 'ArrowUp'){ e.preventDefault(); _sel = Math.max(_sel-1, 0); items.forEach((el,i)=>el.classList.toggle('active',i===_sel)); }
-    else if(e.key === 'Enter' && _sel >= 0){ e.preventDefault(); items[_sel].dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); }
-    else if(e.key === 'Escape'){ _close(); }
-  });
-  input.addEventListener('blur', () => setTimeout(_close, 150));
 }
 
 function renderElftallen(){
@@ -14561,14 +14459,18 @@ function aggregateMatches(players){
     const entry = map.get(key);
     if(!entry.uitslag && (w.uitslag||'').trim()) entry.uitslag = w.uitslag.trim();
     if(!entry.age && age) entry.age = age;
-    entry.players.push({
-      id: p.id,
-      naam: p.naam || '—',
-      club: p.club || '',
-      positie: p.positie || '',
-      huidig_niveau: p.huidig_niveau || '',
-      potentieel_niveau: p.potentieel_niveau || ''
-    });
+    // Dedupliceer op id
+    if(!entry.players.some(x => x.id === p.id)){
+      entry.players.push({
+        id: p.id,
+        naam: p.naam || '—',
+        club: p.club || '',
+        positie: p.positie || '',
+        huidig_niveau: p.huidig_niveau || '',
+        potentieel_niveau: p.potentieel_niveau || '',
+        rapport_type: p.rapport_type || ''
+      });
+    }
   });
   return Array.from(map.values());
 }
@@ -14920,7 +14822,10 @@ function renderMatches(){
       : `<span class="match-vs">vs</span>`;
     const playersChips = m.players.map(pl => {
       const isConcept = _shPlayerIsConcept(pl);
-      return `<span class="match-player-chip${isConcept?' is-concept':''}" data-player-id="${escapeHtml(pl.id)}" title="${escapeHtml((pl.club || '') + (isConcept?' (concept)':''))}">${escapeHtml(pl.naam)}${isConcept?' 📝':''}</span>`;
+      const isObs = pl.rapport_type === 'observatie';
+      const chipColor = isObs ? 'chip-obs' : 'chip-rapport';
+      const statusTxt = isConcept ? ' 📝' : '';
+      return `<span class="match-player-chip ${chipColor}${isConcept?' is-concept':''}" data-player-id="${escapeHtml(pl.id)}">${escapeHtml(pl.naam)}${statusTxt}</span>`;
     }).join('');
     const ageBadge = m.age
       ? `<span class="match-age-badge">${escapeHtml(m.age)}</span>`
@@ -14935,7 +14840,11 @@ function renderMatches(){
       const hg = pl.huidig_niveau || 'D';
       const pg = pl.potentieel_niveau || 'D';
       const isConcept = _shPlayerIsConcept(pl);
-      const conceptBadge = isConcept ? `<span class="mdr-concept-badge">Concept</span>` : '';
+      const isObs2 = pl.rapport_type === 'observatie';
+      const typeLabel2 = isObs2 
+        ? `<span style="font-size:10px;background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3);border-radius:4px;padding:1px 6px;">OBS</span>`
+        : `<span style="font-size:10px;background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25);border-radius:4px;padding:1px 6px;">Rapport</span>`;
+      const conceptBadge = isConcept ? `<span class="mdr-concept-badge">Concept</span>` : `<span style="font-size:10px;color:var(--text-3);">✓ Ingediend</span>`;
       const submitBtn = isConcept ? `<button type="button" class="mdr-submit" data-mdr-submit="${escapeHtml(pl.id)}" title="Direct indienen">→ Indienen</button>` : '';
       return `
         <button type="button" class="match-dropdown-row" data-player-id="${escapeHtml(pl.id)}">

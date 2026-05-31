@@ -6852,6 +6852,8 @@ tbody tr:last-child td { border-bottom: none; }
   display: flex; flex-wrap: wrap; gap: 5px;
   justify-content: flex-end; max-width: 280px;
 }
+.match-player-chip.chip-obs { background: rgba(168,85,247,.18); color: #c084fc; border-color: rgba(168,85,247,.35); }
+.match-player-chip.chip-rapport { background: rgba(34,197,94,.15); color: #86efac; border-color: rgba(34,197,94,.3); }
 .match-player-chip {
   background: var(--bg-3); border: 1px solid var(--border);
   padding: 4px 10px; border-radius: 6px;

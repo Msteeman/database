@@ -13097,6 +13097,51 @@ function renderDetailOverview(p){
   `;
   renderDetailKPIs(vp);
   renderDetailSummary(vp);
+  // DIRECTE notities-fallback: toont altijd als er notities zijn maar renderDetailSummary leeg blijft
+  try {
+    const _dtlSumWrap = document.getElementById('dtl-summary-card');
+    const _dtlSumEmpty = !_dtlSumWrap || !_dtlSumWrap.innerHTML.trim();
+    if(_dtlSumEmpty){
+      // Zoek notities op alle mogelijke plekken
+      let _fallbackNotes = (vp.opmerkingen || vp.notities_raw || vp.notities || '').trim();
+      // Programmaache: zoek op id, __convertedToPlayerId, naam
+      if(!_fallbackNotes && typeof programmaCache !== 'undefined'){
+        const _fId = vp.id || p.id || '';
+        const _fNaam = (vp.naam||p.naam||'').toLowerCase().trim();
+        for(const _fProg of programmaCache){
+          if(!_fProg || !Array.isArray(_fProg.snelnotities)) continue;
+          for(const _fSn of _fProg.snelnotities){
+            if(!_fSn) continue;
+            if(_fId && (_fSn.player_id === _fId || _fSn.__convertedToPlayerId === _fId) && _fSn.tekst){
+              _fallbackNotes = _fSn.tekst.trim(); break;
+            }
+            if(_fNaam && (_fSn.naam||'').toLowerCase().trim() === _fNaam && _fSn.tekst){
+              _fallbackNotes = _fSn.tekst.trim(); break;
+            }
+          }
+          if(_fallbackNotes) break;
+        }
+      }
+      if(_fallbackNotes && _dtlSumWrap){
+        // Filter lege term-regels
+        const _fLines = _fallbackNotes.split('\n').filter(l => {
+          const ci = l.indexOf(':'); if(ci < 0) return l.trim().length > 0;
+          return l.slice(ci+1).trim().length > 0;
+        });
+        const _fText = _fLines.length ? _fLines.join('\n') : _fallbackNotes;
+        const _wDatum = (vp.datum||p.datum||vp.wedstrijd_datum||p.wedstrijd_datum||'').trim();
+        const _wThuis = (vp.wedstrijd_thuis||p.wedstrijd_thuis||(vp.wedstrijd&&vp.wedstrijd.thuis)||(p.rapport&&p.rapport.wedstrijd&&p.rapport.wedstrijd.thuis)||'').trim();
+        const _wUit   = (vp.wedstrijd_uit||p.wedstrijd_uit||(vp.wedstrijd&&vp.wedstrijd.uit)||(p.rapport&&p.rapport.wedstrijd&&p.rapport.wedstrijd.uit)||'').trim();
+        _dtlSumWrap.innerHTML = `<div class="card compare-card dtl-summary-card" style="margin-top:0;margin-bottom:16px;">
+          <div class="compare-card-title"><span>Scout-samenvatting</span></div>
+          <div class="dtl-summary-body">
+            ${_wThuis&&_wUit ? `<div class="dtl-summary-row"><div class="dtl-summary-icon">🏟</div><div><div class="dtl-summary-label">Wedstrijd</div><div class="dtl-summary-text">${escapeHtml(_wThuis)} vs ${escapeHtml(_wUit)}${_wDatum?' · '+formatDate(_wDatum):''}</div></div></div>` : (_wDatum?`<div class="dtl-summary-row"><div class="dtl-summary-icon">🏟</div><div><div class="dtl-summary-label">Datum</div><div class="dtl-summary-text">${formatDate(_wDatum)}</div></div></div>`:'') }
+            <div class="dtl-summary-row"><div class="dtl-summary-icon">📋</div><div><div class="dtl-summary-label">Scout-notities</div><div class="dtl-summary-text dtl-summary-notes">${escapeHtml(_fText).replace(/\n/g,'<br>')}</div></div></div>
+          </div>
+        </div>`;
+      }
+    }
+  } catch(_){}
   renderDetailStrengthsWeaknesses(vp);
   renderDetailGauge(vp);
   renderDetailPizza(vp);

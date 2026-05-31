@@ -10457,3 +10457,131 @@ tr.db-row-obs td:first-child {
 .dash-pos-legend { flex: 1; }
 .dash-pos-leg-title { font-size: 10px; text-transform: uppercase; letter-spacing: .6px; color: var(--text-3); margin-bottom: 8px; font-weight: 700; }
 .dash-pos-leg-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 1px solid var(--border); color: var(--text-2); }
+
+/* ═══════════════════════════════════════════════════════════════
+   SH-AGENDA-VISUAL — Alleen CSS, geen flows gewijzigd
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Aankomende wedstrijden: rijverbetering ─────────────────────── */
+.upcoming-matches {
+  border: 1px solid var(--border-2);
+  box-shadow: 0 2px 12px rgba(0,0,0,.18);
+}
+.upcoming-matches-title {
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 14px;
+  color: var(--text);
+}
+.up-row {
+  border-radius: 8px;
+  margin: 0 -6px;
+  padding: 10px 10px;
+  border-top: none;
+  border-bottom: 1px solid var(--border);
+  gap: 14px;
+}
+.up-row:last-of-type { border-bottom: none; }
+.up-row:hover {
+  background: rgba(255,255,255,.04);
+  border-radius: 8px;
+}
+.up-when {
+  background: rgba(255,255,255,.05);
+  border-radius: 8px;
+  padding: 6px 10px;
+  align-items: center;
+  gap: 2px;
+  border: 1px solid var(--border);
+}
+.up-day {
+  font-size: 12px;
+  font-weight: 800;
+}
+.up-time {
+  font-size: 10px;
+  font-weight: 600;
+}
+.up-teams {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+.up-tag {
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(255,255,255,.06);
+  border: 1px solid var(--border-2);
+}
+.up-route {
+  width: 32px; height: 32px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(227,6,19,.1);
+  border: 1px solid rgba(227,6,19,.25);
+  border-radius: 8px;
+  font-size: 16px;
+}
+.up-route:hover {
+  background: rgba(227,6,19,.22);
+  border-color: rgba(227,6,19,.5);
+}
+
+/* ── Live wedstrijd (sa-card): meer diepte en glow ──────────────── */
+.sa-card {
+  box-shadow: 0 4px 24px rgba(245,197,24,.1), 0 1px 0 rgba(245,197,24,.15) inset;
+  transition: box-shadow .3s;
+}
+.sa-card:hover {
+  box-shadow: 0 8px 32px rgba(245,197,24,.18), 0 1px 0 rgba(245,197,24,.2) inset;
+}
+.sa-title {
+  font-size: 15px;
+  font-weight: 800;
+}
+.sa-status {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .5px;
+  text-transform: uppercase;
+}
+.sa-status.live {
+  box-shadow: 0 0 8px rgba(16,185,129,.35);
+}
+/* Live tile: betere hover */
+.sa-tile {
+  transition: transform .12s, border-color .2s, background .15s, box-shadow .2s;
+}
+.sa-tile:hover {
+  box-shadow: 0 4px 14px rgba(78,161,255,.18);
+  transform: translateY(-2px);
+}
+/* Live actieknoppen: duidelijker */
+.sa-live-btn {
+  font-size: 13px;
+  letter-spacing: .2px;
+  box-shadow: 0 2px 10px rgba(0,0,0,.25);
+}
+.sa-live-btn:hover {
+  box-shadow: 0 6px 20px rgba(0,0,0,.35);
+}
+
+/* ── Vandaag-banner: compacter + duidelijker ─────────────────────── */
+.dvb-teams {
+  font-size: 15px;
+  font-weight: 800;
+}
+.dvb-cta {
+  font-size: 12px;
+  padding: 8px 16px;
+  border-radius: 10px;
+  box-shadow: 0 3px 10px rgba(227,6,19,.3);
+  letter-spacing: .3px;
+}
+
+/* ── Today matches: cleaner header ───────────────────────────────── */
+.today-matches-title {
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}

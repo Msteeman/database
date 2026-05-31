@@ -13267,8 +13267,31 @@ function renderDetailSummary(p){
   const wUit   = w.uit   || p.wedstrijd_uit   || '';
   const wDatum = w.datum || p.wedstrijd_datum  || p.datum || '';
   const hasWapen   = !!p.wapen;
-  const hasNotities = !!(p.notities || '').trim();
   const hasWedstrijd = !!(wThuis || wUit || wDatum);
+  // Zoek notities eerst in programmaCache (VOOR de vroege return)
+  let _notitiesVroeg = (p.notities_raw || p.notities || '').trim();
+  if(!_notitiesVroeg && typeof programmaCache !== 'undefined'){
+    try {
+      const _pId   = p.id || '';
+      const _pNaam = (p.naam||'').toLowerCase().trim();
+      const _pDatum = (p.datum || p.wedstrijd_datum || (p.wedstrijd && p.wedstrijd.datum) || '').trim();
+      outer0: for(const prog of programmaCache){
+        if(!prog || !Array.isArray(prog.snelnotities)) continue;
+        for(const sn of prog.snelnotities){
+          if(!sn || !sn.tekst) continue;
+          if(_pId && (sn.player_id === _pId || sn.__convertedToPlayerId === _pId)){
+            _notitiesVroeg = sn.tekst.trim(); break outer0;
+          }
+          if(_pNaam && (sn.naam||'').toLowerCase().trim() === _pNaam){
+            if(!_pDatum || !prog.datum || prog.datum === _pDatum){
+              _notitiesVroeg = sn.tekst.trim(); break outer0;
+            }
+          }
+        }
+      }
+    } catch(_){}
+  }
+  const hasNotities = !!_notitiesVroeg;
   if(!hasWapen && !hasNotities && !hasWedstrijd){ wrap.innerHTML = ''; return; }
 
   const wedstrijdStr = [
@@ -13277,60 +13300,20 @@ function renderDetailSummary(p){
     wDatum ? formatDate(wDatum) : ''
   ].filter(Boolean).join(' · ');
 
-  // Voor obs: ook de originele snel-notitie tekst ophalen uit programmaCache
-  // Voor obs: gebruik notities_raw (originele live-tekst) als primaire bron
-  let notitiesStr = '';
-  if(p.rapport_type === 'observatie'){
-    // notities_raw = ruwe snel-notitie tekst (meest betrouwbaar)
-    notitiesStr = (p.notities_raw || '').trim();
-    // Fallback 1: p.notities - maar filter lege term-headers weg
-    if(!notitiesStr){
-      const raw = (p.notities || '').trim();
-      // Verwijder regels die alleen "term:" bevatten zonder inhoud
-      const meaningful = raw.split('\n').filter(line => {
-        const colonIdx = line.indexOf(':');
-        if(colonIdx < 0) return line.trim().length > 0;
-        return line.slice(colonIdx+1).trim().length > 0;
-      }).join('\n').trim();
-      notitiesStr = meaningful;
-    }
-    // Fallback 2: zoek in programmaCache snel-notities
-    if(!notitiesStr && typeof programmaCache !== 'undefined'){
-      try {
-        const _pId    = p.id || '';
-        const _pNaam  = (p.naam||'').toLowerCase().trim();
-        const _pDatum = (p.datum || p.wedstrijd_datum || (p.wedstrijd && p.wedstrijd.datum) || '').trim();
-        outer2: for(const prog of programmaCache){
-          if(!prog || !Array.isArray(prog.snelnotities)) continue;
-          for(const sn of prog.snelnotities){
-            if(!sn || !sn.tekst) continue;
-            // Sterkste match: player_id
-            if(_pId && sn.player_id === _pId){
-              notitiesStr = sn.tekst.trim(); break outer2;
-            }
-            // Match op naam (+ optioneel datum)
-            if(_pNaam && (sn.naam||'').toLowerCase().trim() === _pNaam){
-              if(!_pDatum || !prog.datum || prog.datum === _pDatum){
-                notitiesStr = sn.tekst.trim(); break outer2;
-              }
-            }
-          }
-        }
-      } catch(_){}
-    }
-    // Fallback 3: filter ook structuur-tekst — toon regels met inhoud achter de dubbele punt
-    if(notitiesStr){
-      const _lines = notitiesStr.split('\n').filter(line => {
-        const ci = line.indexOf(':');
-        if(ci < 0) return line.trim().length > 0;
-        return line.slice(ci+1).trim().length > 0;
-      });
-      if(_lines.length > 0) notitiesStr = _lines.join('\n').trim();
-      // Als ALLE regels leeg waren (term: zonder inhoud), toon origineel
-    }
-  } else {
-    notitiesStr = (p.notities || '').trim();
+  // Notities: gebruik _notitiesVroeg (al berekend voor vroege-return check)
+  // Bevat: notities_raw → p.notities → programmaCache lookup op player_id/naam
+  let notitiesStr = _notitiesVroeg;
+  // Filter structuur-tekst: verwijder term-regels zonder inhoud
+  if(notitiesStr){
+    const _filtLines = notitiesStr.split('\n').filter(line => {
+      const ci = line.indexOf(':');
+      if(ci < 0) return line.trim().length > 0;
+      return line.slice(ci+1).trim().length > 0;
+    });
+    if(_filtLines.length > 0) notitiesStr = _filtLines.join('\n').trim();
   }
+  // Laatste fallback: p.notities onbewerkt (voor rapporten zonder structuur)
+  if(!notitiesStr) notitiesStr = (p.notities || p.opmerkingen || '').trim();
   const notitiesPreview = notitiesStr.length > 300
     ? escapeHtml(notitiesStr.slice(0, 300)) + '…'
     : escapeHtml(notitiesStr).replace(/\n/g,'<br>');

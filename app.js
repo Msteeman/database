@@ -10436,10 +10436,12 @@ function _shOpenEditModal(m){
     </div>`;
 
   // Ingediende observaties (snel-notities) — skip als player_id al via playersCache getoond wordt
-  const _ingSnAlInSpelers = new Set(_allSpelers.map(p => p && p.id).filter(Boolean));
+  // Dedup op naam: elke speler maar 1x tonen (sn én playersCache samen)
+  const _getoondNamen = new Set(_allSpelers.map(p => (p&&p.naam||'').toLowerCase().trim()).filter(Boolean));
   _ingediendSns.forEach(({sn}) => {
-    const pid = sn.player_id || '';
-    if(pid && _ingSnAlInSpelers.has(pid)) return; // al getoond via playersCache, skip dubbel
+    const naamKey = (sn.naam||'').toLowerCase().trim();
+    if(naamKey && _getoondNamen.has(naamKey)) return; // al getoond, skip
+    if(naamKey) _getoondNamen.add(naamKey);
     const naam = (sn.naam||'?').trim();
     html += `<div class="wstr-player-row" ${pid?`data-open-player-db="${escapeHtml(pid)}" style="cursor:pointer;"`:''}>
       <span class="wstr-type-dot obs"></span>
@@ -13268,27 +13270,35 @@ function renderDetailSummary(p){
   const wDatum = w.datum || p.wedstrijd_datum  || p.datum || '';
   const hasWapen   = !!p.wapen;
   const hasWedstrijd = !!(wThuis || wUit || wDatum);
-  // Zoek notities eerst in programmaCache (VOOR de vroege return)
+  // Zoek notities in programmaCache (VOOR vroege return) — breed zoeken op id + naam
   let _notitiesVroeg = (p.notities_raw || p.notities || '').trim();
   if(!_notitiesVroeg && typeof programmaCache !== 'undefined'){
     try {
-      const _pId   = p.id || '';
-      const _pNaam = (p.naam||'').toLowerCase().trim();
+      const _pId    = p.id || '';
+      const _pNaam  = (p.naam||'').toLowerCase().trim();
       const _pDatum = (p.datum || p.wedstrijd_datum || (p.wedstrijd && p.wedstrijd.datum) || '').trim();
-      outer0: for(const prog of programmaCache){
+      let _bestMatch = '';
+      for(const prog of programmaCache){
         if(!prog || !Array.isArray(prog.snelnotities)) continue;
         for(const sn of prog.snelnotities){
           if(!sn || !sn.tekst) continue;
+          // Sterkste match: directe id-koppeling
           if(_pId && (sn.player_id === _pId || sn.__convertedToPlayerId === _pId)){
-            _notitiesVroeg = sn.tekst.trim(); break outer0;
+            _notitiesVroeg = sn.tekst.trim(); break;
           }
+          // Naam + datum match (sterk)
           if(_pNaam && (sn.naam||'').toLowerCase().trim() === _pNaam){
-            if(!_pDatum || !prog.datum || prog.datum === _pDatum){
-              _notitiesVroeg = sn.tekst.trim(); break outer0;
+            if(_pDatum && prog.datum && prog.datum === _pDatum){
+              _notitiesVroeg = sn.tekst.trim(); break;
             }
+            // Naam zonder datum als fallback (bewaar, maar ga door)
+            if(!_bestMatch) _bestMatch = sn.tekst.trim();
           }
         }
+        if(_notitiesVroeg) break;
       }
+      // Gebruik naam-only match als geen betere gevonden
+      if(!_notitiesVroeg && _bestMatch) _notitiesVroeg = _bestMatch;
     } catch(_){}
   }
   const hasNotities = !!_notitiesVroeg;

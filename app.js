@@ -9390,16 +9390,29 @@ function wireDraftCard(){
     });
   });
 }
-// Wire obs-filter knop (eenmalig)
+// Wire obs-filter + rapport-filter knop (eenmalig)
 (function _wireObsFilterBtn(){
   function _doWire(){
-    const btn = document.getElementById('db-obs-filter-btn');
-    if(!btn || btn._wired) return;
-    btn._wired = true;
-    btn.addEventListener('click', () => {
-      btn.classList.toggle('active');
-      if(typeof applyFilters === 'function') applyFilters();
-    });
+    const obsBtn = document.getElementById('db-obs-filter-btn');
+    if(obsBtn && !obsBtn._wired){
+      obsBtn._wired = true;
+      obsBtn.addEventListener('click', () => {
+        obsBtn.classList.toggle('active');
+        const rapBtn = document.getElementById('db-rapport-filter-btn');
+        if(rapBtn && obsBtn.classList.contains('active')) rapBtn.classList.remove('active');
+        if(typeof applyFilters === 'function') applyFilters();
+      });
+    }
+    const rapBtn = document.getElementById('db-rapport-filter-btn');
+    if(rapBtn && !rapBtn._wired){
+      rapBtn._wired = true;
+      rapBtn.addEventListener('click', () => {
+        rapBtn.classList.toggle('active');
+        const obsBtn2 = document.getElementById('db-obs-filter-btn');
+        if(obsBtn2 && rapBtn.classList.contains('active')) obsBtn2.classList.remove('active');
+        if(typeof applyFilters === 'function') applyFilters();
+      });
+    }
   }
   if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _doWire);
   else _doWire();
@@ -9477,10 +9490,12 @@ function applyFilters(){
   const fadv = $('#filter-advies').value;
   const fper = $('#filter-period').value;
   const fobs = document.getElementById('db-obs-filter-btn')?.classList.contains('active') || false;
+  const frap = document.getElementById('db-rapport-filter-btn')?.classList.contains('active') || false;
   const perCutoff = fper ? (Date.now() - parseInt(fper,10)*24*3600*1000) : null;
 
   let filtered = players.filter(p=>{
     if(fobs && p.rapport_type !== 'observatie') return false;
+    if(frap && p.rapport_type === 'observatie') return false;
     if(fp && p.positie !== fp) return false;
     if(fc && p.huidig_niveau !== fc) return false;
     if(fpot && p.potentieel_niveau !== fpot) return false;
@@ -13869,15 +13884,15 @@ function renderDetailFullReport(p){
   `;
   if(typeof renderDetailPizza === 'function') renderDetailPizza(p);
   if(typeof renderDetailBars === 'function') renderDetailBars(p);
-  $('#dtl-back-overview').addEventListener('click', ()=> renderDetailOverview(p));
-  $(`#del-${p.id}`).addEventListener('click', async ()=>{
+  $('#dtl-back-overview')?.addEventListener('click', ()=> renderDetailOverview(p));
+  $(`#del-${p.id}`)?.addEventListener('click', async ()=>{
     if(confirm('Dit rapport verwijderen?')){
       await deletePlayer(p.id);
       go(previousViewBeforePlayer || 'database');
       toast('Rapport verwijderd');
     }
   });
-  $(`#pdf-${p.id}`).addEventListener('click', ()=> generatePlayerPDF(p));
+  $(`#pdf-${p.id}`)?.addEventListener('click', ()=> generatePlayerPDF(p));
   $(`#edit-${p.id}`).addEventListener('click', ()=>{
     go('report');
     loadIntoForm(p);
@@ -15229,7 +15244,13 @@ function renderMatches(){
         if(!sp){ if(typeof toast === 'function') toast('Speler niet gevonden', true); return; }
         const { player } = (typeof findPlayerMatch === 'function') ? findPlayerMatch(sp) : { player: null };
         const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(prog.id, sp.id) : null;
-        if(typeof openScoutingPlayerForm === 'function') openScoutingPlayerForm(prog, sp, player, concept);
+        const isVerwerkt = concept && !_shPlayerIsConcept(concept);
+        if(isVerwerkt && concept && typeof openDetail === 'function'){
+          // Ingediend → profiel openen (alleen lezen)
+          openDetail(concept.id);
+        } else if(typeof openScoutingPlayerForm === 'function'){
+          openScoutingPlayerForm(prog, sp, player, concept);
+        }
         return;
       }
       // s93: losse notitie → observatie knop
@@ -15237,7 +15258,18 @@ function renderMatches(){
     if(btnWstrRapport){
       e.stopPropagation();
       const pid = btnWstrRapport.dataset.pmWstrRapport;
-      if(pid && typeof _shConvertWstrNotitieToRapport === 'function') _shConvertWstrNotitieToRapport(pid, 0);
+      // Check of al ingediend → read-only
+      const _progWr = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === pid) : null;
+      const _wrStatus = _progWr && _progWr.wedstrijdrapport ? _progWr.wedstrijdrapport.status : '';
+      if(_wrStatus === 'ingediend' || _wrStatus === 'verwerkt'){
+        // Read-only: zoek matchReport op datum+thuis
+        const _mr = (typeof matchReportsCache !== 'undefined')
+          ? matchReportsCache.find(r => r.datum === (_progWr.datum||'') && (r.thuis||'').toLowerCase() === (_progWr.thuis||'').toLowerCase())
+          : null;
+        if(typeof openMatchReportModal === 'function') openMatchReportModal(_mr ? _mr.id : '');
+      } else if(pid && typeof _shConvertWstrNotitieToRapport === 'function'){
+        _shConvertWstrNotitieToRapport(pid, 0);
+      }
       return;
     }
     const btnSnObs = e.target.closest('[data-pm-sn-obs]');

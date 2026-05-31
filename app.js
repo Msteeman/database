@@ -3207,10 +3207,11 @@ function subscribeData(){
     playersCache = snap.docs.map(d => ({...d.data(), id: d.id}));
     if(!datumMigrationDone){
       datumMigrationDone = true;
+      // Fix 1: rapporten zonder datum (uit wedstrijd.datum)
       const toFix = playersCache.filter(p => p.wedstrijd && p.wedstrijd.datum && p.datum !== p.wedstrijd.datum);
       if(toFix.length){
         Promise.all(toFix.map(p => savePlayer({...p, datum: p.wedstrijd.datum}).catch(()=>{})))
-          .then(()=> toast(`${toFix.length} rapportdatum${toFix.length===1?'':'s'} bijgewerkt naar wedstrijddatum`));
+          .then(()=>{});
       }
     }
     if(!geoPlayersMigrationDone){
@@ -6363,9 +6364,19 @@ async function _obsSubmit(e){
       status: 'observatie',
       is_opvallend: sn && sn.is_opvallend ? true : false,
       datum: prog && prog.datum ? prog.datum : (new Date().toISOString().slice(0,10)),
-      wedstrijd_datum: prog && prog.datum ? prog.datum : '',
-      wedstrijd_thuis: prog && prog.thuis ? prog.thuis : '',
-      wedstrijd_uit: prog && prog.uit ? prog.uit : '',
+      // Wedstrijdgegevens als genest object (zelfde structuur als spelersrapporten)
+      wedstrijd: {
+        datum:    prog && prog.datum     ? prog.datum     : '',
+        thuis:    prog && prog.thuis     ? prog.thuis     : '',
+        uit:      prog && prog.uit       ? prog.uit       : '',
+        leeftijd: prog && prog.leeftijd  ? prog.leeftijd  : '',
+        plaats:   prog && prog.plaats    ? prog.plaats    : '',
+        sportpark:prog && prog.sportpark ? prog.sportpark : '',
+      },
+      // Flat velden behouden voor backward compatibility
+      wedstrijd_datum:    prog && prog.datum    ? prog.datum    : '',
+      wedstrijd_thuis:    prog && prog.thuis    ? prog.thuis    : '',
+      wedstrijd_uit:      prog && prog.uit      ? prog.uit      : '',
       wedstrijd_leeftijd: prog && prog.leeftijd ? prog.leeftijd : '',
       created: Date.now(),
       modified: Date.now(),

@@ -6407,48 +6407,13 @@ async function _obsSubmit(e){
         go('wedstrijden');
         setTimeout(() => { try { _shOpenEditModal(_obsReturnMatch); } catch(_){} }, 180);
       } else {
-        // Normaal: direct naar rapport invullen (geen openDetail tussenstap)
+        // Terug naar wedstrijden + match modal heropenen
         if(typeof renderActiveScouting === 'function') renderActiveScouting();
-        go('report');
-        setTimeout(() => {
-          try {
-            if($('#f-voornaam')) $('#f-voornaam').value = rec.voornaam || '';
-            if($('#f-achternaam')) $('#f-achternaam').value = rec.achternaam || '';
-            if(typeof syncNaamHidden === 'function') syncNaamHidden('f');
-            if($('#f-club')) $('#f-club').value = rec.club || '';
-            if($('#f-positie') && rec.positie) $('#f-positie').value = rec.positie;
-            if($('#f-elftal')) $('#f-elftal').value = rec.elftal || '';
-            if(rec.rugnummer && $('#f-rugnummer')) $('#f-rugnummer').value = rec.rugnummer;
-            if(rec.wedstrijd_datum && $('#f-w-datum')) $('#f-w-datum').value = rec.wedstrijd_datum;
-            if(rec.wedstrijd_thuis && $('#f-w-thuis')) $('#f-w-thuis').value = rec.wedstrijd_thuis;
-            if(rec.wedstrijd_uit && $('#f-w-uit')) $('#f-w-uit').value = rec.wedstrijd_uit;
-            if(rec.wedstrijd_leeftijd && $('#f-leeftijd')) $('#f-leeftijd').value = rec.wedstrijd_leeftijd;
-            const _obsCtxProg = (document.getElementById('obs-backdrop')?._obsContext?.prog) || null;
-            if(_obsCtxProg) {
-              if(_obsCtxProg.plaats && $('#f-w-plaats')) $('#f-w-plaats').value = _obsCtxProg.plaats;
-              if(_obsCtxProg.sportpark && $('#f-w-sportpark')) $('#f-w-sportpark').value = _obsCtxProg.sportpark;
-            }
-            if(rec.huidig_niveau && typeof setPickerValue === 'function') setPickerValue('huidig_niveau', rec.huidig_niveau);
-            if(rec.advies) {
-              const _adviesMap = { direct_contracteren:'4', volgen:'3', nog_volgen:'2', geen_interesse:'1' };
-              const _av = _adviesMap[rec.advies] || '';
-              if(_av && $('#f-advies')) $('#f-advies').value = _av;
-            }
-            if(rec.notities) {
-              const _termMap = { techniek:'f-tekst-techniek', inzicht:'f-tekst-inzicht', mentaliteit:'f-tekst-grit', explosiviteit:'f-tekst-explosiviteit', sprinten:'f-tekst-sprinten', duelleren:'f-tekst-duelleren', wendbaarheid:'f-tekst-wendbaarheid', algemeen:'f-notities' };
-              for(const line of rec.notities.split('\n')) {
-                const colon = line.indexOf(':');
-                if(colon < 0) continue;
-                const key = line.slice(0, colon).trim().toLowerCase();
-                const val = line.slice(colon + 1).trim();
-                if(!val) continue;
-                const fid = _termMap[key];
-                if(fid && $(('#' + fid))) $(('#' + fid)).value = val;
-              }
-            }
-            if($('#f-methode') && !$('#f-methode').value) $('#f-methode').value = 'Live';
-          } catch(_){}
-        }, 100);
+        const _retM = window.__shCurrentEditMatch || null;
+        go('wedstrijden');
+        if(_retM && typeof _shOpenEditModal === 'function'){
+          setTimeout(() => { try { _shOpenEditModal(_retM); } catch(_){} }, 220);
+        }
       }
     }, 600);
   } catch(err){
@@ -9428,14 +9393,17 @@ function wireDraftCard(){
 }
 // Wire obs-filter knop (eenmalig)
 (function _wireObsFilterBtn(){
-  document.addEventListener('DOMContentLoaded', () => {
+  function _doWire(){
     const btn = document.getElementById('db-obs-filter-btn');
-    if(!btn) return;
+    if(!btn || btn._wired) return;
+    btn._wired = true;
     btn.addEventListener('click', () => {
       btn.classList.toggle('active');
       if(typeof applyFilters === 'function') applyFilters();
     });
-  });
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _doWire);
+  else _doWire();
 })();
 
 function renderDatabase(){
@@ -10013,7 +9981,11 @@ function _shConvertWstrNotitieToRapport(progId, wnIdx){
     } else {
       const wns = Array.isArray(p.wedstrijdnotities) ? p.wedstrijdnotities : [];
       const wn = wns[wnIdx];
-      if(!wn){ if(typeof toast === 'function') toast('Wedstrijdnotitie niet gevonden', true); return; }
+      if(!wn){
+        // Notitie niet gevonden: open leeg wedstrijdrapport-modal
+        if(typeof openMatchReportModal === 'function') openMatchReportModal('');
+        return;
+      }
       tekst = ((wn.tekst || wn.notitie) || '').trim();
       title = wn.titel || '';
     }

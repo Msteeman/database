@@ -8816,6 +8816,8 @@ function renderDashFollowUp(players){
 /* ---- Geo widget (Leaflet, regio Utrecht + Veluwe) ---- */
 let _leafletMap = null;
 let _leafletLayer = null;
+let _leafletHeatLayer = null;
+let _geoHeatOn = false;
 let _leafletReadyPromise = null;
 
 function ensureLeafletReady(){
@@ -8899,17 +8901,50 @@ function _geoFilterBar(){
     {k:'2', label:'Monitoren', col:GEO_ADVIES_COLOR['2']},
     {k:'1', label:'Geen stap', col:GEO_ADVIES_COLOR['1']},
   ];
+  const heatCol = _geoHeatOn ? '#a78bfa' : 'rgba(160,170,200,.5)';
+  const heatHtml = `<button class="geo-filter-btn geo-heat-btn${_geoHeatOn?' active':''}" style="border-color:${heatCol};color:${heatCol};${_geoHeatOn?'background:rgba(167,139,250,.18);':''}" id="geo-heat-toggle">
+    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2C6.5 2 4 6 4 9c0 4.5 4 7 8 11 4-4 8-6.5 8-11 0-3-2.5-7-8-7z"/></svg>
+    Heatmap
+  </button>`;
   wrap.innerHTML = opts.map(o=>`
     <button class="geo-filter-btn${_geoAdviesFilter===o.k?' active':''}" data-k="${o.k}"
       style="border-color:${o.col};${_geoAdviesFilter===o.k?'background:'+o.col+';color:#000;':'color:'+o.col+';'}">
       ${_geoAdviesFilter===o.k?'<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg> ':''}${o.label}
-    </button>`).join('');
-  wrap.querySelectorAll('.geo-filter-btn').forEach(btn=>{
+    </button>`).join('') + heatHtml;
+  wrap.querySelectorAll('.geo-filter-btn:not(.geo-heat-btn)').forEach(btn=>{
     btn.addEventListener('click',()=>{
       _geoAdviesFilter = btn.dataset.k;
       renderGeo();
     });
   });
+  const heatBtn = wrap.querySelector('#geo-heat-toggle');
+  if(heatBtn) heatBtn.addEventListener('click',()=>{
+    _geoHeatOn = !_geoHeatOn;
+    _geoUpdateHeatLayer();
+    _geoFilterBar();
+  });
+}
+
+function _geoUpdateHeatLayer(){
+  if(!_leafletMap || !window.L) return;
+  if(_leafletHeatLayer){ _leafletMap.removeLayer(_leafletHeatLayer); _leafletHeatLayer = null; }
+  if(!_geoHeatOn) return;
+  let players = loadPlayers();
+  if(_geoAdviesFilter) players = players.filter(p => p.advies === _geoAdviesFilter);
+  const points = [];
+  const byCity = {};
+  players.forEach(p=>{ const ct=cityForPlayer(p); if(ct){ byCity[ct]=(byCity[ct]||0)+1; } });
+  Object.entries(byCity).forEach(([city, n])=>{
+    const coords = coordsForCity(city);
+    if(coords) points.push([coords.lat, coords.lng, Math.min(1, n/5)]);
+  });
+  if(!points.length) return;
+  _leafletHeatLayer = L.heatLayer(points, {
+    radius: 40,
+    blur: 30,
+    maxZoom: 12,
+    gradient: {0.0:'#1e40af', 0.3:'#7c3aed', 0.6:'#db2777', 1.0:'#f97316'}
+  }).addTo(_leafletMap);
 }
 
 function renderGeo(){
@@ -9037,6 +9072,7 @@ async function renderGeoMap(){
   });
 
   map.fitBounds(REGION_BOUNDS, { padding: [20, 20] });
+  _geoUpdateHeatLayer();
 
   const visibleCities = cities.filter(ct => !SKIP_CITIES.has(ct));
   $('#geo-list-title').textContent = `Steden (${visibleCities.length})`;

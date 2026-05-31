@@ -4729,6 +4729,10 @@ function openMatchReportModal(id){
   if(delBtn)  delBtn.style.display = r ? '' : 'none';
 
   bd.classList.add('open');
+  // Als rapport al ingediend: direct read-only tonen
+  if(r && r.concept === false && r.status === 'verwerkt'){
+    _mrShowReadOnly(r);
+  }
   // v70h-s35a: auto-fill plaats + adres uit findClubInfo zodra mr-thuis gevuld wordt.
   (function(){
     const thuis = $('#mr-thuis');
@@ -4767,9 +4771,65 @@ function openMatchReportModal(id){
   setTimeout(()=> $('#mr-thuis').focus(), 50);
 }
 
+function _mrShowReadOnly(r){
+  const ro = document.getElementById('mr-readonly');
+  const form = document.getElementById('mreport-form');
+  if(!ro || !form) return;
+  ro.style.display = '';
+  form.style.display = 'none';
+  // Velden
+  const fields = document.getElementById('mr-readonly-fields');
+  if(fields){
+    const d = r.datum ? r.datum.split('-').reverse().join('-') : '–';
+    fields.innerHTML = `
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 20px;margin-bottom:12px;">
+        <div><span style="color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;">Datum</span><div style="color:var(--text);font-weight:600;">${escapeHtml(d)}</div></div>
+        <div><span style="color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;">Leeftijd</span><div style="color:var(--text);font-weight:600;">${escapeHtml(r.leeftijd||'–')}</div></div>
+        <div><span style="color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;">Thuis</span><div style="color:var(--text);font-weight:600;">${escapeHtml(r.thuis||'–')}</div></div>
+        <div><span style="color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;">Uit</span><div style="color:var(--text);font-weight:600;">${escapeHtml(r.uit||'–')}</div></div>
+      </div>
+      <div><span style="color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;">Opmerking</span><div style="color:var(--text);margin-top:2px;white-space:pre-wrap;">${escapeHtml(r.opmerking||'–')}</div></div>`;
+  }
+  // Spelers gezien bij deze wedstrijd
+  const pp = document.getElementById('mr-readonly-players');
+  if(pp){
+    const gezien = (playersCache||[]).filter(p => {
+      const wd = (p.wedstrijd)||{};
+      return wd.datum === r.datum &&
+        (wd.thuis||'').toLowerCase().trim() === (r.thuis||'').toLowerCase().trim();
+    });
+    if(gezien.length){
+      const items = gezien.map(p => {
+        const isConcept = _shPlayerIsConcept ? _shPlayerIsConcept(p) : false;
+        const badge = isConcept
+          ? `<span style="font-size:10px;background:rgba(245,158,11,.18);color:#f59e0b;border-radius:4px;padding:1px 6px;">concept</span>`
+          : `<span style="font-size:10px;background:rgba(34,197,94,.15);color:#22c55e;border-radius:4px;padding:1px 6px;">✓ ingediend</span>`;
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg-3);border-radius:6px;margin-bottom:6px;">
+          <span style="font-weight:600;color:var(--text);font-size:13px;">${escapeHtml(p.naam||'?')}</span>
+          ${badge}
+        </div>`;
+      }).join('');
+      pp.innerHTML = `<div style="color:var(--text-3);font-size:11px;text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">Spelers gezien (${gezien.length})</div>${items}`;
+    } else {
+      pp.innerHTML = `<div style="color:var(--text-3);font-size:12px;">Geen spelersrapporten gekoppeld aan deze wedstrijd.</div>`;
+    }
+  }
+  // Sluit-knop
+  const closeBtn = document.getElementById('mr-readonly-close');
+  if(closeBtn && !closeBtn._wired){ closeBtn._wired=true; closeBtn.addEventListener('click', closeMatchReportModal); }
+  // Titel
+  const titleEl = document.getElementById('mreport-modal-title');
+  if(titleEl) titleEl.textContent = 'Wedstrijdrapport';
+}
+
 function closeMatchReportModal(){
   _shResetDirty('mreport'); // s91
   $('#mreport-backdrop').classList.remove('open');
+  // Reset: zorg dat form zichtbaar is bij volgende open
+  const ro = document.getElementById('mr-readonly');
+  const form = document.getElementById('mreport-form');
+  if(ro) ro.style.display = 'none';
+  if(form) form.style.display = '';
 }
 
 // Wire match-report submit direct (ES module fix — DOMContentLoaded kan al geweest zijn)
@@ -4832,13 +4892,11 @@ async function submitMatchReportForm(e){
 
   try {
     await saveMatchReport(report);
-    // Toon "✓ Ingediend" knop vóór sluiten
-    const _mrBtn = document.querySelector('#mreport-modal [type="submit"]');
-    if(_mrBtn){ _mrBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Ingediend'; _mrBtn.disabled = true; }
-    setTimeout(() => {
-      closeMatchReportModal();
-      toast(existing ? 'Wedstrijdrapport bijgewerkt' : 'Wedstrijd opgeslagen');
-      if(alsoPlayer){
+    toast(existing ? 'Wedstrijdrapport bijgewerkt' : 'Wedstrijd opgeslagen');
+    _mrShowReadOnly(report);
+    if(alsoPlayer){
+      setTimeout(()=>{
+        closeMatchReportModal();
         go('report');
         setTimeout(()=>{
           try {
@@ -4849,8 +4907,8 @@ async function submitMatchReportForm(e){
             if(report.leeftijd) $('#f-leeftijd').value = report.leeftijd;
           } catch(_){}
         }, 80);
-      }
-    }, 600);
+      }, 400);
+    }
   } catch(_) { /* error toast already shown */ }
 }
 
@@ -8292,12 +8350,15 @@ function renderDashPositions(players){
     VM:{x:50,y:58},CM:{x:36,y:50},LM:{x:15,y:48},RM:{x:85,y:48},AM:{x:50,y:42},
     LV:{x:15,y:22},CS:{x:50,y:18},RV:{x:85,y:22}
   };
+  // Alias-mapping voor legacy codes (lowercase + alternatieven)
+  const POS_ALIAS={rmv:'RM',lmv:'LM',dmv:'VM',cmv:'CM',sv:'CS',sp:'CS',cv:'CV',lv:'LV',rv:'RV',lb:'LB',rb:'RB',gk:'GK',vm:'VM',cm:'CM',am:'AM',lm:'LM',rm:'RM',cs:'CS'};
+  const normPos = code => { const u=(code||'').toUpperCase(); return POS_XY[u]?u:(POS_ALIAS[(code||'').toLowerCase()]||null); };
   const posCount={}, posBestGrade={};
   players.forEach(p=>{
-    const pos=p.positie||''; if(!pos||!POS_XY[pos]) return;
+    const pos=normPos(p.positie); if(!pos||!POS_XY[pos]) return;
     posCount[pos]=(posCount[pos]||0)+1;
     const gn=({A:4,B:3,C:2,D:1}[p.huidig_niveau]||0);
-    if(!posBestGrade[pos]||gn>(posBestGrade[pos]||0)) posBestGrade[pos]={n:gn,g:p.huidig_niveau};
+    if(!posBestGrade[pos]||gn>((posBestGrade[pos]&&posBestGrade[pos].n)||0)) posBestGrade[pos]={n:gn,g:p.huidig_niveau};
   });
   const W=280, H=360;
   let svg=`<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="max-width:100%">`;
@@ -11853,9 +11914,9 @@ function renderCmpParallelCoords(players){
   if(!canvas || !players.length) return;
 
   const N = CMP_CRITERIA.length;
-  const W = Math.max(520, Math.min(900, (canvas.parentElement||document.body).offsetWidth - 32));
-  const H = 280;
-  const PL = 38, PR = 30, PT = 44, PB = 28;
+  const W = Math.max(540, Math.min(960, (canvas.parentElement||document.body).offsetWidth - 32));
+  const H = 340;
+  const PL = 46, PR = 32, PT = 54, PB = 36;
   const IW = W - PL - PR, IH = H - PT - PB;
   const dpr = window.devicePixelRatio || 1;
   canvas.width = W * dpr; canvas.height = H * dpr;
@@ -11863,126 +11924,174 @@ function renderCmpParallelCoords(players){
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr,0,0,dpr,0,0);
 
+  const GRADES = ['D','C','B','A'];
+  const GRADE_COLORS = {A:'rgba(34,197,94,.08)',B:'rgba(59,130,246,.08)',C:'rgba(245,158,11,.07)',D:'rgba(239,68,68,.07)'};
+  const GRADE_BORDER = {A:'rgba(34,197,94,.22)',B:'rgba(59,130,246,.22)',C:'rgba(245,158,11,.18)',D:'rgba(239,68,68,.18)'};
+  const GRADE_TEXT   = {A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#ef4444'};
+
   const axX = i => PL + i * (IW / (N-1));
   const grY = g => {
     const v = cmpGradeNum(g) || 0;
     return PT + IH - (v/4) * IH;
   };
+  const gradeAtY = y => {
+    const v = (PT + IH - y) / IH * 4;
+    return Math.round(Math.max(0, Math.min(4, v)));
+  };
+
+  function drawCurve(ctx, pts){
+    if(pts.length < 2) return;
+    ctx.beginPath();
+    ctx.moveTo(pts[0].x, pts[0].y);
+    for(let i=0;i<pts.length-1;i++){
+      const cp1x = pts[i].x + (pts[i+1].x - pts[i].x)*0.4;
+      const cp2x = pts[i].x + (pts[i+1].x - pts[i].x)*0.6;
+      ctx.bezierCurveTo(cp1x, pts[i].y, cp2x, pts[i+1].y, pts[i+1].x, pts[i+1].y);
+    }
+  }
 
   function draw(highlightIdx){
     ctx.clearRect(0,0,W,H);
-    // Achtergrond rasters
-    ['D','C','B','A'].forEach((g,j) => {
-      const y = PT + IH - (j/3)*IH;
-      ctx.beginPath(); ctx.moveTo(PL,y); ctx.lineTo(PL+IW,y);
-      ctx.strokeStyle = j===3?'rgba(255,255,255,.12)':'rgba(255,255,255,.05)';
-      ctx.lineWidth = j===3?1.2:0.8; ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,.3)';
-      ctx.font = '10px -apple-system,Segoe UI,sans-serif';
+
+    // Grade-zone achtergronden
+    GRADES.forEach((g,j) => {
+      const y1 = PT + IH - ((j+1)/4)*IH;
+      const y2 = PT + IH - (j/4)*IH;
+      ctx.fillStyle = GRADE_COLORS[g];
+      ctx.fillRect(PL, y1, IW, y2-y1);
+      // Zone border bovenaan
+      ctx.beginPath(); ctx.moveTo(PL, y1); ctx.lineTo(PL+IW, y1);
+      ctx.strokeStyle = GRADE_BORDER[g]; ctx.lineWidth = 1; ctx.stroke();
+      // Grade label links
+      ctx.fillStyle = GRADE_TEXT[g];
+      ctx.font = '700 11px -apple-system,Segoe UI,sans-serif';
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText(g, PL-6, y);
+      ctx.fillText(g, PL-8, (y1+y2)/2);
+      // Subtiele label rechts
+      ctx.fillStyle = GRADE_TEXT[g]; ctx.globalAlpha=0.3;
+      ctx.textAlign='left';
+      ctx.fillText(g, PL+IW+6, (y1+y2)/2);
+      ctx.globalAlpha=1;
     });
+
     // Assen
     for(let i=0;i<N;i++){
       const x = axX(i);
-      ctx.beginPath(); ctx.moveTo(x,PT); ctx.lineTo(x,PT+IH);
-      ctx.strokeStyle = 'rgba(255,255,255,.18)'; ctx.lineWidth = 1.5; ctx.stroke();
-      ctx.fillStyle = 'rgba(230,236,248,.85)';
-      ctx.font = '600 11px -apple-system,Segoe UI,sans-serif';
+      // As-lijn
+      ctx.beginPath(); ctx.moveTo(x, PT); ctx.lineTo(x, PT+IH);
+      ctx.strokeStyle = 'rgba(255,255,255,.2)'; ctx.lineWidth = 1.5; ctx.stroke();
+      // As-naam
+      ctx.fillStyle = 'rgba(220,228,245,.9)';
+      ctx.font = '700 11.5px -apple-system,Segoe UI,sans-serif';
       ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
-      ctx.fillText(CMP_CRITERIA[i].short, x, PT-6);
+      ctx.fillText(CMP_CRITERIA[i].short, x, PT-10);
+      // Kleine tick-stippen op grade-posities
+      ['A','B','C','D'].forEach(g => {
+        const y = grY(g);
+        ctx.beginPath(); ctx.arc(x, y, 2.5, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.fill();
+      });
     }
-    // Speler-lijnen (eerst de niet-gemarkeerde, dan de gemarkeerde bovenop)
+
+    // Speler-lijnen
     const order = players.map((_,i)=>i).sort((a,b) => a===highlightIdx?1:b===highlightIdx?-1:0);
     order.forEach(pi => {
       const p = players[pi];
       const col = cmpColorFor(pi);
       const b = p.beoordelingen||{};
-      const pts = CMP_CRITERIA.map((c,i) => {
-        let g = b[c.key]; if(!g && c.key==='grit_huidig') g = b.drit_huidig;
+      const pts = CMP_CRITERIA.map((cr,i) => {
+        let g = b[cr.key]; if(!g && cr.key==='grit_huidig') g = b.drit_huidig;
         return {x:axX(i), y:grY(g), g, v:cmpGradeNum(g)||0};
       });
       const isHL = pi === highlightIdx;
+      const alpha = isHL ? 1 : (highlightIdx===-1 ? 0.75 : 0.18);
+
+      // Glow / schaduw op highlighted lijn
+      if(isHL){
+        ctx.save();
+        ctx.shadowColor = col.c;
+        ctx.shadowBlur = 14;
+      }
       // Lijn
-      ctx.beginPath();
-      pts.forEach((pt,i) => { if(i===0) ctx.moveTo(pt.x,pt.y); else ctx.lineTo(pt.x,pt.y); });
+      drawCurve(ctx, pts);
       ctx.strokeStyle = col.c;
-      ctx.lineWidth = isHL ? 3 : 1.8;
-      ctx.globalAlpha = isHL ? 1 : (highlightIdx===-1?0.72:0.22);
+      ctx.lineWidth = isHL ? 3.5 : 2;
+      ctx.globalAlpha = alpha;
       ctx.stroke();
       ctx.globalAlpha = 1;
-      // Punten
+      if(isHL) ctx.restore();
+
+      // Punten + grade-labels
       pts.forEach(pt => {
         if(!pt.g) return;
-        ctx.beginPath(); ctx.arc(pt.x,pt.y, isHL?6:4, 0, Math.PI*2);
-        ctx.fillStyle = col.c; ctx.globalAlpha = isHL?1:(highlightIdx===-1?0.8:0.25);
-        ctx.fill(); ctx.globalAlpha=1;
-        if(isHL){
-          ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=1.5; ctx.stroke();
-          ctx.fillStyle='#fff'; ctx.font='700 11px -apple-system,Segoe UI,sans-serif';
-          ctx.textAlign='center'; ctx.textBaseline='middle';
-          ctx.fillText(pt.g, pt.x, pt.y);
-        }
+        const r = isHL ? 11 : 7;
+        ctx.globalAlpha = alpha;
+        // Cirkel achtergrond
+        ctx.beginPath(); ctx.arc(pt.x, pt.y, r, 0, Math.PI*2);
+        ctx.fillStyle = isHL ? col.c : 'rgba(20,24,36,.8)';
+        ctx.fill();
+        // Cirkel rand
+        ctx.strokeStyle = col.c; ctx.lineWidth = isHL ? 0 : 2;
+        ctx.stroke();
+        // Grade tekst
+        ctx.fillStyle = isHL ? '#fff' : col.c;
+        ctx.font = (isHL?'800':'700')+' '+(isHL?'12':'10')+'px -apple-system,Segoe UI,sans-serif';
+        ctx.textAlign='center'; ctx.textBaseline='middle';
+        ctx.fillText(pt.g, pt.x, pt.y);
+        ctx.globalAlpha = 1;
       });
     });
-    // Middelpunt-as-stippen
-    ctx.beginPath(); ctx.arc(PL-0,PT+IH/2,2.5,0,Math.PI*2);
-    ctx.fillStyle='rgba(255,255,255,.2)'; ctx.fill();
   }
 
   draw(-1);
 
-  // Tooltip + hover highlight
+  // Tooltip
   let _tt = document.querySelector('.cmp-parallel-tt');
   if(!_tt){ _tt=document.createElement('div'); _tt.className='cmp-parallel-tt'; document.body.appendChild(_tt); }
 
   canvas.addEventListener('mousemove', ev => {
     const r = canvas.getBoundingClientRect();
     const mx = (ev.clientX-r.left)*(W/r.width);
-    // Zoek dichtstbijzijnde as
-    let bestAx = -1, bestD = 9999;
-    for(let i=0;i<N;i++){ const d=Math.abs(mx-axX(i)); if(d<bestD){bestD=d;bestAx=i;} }
-    if(bestD > IW/(N-1)*0.55){ draw(-1); _tt.classList.remove('vis'); return; }
-    // Zoek dichtstbijzijnde speler-punt op die as
     const my = (ev.clientY-r.top)*(H/r.height);
-    let bestPl = -1, bestPD = 9999;
-    players.forEach((p,pi) => {
-      const b=p.beoordelingen||{}; let g=b[CMP_CRITERIA[bestAx].key];
-      if(!g&&CMP_CRITERIA[bestAx].key==='grit_huidig') g=b.drit_huidig;
-      const py=grY(g); const d=Math.abs(my-py);
-      if(d<bestPD){bestPD=d;bestPl=pi;}
-    });
-    if(bestPD>40){ draw(-1); _tt.classList.remove('vis'); return; }
-    draw(bestPl);
-    // Tooltip
-    const p = players[bestPl], col = cmpColorFor(bestPl);
-    const b = p.beoordelingen||{};
-    const rows = CMP_CRITERIA.map(cr => {
-      let g=b[cr.key]; if(!g&&cr.key==='grit_huidig') g=b.drit_huidig;
-      return `<div class="cmp-parallel-tt-row"><span class="cmp-parallel-tt-key">${escapeHtml(cr.short)}</span> <strong style="color:${g?'var(--grade-'+g.toLowerCase()+')':'var(--text-3)'}">${escapeHtml(g||'–')}</strong></div>`;
-    }).join('');
-    _tt.innerHTML = `<div class="cmp-parallel-tt-name" style="color:${col.c}">${escapeHtml(p.naam||'?')}</div>${rows}`;
-    _tt.style.left = (ev.clientX+14)+'px'; _tt.style.top = (ev.clientY-60)+'px';
-    _tt.classList.add('vis');
-  });
-  canvas.addEventListener('mouseleave', () => { draw(-1); _tt.classList.remove('vis'); });
-  // Klik: ga naar spelersprofiel
-  canvas.addEventListener('click', ev => {
-    const r=canvas.getBoundingClientRect();
-    const mx=(ev.clientX-r.left)*(W/r.width), my=(ev.clientY-r.top)*(H/r.height);
+    // Dichtstbijzijnde speler-punt
     let bestPl=-1, bestD=9999;
     players.forEach((p,pi) => {
       CMP_CRITERIA.forEach((c,ci) => {
         const b=p.beoordelingen||{}; let g=b[c.key];
-        if(!g&&c.key==='grit_huidig')g=b.drit_huidig;
+        if(!g&&c.key==='grit_huidig') g=b.drit_huidig;
         const d=Math.hypot(mx-axX(ci), my-grY(g));
         if(d<bestD){bestD=d;bestPl=pi;}
       });
     });
-    if(bestD<30 && bestPl>=0 && typeof openDetail==='function') openDetail(players[bestPl].id);
+    if(bestD > 40){ draw(-1); _tt.classList.remove('vis'); return; }
+    draw(bestPl);
+    const p=players[bestPl], col=cmpColorFor(bestPl);
+    const b=p.beoordelingen||{};
+    const rows=CMP_CRITERIA.map(cr=>{
+      let g=b[cr.key]; if(!g&&cr.key==='grit_huidig')g=b.drit_huidig;
+      return `<div class="cmp-parallel-tt-row"><span class="cmp-parallel-tt-key">${escapeHtml(cr.short)}</span> <strong style="color:${g?'var(--grade-'+g.toLowerCase()+')':'var(--text-3)'}">${escapeHtml(g||'–')}</strong></div>`;
+    }).join('');
+    _tt.innerHTML=`<div class="cmp-parallel-tt-name" style="color:${col.c}">${escapeHtml(p.naam||'?')}</div>${rows}`;
+    _tt.style.left=(ev.clientX+16)+'px'; _tt.style.top=(ev.clientY-70)+'px';
+    _tt.classList.add('vis');
+  });
+  canvas.addEventListener('mouseleave',()=>{ draw(-1); _tt.classList.remove('vis'); });
+  canvas.addEventListener('click', ev=>{
+    const r=canvas.getBoundingClientRect();
+    const mx=(ev.clientX-r.left)*(W/r.width), my=(ev.clientY-r.top)*(H/r.height);
+    let bestPl=-1, bestD=9999;
+    players.forEach((p,pi)=>{
+      CMP_CRITERIA.forEach((c,ci)=>{
+        const b=p.beoordelingen||{}; let g=b[c.key];
+        if(!g&&c.key==='grit_huidig')g=b.drit_huidig;
+        const d=Math.hypot(mx-axX(ci),my-grY(g));
+        if(d<bestD){bestD=d;bestPl=pi;}
+      });
+    });
+    if(bestD<35 && bestPl>=0 && typeof openDetail==='function') openDetail(players[bestPl].id);
   });
 
-  if(legend) legend.innerHTML = players.map((p,i) => {
+  if(legend) legend.innerHTML = players.map((p,i)=>{
     const col=cmpColorFor(i);
     return `<span class="compare-legend-item" style="cursor:pointer" data-hl="${i}"><span class="compare-legend-dot" style="background:${col.c}"></span>${escapeHtml(p.naam||'?')}</span>`;
   }).join('');

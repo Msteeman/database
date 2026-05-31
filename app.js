@@ -2587,7 +2587,13 @@ function __shApplyDemoChrome(){
     const isPrimary = __shIsPrimaryDemoUser();
     const strip = document.getElementById('demo-strip');
     const seedRow = document.getElementById('settings-seed-row');
-    if(strip) strip.style.display = isDemo ? 'flex' : 'none';
+    if(strip){
+      strip.style.display = isDemo ? 'flex' : 'none';
+      // Extra zekerheid: verberg altijd voor Gmail/externe accounts
+      if(strip.style.display === 'flex' && typeof currentUser !== 'undefined' && currentUser && currentUser.email){
+        if(!currentUser.email.toLowerCase().includes('@scoutinghub.nl')) strip.style.display = 'none';
+      }
+    }
     if(seedRow) seedRow.style.display = isPrimary ? 'flex' : 'none';
     const resetRow = document.getElementById('settings-reset-row');
     if(resetRow) resetRow.style.display = isPrimary ? 'flex' : 'none';
@@ -14575,9 +14581,10 @@ function aggregateMatches(players){
   const map = new Map();
   players.forEach(p => {
     const w = p.wedstrijd || {};
-    const datum = w.datum || p.datum;
-    const thuis = (w.thuis || '').trim();
-    const uit = (w.uit || '').trim();
+    // Obs records slaan wedstrijddata op als flat velden (wedstrijd_datum etc.)
+    const datum = w.datum || p.wedstrijd_datum || p.datum;
+    const thuis = (w.thuis || p.wedstrijd_thuis || '').trim();
+    const uit = (w.uit || p.wedstrijd_uit || '').trim();
     if(!datum || (!thuis && !uit)) return;
     const ageHome = extractAge(thuis);
     const ageAway = extractAge(uit);

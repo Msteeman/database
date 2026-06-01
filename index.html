@@ -68,7 +68,13 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 
-  </head>
+    <script id="sh-intro-fallback">
+    setTimeout(function(){
+      var o=document.getElementById('intro-overlay');
+      if(o){o.classList.add('intro-gone');o.style.display='none';}
+    }, 4000);
+  </script>
+</head>
 <body>
 
 <!-- =================== CINEMATIC INTRO =================== -->

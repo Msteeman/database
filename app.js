@@ -5631,12 +5631,36 @@ function go(view){
       window.__shObsPrefill = null;
       setTimeout(() => {
         try {
-          if(typeof loadIntoForm === 'function'){
-            loadIntoForm(_op);
-            $('#report-title').textContent = 'Spelersrapport vanuit observatie';
+          // Direct velden zetten — betrouwbaarder dan loadIntoForm voor obs
+          const sv = (id, v) => { const el = document.getElementById(id); if(el && v != null) el.value = v; };
+          const naam = _op.naam || [_op.voornaam, _op.achternaam].filter(Boolean).join(' ') || '';
+          if(_op.voornaam || _op.naam) {
+            const parts = naam.split(/\s+/);
+            sv('f-voornaam', _op.voornaam || parts[0] || '');
+            sv('f-achternaam', _op.achternaam || parts.slice(1).join(' ') || '');
           }
+          sv('f-naam', naam);
+          sv('f-club', _op.club || '');
+          sv('f-positie', _op.positie || '');
+          sv('f-elftal', _op.elftal || '');
+          sv('f-rugnummer', _op.rugnummer || '');
+          sv('f-geboorte', _op.geboorte || '');
+          sv('f-methode', _op.methode || 'Live');
+          const w = _op.wedstrijd || {};
+          sv('f-w-datum', w.datum || _op.datum || '');
+          sv('f-w-thuis', w.thuis || '');
+          sv('f-w-uit', w.uit || '');
+          sv('f-w-leeftijd', w.leeftijd || _op.elftal || '');
+          const notitiesVal = _op.notities || _op.notities_raw || _op.opmerkingen || '';
+          sv('f-notities', notitiesVal);
+          sv('f-opmerkingen', notitiesVal);
+          // Titel
+          const titleEl = document.getElementById('report-title');
+          if(titleEl) titleEl.textContent = 'Spelersrapport — ' + (naam || 'observatie');
+          if(typeof toast === 'function') toast('Velden ingevuld vanuit observatie ✓');
+          if(typeof refreshPositionDropdowns === 'function') refreshPositionDropdowns();
         } catch(e){ console.warn('obs prefill error', e); }
-      }, 80);
+      }, 100);
     } else {
       // v70e: concept-banner opnieuw evalueren bij elke navigatie naar rapport
       setTimeout(() => { if(typeof window.__shTryRestore === 'function') window.__shTryRestore(); }, 50);
@@ -11301,12 +11325,18 @@ function renderElftallen(){
 
   const q = (input?.value || '').trim();
   _elfShowTeamTiles(players, resultsEl, q);
+  // Retry tot data beschikbaar is (Firestore laadt async)
   if(!players.length){
-    setTimeout(() => {
-      const _res = document.getElementById('elf-results');
-      const _inp = document.getElementById('elf-search-input');
-      if(_res) _elfShowTeamTiles(loadPlayers(), _res, (_inp?.value||'').trim());
-    }, 700);
+    [500, 1200, 2500].forEach(delay => {
+      setTimeout(() => {
+        if(currentView !== 'elftallen') return;
+        const _pl = loadPlayers();
+        if(!_pl.length) return;
+        const _res = document.getElementById('elf-results');
+        const _inp = document.getElementById('elf-search-input');
+        if(_res) _elfShowTeamTiles(_pl, _res, (_inp?.value||'').trim());
+      }, delay);
+    });
   }
 }
 

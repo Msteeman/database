@@ -10020,7 +10020,7 @@ const CMP_COLORS = [
   { c: '#fb7185', c2: '#ffadbb' }, // Roze
 ];
 const CMP_MAX = 6;
-const function cmpOverallScore(p){
+function cmpOverallScore(p){
   if(!p) return 0;
   const b = p.beoordelingen || {};
   const vals = CMP_CRITERIA.map(cr => {
@@ -10029,7 +10029,7 @@ const function cmpOverallScore(p){
     return (CMP_GRADE_VAL && CMP_GRADE_VAL[g]) ? CMP_GRADE_VAL[g] : 0;
   }).filter(v => v > 0);
   if(!vals.length) return 0;
-  return vals.reduce((a,b) => a+b, 0) / vals.length;
+  return vals.reduce((a,b2) => a+b2, 0) / vals.length;
 }
 function cmpGradeFromNum(score){
   if(score >= 3.5) return 'A';
@@ -10047,7 +10047,7 @@ function cmpColorFor(i){
   ];
   return COLORS[i % COLORS.length] || COLORS[0];
 }
-CMP_CRITERIA = [
+const CMP_CRITERIA = [
   { key: 'techniek_huidig',    label: 'Techniek',    short: 'Techn.' },
   { key: 'inzicht_huidig',     label: 'Inzicht',     short: 'Inzicht' },
   { key: 'grit_huidig',        label: 'GRIT',        short: 'GRIT' },

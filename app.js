@@ -10038,6 +10038,9 @@ function cmpGradeFromNum(score){
   if(score > 0)    return 'D';
   return null;
 }
+function cmpGradeNum(g){
+  return (CMP_GRADE_VAL && CMP_GRADE_VAL[g]) ? CMP_GRADE_VAL[g] : 0;
+}
 function cmpColorFor(i){
   const COLORS = [
     {c:'#3b82f6', bg:'rgba(59,130,246,.15)'},

@@ -3189,13 +3189,18 @@ function loadPlayers(){
       ].join('|');
       if(key && key !== '|'){
         if(seen.has(key)){
-          // Al een record — vervang alleen als huidige leeg is en nieuwe heeft notities
+          // Al een record — kopieer notities naar bestaand record als dat leeg is
           const existingIdx = seen.get(key);
           const existing = result[existingIdx];
-          const existingHasNotes = !!(existing && (existing.notities||'').trim());
-          const newHasNotes = !!(p.notities||'').trim();
+          const existingHasNotes = !!(existing && (existing.notities||existing.notities_raw||'').trim());
+          const newHasNotes = !!(p.notities||p.notities_raw||'').trim();
           if(!existingHasNotes && newHasNotes){
-            result[existingIdx] = p; // vervang lege door gevulde
+            // Behoud het bestaande id maar kopieer de notities
+            result[existingIdx] = Object.assign({}, existing, {
+              notities: p.notities || existing.notities || '',
+              notities_raw: p.notities_raw || existing.notities_raw || '',
+              opmerkingen: p.opmerkingen || existing.opmerkingen || ''
+            });
           }
           return;
         }
@@ -14132,24 +14137,11 @@ function renderDetailFullReport(p){
       <div class="detail-notes">${escapeHtml(p.wapen)}</div>
     </div>` : ''}
 
-    ${(()=>{
-      const _nt = (p.notities||p.notities_raw||p.opmerkingen||p.tekst||
-        (window.__shSnTekstMap && (window.__shSnTekstMap[p.id]||window.__shSnTekstMap['n:'+(p.naam||'').toLowerCase().trim()]))||'').trim();
-      return _nt ? `
+    ${p.notities ? `
     <div class="detail-section">
       <h4>Notities</h4>
-      <div class="detail-notes">${escapeHtml(_nt)}</div>
-      <div id="sh-debug-fields" style="margin-top:8px;font-size:10px;color:#666;background:#111;padding:6px;border-radius:4px;word-break:break-all;">
-        DEBUG — notities:${JSON.stringify(p.notities||'')} | raw:${JSON.stringify(p.notities_raw||'')} | opm:${JSON.stringify(p.opmerkingen||'')} | tekst:${JSON.stringify(p.tekst||'')}
-      </div>
-    </div>` : `
-    <div class="detail-section" style="border:1px dashed #a855f7;padding:10px;border-radius:8px;">
-      <h4 style="color:#a855f7;">Notities (leeg)</h4>
-      <div id="sh-debug-fields" style="font-size:10px;color:#94a3b8;word-break:break-all;">
-        notities:${JSON.stringify(p.notities||'')} | raw:${JSON.stringify(p.notities_raw||'')} | opm:${JSON.stringify(p.opmerkingen||'')} | tekst:${JSON.stringify(p.tekst||'')} | keys:${JSON.stringify(Object.keys(p).filter(k=>k.toLowerCase().includes('noti')||k.toLowerCase().includes('tekst')||k.toLowerCase().includes('opm')))}
-      </div>
-    </div>`;
-    })()}
+      <div class="detail-notes">${escapeHtml(p.notities)}</div>
+    </div>` : ''}
 
     <div class="detail-section">
       <h4>Context</h4>

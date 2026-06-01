@@ -11264,21 +11264,24 @@ function renderElftallen(){
   if(!resultsEl) return;
   if(chipsEl) chipsEl.style.display = 'none';
 
-  // Wire zoekbalk — altijd DOM opnieuw opvragen in doSearch (geen stale closure)
-  if(input && !input._elfWired){
-    input._elfWired = true;
-    _elfWireClubAC(input);
+  // Wire zoekbalk elke keer opnieuw (verwijder oude listener eerst)
+  if(input){
     const doSearch = () => {
       const _inp = document.getElementById('elf-search-input');
       const _res = document.getElementById('elf-results');
       if(_res) _elfShowTeamTiles(loadPlayers(), _res, (_inp?.value||'').trim());
     };
+    if(input._elfHandler) {
+      input.removeEventListener('input', input._elfHandler);
+      input.removeEventListener('keyup', input._elfHandler);
+    }
+    input._elfHandler = doSearch;
     input.addEventListener('input', doSearch);
     input.addEventListener('keyup', doSearch);
-    input.addEventListener('change', doSearch);
-    input.addEventListener('keydown', e => { if(e.key === 'Enter') doSearch(); });
+    _elfWireClubAC(input);
     const btn = document.getElementById('elf-search-btn');
-    if(btn){
+    if(btn && !btn._elfWired){
+      btn._elfWired = true;
       btn.textContent = 'Wis';
       btn.addEventListener('click', () => {
         const _inp = document.getElementById('elf-search-input');
@@ -13224,19 +13227,40 @@ function renderDetailObsOverview(p){
 
   const _toRap = document.getElementById('dtl-obs-to-rapport-top');
   if(_toRap) _toRap.addEventListener('click',()=>{
+    // Zoek programma-item voor extra wedstrijddata (thuis/uit/datum/leeftijd)
+    let _pThuis = wThuis, _pUit = wUit, _pDatum = wDatum, _pLft = (p.wedstrijd&&p.wedstrijd.leeftijd)||p.elftal||'';
+    if((!_pThuis || !_pUit || !_pDatum) && typeof programmaCache !== 'undefined'){
+      try {
+        const _pId = p.id || '';
+        for(const _prog of programmaCache){
+          if(!_prog || !Array.isArray(_prog.snelnotities)) continue;
+          for(const _sn of _prog.snelnotities){
+            if(_sn && _sn.player_id === _pId){
+              if(!_pDatum && _prog.datum) _pDatum = _prog.datum;
+              if(!_pThuis && _prog.thuis) _pThuis = _prog.thuis;
+              if(!_pUit && _prog.uit) _pUit = _prog.uit;
+              if(!_pLft && _prog.leeftijd) _pLft = _prog.leeftijd;
+              break;
+            }
+          }
+          if(_pThuis && _pUit && _pDatum) break;
+        }
+      } catch(_){}
+    }
     // Bouw prefill-object: obs-data als basis, zonder id (zodat nieuw rapport aangemaakt wordt)
+    const _notitiesTekst = tekst || p.notities || p.notities_raw || '';
     const _prefill = Object.assign({}, p, {
-      id: '',  // leeg = nieuw rapport
+      id: '',
       concept: true,
       rapport_type: '',
-      notities: tekst || p.notities || p.notities_raw || '',
-      opmerkingen: tekst || p.notities || p.notities_raw || '',
-      datum: wDatum || p.datum || p.wedstrijd_datum || '',
-      wedstrijd: { datum: wDatum, thuis: wThuis, uit: wUit, leeftijd: (p.wedstrijd&&p.wedstrijd.leeftijd)||p.elftal||'' }
+      notities: _notitiesTekst,
+      opmerkingen: _notitiesTekst,
+      datum: _pDatum || '',
+      wedstrijd: { datum: _pDatum, thuis: _pThuis, uit: _pUit, leeftijd: _pLft }
     });
     window.__shObsPrefill = _prefill;
     if(typeof go==='function') go('report');
-    if(typeof toast==='function') setTimeout(()=>toast('Velden ingevuld vanuit observatie — vul A/B/C/D scores in en sla op'),150);
+    if(typeof toast==='function') setTimeout(()=>toast('Velden ingevuld vanuit observatie — vul A/B/C/D scores in en sla op'),200);
   });
   window.scrollTo({top:0});
 }

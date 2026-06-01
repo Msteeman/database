@@ -5651,9 +5651,31 @@ function go(view){
           sv('f-w-thuis', w.thuis || '');
           sv('f-w-uit', w.uit || '');
           sv('f-w-leeftijd', w.leeftijd || _op.elftal || '');
-          const notitiesVal = _op.notities || _op.notities_raw || _op.opmerkingen || '';
-          sv('f-notities', notitiesVal);
-          sv('f-opmerkingen', notitiesVal);
+          // Parse obs-criteria naar rapport tekstvelden
+          const _rawTekst = _op.notities || _op.notities_raw || _op.opmerkingen || '';
+          const _critMap = {
+            techniek:      'f-tekst-techniek',
+            inzicht:       'f-tekst-inzicht',
+            mentaliteit:   'f-tekst-grit',
+            explosiviteit: 'f-tekst-explosiviteit',
+            sprinten:      'f-tekst-sprinten',
+            duelleren:     'f-tekst-duelleren',
+            wendbaarheid:  'f-tekst-wendbaarheid',
+            algemeen:      'f-opmerkingen'
+          };
+          const _overig = [];
+          if(_rawTekst){
+            _rawTekst.split('\n').forEach(lijn => {
+              const ci = lijn.indexOf(':');
+              if(ci < 0){ if(lijn.trim()) _overig.push(lijn.trim()); return; }
+              const key = lijn.slice(0,ci).trim().toLowerCase();
+              const val = lijn.slice(ci+1).trim();
+              if(!val || val.toLowerCase()==='nvt') return;
+              if(_critMap[key]) sv(_critMap[key], val);
+              else _overig.push(lijn.trim());
+            });
+          }
+          if(_overig.length) sv('f-opmerkingen', (document.getElementById('f-opmerkingen')?.value ? document.getElementById('f-opmerkingen').value + '\n' : '') + _overig.join('\n'));
           // Titel
           const titleEl = document.getElementById('report-title');
           if(titleEl) titleEl.textContent = 'Spelersrapport — ' + (naam || 'observatie');
@@ -11308,7 +11330,7 @@ function renderElftallen(){
     input._elfHandler = doSearch;
     input.addEventListener('input', doSearch);
     input.addEventListener('keyup', doSearch);
-    _elfWireClubAC(input);
+    // _elfWireClubAC: niet gebruiken (functie bestaat niet)
     const btn = document.getElementById('elf-search-btn');
     if(btn && !btn._elfWired){
       btn._elfWired = true;

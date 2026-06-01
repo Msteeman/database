@@ -20781,6 +20781,17 @@ function switchMatchesSubview(sub){
   if(sub === 'wedstrijden' && typeof renderMatchReports === 'function') renderMatchReports();
 }
 window.switchMatchesSubview = switchMatchesSubview;
+window.__shDebugSpeler = function(naam){
+  const p = (typeof playersCache !== 'undefined' ? playersCache : []).find(x => x && x.naam === naam);
+  if(!p){ console.log('NIET GEVONDEN in playersCache'); return; }
+  console.log('Fields:', Object.keys(p).join(', '));
+  console.log('notities:', JSON.stringify(p.notities||''));
+  console.log('notities_raw:', JSON.stringify(p.notities_raw||''));
+  console.log('tekst:', JSON.stringify(p.tekst||''));
+  console.log('opmerkingen:', JSON.stringify(p.opmerkingen||''));
+  console.log('id:', p.id);
+  console.log('rapport_type:', p.rapport_type);
+};
 
 // ── Intro overlay dismiss ────────────────────────────────────────────────────
 (function setupIntro(){

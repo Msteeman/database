@@ -15260,12 +15260,15 @@ function renderMatches(){
         : `<span style="font-size:10px;background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25);border-radius:4px;padding:1px 6px;">Rapport</span>`;
       const conceptBadge = isConcept ? `<span class="mdr-concept-badge">Concept</span>` : `<span style="font-size:10px;color:var(--text-3);">✓ Ingediend</span>`;
       const submitBtn = isConcept ? `<button type="button" class="mdr-submit" data-mdr-submit="${escapeHtml(pl.id)}" title="Direct indienen">→ Indienen</button>` : '';
+      const _plNotities = (pl.notities_raw || pl.notities || pl.opmerkingen || '').trim();
+      const _plNoteSnippet = _plNotities ? escapeHtml(_plNotities.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' · ').trim().slice(0,80)) + (_plNotities.length > 80 ? '…' : '') : '';
       return `
         <button type="button" class="match-dropdown-row" data-player-id="${escapeHtml(pl.id)}">
           <span class="match-dropdown-avatar">${escapeHtml(initials || '?')}</span>
           <span class="match-dropdown-info">
             <span class="match-dropdown-name">${escapeHtml(pl.naam || '—')}${conceptBadge}</span>
             ${sub ? `<span class="match-dropdown-pos">${escapeHtml(sub)}</span>` : ''}
+            ${_plNoteSnippet ? `<span style="font-size:12px;color:var(--text-2,#94a3b8);display:block;margin-top:2px;line-height:1.4;">${_plNoteSnippet}</span>` : ''}
           </span>
           <span class="match-dropdown-grades" aria-label="Huidig en potentieel niveau">
             <span class="grade ${hg}" title="Huidig niveau">${escapeHtml(pl.huidig_niveau || '-')}</span>

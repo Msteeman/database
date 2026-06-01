@@ -13380,6 +13380,16 @@ function renderDetailObsCard(p){
       }
     } catch(_){}
   }
+  // Zoek in andere records met zelfde naam (als dit record leeg is)
+  if(!tekst && typeof playersCache !== 'undefined'){
+    const _pNm2 = (p.naam||'').toLowerCase().trim();
+    for(const _oth of playersCache){
+      if(!_oth || _oth.id === p.id) continue;
+      if((_oth.naam||'').toLowerCase().trim() !== _pNm2) continue;
+      const _otekst = (_oth.notities_raw || _oth.notities || _oth.opmerkingen || '').trim();
+      if(_otekst){ tekst = _otekst; break; }
+    }
+  }
   // Zoek in window.__shSnTekstMap (gevuld vanuit wedstrijd-popup)
   if(!tekst && window.__shSnTekstMap){
     tekst = window.__shSnTekstMap[p.id] ||
@@ -13561,7 +13571,9 @@ function renderDetailStrengthsWeaknesses(p){
 function renderDetailPizza(p){
   const wrap = $('#dtl-pizza');
   if(!wrap) return;
-  const b = p.beoordelingen || {};
+  const b = (typeof _shParseObsNotitiesToBeoordelingen === 'function')
+    ? _shParseObsNotitiesToBeoordelingen(p)
+    : (p.beoordelingen || {});
   const N = CMP_CRITERIA.length;
   const W = 460, H = 460;
   let canvas = wrap.querySelector('.dtl-fm-radar');
@@ -13892,10 +13904,50 @@ function renderDetailTrend(p){
     </div>`;
 }
 
+// Parse obs-notities tekst naar criterium-tekst object
+function _shParseObsNotitiesToBeoordelingen(p){
+  const b = p.beoordelingen ? Object.assign({}, p.beoordelingen) : {};
+  // Zoek de notities-tekst (obs formaat: "techniek: text\ninzicht: text\n...")
+  let tekst = (p.notities_raw || p.notities || p.opmerkingen || '').trim();
+  // Zoek ook in andere records met zelfde naam als dit record leeg is
+  if(!tekst && typeof playersCache !== 'undefined'){
+    const pNm = (p.naam||'').toLowerCase().trim();
+    for(const oth of playersCache){
+      if(!oth || oth.id === p.id) continue;
+      if((oth.naam||'').toLowerCase().trim() !== pNm) continue;
+      const ot = (oth.notities_raw || oth.notities || oth.opmerkingen || '').trim();
+      if(ot){ tekst = ot; break; }
+    }
+  }
+  if(!tekst) return b;
+  // Mapping van obs-term naar beoordelingen-tekst-sleutel
+  const termMap = {
+    techniek:      'techniek_tekst',
+    inzicht:       'inzicht_tekst',
+    mentaliteit:   'grit_tekst',
+    explosiviteit: 'explosiviteit_tekst',
+    sprinten:      'sprinten_tekst',
+    duelleren:     'duelleren_tekst',
+    wendbaarheid:  'wendbaarheid_tekst',
+    algemeen:      'algemeen_tekst'
+  };
+  tekst.split('\n').forEach(function(lijn){
+    const ci = lijn.indexOf(':');
+    if(ci < 0) return;
+    const term = lijn.slice(0, ci).trim().toLowerCase();
+    const val  = lijn.slice(ci+1).trim();
+    if(val && termMap[term] && !b[termMap[term]]){
+      b[termMap[term]] = val;
+    }
+  });
+  return b;
+}
+
 function renderDetailBars(p){
   const wrap = $('#dtl-bars');
   if(!wrap) return;
-  const b = p.beoordelingen || {};
+  // Voor obs: parse notities-tekst naar beoordelingen-tekst
+  const b = _shParseObsNotitiesToBeoordelingen(p);
   const GRAD = {
     A:'linear-gradient(135deg,#16a34a,#22c55e)',
     B:'linear-gradient(135deg,#1d4ed8,#3b82f6)',

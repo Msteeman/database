@@ -15030,7 +15030,10 @@ function renderMatches(){
         if(!_d || isNaN(_d.getTime())) return;
         if(_d > _dNow || _d < _dCut) return;
         // s35dj: programma-item pas zichtbaar in Wedstrijden nadat wedstrijd op slot is
-        if(typeof _shIsMatchLocked === 'function' && !_shIsMatchLocked(p)) return;
+        // s35dj-fix: items zonder tijd (geen matchwindow) tonen als datum in verleden
+        const _isLockedOrPast = (typeof _shIsMatchLocked === 'function' && _shIsMatchLocked(p))
+          || (!p.tijd && _d <= _dNow);
+        if(!_isLockedOrPast) return;
         const _pm = { datum: p.datum, thuis: p.thuis, uit: p.uit, age: p.leeftijd||'', kind:'programma', progId:p.id, id:p.id, players:[] };
         const _k = _shMatchKey(_pm);
         if(!_existK.has(_k)){ matches.push(_pm); _existK.add(_k); }

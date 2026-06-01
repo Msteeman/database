@@ -3173,21 +3173,34 @@ async function syncAllAddressesFromAdresboek(){
 window.syncAllAddressesFromAdresboek = syncAllAddressesFromAdresboek;
 
 function loadPlayers(){
-  // Dedupliceer obs: per naam+wedstrijd_datum+wedstrijd_thuis: alleen de meest recente
-  const seen = new Map();
+  // Dedupliceer obs EN concept-ingediende records op naam+datum
+  // Voorkeur: record MET notities boven leeg record (ook al is leeg recenter)
+  const seen = new Map(); // key -> index in result
   const result = [];
-  // Eerst sorteren op datum desc zodat de meest recente als eerste wordt gezien
   const sorted = playersCache.slice().sort((a,b) => (b.modified||b.created||0) - (a.modified||a.created||0));
   sorted.forEach(p => {
-    if(p && p.rapport_type === 'observatie'){
+    if(!p) return;
+    const isObs = p.rapport_type === 'observatie';
+    const isConceptSubmitted = !p.rapport_type && !!p.programma_link;
+    if(isObs || isConceptSubmitted){
       const key = [
         (p.naam||'').toLowerCase().trim(),
-        (p.wedstrijd_datum||p.datum||(p.wedstrijd&&p.wedstrijd.datum)||''),
-        (p.wedstrijd_thuis||(p.wedstrijd&&p.wedstrijd.thuis)||'').toLowerCase().trim(),
-        (p.wedstrijd_uit||(p.wedstrijd&&p.wedstrijd.uit)||'').toLowerCase().trim()
+        (p.wedstrijd_datum||p.datum||(p.wedstrijd&&p.wedstrijd.datum)||(p.rapport&&p.rapport.wedstrijd&&p.rapport.wedstrijd.datum)||'')
       ].join('|');
-      if(seen.has(key)) return; // skip duplicaat
-      seen.set(key, true);
+      if(key && key !== '|'){
+        if(seen.has(key)){
+          // Al een record — vervang alleen als huidige leeg is en nieuwe heeft notities
+          const existingIdx = seen.get(key);
+          const existing = result[existingIdx];
+          const existingHasNotes = !!(existing && (existing.notities||'').trim());
+          const newHasNotes = !!(p.notities||'').trim();
+          if(!existingHasNotes && newHasNotes){
+            result[existingIdx] = p; // vervang lege door gevulde
+          }
+          return;
+        }
+        seen.set(key, result.length);
+      }
     }
     result.push(p);
   });
@@ -13124,6 +13137,21 @@ function renderDetailOverview(p){
     <div style="height:16px;"></div>
   `;
   renderDetailKPIs(vp);
+  // TIJDELIJKE DATABALK - toont altijd ruwe veldwaarden
+  (function(){
+    try {
+      const _el = document.createElement('div');
+      _el.style.cssText = 'background:#1a0a2e;border:2px solid #a855f7;padding:10px 14px;margin:8px 0;font-size:11px;font-family:monospace;border-radius:8px;color:#e2d0ff;word-break:break-all;z-index:999;position:relative;';
+      const _nr = (p.notities_raw||'').slice(0,80)||'-';
+      const _no = (p.notities||'').slice(0,80)||'-';
+      const _oo = (p.opmerkingen||'').slice(0,80)||'-';
+      const _rt = p.rapport_type||'-';
+      const _da = p.datum||p.wedstrijd_datum||'-';
+      _el.innerHTML = '<b style="color:#c084fc">DATA:</b> rapport_type='+escapeHtml(_rt)+' | datum='+escapeHtml(_da)+'<br>notities_raw: '+escapeHtml(_nr)+'<br>notities: '+escapeHtml(_no)+'<br>opmerkingen: '+escapeHtml(_oo);
+      const _body = document.getElementById('player-view-body');
+      if(_body) _body.prepend(_el);
+    } catch(_){}
+  })();
   renderDetailSummary(vp);
   renderDetailObsCard(p);
   // DIRECTE notities-fallback: toont altijd als er notities zijn maar renderDetailSummary leeg blijft

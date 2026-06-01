@@ -12971,6 +12971,26 @@ function renderPlayer(){
   renderDetailOverview(p);
 }
 
+function _shRenderNotitiesBlock(p){
+  const nt = (p.notities_raw||p.notities||p.opmerkingen||'').trim();
+  if(!nt) return '';
+  const lines = nt.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+  const hasCrit = lines.some(function(l){return /^[a-z]+:/i.test(l);});
+  if(!hasCrit){
+    return '<div class="detail-section"><h4>Scout-notities</h4><div class="detail-notes">'+escapeHtml(nt)+'</div></div>';
+  }
+  var rows = '';
+  lines.forEach(function(l){
+    var ci = l.indexOf(':');
+    if(ci < 0){ rows += '<div class="detail-notes" style="margin:4px 0;">'+escapeHtml(l)+'</div>'; return; }
+    var key = l.slice(0,ci).trim();
+    var val = l.slice(ci+1).trim();
+    if(!val || val.toLowerCase() === 'nvt') return;
+    rows += '<div style="margin:6px 0;"><span style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.7px;">'+escapeHtml(key)+'</span><div class="detail-notes" style="margin-top:2px;">'+escapeHtml(val)+'</div></div>';
+  });
+  if(!rows) return '';
+  return '<div class="detail-section"><h4>Scout-notities</h4>'+rows+'</div>';
+}
 function renderDetailOverview(p){
   const meta = [positionLabel(p.positie), p.club, p.elftal||deriveElftalFromReport(p)].filter(Boolean).join(' · ');
   const backLabel = previousViewBeforePlayer === 'compare' ? 'Terug naar vergelijken'
@@ -14164,11 +14184,7 @@ function renderDetailFullReport(p){
       <div class="detail-notes">${escapeHtml(p.wapen)}</div>
     </div>` : ''}
 
-    ${p.notities ? `
-    <div class="detail-section">
-      <h4>Notities</h4>
-      <div class="detail-notes">${escapeHtml(p.notities)}</div>
-    </div>` : ''}
+    ${_shRenderNotitiesBlock(p)}
 
     <div class="detail-section">
       <h4>Context</h4>

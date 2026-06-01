@@ -12964,6 +12964,150 @@ function openDetail(id, opts){
   go('player');
 }
 
+// ── Observatie-profielpagina (eigen layout, geen rapport-secties) ──────────────
+function renderDetailObsOverview(p){
+  const _wd = p.wedstrijd || {};
+  const wDatum = (p.wedstrijd_datum || _wd.datum || p.datum || '').trim();
+  const wThuis = (p.wedstrijd_thuis || _wd.thuis || '').trim();
+  const wUit   = (p.wedstrijd_uit   || _wd.uit   || '').trim();
+
+  // Haal tekst op (met alle fallbacks)
+  let tekst = (p.notities_raw || p.notities || p.opmerkingen || '').trim();
+  if(!tekst && typeof programmaCache !== 'undefined'){
+    try {
+      const pId = p.id||'', pNm=(p.naam||'').toLowerCase().trim();
+      outer: for(const prog of programmaCache){
+        if(!prog||!Array.isArray(prog.snelnotities)) continue;
+        for(const sn of prog.snelnotities){
+          if(!sn) continue;
+          const hit=(pId&&(sn.player_id===pId||sn.__convertedToPlayerId===pId))||(pNm&&(sn.naam||'').toLowerCase().trim()===pNm);
+          if(hit&&sn.tekst){tekst=sn.tekst.trim();break outer;}
+        }
+      }
+    }catch(_){}
+  }
+  if(!tekst&&window.__shSnTekstMap){
+    tekst=window.__shSnTekstMap[p.id]||window.__shSnTekstMap['n:'+(p.naam||'').toLowerCase().trim()]||'';
+  }
+
+  // Parse criteria
+  const _LABELS={techniek:'Techniek',inzicht:'Inzicht',mentaliteit:'Mentaliteit',
+    explosiviteit:'Explosiviteit',sprinten:'Sprinten',duelleren:'Duelleren',
+    wendbaarheid:'Wendbaarheid',algemeen:'Algemeen'};
+  const rows=[], overig=[];
+  if(tekst){
+    tekst.split('\n').forEach(function(l){
+      const ci=l.indexOf(':');
+      if(ci<0){if(l.trim())overig.push(l.trim());return;}
+      const key=l.slice(0,ci).trim().toLowerCase(), val=l.slice(ci+1).trim();
+      if(!val||val.toLowerCase()==='nvt') return;
+      rows.push({label:_LABELS[key]||(key.charAt(0).toUpperCase()+key.slice(1)), val});
+    });
+  }
+
+  const meta=[positionLabel(p.positie),p.club,p.elftal||deriveElftalFromReport(p)].filter(Boolean).join(' · ');
+  const datumStr=wDatum?formatDate(wDatum):'';
+  const wstrStr=(wThuis&&wUit)?escapeHtml(wThuis)+' vs '+escapeHtml(wUit):'';
+  const wstrSub=[datumStr,wstrStr].filter(Boolean).join(' · ');
+
+  const rowsHtml=rows.map(function(r){
+    return `<div class="obs-crit-row">
+      <div class="obs-crit-label">${escapeHtml(r.label)}</div>
+      <div class="obs-crit-val">${escapeHtml(r.val)}</div>
+    </div>`;
+  }).join('');
+
+  const overigHtml=overig.length
+    ?`<div class="obs-overig">${escapeHtml(overig.join(' '))}</div>`:'';
+
+  const inCmp = cmpSelectedIds.includes(p.id);
+  const cmpBtn = inCmp
+    ?`<button class="btn btn-sm dtl-cmp-btn dtl-cmp-active" id="dtl-cmp-toggle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:middle;margin-right:3px;"><polyline points="20 6 9 17 4 12"/></svg>In vergelijking</button>`
+    :`<button class="btn btn-sm dtl-cmp-btn" id="dtl-cmp-toggle"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:3px;"><path d="M12 5v14M5 12l7-7 7 7"/></svg>+ Vergelijk</button>`;
+
+  $('#player-view-body').innerHTML = `
+    <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+      <button class="btn btn-sm" id="dtl-back-prev">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><polyline points="15 18 9 12 15 6"/></svg>
+        Terug naar spelers
+      </button>
+      ${cmpBtn}
+      <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+        <button class="btn btn-sm" id="dtl-obs-to-rapport-top" style="background:rgba(168,85,247,.15);color:#c084fc;border-color:rgba(168,85,247,.4);font-weight:600;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Maak spelersrapport
+        </button>
+        <button class="btn btn-sm dtl-icon-btn" id="dtl-del-obs" title="Verwijder observatie" style="color:#ef4444;border-color:rgba(239,68,68,.3);">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Paarse observatie-header -->
+    <div class="obs-profile-header">
+      <div class="obs-profile-badge">OBS</div>
+      <div class="obs-profile-avatar">${initials(p.naam)}</div>
+      <div class="obs-profile-info">
+        <div class="obs-profile-name">${escapeHtml(p.naam||'—')}</div>
+        <div class="obs-profile-meta">${escapeHtml(meta)}</div>
+        ${p.rugnummer?`<div class="obs-profile-rug">#${escapeHtml(p.rugnummer)}</div>`:''}
+      </div>
+    </div>
+
+    <!-- Wedstrijd context -->
+    ${wstrSub?`<div class="obs-wstr-context">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span>${wstrSub}</span>
+    </div>`:''}
+
+    <!-- Criteria kaart -->
+    <div class="card obs-criteria-card">
+      <div class="obs-criteria-header">
+        <span class="obs-dot"></span>
+        <span>Scout-observatie</span>
+        <span class="obs-criteria-count">${rows.length} criteria</span>
+      </div>
+      <div class="obs-criteria-body">
+        ${rowsHtml||'<div style="padding:16px;color:var(--text-3);font-size:13px;">Geen notities gevonden.</div>'}
+        ${overigHtml}
+      </div>
+    </div>
+  `;
+
+  // Event listeners
+  document.getElementById('dtl-back-prev')?.addEventListener('click', ()=>go(previousViewBeforePlayer||'database'));
+  document.getElementById('dtl-del-obs')?.addEventListener('click', async ()=>{
+    if(!confirm('Observatie van '+p.naam+' verwijderen?')) return;
+    try{ await deletePlayer(p.id); go(previousViewBeforePlayer||'database'); if(typeof toast==='function') toast('Observatie verwijderd'); }
+    catch(_){ if(typeof toast==='function') toast('Verwijderen mislukt',true); }
+  });
+  const _cmpT = document.getElementById('dtl-cmp-toggle');
+  if(_cmpT) _cmpT.addEventListener('click',()=>{
+    if(cmpSelectedIds.includes(p.id)) cmpSelectedIds=cmpSelectedIds.filter(id=>id!==p.id);
+    else if(cmpSelectedIds.length<CMP_MAX) cmpSelectedIds.push(p.id);
+    shUpdateCmpUI(); renderDetailObsOverview(p);
+  });
+
+  const _toRap = document.getElementById('dtl-obs-to-rapport-top');
+  if(_toRap) _toRap.addEventListener('click',()=>{
+    if(typeof go==='function') go('report');
+    setTimeout(()=>{
+      try{
+        const sv=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
+        sv('f-naam',p.naam||''); sv('f-voornaam',p.voornaam||''); sv('f-achternaam',p.achternaam||'');
+        sv('f-club',p.club||''); sv('f-positie',p.positie||''); sv('f-elftal',p.elftal||'');
+        sv('f-rugnummer',p.rugnummer||''); sv('f-datum',wDatum||'');
+        sv('f-thuis',wThuis||''); sv('f-uit',wUit||'');
+        if(tekst){const oa=document.getElementById('f-opmerkingen');if(oa)oa.value=tekst;}
+        if(typeof toast==='function') toast('Formulier ingevuld vanuit observatie — vul scores aan en sla op');
+      }catch(_){}
+    },200);
+  });
+  window.scrollTo({top:0});
+}
+window.renderDetailObsOverview = renderDetailObsOverview;
+
+
 function renderPlayer(){
   const players = loadPlayers();
   const p = players.find(x=>x.id===currentPlayerId);
@@ -12971,7 +13115,8 @@ function renderPlayer(){
     $('#player-view-body').innerHTML = '<div style="padding:40px;text-align:center;color:var(--text-3);">Speler niet gevonden.</div>';
     return;
   }
-  renderDetailOverview(p);
+  if(p.rapport_type === 'observatie') renderDetailObsOverview(p);
+  else renderDetailOverview(p);
 }
 
 function _shRenderNotitiesBlock(p){

@@ -8505,21 +8505,31 @@ function renderDashboard(){
   empty.style.display = 'none';
   content.style.display = 'block';
 
-  const recent = [...players].sort((a,b)=> new Date(b.datum||0) - new Date(a.datum||0)).slice(0,6);
+  // Obs: gebruik wedstrijd datum als fallback voor sortering
+  const _getPlayerDate = p => p.datum || p.wedstrijd_datum || (p.wedstrijd&&p.wedstrijd.datum) || '';
+  const recent = [...players].sort((a,b)=> new Date(_getPlayerDate(b)||0) - new Date(_getPlayerDate(a)||0)).slice(0,8);
   const list = $('#recent-list');
-  list.innerHTML = recent.map(p => `
-    <div class="recent-item sh-tilt-card" data-id="${p.id}">
-      <div class="recent-avatar">${initials(p.naam)}</div>
-      <div class="recent-info">
-        <div class="recent-name">${escapeHtml(p.naam)}</div>
-        <div class="recent-meta">${escapeHtml(positionLabel(p.positie))} · ${formatDate(p.datum)}</div>
-      </div>
-      <div class="recent-grades">
-        <span class="grade ${p.huidig_niveau||'D'}">${p.huidig_niveau||'-'}</span>
-        <span class="grade outline ${p.potentieel_niveau||'D'}">${p.potentieel_niveau||'-'}</span>
-      </div>
-    </div>
-  `).join('');
+  list.innerHTML = recent.map(p => {
+    const isObs = p.rapport_type === 'observatie';
+    const pDatum = _getPlayerDate(p);
+    const wd = p.wedstrijd || {};
+    const wstrLabel = isObs && wd.thuis && wd.uit ? escapeHtml(wd.thuis)+' – '+escapeHtml(wd.uit) : '';
+    const metaStr = [escapeHtml(positionLabel(p.positie)||''), pDatum ? formatDate(pDatum) : ''].filter(Boolean).join(' · ');
+    return '<div class="recent-item sh-tilt-card'+(isObs?' recent-item-obs':'')+'" data-id="'+p.id+'">'
+      +'<div class="recent-avatar'+(isObs?' avatar-obs':'')+'">' +initials(p.naam)+'</div>'
+      +'<div class="recent-info">'
+        +'<div class="recent-name">'+escapeHtml(p.naam)+(isObs?'<span class="db-obs-badge" style="margin-left:6px;">OBS</span>':'')+'</div>'
+        +'<div class="recent-meta">'+metaStr+'</div>'
+        +(wstrLabel?'<div class="recent-wstr">'+wstrLabel+'</div>':'')
+      +'</div>'
+      +'<div class="recent-grades">'
+        +(isObs
+          ? '<span style="font-size:11px;color:#a855f7;font-style:italic;">observatie</span>'
+          : '<span class="grade '+(p.huidig_niveau||'D')+'">'+(p.huidig_niveau||'-')+'</span><span class="grade outline '+(p.potentieel_niveau||'D')+'">'+(p.potentieel_niveau||'-')+'</span>'
+        )
+      +'</div>'
+    +'</div>';
+  }).join('');
   $$('.recent-item', list).forEach(el=>{
     el.addEventListener('click', ()=> openDetail(el.dataset.id));
   });
@@ -9564,7 +9574,28 @@ function buildDbPaginator(totalItems, page, pageSize, position){
 function applyFilters(){
   const allPlayers = loadPlayers();
   // Concept-records nooit tonen in spelersdatabase — alleen na indienen (concept:false)
-  const players = allPlayers.filter(p => !p.concept);
+  let players = allPlayers.filter(p => !p.concept);
+  // Verrijk obs-spelers met datum uit programmaCache als datum leeg is
+  if(typeof programmaCache !== 'undefined'){
+    players = players.map(p => {
+      if(p.rapport_type !== 'observatie') return p;
+      if(p.datum || p.wedstrijd_datum || (p.wedstrijd && p.wedstrijd.datum)) return p;
+      // Zoek in programmaCache op player_id
+      for(const prog of programmaCache){
+        if(!prog || !Array.isArray(prog.snelnotities)) continue;
+        for(const sn of prog.snelnotities){
+          if(sn && sn.player_id === p.id && prog.datum){
+            return Object.assign({}, p, {
+              datum: prog.datum,
+              wedstrijd_datum: prog.datum,
+              wedstrijd: Object.assign({thuis:prog.thuis||'',uit:prog.uit||'',datum:prog.datum,leeftijd:prog.leeftijd||''}, p.wedstrijd||{})
+            });
+          }
+        }
+      }
+      return p;
+    });
+  }
   $('#db-count').textContent = `${players.length} speler${players.length===1?'':'s'}`;
   const q  = $('#filter-search').value.trim().toLowerCase();
   const fp = $('#filter-position').value;

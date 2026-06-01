@@ -10720,3 +10720,6 @@ tr.db-row-obs td:first-child {
   font-size:10.5px;color:#a855f7;font-style:italic;
   background:rgba(168,85,247,.1);border-radius:4px;padding:1px 6px;
 }
+
+.recent-item-obs{ border-left:2px solid rgba(168,85,247,.5) !important; background:rgba(168,85,247,.04); }
+.recent-wstr{ font-size:10.5px;color:var(--text-3);margin-top:1px; }

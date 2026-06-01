@@ -1,6 +1,6 @@
 /* Scouting Platform — Service Worker
    Bump CACHE_VERSION whenever you ship a new index.html so users get the latest. */
-const CACHE_VERSION = 'sh-v156-debug-fn-dedup-merge-fix-debug-notities-notities-aggregated-notities-dropdown-notities-in-wedstrijden-notities-fix-databalk';
+const CACHE_VERSION = 'sh-v157-cmp-functies-fix-debug-fn-dedup-merge-fix-debug-notities-notities-aggregated-notities-dropdown-notities-in-wedstrijden-notities-fix-databalk';
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-rt`;
 

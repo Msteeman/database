@@ -10020,7 +10020,34 @@ const CMP_COLORS = [
   { c: '#fb7185', c2: '#ffadbb' }, // Roze
 ];
 const CMP_MAX = 6;
-const CMP_CRITERIA = [
+const function cmpOverallScore(p){
+  if(!p) return 0;
+  const b = p.beoordelingen || {};
+  const vals = CMP_CRITERIA.map(cr => {
+    let g = b[cr.key];
+    if(!g && cr.key === 'grit_huidig') g = b.drit_huidig;
+    return (CMP_GRADE_VAL && CMP_GRADE_VAL[g]) ? CMP_GRADE_VAL[g] : 0;
+  }).filter(v => v > 0);
+  if(!vals.length) return 0;
+  return vals.reduce((a,b) => a+b, 0) / vals.length;
+}
+function cmpGradeFromNum(score){
+  if(score >= 3.5) return 'A';
+  if(score >= 2.5) return 'B';
+  if(score >= 1.5) return 'C';
+  if(score > 0)    return 'D';
+  return null;
+}
+function cmpColorFor(i){
+  const COLORS = [
+    {c:'#3b82f6', bg:'rgba(59,130,246,.15)'},
+    {c:'#22c55e', bg:'rgba(34,197,94,.15)'},
+    {c:'#f59e0b', bg:'rgba(245,158,11,.15)'},
+    {c:'#a855f7', bg:'rgba(168,85,247,.15)'},
+  ];
+  return COLORS[i % COLORS.length] || COLORS[0];
+}
+CMP_CRITERIA = [
   { key: 'techniek_huidig',    label: 'Techniek',    short: 'Techn.' },
   { key: 'inzicht_huidig',     label: 'Inzicht',     short: 'Inzicht' },
   { key: 'grit_huidig',        label: 'GRIT',        short: 'GRIT' },

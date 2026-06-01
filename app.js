@@ -5624,8 +5624,17 @@ function go(view){
   if(view === 'pitch')     renderPitch();
   if(view === 'report')    {
     resetReportForm();
-    // v70e: concept-banner opnieuw evalueren bij elke navigatie naar rapport
-    setTimeout(() => { if(typeof window.__shTryRestore === 'function') window.__shTryRestore(); }, 50);
+    // Obs-prefill: als vanuit observatie naar rapport gegaan
+    if(window.__shObsPrefill){
+      const _op = window.__shObsPrefill;
+      window.__shObsPrefill = null;
+      setTimeout(() => {
+        try { if(typeof loadIntoForm === 'function') loadIntoForm(_op); } catch(_){}
+      }, 30);
+    } else {
+      // v70e: concept-banner opnieuw evalueren bij elke navigatie naar rapport
+      setTimeout(() => { if(typeof window.__shTryRestore === 'function') window.__shTryRestore(); }, 50);
+    }
   }
   if(view === 'contacts')  renderContacts();
   if(view === 'programma') renderProgramma();
@@ -11255,26 +11264,40 @@ function renderElftallen(){
   if(!resultsEl) return;
   if(chipsEl) chipsEl.style.display = 'none';
 
-  // Wire zoekbalk altijd opnieuw (idempotent via flag op element)
+  // Wire zoekbalk — altijd DOM opnieuw opvragen in doSearch (geen stale closure)
   if(input && !input._elfWired){
     input._elfWired = true;
     _elfWireClubAC(input);
-    const doSearch = () => _elfShowTeamTiles(loadPlayers(), resultsEl, input.value.trim());
+    const doSearch = () => {
+      const _inp = document.getElementById('elf-search-input');
+      const _res = document.getElementById('elf-results');
+      if(_res) _elfShowTeamTiles(loadPlayers(), _res, (_inp?.value||'').trim());
+    };
     input.addEventListener('input', doSearch);
+    input.addEventListener('keyup', doSearch);
     input.addEventListener('change', doSearch);
     input.addEventListener('keydown', e => { if(e.key === 'Enter') doSearch(); });
     const btn = document.getElementById('elf-search-btn');
     if(btn){
       btn.textContent = 'Wis';
-      btn.addEventListener('click', () => { input.value = ''; _elfShowTeamTiles(loadPlayers(), resultsEl, ''); input.focus(); });
+      btn.addEventListener('click', () => {
+        const _inp = document.getElementById('elf-search-input');
+        const _res = document.getElementById('elf-results');
+        if(_inp) _inp.value = '';
+        if(_res) _elfShowTeamTiles(loadPlayers(), _res, '');
+        if(_inp) _inp.focus();
+      });
     }
   }
 
   const q = (input?.value || '').trim();
-  // Altijd tonen: ook bij lege cache opnieuw proberen na korte delay
   _elfShowTeamTiles(players, resultsEl, q);
   if(!players.length){
-    setTimeout(() => _elfShowTeamTiles(loadPlayers(), resultsEl, (input?.value||'').trim()), 600);
+    setTimeout(() => {
+      const _res = document.getElementById('elf-results');
+      const _inp = document.getElementById('elf-search-input');
+      if(_res) _elfShowTeamTiles(loadPlayers(), _res, (_inp?.value||'').trim());
+    }, 700);
   }
 }
 
@@ -13201,18 +13224,19 @@ function renderDetailObsOverview(p){
 
   const _toRap = document.getElementById('dtl-obs-to-rapport-top');
   if(_toRap) _toRap.addEventListener('click',()=>{
+    // Bouw prefill-object: obs-data als basis, zonder id (zodat nieuw rapport aangemaakt wordt)
+    const _prefill = Object.assign({}, p, {
+      id: '',  // leeg = nieuw rapport
+      concept: true,
+      rapport_type: '',
+      notities: tekst || p.notities || p.notities_raw || '',
+      opmerkingen: tekst || p.notities || p.notities_raw || '',
+      datum: wDatum || p.datum || p.wedstrijd_datum || '',
+      wedstrijd: { datum: wDatum, thuis: wThuis, uit: wUit, leeftijd: (p.wedstrijd&&p.wedstrijd.leeftijd)||p.elftal||'' }
+    });
+    window.__shObsPrefill = _prefill;
     if(typeof go==='function') go('report');
-    setTimeout(()=>{
-      try{
-        const sv=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.value=v;};
-        sv('f-naam',p.naam||''); sv('f-voornaam',p.voornaam||''); sv('f-achternaam',p.achternaam||'');
-        sv('f-club',p.club||''); sv('f-positie',p.positie||''); sv('f-elftal',p.elftal||'');
-        sv('f-rugnummer',p.rugnummer||''); sv('f-datum',wDatum||'');
-        sv('f-thuis',wThuis||''); sv('f-uit',wUit||'');
-        if(tekst){const oa=document.getElementById('f-opmerkingen');if(oa)oa.value=tekst;}
-        if(typeof toast==='function') toast('Formulier ingevuld vanuit observatie — vul scores aan en sla op');
-      }catch(_){}
-    },200);
+    if(typeof toast==='function') setTimeout(()=>toast('Velden ingevuld vanuit observatie — vul A/B/C/D scores in en sla op'),150);
   });
   window.scrollTo({top:0});
 }

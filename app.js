@@ -13201,21 +13201,7 @@ function renderDetailOverview(p){
     <div style="height:16px;"></div>
   `;
   renderDetailKPIs(vp);
-  // TIJDELIJKE DATABALK - toont altijd ruwe veldwaarden
-  (function(){
-    try {
-      const _el = document.createElement('div');
-      _el.style.cssText = 'background:#1a0a2e;border:2px solid #a855f7;padding:10px 14px;margin:8px 0;font-size:11px;font-family:monospace;border-radius:8px;color:#e2d0ff;word-break:break-all;z-index:999;position:relative;';
-      const _nr = (p.notities_raw||'').slice(0,80)||'-';
-      const _no = (p.notities||'').slice(0,80)||'-';
-      const _oo = (p.opmerkingen||'').slice(0,80)||'-';
-      const _rt = p.rapport_type||'-';
-      const _da = p.datum||p.wedstrijd_datum||'-';
-      _el.innerHTML = '<b style="color:#c084fc">DATA:</b> rapport_type='+escapeHtml(_rt)+' | datum='+escapeHtml(_da)+'<br>notities_raw: '+escapeHtml(_nr)+'<br>notities: '+escapeHtml(_no)+'<br>opmerkingen: '+escapeHtml(_oo);
-      const _body = document.getElementById('player-view-body');
-      if(_body) _body.prepend(_el);
-    } catch(_){}
-  })();
+
   renderDetailSummary(vp);
   renderDetailObsCard(p);
   // DIRECTE notities-fallback: toont altijd als er notities zijn maar renderDetailSummary leeg blijft
@@ -14001,6 +13987,20 @@ function _shParseObsNotitiesToBeoordelingen(p){
   const b = p.beoordelingen ? Object.assign({}, p.beoordelingen) : {};
   // Zoek de notities-tekst (obs formaat: "techniek: text\ninzicht: text\n...")
   let tekst = (p.notities_raw || p.notities || p.opmerkingen || '').trim();
+  // Zoek in programmaCache (sn.tekst van obs_draft of ingediend)
+  if(!tekst && typeof programmaCache !== 'undefined'){
+    const _pId2 = p.id || '';
+    const _pNm2 = (p.naam||'').toLowerCase().trim();
+    outer2: for(const _prog2 of programmaCache){
+      if(!_prog2 || !Array.isArray(_prog2.snelnotities)) continue;
+      for(const _sn2 of _prog2.snelnotities){
+        if(!_sn2 || !_sn2.tekst) continue;
+        const _hit = (_pId2 && (_sn2.player_id === _pId2 || _sn2.__convertedToPlayerId === _pId2)) ||
+                     (_pNm2 && (_sn2.naam||'').toLowerCase().trim() === _pNm2);
+        if(_hit){ tekst = _sn2.tekst.trim(); break outer2; }
+      }
+    }
+  }
   // Zoek ook in andere records met zelfde naam als dit record leeg is
   if(!tekst && typeof playersCache !== 'undefined'){
     const pNm = (p.naam||'').toLowerCase().trim();

@@ -12991,30 +12991,74 @@ function renderDetailObsOverview(p){
   }
 
   // Parse criteria
+  const _OBS_ORDER=['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
   const _LABELS={techniek:'Techniek',inzicht:'Inzicht',mentaliteit:'Mentaliteit',
     explosiviteit:'Explosiviteit',sprinten:'Sprinten',duelleren:'Duelleren',
     wendbaarheid:'Wendbaarheid',algemeen:'Algemeen'};
-  const rows=[], overig=[];
+  // Parse ingevulde waarden uit tekst
+  const _parsedVals={};
+  const overig=[];
   if(tekst){
     tekst.split('\n').forEach(function(l){
       const ci=l.indexOf(':');
       if(ci<0){if(l.trim())overig.push(l.trim());return;}
-      const key=l.slice(0,ci).trim().toLowerCase(), val=l.slice(ci+1).trim();
-      if(!val||val.toLowerCase()==='nvt') return;
-      rows.push({label:_LABELS[key]||(key.charAt(0).toUpperCase()+key.slice(1)), val});
+      const key=l.slice(0,ci).trim().toLowerCase();
+      const val=l.slice(ci+1).trim();
+      // nvt = leeg behandelen
+      if(_LABELS[key] !== undefined) _parsedVals[key] = (val.toLowerCase()==='nvt') ? '' : val;
     });
   }
+  // Altijd alle criteria tonen, lege waarde = leeg weergeven
+  const rows=_OBS_ORDER.map(function(key){
+    return {label:_LABELS[key], val:_parsedVals[key]||''};
+  });
 
   const meta=[positionLabel(p.positie),p.club,p.elftal||deriveElftalFromReport(p)].filter(Boolean).join(' · ');
+  // Leeftijd / geboortedatum
+  let _obsDobStr = '';
+  if(p.geboorte){
+    try{
+      const _gd = new Date(p.geboorte);
+      if(!isNaN(_gd)){
+        const _now = new Date();
+        const _age = _now.getFullYear()-_gd.getFullYear() - ((_now.getMonth()<_gd.getMonth()||(_now.getMonth()===_gd.getMonth()&&_now.getDate()<_gd.getDate()))?1:0);
+        _obsDobStr = _gd.toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}) + ' (' + _age + ' jaar)';
+      }
+    }catch(_){}
+  } else if(p.leeftijd){
+    _obsDobStr = escapeHtml(p.leeftijd);
+  } else {
+    _obsDobStr = 'Niet bekend';
+  }
   const datumStr=wDatum?formatDate(wDatum):'';
   const wstrStr=(wThuis&&wUit)?escapeHtml(wThuis)+' vs '+escapeHtml(wUit):'';
   const wstrSub=[datumStr,wstrStr].filter(Boolean).join(' · ');
 
+  // Haal wedstrijdnotities op uit gekoppeld programma-item (read-only context)
+  let wNotitieTekst = '';
+  if(typeof programmaCache !== 'undefined'){
+    try {
+      const _wProg = programmaCache.find(pr =>
+        pr && pr.datum === wDatum &&
+        (pr.thuis||'').toLowerCase().trim() === wThuis.toLowerCase().trim() &&
+        (pr.uit||'').toLowerCase().trim() === wUit.toLowerCase().trim()
+      );
+      if(_wProg){
+        // Wedstrijdrapport notitie (scalar)
+        const _scal = (_wProg.notities||'').trim();
+        // Wedstrijdnotities array
+        const _wns = Array.isArray(_wProg.wedstrijdnotities) ? _wProg.wedstrijdnotities : [];
+        const _wnsText = _wns.map(wn=>(wn.titel?wn.titel+': ':'')+((wn.tekst||wn.notitie)||'')).filter(Boolean).join('\n');
+        wNotitieTekst = [_scal, _wnsText].filter(Boolean).join('\n').trim();
+      }
+    } catch(_){}
+  }
+
   const rowsHtml=rows.map(function(r){
-    return `<div class="obs-crit-row">
-      <div class="obs-crit-label">${escapeHtml(r.label)}</div>
-      <div class="obs-crit-val">${escapeHtml(r.val)}</div>
-    </div>`;
+    return '<div class="obs-crit-row'+(r.val?'':' obs-crit-row-empty')+'">'
+      +'<div class="obs-crit-label">'+escapeHtml(r.label)+'</div>'
+      +'<div class="obs-crit-val">'+(r.val?escapeHtml(r.val):'<span class="obs-crit-empty">—</span>')+'</div>'
+      +'</div>';
   }).join('');
 
   const overigHtml=overig.length
@@ -13051,6 +13095,10 @@ function renderDetailObsOverview(p){
         <div class="obs-profile-name">${escapeHtml(p.naam||'—')}</div>
         <div class="obs-profile-meta">${escapeHtml(meta)}</div>
         ${p.rugnummer?`<div class="obs-profile-rug">#${escapeHtml(p.rugnummer)}</div>`:''}
+        <div class="obs-profile-dob">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;opacity:.6;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          Geb. datum: ${_obsDobStr}
+        </div>
       </div>
     </div>
 
@@ -13060,12 +13108,22 @@ function renderDetailObsOverview(p){
       <span>${wstrSub}</span>
     </div>`:''}
 
+    <!-- Wedstrijdnotities (read-only) -->
+    \${wNotitieTekst ? '<div class="card obs-wn-card">'
+      +'<div class="obs-criteria-header">'
+        +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>'
+        +'<span>Wedstrijdnotities</span>'
+        +'<span class="obs-criteria-count">match context</span>'
+      +'</div>'
+      +'<div style="padding:12px 16px;font-size:13px;color:var(--text-2);line-height:1.65;white-space:pre-line;">'+escapeHtml(wNotitieTekst)+'</div>'
+    +'</div>' : ''}
+
     <!-- Criteria kaart -->
     <div class="card obs-criteria-card">
       <div class="obs-criteria-header">
         <span class="obs-dot"></span>
         <span>Scout-observatie</span>
-        <span class="obs-criteria-count">${rows.length} criteria</span>
+        <span class="obs-criteria-count">${rows.filter(r=>r.val).length}/${rows.length} ingevuld</span>
       </div>
       <div class="obs-criteria-body">
         ${rowsHtml||'<div style="padding:16px;color:var(--text-3);font-size:13px;">Geen notities gevonden.</div>'}

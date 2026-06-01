@@ -15139,6 +15139,7 @@ function renderMatches(){
                   ${statusBadge}
                 </div>
                 ${posLabel ? `<span class="pm-item-pos">${escapeHtml(posLabel)}</span>` : ''}
+                ${(p.notities||p.notities_raw||'').trim() ? `<div style="font-size:12px;color:var(--text-2,#94a3b8);margin-top:3px;line-height:1.4;">${escapeHtml((p.notities||p.notities_raw||'').trim().replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' · ').slice(0,80))}${(p.notities||p.notities_raw||'').length>80?'…':''}</div>` : ''}
               </div>
               <div class="pm-item-acts">
                 <button type="button" class="pm-item-link" data-player-id="${escapeHtml(p.id)}">Rapport →</button>
@@ -15164,6 +15165,7 @@ function renderMatches(){
                 ${statusBadge}
               </div>
               ${sp.positie ? `<span class="pm-item-pos">${escapeHtml(sp.positie)}</span>` : ''}
+              ${prev ? `<div style="font-size:12px;color:var(--text-2,#94a3b8);margin-top:3px;line-height:1.4;">${prev}${sn&&sn.tekst&&sn.tekst.length>60?'…':''}</div>` : ''}
             </div>
             <div class="pm-item-acts">
               ${isVerwerkt

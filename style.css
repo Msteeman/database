@@ -10714,3 +10714,9 @@ tr.db-row-obs td:first-child {
 
 .obs-crit-row-empty .obs-crit-label{ opacity:.45; }
 .obs-crit-empty{ color:var(--text-3);font-style:italic;font-size:12px; }
+
+.db-obs-dash{ font-size:12px;color:rgba(168,85,247,.5);font-weight:600; }
+.db-obs-tag{
+  font-size:10.5px;color:#a855f7;font-style:italic;
+  background:rgba(168,85,247,.1);border-radius:4px;padding:1px 6px;
+}

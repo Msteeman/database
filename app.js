@@ -9760,9 +9760,9 @@ function applyFilters(){
             <td>${escapeHtml(positionLabel(p.positie))}</td>
             <td>${escapeHtml(p.club||'—')}</td>
             <td>${escapeHtml(p.elftal || deriveElftalFromReport(p) || '—')}</td>
-            <td><span class="grade ${p.huidig_niveau||'D'}">${p.huidig_niveau||'-'}</span></td>
-            <td><span class="grade outline ${p.potentieel_niveau||'D'}">${p.potentieel_niveau||'-'}</span></td>
-            <td>${adviesLabel(p.advies)||'—'}</td>
+            <td>${p.rapport_type==='observatie'?'<span class="db-obs-dash">–</span>':'<span class="grade '+(p.huidig_niveau||'D')+'">'+(p.huidig_niveau||'-')+'</span>'}</td>
+            <td>${p.rapport_type==='observatie'?'<span class="db-obs-dash">–</span>':'<span class="grade outline '+(p.potentieel_niveau||'D')+'">'+(p.potentieel_niveau||'-')+'</span>'}</td>
+            <td>${p.rapport_type==='observatie'?'<span class="db-obs-tag">observatie</span>':adviesLabel(p.advies)||'—'}</td>
             <td>${formatDate(p.datum)}</td>
           </tr>
         `;}).join('')}

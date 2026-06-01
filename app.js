@@ -9494,8 +9494,10 @@ function wireDraftCard(){
 })();
 
 function renderDatabase(){
-  // Reset typefilter bij navigeren naar database
+  // Reset typefilter + sortering bij navigeren naar database
   _dbTypeFilter = '';
+  sortKey = 'datum';
+  sortAsc = false;
   const _obsBtnR = document.getElementById('db-obs-filter-btn');
   const _rapBtnR = document.getElementById('db-rapport-filter-btn');
   if(_obsBtnR) _obsBtnR.classList.remove('active');
@@ -9594,7 +9596,12 @@ function applyFilters(){
 
   filtered.sort((a,b)=>{
     let av = a[sortKey], bv = b[sortKey];
-    if(sortKey === 'datum'){ av = new Date(av||0).getTime(); bv = new Date(bv||0).getTime(); }
+    if(sortKey === 'datum'){
+      // obs: gebruik wedstrijd_datum als datum leeg is
+      const getDate = p => p.datum || p.wedstrijd_datum || (p.wedstrijd && p.wedstrijd.datum) || '';
+      av = new Date(getDate(a)||0).getTime();
+      bv = new Date(getDate(b)||0).getTime();
+    }
     if(av == null) av = '';
     if(bv == null) bv = '';
     if(av < bv) return sortAsc ? -1 : 1;
@@ -13109,7 +13116,7 @@ function renderDetailObsOverview(p){
     </div>`:''}
 
     <!-- Wedstrijdnotities (read-only) -->
-    \${wNotitieTekst ? '<div class="card obs-wn-card">'
+    ${wNotitieTekst ? '<div class="card obs-wn-card">'
       +'<div class="obs-criteria-header">'
         +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" style="flex-shrink:0;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>'
         +'<span>Wedstrijdnotities</span>'

@@ -9770,9 +9770,22 @@ function applyFilters(){
             <td>${p.rapport_type==='observatie'?'<span class="db-obs-dash">–</span>':'<span class="grade '+(p.huidig_niveau||'D')+'">'+(p.huidig_niveau||'-')+'</span>'}</td>
             <td>${p.rapport_type==='observatie'?'<span class="db-obs-dash">–</span>':'<span class="grade outline '+(p.potentieel_niveau||'D')+'">'+(p.potentieel_niveau||'-')+'</span>'}</td>
             <td>${p.rapport_type==='observatie'?'<span class="db-obs-tag">observatie</span>':adviesLabel(p.advies)||'—'}</td>
-            <td>${formatDate(p.datum)}</td>
+            <td>${p.rapport_type==='observatie'
+              ? (() => {
+                  const wd = p.wedstrijd||{};
+                  const d = p.datum||p.wedstrijd_datum||wd.datum||'';
+                  const teams = (wd.thuis&&wd.uit) ? escapeHtml(wd.thuis)+' – '+escapeHtml(wd.uit) : '';
+                  const lft = wd.leeftijd||p.elftal||'';
+                  return '<span style="font-size:11px;color:var(--text-2);line-height:1.4;">'
+                    +(d?'<span style="color:#a855f7;font-weight:600;">'+formatDate(d)+'</span>':'')
+                    +(teams?'<br><span style="opacity:.7;">'+teams+'</span>':'')
+                    +(lft?'<br><span style="opacity:.5;">'+escapeHtml(lft)+'</span>':'')
+                    +'</span>';
+                })()
+              : formatDate(p.datum)}</td>
           </tr>
-        `;}).join('')}
+        `;
+      }).join('')}
       </tbody>
     </table>
     ${_paginatorBot}

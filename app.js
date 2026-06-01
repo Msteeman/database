@@ -3249,6 +3249,7 @@ function subscribeData(){
     const _obsSnapOpen = document.getElementById('obs-backdrop') && document.getElementById('obs-backdrop').style.display === 'flex';
     if(currentView === 'dashboard' && !_mrSnapOpen && !_obsSnapOpen) renderDashboard();
     if(currentView === 'database') applyFilters();
+    if(currentView === 'elftallen') renderElftallen();
     try { shUpdateDatabaseNavBadge(); } catch(_){}
     if(currentView === 'pitch' && currentAnalysisId) renderPitchInfo();
     setSync('ok');
@@ -5629,8 +5630,13 @@ function go(view){
       const _op = window.__shObsPrefill;
       window.__shObsPrefill = null;
       setTimeout(() => {
-        try { if(typeof loadIntoForm === 'function') loadIntoForm(_op); } catch(_){}
-      }, 30);
+        try {
+          if(typeof loadIntoForm === 'function'){
+            loadIntoForm(_op);
+            $('#report-title').textContent = 'Spelersrapport vanuit observatie';
+          }
+        } catch(e){ console.warn('obs prefill error', e); }
+      }, 80);
     } else {
       // v70e: concept-banner opnieuw evalueren bij elke navigatie naar rapport
       setTimeout(() => { if(typeof window.__shTryRestore === 'function') window.__shTryRestore(); }, 50);

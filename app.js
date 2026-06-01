@@ -11222,27 +11222,29 @@ function renderElftallen(){
   const chipsEl = document.getElementById('elf-club-chips');
   const resultsEl = document.getElementById('elf-results');
   if(!resultsEl) return;
+  if(chipsEl) chipsEl.style.display = 'none';
 
-  if(!input?._elfWired){
-    if(input){
-      input._elfWired = true;
-      // Eigen AC: alleen clubs die al in rapporten voorkomen (niet HV_CLUBS)
-      _elfWireClubAC(input);
-      const doSearch = () => _elfShowTeamTiles(loadPlayers(), resultsEl, input.value.trim());
-      input.addEventListener('input', doSearch);
-      input.addEventListener('change', doSearch);
-      input.addEventListener('keydown', e => { if(e.key === 'Enter') doSearch(); });
-      const btn = document.getElementById('elf-search-btn');
-      if(btn){
-        btn.textContent = 'Wis';
-        btn.addEventListener('click', () => { input.value = ''; _elfShowTeamTiles(loadPlayers(), resultsEl, ''); });
-      }
+  // Wire zoekbalk altijd opnieuw (idempotent via flag op element)
+  if(input && !input._elfWired){
+    input._elfWired = true;
+    _elfWireClubAC(input);
+    const doSearch = () => _elfShowTeamTiles(loadPlayers(), resultsEl, input.value.trim());
+    input.addEventListener('input', doSearch);
+    input.addEventListener('change', doSearch);
+    input.addEventListener('keydown', e => { if(e.key === 'Enter') doSearch(); });
+    const btn = document.getElementById('elf-search-btn');
+    if(btn){
+      btn.textContent = 'Wis';
+      btn.addEventListener('click', () => { input.value = ''; _elfShowTeamTiles(loadPlayers(), resultsEl, ''); input.focus(); });
     }
-    if(chipsEl) chipsEl.style.display = 'none';
   }
 
   const q = (input?.value || '').trim();
+  // Altijd tonen: ook bij lege cache opnieuw proberen na korte delay
   _elfShowTeamTiles(players, resultsEl, q);
+  if(!players.length){
+    setTimeout(() => _elfShowTeamTiles(loadPlayers(), resultsEl, (input?.value||'').trim()), 600);
+  }
 }
 
 function _elfBuildTeamMap(players){

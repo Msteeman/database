@@ -14872,7 +14872,10 @@ function aggregateMatches(players){
         positie: p.positie || '',
         huidig_niveau: p.huidig_niveau || '',
         potentieel_niveau: p.potentieel_niveau || '',
-        rapport_type: p.rapport_type || ''
+        rapport_type: p.rapport_type || '',
+        notities: p.notities || '',
+        notities_raw: p.notities_raw || '',
+        opmerkingen: p.opmerkingen || ''
       });
     }
   });

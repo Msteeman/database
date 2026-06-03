@@ -18393,9 +18393,15 @@ function _setMobileActiveDay(idx){
   strip.querySelectorAll('.pmds-chip').forEach((c, i) => {
     c.classList.toggle('pmds-active', i === idx);
   });
-  // Scroll chip in beeld
+  // Scroll chip horizontaal in beeld — geen verticale page-scroll
   const activeChip = strip.querySelector('.pmds-chip.pmds-active');
-  if(activeChip) activeChip.scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' });
+  if(activeChip && strip.scrollWidth > strip.clientWidth){
+    const chipLeft = activeChip.offsetLeft;
+    const chipW = activeChip.offsetWidth;
+    const stripW = strip.clientWidth;
+    const targetScroll = chipLeft - (stripW / 2) + (chipW / 2);
+    strip.scrollTo({ left: Math.max(0, targetScroll), behavior: 'smooth' });
+  }
 
   // Dagkolommen: alleen actieve zichtbaar op mobiel
   grid.querySelectorAll('.pag-day').forEach((col, i) => {

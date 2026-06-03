@@ -9252,11 +9252,17 @@ tbody tr:last-child td { border-bottom: none; }
     display: flex;
     gap: 6px;
     overflow-x: auto;
+    overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
     scroll-snap-type: x proximity;
     padding: 4px 2px 10px;
     margin-bottom: 10px;
     scrollbar-width: none;
+    overscroll-behavior-x: contain;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg, #0f1117);
   }
   #prog-mob-strip::-webkit-scrollbar { display: none; }
 }

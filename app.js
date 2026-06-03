@@ -5701,6 +5701,7 @@ function go(view){
   }
   if(view === 'tips')      renderTips();
   if(view === 'ritten')    renderRitten();
+  if(view === 'toernooien') renderToernooien();
   if(view === 'player')    renderPlayer();
   // s35cr: privacy + voorwaarden zijn statische views — geen render-functie nodig
   window.scrollTo({top:0});
@@ -15246,6 +15247,18 @@ async function submitReport(e){
   };
   try {
     await savePlayer(player);
+    // Toernooicontext: patch rapport met tournament-velden indien aangemaakt vanuit bundeling
+    if(window.__shTournamentContext){
+      const _tc = window.__shTournamentContext;
+      window.__shTournamentContext = null;
+      try {
+        await setDoc(doc(playersCol(), id), {
+          fromTournamentId: _tc.fromTournamentId || null,
+          fromSummaryId: _tc.fromSummaryId || null,
+          tournamentContext: _tc.tournamentContext || null
+        }, { merge: true });
+      } catch(_e){ console.warn('tournamentContext patch failed', _e); }
+    }
     // s35ca-3: toast tekst hangt af van mode
     if(__mode === 'draft'){
       toast(isEdit ? 'Concept bijgewerkt' : 'Concept opgeslagen');
@@ -21214,6 +21227,1305 @@ window.shAC = (function(){
   };
   window.addEventListener('resize', () => { if(_inp) _close(); }, true);
 })();
+
+
+/* ================================================================
+   TOERNOOI-FUNCTIONALITEIT — v1.0
+   Datamodel: Tournament, TournamentDay, TournamentTeam, Match,
+   TournamentPlayer, MatchPlayer, Observation, PlayerTournamentSummary
+   Gebaseerd op ontwerp v1.2
+   ================================================================ */
+
+// ── Caches ──────────────────────────────────────────────────────
+let tourmCache = [];          // lijst van tournaments (top-level docs)
+let _currentTournamentId = null;
+let _currentTournamentData = null; // { tournament, days, teams, matches, players, matchPlayers }
+let unsubTournaments = null;
+
+// ── Collection helpers ───────────────────────────────────────────
+function tournamentsCol(){
+  return collection(db, 'users', currentUser.uid, 'tournaments');
+}
+function tournSubCol(tid, sub){
+  return collection(db, 'users', currentUser.uid, 'tournaments', tid, sub);
+}
+function tournDoc(tid){
+  return doc(db, 'users', currentUser.uid, 'tournaments', tid);
+}
+function tournSubDoc(tid, sub, id){
+  return doc(db, 'users', currentUser.uid, 'tournaments', tid, sub, id);
+}
+
+// ── ID generator (prefix t_) ─────────────────────────────────────
+function tuid(prefix='t'){
+  return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
+}
+
+// ── Subscribe tournaments (top-level lijst) ─────────────────────
+function subscribeTournaments(){
+  if(unsubTournaments) return;
+  unsubTournaments = onSnapshot(tournamentsCol(), snap => {
+    tourmCache = snap.docs.map(d => ({...d.data(), id: d.id}))
+      .sort((a,b) => (b.startDate||'').localeCompare(a.startDate||''));
+    if(currentView === 'toernooien' && !_currentTournamentId) renderToernooienList();
+    setSync('ok');
+  }, err => {
+    console.error('Tournaments sync error:', err);
+    setSync('offline');
+  });
+}
+
+// ── Tournament CRUD ──────────────────────────────────────────────
+async function saveTournament(t){
+  setSync('syncing');
+  try {
+    const id = t.id;
+    const {id: _drop, ...data} = t;
+    await setDoc(tournDoc(id), data);
+  } catch(e){
+    console.error('saveTournament error:', e);
+    toast('Opslaan mislukt', true);
+    setSync('offline');
+    throw e;
+  }
+}
+
+async function createTournament({ name, location='', startDate='', endDate='', categories=[], info='' }){
+  const id = tuid('toern');
+  const t = {
+    id, name, location,
+    startDate: startDate || todayISO(),
+    endDate: endDate || startDate || todayISO(),
+    categories,
+    info,
+    status: 'prep',
+    createdBy: currentUser.uid,
+    createdAt: new Date().toISOString(),
+    tournifyData: null
+  };
+  await saveTournament(t);
+  return t;
+}
+
+async function deleteTournament(id){
+  setSync('syncing');
+  try { await deleteDoc(tournDoc(id)); }
+  catch(e){ toast('Verwijderen mislukt', true); setSync('offline'); throw e; }
+}
+
+// ── Days ─────────────────────────────────────────────────────────
+async function saveDay(tid, day){
+  setSync('syncing');
+  try {
+    const id = day.id;
+    const {id: _drop, ...data} = day;
+    await setDoc(tournSubDoc(tid, 'days', id), data);
+  } catch(e){ toast('Dag opslaan mislukt', true); setSync('offline'); throw e; }
+}
+
+async function addDay(tid, { date='', label='' }){
+  const id = tuid('day');
+  const day = { id, tournamentId: tid, date: date || todayISO(), label: label || 'Dag 1', closedAt: null, editHistory: [] };
+  await saveDay(tid, day);
+  return day;
+}
+
+async function closeDay(tid, dayId){
+  // Sluit dag: zet closedAt op dag + alle observaties van die dag
+  const now = new Date().toISOString();
+  await setDoc(tournSubDoc(tid, 'days', dayId), { closedAt: now }, { merge: true });
+  // Haal observaties op voor die dag en zet closedAt
+  const obsSnap = await getDocs(query(tournSubCol(tid, 'observations'), where('dayId','==',dayId)));
+  const batch = [];
+  obsSnap.docs.forEach(d => {
+    if(!d.data().closedAt){
+      batch.push(setDoc(doc(tournSubCol(tid, 'observations'), d.id), { closedAt: now }, { merge: true }));
+    }
+  });
+  await Promise.all(batch);
+  // Genereer concept-bundeling per speler
+  await generateDaySummaries(tid, dayId);
+  toast('Dag afgesloten ✓');
+}
+
+async function reopenDay(tid, dayId){
+  // Blokkeer heropenen als er al een definitief rapport uit die dag's bundeling is gemaakt
+  const summSnap = await getDocs(query(tournSubCol(tid, 'summaries'), where('dayBlocks','array-contains',dayId)));
+  // Simpele check: bestaat er een summary met status 'done' die deze dag bevat?
+  const blocked = summSnap.docs.some(d => {
+    const s = d.data();
+    return s.reportCreated === true;
+  });
+  if(blocked){
+    toast('Rapport al aangemaakt — bundeling is vergrendeld', true);
+    return false;
+  }
+  await setDoc(tournSubDoc(tid, 'days', dayId), { closedAt: null }, { merge: true });
+  // Zet summaries met dayBlock voor deze dag terug naar 'edited' als ze 'ready' waren
+  const allSumm = await getDocs(tournSubCol(tid, 'summaries'));
+  const updates = [];
+  allSumm.docs.forEach(d => {
+    const s = d.data();
+    const hasDay = (s.dayBlocks||[]).some(b => b.dayId === dayId);
+    if(hasDay && s.status === 'ready'){
+      updates.push(setDoc(doc(tournSubCol(tid, 'summaries'), d.id), { status: 'edited', reopenedAt: new Date().toISOString() }, { merge: true }));
+    }
+  });
+  await Promise.all(updates);
+  toast('Dag heropend — observaties zijn weer bewerkbaar');
+  return true;
+}
+
+// ── Teams ─────────────────────────────────────────────────────────
+async function saveTeam(tid, team){
+  setSync('syncing');
+  try {
+    const id = team.id;
+    const {id: _drop, ...data} = team;
+    await setDoc(tournSubDoc(tid, 'teams', id), data);
+  } catch(e){ toast('Team opslaan mislukt', true); setSync('offline'); throw e; }
+}
+
+async function addTeam(tid, { name, categoryId='', importedName=null }){
+  const id = tuid('team');
+  const team = { id, tournamentId: tid, categoryId, name, importedName };
+  await saveTeam(tid, team);
+  return team;
+}
+
+// ── Matches ───────────────────────────────────────────────────────
+async function saveMatch(tid, match){
+  setSync('syncing');
+  try {
+    const id = match.id;
+    const {id: _drop, ...data} = match;
+    await setDoc(tournSubDoc(tid, 'matches', id), data);
+  } catch(e){ toast('Wedstrijd opslaan mislukt', true); setSync('offline'); throw e; }
+}
+
+async function addMatch(tid, { dayId, startTime='', durationMinutes=25, field='', categoryId='', teamAId='', teamBId='', teamAName='', teamBName='', status='watch' }){
+  const id = tuid('match');
+  const match = { id, tournamentId: tid, dayId, startTime, durationMinutes, field, categoryId, teamAId, teamBId, teamAName, teamBName, status };
+  await saveMatch(tid, match);
+  // Auto-link gekoppelde spelers waarvan teamId matcht
+  await autoLinkPlayersToMatch(tid, id, [teamAId, teamBId]);
+  return match;
+}
+
+async function updateMatchStatus(tid, matchId, status){
+  await setDoc(tournSubDoc(tid, 'matches', matchId), { status }, { merge: true });
+}
+
+// ── TournamentPlayer ──────────────────────────────────────────────
+async function saveTournamentPlayer(tid, tp){
+  setSync('syncing');
+  try {
+    const id = tp.id;
+    const {id: _drop, ...data} = tp;
+    await setDoc(tournSubDoc(tid, 'players', id), data);
+  } catch(e){ toast('Speler opslaan mislukt', true); setSync('offline'); throw e; }
+}
+
+async function addTournamentPlayer(tid, { playerId=null, teamId='', quickName=null, quickNumber=null, type='linked' }){
+  const id = tuid('tp');
+  const tp = {
+    id, tournamentId: tid, teamId,
+    playerId, quickName, quickNumber,
+    type,
+    addedAt: new Date().toISOString(),
+    addedByUserId: currentUser.uid,
+    mergedWithPlayerId: null,
+    mergeStatus: playerId ? 'linked' : 'unlinked'
+  };
+  await saveTournamentPlayer(tid, tp);
+  // Auto-link naar alle bestaande wedstrijden van dit team
+  await autoLinkPlayerToExistingMatches(tid, id, teamId);
+  return tp;
+}
+
+// ── MatchPlayer ────────────────────────────────────────────────────
+async function saveMatchPlayer(tid, mp){
+  setSync('syncing');
+  try {
+    const id = mp.id;
+    const {id: _drop, ...data} = mp;
+    await setDoc(tournSubDoc(tid, 'matchPlayers', id), data);
+  } catch(e){ toast('Koppeling opslaan mislukt', true); setSync('offline'); throw e; }
+}
+
+async function linkPlayerToMatch(tid, tournamentPlayerId, matchId, addedBy='auto'){
+  // Check of koppeling al bestaat
+  const existing = await getDocs(query(
+    tournSubCol(tid, 'matchPlayers'),
+    where('matchId','==',matchId),
+    where('tournamentPlayerId','==',tournamentPlayerId)
+  ));
+  if(!existing.empty) return existing.docs[0].data();
+  const id = tuid('mp');
+  const mp = { id, matchId, tournamentPlayerId, addedAt: new Date().toISOString(), addedBy };
+  await saveMatchPlayer(tid, mp);
+  return mp;
+}
+
+async function unlinkPlayerFromMatch(tid, matchPlayerId){
+  await deleteDoc(tournSubDoc(tid, 'matchPlayers', matchPlayerId));
+}
+
+// Auto-link: wanneer speler wordt toegevoegd, koppel aan alle bestaande matches van zijn team
+async function autoLinkPlayerToExistingMatches(tid, tournamentPlayerId, teamId){
+  if(!teamId) return;
+  const matchSnap = await getDocs(query(
+    tournSubCol(tid, 'matches'),
+    where('teamAId','==',teamId)
+  ));
+  const matchSnap2 = await getDocs(query(
+    tournSubCol(tid, 'matches'),
+    where('teamBId','==',teamId)
+  ));
+  const matchIds = new Set([
+    ...matchSnap.docs.map(d => d.id),
+    ...matchSnap2.docs.map(d => d.id)
+  ]);
+  await Promise.all([...matchIds].map(mid => linkPlayerToMatch(tid, tournamentPlayerId, mid, 'auto')));
+}
+
+// Auto-link: wanneer match wordt toegevoegd, koppel alle bestaande spelers van die teams
+async function autoLinkPlayersToMatch(tid, matchId, teamIds){
+  if(!teamIds || !teamIds.length) return;
+  for(const teamId of teamIds){
+    if(!teamId) continue;
+    const snap = await getDocs(query(tournSubCol(tid, 'players'), where('teamId','==',teamId)));
+    await Promise.all(snap.docs.map(d => linkPlayerToMatch(tid, d.id, matchId, 'auto')));
+  }
+}
+
+// ── Observations ──────────────────────────────────────────────────
+async function saveObservation(tid, obs){
+  setSync('syncing');
+  try {
+    const id = obs.id;
+    const {id: _drop, ...data} = obs;
+    await setDoc(tournSubDoc(tid, 'observations', id), data);
+  } catch(e){ toast('Observatie opslaan mislukt', true); setSync('offline'); throw e; }
+}
+
+async function createOrUpdateObservation(tid, { matchId, dayId, tournamentPlayerId, text, tags=[], position=null, grade=null }){
+  // Check of er al een observatie is voor deze speler+wedstrijd
+  const existing = await getDocs(query(
+    tournSubCol(tid, 'observations'),
+    where('matchId','==',matchId),
+    where('tournamentPlayerId','==',tournamentPlayerId)
+  ));
+  const now = new Date().toISOString();
+  if(!existing.empty){
+    const existingDoc = existing.docs[0];
+    const existingData = existingDoc.data();
+    // Als al gesloten: sla edit op in history
+    const patch = { text, tags, position, grade, updatedAt: now };
+    if(existingData.closedAt){
+      patch.editHistory = [...(existingData.editHistory||[]), {
+        editedAt: now,
+        previousText: existingData.text || '',
+        note: null
+      }];
+    }
+    await setDoc(doc(tournSubCol(tid, 'observations'), existingDoc.id), patch, { merge: true });
+    return { ...existingData, ...patch, id: existingDoc.id };
+  }
+  // Nieuw
+  const id = tuid('obs');
+  const obs = {
+    id, tournamentId: tid, matchId, dayId: dayId||'', tournamentPlayerId,
+    text, tags, position, grade,
+    createdAt: now, updatedAt: now,
+    closedAt: null, editHistory: []
+  };
+  await saveObservation(tid, obs);
+  return obs;
+}
+
+async function getObservationsForMatch(tid, matchId){
+  const snap = await getDocs(query(tournSubCol(tid, 'observations'), where('matchId','==',matchId)));
+  return snap.docs.map(d => ({...d.data(), id: d.id}));
+}
+
+async function getObservationsForPlayer(tid, tournamentPlayerId){
+  const snap = await getDocs(query(tournSubCol(tid, 'observations'), where('tournamentPlayerId','==',tournamentPlayerId)));
+  return snap.docs.map(d => ({...d.data(), id: d.id}));
+}
+
+// ── Summaries (bundeling) ─────────────────────────────────────────
+async function saveSummary(tid, summary){
+  setSync('syncing');
+  try {
+    const id = summary.id;
+    const {id: _drop, ...data} = summary;
+    await setDoc(tournSubDoc(tid, 'summaries', id), data);
+  } catch(e){ toast('Bundeling opslaan mislukt', true); setSync('offline'); throw e; }
+}
+
+async function generateDaySummaries(tid, dayId){
+  // Haal alle observaties van die dag op
+  const obsSnap = await getDocs(query(tournSubCol(tid, 'observations'), where('dayId','==',dayId)));
+  const observations = obsSnap.docs.map(d => ({...d.data(), id: d.id}));
+  // Groepeer per speler
+  const byPlayer = {};
+  observations.forEach(obs => {
+    if(!byPlayer[obs.tournamentPlayerId]) byPlayer[obs.tournamentPlayerId] = [];
+    byPlayer[obs.tournamentPlayerId].push(obs);
+  });
+  const now = new Date().toISOString();
+  for(const [tpId, obsList] of Object.entries(byPlayer)){
+    // Kijk of er al een summary is voor deze speler
+    const existingSnap = await getDocs(query(tournSubCol(tid, 'summaries'), where('tournamentPlayerId','==',tpId)));
+    if(!existingSnap.empty){
+      // Update: voeg dag-block toe als het nog niet bestaat
+      const existingDoc = existingSnap.docs[0];
+      const existing = existingDoc.data();
+      const dayBlocks = existing.dayBlocks || [];
+      const alreadyHasDay = dayBlocks.some(b => b.dayId === dayId);
+      if(!alreadyHasDay){
+        dayBlocks.push({ dayId, daySummary: '', observationIds: obsList.map(o => o.id) });
+        await setDoc(doc(tournSubCol(tid, 'summaries'), existingDoc.id),
+          { dayBlocks, updatedAt: now }, { merge: true });
+      }
+    } else {
+      // Maak nieuwe summary aan
+      const id = tuid('summ');
+      const summary = {
+        id, tournamentId: tid, tournamentPlayerId: tpId,
+        status: 'draft',
+        aiSummary: '',
+        editedSummary: '',
+        overallGrade: null,
+        dayBlocks: [{ dayId, daySummary: '', observationIds: obsList.map(o => o.id) }],
+        reportCreated: false,
+        createdAt: now, updatedAt: now
+      };
+      await saveSummary(tid, summary);
+    }
+  }
+}
+
+async function updateSummaryText(tid, summaryId, { editedSummary, overallGrade, dayBlocks }){
+  const patch = { updatedAt: new Date().toISOString(), status: 'edited' };
+  if(editedSummary !== undefined) patch.editedSummary = editedSummary;
+  if(overallGrade !== undefined) patch.overallGrade = overallGrade;
+  if(dayBlocks !== undefined) patch.dayBlocks = dayBlocks;
+  await setDoc(tournSubDoc(tid, 'summaries', summaryId), patch, { merge: true });
+}
+
+async function markSummaryReady(tid, summaryId){
+  await setDoc(tournSubDoc(tid, 'summaries', summaryId), { status: 'ready', updatedAt: new Date().toISOString() }, { merge: true });
+}
+
+// ── Data loaders ──────────────────────────────────────────────────
+async function loadTournamentData(tid){
+  const [daysSnap, teamsSnap, matchesSnap, playersSnap, mpSnap] = await Promise.all([
+    getDocs(tournSubCol(tid, 'days')),
+    getDocs(tournSubCol(tid, 'teams')),
+    getDocs(query(tournSubCol(tid, 'matches'), orderBy('startTime'))),
+    getDocs(tournSubCol(tid, 'players')),
+    getDocs(tournSubCol(tid, 'matchPlayers'))
+  ]);
+  return {
+    days:         daysSnap.docs.map(d => ({...d.data(), id: d.id})),
+    teams:        teamsSnap.docs.map(d => ({...d.data(), id: d.id})),
+    matches:      matchesSnap.docs.map(d => ({...d.data(), id: d.id})),
+    players:      playersSnap.docs.map(d => ({...d.data(), id: d.id})),
+    matchPlayers: mpSnap.docs.map(d => ({...d.data(), id: d.id}))
+  };
+}
+
+async function getMatchPlayers(tid, matchId){
+  const snap = await getDocs(query(tournSubCol(tid, 'matchPlayers'), where('matchId','==',matchId)));
+  return snap.docs.map(d => ({...d.data(), id: d.id}));
+}
+
+async function getTournamentSummaries(tid){
+  const snap = await getDocs(tournSubCol(tid, 'summaries'));
+  return snap.docs.map(d => ({...d.data(), id: d.id}));
+}
+
+// ── Rapport aanmaken vanuit bundeling ─────────────────────────────
+async function createReportFromSummary(tid, summaryId){
+  const summSnap = await getDoc(tournSubDoc(tid, 'summaries', summaryId));
+  if(!summSnap.exists()){ toast('Bundeling niet gevonden', true); return; }
+  const summ = {...summSnap.data(), id: summSnap.id};
+
+  const tpSnap = await getDoc(tournSubDoc(tid, 'players', summ.tournamentPlayerId));
+  if(!tpSnap.exists()){ toast('Speler niet gevonden', true); return; }
+  const tp = {...tpSnap.data(), id: tpSnap.id};
+
+  const tournament = tourmCache.find(t => t.id === tid);
+
+  // Haal spelerdata op als gekoppeld
+  let playerData = null;
+  if(tp.playerId){
+    playerData = (typeof loadPlayers === 'function' ? loadPlayers() : []).find(p => p.id === tp.playerId) || null;
+  }
+
+  // Bouw tournamentContext
+  const matchSummaries = [];
+  for(const block of (summ.dayBlocks||[])){
+    for(const obsId of (block.observationIds||[])){
+      const obsSnap = await getDoc(tournSubDoc(tid, 'observations', obsId));
+      if(obsSnap.exists()){
+        const obs = obsSnap.data();
+        // Zoek match info
+        const matchSnap = await getDoc(tournSubDoc(tid, 'matches', obs.matchId));
+        if(matchSnap.exists()){
+          const m = matchSnap.data();
+          matchSummaries.push({ opponent: `${m.teamAName||'?'} – ${m.teamBName||'?'}`, date: m.startTime ? m.startTime.slice(0,10) : '', grade: obs.grade||null });
+        }
+      }
+    }
+  }
+
+  const tournamentContext = tournament ? {
+    tournamentName: tournament.name,
+    tournamentDate: tournament.startDate,
+    location: tournament.location,
+    matchCount: matchSummaries.length,
+    matchSummaries
+  } : null;
+
+  // Zet prefill data klaar voor rapport-scherm
+  const naam = tp.quickName || (playerData && playerData.naam) || 'Onbekende speler';
+  const nameParts = naam.split(/\s+/);
+
+  window.__shObsPrefill = {
+    voornaam: playerData && playerData.voornaam ? playerData.voornaam : (nameParts[0]||''),
+    achternaam: playerData && playerData.achternaam ? playerData.achternaam : nameParts.slice(1).join(' '),
+    naam,
+    club: playerData && playerData.club ? playerData.club : (tp.teamId ? '' : ''),
+    elftal: '',
+    methode: 'Live',
+    notities: summ.editedSummary || summ.aiSummary || '',
+    huidig_niveau: summ.overallGrade || '',
+    wedstrijd: { datum: tournament ? tournament.startDate : '', thuis: '', uit: '' }
+  };
+
+  // Sla tournamentContext op voor na opslaan rapport
+  window.__shTournamentContext = {
+    fromTournamentId: tid,
+    fromSummaryId: summaryId,
+    tournamentContext
+  };
+
+  // Markeer rapport als aangemaakt in summary
+  await setDoc(tournSubDoc(tid, 'summaries', summaryId), { reportCreated: true }, { merge: true });
+
+  // Navigeer naar rapport-scherm
+  go('report');
+  toast('Velden ingevuld vanuit bundeling ✓');
+}
+
+// ── Tournament obs form (wrapper om bestaand obs-form) ────────────
+let _tournObsContext = null; // { tid, matchId, dayId, tournamentPlayerId, tpName }
+
+async function openTournamentObs(tid, matchId, dayId, tournamentPlayerId, tpName){
+  _tournObsContext = { tid, matchId, dayId, tournamentPlayerId, tpName };
+
+  // Haal bestaande observatie op (indien aanwezig)
+  const existing = await getDocs(query(
+    tournSubCol(tid, 'observations'),
+    where('matchId','==',matchId),
+    where('tournamentPlayerId','==',tournamentPlayerId)
+  ));
+  const existingObs = existing.empty ? null : {...existing.docs[0].data(), id: existing.docs[0].id};
+
+  // Haal matchinfo op voor context
+  const matchSnap = await getDoc(tournSubDoc(tid, 'matches', matchId));
+  const match = matchSnap.exists() ? matchSnap.data() : null;
+
+  // Open het bestaande obs-formulier met fake prog-object
+  const prog = match ? {
+    datum: match.startTime ? match.startTime.slice(0,10) : todayISO(),
+    thuis: match.teamAName || '?',
+    uit: match.teamBName || '?',
+    leeftijd: match.categoryId || ''
+  } : null;
+
+  const sn = existingObs ? {
+    naam: tpName || '',
+    tekst: existingObs.text || '',
+    club: '',
+    elftal: match && match.categoryId ? match.categoryId : '',
+    positie: existingObs.position || '',
+    rugnummer: ''
+  } : { naam: tpName || '', tekst: '', club: '' };
+
+  // Zet vlag zodat submit-handler de toernooi-variant activeert
+  window.__shTournObsMode = true;
+
+  openObservatieForm(prog, sn);
+
+  // Overschrijf submit-knop tekst
+  const btn = document.getElementById('obs-submit');
+  if(btn){ btn.textContent = 'Observatie opslaan'; btn._wired = false; }
+
+  // Vervang de submit handler
+  const newBtn = btn && btn.cloneNode(true);
+  if(btn && newBtn){
+    btn.parentNode.replaceChild(newBtn, btn);
+    newBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      await _tournObsSubmit();
+    });
+  }
+}
+
+async function _tournObsSubmit(){
+  const ctx = _tournObsContext;
+  if(!ctx){ toast('Geen context', true); return; }
+  const btn = document.getElementById('obs-submit');
+  if(btn){ btn.disabled = true; btn.textContent = 'Opslaan...'; }
+  try {
+    // Lees velden
+    const naam = (document.getElementById('obs-naam')?.value||'').trim();
+    const positie = (document.getElementById('obs-positie')?.value||'').trim();
+    const grade = (document.getElementById('obs-niveau')?.value||null) || null;
+    const termsContainer = document.getElementById('obs-terms');
+    const termIns = termsContainer ? Array.from(termsContainer.querySelectorAll('.obs-term-in')) : [];
+    const text = _OBS_TERMS.map(t => {
+      const el = termIns.find(x => x.dataset.term === t);
+      return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : '');
+    }).join('\n');
+
+    await createOrUpdateObservation(ctx.tid, {
+      matchId: ctx.matchId,
+      dayId: ctx.dayId,
+      tournamentPlayerId: ctx.tournamentPlayerId,
+      text, tags: [], position: positie, grade
+    });
+
+    // Update speler naam bij quick add als naam ingevuld
+    if(naam){
+      const tpSnap = await getDoc(tournSubDoc(ctx.tid, 'players', ctx.tournamentPlayerId));
+      if(tpSnap.exists() && !tpSnap.data().playerId){
+        await setDoc(tournSubDoc(ctx.tid, 'players', ctx.tournamentPlayerId), { quickName: naam }, { merge: true });
+      }
+    }
+
+    if(btn){ btn.textContent = '✓ Opgeslagen'; }
+    toast('Observatie opgeslagen ✓');
+    window.__shTournObsMode = false;
+    _tournObsContext = null;
+    setTimeout(() => {
+      const bd = document.getElementById('obs-backdrop');
+      if(bd) bd.style.display = 'none';
+      // Herrender match detail als open
+      if(window.__shOpenMatchDetailId){
+        openMatchDetail(window.__shOpenMatchDetailTid, window.__shOpenMatchDetailId);
+      }
+    }, 500);
+  } catch(err){
+    console.error('tournObsSubmit error:', err);
+    toast('Fout bij opslaan', true);
+    if(btn){ btn.disabled = false; btn.textContent = 'Observatie opslaan'; }
+  }
+}
+
+// ── Quick add speler (spotted) ────────────────────────────────────
+async function quickAddAndObserve(tid, matchId, dayId){
+  const naam = window.prompt('Naam speler (optioneel):') || '';
+  const rugStr = window.prompt('Rugnummer (optioneel):') || '';
+  // Zoek team van de wedstrijd
+  const matchSnap = await getDoc(tournSubDoc(tid, 'matches', matchId));
+  const match = matchSnap.exists() ? matchSnap.data() : null;
+  // Kies team via simpele prompt
+  let teamId = '';
+  if(match && match.teamAName && match.teamBName){
+    const keuze = window.prompt(`Team:\n1 = ${match.teamAName}\n2 = ${match.teamBName}\n\nGeef 1 of 2:`) || '1';
+    teamId = keuze.trim() === '2' ? (match.teamBId||'') : (match.teamAId||'');
+  }
+  const tp = await addTournamentPlayer(tid, {
+    playerId: null, teamId,
+    quickName: naam || null,
+    quickNumber: rugStr ? parseInt(rugStr)||null : null,
+    type: 'spotted'
+  });
+  // Direct koppelen aan deze wedstrijd (auto link doet rest)
+  await linkPlayerToMatch(tid, tp.id, matchId, 'manual');
+  // Open obs form
+  await openTournamentObs(tid, matchId, dayId, tp.id, naam || 'Nieuwe speler');
+}
+
+// ── Match detail overlay ──────────────────────────────────────────
+window.__shOpenMatchDetailTid = null;
+window.__shOpenMatchDetailId = null;
+
+async function openMatchDetail(tid, matchId){
+  window.__shOpenMatchDetailTid = tid;
+  window.__shOpenMatchDetailId = matchId;
+
+  const bd = document.getElementById('toern-match-backdrop');
+  if(!bd) return;
+
+  // Laad data
+  const [matchSnap, mpList, obsSnap] = await Promise.all([
+    getDoc(tournSubDoc(tid, 'matches', matchId)),
+    getMatchPlayers(tid, matchId),
+    getObservationsForMatch(tid, matchId)
+  ]);
+  if(!matchSnap.exists()){ toast('Wedstrijd niet gevonden', true); return; }
+  const match = {...matchSnap.data(), id: matchSnap.id};
+
+  // Haal TournamentPlayer info op
+  const tpIds = mpList.map(mp => mp.tournamentPlayerId);
+  const tpCache = {};
+  if(tpIds.length){
+    const tpSnap = await getDocs(query(tournSubCol(tid, 'players'), where('__name__','in', tpIds.slice(0,30))));
+    tpSnap.docs.forEach(d => { tpCache[d.id] = {...d.data(), id: d.id}; });
+  }
+
+  // Bouw obs lookup
+  const obsMap = {};
+  obsSnap.forEach(obs => { obsMap[obs.tournamentPlayerId] = obs; });
+
+  // Day info
+  const daySnap = match.dayId ? await getDoc(tournSubDoc(tid, 'days', match.dayId)) : null;
+  const day = daySnap && daySnap.exists() ? daySnap.data() : null;
+
+  // Header
+  const header = document.getElementById('toern-match-title');
+  if(header) header.textContent = `${match.teamAName||'?'} – ${match.teamBName||'?'}`;
+  const sub = document.getElementById('toern-match-sub');
+  if(sub) sub.textContent = [
+    match.startTime ? match.startTime.slice(11,16) : '',
+    match.field ? 'Veld ' + match.field : '',
+    match.categoryId || ''
+  ].filter(Boolean).join(' · ');
+
+  // Status knoppen
+  const statusWrap = document.getElementById('toern-match-status');
+  if(statusWrap){
+    statusWrap.innerHTML = ['watch','optional','skip'].map(s => `
+      <button class="toern-status-btn ${match.status===s?'active':''}" onclick="updateMatchStatus('${tid}','${matchId}','${s}'); openMatchDetail('${tid}','${matchId}')">
+        ${s==='watch'?'✅ Bekijken':s==='optional'?'🔶 Optioneel':'❌ Niet haalbaar'}
+      </button>`).join('');
+  }
+
+  // Dag-afsluiting
+  const dayWrap = document.getElementById('toern-match-day-info');
+  if(dayWrap && day){
+    dayWrap.innerHTML = day.closedAt
+      ? `<span class="toern-badge toern-badge-closed">Dag afgesloten · ${day.closedAt.slice(0,10)}</span>`
+      : `<span class="toern-badge toern-badge-open">Dag open</span>`;
+  }
+
+  // Spelers lijst
+  const lijst = document.getElementById('toern-match-players');
+  if(lijst){
+    if(mpList.length === 0){
+      lijst.innerHTML = '<div class="toern-empty">Geen spelers gekoppeld</div>';
+    } else {
+      lijst.innerHTML = mpList.map(mp => {
+        const tp = tpCache[mp.tournamentPlayerId];
+        if(!tp) return '';
+        const naam = tp.quickName || (tp.playerId ? '(speler uit database)' : 'Onbekend');
+        const obs = obsMap[tp.id];
+        const hasObs = !!obs;
+        const gradeLabel = obs && obs.grade ? obs.grade : '';
+        return `<div class="toern-player-card ${hasObs?'has-obs':''}" onclick="openTournamentObs('${tid}','${matchId}','${match.dayId||''}','${tp.id}','${escapeHtml(naam)}')">
+          <div class="toern-player-card-left">
+            <div class="toern-player-avatar">${initials(naam)}</div>
+            <div>
+              <div class="toern-player-name">${escapeHtml(naam)}</div>
+              <div class="toern-player-meta">${tp.type==='spotted'?'Opgevallen':'Gekoppeld'}${mp.addedBy==='manual'?' · live':''}</div>
+            </div>
+          </div>
+          <div class="toern-player-card-right">
+            ${hasObs ? `<span class="toern-obs-badge">${gradeLabel||'✓'}</span>` : '<span class="toern-obs-empty">Geen obs</span>'}
+          </div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Add-knop
+  const addBtn = document.getElementById('toern-match-add-player');
+  if(addBtn){
+    addBtn.onclick = () => quickAddAndObserve(tid, matchId, match.dayId||'');
+  }
+
+  bd.style.display = 'flex';
+}
+window.openMatchDetail = openMatchDetail;
+window.openTournamentObs = openTournamentObs;
+
+function closeMatchDetail(){
+  const bd = document.getElementById('toern-match-backdrop');
+  if(bd) bd.style.display = 'none';
+  window.__shOpenMatchDetailTid = null;
+  window.__shOpenMatchDetailId = null;
+}
+window.closeMatchDetail = closeMatchDetail;
+
+// ── Bundeling scherm ──────────────────────────────────────────────
+let _currentSummaryId = null;
+
+async function renderBundelingTab(tid){
+  const wrap = document.getElementById('toern-bundeling-wrap');
+  if(!wrap) return;
+  wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
+
+  const [summaries, playersSnap] = await Promise.all([
+    getTournamentSummaries(tid),
+    getDocs(tournSubCol(tid, 'players'))
+  ]);
+  const players = playersSnap.docs.map(d => ({...d.data(), id: d.id}));
+
+  if(summaries.length === 0){
+    wrap.innerHTML = '<div class="toern-empty">Nog geen bundelingen — sluit eerst een dag af.</div>';
+    return;
+  }
+
+  const statusLabel = { draft:'Concept', edited:'Bewerkt', ready:'Klaar ✓' };
+  wrap.innerHTML = summaries.map(s => {
+    const tp = players.find(p => p.id === s.tournamentPlayerId);
+    const naam = tp ? (tp.quickName || (tp.playerId ? 'Speler (uit DB)' : '?')) : 'Onbekend';
+    const wedstrijdCount = (s.dayBlocks||[]).reduce((n,b) => n + (b.observationIds||[]).length, 0);
+    return `<div class="toern-summ-card" onclick="openBundelingDetail('${tid}','${s.id}')">
+      <div class="toern-summ-avatar">${initials(naam)}</div>
+      <div class="toern-summ-info">
+        <div class="toern-summ-name">${escapeHtml(naam)}</div>
+        <div class="toern-summ-meta">${wedstrijdCount} observatie${wedstrijdCount!==1?'s':''}</div>
+      </div>
+      <div class="toern-summ-status toern-summ-status-${s.status}">${statusLabel[s.status]||s.status}</div>
+    </div>`;
+  }).join('');
+}
+
+async function openBundelingDetail(tid, summaryId){
+  _currentSummaryId = summaryId;
+  const bd = document.getElementById('toern-summ-backdrop');
+  if(!bd) return;
+
+  const summSnap = await getDoc(tournSubDoc(tid, 'summaries', summaryId));
+  if(!summSnap.exists()) return;
+  const summ = {...summSnap.data(), id: summSnap.id};
+
+  const tpSnap = await getDoc(tournSubDoc(tid, 'players', summ.tournamentPlayerId));
+  const tp = tpSnap.exists() ? {...tpSnap.data(), id: tpSnap.id} : null;
+  const naam = tp ? (tp.quickName || 'Speler') : 'Speler';
+
+  document.getElementById('toern-summ-title').textContent = naam;
+
+  // Samenvatting veld
+  const summTxt = document.getElementById('toern-summ-text');
+  if(summTxt) summTxt.value = summ.editedSummary || summ.aiSummary || '';
+
+  // Eindoordeel
+  const gradeEl = document.getElementById('toern-summ-grade');
+  if(gradeEl) gradeEl.value = summ.overallGrade || '';
+
+  // Observaties per dag
+  const obsWrap = document.getElementById('toern-summ-obs');
+  if(obsWrap){
+    obsWrap.innerHTML = '<div class="toern-loading">Observaties laden...</div>';
+    const allObs = await getObservationsForPlayer(tid, summ.tournamentPlayerId);
+    const obsById = {};
+    allObs.forEach(o => { obsById[o.id] = o; });
+    const daysSnap = await getDocs(tournSubCol(tid, 'days'));
+    const daysById = {};
+    daysSnap.docs.forEach(d => { daysById[d.id] = d.data(); });
+
+    let html = '';
+    for(const block of (summ.dayBlocks||[])){
+      const day = daysById[block.dayId];
+      html += `<div class="toern-summ-day"><div class="toern-summ-day-label">${day ? day.label : block.dayId}</div>`;
+      for(const obsId of (block.observationIds||[])){
+        const obs = obsById[obsId];
+        if(!obs){ continue; }
+        const matchSnap = await getDoc(tournSubDoc(tid, 'matches', obs.matchId));
+        const match = matchSnap.exists() ? matchSnap.data() : null;
+        const matchLabel = match ? `${match.teamAName||'?'} – ${match.teamBName||'?'}` : 'Wedstrijd';
+        const editedMark = obs.editHistory && obs.editHistory.length ? ' <span class="toern-edited-mark" title="Bewerkt na afsluiting">✏️</span>' : '';
+        html += `<div class="toern-summ-obs-block">
+          <div class="toern-summ-obs-match">${escapeHtml(matchLabel)}${editedMark}</div>
+          <textarea class="toern-summ-obs-text" data-obs-id="${obsId}" rows="3">${escapeHtml(obs.text||'')}</textarea>
+          <div class="toern-summ-obs-grade">Oordeel: <select data-obs-grade="${obsId}">
+            <option value="">—</option>
+            ${['A','B+','B','C+','C','D'].map(g=>`<option ${obs.grade===g?'selected':''} value="${g}">${g}</option>`).join('')}
+          </select></div>
+        </div>`;
+      }
+      html += '</div>';
+    }
+    obsWrap.innerHTML = html || '<div class="toern-empty">Geen observaties</div>';
+  }
+
+  // Status + knoppen
+  const readyBtn = document.getElementById('toern-summ-ready-btn');
+  if(readyBtn){
+    readyBtn.style.display = summ.status === 'ready' ? 'none' : '';
+    readyBtn.onclick = async () => {
+      await saveBundelingEdits(tid, summaryId);
+      await markSummaryReady(tid, summaryId);
+      toast('Bundeling klaar ✓');
+      readyBtn.style.display = 'none';
+      const reportBtn = document.getElementById('toern-summ-report-btn');
+      if(reportBtn) reportBtn.style.display = '';
+    };
+  }
+  const reportBtn = document.getElementById('toern-summ-report-btn');
+  if(reportBtn){
+    reportBtn.style.display = summ.status === 'ready' ? '' : 'none';
+    reportBtn.onclick = async () => {
+      if(!confirm('Definitief rapport aanmaken vanuit deze bundeling?')) return;
+      await createReportFromSummary(tid, summaryId);
+      bd.style.display = 'none';
+    };
+  }
+
+  bd.style.display = 'flex';
+}
+window.openBundelingDetail = openBundelingDetail;
+
+async function saveBundelingEdits(tid, summaryId){
+  const summTxt = document.getElementById('toern-summ-text');
+  const gradeEl = document.getElementById('toern-summ-grade');
+  const editedSummary = summTxt ? summTxt.value.trim() : '';
+  const overallGrade = gradeEl ? gradeEl.value : null;
+
+  // Sla ook individuele obs-teksten op
+  const obsTextEls = document.querySelectorAll('[data-obs-id]');
+  const obsGradeEls = document.querySelectorAll('[data-obs-grade]');
+  const obsPatch = {};
+  obsTextEls.forEach(el => { obsPatch[el.dataset.obsId] = { text: el.value }; });
+  obsGradeEls.forEach(el => {
+    if(!obsPatch[el.dataset.obsGrade]) obsPatch[el.dataset.obsGrade] = {};
+    obsPatch[el.dataset.obsGrade].grade = el.value || null;
+  });
+  await Promise.all(Object.entries(obsPatch).map(([obsId, patch]) =>
+    setDoc(doc(tournSubCol(tid, 'observations'), obsId), patch, { merge: true })
+  ));
+
+  await updateSummaryText(tid, summaryId, { editedSummary, overallGrade });
+  toast('Bundeling opgeslagen ✓');
+}
+window.saveBundelingEdits = saveBundelingEdits;
+
+// ── Spelers tab ────────────────────────────────────────────────────
+async function renderSpelersTab(tid){
+  const wrap = document.getElementById('toern-spelers-wrap');
+  if(!wrap) return;
+  wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
+
+  const [playersSnap, teamsSnap] = await Promise.all([
+    getDocs(tournSubCol(tid, 'players')),
+    getDocs(tournSubCol(tid, 'teams'))
+  ]);
+  const players = playersSnap.docs.map(d => ({...d.data(), id: d.id}));
+  const teams = teamsSnap.docs.map(d => ({...d.data(), id: d.id}));
+  const teamsById = {};
+  teams.forEach(t => { teamsById[t.id] = t; });
+
+  if(players.length === 0){
+    wrap.innerHTML = '<div class="toern-empty">Nog geen spelers gekoppeld</div>';
+  } else {
+    wrap.innerHTML = players.map(tp => {
+      const naam = tp.quickName || (tp.playerId ? 'Speler uit database' : '?');
+      const team = teamsById[tp.teamId];
+      const teamLabel = team ? team.name : (tp.teamId || 'Geen team');
+      const badge = tp.type === 'spotted' ? '<span class="toern-badge toern-badge-spotted">Opgevallen</span>' : '<span class="toern-badge toern-badge-linked">Gekoppeld</span>';
+      const mergeWarn = tp.mergeStatus === 'unlinked' ? '<div class="toern-merge-warn">⚠️ Niet gekoppeld aan spelersprofiel</div>' : '';
+      return `<div class="toern-speler-row">
+        <div class="toern-player-avatar">${initials(naam)}</div>
+        <div class="toern-speler-info">
+          <div class="toern-player-name">${escapeHtml(naam)}${tp.quickNumber?' #'+tp.quickNumber:''}</div>
+          <div class="toern-player-meta">${escapeHtml(teamLabel)} · ${badge}</div>
+          ${mergeWarn}
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// ── Toernooi-overzicht scherm ─────────────────────────────────────
+let _toernTab = 'tijdlijn';
+
+async function renderToernooiDetail(tid){
+  _currentTournamentId = tid;
+  const tournament = tourmCache.find(t => t.id === tid);
+  if(!tournament){ toast('Toernooi niet gevonden', true); return; }
+
+  // Toon detail pane, verberg lijst
+  const listPane = document.getElementById('toern-list-pane');
+  const detailPane = document.getElementById('toern-detail-pane');
+  if(listPane) listPane.style.display = 'none';
+  if(detailPane) detailPane.style.display = '';
+
+  // Header
+  const titleEl = document.getElementById('toern-detail-title');
+  if(titleEl) titleEl.textContent = tournament.name;
+  const subEl = document.getElementById('toern-detail-sub');
+  if(subEl) subEl.textContent = [tournament.location, tournament.startDate, tournament.endDate !== tournament.startDate ? '– '+tournament.endDate : ''].filter(Boolean).join(' · ');
+
+  // Status badge
+  const statusEl = document.getElementById('toern-detail-status');
+  const statusLabels = { prep:'Voorbereiding', active:'Actief', closing:'Afsluiting', done:'Afgerond' };
+  if(statusEl) statusEl.textContent = statusLabels[tournament.status] || tournament.status;
+
+  // Render actieve tab
+  renderToernooiTab(_toernTab, tid);
+}
+window.renderToernooiDetail = renderToernooiDetail;
+
+function renderToernooiTab(tab, tid){
+  _toernTab = tab;
+  tid = tid || _currentTournamentId;
+  // Tab knoppen
+  document.querySelectorAll('.toern-tab-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  // Tab panes
+  document.querySelectorAll('.toern-tab-pane').forEach(pane => {
+    pane.style.display = pane.dataset.tab === tab ? '' : 'none';
+  });
+  if(tab === 'tijdlijn') renderTijdlijnTab(tid);
+  if(tab === 'spelers')  renderSpelersTab(tid);
+  if(tab === 'bundeling') renderBundelingTab(tid);
+}
+window.renderToernooiTab = renderToernooiTab;
+
+async function renderTijdlijnTab(tid){
+  const wrap = document.getElementById('toern-tijdlijn-wrap');
+  if(!wrap){ return; }
+  wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
+
+  const [daysSnap, matchesSnap] = await Promise.all([
+    getDocs(tournSubCol(tid, 'days')),
+    getDocs(query(tournSubCol(tid, 'matches'), orderBy('startTime')))
+  ]);
+  const days = daysSnap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const matches = matchesSnap.docs.map(d => ({...d.data(), id: d.id}));
+
+  if(days.length === 0){
+    wrap.innerHTML = '<div class="toern-empty">Nog geen wedstrijddagen. <button class="btn btn-sm" onclick="showAddDayForm()">+ Dag toevoegen</button></div>';
+    return;
+  }
+
+  const statusIcon = { watch:'🟢', optional:'🟠', skip:'⚫' };
+  let html = '';
+  for(const day of days){
+    const dayMatches = matches.filter(m => m.dayId === day.id);
+    const closedBadge = day.closedAt
+      ? `<span class="toern-badge toern-badge-closed">Afgesloten</span>
+         <button class="btn btn-xs" onclick="confirmReopenDay('${tid}','${day.id}')">Heropenen</button>`
+      : `<button class="btn btn-xs" onclick="confirmCloseDay('${tid}','${day.id}')">Dag afsluiten</button>`;
+    html += `<div class="toern-day-block">
+      <div class="toern-day-header">
+        <span class="toern-day-label">${escapeHtml(day.label)} — ${formatDate(day.date)}</span>
+        <div class="toern-day-actions">${closedBadge}</div>
+      </div>
+      <div class="toern-match-list">`;
+    if(dayMatches.length === 0){
+      html += '<div class="toern-empty toern-empty-sm">Geen wedstrijden voor deze dag</div>';
+    } else {
+      html += dayMatches.map(m => {
+        const time = m.startTime ? m.startTime.slice(11,16) : '—';
+        const field = m.field ? 'Veld ' + m.field : '';
+        return `<div class="toern-match-row toern-match-status-${m.status}" onclick="openMatchDetail('${tid}','${m.id}')">
+          <span class="toern-match-icon">${statusIcon[m.status]||'⚪'}</span>
+          <span class="toern-match-time">${time}</span>
+          <span class="toern-match-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>
+          <span class="toern-match-field">${escapeHtml(field)}</span>
+          <span class="toern-match-cat">${escapeHtml(m.categoryId||'')}</span>
+        </div>`;
+      }).join('');
+    }
+    html += `</div>
+      <button class="btn btn-xs toern-add-match-btn" onclick="showAddMatchForm('${tid}','${day.id}')">+ Wedstrijd toevoegen</button>
+    </div>`;
+  }
+  html += `<button class="btn btn-sm toern-add-day-btn" onclick="showAddDayForm('${tid}')">+ Dag toevoegen</button>`;
+  wrap.innerHTML = html;
+}
+
+// ── Formulieren (inlijn, geen popup) ──────────────────────────────
+function showAddDayForm(tid){
+  const wrap = document.getElementById('toern-tijdlijn-wrap');
+  if(!wrap) return;
+  const form = document.createElement('div');
+  form.className = 'toern-inline-form';
+  form.innerHTML = `
+    <div class="toern-form-title">Dag toevoegen</div>
+    <div class="toern-form-row">
+      <label>Label</label><input id="tf-day-label" type="text" value="Dag ${(tourmCache.find(t=>t.id===_currentTournamentId)||{}).daysCount||1}" placeholder="Dag 1" />
+    </div>
+    <div class="toern-form-row">
+      <label>Datum</label><input id="tf-day-date" type="date" value="${todayISO()}" />
+    </div>
+    <div class="toern-form-actions">
+      <button class="btn btn-secondary" onclick="this.closest('.toern-inline-form').remove()">Annuleren</button>
+      <button class="btn btn-primary" onclick="submitAddDay('${tid}')">Toevoegen</button>
+    </div>`;
+  wrap.prepend(form);
+}
+window.showAddDayForm = showAddDayForm;
+
+async function submitAddDay(tid){
+  const label = document.getElementById('tf-day-label')?.value.trim() || 'Dag';
+  const date  = document.getElementById('tf-day-date')?.value || todayISO();
+  await addDay(tid, { date, label });
+  toast('Dag toegevoegd ✓');
+  renderTijdlijnTab(tid);
+}
+window.submitAddDay = submitAddDay;
+
+async function showAddMatchForm(tid, dayId){
+  const teamsSnap = await getDocs(tournSubCol(tid, 'teams'));
+  const teams = teamsSnap.docs.map(d => ({...d.data(), id: d.id}));
+  const teamOpts = teams.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('');
+  const wrap = document.getElementById('toern-tijdlijn-wrap');
+  if(!wrap) return;
+  // Verwijder bestaand form indien aanwezig
+  document.querySelectorAll('.toern-inline-form').forEach(f => f.remove());
+  const form = document.createElement('div');
+  form.className = 'toern-inline-form';
+  form.innerHTML = `
+    <div class="toern-form-title">Wedstrijd toevoegen</div>
+    <div class="toern-form-row">
+      <label>Starttijd (HH:MM)</label><input id="tf-m-time" type="time" />
+    </div>
+    <div class="toern-form-row">
+      <label>Veld</label><input id="tf-m-field" type="text" placeholder="1" />
+    </div>
+    <div class="toern-form-row">
+      <label>Categorie</label><input id="tf-m-cat" type="text" placeholder="O14" />
+    </div>
+    <div class="toern-form-row">
+      <label>Duur (min)</label><input id="tf-m-dur" type="number" value="25" min="5" max="90" />
+    </div>
+    ${teams.length > 0 ? `
+    <div class="toern-form-row">
+      <label>Team A</label><select id="tf-m-teamA">${teamOpts}</select>
+    </div>
+    <div class="toern-form-row">
+      <label>Team B</label><select id="tf-m-teamB">${teamOpts}</select>
+    </div>` : `
+    <div class="toern-form-row">
+      <label>Team A naam</label><input id="tf-m-teamA-name" type="text" placeholder="Ajax O14" />
+    </div>
+    <div class="toern-form-row">
+      <label>Team B naam</label><input id="tf-m-teamB-name" type="text" placeholder="Feyenoord O14" />
+    </div>`}
+    <div class="toern-form-row">
+      <label>Status</label>
+      <select id="tf-m-status">
+        <option value="watch">✅ Bekijken</option>
+        <option value="optional">🔶 Optioneel</option>
+        <option value="skip">❌ Niet haalbaar</option>
+      </select>
+    </div>
+    <div class="toern-form-actions">
+      <button class="btn btn-secondary" onclick="this.closest('.toern-inline-form').remove()">Annuleren</button>
+      <button class="btn btn-primary" onclick="submitAddMatch('${tid}','${dayId}',${teams.length > 0})">Toevoegen</button>
+    </div>`;
+  wrap.prepend(form);
+}
+window.showAddMatchForm = showAddMatchForm;
+
+async function submitAddMatch(tid, dayId, hasTeamDropdowns){
+  const timeVal = document.getElementById('tf-m-time')?.value || '';
+  const field   = document.getElementById('tf-m-field')?.value.trim() || '';
+  const cat     = document.getElementById('tf-m-cat')?.value.trim() || '';
+  const dur     = parseInt(document.getElementById('tf-m-dur')?.value)||25;
+  const status  = document.getElementById('tf-m-status')?.value || 'watch';
+  // Datum van de dag
+  const daySnap = await getDoc(tournSubDoc(tid, 'days', dayId));
+  const dayDate = daySnap.exists() ? (daySnap.data().date || todayISO()) : todayISO();
+  const startTime = timeVal ? `${dayDate}T${timeVal}` : `${dayDate}T00:00`;
+  let teamAId='', teamBId='', teamAName='', teamBName='';
+  if(hasTeamDropdowns){
+    teamAId = document.getElementById('tf-m-teamA')?.value || '';
+    teamBId = document.getElementById('tf-m-teamB')?.value || '';
+    const teamsSnap = await getDocs(tournSubCol(tid, 'teams'));
+    const teamsById = {};
+    teamsSnap.docs.forEach(d => { teamsById[d.id] = d.data(); });
+    teamAName = teamsById[teamAId]?.name || teamAId;
+    teamBName = teamsById[teamBId]?.name || teamBId;
+  } else {
+    teamAName = document.getElementById('tf-m-teamA-name')?.value.trim() || 'Team A';
+    teamBName = document.getElementById('tf-m-teamB-name')?.value.trim() || 'Team B';
+    // Maak teams aan on the fly
+    const tA = await addTeam(tid, { name: teamAName, categoryId: cat });
+    const tB = await addTeam(tid, { name: teamBName, categoryId: cat });
+    teamAId = tA.id; teamBId = tB.id;
+  }
+  await addMatch(tid, { dayId, startTime, durationMinutes: dur, field, categoryId: cat, teamAId, teamBId, teamAName, teamBName, status });
+  document.querySelectorAll('.toern-inline-form').forEach(f => f.remove());
+  toast('Wedstrijd toegevoegd ✓');
+  renderTijdlijnTab(tid);
+}
+window.submitAddMatch = submitAddMatch;
+
+async function showAddPlayerForm(tid){
+  const teamsSnap = await getDocs(tournSubCol(tid, 'teams'));
+  const teams = teamsSnap.docs.map(d => ({...d.data(), id: d.id}));
+  const teamOpts = teams.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('') || '<option value="">Geen teams aangemaakt</option>';
+  const wrap = document.getElementById('toern-spelers-wrap');
+  if(!wrap) return;
+  document.querySelectorAll('.toern-inline-form').forEach(f => f.remove());
+  const form = document.createElement('div');
+  form.className = 'toern-inline-form';
+  form.innerHTML = `
+    <div class="toern-form-title">Speler koppelen</div>
+    <div class="toern-form-row">
+      <label>Naam</label><input id="tf-p-naam" type="text" placeholder="Voornaam Achternaam" />
+    </div>
+    <div class="toern-form-row">
+      <label>Rugnummer</label><input id="tf-p-rug" type="number" min="1" max="99" />
+    </div>
+    <div class="toern-form-row">
+      <label>Team</label><select id="tf-p-team">${teamOpts}</select>
+    </div>
+    <div class="toern-form-row">
+      <label>Type</label>
+      <select id="tf-p-type">
+        <option value="linked">Gekoppeld (vooraf)</option>
+        <option value="spotted">Opgevallen (live)</option>
+      </select>
+    </div>
+    <div class="toern-form-actions">
+      <button class="btn btn-secondary" onclick="this.closest('.toern-inline-form').remove()">Annuleren</button>
+      <button class="btn btn-primary" onclick="submitAddPlayer('${tid}')">Koppelen</button>
+    </div>`;
+  wrap.prepend(form);
+}
+window.showAddPlayerForm = showAddPlayerForm;
+
+async function submitAddPlayer(tid){
+  const naam = document.getElementById('tf-p-naam')?.value.trim() || null;
+  const rug  = parseInt(document.getElementById('tf-p-rug')?.value)||null;
+  const teamId = document.getElementById('tf-p-team')?.value || '';
+  const type   = document.getElementById('tf-p-type')?.value || 'linked';
+  await addTournamentPlayer(tid, { playerId: null, teamId, quickName: naam, quickNumber: rug, type });
+  document.querySelectorAll('.toern-inline-form').forEach(f => f.remove());
+  toast('Speler gekoppeld ✓');
+  renderSpelersTab(tid);
+}
+window.submitAddPlayer = submitAddPlayer;
+
+// ── Dag afsluiten/heropenen met confirmatie ───────────────────────
+async function confirmCloseDay(tid, dayId){
+  if(!confirm('Dag afsluiten? Observaties worden gemarkeerd en bundeling wordt aangemaakt.')) return;
+  await closeDay(tid, dayId);
+  renderTijdlijnTab(tid);
+  renderBundelingTab(tid);
+}
+window.confirmCloseDay = confirmCloseDay;
+
+async function confirmReopenDay(tid, dayId){
+  if(!confirm('Dag heropenen? Observaties zijn daarna weer bewerkbaar. Wijzigingen worden bijgehouden.')) return;
+  const ok = await reopenDay(tid, dayId);
+  if(ok) renderTijdlijnTab(tid);
+}
+window.confirmReopenDay = confirmReopenDay;
+
+// ── Toernooilijst ─────────────────────────────────────────────────
+function renderToernooienList(){
+  const wrap = document.getElementById('toern-list-wrap');
+  if(!wrap) return;
+
+  if(tourmCache.length === 0){
+    wrap.innerHTML = '<div class="toern-empty">Nog geen toernooien. Maak er een aan met de knop hierboven.</div>';
+    return;
+  }
+
+  const statusLabel = { prep:'Voorbereiding', active:'Actief', closing:'Afsluiting', done:'Afgerond' };
+  wrap.innerHTML = tourmCache.map(t => `
+    <div class="toern-list-card" onclick="renderToernooiDetail('${t.id}')">
+      <div class="toern-list-card-main">
+        <div class="toern-list-card-name">${escapeHtml(t.name)}</div>
+        <div class="toern-list-card-meta">${[t.location, formatDate(t.startDate)].filter(Boolean).join(' · ')}</div>
+      </div>
+      <div class="toern-list-card-status toern-status-${t.status}">${statusLabel[t.status]||t.status}</div>
+    </div>`).join('');
+}
+
+// ── Toernooi aanmaken form ────────────────────────────────────────
+function showNewTournamentForm(){
+  const listPane = document.getElementById('toern-list-pane');
+  let form = document.getElementById('toern-new-form');
+  if(form){ form.style.display = form.style.display === 'none' ? '' : 'none'; return; }
+  form = document.createElement('div');
+  form.id = 'toern-new-form';
+  form.className = 'toern-inline-form';
+  form.innerHTML = `
+    <div class="toern-form-title">Nieuw toernooi</div>
+    <div class="toern-form-row"><label>Naam</label><input id="tf-naam" type="text" placeholder="Haarlem Cup 2026" /></div>
+    <div class="toern-form-row"><label>Locatie</label><input id="tf-loc" type="text" placeholder="Haarlem" /></div>
+    <div class="toern-form-row"><label>Startdatum</label><input id="tf-start" type="date" value="${todayISO()}" /></div>
+    <div class="toern-form-row"><label>Einddatum</label><input id="tf-end" type="date" value="${todayISO()}" /></div>
+    <div class="toern-form-row"><label>Categorieën</label><input id="tf-cats" type="text" placeholder="O12, O14" /></div>
+    <div class="toern-form-row"><label>Info</label><textarea id="tf-info" rows="2" placeholder="Regels, opzet..."></textarea></div>
+    <div class="toern-form-actions">
+      <button class="btn btn-secondary" onclick="document.getElementById('toern-new-form').remove()">Annuleren</button>
+      <button class="btn btn-primary" onclick="submitNewTournament()">Aanmaken</button>
+    </div>`;
+  if(listPane) listPane.prepend(form);
+}
+window.showNewTournamentForm = showNewTournamentForm;
+
+async function submitNewTournament(){
+  const name  = document.getElementById('tf-naam')?.value.trim();
+  if(!name){ toast('Vul een naam in', true); return; }
+  const loc   = document.getElementById('tf-loc')?.value.trim() || '';
+  const start = document.getElementById('tf-start')?.value || todayISO();
+  const end   = document.getElementById('tf-end')?.value || start;
+  const cats  = (document.getElementById('tf-cats')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+  const info  = document.getElementById('tf-info')?.value.trim() || '';
+  const t = await createTournament({ name, location: loc, startDate: start, endDate: end, categories: cats, info });
+  document.getElementById('toern-new-form')?.remove();
+  toast('Toernooi aangemaakt ✓');
+  renderToernooiDetail(t.id);
+}
+window.submitNewTournament = submitNewTournament;
+
+// ── Main render ───────────────────────────────────────────────────
+function renderToernooien(){
+  // Zorg dat tournaments gesubscribed zijn
+  subscribeTournaments();
+  // Reset naar lijst als geen detail actief
+  if(!_currentTournamentId){
+    const listPane = document.getElementById('toern-list-pane');
+    const detailPane = document.getElementById('toern-detail-pane');
+    if(listPane) listPane.style.display = '';
+    if(detailPane) detailPane.style.display = 'none';
+    renderToernooienList();
+  } else {
+    renderToernooiDetail(_currentTournamentId);
+  }
+}
+
+function backToTournamentList(){
+  _currentTournamentId = null;
+  const listPane = document.getElementById('toern-list-pane');
+  const detailPane = document.getElementById('toern-detail-pane');
+  if(listPane) listPane.style.display = '';
+  if(detailPane) detailPane.style.display = 'none';
+  renderToernooienList();
+}
+window.backToTournamentList = backToTournamentList;
+window.renderToernooien = renderToernooien;
+
+// ── Helper: escapeHtml (veiligheidscheck — bestaat al in codebase) ─
+function _toernEscape(s){ return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ── Integratie met bestaand rapport: toernooicontext opslaan ──────
+// Na submitReport: kijk of er een __shTournamentContext is en patch de player
+const _origSubmitReport = window.submitReport;
+// (patch wordt via de go('report')-flow afgehandeld: window.__shTournamentContext
+// wordt uitgelezen in submitReport flow — zie Integratie notes)
+
+/* ================================================================
+   EINDE TOERNOOI-FUNCTIONALITEIT
+   ================================================================ */
 
 function shWireClubAC(input){
   if(!input) return;

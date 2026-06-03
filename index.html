@@ -2214,6 +2214,63 @@ algemeen:</textarea>
   </div>
 
   <!-- Mobile bottom tab nav (visible only on mobile) -->
+
+      <!-- ====== TOERNOOIEN VIEW ====== -->
+      <section class="view" id="view-toernooien">
+
+        <!-- LIJST PANE -->
+        <div id="toern-list-pane">
+          <div class="topbar">
+            <div>
+              <div class="page-title">Toernooien</div>
+              <div class="page-sub" id="toern-list-count"></div>
+            </div>
+            <button class="btn btn-primary" onclick="showNewTournamentForm()">+ Nieuw toernooi</button>
+          </div>
+          <div id="toern-list-wrap" style="padding:16px;"></div>
+        </div>
+
+        <!-- DETAIL PANE -->
+        <div id="toern-detail-pane" style="display:none;">
+          <div class="topbar">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button class="btn btn-ghost btn-sm" onclick="backToTournamentList()">← Terug</button>
+              <div>
+                <div class="page-title" id="toern-detail-title">—</div>
+                <div class="page-sub" id="toern-detail-sub"></div>
+              </div>
+            </div>
+            <span class="toern-badge" id="toern-detail-status"></span>
+          </div>
+
+          <!-- Tabs -->
+          <div class="toern-tabs">
+            <button class="toern-tab-btn active" data-tab="tijdlijn" onclick="renderToernooiTab('tijdlijn')">Tijdlijn</button>
+            <button class="toern-tab-btn" data-tab="spelers" onclick="renderToernooiTab('spelers')">Spelers</button>
+            <button class="toern-tab-btn" data-tab="bundeling" onclick="renderToernooiTab('bundeling')">Bundeling</button>
+          </div>
+
+          <!-- Tijdlijn tab -->
+          <div class="toern-tab-pane" data-tab="tijdlijn" style="padding:16px;">
+            <div id="toern-tijdlijn-wrap"></div>
+          </div>
+
+          <!-- Spelers tab -->
+          <div class="toern-tab-pane" data-tab="spelers" style="display:none;padding:16px;">
+            <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+              <button class="btn btn-primary btn-sm" onclick="showAddPlayerForm(_currentTournamentId)">+ Speler koppelen</button>
+            </div>
+            <div id="toern-spelers-wrap"></div>
+          </div>
+
+          <!-- Bundeling tab -->
+          <div class="toern-tab-pane" data-tab="bundeling" style="display:none;padding:16px;">
+            <div id="toern-bundeling-wrap"></div>
+          </div>
+        </div>
+      </section>
+
+
   <nav class="bottom-nav" id="bottom-nav" aria-label="Hoofdnavigatie">
     <button class="bn-item active" data-view="dashboard" aria-label="Dashboard">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/></svg>
@@ -2231,6 +2288,10 @@ algemeen:</textarea>
     <button class="bn-item" data-view="matches" aria-label="Wedstrijden">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="1"/><line x1="12" y1="6" x2="12" y2="19"/><circle cx="12" cy="12.5" r="2"/></svg>
       <span class="bn-label">Wedstr.</span>
+    </button>
+    <button class="bn-item" data-view="toernooien" aria-label="Toernooien">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+      <span class="bn-label">Toernooien</span>
     </button>
     <button class="bn-item" data-action="menu" aria-label="Meer">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="17" x2="20" y2="17"/></svg>
@@ -3409,5 +3470,61 @@ algemeen:</textarea>
 <script src="clubs-data.js"></script>
 <!-- Main application -->
 <script type="module" src="app.js"></script>
+
+<!-- ====== TOERNOOI: WEDSTRIJD DETAIL OVERLAY ====== -->
+<div class="toern-backdrop" id="toern-match-backdrop" style="display:none;" onclick="if(event.target===this)closeMatchDetail()">
+  <div class="toern-modal">
+    <div class="toern-modal-header">
+      <div>
+        <div class="toern-modal-title" id="toern-match-title">—</div>
+        <div class="toern-modal-sub" id="toern-match-sub"></div>
+      </div>
+      <button class="toern-modal-close" onclick="closeMatchDetail()">×</button>
+    </div>
+    <div class="toern-modal-body">
+      <div id="toern-match-day-info" style="margin-bottom:10px;"></div>
+      <div id="toern-match-status" class="toern-status-row" style="margin-bottom:14px;"></div>
+      <div class="toern-section-label">Spelers</div>
+      <div id="toern-match-players"></div>
+      <button class="btn btn-sm" style="margin-top:12px;width:100%;" id="toern-match-add-player">+ Opgevallen speler toevoegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== TOERNOOI: BUNDELING DETAIL OVERLAY ====== -->
+<div class="toern-backdrop" id="toern-summ-backdrop" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+  <div class="toern-modal toern-modal-lg">
+    <div class="toern-modal-header">
+      <div>
+        <div class="toern-modal-title" id="toern-summ-title">Bundeling</div>
+      </div>
+      <button class="toern-modal-close" onclick="document.getElementById('toern-summ-backdrop').style.display='none'">×</button>
+    </div>
+    <div class="toern-modal-body">
+      <div class="toern-section-label">Algemene samenvatting</div>
+      <textarea id="toern-summ-text" class="toern-summ-textarea" rows="4" placeholder="Schrijf hier een samenvatting van alle observaties..."></textarea>
+      <div class="toern-form-row" style="margin-top:10px;">
+        <label>Eindoordeel</label>
+        <select id="toern-summ-grade" class="toern-select">
+          <option value="">—</option>
+          <option value="A">A — Toptalent</option>
+          <option value="B+">B+</option>
+          <option value="B">B — Regionaal talent</option>
+          <option value="C+">C+</option>
+          <option value="C">C — Aardig</option>
+          <option value="D">D — Matig</option>
+        </select>
+      </div>
+      <div class="toern-section-label" style="margin-top:16px;">Observaties per wedstrijd</div>
+      <div id="toern-summ-obs"></div>
+      <div class="toern-summ-actions">
+        <button class="btn btn-secondary" onclick="saveBundelingEdits(_currentTournamentId, _currentSummaryId)">Opslaan</button>
+        <button class="btn btn-primary" id="toern-summ-ready-btn">Markeer als klaar</button>
+        <button class="btn btn-primary" id="toern-summ-report-btn" style="display:none;background:var(--green)">Maak definitief rapport</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

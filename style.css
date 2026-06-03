@@ -10777,3 +10777,273 @@ tr.db-row-obs td:first-child {
     -webkit-overflow-scrolling: touch;
   }
 }
+
+/* ================================================================
+   TOERNOOI-FUNCTIONALITEIT — v1.0
+   ================================================================ */
+
+/* ── Backdrop / Modal ──────────────────────────────────────────── */
+.toern-backdrop {
+  position: fixed; inset: 0; z-index: 1200;
+  background: rgba(0,0,0,.7);
+  display: flex; align-items: flex-end; justify-content: center;
+  padding: 0;
+}
+@media (min-width: 600px){
+  .toern-backdrop { align-items: center; padding: 24px; }
+}
+.toern-modal {
+  background: var(--panel);
+  border-radius: 16px 16px 0 0;
+  width: 100%; max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column;
+}
+@media (min-width: 600px){
+  .toern-modal { border-radius: 14px; }
+}
+.toern-modal-lg { max-width: 680px; }
+.toern-modal-header {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: var(--panel); z-index: 1;
+}
+.toern-modal-title { font-size: 16px; font-weight: 600; color: var(--text); }
+.toern-modal-sub { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.toern-modal-close {
+  background: none; border: none; color: var(--text-3);
+  font-size: 22px; cursor: pointer; padding: 0 4px; line-height: 1;
+  flex-shrink: 0;
+}
+.toern-modal-close:hover { color: var(--text); }
+.toern-modal-body { padding: 16px 20px 24px; flex: 1; }
+
+/* ── Tabs ─────────────────────────────────────────────────────── */
+.toern-tabs {
+  display: flex; gap: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+  padding: 0 16px;
+}
+.toern-tab-btn {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); font-size: 13px; font-weight: 500;
+  padding: 11px 14px;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+}
+.toern-tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.toern-tab-btn:hover:not(.active) { color: var(--text-2); }
+
+/* ── Lijstkaarten (toernooioverzicht) ─────────────────────────── */
+.toern-list-card {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 14px 16px;
+  margin-bottom: 8px; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.toern-list-card:hover { border-color: var(--accent); background: var(--panel-2); }
+.toern-list-card-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.toern-list-card-meta { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+
+/* ── Dag blokken (tijdlijn) ───────────────────────────────────── */
+.toern-day-block {
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--radius); margin-bottom: 16px; overflow: hidden;
+}
+.toern-day-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+}
+.toern-day-label { font-weight: 600; font-size: 13px; color: var(--text); }
+.toern-day-actions { display: flex; gap: 6px; align-items: center; }
+.toern-match-list { padding: 4px 0; }
+.toern-match-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; cursor: pointer;
+  border-bottom: 1px solid var(--border);
+  transition: background .12s;
+}
+.toern-match-row:last-child { border-bottom: none; }
+.toern-match-row:hover { background: var(--panel-2); }
+.toern-match-icon { font-size: 14px; flex-shrink: 0; }
+.toern-match-time { font-size: 12px; color: var(--text-3); flex-shrink: 0; width: 38px; }
+.toern-match-teams { flex: 1; font-size: 13px; font-weight: 500; color: var(--text); min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toern-match-field { font-size: 11px; color: var(--text-3); flex-shrink: 0; }
+.toern-match-cat { font-size: 11px; color: var(--accent); flex-shrink: 0; }
+.toern-add-match-btn { margin: 10px 16px; }
+.toern-add-day-btn { margin-top: 4px; }
+
+/* ── Match status knoppen ─────────────────────────────────────── */
+.toern-status-row { display: flex; gap: 6px; flex-wrap: wrap; }
+.toern-status-btn {
+  flex: 1; min-width: 100px;
+  padding: 8px 10px; font-size: 12px;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--text-2);
+  cursor: pointer; transition: all .15s;
+}
+.toern-status-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.toern-status-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+
+/* ── Speler kaartjes in match detail ──────────────────────────── */
+.toern-player-card {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 11px 14px;
+  margin-bottom: 8px; cursor: pointer;
+  transition: border-color .15s;
+}
+.toern-player-card:hover { border-color: var(--accent); }
+.toern-player-card.has-obs { border-left: 3px solid var(--green); }
+.toern-player-card-left { display: flex; align-items: center; gap: 10px; }
+.toern-player-card-right { flex-shrink: 0; }
+.toern-player-avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; flex-shrink: 0;
+}
+.toern-player-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.toern-player-meta { font-size: 11px; color: var(--text-3); margin-top: 1px; }
+.toern-obs-badge {
+  background: var(--green); color: #fff;
+  border-radius: 20px; padding: 2px 8px; font-size: 11px; font-weight: 700;
+}
+.toern-obs-empty { font-size: 11px; color: var(--text-3); }
+
+/* ── Spelers tab ──────────────────────────────────────────────── */
+.toern-speler-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); margin-bottom: 8px;
+}
+.toern-speler-info { flex: 1; }
+.toern-merge-warn { font-size: 11px; color: var(--orange); margin-top: 2px; }
+
+/* ── Bundeling kaarten ────────────────────────────────────────── */
+.toern-summ-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+  margin-bottom: 8px; cursor: pointer;
+  transition: border-color .15s;
+}
+.toern-summ-card:hover { border-color: var(--accent); }
+.toern-summ-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--primary); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700; flex-shrink: 0;
+}
+.toern-summ-info { flex: 1; }
+.toern-summ-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.toern-summ-meta { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.toern-summ-status {
+  font-size: 11px; font-weight: 600;
+  padding: 3px 8px; border-radius: 20px;
+}
+.toern-summ-status-draft  { background: rgba(107,118,137,.2); color: var(--text-3); }
+.toern-summ-status-edited { background: rgba(245,158,11,.15); color: var(--orange); }
+.toern-summ-status-ready  { background: rgba(34,197,94,.15); color: var(--green); }
+
+/* ── Bundeling detail ─────────────────────────────────────────── */
+.toern-summ-textarea {
+  width: 100%; background: var(--bg-input, #0d1018);
+  border: 1px solid var(--border-2); border-radius: var(--radius-sm);
+  color: var(--text); padding: 10px 12px; font-size: 13px;
+  resize: vertical; font-family: inherit;
+}
+.toern-summ-textarea:focus { outline: none; border-color: var(--accent); }
+.toern-summ-day { margin-bottom: 16px; }
+.toern-summ-day-label {
+  font-size: 12px; font-weight: 700; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: .05em;
+  margin-bottom: 8px;
+}
+.toern-summ-obs-block {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px; margin-bottom: 8px;
+}
+.toern-summ-obs-match {
+  font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 6px;
+}
+.toern-summ-obs-text {
+  width: 100%; background: var(--bg-input, #0d1018);
+  border: 1px solid var(--border-2); border-radius: var(--radius-sm);
+  color: var(--text); padding: 8px 10px; font-size: 12px;
+  resize: vertical; font-family: inherit;
+}
+.toern-summ-obs-grade { font-size: 12px; color: var(--text-3); margin-top: 6px; }
+.toern-summ-actions {
+  display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; flex-wrap: wrap;
+}
+.toern-edited-mark { font-size: 11px; opacity: .7; }
+
+/* ── Inline formulieren ───────────────────────────────────────── */
+.toern-inline-form {
+  background: var(--panel-2); border: 1px solid var(--border-2);
+  border-radius: var(--radius); padding: 16px;
+  margin-bottom: 16px;
+}
+.toern-form-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 12px; }
+.toern-form-row { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.toern-form-row label { font-size: 11px; color: var(--text-3); text-transform: uppercase; letter-spacing: .04em; }
+.toern-form-row input,
+.toern-form-row select,
+.toern-form-row textarea {
+  background: var(--bg-input, #0d1018);
+  border: 1px solid var(--border-2); border-radius: var(--radius-sm);
+  color: var(--text); padding: 8px 10px; font-size: 13px; font-family: inherit;
+}
+.toern-form-row input:focus,
+.toern-form-row select:focus,
+.toern-form-row textarea:focus { outline: none; border-color: var(--accent); }
+.toern-form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+
+/* ── Badges ───────────────────────────────────────────────────── */
+.toern-badge {
+  display: inline-flex; align-items: center;
+  font-size: 11px; font-weight: 600;
+  padding: 3px 8px; border-radius: 20px;
+}
+.toern-badge-open   { background: rgba(34,197,94,.12); color: var(--green); }
+.toern-badge-closed { background: rgba(107,118,137,.15); color: var(--text-3); }
+.toern-badge-spotted { background: rgba(245,158,11,.12); color: var(--orange); }
+.toern-badge-linked  { background: rgba(78,161,255,.12); color: var(--accent); }
+
+/* ── Sectie labels ────────────────────────────────────────────── */
+.toern-section-label {
+  font-size: 11px; font-weight: 700; color: var(--text-3);
+  text-transform: uppercase; letter-spacing: .05em;
+  margin-bottom: 8px;
+}
+
+/* ── Select ───────────────────────────────────────────────────── */
+.toern-select {
+  background: var(--bg-input, #0d1018);
+  border: 1px solid var(--border-2); border-radius: var(--radius-sm);
+  color: var(--text); padding: 7px 10px; font-size: 13px;
+}
+
+/* ── Hulpklassen ──────────────────────────────────────────────── */
+.toern-empty {
+  color: var(--text-3); font-size: 13px; text-align: center;
+  padding: 24px 16px; background: var(--panel);
+  border: 1px dashed var(--border); border-radius: var(--radius);
+}
+.toern-empty-sm { padding: 10px 16px; border: none; background: none; text-align: left; }
+.toern-loading { color: var(--text-3); font-size: 13px; padding: 16px; }
+.btn-xs { font-size: 11px; padding: 4px 8px; }
+.btn-sm { font-size: 12px; padding: 6px 12px; }
+
+/* ================================================================
+   EINDE TOERNOOI CSS
+   ================================================================ */

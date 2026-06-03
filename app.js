@@ -20212,27 +20212,32 @@ function wireProgrammaUI(){
 }
 
 // Modal show/hide helpers (bestaande conventie: .modal-backdrop.open { display:flex })
+// Detecteer iOS (PWA of Safari)
+const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
 function showModal(id){
   const el = document.getElementById(id);
   if(!el) return;
   el.classList.add('open');
-  // iOS PWA: vergrendel body-scroll zodat scherm niet mee scrollt bij toetsenbord
-  document.body.classList.add('modal-open');
-  document.body._modalScrollY = window.scrollY;
-  if(document.body.classList.contains('modal-open') && document.body.style.top === ''){
+  // iOS PWA only: vergrendel body-scroll zodat scherm niet mee scrollt bij toetsenbord
+  if(_isIOS){
+    document.body._modalScrollY = window.scrollY;
     document.body.style.top = '-' + window.scrollY + 'px';
+    document.body.classList.add('modal-open');
   }
 }
 function hideModal(id){
   const el = document.getElementById(id);
   if(el) el.classList.remove('open');
-  // Herstel scroll positie
-  const anyOpen = document.querySelector('.modal-backdrop.open, .wstr-edit-backdrop.show, .obs-backdrop[style*="flex"]');
-  if(!anyOpen){
-    document.body.classList.remove('modal-open');
-    const scrollY = document.body._modalScrollY || 0;
-    document.body.style.top = '';
-    window.scrollTo(0, scrollY);
+  if(_isIOS){
+    const anyOpen = document.querySelector('.modal-backdrop.open');
+    if(!anyOpen){
+      document.body.classList.remove('modal-open');
+      const scrollY = document.body._modalScrollY || 0;
+      document.body.style.top = '';
+      window.scrollTo(0, scrollY);
+    }
   }
 }
 

@@ -21115,8 +21115,18 @@ window.shAC = (function(){
   function _pos(){
     if(!_inp || !_box) return;
     const r = _inp.getBoundingClientRect();
-    _box.style.left = r.left + 'px';
-    _box.style.top  = (r.bottom + 2) + 'px';
+    // iOS PWA: visualViewport corrigeert voor toetsenbord-offset
+    const vv = window.visualViewport;
+    const vvTop  = vv ? vv.offsetTop  : 0;
+    const vvLeft = vv ? vv.offsetLeft : 0;
+    const top = r.bottom + 2 + vvTop;
+    const left = r.left + vvLeft;
+    const vvH = vv ? vv.height : window.innerHeight;
+    // Als dropdown onder het scherm valt: toon boven de input
+    const boxH = Math.min(_items.length * 44, 240);
+    const finalTop = (top + boxH > vvH + vvTop) ? Math.max(0, r.top + vvTop - boxH - 2) : top;
+    _box.style.left  = left + 'px';
+    _box.style.top   = finalTop + 'px';
     _box.style.width = Math.max(r.width, 220) + 'px';
   }
 
@@ -21144,6 +21154,12 @@ window.shAC = (function(){
     _inp = null;
     _cb = null;
     if(_box){ _box.innerHTML = ''; _box.style.display = 'none'; }
+  }
+
+  // Herpositioneer bij toetsenbord open/dicht (iOS visualViewport)
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', () => { if(_inp && _box) _pos(); });
+    window.visualViewport.addEventListener('scroll', () => { if(_inp && _box) _pos(); });
   }
 
   return {

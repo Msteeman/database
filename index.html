@@ -468,6 +468,13 @@
       </div>
       <div class="smart-modal-body">
         <p>Plak een rapport-blok of een volledig export-bestand. ScoutingHub herkent automatisch <strong>spelersrapporten</strong>, <strong>wedstrijdrapporten</strong> en <strong>elftal-analyses</strong>, en stuurt elk item naar de juiste plek.</p>
+        <!-- Tournify URL import (optioneel, boven JSON) -->
+        <div id="smart-tournify-section" style="margin-bottom:12px;">
+          <label style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:5px;">Tournify URL (optioneel)</label>
+          <input type="url" id="smart-tournify-url" placeholder="https://www.tournify.nl/live/abc123/..." autocomplete="off"
+            style="width:100%;background:var(--bg-input,#0d1018);border:1px solid var(--border-2);border-radius:6px;color:var(--text);padding:8px 10px;font-size:13px;" />
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px;">Vul een URL in om een toernooi te importeren. Laat leeg voor JSON import hieronder.</div>
+        </div>
         <textarea id="smart-import-text" placeholder='Plak hier JSON, bijvoorbeeld:&#10;{"naam": "...", "club": "...", ...}&#10;of&#10;{"thuis": "...", "uit": "...", "datum": "..."}&#10;of een volledig export-bestand met "players", "matchReports", ...'></textarea>
         <label class="smart-file-pick">
           <input type="file" id="smart-import-file" accept=".json,application/json,text/plain" />

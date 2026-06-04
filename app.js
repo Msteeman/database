@@ -20261,6 +20261,111 @@ if(document.readyState === 'loading'){
   wireProgrammaUI();
 }
 
+/* =============== SMART-IMPORT MODAL — TOURNIFY INTEGRATIE =============== */
+(function _wireSmartImportModal(){
+  function _doWire(){
+    const backdrop  = document.getElementById('smart-import-backdrop');
+    const closeBtn  = document.getElementById('smart-import-close');
+    const cancelBtn = document.getElementById('smart-import-cancel');
+    const goBtn     = document.getElementById('smart-import-go');
+    const textArea  = document.getElementById('smart-import-text');
+    const urlInput  = document.getElementById('smart-tournify-url');
+    const statusEl  = document.getElementById('smart-import-status');
+    if(!backdrop || !goBtn) return; // modal niet aanwezig
+
+    // Open / sluit
+    window.openSmartImportModal = function(){
+      if(urlInput) urlInput.value = '';
+      if(textArea) textArea.value = '';
+      if(statusEl){ statusEl.textContent = ''; statusEl.style.color = ''; }
+      goBtn.disabled = false;
+      goBtn.textContent = 'Importeren';
+      backdrop.classList.add('show');
+      setTimeout(() => { if(urlInput) urlInput.focus(); }, 80);
+    };
+    window.closeSmartImportModal = function(){
+      backdrop.classList.remove('show');
+    };
+
+    if(closeBtn)  closeBtn.addEventListener('click',  window.closeSmartImportModal);
+    if(cancelBtn) cancelBtn.addEventListener('click', window.closeSmartImportModal);
+    backdrop.addEventListener('click', e => { if(e.target === backdrop) window.closeSmartImportModal(); });
+
+    // Enable import-knop zodra er iets getypt is
+    function _checkReady(){
+      const hasUrl  = urlInput  && urlInput.value.trim().length > 5;
+      const hasJson = textArea  && textArea.value.trim().length > 2;
+      goBtn.disabled = !hasUrl && !hasJson;
+    }
+    if(urlInput)  urlInput.addEventListener('input', _checkReady);
+    if(textArea)  textArea.addEventListener('input', _checkReady);
+
+    // Submit
+    goBtn.addEventListener('click', async () => {
+      const url     = urlInput  ? urlInput.value.trim()  : '';
+      const jsonRaw = textArea  ? textArea.value.trim()  : '';
+
+      const setStatus = (msg, isErr) => {
+        if(!statusEl) return;
+        statusEl.textContent = msg;
+        statusEl.style.color = isErr ? 'var(--red)' : 'var(--text-2)';
+      };
+
+      // ── Tournify URL flow ───────────────────────────────────────
+      if(url){
+        goBtn.disabled = true;
+        goBtn.textContent = 'Bezig...';
+        setStatus('URL analyseren...');
+        try {
+          const t = await importFromTournifyUrl(url, msg => setStatus(msg));
+          if(!t){
+            goBtn.disabled = false;
+            goBtn.textContent = 'Importeren';
+            return;
+          }
+          setStatus(`${t.name} geïmporteerd ✓`);
+          if(statusEl) statusEl.style.color = 'var(--green)';
+          setTimeout(() => {
+            window.closeSmartImportModal();
+            if(typeof go === 'function') go('toernooien');
+            if(typeof renderToernooiDetail === 'function') renderToernooiDetail(t.id);
+          }, 900);
+        } catch(err){
+          console.error('smart-import tournify error:', err);
+          setStatus('Import mislukt: ' + (err.message || String(err)), true);
+          goBtn.disabled = false;
+          goBtn.textContent = 'Importeren';
+        }
+        return;
+      }
+
+      // ── JSON / tekst flow (bestaand gedrag via runImport) ───────
+      if(jsonRaw){
+        // Kopieer naar de bestaande import-textarea en delegeer
+        const legacyTextarea = document.getElementById('import-text');
+        if(legacyTextarea){
+          legacyTextarea.value = jsonRaw;
+          window.closeSmartImportModal();
+          if(typeof runImport === 'function') await runImport();
+        } else {
+          setStatus('Plak JSON of een Tournify URL', true);
+        }
+        return;
+      }
+
+      setStatus('Vul een Tournify URL in of plak JSON', true);
+    });
+  }
+
+  // Wire na DOM-ready
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', _doWire);
+  } else {
+    _doWire();
+  }
+})();
+
+
 /* =============== IMPORT =============== */
 function openImportModal(){
   $('#import-text').value = '';
@@ -22550,6 +22655,17 @@ async function importFromTournifyUrl(url, statusCallback){
     return null;
   }
   report(`ID gevonden: ${tournifyId} — data ophalen...`);
+  if(typeof __shTrace === 'function') __shTrace('tournify-import-start', { tournifyId });
+
+  // Stap 1b: Duplicate check — bestaat dit toernooi al?
+  try {
+    const existingSnap = await getDocs(query(tournamentsCol(), where('tournifyId','==', tournifyId)));
+    if(!existingSnap.empty){
+      const ex = existingSnap.docs[0].data();
+      toast(`Toernooi al geïmporteerd: ${ex.name || tournifyId}`, true);
+      return null;
+    }
+  } catch(dupErr){ console.warn('Duplicate check fout (niet-fataal):', dupErr); }
 
   // Stap 2: API call
   let rawData;
@@ -22557,6 +22673,7 @@ async function importFromTournifyUrl(url, statusCallback){
     rawData = await fetchTournifyData(tournifyId);
   } catch(err){
     toast(`Tournify ophalen mislukt: ${err.message}`, true);
+    if(typeof __shTrace === 'function') __shTrace('tournify-import-error', { tournifyId, err: err.message });
     return null;
   }
 
@@ -22564,6 +22681,13 @@ async function importFromTournifyUrl(url, statusCallback){
   const mapped = mapTournifyToModel(rawData, tournifyId);
   if(!mapped.name){
     toast('Tournify-response heeft geen toernooijnaam — import afgebroken', true);
+    return null;
+  }
+
+  // Stap 3b: API validatie — minimaal teams of matches vereist
+  if(!mapped.teams.length && !mapped.matches.length){
+    toast('Tournify-response bevat geen teams of wedstrijden — import afgebroken', true);
+    if(typeof __shTrace === 'function') __shTrace('tournify-import-empty', { tournifyId });
     return null;
   }
 
@@ -22632,6 +22756,13 @@ async function importFromTournifyUrl(url, statusCallback){
   }
 
   report('Import voltooid ✓');
+  if(typeof __shTrace === 'function') __shTrace('tournify-import-done', {
+    tournifyId: mapped.tournifyId,
+    tournamentId: tournament.id,
+    name: tournament.name,
+    teams: mapped.teams.length,
+    matches: mapped.matches.length
+  });
   return tournament;
 }
 window.importFromTournifyUrl = importFromTournifyUrl;

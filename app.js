@@ -22671,7 +22671,28 @@ function mapTournifyToModel(data, tournifyId){
     };
   }).filter(m => m.startTime) : [];
 
-  return { name, location, startDate, endDate, categories, info, teams, matches, tournifyData: data, tournifyId };
+  // Spelers: zoek in elk team naar een roster/spelers-lijst
+  // Tournify-velden: spelers, players, roster, squad, deelnemers
+  const str2 = str; // alias voor gebruik in nested scope
+  const teamsWithPlayers = teams.map(rawTeam => {
+    // Zoek de originele team-data op via importedId of naam
+    const origTeam = Array.isArray(rawTeams) ? rawTeams.find(t =>
+      str(t.id || t.team_id || '') === rawTeam.importedId ||
+      str(t.naam || t.name || t.club || '').toLowerCase() === rawTeam.name.toLowerCase()
+    ) : null;
+    if(!origTeam) return { ...rawTeam, players: [] };
+    const rawRoster = origTeam.spelers || origTeam.players || origTeam.roster ||
+                      origTeam.squad   || origTeam.deelnemers || [];
+    const players = Array.isArray(rawRoster) ? rawRoster.map(p => ({
+      name:   str2(p.naam || p.name || p.voornaam || ''),
+      number: parseInt(p.nummer || p.number || p.rugnummer || 0) || null,
+      position: str2(p.positie || p.position || '')
+    })).filter(p => p.name || p.number) : [];
+    return { ...rawTeam, players };
+  });
+
+  return { name, location, startDate, endDate, categories, info,
+           teams: teamsWithPlayers, matches, tournifyData: data, tournifyId };
 }
 
 async function importFromTournifyUrl(url, statusCallback){
@@ -22782,6 +22803,50 @@ async function importFromTournifyUrl(url, statusCallback){
         status:          m.status
       });
     }
+  }
+
+  // TournamentPlayers aanmaken per team (na matches, zodat autoLink werkt)
+  // Zo worden MatchPlayer records gegenereerd voor alle wedstrijden van dat team
+  let totalPlayers = 0;
+  const teamInternalIds = Object.values(teamIdMap);
+  if(teamInternalIds.length){
+    report('Spelers koppelen aan wedstrijden...');
+    for(const mappedTeam of mapped.teams){
+      const internalTeamId = teamIdMap[mappedTeam.importedId] ||
+                             teamIdMap[mappedTeam.name.toLowerCase()] || '';
+      if(!internalTeamId) continue;
+
+      if(mappedTeam.players && mappedTeam.players.length){
+        // Tournify heeft spelersnamen → maak benoemde TournamentPlayers
+        for(const p of mappedTeam.players){
+          await addTournamentPlayer(tournament.id, {
+            playerId:    null,
+            teamId:      internalTeamId,
+            quickName:   p.name || null,
+            quickNumber: p.number || null,
+            type:        'linked'
+          });
+          totalPlayers++;
+        }
+      } else {
+        // Geen roster in Tournify → maak één anonieme placeholder per team
+        // zodat de scouter direct "Speler toevoegen" kan zien in match detail
+        await addTournamentPlayer(tournament.id, {
+          playerId:    null,
+          teamId:      internalTeamId,
+          quickName:   `Speler — ${mappedTeam.name}`,
+          quickNumber: null,
+          type:        'linked'
+        });
+        totalPlayers++;
+      }
+    }
+    if(totalPlayers) report(`${totalPlayers} speler${totalPlayers !== 1 ? 's' : ''} gekoppeld...`);
+  }
+
+  // Zet toernooi op 'active' als er matches zijn
+  if(mapped.matches.length){
+    await setDoc(tournDoc(tournament.id), { status: 'active' }, { merge: true });
   }
 
   report('Import voltooid ✓');

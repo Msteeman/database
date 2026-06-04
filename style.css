@@ -11096,9 +11096,7 @@ tr.db-row-obs td:first-child {
   flex: 1 1 auto; min-width: 120px; text-align: center;
 }
 /* Voorkom overflow in de list pane op mobile */
-#toern-list-pane, #toern-detail-pane {
-  max-width: 100%; overflow-x: hidden; box-sizing: border-box;
-}
+
 
 /* ── Modal open: voorkom body-scroll op iOS PWA ──────────────── */
 body.modal-open {
@@ -11125,41 +11123,30 @@ body.modal-open {
   max-height: min(90vh, 90svh);
 }
 
-/* ── Toernooi view layout fix (PWA + desktop) ─────────────────── */
+/* ── Toernooi view layout (PWA + desktop) ─────────────────────── */
 #view-toernooien {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
 }
 #toern-list-pane,
 #toern-detail-pane {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
-}
-#toern-list-pane .topbar,
-#toern-detail-pane .topbar {
-  flex-shrink: 0;
+  min-height: 0;
+  overflow-x: hidden;
 }
 #toern-list-wrap {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
   padding: 16px;
 }
-.toern-tabs {
-  flex-shrink: 0;
-}
 .toern-tab-pane {
-  flex: 1;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
+  padding: 16px;
+  overflow-y: visible;
 }
-/* Nieuwe toernooi knop altijd zichtbaar op mobile */
-#toern-list-pane .topbar {
-  flex-wrap: wrap;
-  gap: 8px;
+/* Toernooi form: inputs altijd zichtbaar */
+.toern-inline-form input,
+.toern-inline-form select,
+.toern-inline-form textarea {
+  background: var(--bg-2, #111722) !important;
+  border: 1px solid var(--border-2, #2d3242) !important;
+  color: var(--text, #e5e9f5) !important;
+  width: 100%;
+  box-sizing: border-box;
 }

@@ -6445,11 +6445,17 @@ async function _obsSubmit(e){
         const _ti = _obsTerCont ? Array.from(_obsTerCont.querySelectorAll('.obs-term-in')) : Array.from(document.querySelectorAll('.obs-term-in'));
         _d.tekst = (_OBS_TERMS||[]).map(t => { const el = _ti.find(x => x.dataset.term===t); return t+':'+(el&&el.value.trim()?' '+el.value.trim():''); }).join('\n');
         _d.modified = Date.now();
-        if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
+        if(typeof saveProgrammaItem === 'function'){
+          saveProgrammaItem(prog).then(() => {
+            if(typeof toast === 'function') toast('Notitie bewaard ✓');
+          }).catch(err => {
+            console.error('obs-draft flush fout:', err);
+            if(typeof toast === 'function') toast('Bewaren mislukt — controleer verbinding', true);
+          });
+        }
       }
     } catch(_){}
     _obsClose();
-    if(typeof toast === 'function') toast('Notitie bewaard ✓');
     // Direct opnieuw renderen vanuit geheugen — paarse kaart verschijnt meteen
     if(typeof renderActiveScouting === 'function') setTimeout(renderActiveScouting, 60);
     return;
@@ -7678,8 +7684,13 @@ function renderActiveScouting(){
           // Altijd een NIEUWE draft aanmaken — bestaande blijven bewaard
           const _obsDraft = { id: 'obs_' + Date.now() + '_' + Math.random().toString(36).slice(2,5), rapport_type: 'observatie', obs_draft: true, naam: '', tekst: '', created: Date.now() };
           _obsProg.snelnotities.push(_obsDraft);
-          if(typeof saveProgrammaItem === 'function') saveProgrammaItem(_obsProg).catch(()=>{});
-          // Direct re-render voor snelle UI update (niet wachten op Firestore)
+          // Sla DIRECT op naar Firestore — niet alleen debounced
+          if(typeof saveProgrammaItem === 'function'){
+            saveProgrammaItem(_obsProg).catch(err => {
+              console.error('obs-draft save fout:', err);
+              if(typeof toast === 'function') toast('Opslaan mislukt — controleer verbinding', true);
+            });
+          }
           if(typeof renderActiveScouting === 'function') renderActiveScouting();
           openObservatieForm(_obsProg, _obsDraft);
         }

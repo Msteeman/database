@@ -11099,3 +11099,28 @@ tr.db-row-obs td:first-child {
 #toern-list-pane, #toern-detail-pane {
   max-width: 100%; overflow-x: hidden; box-sizing: border-box;
 }
+
+/* ── Modal open: voorkom body-scroll op iOS PWA ──────────────── */
+body.modal-open {
+  overflow: hidden;
+  /* iOS-specifiek: position fixed + width 100% voorkomt bounce-scroll */
+  position: fixed;
+  width: 100%;
+  /* top: current scroll positie — wordt via JS ingesteld indien nodig */
+}
+
+/* ── Autocomplete dropdown — altijd boven andere content ─────── */
+#shac-box {
+  position: fixed !important;
+  z-index: 9999 !important;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+/* ── obs-modal: iOS keyboard-aware hoogte ────────────────────── */
+.obs-modal {
+  max-height: min(90vh, 90svh);
+}
+.toern-modal {
+  max-height: min(90vh, 90svh);
+}

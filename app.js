@@ -6371,6 +6371,10 @@ function openObservatieForm(prog, sn){
   }
 
   bd.style.display = 'flex';
+  // iOS PWA: blokkeer body-scroll (voorkomt focus-scroll weg)
+  const _scrollY = window.scrollY;
+  document.body.style.top = `-${_scrollY}px`;
+  document.body.classList.add('modal-open');
   setTimeout(() => { const n = document.getElementById('obs-naam'); if(n) n.focus(); }, 80);
 }
 window.openObservatieForm = openObservatieForm;
@@ -6378,6 +6382,11 @@ window.openObservatieForm = openObservatieForm;
 function _obsClose(){
   const bd = document.getElementById('obs-backdrop');
   if(bd) bd.style.display = 'none';
+  // Herstel scroll positie na body.modal-open
+  const _scrollY = parseInt(document.body.style.top || '0') * -1;
+  document.body.classList.remove('modal-open');
+  document.body.style.top = '';
+  if(_scrollY) window.scrollTo(0, _scrollY);
   // Herrender direct zodat paarse kaartjes meteen zichtbaar zijn
   setTimeout(() => {
     try { if(typeof renderActiveScouting === 'function') renderActiveScouting(); } catch(_){}
@@ -21297,20 +21306,30 @@ window.shAC = (function(){
 
   function _pos(){
     if(!_inp || !_box) return;
-    const r = _inp.getBoundingClientRect();
-    // iOS PWA: visualViewport corrigeert voor toetsenbord-offset
-    const vv = window.visualViewport;
-    const vvTop  = vv ? vv.offsetTop  : 0;
-    const vvLeft = vv ? vv.offsetLeft : 0;
-    const top = r.bottom + 2 + vvTop;
-    const left = r.left + vvLeft;
-    const vvH = vv ? vv.height : window.innerHeight;
-    // Als dropdown onder het scherm valt: toon boven de input
-    const boxH = Math.min(_items.length * 44, 240);
-    const finalTop = (top + boxH > vvH + vvTop) ? Math.max(0, r.top + vvTop - boxH - 2) : top;
-    _box.style.left  = left + 'px';
-    _box.style.top   = finalTop + 'px';
-    _box.style.width = Math.max(r.width, 220) + 'px';
+    const r    = _inp.getBoundingClientRect();
+    const vv   = window.visualViewport;
+    // visualViewport.offsetTop = hoeveel de viewport verschoven is door keyboard/pinch
+    const vvOffsetTop  = vv ? vv.offsetTop  : 0;
+    const vvOffsetLeft = vv ? vv.offsetLeft : 0;
+    const vvH          = vv ? vv.height     : window.innerHeight;
+
+    // r.bottom / r.top zijn viewport-coordinaten (relatief aan bovenkant zichtbaar scherm)
+    // We zetten de box op fixed positie, dus we rekenen in viewport-coords
+    const boxH     = Math.min(_items.length * 44, 240);
+    const spaceBelow = vvH - r.bottom;
+    const spaceAbove = r.top;
+
+    // Altijd naar BENEDEN tenzij er echt te weinig ruimte is én boven meer ruimte is
+    const goUp = (spaceBelow < boxH) && (spaceAbove > spaceBelow);
+    const top  = goUp
+      ? r.top  + vvOffsetTop  - boxH - 4
+      : r.bottom + vvOffsetTop + 2;
+    const left = r.left + vvOffsetLeft;
+
+    _box.style.position = 'fixed';
+    _box.style.left     = Math.max(0, left) + 'px';
+    _box.style.top      = Math.max(0, top)  + 'px';
+    _box.style.width    = Math.max(r.width, 220) + 'px';
   }
 
   function _render(){
@@ -21914,14 +21933,18 @@ async function openTournamentObs(tid, matchId, dayId, tournamentPlayerId, tpName
 
   openObservatieForm(prog, sn);
 
-  // Overschrijf submit-knop tekst
-  const btn = document.getElementById('obs-submit');
-  if(btn){ btn.textContent = 'Observatie opslaan'; btn._wired = false; }
+  // Nullify de obs-context zodat _obsSubmit (regulier) nooit iets opslaat
+  // als er toch een dubbele event binnenkomt
+  const bd = document.getElementById('obs-backdrop');
+  if(bd) bd._obsContext = { prog: null, sn: null };
 
-  // Vervang de submit handler
-  const newBtn = btn && btn.cloneNode(true);
-  if(btn && newBtn){
+  // Overschrijf submit-knop: vervang DOM-node zodat alle oude listeners weg zijn
+  const btn = document.getElementById('obs-submit');
+  if(btn){
+    btn.textContent = 'Observatie opslaan';
+    const newBtn = btn.cloneNode(true); // geen event listeners
     btn.parentNode.replaceChild(newBtn, btn);
+    newBtn._wired = true; // voorkom re-wiring door volgende openObservatieForm aanroep
     newBtn.addEventListener('click', async (e) => {
       e.preventDefault();
       e.stopPropagation();
@@ -22109,6 +22132,7 @@ async function openMatchDetail(tid, matchId){
   }
 
   bd.style.display = 'flex';
+  document.body.classList.add('modal-open');
 }
 window.openMatchDetail = openMatchDetail;
 window.openTournamentObs = openTournamentObs;
@@ -22217,6 +22241,7 @@ window.startRapportVanuitMatch = startRapportVanuitMatch;
 function closeMatchDetail(){
   const bd = document.getElementById('toern-match-backdrop');
   if(bd) bd.style.display = 'none';
+  document.body.classList.remove('modal-open');
   window.__shOpenMatchDetailTid = null;
   window.__shOpenMatchDetailId = null;
 }

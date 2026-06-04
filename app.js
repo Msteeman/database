@@ -22449,6 +22449,197 @@ function renderToernooienList(){
 }
 
 // ── Toernooi aanmaken form ────────────────────────────────────────
+
+/* ================================================================
+   TOURNIFY URL-IMPORT — v1.0
+   Flow: URL → ID → /api/tournify/{id} → bestaande save-functies
+   ================================================================ */
+
+function extractTournifyId(url){
+  // Ondersteunde formaten:
+  //   https://www.tournify.nl/live/abc123/...
+  //   https://www.tournify.nl/share/abc123/...
+  //   https://tournify.nl/live/abc123
+  //   https://app.tournify.nl/share/abc123/overzicht
+  try {
+    const u = new URL(url.trim());
+    const parts = u.pathname.split('/').filter(Boolean);
+    // Zoek segment ná 'live' of 'share'
+    for(let i = 0; i < parts.length - 1; i++){
+      if(parts[i] === 'live' || parts[i] === 'share'){
+        const id = parts[i + 1];
+        if(id && id.length >= 3) return id;
+      }
+    }
+    // Fallback: laatste non-lege segment als het op een ID lijkt (alfanumeriek, ≥4 tekens)
+    const last = parts[parts.length - 1];
+    if(last && /^[a-zA-Z0-9_-]{4,}$/.test(last)) return last;
+  } catch(_){ /* ongeldige URL */ }
+  return null;
+}
+
+async function fetchTournifyData(tournifyId){
+  const url = `/api/tournify/${encodeURIComponent(tournifyId)}`;
+  const resp = await fetch(url);
+  if(!resp.ok){
+    throw new Error(`API fout ${resp.status}: ${resp.statusText}`);
+  }
+  const json = await resp.json();
+  if(!json || typeof json !== 'object'){
+    throw new Error('Lege of ongeldige API-response');
+  }
+  return json;
+}
+
+function mapTournifyToModel(data, tournifyId){
+  // Tournify veldnamen → intern model
+  // Velden: naam/name/title, locatie/location/venue,
+  //         datum/date/startDate, eindDatum/endDate,
+  //         categorieen/categories, wedstrijden/matches/games
+  const str = v => (v && typeof v === 'string') ? v.trim() : (v != null ? String(v) : '');
+
+  const name     = str(data.naam || data.name || data.title || data.tournament_name || '');
+  const location = str(data.locatie || data.location || data.venue || data.plaats || '');
+  const startDate = str(data.datum || data.date || data.startDate || data.start_date || data.startDatum || todayISO()).slice(0,10);
+  const endDate   = str(data.eindDatum || data.endDate || data.end_date || data.eindDatum || startDate).slice(0,10) || startDate;
+  const info      = str(data.info || data.description || data.omschrijving || '');
+
+  // Categorieën: array of kommalijst
+  let categories = [];
+  const rawCats = data.categorieen || data.categories || data.leeftijden || [];
+  if(Array.isArray(rawCats)) categories = rawCats.map(str).filter(Boolean);
+  else if(typeof rawCats === 'string') categories = rawCats.split(',').map(s => s.trim()).filter(Boolean);
+
+  // Teams: array van {id, naam/name, categorie/category}
+  const rawTeams = data.teams || data.clubs || [];
+  const teams = Array.isArray(rawTeams) ? rawTeams.map(t => ({
+    importedId: str(t.id || t.team_id || ''),
+    name:       str(t.naam || t.name || t.club || ''),
+    categoryId: str(t.categorie || t.category || t.leeftijd || '')
+  })).filter(t => t.name) : [];
+
+  // Wedstrijden: array van {datum, tijd, veld, teamA, teamB, duur, categorie}
+  const rawMatches = data.wedstrijden || data.matches || data.games || data.programma || [];
+  const matches = Array.isArray(rawMatches) ? rawMatches.map(m => {
+    const datum  = str(m.datum || m.date || m.startDate || startDate).slice(0,10);
+    const tijd   = str(m.tijd || m.time || m.startTime || m.start_time || '').slice(0,5);
+    const startTime = (datum && tijd) ? `${datum}T${tijd}` : datum ? `${datum}T00:00` : '';
+    return {
+      startTime,
+      field:           str(m.veld || m.field || m.venue || ''),
+      categoryId:      str(m.categorie || m.category || m.leeftijd || ''),
+      teamAImportedId: str(m.thuis_id || m.teamA_id || m.team1_id || ''),
+      teamBImportedId: str(m.uit_id   || m.teamB_id || m.team2_id || ''),
+      teamAName:       str(m.thuis || m.teamA || m.team1 || m.home || ''),
+      teamBName:       str(m.uit   || m.teamB || m.team2 || m.away || ''),
+      durationMinutes: parseInt(m.duur || m.duration || m.duration_minutes || 25) || 25,
+      status: 'watch'
+    };
+  }).filter(m => m.startTime) : [];
+
+  return { name, location, startDate, endDate, categories, info, teams, matches, tournifyData: data, tournifyId };
+}
+
+async function importFromTournifyUrl(url, statusCallback){
+  const report = statusCallback || (msg => toast(msg));
+
+  // Stap 1: ID extracten
+  const tournifyId = extractTournifyId(url);
+  if(!tournifyId){
+    toast('Geen geldig Tournify-ID gevonden in de URL', true);
+    return null;
+  }
+  report(`ID gevonden: ${tournifyId} — data ophalen...`);
+
+  // Stap 2: API call
+  let rawData;
+  try {
+    rawData = await fetchTournifyData(tournifyId);
+  } catch(err){
+    toast(`Tournify ophalen mislukt: ${err.message}`, true);
+    return null;
+  }
+
+  // Stap 3: Mappen naar intern model
+  const mapped = mapTournifyToModel(rawData, tournifyId);
+  if(!mapped.name){
+    toast('Tournify-response heeft geen toernooijnaam — import afgebroken', true);
+    return null;
+  }
+
+  // Stap 4: Opslaan via bestaande functies
+  report(`Toernooi aanmaken: ${mapped.name}...`);
+  const tournament = await createTournament({
+    name:       mapped.name,
+    location:   mapped.location,
+    startDate:  mapped.startDate,
+    endDate:    mapped.endDate,
+    categories: mapped.categories,
+    info:       mapped.info
+  });
+  // Sla ruwe Tournify-data op voor later gebruik
+  await saveTournament({ ...tournament, tournifyData: mapped.tournifyData, tournifyId: mapped.tournifyId });
+
+  // Teams aanmaken + id-mapping bijhouden (importedId → intern id)
+  const teamIdMap = {};
+  if(mapped.teams.length){
+    report(`${mapped.teams.length} team${mapped.teams.length !== 1 ? 's' : ''} aanmaken...`);
+    for(const t of mapped.teams){
+      const team = await addTeam(tournament.id, {
+        name:         t.name,
+        categoryId:   t.categoryId,
+        importedName: t.name
+      });
+      if(t.importedId) teamIdMap[t.importedId] = team.id;
+      // Bewaar ook op naam als fallback (Tournify heeft niet altijd team-ids in wedstrijden)
+      teamIdMap[t.name.toLowerCase()] = team.id;
+    }
+  }
+
+  // Dag aanmaken per unieke datum (wedstrijden worden gegroepeerd op dag)
+  const dayDateMap = {}; // "2026-06-07" → dayId
+  const uniqueDates = [...new Set(mapped.matches.map(m => m.startTime.slice(0,10)).filter(Boolean))].sort();
+  if(uniqueDates.length){
+    report(`${uniqueDates.length} dag${uniqueDates.length !== 1 ? 'en' : ''} aanmaken...`);
+    for(let i = 0; i < uniqueDates.length; i++){
+      const date = uniqueDates[i];
+      const day = await addDay(tournament.id, { date, label: `Dag ${i + 1}` });
+      dayDateMap[date] = day.id;
+    }
+  }
+
+  // Wedstrijden aanmaken
+  if(mapped.matches.length){
+    report(`${mapped.matches.length} wedstrijd${mapped.matches.length !== 1 ? 'en' : ''} aanmaken...`);
+    for(const m of mapped.matches){
+      const date = m.startTime.slice(0,10);
+      const dayId = dayDateMap[date] || '';
+      // Team-ids: eerst via importedId, dan via naam
+      const teamAId = teamIdMap[m.teamAImportedId] || teamIdMap[m.teamAName.toLowerCase()] || '';
+      const teamBId = teamIdMap[m.teamBImportedId] || teamIdMap[m.teamBName.toLowerCase()] || '';
+      await addMatch(tournament.id, {
+        dayId,
+        startTime:       m.startTime,
+        durationMinutes: m.durationMinutes,
+        field:           m.field,
+        categoryId:      m.categoryId,
+        teamAId, teamBId,
+        teamAName:       m.teamAName,
+        teamBName:       m.teamBName,
+        status:          m.status
+      });
+    }
+  }
+
+  report('Import voltooid ✓');
+  return tournament;
+}
+window.importFromTournifyUrl = importFromTournifyUrl;
+
+/* ================================================================
+   EINDE TOURNIFY URL-IMPORT
+   ================================================================ */
+
 function showNewTournamentForm(){
   const listPane = document.getElementById('toern-list-pane');
   let form = document.getElementById('toern-new-form');
@@ -22458,32 +22649,119 @@ function showNewTournamentForm(){
   form.className = 'toern-inline-form';
   form.innerHTML = `
     <div class="toern-form-title">Nieuw toernooi</div>
-    <div class="toern-form-row"><label>Naam</label><input id="tf-naam" type="text" placeholder="Haarlem Cup 2026" /></div>
-    <div class="toern-form-row"><label>Locatie</label><input id="tf-loc" type="text" placeholder="Haarlem" /></div>
-    <div class="toern-form-row"><label>Startdatum</label><input id="tf-start" type="date" value="${todayISO()}" /></div>
-    <div class="toern-form-row"><label>Einddatum</label><input id="tf-end" type="date" value="${todayISO()}" /></div>
-    <div class="toern-form-row"><label>Categorieën</label><input id="tf-cats" type="text" placeholder="O12, O14" /></div>
-    <div class="toern-form-row"><label>Info</label><textarea id="tf-info" rows="2" placeholder="Regels, opzet..."></textarea></div>
+
+    <!-- Modus toggle -->
+    <div class="toern-import-toggle">
+      <button type="button" class="toern-toggle-btn active" id="tf-mode-manual" onclick="_setTournamentFormMode('manual')">✏️ Handmatig</button>
+      <button type="button" class="toern-toggle-btn" id="tf-mode-tournify" onclick="_setTournamentFormMode('tournify')">🔗 Tournify URL</button>
+    </div>
+
+    <!-- Tournify URL sectie (standaard verborgen) -->
+    <div id="tf-url-section" style="display:none;">
+      <div class="toern-form-row">
+        <label>Tournify URL</label>
+        <input id="tf-tournify-url" type="url" placeholder="https://www.tournify.nl/live/abc123/..." autocomplete="off" />
+      </div>
+      <div id="tf-import-status" class="toern-import-status" style="display:none;"></div>
+    </div>
+
+    <!-- Handmatig sectie -->
+    <div id="tf-manual-section">
+      <div class="toern-form-row"><label>Naam</label><input id="tf-naam" type="text" placeholder="Haarlem Cup 2026" /></div>
+      <div class="toern-form-row"><label>Locatie</label><input id="tf-loc" type="text" placeholder="Haarlem" /></div>
+      <div class="toern-form-row"><label>Startdatum</label><input id="tf-start" type="date" value="${todayISO()}" /></div>
+      <div class="toern-form-row"><label>Einddatum</label><input id="tf-end" type="date" value="${todayISO()}" /></div>
+      <div class="toern-form-row"><label>Categorieën</label><input id="tf-cats" type="text" placeholder="O12, O14" /></div>
+      <div class="toern-form-row"><label>Info</label><textarea id="tf-info" rows="2" placeholder="Regels, opzet..."></textarea></div>
+    </div>
+
     <div class="toern-form-actions">
       <button class="btn btn-secondary" onclick="document.getElementById('toern-new-form').remove()">Annuleren</button>
-      <button class="btn btn-primary" onclick="submitNewTournament()">Aanmaken</button>
+      <button class="btn btn-primary" id="tf-submit-btn" onclick="submitNewTournament()">Aanmaken</button>
     </div>`;
   if(listPane) listPane.prepend(form);
+  // Focus URL-veld direct als via Tournify-knop geopend
+  setTimeout(() => document.getElementById('tf-naam')?.focus(), 50);
 }
 window.showNewTournamentForm = showNewTournamentForm;
 
+function _setTournamentFormMode(mode){
+  const urlSection    = document.getElementById('tf-url-section');
+  const manualSection = document.getElementById('tf-manual-section');
+  const btnManual     = document.getElementById('tf-mode-manual');
+  const btnTournify   = document.getElementById('tf-mode-tournify');
+  const submitBtn     = document.getElementById('tf-submit-btn');
+  if(!urlSection || !manualSection) return;
+  if(mode === 'tournify'){
+    urlSection.style.display    = '';
+    manualSection.style.display = 'none';
+    btnManual.classList.remove('active');
+    btnTournify.classList.add('active');
+    submitBtn.textContent = 'Importeer via Tournify';
+    setTimeout(() => document.getElementById('tf-tournify-url')?.focus(), 50);
+  } else {
+    urlSection.style.display    = 'none';
+    manualSection.style.display = '';
+    btnManual.classList.add('active');
+    btnTournify.classList.remove('active');
+    submitBtn.textContent = 'Aanmaken';
+    setTimeout(() => document.getElementById('tf-naam')?.focus(), 50);
+  }
+}
+window._setTournamentFormMode = _setTournamentFormMode;
+
 async function submitNewTournament(){
-  const name  = document.getElementById('tf-naam')?.value.trim();
-  if(!name){ toast('Vul een naam in', true); return; }
-  const loc   = document.getElementById('tf-loc')?.value.trim() || '';
-  const start = document.getElementById('tf-start')?.value || todayISO();
-  const end   = document.getElementById('tf-end')?.value || start;
-  const cats  = (document.getElementById('tf-cats')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
-  const info  = document.getElementById('tf-info')?.value.trim() || '';
-  const t = await createTournament({ name, location: loc, startDate: start, endDate: end, categories: cats, info });
-  document.getElementById('toern-new-form')?.remove();
-  toast('Toernooi aangemaakt ✓');
-  renderToernooiDetail(t.id);
+  const submitBtn = document.getElementById('tf-submit-btn');
+  const isTournify = document.getElementById('tf-mode-tournify')?.classList.contains('active');
+
+  if(isTournify){
+    // ── Tournify URL-import flow ──────────────────────────────────
+    const url = (document.getElementById('tf-tournify-url')?.value || '').trim();
+    if(!url){ toast('Plak eerst een Tournify URL', true); return; }
+
+    const statusEl = document.getElementById('tf-import-status');
+    const setStatus = msg => {
+      if(statusEl){ statusEl.style.display = ''; statusEl.textContent = msg; }
+    };
+
+    if(submitBtn){ submitBtn.disabled = true; submitBtn.textContent = 'Bezig...'; }
+    setStatus('URL analyseren...');
+
+    try {
+      const t = await importFromTournifyUrl(url, setStatus);
+      if(!t){
+        // importFromTournifyUrl heeft zelf al een toast getoond
+        if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Importeer via Tournify'; }
+        return;
+      }
+      document.getElementById('toern-new-form')?.remove();
+      toast(`${t.name} geïmporteerd ✓`);
+      renderToernooiDetail(t.id);
+    } catch(err){
+      console.error('Tournify import error:', err);
+      toast('Import mislukt: ' + (err.message || String(err)), true);
+      if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = 'Importeer via Tournify'; }
+    }
+
+  } else {
+    // ── Handmatig aanmaken flow (ongewijzigd) ─────────────────────
+    const name  = document.getElementById('tf-naam')?.value.trim();
+    if(!name){ toast('Vul een naam in', true); return; }
+    const loc   = document.getElementById('tf-loc')?.value.trim() || '';
+    const start = document.getElementById('tf-start')?.value || todayISO();
+    const end   = document.getElementById('tf-end')?.value || start;
+    const cats  = (document.getElementById('tf-cats')?.value||'').split(',').map(s=>s.trim()).filter(Boolean);
+    const info  = document.getElementById('tf-info')?.value.trim() || '';
+    if(submitBtn){ submitBtn.disabled = true; }
+    try {
+      const t = await createTournament({ name, location: loc, startDate: start, endDate: end, categories: cats, info });
+      document.getElementById('toern-new-form')?.remove();
+      toast('Toernooi aangemaakt ✓');
+      renderToernooiDetail(t.id);
+    } catch(err){
+      if(submitBtn){ submitBtn.disabled = false; }
+    }
+  }
 }
 window.submitNewTournament = submitNewTournament;
 

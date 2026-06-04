@@ -1,6 +1,6 @@
 /* Scouting Platform — Service Worker
    Bump CACHE_VERSION whenever you ship a new index.html so users get the latest. */
-const CACHE_VERSION = 'sh-v191-rapport-vanuit-match';
+const CACHE_VERSION = 'sh-v192-toernooien-nav-fix';
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-rt`;
 

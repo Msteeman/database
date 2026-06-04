@@ -21402,13 +21402,28 @@ function tuid(prefix='t'){
 // ── Subscribe tournaments (top-level lijst) ─────────────────────
 function subscribeTournaments(){
   if(unsubTournaments) return;
+  if(typeof __shTrace === 'function') __shTrace('tournaments-subscribe-start', { uid: currentUser && currentUser.uid });
   unsubTournaments = onSnapshot(tournamentsCol(), snap => {
     tourmCache = snap.docs.map(d => ({...d.data(), id: d.id}))
       .sort((a,b) => (b.startDate||'').localeCompare(a.startDate||''));
+    if(typeof __shTrace === 'function') __shTrace('tournaments-subscribe-ok', { count: tourmCache.length });
     if(currentView === 'toernooien' && !_currentTournamentId) renderToernooienList();
     setSync('ok');
   }, err => {
     console.error('Tournaments sync error:', err);
+    if(typeof __shTrace === 'function') __shTrace('tournaments-subscribe-error', { msg: err && err.message, code: err && err.code });
+    // Toon fallback in UI als de view open staat
+    if(currentView === 'toernooien'){
+      const wrap = document.getElementById('toern-list-wrap');
+      if(wrap){
+        const isPermission = err && (err.code === 'permission-denied' || (err.message||'').includes('permissions'));
+        wrap.innerHTML = isPermission
+          ? '<div class="toern-empty" style="border-color:var(--red);color:var(--red);">⚠️ Geen toegang tot toernooien-data.<br><small>Controleer Firestore-regels voor <code>users/{uid}/tournaments</code>.</small></div>'
+          : `<div class="toern-empty" style="border-color:var(--red);">Fout bij laden: ${err.message || 'onbekend'}</div>`;
+      }
+    }
+    // Reset subscribe-guard zodat retry mogelijk is
+    unsubTournaments = null;
     setSync('offline');
   });
 }
@@ -23101,6 +23116,13 @@ window.submitNewTournament = submitNewTournament;
 
 // ── Main render ───────────────────────────────────────────────────
 function renderToernooien(){
+  if(typeof __shTrace === 'function') __shTrace('view-toernooien-open', { uid: currentUser && currentUser.uid, authed: !!currentUser });
+  // Auth-guard: toon foutmelding als niet ingelogd
+  if(!currentUser){
+    const wrap = document.getElementById('toern-list-wrap');
+    if(wrap) wrap.innerHTML = '<div class="toern-empty">Niet ingelogd — log opnieuw in.</div>';
+    return;
+  }
   // Zorg dat tournaments gesubscribed zijn
   subscribeTournaments();
   // Reset naar lijst als geen detail actief

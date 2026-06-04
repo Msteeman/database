@@ -11068,3 +11068,15 @@ tr.db-row-obs td:first-child {
   padding: 8px 10px; background: rgba(78,161,255,.08);
   border-radius: var(--radius-sm); margin-top: 6px;
 }
+
+/* ── Rapport-knop in match spelerkaart ────────────────────────── */
+.toern-rapport-btn {
+  background: none; border: 1px solid var(--border-2);
+  border-radius: var(--radius-sm); padding: 4px 7px;
+  font-size: 14px; cursor: pointer; color: var(--text-2);
+  margin-left: 6px; transition: all .15s; flex-shrink: 0;
+}
+.toern-rapport-btn:hover {
+  background: var(--accent); border-color: var(--accent);
+  color: #fff;
+}

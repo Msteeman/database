@@ -15253,9 +15253,13 @@ async function submitReport(e){
       window.__shTournamentContext = null;
       try {
         await setDoc(doc(playersCol(), id), {
-          fromTournamentId: _tc.fromTournamentId || null,
-          fromSummaryId: _tc.fromSummaryId || null,
-          tournamentContext: _tc.tournamentContext || null
+          fromTournamentId:   _tc.fromTournamentId   || null,
+          fromSummaryId:      _tc.fromSummaryId      || null,
+          tournamentContext:  _tc.tournamentContext   || null,
+          matchId:            _tc.matchId             || null,
+          matchPlayerId:      _tc.matchPlayerId       || null,
+          tournamentPlayerId: _tc.tournamentPlayerId  || null,
+          teamId:             _tc.teamId              || null
         }, { merge: true });
       } catch(_e){ console.warn('tournamentContext patch failed', _e); }
     }
@@ -22063,8 +22067,8 @@ async function openMatchDetail(tid, matchId){
         const obs = obsMap[tp.id];
         const hasObs = !!obs;
         const gradeLabel = obs && obs.grade ? obs.grade : '';
-        return `<div class="toern-player-card ${hasObs?'has-obs':''}" onclick="openTournamentObs('${tid}','${matchId}','${match.dayId||''}','${tp.id}','${escapeHtml(naam)}')">
-          <div class="toern-player-card-left">
+        return `<div class="toern-player-card ${hasObs?'has-obs':''}">
+          <div class="toern-player-card-left" onclick="openTournamentObs('${tid}','${matchId}','${match.dayId||''}','${tp.id}','${escapeHtml(naam)}')">
             <div class="toern-player-avatar">${initials(naam)}</div>
             <div>
               <div class="toern-player-name">${escapeHtml(naam)}</div>
@@ -22073,6 +22077,10 @@ async function openMatchDetail(tid, matchId){
           </div>
           <div class="toern-player-card-right">
             ${hasObs ? `<span class="toern-obs-badge">${gradeLabel||'✓'}</span>` : '<span class="toern-obs-empty">Geen obs</span>'}
+            <button class="toern-rapport-btn" title="Rapport starten"
+              onclick="event.stopPropagation();startRapportVanuitMatch('${tid}','${matchId}','${mp.id}','${tp.id}')">
+              📋
+            </button>
           </div>
         </div>`;
       }).join('');
@@ -22089,6 +22097,107 @@ async function openMatchDetail(tid, matchId){
 }
 window.openMatchDetail = openMatchDetail;
 window.openTournamentObs = openTournamentObs;
+
+
+/* ================================================================
+   RAPPORT STARTEN VANUIT MATCH — prefill via bestaande __shObsPrefill
+   ================================================================ */
+
+async function startRapportVanuitMatch(tid, matchId, matchPlayerId, tournamentPlayerId){
+  try {
+    // Laad benodigde data parallel
+    const [matchSnap, tpSnap, tournSnap] = await Promise.all([
+      getDoc(tournSubDoc(tid, 'matches', matchId)),
+      getDoc(tournSubDoc(tid, 'players', tournamentPlayerId)),
+      getDoc(tournDoc(tid))
+    ]);
+
+    const match      = matchSnap.exists()  ? matchSnap.data()  : {};
+    const tp         = tpSnap.exists()     ? tpSnap.data()     : {};
+    const tournament = tournSnap.exists()  ? tournSnap.data()  : {};
+
+    // Spelergegevens — gebruik database-profiel als gekoppeld
+    let naam = tp.quickName || '';
+    let club = '';
+    let positie = tp.position || '';
+    let elftal = match.categoryId || '';
+
+    if(tp.playerId){
+      const dbPlayer = (typeof loadPlayers === 'function' ? loadPlayers() : [])
+        .find(p => p.id === tp.playerId);
+      if(dbPlayer){
+        naam    = naam || dbPlayer.naam || '';
+        club    = dbPlayer.club || '';
+        positie = positie || dbPlayer.positie || '';
+        elftal  = elftal  || dbPlayer.elftal  || '';
+      }
+    }
+
+    // Team naam als club-fallback
+    if(!club && tp.teamId){
+      const teamSnap = await getDoc(tournSubDoc(tid, 'teams', tp.teamId));
+      if(teamSnap.exists()) club = teamSnap.data().name || '';
+    }
+
+    // Matchdatum veilig extraheren (startTime = "2026-06-07T09:15")
+    const matchDatum = match.startTime ? match.startTime.slice(0, 10) : (tournament.startDate || todayISO());
+
+    // Bouw __shObsPrefill — de go('report') handler vult hiermee het formulier
+    const naamParts = naam.split(/\s+/);
+    window.__shObsPrefill = {
+      voornaam:  naamParts[0] || '',
+      achternaam: naamParts.slice(1).join(' ') || '',
+      naam,
+      club,
+      positie,
+      elftal,
+      methode: 'Live',
+      wedstrijd: {
+        datum:  matchDatum,
+        thuis:  match.teamAName || '',
+        uit:    match.teamBName || '',
+        leeftijd: match.categoryId || '',
+        plaats:   tournament.location || '',
+        veld:     match.field ? 'Veld ' + match.field : ''
+      }
+    };
+
+    // Bouw __shTournamentContext — submitReport pakt dit op en slaat het mee op
+    window.__shTournamentContext = {
+      fromTournamentId: tid,
+      fromSummaryId:    null,
+      tournamentContext: {
+        tournamentName: tournament.name   || '',
+        tournamentDate: tournament.startDate || matchDatum,
+        location:       tournament.location  || '',
+        matchCount:     1,
+        matchSummaries: [{
+          opponent: `${match.teamAName || '?'} – ${match.teamBName || '?'}`,
+          date:     matchDatum,
+          grade:    null
+        }]
+      },
+      // Extra velden voor koppelbaarheid aan match/speler
+      matchId,
+      matchPlayerId,
+      tournamentPlayerId,
+      teamId: tp.teamId || ''
+    };
+
+    // Sluit match detail en navigeer naar rapport
+    closeMatchDetail();
+    go('report');
+
+  } catch(err){
+    console.error('startRapportVanuitMatch error:', err);
+    toast('Kan rapport niet openen: ' + (err.message || String(err)), true);
+  }
+}
+window.startRapportVanuitMatch = startRapportVanuitMatch;
+
+/* ================================================================
+   EINDE RAPPORT VANUIT MATCH
+   ================================================================ */
 
 function closeMatchDetail(){
   const bd = document.getElementById('toern-match-backdrop');

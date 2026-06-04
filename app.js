@@ -20280,6 +20280,7 @@ if(document.readyState === 'loading'){
       if(statusEl){ statusEl.textContent = ''; statusEl.style.color = ''; }
       goBtn.disabled = false;
       goBtn.textContent = 'Importeren';
+      goBtn.disabled = true;
       backdrop.classList.add('show');
       setTimeout(() => { if(urlInput) urlInput.focus(); }, 80);
     };
@@ -20300,53 +20301,81 @@ if(document.readyState === 'loading'){
     if(urlInput)  urlInput.addEventListener('input', _checkReady);
     if(textArea)  textArea.addEventListener('input', _checkReady);
 
+    // Fix 7: double-click guard
+    let _importing = false;
+
+    // Fix 4: status ook clearen bij sluiten
+    const _origClose = window.closeSmartImportModal;
+    window.closeSmartImportModal = function(){
+      _importing = false;
+      if(statusEl){ statusEl.textContent = ''; statusEl.style.color = ''; }
+      _origClose();
+    };
+
+    const _resetBtn = () => {
+      goBtn.disabled = false;
+      goBtn.textContent = 'Importeren';
+      _importing = false;
+    };
+
+    const setStatus = (msg, isErr) => {
+      if(!statusEl) return;
+      statusEl.textContent = msg;
+      statusEl.style.color = isErr ? 'var(--red)' : 'var(--text-2)';
+    };
+
     // Submit
     goBtn.addEventListener('click', async () => {
+      // Fix 7: blokkeer dubbele klik
+      if(_importing) return;
+
       const url     = urlInput  ? urlInput.value.trim()  : '';
       const jsonRaw = textArea  ? textArea.value.trim()  : '';
 
-      const setStatus = (msg, isErr) => {
-        if(!statusEl) return;
-        statusEl.textContent = msg;
-        statusEl.style.color = isErr ? 'var(--red)' : 'var(--text-2)';
-      };
-
       // ── Tournify URL flow ───────────────────────────────────────
       if(url){
+        _importing = true;
         goBtn.disabled = true;
         goBtn.textContent = 'Bezig...';
         setStatus('URL analyseren...');
         try {
           const t = await importFromTournifyUrl(url, msg => setStatus(msg));
           if(!t){
-            goBtn.disabled = false;
-            goBtn.textContent = 'Importeren';
+            // Fix 3: knop altijd resetten bij null-return (fout al getoast)
+            _resetBtn();
             return;
           }
           setStatus(`${t.name} geïmporteerd ✓`);
           if(statusEl) statusEl.style.color = 'var(--green)';
+          // Fix 6: zet _currentTournamentId VOOR go() zodat renderToernooien()
+          // direct naar detail navigeert i.p.v. de lijst
+          if(typeof window !== 'undefined') window._currentTournamentId = t.id;
           setTimeout(() => {
             window.closeSmartImportModal();
             if(typeof go === 'function') go('toernooien');
-            if(typeof renderToernooiDetail === 'function') renderToernooiDetail(t.id);
           }, 900);
         } catch(err){
+          // Fix 3+5: alle fouten opvangen, knop altijd resetten
           console.error('smart-import tournify error:', err);
           setStatus('Import mislukt: ' + (err.message || String(err)), true);
-          goBtn.disabled = false;
-          goBtn.textContent = 'Importeren';
+          _resetBtn();
         }
         return;
       }
 
       // ── JSON / tekst flow (bestaand gedrag via runImport) ───────
       if(jsonRaw){
-        // Kopieer naar de bestaande import-textarea en delegeer
         const legacyTextarea = document.getElementById('import-text');
         if(legacyTextarea){
           legacyTextarea.value = jsonRaw;
           window.closeSmartImportModal();
-          if(typeof runImport === 'function') await runImport();
+          // Fix 5: try-catch om uncaught promise rejection te voorkomen
+          try {
+            if(typeof runImport === 'function') await runImport();
+          } catch(err){
+            console.error('smart-import json error:', err);
+            toast('JSON import mislukt: ' + (err.message || String(err)), true);
+          }
         } else {
           setStatus('Plak JSON of een Tournify URL', true);
         }

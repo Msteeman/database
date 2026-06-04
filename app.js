@@ -6336,12 +6336,40 @@ function openObservatieForm(prog, sn){
     });
   }
 
-  // Knoptekst: draft = "Opslaan" (bewaren), definitief = "Opslaan als observatie"
+  // Knoptekst: draft = "Opslaan & sluiten", definitief = "Opslaan als observatie"
   const _submitBtn = document.getElementById('obs-submit');
   if(_submitBtn){
-    // Reset disabled + innerHTML (kan disabled zijn van vorige submit)
     _submitBtn.disabled = false;
     _submitBtn.textContent = _isObsDraft ? 'Opslaan & sluiten' : 'Opslaan als observatie';
+  }
+
+  // Bij draft-modus: voeg "Indienen" knop toe zodat observatie direct naar spelersdatabase gaat
+  const _obsActions = document.querySelector('.obs-actions');
+  const _existingIndien = document.getElementById('obs-indien-btn');
+  if(_existingIndien) _existingIndien.remove();
+  if(_isObsDraft && _obsActions && _submitBtn){
+    const _indienBtn = document.createElement('button');
+    _indienBtn.type = 'button';
+    _indienBtn.id = 'obs-indien-btn';
+    _indienBtn.className = 'btn btn-primary';
+    _indienBtn.textContent = 'Indienen →';
+    _indienBtn.title = 'Sla op en voeg toe aan spelersdatabase';
+    _indienBtn.style.cssText = 'background:var(--green);border-color:var(--green);margin-left:6px;';
+    // Klik: tijdelijk obs_draft op false zetten zodat _obsSubmit de echte submit doet
+    _indienBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const _bd2 = document.getElementById('obs-backdrop');
+      const _ctx2 = _bd2 && _bd2._obsContext ? _bd2._obsContext : {};
+      const _sn2 = _ctx2.sn;
+      if(_sn2) _sn2.obs_draft = false; // tijdelijk: forceer echte submit
+      _indienBtn.disabled = true;
+      _indienBtn.textContent = 'Bezig...';
+      if(_submitBtn) { _submitBtn.disabled = true; }
+      await _obsSubmit(null);
+    });
+    // Voeg in na de submit-knop
+    _submitBtn.insertAdjacentElement('afterend', _indienBtn);
   }
 
   // Verwijder-knop: alleen voor obs-drafts (heropenbare opgevallen spelers)
@@ -6514,6 +6542,8 @@ async function _obsSubmit(e){
       }
     }
     if(btn){ btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Ingediend'; btn.disabled = true; }
+    // Verwijder indien-knop na succesvolle submit
+    document.getElementById('obs-indien-btn')?.remove();
     if(typeof toast === 'function') toast('Observatie opgeslagen ✓');
     // Direct re-render
     if(typeof renderActiveScouting === 'function') renderActiveScouting();

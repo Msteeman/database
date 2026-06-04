@@ -6971,7 +6971,16 @@ function renderActiveScouting(){
                   <div class="sa-obs-draft-naam">${_nm}</div>
                   ${_sub ? `<div class="sa-obs-draft-sub">${_sub}</div>` : ''}
                 </div>
-                <div class="sa-obs-draft-arrow">→</div>
+                <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                  <span class="sa-obs-draft-arrow">Bewerken →</span>
+                  <button class="btn btn-xs sa-obs-indien-btn"
+                    data-obs-indien-progid="${escapeHtml(prog.id)}"
+                    data-obs-indien-snid="${escapeHtml(sn.id||'')}"
+                    style="background:var(--green);border-color:var(--green);color:#fff;white-space:nowrap;"
+                    title="Direct indienen naar spelersdatabase">
+                    Indienen ✓
+                  </button>
+                </div>
               </div>`;
             }).join('')}
           </div>`;
@@ -7363,13 +7372,47 @@ function renderActiveScouting(){
 
   // Opgevallen speler heropen-kaartjes
   wrap.querySelectorAll('.sa-obs-draft-card').forEach(card => {
-    card.addEventListener('click', () => {
+    card.addEventListener('click', (e) => {
+      // Niet openen als op Indienen-knop geklikt
+      if(e.target.closest('.sa-obs-indien-btn')) return;
       const progId = card.dataset.obsProgid;
       const snId   = card.dataset.obsSnid;
       const prog2  = programmaCache && programmaCache.find(p => p && p.id === progId);
       if(!prog2) return;
       const sn2 = (prog2.snelnotities||[]).find(s => s && s.id === snId);
       if(typeof openObservatieForm === 'function') openObservatieForm(prog2, sn2 || {});
+    });
+  });
+
+  // Indienen-knop: sla obs direct op als definitieve observatie
+  wrap.querySelectorAll('.sa-obs-indien-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const progId = btn.dataset.obsIndienProgid;
+      const snId   = btn.dataset.obsIndienSnid;
+      const prog2  = programmaCache && programmaCache.find(p => p && p.id === progId);
+      if(!prog2) return;
+      const sn2 = (prog2.snelnotities||[]).find(s => s && s.id === snId);
+      if(!sn2) return;
+      btn.disabled = true;
+      btn.textContent = '...';
+      try {
+        // Tijdelijk obs_draft op false zodat _obsSubmit echt indient
+        const _origDraft = sn2.obs_draft;
+        sn2.obs_draft = false;
+        // Open het formulier onzichtbaar en submit direct
+        if(typeof openObservatieForm === 'function') openObservatieForm(prog2, sn2);
+        // Wacht kort zodat form gevuld is, dan submit
+        await new Promise(r => setTimeout(r, 80));
+        if(typeof _obsSubmit === 'function') await _obsSubmit(null);
+        btn.textContent = '✓';
+      } catch(err){
+        console.error('Indienen fout:', err);
+        if(sn2) sn2.obs_draft = true;
+        btn.disabled = false;
+        btn.textContent = 'Indienen ✓';
+        if(typeof toast === 'function') toast('Indienen mislukt', true);
+      }
     });
   });
 
@@ -22804,14 +22847,28 @@ async function fetchTournifyData(tournifyId, rawUrl){
     }
   } catch(_){}
 
-  const resp = await fetch(FUNCTION_URL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {})
-    },
-    body: JSON.stringify({ url: tournifyUrl })
-  });
+  // Timeout na 30s zodat de knop niet eeuwig op "Bezig..." blijft
+  const _controller = new AbortController();
+  const _timeout = setTimeout(() => _controller.abort(), 30000);
+  let resp;
+  try {
+    resp = await fetch(FUNCTION_URL, {
+      method: 'POST',
+      signal: _controller.signal,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {})
+      },
+      body: JSON.stringify({ url: tournifyUrl })
+    });
+  } catch(fetchErr){
+    clearTimeout(_timeout);
+    if(fetchErr.name === 'AbortError'){
+      throw new Error('Tijdslimiet overschreden — probeer opnieuw');
+    }
+    throw new Error('Verbindingsfout: ' + (fetchErr.message || String(fetchErr)));
+  }
+  clearTimeout(_timeout);
 
   if(!resp.ok){
     let errMsg = `Fout ${resp.status}`;

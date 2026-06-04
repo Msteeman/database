@@ -11080,3 +11080,22 @@ tr.db-row-obs td:first-child {
   background: var(--accent); border-color: var(--accent);
   color: #fff;
 }
+
+/* ── Tournify import form layout fixes (PWA + desktop) ────────── */
+#toern-new-form .toern-import-toggle { flex-wrap: wrap; }
+#tf-tournify-url { width: 100%; box-sizing: border-box; min-width: 0; }
+#tf-import-status {
+  white-space: normal; word-break: break-word;
+  font-size: 12px; padding: 8px 10px;
+  max-width: 100%; box-sizing: border-box;
+}
+#toern-new-form .toern-form-actions {
+  flex-wrap: wrap; gap: 8px;
+}
+#toern-new-form .toern-form-actions .btn {
+  flex: 1 1 auto; min-width: 120px; text-align: center;
+}
+/* Voorkom overflow in de list pane op mobile */
+#toern-list-pane, #toern-detail-pane {
+  max-width: 100%; overflow-x: hidden; box-sizing: border-box;
+}

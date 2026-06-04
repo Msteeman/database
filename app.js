@@ -22714,34 +22714,62 @@ function renderToernooienList(){
    ================================================================ */
 
 function extractTournifyId(url){
-  // Ondersteunde formaten:
+  // Ondersteunde formaten (tournify.nl EN tournifyapp.com):
   //   https://www.tournify.nl/live/abc123/...
-  //   https://www.tournify.nl/share/abc123/...
-  //   https://tournify.nl/live/abc123
-  //   https://app.tournify.nl/share/abc123/overzicht
+  //   https://tournify.nl/share/abc123
+  //   https://tournifyapp.com/live/itt2026
+  //   https://app.tournifyapp.com/share/abc123/overzicht
+  if(!url || typeof url !== 'string') return null;
+  const cleaned = url.trim();
+  // Regex: zoek /live/ of /share/ gevolgd door het ID-segment
+  const m = cleaned.match(/\/(?:live|share)\/([a-zA-Z0-9_-]{2,})/i);
+  if(m && m[1]) return m[1];
+  // Fallback: laatste pad-segment als het op een ID lijkt
   try {
-    const u = new URL(url.trim());
-    const parts = u.pathname.split('/').filter(Boolean);
-    // Zoek segment ná 'live' of 'share'
-    for(let i = 0; i < parts.length - 1; i++){
-      if(parts[i] === 'live' || parts[i] === 'share'){
-        const id = parts[i + 1];
-        if(id && id.length >= 3) return id;
-      }
-    }
-    // Fallback: laatste non-lege segment als het op een ID lijkt (alfanumeriek, ≥4 tekens)
+    const parts = new URL(cleaned).pathname.split('/').filter(Boolean);
     const last = parts[parts.length - 1];
-    if(last && /^[a-zA-Z0-9_-]{4,}$/.test(last)) return last;
-  } catch(_){ /* ongeldige URL */ }
+    if(last && /^[a-zA-Z0-9_-]{3,}$/.test(last)) return last;
+  } catch(_){}
   return null;
 }
 
-async function fetchTournifyData(tournifyId){
-  const url = `/api/tournify/${encodeURIComponent(tournifyId)}`;
-  const resp = await fetch(url);
+async function fetchTournifyData(tournifyId, rawUrl){
+  // Gebruik de parseToernooiUrl Cloud Function (europe-west1)
+  // rawUrl = de oorspronkelijke Tournify URL (voor HTML-parsing als fallback)
+  const FUNCTION_URL = 'https://europe-west1-database-scouting.cloudfunctions.net/parseToernooiUrl';
+  const tournifyUrl = rawUrl || `https://tournifyapp.com/live/${encodeURIComponent(tournifyId)}`;
+
+  // Haal Firebase ID-token op voor auth
+  let idToken = '';
+  try {
+    idToken = await (await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'))
+      .getIdToken ? '' : '';
+    if(typeof auth !== 'undefined' && auth.currentUser){
+      idToken = await auth.currentUser.getIdToken();
+    }
+  } catch(_){}
+
+  const resp = await fetch(FUNCTION_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {})
+    },
+    body: JSON.stringify({ url: tournifyUrl })
+  });
+
   if(!resp.ok){
-    throw new Error(`API fout ${resp.status}: ${resp.statusText}`);
+    let errMsg = `Fout ${resp.status}`;
+    try { const e = await resp.json(); errMsg = e.error || errMsg; } catch(_){}
+    throw new Error(errMsg);
   }
+
+  // Controleer of response JSON is (niet HTML)
+  const ct = resp.headers.get('content-type') || '';
+  if(!ct.includes('json')){
+    throw new Error('Geen geldige JSON response van de API — controleer de URL');
+  }
+
   const json = await resp.json();
   if(!json || typeof json !== 'object'){
     throw new Error('Lege of ongeldige API-response');
@@ -22841,13 +22869,15 @@ async function importFromTournifyUrl(url, statusCallback){
     }
   } catch(dupErr){ console.warn('Duplicate check fout (niet-fataal):', dupErr); }
 
-  // Stap 2: API call
+  // Stap 2: API call — geef ook de originele URL mee voor HTML-fallback
   let rawData;
   try {
-    rawData = await fetchTournifyData(tournifyId);
+    report('Data ophalen bij Tournify...');
+    rawData = await fetchTournifyData(tournifyId, url.trim());
   } catch(err){
-    toast(`Tournify ophalen mislukt: ${err.message}`, true);
-    if(typeof __shTrace === 'function') __shTrace('tournify-import-error', { tournifyId, err: err.message });
+    const msg = err.message || String(err);
+    toast(`Kon geen data ophalen: ${msg}`, true);
+    if(typeof __shTrace === 'function') __shTrace('tournify-import-error', { tournifyId, err: msg });
     return null;
   }
 
@@ -22990,7 +23020,14 @@ window.importFromTournifyUrl = importFromTournifyUrl;
    ================================================================ */
 
 function showNewTournamentForm(){
+  // Zorg dat de toernooien view actief is (PWA fix — view kan nog verborgen zijn)
+  if(currentView !== 'toernooien') go('toernooien');
   const listPane = document.getElementById('toern-list-pane');
+  // Zorg dat listPane zichtbaar is (detail kan er overheen liggen)
+  if(listPane) listPane.style.display = '';
+  const detailPane = document.getElementById('toern-detail-pane');
+  if(detailPane) detailPane.style.display = 'none';
+  _currentTournamentId = null;
   let form = document.getElementById('toern-new-form');
   if(form){ form.style.display = form.style.display === 'none' ? '' : 'none'; return; }
   form = document.createElement('div');

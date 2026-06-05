@@ -22661,6 +22661,7 @@ function renderToernooiTab(tab, tid){
   if(tab === 'tijdlijn') renderTijdlijnTab(tid);
   if(tab === 'spelers')  renderSpelersTab(tid);
   if(tab === 'bundeling') renderBundelingTab(tid);
+  if(tab === 'standen' && typeof renderStandenTab === 'function') renderStandenTab(tid);
 }
 window.renderToernooiTab = renderToernooiTab;
 
@@ -22700,11 +22701,15 @@ async function renderTijdlijnTab(tid){
     } else {
       html += dayMatches.map(m => {
         const time = m.startTime ? m.startTime.slice(11,16) : '—';
+        const endTime = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
+        const timeLabel = endTime ? `${time}–${endTime}` : time;
         const field = m.field ? 'Veld ' + m.field : '';
+        const scoreBadge = (typeof tournamentScoreBadge === 'function') ? tournamentScoreBadge(m) : '';
         return `<div class="toern-match-row toern-match-status-${m.status}" onclick="openMatchDetail('${tid}','${m.id}')">
           <span class="toern-match-icon">${statusIcon[m.status]||'⚪'}</span>
-          <span class="toern-match-time">${time}</span>
+          <span class="toern-match-time">${timeLabel}</span>
           <span class="toern-match-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>
+          <span class="toern-match-score" onclick="event.stopPropagation();promptManualScore('${tid}','${m.id}')" title="Uitslag invoeren/bewerken" style="cursor:pointer;">${scoreBadge}</span>
           <span class="toern-match-field">${escapeHtml(field)}</span>
           <span class="toern-match-cat">${escapeHtml(m.categoryId||'')}</span>
         </div>`;
@@ -22956,8 +22961,6 @@ async function fetchTournifyData(tournifyId, rawUrl){
   // Haal Firebase ID-token op voor auth
   let idToken = '';
   try {
-    idToken = await (await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js'))
-      .getIdToken ? '' : '';
     if(typeof auth !== 'undefined' && auth.currentUser){
       idToken = await auth.currentUser.getIdToken();
     }
@@ -23005,74 +23008,189 @@ async function fetchTournifyData(tournifyId, rawUrl){
   return json;
 }
 
-function mapTournifyToModel(data, tournifyId){
-  // Tournify veldnamen → intern model
-  // Velden: naam/name/title, locatie/location/venue,
-  //         datum/date/startDate, eindDatum/endDate,
-  //         categorieen/categories, wedstrijden/matches/games
-  const str = v => (v && typeof v === 'string') ? v.trim() : (v != null ? String(v) : '');
+/* ================================================================
+   TOERNOOI-SPECIFIEKE MAPPER — parseToernooiUrl output → intern model
+   --------------------------------------------------------------------
+   SCOPE: uitsluitend de toernooi-importflow. Geen enkele reguliere
+   wedstrijd-, observatie- of rapportflow wordt geraakt. Verwacht de
+   NIEUWE parse-output (homeTeam/awayTeam, root-level players[], meta{}).
+   Lockstep met parseToernooiUrl: géén oude veldnamen als structurele
+   bron (teamA/teamB, geneste spelers) — alleen detectie als guard.
+   ================================================================ */
 
-  const name     = str(data.naam || data.name || data.title || data.tournament_name || '');
-  const location = str(data.locatie || data.location || data.venue || data.plaats || '');
-  const startDate = str(data.datum || data.date || data.startDate || data.start_date || data.startDatum || todayISO()).slice(0,10);
-  const endDate   = str(data.eindDatum || data.endDate || data.end_date || data.eindDatum || startDate).slice(0,10) || startDate;
-  const info      = str(data.info || data.description || data.omschrijving || '');
+// — lokale, alleen-toernooi helpers —
+function _tStr(v){
+  if(v == null) return '';
+  if(typeof v === 'string') return v.trim();
+  return String(v).trim();
+}
+function _tStrOrNull(v){ const s = _tStr(v); return s ? s : null; }
+function _tArr(v){ return Array.isArray(v) ? v : []; }
 
-  // Categorieën: array of kommalijst
-  let categories = [];
-  const rawCats = data.categorieen || data.categories || data.leeftijden || [];
-  if(Array.isArray(rawCats)) categories = rawCats.map(str).filter(Boolean);
-  else if(typeof rawCats === 'string') categories = rawCats.split(',').map(s => s.trim()).filter(Boolean);
+// Meta/debug/warnings veilig overnemen (mag nooit verloren gaan)
+function normalizeTournamentMeta(parsed, fallbackId, fallbackUrl){
+  const meta  = (parsed && typeof parsed.meta === 'object' && parsed.meta) ? parsed.meta : {};
+  const debug = (meta.debug && typeof meta.debug === 'object') ? meta.debug : {};
+  return {
+    fetchedVia:           _tStrOrNull(meta.fetchedVia),
+    detectedTournamentId: _tStrOrNull(meta.detectedTournamentId) || (fallbackId || null),
+    url:                  _tStrOrNull(meta.url) || (fallbackUrl || null),
+    warnings:             _tArr(meta.warnings).map(_tStr).filter(Boolean),
+    debug
+  };
+}
 
-  // Teams: array van {id, naam/name, categorie/category}
-  const rawTeams = data.teams || data.clubs || [];
-  const teams = Array.isArray(rawTeams) ? rawTeams.map(t => ({
-    importedId: str(t.id || t.team_id || ''),
-    name:       str(t.naam || t.name || t.club || ''),
-    categoryId: str(t.categorie || t.category || t.leeftijd || '')
-  })).filter(t => t.name) : [];
+// Teams: primair uit teams[]; anders reconstrueren uit wedstrijden
+function normalizeTournamentTeams(rawTeams, rawMatches, warnings){
+  const out = [], seen = new Set();
+  const push = (importedId, name) => {
+    const nm = _tStr(name);
+    if(!nm) return;
+    const key = nm.toLowerCase();
+    if(seen.has(key)) return;
+    seen.add(key);
+    out.push({ importedId: _tStrOrNull(importedId), name: nm });
+  };
+  for(const t of _tArr(rawTeams)) push(t && t.importedId, t && t.name);
+  if(out.length === 0){
+    for(const m of _tArr(rawMatches)){ push(null, m && m.homeTeam); push(null, m && m.awayTeam); }
+    if(out.length) warnings.push(`Teams ontbraken in parse-output — ${out.length} team(s) gereconstrueerd uit wedstrijden`);
+  }
+  return out;
+}
 
-  // Wedstrijden: array van {datum, tijd, veld, teamA, teamB, duur, categorie}
-  const rawMatches = data.wedstrijden || data.matches || data.games || data.programma || [];
-  const matches = Array.isArray(rawMatches) ? rawMatches.map(m => {
-    const datum  = str(m.datum || m.date || m.startDate || startDate).slice(0,10);
-    const tijd   = str(m.tijd || m.time || m.startTime || m.start_time || '').slice(0,5);
-    const startTime = (datum && tijd) ? `${datum}T${tijd}` : datum ? `${datum}T00:00` : '';
-    return {
+// Wedstrijden: alleen met twee bruikbare teamnamen; dedupe
+function normalizeTournamentMatches(rawMatches, warnings){
+  const out = [], seen = new Set();
+  let dropped = 0;
+  for(const m of _tArr(rawMatches)){
+    const home = _tStr(m && m.homeTeam);
+    const away = _tStr(m && m.awayTeam);
+    if(!home || !away){ dropped++; continue; }
+    const startTime = _tStrOrNull(m && m.startTime);
+    const field     = _tStrOrNull(m && m.field);
+    const dedupeKey = [home.toLowerCase(), away.toLowerCase(), startTime || '', field || ''].join('|');
+    if(seen.has(dedupeKey)) continue;
+    seen.add(dedupeKey);
+    out.push({
+      importedId:   _tStrOrNull(m && m.importedId),
+      homeTeamName: home,
+      awayTeamName: away,
       startTime,
-      field:           str(m.veld || m.field || m.venue || ''),
-      categoryId:      str(m.categorie || m.category || m.leeftijd || ''),
-      teamAImportedId: str(m.thuis_id || m.teamA_id || m.team1_id || ''),
-      teamBImportedId: str(m.uit_id   || m.teamB_id || m.team2_id || ''),
-      teamAName:       str(m.thuis || m.teamA || m.team1 || m.home || ''),
-      teamBName:       str(m.uit   || m.teamB || m.team2 || m.away || ''),
-      durationMinutes: parseInt(m.duur || m.duration || m.duration_minutes || 25) || 25,
-      status: 'watch'
-    };
-  }).filter(m => m.startTime) : [];
+      field,
+      category:     _tStrOrNull(m && m.category),
+      stage:        _tStrOrNull(m && m.stage),
+      rawDate:      _tStrOrNull(m && m.rawDate),
+      dayKey:       null
+    });
+  }
+  if(dropped) warnings.push(`${dropped} wedstrijd(en) overgeslagen wegens ontbrekende teamnaam`);
+  return out;
+}
 
-  // Spelers: zoek in elk team naar een roster/spelers-lijst
-  // Tournify-velden: spelers, players, roster, squad, deelnemers
-  const str2 = str; // alias voor gebruik in nested scope
-  const teamsWithPlayers = teams.map(rawTeam => {
-    // Zoek de originele team-data op via importedId of naam
-    const origTeam = Array.isArray(rawTeams) ? rawTeams.find(t =>
-      str(t.id || t.team_id || '') === rawTeam.importedId ||
-      str(t.naam || t.name || t.club || '').toLowerCase() === rawTeam.name.toLowerCase()
-    ) : null;
-    if(!origTeam) return { ...rawTeam, players: [] };
-    const rawRoster = origTeam.spelers || origTeam.players || origTeam.roster ||
-                      origTeam.squad   || origTeam.deelnemers || [];
-    const players = Array.isArray(rawRoster) ? rawRoster.map(p => ({
-      name:   str2(p.naam || p.name || p.voornaam || ''),
-      number: parseInt(p.nummer || p.number || p.rugnummer || 0) || null,
-      position: str2(p.positie || p.position || '')
-    })).filter(p => p.name || p.number) : [];
-    return { ...rawTeam, players };
-  });
+// Dagen afleiden uit (genormaliseerde) wedstrijden — stabiele key + label
+function buildTournamentDays(matches, warnings){
+  const dateOf = m => {
+    const st = _tStr(m.startTime);
+    if(st && st.length >= 10 && /^\d{4}-\d{2}-\d{2}/.test(st)) return st.slice(0,10);
+    const rd = _tStr(m.rawDate);
+    if(rd && /^\d{4}-\d{2}-\d{2}/.test(rd)) return rd.slice(0,10);
+    return null;
+  };
+  const dates = [...new Set(matches.map(dateOf).filter(Boolean))].sort();
+  const days  = dates.map((d, i) => ({ key: d, label: `Dag ${i + 1}`, date: d }));
+  if(matches.some(m => dateOf(m) == null)){
+    days.push({ key: '__nodate__', label: `Dag ${days.length + 1}`, date: null });
+    warnings.push('Eén of meer wedstrijden hadden geen bruikbare datum — geplaatst in een dag zonder datum');
+  }
+  return { days, dateOf };
+}
 
-  return { name, location, startDate, endDate, categories, info,
-           teams: teamsWithPlayers, matches, tournifyData: data, tournifyId };
+// Spelers: alleen echte spelers met naam + teamName; dedupe op naam+team
+function normalizeTournamentPlayers(rawPlayers, teams, warnings){
+  const out = [], seen = new Set();
+  let noTeam = 0, noName = 0;
+  for(const p of _tArr(rawPlayers)){
+    const name = _tStr(p && p.name);
+    if(!name){ noName++; continue; }
+    const teamName = _tStr(p && p.teamName);
+    if(!teamName){ noTeam++; continue; }
+    const key = name.toLowerCase() + '|' + teamName.toLowerCase();
+    if(seen.has(key)) continue;
+    seen.add(key);
+    out.push({ importedId: _tStrOrNull(p && p.importedId), name, teamName, type: 'linked' });
+  }
+  if(noName) warnings.push(`${noName} speler(s) zonder naam overgeslagen`);
+  if(noTeam) warnings.push(`${noTeam} speler(s) zonder teamnaam overgeslagen`);
+  return out;
+}
+
+// Validatie — voorkomt stille lege import
+function validateMappedTournamentImport(result){
+  const errors = [];
+  if(!result || typeof result !== 'object') return { ok:false, errors:['Geen mapping-resultaat'] };
+  if(!result.tournament || !_tStr(result.tournament.name)) errors.push('Toernooinaam ontbreekt');
+  if(!Array.isArray(result.teams))   errors.push('teams is geen array');
+  if(!Array.isArray(result.matches)) errors.push('matches is geen array');
+  if(!Array.isArray(result.days))    errors.push('days is geen array');
+  if(!Array.isArray(result.players)) errors.push('players is geen array');
+  const teamsN   = (result.teams   || []).length;
+  const matchesN = (result.matches || []).length;
+  if(teamsN === 0 && matchesN === 0) errors.push('Geen teams én geen wedstrijden — niets te importeren');
+  if(matchesN && (result.matches || []).every(m => !_tStr(m.homeTeamName) || !_tStr(m.awayTeamName))){
+    errors.push('Geen enkele wedstrijd heeft twee bruikbare teamnamen');
+  }
+  return { ok: errors.length === 0, errors };
+}
+
+function mapTournifyToTournamentModel(parsed, fallbackId, fallbackUrl){
+  const warnings = [];
+  if(!parsed || typeof parsed !== 'object'){
+    return { tournament:null, teams:[], days:[], matches:[], players:[], warnings:['Lege of ongeldige parse-output'] };
+  }
+
+  // Lockstep-guard: detecteer oude parse-structuur (teamA/teamB i.p.v. homeTeam/awayTeam)
+  const ms = _tArr(parsed.matches);
+  const looksOld = ms.length > 0 &&
+    ms.every(m => m && m.homeTeam == null && m.awayTeam == null) &&
+    ms.some(m => m && (m.teamA != null || m.teamB != null || m.thuis != null || m.uit != null));
+  if(looksOld){
+    warnings.push('Parse-output lijkt het oude formaat (teamA/teamB) terwijl de nieuwe mapper homeTeam/awayTeam verwacht — controleer of parseToernooiUrl is bijgewerkt');
+  }
+
+  const meta = normalizeTournamentMeta(parsed, fallbackId, fallbackUrl);
+  warnings.push(...meta.warnings);
+
+  // Categorieën: array, case-insensitief dedupe maar eerste schrijfwijze bewaren
+  const catSeen = new Set(), categories = [];
+  for(const c of _tArr(parsed.categories).map(_tStr).filter(Boolean)){
+    const k = c.toLowerCase();
+    if(!catSeen.has(k)){ catSeen.add(k); categories.push(c); }
+  }
+
+  const teams   = normalizeTournamentTeams(parsed.teams, parsed.matches, warnings);
+  const matches = normalizeTournamentMatches(parsed.matches, warnings);
+  const { days, dateOf } = buildTournamentDays(matches, warnings);
+  for(const m of matches){ const d = dateOf(m); m.dayKey = (d != null) ? d : '__nodate__'; }
+  const players = normalizeTournamentPlayers(parsed.players, teams, warnings);
+
+  return {
+    tournament: {
+      name:       _tStr(parsed.name),
+      location:   _tStr(parsed.location),
+      startDate:  _tStrOrNull(parsed.startDate),
+      endDate:    _tStrOrNull(parsed.endDate),
+      categories,
+      tournifyId:  meta.detectedTournamentId,
+      tournifyUrl: meta.url,
+      importMeta:  { fetchedVia: meta.fetchedVia, warnings, debug: meta.debug }
+    },
+    teams,
+    days,
+    matches,
+    players,
+    warnings
+  };
 }
 
 async function importFromTournifyUrl(url, statusCallback){
@@ -23109,120 +23227,121 @@ async function importFromTournifyUrl(url, statusCallback){
     return null;
   }
 
-  // Stap 3: Mappen naar intern model
-  const mapped = mapTournifyToModel(rawData, tournifyId);
-  if(!mapped.name){
-    toast('Tournify-response heeft geen toernooijnaam — import afgebroken', true);
+  // Stap 3: Mappen naar intern toernooi-model (toernooi-specifieke mapper)
+  const mapped = mapTournifyToTournamentModel(rawData, tournifyId, url.trim());
+
+  // Stap 3b: Validatie — voorkom stille lege import
+  const valid = validateMappedTournamentImport(mapped);
+  if(!valid.ok){
+    toast('Import afgebroken: ' + (valid.errors[0] || 'onbekende fout'), true);
+    if(typeof __shTrace === 'function') __shTrace('tournify-import-invalid', { tournifyId, errors: valid.errors, warnings: mapped.warnings });
     return null;
   }
-
-  // Stap 3b: API validatie — minimaal teams of matches vereist
-  if(!mapped.teams.length && !mapped.matches.length){
-    toast('Tournify-response bevat geen teams of wedstrijden — import afgebroken', true);
-    if(typeof __shTrace === 'function') __shTrace('tournify-import-empty', { tournifyId });
-    return null;
+  if(mapped.warnings && mapped.warnings.length){
+    console.warn('[Tournify-import] waarschuwingen:', mapped.warnings);
   }
 
-  // Stap 4: Opslaan via bestaande functies
-  report(`Toernooi aanmaken: ${mapped.name}...`);
+  const T = mapped.tournament;
+
+  // Stap 4: Toernooi aanmaken via bestaande toernooi-functies
+  report(`Toernooi aanmaken: ${T.name}...`);
   const tournament = await createTournament({
-    name:       mapped.name,
-    location:   mapped.location,
-    startDate:  mapped.startDate,
-    endDate:    mapped.endDate,
-    categories: mapped.categories,
-    info:       mapped.info
+    name:       T.name,
+    location:   T.location || '',
+    startDate:  T.startDate || '',
+    endDate:    T.endDate || '',
+    categories: T.categories || [],
+    info:       ''
   });
-  // Sla ruwe Tournify-data op voor later gebruik
-  await saveTournament({ ...tournament, tournifyData: mapped.tournifyData, tournifyId: mapped.tournifyId });
+  // Ruwe parse-data + tournifyId + importMeta bewaren (duplicaatcheck + debug/support)
+  await saveTournament({
+    ...tournament,
+    tournifyData: rawData,
+    tournifyId:   T.tournifyId || tournifyId,
+    importMeta:   T.importMeta || null
+  });
 
-  // Teams aanmaken + id-mapping bijhouden (importedId → intern id)
+  // Teams aanmaken + id-mapping (importedId én lowercase naam → intern id)
   const teamIdMap = {};
   if(mapped.teams.length){
     report(`${mapped.teams.length} team${mapped.teams.length !== 1 ? 's' : ''} aanmaken...`);
     for(const t of mapped.teams){
-      const team = await addTeam(tournament.id, {
-        name:         t.name,
-        categoryId:   t.categoryId,
-        importedName: t.name
-      });
+      const team = await addTeam(tournament.id, { name: t.name, categoryId: '', importedName: t.name });
       if(t.importedId) teamIdMap[t.importedId] = team.id;
-      // Bewaar ook op naam als fallback (Tournify heeft niet altijd team-ids in wedstrijden)
       teamIdMap[t.name.toLowerCase()] = team.id;
     }
   }
 
-  // Dag aanmaken per unieke datum (wedstrijden worden gegroepeerd op dag)
-  const dayDateMap = {}; // "2026-06-07" → dayId
-  const uniqueDates = [...new Set(mapped.matches.map(m => m.startTime.slice(0,10)).filter(Boolean))].sort();
-  if(uniqueDates.length){
-    report(`${uniqueDates.length} dag${uniqueDates.length !== 1 ? 'en' : ''} aanmaken...`);
-    for(let i = 0; i < uniqueDates.length; i++){
-      const date = uniqueDates[i];
-      const day = await addDay(tournament.id, { date, label: `Dag ${i + 1}` });
-      dayDateMap[date] = day.id;
+  // Dagen aanmaken — gebruik de door de mapper voorbereide days[] (dayKey → dayId)
+  const dayKeyMap = {};
+  if(mapped.days.length){
+    report(`${mapped.days.length} dag${mapped.days.length !== 1 ? 'en' : ''} aanmaken...`);
+    for(const d of mapped.days){
+      const day = await addDay(tournament.id, { date: d.date || '', label: d.label });
+      dayKeyMap[d.key] = day.id;
     }
   }
 
-  // Wedstrijden aanmaken
+  // Wedstrijden aanmaken — homeTeamName→teamAName, awayTeamName→teamBName (toernooi-opslagschema)
   if(mapped.matches.length){
     report(`${mapped.matches.length} wedstrijd${mapped.matches.length !== 1 ? 'en' : ''} aanmaken...`);
     for(const m of mapped.matches){
-      const date = m.startTime.slice(0,10);
-      const dayId = dayDateMap[date] || '';
-      // Team-ids: eerst via importedId, dan via naam
-      const teamAId = teamIdMap[m.teamAImportedId] || teamIdMap[m.teamAName.toLowerCase()] || '';
-      const teamBId = teamIdMap[m.teamBImportedId] || teamIdMap[m.teamBName.toLowerCase()] || '';
-      await addMatch(tournament.id, {
+      const dayId   = dayKeyMap[m.dayKey] || '';
+      const teamAId = teamIdMap[m.homeTeamName.toLowerCase()] || '';
+      const teamBId = teamIdMap[m.awayTeamName.toLowerCase()] || '';
+      const match = await addMatch(tournament.id, {
         dayId,
-        startTime:       m.startTime,
-        durationMinutes: m.durationMinutes,
-        field:           m.field,
-        categoryId:      m.categoryId,
+        startTime:  m.startTime || '',
+        field:      m.field || '',
+        categoryId: m.category || '',
         teamAId, teamBId,
-        teamAName:       m.teamAName,
-        teamBName:       m.teamBName,
-        status:          m.status
+        teamAName:  m.homeTeamName,
+        teamBName:  m.awayTeamName,
+        status:     'watch'
       });
+      // stage niet-destructief bewaren als aanwezig (alleen toernooi-match doc)
+      if(m.stage){
+        try { await setDoc(tournSubDoc(tournament.id, 'matches', match.id), { stage: m.stage }, { merge: true }); }
+        catch(_){}
+      }
     }
   }
 
-  // TournamentPlayers aanmaken per team (na matches, zodat autoLink werkt)
-  // Zo worden MatchPlayer records gegenereerd voor alle wedstrijden van dat team
+  // TournamentPlayers — echte spelers uit parse-output, anders één placeholder per team
+  // (na matches, zodat autoLink MatchPlayer-records genereert)
   let totalPlayers = 0;
-  const teamInternalIds = Object.values(teamIdMap);
-  if(teamInternalIds.length){
+  const playersByTeam = {};
+  for(const p of mapped.players){
+    const k = p.teamName.toLowerCase();
+    (playersByTeam[k] = playersByTeam[k] || []).push(p);
+  }
+  if(mapped.teams.length){
     report('Spelers koppelen aan wedstrijden...');
-    for(const mappedTeam of mapped.teams){
-      const internalTeamId = teamIdMap[mappedTeam.importedId] ||
-                             teamIdMap[mappedTeam.name.toLowerCase()] || '';
+    for(const t of mapped.teams){
+      const internalTeamId = teamIdMap[t.importedId] || teamIdMap[t.name.toLowerCase()] || '';
       if(!internalTeamId) continue;
-
-      if(mappedTeam.players && mappedTeam.players.length){
-        // Tournify heeft spelersnamen → maak benoemde TournamentPlayers
-        for(const p of mappedTeam.players){
+      const roster = playersByTeam[t.name.toLowerCase()] || [];
+      if(roster.length){
+        for(const p of roster){
           await addTournamentPlayer(tournament.id, {
-            playerId:    null,
-            teamId:      internalTeamId,
-            quickName:   p.name || null,
-            quickNumber: p.number || null,
-            type:        'linked'
+            playerId: null, teamId: internalTeamId,
+            quickName: p.name, quickNumber: null, type: 'linked'
           });
           totalPlayers++;
         }
       } else {
-        // Geen roster in Tournify → maak één anonieme placeholder per team
-        // zodat de scouter direct "Speler toevoegen" kan zien in match detail
+        // Geen roster → één gemarkeerde placeholder zodat de scout direct kan toevoegen
         await addTournamentPlayer(tournament.id, {
-          playerId:    null,
-          teamId:      internalTeamId,
-          quickName:   `Speler — ${mappedTeam.name}`,
-          quickNumber: null,
-          type:        'linked'
+          playerId: null, teamId: internalTeamId,
+          quickName: `Speler — ${t.name}`, quickNumber: null, type: 'linked'
         });
         totalPlayers++;
       }
     }
+    // Spelers die naar een onbekend team verwijzen worden niet stil gedropt zonder log
+    const known = new Set(mapped.teams.map(t => t.name.toLowerCase()));
+    const orphans = Object.keys(playersByTeam).filter(k => !known.has(k));
+    if(orphans.length && typeof __shTrace === 'function') __shTrace('tournify-import-orphan-players', { teams: orphans });
     if(totalPlayers) report(`${totalPlayers} speler${totalPlayers !== 1 ? 's' : ''} gekoppeld...`);
   }
 
@@ -23233,11 +23352,13 @@ async function importFromTournifyUrl(url, statusCallback){
 
   report('Import voltooid ✓');
   if(typeof __shTrace === 'function') __shTrace('tournify-import-done', {
-    tournifyId: mapped.tournifyId,
+    tournifyId:   T.tournifyId || tournifyId,
     tournamentId: tournament.id,
-    name: tournament.name,
-    teams: mapped.teams.length,
-    matches: mapped.matches.length
+    name:         tournament.name,
+    teams:        mapped.teams.length,
+    matches:      mapped.matches.length,
+    players:      totalPlayers,
+    warnings:     mapped.warnings.length
   });
   return tournament;
 }
@@ -23245,6 +23366,627 @@ window.importFromTournifyUrl = importFromTournifyUrl;
 
 /* ================================================================
    EINDE TOURNIFY URL-IMPORT
+   ================================================================ */
+
+/* ================================================================
+   ONDERDEEL 10 — TOERNOOI CLIENT-UI: REGELS · REGLEMENT · SYNC · STANDEN
+   --------------------------------------------------------------------
+   SCOPE: uitsluitend de toernooi-flow. Geen reguliere wedstrijd-,
+   observatie- of rapportflow. Alle schrijfacties zijn ADDITIEF en
+   non-destructief: uitsluitend setDoc(..., {merge:true}) met enkel de
+   toegestane velden. Scout-data (observations/matchPlayers/players/
+   summaries/days/teams) wordt NOOIT geraakt, gereset of verwijderd.
+   ================================================================ */
+
+/* ---- KNVB-categorie standaardregels (net speeltijd) -------------- */
+const TOURNAMENT_CATEGORY_DEFAULTS = {
+  O11: { numberOfHalves: 2, halfDuration: 15, halftimeBreak: 5 },
+  O12: { numberOfHalves: 2, halfDuration: 15, halftimeBreak: 5 },
+  O13: { numberOfHalves: 2, halfDuration: 20, halftimeBreak: 5 },
+  O14: { numberOfHalves: 2, halfDuration: 25, halftimeBreak: 5 },
+  O15: { numberOfHalves: 2, halfDuration: 30, halftimeBreak: 10 },
+  O17: { numberOfHalves: 2, halfDuration: 35, halftimeBreak: 10 },
+  O19: { numberOfHalves: 2, halfDuration: 40, halftimeBreak: 15 }
+};
+
+/* Normaliseer JO13 / U13 / O13 / 13 → "O13" */
+function normTournamentCategoryKey(cat){
+  const s = String(cat == null ? '' : cat).toUpperCase().replace(/\s|-/g, '');
+  const m = s.match(/(\d{1,2})/);
+  return m ? ('O' + m[1]) : (s || '');
+}
+window.normTournamentCategoryKey = normTournamentCategoryKey;
+
+/* Vul matchDuration aan als alleen helften bekend zijn */
+function _withMatchDuration(rule){
+  if(!rule) return null;
+  const r = { ...rule };
+  if(r.matchDuration == null && r.numberOfHalves && r.halfDuration){
+    r.matchDuration = r.numberOfHalves * r.halfDuration;
+  }
+  return r;
+}
+
+/* Effectieve regel voor (categorie[, stage]) — stage → categorie →
+   defaultRules → KNVB-default → null */
+function getEffectiveTournamentRule(t, categoryId, stage){
+  const tr = (t && t.tournamentRules) || null;
+  const key = normTournamentCategoryKey(categoryId);
+  if(tr && tr.categories && tr.categories[key]){
+    const c = tr.categories[key];
+    if(stage && c.stages && c.stages[stage]) return _withMatchDuration({ ...c, ...c.stages[stage] });
+    return _withMatchDuration(c);
+  }
+  if(tr && tr.defaultRules) return _withMatchDuration(tr.defaultRules);
+  if(TOURNAMENT_CATEGORY_DEFAULTS[key]) return _withMatchDuration(TOURNAMENT_CATEGORY_DEFAULTS[key]);
+  return null;
+}
+window.getEffectiveTournamentRule = getEffectiveTournamentRule;
+
+/* "HH:MM" + minuten → "HH:MM" (wrap mod 1440) */
+function _addMinutesToClock(hhmm, mins){
+  const m = String(hhmm || '').match(/^(\d{1,2}):(\d{2})$/);
+  if(!m) return '';
+  let total = (Number(m[1]) * 60 + Number(m[2]) + (Number(mins) || 0)) % 1440;
+  if(total < 0) total += 1440;
+  const h = Math.floor(total / 60), mm = total % 60;
+  return String(h).padStart(2, '0') + ':' + String(mm).padStart(2, '0');
+}
+
+/* Eindtijd van een wedstrijd op basis van de effectieve regel */
+function tournamentMatchEndTime(tid, m){
+  if(!m || !m.startTime) return '';
+  const start = m.startTime.slice(11, 16);
+  if(!/^\d{2}:\d{2}$/.test(start)) return '';
+  const t = tourmCache.find(x => x.id === tid);
+  const rule = getEffectiveTournamentRule(t, m.categoryId, m.stage || null);
+  let total = null;
+  if(rule){
+    if(rule.numberOfHalves && rule.halfDuration) total = rule.numberOfHalves * rule.halfDuration;
+    else if(rule.matchDuration) total = rule.matchDuration;
+    if(total != null && rule.halftimeBreak) total += rule.halftimeBreak;
+  }
+  if(total == null && m.durationMinutes) total = m.durationMinutes;   // valt terug op opgeslagen duur
+  if(total == null) return '';
+  return _addMinutesToClock(start, total);
+}
+window.tournamentMatchEndTime = tournamentMatchEndTime;
+
+/* Netto speelminuten voor de observatie-timer (alleen toernooi) */
+window.tournamentMatchDurationMinutes = function(tid, categoryId){
+  const t = tourmCache.find(x => x.id === tid);
+  const rule = getEffectiveTournamentRule(t, categoryId, null);
+  if(rule){
+    if(rule.numberOfHalves && rule.halfDuration) return rule.numberOfHalves * rule.halfDuration;
+    if(rule.matchDuration) return rule.matchDuration;
+  }
+  return null;
+};
+
+/* Score-badge in de tijdlijn (⏱️/🔴/✅) */
+function tournamentScoreBadge(m){
+  if(!m) return '';
+  const has = (m.scoreHome != null && m.scoreAway != null);
+  const rs = String(m.resultStatus || '').toLowerCase();
+  if(has && (rs === 'finished' || rs === '' )) return `✅ ${m.scoreHome}–${m.scoreAway}`;
+  if(rs === 'live') return has ? `🔴 ${m.scoreHome}–${m.scoreAway}` : '🔴';
+  if(has) return `✅ ${m.scoreHome}–${m.scoreAway}`;
+  return '⏱️';
+}
+window.tournamentScoreBadge = tournamentScoreBadge;
+
+/* ---- Dynamische full-screen overlay (geen HTML-edits nodig) ------ */
+function _toernOpenOverlay(innerHtml){
+  _toernCloseOverlay();
+  const ov = document.createElement('div');
+  ov.id = 'toern-dyn-overlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px;';
+  ov.innerHTML = `<div class="toern-dyn-card" style="background:var(--card,#fff);color:var(--text,#111);max-width:680px;width:100%;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3);padding:20px;">${innerHtml}</div>`;
+  ov.addEventListener('click', e => { if(e.target === ov) _toernCloseOverlay(); });
+  document.body.appendChild(ov);
+  return ov;
+}
+function _toernCloseOverlay(){
+  const ex = document.getElementById('toern-dyn-overlay');
+  if(ex) ex.remove();
+}
+window._toernCloseOverlay = _toernCloseOverlay;
+
+/* ---- Geauthenticeerde Cloud-Function call ------------------------ */
+async function _callTournamentFunction(name, body){
+  const FUNCTION_URL = `https://europe-west1-database-scouting.cloudfunctions.net/${name}`;
+  let idToken = null;
+  try { if(typeof auth !== 'undefined' && auth.currentUser) idToken = await auth.currentUser.getIdToken(); } catch(_){}
+  const ctrl = new AbortController();
+  const to = setTimeout(() => ctrl.abort(), 30000);
+  let resp;
+  try {
+    resp = await fetch(FUNCTION_URL, {
+      method: 'POST',
+      signal: ctrl.signal,
+      headers: { 'Content-Type': 'application/json', ...(idToken ? { 'Authorization': `Bearer ${idToken}` } : {}) },
+      body: JSON.stringify(body || {})
+    });
+  } catch(err){
+    clearTimeout(to);
+    if(err.name === 'AbortError') throw new Error('Tijdslimiet overschreden — probeer opnieuw');
+    throw new Error('Verbindingsfout: ' + (err.message || String(err)));
+  }
+  clearTimeout(to);
+  if(!resp.ok){
+    let msg = `Fout ${resp.status}`;
+    try { const e = await resp.json(); msg = e.error || msg; } catch(_){}
+    throw new Error(msg);
+  }
+  const json = await resp.json();
+  if(!json || typeof json !== 'object') throw new Error('Lege of ongeldige API-response');
+  return json;
+}
+
+function _fileToBase64(file){
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(String(r.result || '').replace(/^data:[^;]*;base64,/, ''));
+    r.onerror = () => reject(new Error('Bestand kon niet worden gelezen'));
+    r.readAsDataURL(file);
+  });
+}
+
+/* ================================================================
+   TOERNOOIREGELS INSTELLEN
+   ================================================================ */
+async function openTournamentRulesModal(tid){
+  tid = tid || _currentTournamentId;
+  const t = tourmCache.find(x => x.id === tid);
+  if(!t){ toast('Toernooi niet gevonden', true); return; }
+
+  // Categorieën verzamelen: tournament.categories + distinct match-categoryIds
+  let cats = Array.isArray(t.categories) ? t.categories.slice() : [];
+  try {
+    const ms = await getDocs(tournSubCol(tid, 'matches'));
+    ms.docs.forEach(d => { const c = (d.data() || {}).categoryId; if(c) cats.push(c); });
+  } catch(_){}
+  const keys = [...new Set(cats.map(normTournamentCategoryKey).filter(Boolean))].sort();
+  if(!keys.length){ keys.push('O13'); }
+
+  const tr = t.tournamentRules || {};
+  const rowHtml = keys.map(k => {
+    const eff = getEffectiveTournamentRule(t, k, null) || {};
+    const stored = (tr.categories && tr.categories[k]) || {};
+    const isDefault = !(tr.categories && tr.categories[k]);
+    return `<div class="toern-rule-row" data-key="${k}" style="display:grid;grid-template-columns:64px repeat(5,1fr);gap:6px;align-items:center;margin-bottom:6px;">
+      <strong>${escapeHtml(k)}</strong>
+      <label style="font-size:11px;">Helften<input type="number" min="1" max="4" data-f="numberOfHalves" value="${eff.numberOfHalves ?? 2}" style="width:100%;"></label>
+      <label style="font-size:11px;">Helft (min)<input type="number" min="1" max="60" data-f="halfDuration" value="${eff.halfDuration ?? ''}" style="width:100%;"></label>
+      <label style="font-size:11px;">Rust (min)<input type="number" min="0" max="30" data-f="halftimeBreak" value="${eff.halftimeBreak ?? 0}" style="width:100%;"></label>
+      <label style="font-size:11px;">Verleng.<input type="checkbox" data-f="extraTime" ${eff.extraTime ? 'checked' : ''}></label>
+      <label style="font-size:11px;">Straf.<input type="checkbox" data-f="penalties" ${eff.penalties ? 'checked' : ''}></label>
+      <span style="grid-column:1/-1;font-size:10px;color:var(--muted,#888);">${isDefault ? 'KNVB-standaard (nog niet aangepast)' : 'Aangepast' }</span>
+    </div>`;
+  }).join('');
+
+  _toernOpenOverlay(`
+    <h3 style="margin:0 0 4px;">Toernooiregels — ${escapeHtml(t.name || '')}</h3>
+    <p style="margin:0 0 14px;font-size:12px;color:var(--muted,#888);">Speeltijd per categorie. Eindtijden in de tijdlijn en de observatie-timer gebruiken deze waarden.</p>
+    <div id="toern-rules-form">${rowHtml}</div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+      <button class="btn btn-sm" onclick="_toernCloseOverlay()">Annuleren</button>
+      <button class="btn btn-sm btn-primary" onclick="saveTournamentRules('${tid}')">Opslaan</button>
+    </div>`);
+}
+window.openTournamentRulesModal = openTournamentRulesModal;
+
+async function saveTournamentRules(tid){
+  const t = tourmCache.find(x => x.id === tid) || {};
+  const existing = (t.tournamentRules && t.tournamentRules.categories) ? { ...t.tournamentRules.categories } : {};
+  const rows = document.querySelectorAll('#toern-rules-form .toern-rule-row');
+  rows.forEach(row => {
+    const key = row.getAttribute('data-key');
+    const get = f => row.querySelector(`[data-f="${f}"]`);
+    const nh = Number(get('numberOfHalves').value) || null;
+    const hd = Number(get('halfDuration').value) || null;
+    const hb = Number(get('halftimeBreak').value);
+    const et = get('extraTime').checked;
+    const pen = get('penalties').checked;
+    const prevStages = (existing[key] && existing[key].stages) || undefined;
+    existing[key] = {
+      label: key,
+      numberOfHalves: nh,
+      halfDuration: hd,
+      halftimeBreak: Number.isFinite(hb) ? hb : 0,
+      matchDuration: (nh && hd) ? nh * hd : (existing[key] && existing[key].matchDuration) || null,
+      extraTime: et,
+      extraTimeDuration: (existing[key] && existing[key].extraTimeDuration) || null,
+      penalties: pen,
+      ...(prevStages ? { stages: prevStages } : {})
+    };
+  });
+  const patch = {
+    tournamentRules: {
+      categories: existing,
+      defaultRules: (t.tournamentRules && t.tournamentRules.defaultRules) || null,
+      additionalRules: (t.tournamentRules && t.tournamentRules.additionalRules) || [],
+      updatedAt: new Date().toISOString()
+    }
+  };
+  try {
+    await setDoc(tournDoc(tid), patch, { merge: true });
+    toast('Toernooiregels opgeslagen');
+    _toernCloseOverlay();
+    if(_currentTournamentId === tid && _toernTab === 'tijdlijn') renderTijdlijnTab(tid);
+  } catch(e){
+    console.error('saveTournamentRules error:', e);
+    toast('Opslaan mislukt: ' + (e.message || e), true);
+  }
+}
+window.saveTournamentRules = saveTournamentRules;
+
+/* ================================================================
+   REGLEMENT TOEVOEGEN (URL / PDF → parseToernooiReglement)
+   ================================================================ */
+function openReglementModal(tid){
+  tid = tid || _currentTournamentId;
+  _toernOpenOverlay(`
+    <h3 style="margin:0 0 4px;">Reglement toevoegen</h3>
+    <p style="margin:0 0 14px;font-size:12px;color:var(--muted,#888);">Plak een link naar het toernooireglement óf upload een PDF. We lezen de speeltijden en regels automatisch uit.</p>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:12px;">Reglement-URL</label>
+      <input id="toern-regl-url" type="url" placeholder="https://..." style="width:100%;">
+    </div>
+    <div style="margin-bottom:10px;text-align:center;font-size:12px;color:var(--muted,#888);">— of —</div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:12px;">PDF uploaden</label>
+      <input id="toern-regl-pdf" type="file" accept="application/pdf,.pdf" style="width:100%;">
+    </div>
+    <div id="toern-regl-status" style="font-size:12px;min-height:18px;margin:8px 0;"></div>
+    <div id="toern-regl-result"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-sm" onclick="_toernCloseOverlay()">Sluiten</button>
+      <button class="btn btn-sm btn-primary" id="toern-regl-submit" onclick="submitReglementSource('${tid}')">Inlezen</button>
+    </div>`);
+}
+window.openReglementModal = openReglementModal;
+
+async function submitReglementSource(tid){
+  const statusEl = document.getElementById('toern-regl-status');
+  const submitBtn = document.getElementById('toern-regl-submit');
+  const url = (document.getElementById('toern-regl-url') || {}).value || '';
+  const fileInput = document.getElementById('toern-regl-pdf');
+  const file = fileInput && fileInput.files && fileInput.files[0];
+  if(!url.trim() && !file){ if(statusEl) statusEl.textContent = '⚠️ Geef een URL op of kies een PDF.'; return; }
+  if(submitBtn){ submitBtn.disabled = true; }
+  if(statusEl){ statusEl.textContent = '⏳ Reglement inlezen...'; statusEl.style.color = ''; }
+  try {
+    let body;
+    if(file){
+      const b64 = await _fileToBase64(file);
+      body = { pdfBase64: b64, filename: file.name };
+    } else {
+      body = { url: url.trim() };
+    }
+    const data = await _callTournamentFunction('parseToernooiReglement', body);
+    window._lastParsedReglement = data;
+    _renderReglementResult(tid, data);
+    if(statusEl){
+      const n = (data.rules || []).length;
+      statusEl.textContent = n ? `✅ ${n} regel(s) gevonden.` : '⚠️ Geen regels herkend — controleer de bron.';
+      statusEl.style.color = n ? 'var(--green,#2a8)' : 'var(--red,#c33)';
+    }
+  } catch(e){
+    if(statusEl){ statusEl.textContent = '❌ ' + (e.message || e); statusEl.style.color = 'var(--red,#c33)'; }
+  } finally {
+    if(submitBtn){ submitBtn.disabled = false; }
+  }
+}
+window.submitReglementSource = submitReglementSource;
+
+function _renderReglementResult(tid, data){
+  const wrap = document.getElementById('toern-regl-result');
+  if(!wrap) return;
+  const rules = (data && data.rules) || [];
+  const cats = (data && data.meta && data.meta.categoriesDetected) || [];
+  if(!rules.length){ wrap.innerHTML = ''; return; }
+  const rows = rules.map((r, i) => {
+    const k = normTournamentCategoryKey(r.category) || '(alg.)';
+    const dur = r.matchDuration ? `${r.matchDuration} min` : (r.numberOfHalves && r.halfDuration ? `${r.numberOfHalves}×${r.halfDuration} min` : '—');
+    return `<tr>
+      <td>${escapeHtml(k)}</td>
+      <td>${escapeHtml(r.stage || '—')}</td>
+      <td>${escapeHtml(dur)}</td>
+      <td>${r.halftimeBreak != null ? escapeHtml(r.halftimeBreak + ' min') : '—'}</td>
+      <td>${r.extraTime ? 'ja' : 'nee'}</td>
+      <td>${r.penalties ? 'ja' : 'nee'}</td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `
+    <div style="margin-top:10px;border:1px solid var(--border,#ddd);border-radius:8px;padding:10px;">
+      <div style="font-size:12px;margin-bottom:6px;">Herkende categorieën: ${cats.length ? cats.map(c => escapeHtml(c)).join(', ') : '—'}. Wordt automatisch gekoppeld (JO13/U13 → O13).</div>
+      <table style="width:100%;font-size:12px;border-collapse:collapse;">
+        <thead><tr style="text-align:left;border-bottom:1px solid var(--border,#ddd);">
+          <th>Cat.</th><th>Fase</th><th>Speeltijd</th><th>Rust</th><th>Verleng.</th><th>Straf.</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px;">
+        <button class="btn btn-sm btn-primary" onclick="applyParsedReglement('${tid}')">Regels toepassen op toernooi</button>
+      </div>
+    </div>`;
+}
+
+async function applyParsedReglement(tid){
+  const data = window._lastParsedReglement;
+  if(!data || !Array.isArray(data.rules) || !data.rules.length){ toast('Geen ingelezen regels om toe te passen', true); return; }
+  const t = tourmCache.find(x => x.id === tid) || {};
+  const tr = t.tournamentRules || {};
+  const categories = (tr.categories) ? { ...tr.categories } : {};
+  for(const r of data.rules){
+    const rk = normTournamentCategoryKey(r.category) || 'O13';
+    const base = categories[rk] || { label: rk, stages: {} };
+    const stages = { ...(base.stages || {}) };
+    const ruleObj = {
+      numberOfHalves: r.numberOfHalves ?? base.numberOfHalves ?? 2,
+      halfDuration: r.halfDuration ?? base.halfDuration ?? null,
+      halftimeBreak: r.halftimeBreak ?? base.halftimeBreak ?? 0,
+      matchDuration: r.matchDuration ?? ((r.numberOfHalves && r.halfDuration) ? r.numberOfHalves * r.halfDuration : base.matchDuration ?? null),
+      extraTime: !!r.extraTime,
+      extraTimeDuration: r.extraTimeDuration ?? null,
+      penalties: !!r.penalties,
+      notes: r.notes || null
+    };
+    if(r.stage){
+      stages[r.stage] = ruleObj;
+      categories[rk] = { ...base, label: rk, stages };
+    } else {
+      categories[rk] = { ...base, ...ruleObj, label: rk, stages };
+    }
+  }
+  const patch = {
+    tournamentRules: {
+      categories,
+      defaultRules: tr.defaultRules || null,
+      additionalRules: [ ...((tr.additionalRules) || []), ...((data.additionalRules) || []) ],
+      reglementMeta: { source: (data.meta && data.meta.source) || null, url: (data.meta && data.meta.url) || null, filename: (data.meta && data.meta.filename) || null, appliedAt: new Date().toISOString() },
+      updatedAt: new Date().toISOString()
+    }
+  };
+  try {
+    await setDoc(tournDoc(tid), patch, { merge: true });
+    toast('Reglement-regels toegepast');
+    _toernCloseOverlay();
+    if(_currentTournamentId === tid && _toernTab === 'tijdlijn') renderTijdlijnTab(tid);
+  } catch(e){
+    console.error('applyParsedReglement error:', e);
+    toast('Toepassen mislukt: ' + (e.message || e), true);
+  }
+}
+window.applyParsedReglement = applyParsedReglement;
+
+/* ================================================================
+   SYNC — scores + standen ophalen (syncTournamentResults)
+   DATA-PROTECTIE: schrijft ENKEL scoreHome/scoreAway/resultStatus/
+   lastSyncedAt per match-doc en standings/lastSyncedAt/syncCount op
+   het toernooi-doc. Altijd setDoc(..., {merge:true}). Nooit scout-data.
+   ================================================================ */
+function _normTeamName(s){ return String(s == null ? '' : s).toLowerCase().replace(/[^a-z0-9]/g, ''); }
+
+async function syncTournamentScores(tid){
+  tid = tid || _currentTournamentId;
+  const t = tourmCache.find(x => x.id === tid);
+  const statusEl = document.getElementById('toern-sync-status');
+  if(!t){ toast('Toernooi niet gevonden', true); return; }
+  const tournifyUrl = t.tournifyUrl || (t.tournifyId ? `https://tournifyapp.com/live/${encodeURIComponent(t.tournifyId)}` : '');
+  if(!tournifyUrl){
+    if(statusEl) statusEl.textContent = 'Handmatig toernooi — voer uitslagen in via de tijdlijn (tik op de score).';
+    toast('Geen Tournify-bron — gebruik handmatige uitslagen', true);
+    return;
+  }
+  if(statusEl) statusEl.textContent = '⏳ Scores synchroniseren...';
+  let data;
+  try {
+    data = await _callTournamentFunction('syncTournamentResults', { url: tournifyUrl });
+  } catch(e){
+    if(statusEl) statusEl.textContent = '❌ ' + (e.message || e);
+    return;
+  }
+  const remoteMatches = (data && data.matches) || [];
+  const standings = (data && data.standings) || {};
+
+  // Lokale matches laden om remote op te koppelen
+  let localMatches = [];
+  try {
+    const snap = await getDocs(tournSubCol(tid, 'matches'));
+    localMatches = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+  } catch(_){}
+
+  let written = 0, unmatched = 0;
+  for(const rm of remoteMatches){
+    if(rm.scoreHome == null || rm.scoreAway == null) continue;   // alleen wedstrijden mét uitslag
+    const rh = _normTeamName(rm.homeTeam), ra = _normTeamName(rm.awayTeam);
+    let local = localMatches.find(lm => _normTeamName(lm.teamAName) === rh && _normTeamName(lm.teamBName) === ra);
+    let swapped = false;
+    if(!local){
+      local = localMatches.find(lm => _normTeamName(lm.teamAName) === ra && _normTeamName(lm.teamBName) === rh);
+      if(local) swapped = true;
+    }
+    if(!local){ unmatched++; continue; }
+    const sh = swapped ? rm.scoreAway : rm.scoreHome;
+    const sa = swapped ? rm.scoreHome : rm.scoreAway;
+    try {
+      await setDoc(tournSubDoc(tid, 'matches', local.id),
+        { scoreHome: sh, scoreAway: sa, resultStatus: rm.resultStatus || 'finished', lastSyncedAt: new Date().toISOString() },
+        { merge: true });
+      written++;
+    } catch(e){ console.error('sync match write error:', e); }
+  }
+
+  // Toernooi-doc: enkel standings + sync-meta (merge)
+  try {
+    await setDoc(tournDoc(tid),
+      { standings, lastSyncedAt: new Date().toISOString(), syncCount: (Number(t.syncCount) || 0) + 1 },
+      { merge: true });
+  } catch(e){ console.error('sync tournament write error:', e); }
+
+  if(statusEl){
+    const stamp = new Date().toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' });
+    statusEl.textContent = `✅ ${written} uitslag(en) bijgewerkt om ${stamp}` + (unmatched ? ` · ${unmatched} niet gekoppeld` : '');
+  }
+  toast(`Sync klaar: ${written} uitslagen`);
+  if(_currentTournamentId === tid){
+    if(_toernTab === 'tijdlijn') renderTijdlijnTab(tid);
+    if(_toernTab === 'standen' && typeof renderStandenTab === 'function') renderStandenTab(tid);
+  }
+}
+window.syncTournamentScores = syncTournamentScores;
+
+/* ================================================================
+   HANDMATIGE UITSLAG — fallback wanneer er geen Tournify-bron is
+   ================================================================ */
+async function promptManualScore(tid, matchId){
+  tid = tid || _currentTournamentId;
+  let m = null;
+  try {
+    const snap = await getDoc(tournSubDoc(tid, 'matches', matchId));
+    if(snap.exists()) m = { ...snap.data(), id: matchId };
+  } catch(_){}
+  if(!m){ toast('Wedstrijd niet gevonden', true); return; }
+  _toernOpenOverlay(`
+    <h3 style="margin:0 0 10px;">Uitslag invoeren</h3>
+    <div style="display:flex;align-items:center;gap:10px;justify-content:center;font-size:15px;margin-bottom:14px;">
+      <span style="flex:1;text-align:right;">${escapeHtml(m.teamAName || '?')}</span>
+      <input id="toern-score-h" type="number" min="0" max="99" value="${m.scoreHome != null ? m.scoreHome : ''}" style="width:56px;text-align:center;font-size:18px;">
+      <span>–</span>
+      <input id="toern-score-a" type="number" min="0" max="99" value="${m.scoreAway != null ? m.scoreAway : ''}" style="width:56px;text-align:center;font-size:18px;">
+      <span style="flex:1;text-align:left;">${escapeHtml(m.teamBName || '?')}</span>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:space-between;margin-top:8px;">
+      <button class="btn btn-sm" onclick="_saveMatchScore('${tid}','${matchId}',true)">Uitslag wissen</button>
+      <span style="display:flex;gap:8px;">
+        <button class="btn btn-sm" onclick="_toernCloseOverlay()">Annuleren</button>
+        <button class="btn btn-sm btn-primary" onclick="_saveMatchScore('${tid}','${matchId}',false)">Opslaan</button>
+      </span>
+    </div>`);
+}
+window.promptManualScore = promptManualScore;
+
+async function _saveMatchScore(tid, matchId, clear){
+  let patch;
+  if(clear){
+    patch = { scoreHome: null, scoreAway: null, resultStatus: 'scheduled', lastSyncedAt: new Date().toISOString() };
+  } else {
+    const h = Number((document.getElementById('toern-score-h') || {}).value);
+    const a = Number((document.getElementById('toern-score-a') || {}).value);
+    if(!Number.isFinite(h) || !Number.isFinite(a)){ toast('Vul beide scores in', true); return; }
+    patch = { scoreHome: h, scoreAway: a, resultStatus: 'finished', lastSyncedAt: new Date().toISOString() };
+  }
+  try {
+    await setDoc(tournSubDoc(tid, 'matches', matchId), patch, { merge: true });
+    toast(clear ? 'Uitslag gewist' : 'Uitslag opgeslagen');
+    _toernCloseOverlay();
+    if(_currentTournamentId === tid){
+      if(_toernTab === 'tijdlijn') renderTijdlijnTab(tid);
+      if(_toernTab === 'standen' && typeof renderStandenTab === 'function') renderStandenTab(tid);
+    }
+  } catch(e){
+    console.error('_saveMatchScore error:', e);
+    toast('Opslaan mislukt: ' + (e.message || e), true);
+  }
+}
+window._saveMatchScore = _saveMatchScore;
+
+/* ================================================================
+   STANDEN — client-side berekening (fallback) + synced standings
+   ================================================================ */
+function _emptyStandRow(name){
+  return { name, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, rank: 0 };
+}
+function computeStandingsFromMatches(matches){
+  const groups = {};
+  for(const m of (matches || [])){
+    if(m.scoreHome == null || m.scoreAway == null) continue;
+    if(String(m.resultStatus || 'finished').toLowerCase() !== 'finished') continue;
+    const g = m.categoryId || 'Algemeen';
+    if(!groups[g]) groups[g] = {};
+    const A = m.teamAName || '?', B = m.teamBName || '?';
+    if(!groups[g][A]) groups[g][A] = _emptyStandRow(A);
+    if(!groups[g][B]) groups[g][B] = _emptyStandRow(B);
+    const ra = groups[g][A], rb = groups[g][B];
+    const sh = Number(m.scoreHome), sa = Number(m.scoreAway);
+    ra.played++; rb.played++;
+    ra.goalsFor += sh; ra.goalsAgainst += sa;
+    rb.goalsFor += sa; rb.goalsAgainst += sh;
+    if(sh > sa){ ra.won++; ra.points += 3; rb.lost++; }
+    else if(sh < sa){ rb.won++; rb.points += 3; ra.lost++; }
+    else { ra.drawn++; rb.drawn++; ra.points++; rb.points++; }
+  }
+  const out = {};
+  for(const g of Object.keys(groups)){
+    const teams = Object.values(groups[g]);
+    teams.forEach(r => { r.goalDifference = r.goalsFor - r.goalsAgainst; });
+    teams.sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor || a.name.localeCompare(b.name));
+    teams.forEach((r, i) => { r.rank = i + 1; });
+    out[g] = { teams };
+  }
+  return out;
+}
+window.computeStandingsFromMatches = computeStandingsFromMatches;
+
+async function renderStandenTab(tid){
+  const wrap = document.getElementById('toern-standen-wrap');
+  if(!wrap) return;
+  wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
+  const t = tourmCache.find(x => x.id === tid) || {};
+
+  let standings = (t.standings && Object.keys(t.standings).length) ? t.standings : null;
+  let sourceNote;
+  if(standings){
+    sourceNote = t.lastSyncedAt ? `Gesynchroniseerd vanaf Tournify` : `Gesynchroniseerd`;
+  } else {
+    let matches = [];
+    try {
+      const snap = await getDocs(tournSubCol(tid, 'matches'));
+      matches = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    } catch(_){}
+    standings = computeStandingsFromMatches(matches);
+    sourceNote = 'Berekend op basis van ingevoerde uitslagen';
+  }
+
+  const groupNames = Object.keys(standings);
+  if(!groupNames.length){
+    wrap.innerHTML = `<div class="toern-empty">Nog geen standen. Voer uitslagen in via de tijdlijn of gebruik <button class="btn btn-xs" onclick="syncTournamentScores('${tid}')">Synchroniseren</button>.</div>`;
+    return;
+  }
+
+  let html = `<div style="font-size:11px;color:var(--muted,#888);margin-bottom:8px;">${escapeHtml(sourceNote)}</div>`;
+  for(const g of groupNames.sort()){
+    const rows = (standings[g].teams || []).map(r => `<tr>
+      <td style="text-align:center;">${r.rank || ''}</td>
+      <td>${escapeHtml(r.name || '?')}</td>
+      <td style="text-align:center;">${r.played || 0}</td>
+      <td style="text-align:center;">${r.won || 0}</td>
+      <td style="text-align:center;">${r.drawn || 0}</td>
+      <td style="text-align:center;">${r.lost || 0}</td>
+      <td style="text-align:center;">${(r.goalsFor || 0)}-${(r.goalsAgainst || 0)}</td>
+      <td style="text-align:center;">${r.goalDifference || 0}</td>
+      <td style="text-align:center;"><strong>${r.points || 0}</strong></td>
+    </tr>`).join('');
+    html += `<div class="toern-stand-group" style="margin-bottom:16px;">
+      <div class="toern-stand-title" style="font-weight:600;margin-bottom:4px;">${escapeHtml(g)}</div>
+      <table style="width:100%;font-size:12px;border-collapse:collapse;">
+        <thead><tr style="text-align:left;border-bottom:1px solid var(--border,#ddd);">
+          <th style="text-align:center;">#</th><th>Team</th><th style="text-align:center;">G</th>
+          <th style="text-align:center;">W</th><th style="text-align:center;">GL</th><th style="text-align:center;">V</th>
+          <th style="text-align:center;">Doelp.</th><th style="text-align:center;">DS</th><th style="text-align:center;">Ptn</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }
+  wrap.innerHTML = html;
+}
+window.renderStandenTab = renderStandenTab;
+
+/* ================================================================
+   EINDE ONDERDEEL 10
    ================================================================ */
 
 function showNewTournamentForm(){

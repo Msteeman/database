@@ -2190,6 +2190,75 @@ algemeen:</textarea>
         <div id="player-view-body"></div>
       </section>
 
+      <!-- ====== TOERNOOIEN VIEW ====== -->
+      <section class="view" id="view-toernooien">
+
+        <!-- LIJST PANE -->
+        <div id="toern-list-pane">
+          <div class="topbar">
+            <div>
+              <div class="page-title">Toernooien</div>
+              <div class="page-sub" id="toern-list-count"></div>
+            </div>
+            <button class="btn btn-primary" onclick="showNewTournamentForm()">+ Nieuw toernooi</button>
+          </div>
+          <div id="toern-list-wrap" style="padding:16px;"></div>
+        </div>
+
+        <!-- DETAIL PANE -->
+        <div id="toern-detail-pane" style="display:none;">
+          <div class="topbar">
+            <div style="display:flex;align-items:center;gap:10px;">
+              <button class="btn btn-ghost btn-sm" onclick="backToTournamentList()">← Terug</button>
+              <div>
+                <div class="page-title" id="toern-detail-title">—</div>
+                <div class="page-sub" id="toern-detail-sub"></div>
+              </div>
+            </div>
+            <span class="toern-badge" id="toern-detail-status"></span>
+          </div>
+
+          <!-- Toernooi-acties: regels / reglement / sync -->
+          <div class="toern-actions" id="toern-detail-actions" style="display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 8px;">
+            <button class="btn btn-ghost btn-sm" id="toern-btn-regels" onclick="openTournamentRulesModal(_currentTournamentId)">⚙️ Toernooiregels</button>
+            <button class="btn btn-ghost btn-sm" id="toern-btn-reglement" onclick="openReglementModal(_currentTournamentId)">📄 Reglement toevoegen</button>
+            <button class="btn btn-ghost btn-sm" id="toern-btn-sync" onclick="syncTournamentScores(_currentTournamentId)">🔄 Uitslagen synchroniseren</button>
+            <span class="toern-sync-status" id="toern-sync-status" style="font-size:12px;color:var(--muted);align-self:center;"></span>
+          </div>
+
+          <!-- Tabs -->
+          <div class="toern-tabs">
+            <button class="toern-tab-btn active" data-tab="tijdlijn" onclick="renderToernooiTab('tijdlijn')">Tijdlijn</button>
+            <button class="toern-tab-btn" data-tab="spelers" onclick="renderToernooiTab('spelers')">Spelers</button>
+            <button class="toern-tab-btn" data-tab="bundeling" onclick="renderToernooiTab('bundeling')">Bundeling</button>
+            <button class="toern-tab-btn" data-tab="standen" onclick="renderToernooiTab('standen')">Standen</button>
+          </div>
+
+          <!-- Tijdlijn tab -->
+          <div class="toern-tab-pane" data-tab="tijdlijn" style="padding:16px;">
+            <div id="toern-tijdlijn-wrap"></div>
+          </div>
+
+          <!-- Spelers tab -->
+          <div class="toern-tab-pane" data-tab="spelers" style="display:none;padding:16px;">
+            <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
+              <button class="btn btn-primary btn-sm" onclick="showAddPlayerForm(_currentTournamentId)">+ Speler koppelen</button>
+            </div>
+            <div id="toern-spelers-wrap"></div>
+          </div>
+
+          <!-- Bundeling tab -->
+          <div class="toern-tab-pane" data-tab="bundeling" style="display:none;padding:16px;">
+            <div id="toern-bundeling-wrap"></div>
+          </div>
+
+          <!-- Standen tab -->
+          <div class="toern-tab-pane" data-tab="standen" style="display:none;padding:16px;">
+            <div id="toern-standen-wrap"></div>
+          </div>
+        </div>
+      </section>
+
     </main>
   </div>
 
@@ -2223,64 +2292,6 @@ algemeen:</textarea>
       <button type="button" class="cmp-float-go" id="cmp-float-go">Vergelijken →</button>
     </div>
   </div>
-
-  <!-- Mobile bottom tab nav (visible only on mobile) -->
-
-      <!-- ====== TOERNOOIEN VIEW ====== -->
-      <section class="view" id="view-toernooien">
-
-        <!-- LIJST PANE -->
-        <div id="toern-list-pane">
-          <div class="topbar">
-            <div>
-              <div class="page-title">Toernooien</div>
-              <div class="page-sub" id="toern-list-count"></div>
-            </div>
-            <button class="btn btn-primary" onclick="showNewTournamentForm()">+ Nieuw toernooi</button>
-          </div>
-          <div id="toern-list-wrap" style="padding:16px;"></div>
-        </div>
-
-        <!-- DETAIL PANE -->
-        <div id="toern-detail-pane" style="display:none;">
-          <div class="topbar">
-            <div style="display:flex;align-items:center;gap:10px;">
-              <button class="btn btn-ghost btn-sm" onclick="backToTournamentList()">← Terug</button>
-              <div>
-                <div class="page-title" id="toern-detail-title">—</div>
-                <div class="page-sub" id="toern-detail-sub"></div>
-              </div>
-            </div>
-            <span class="toern-badge" id="toern-detail-status"></span>
-          </div>
-
-          <!-- Tabs -->
-          <div class="toern-tabs">
-            <button class="toern-tab-btn active" data-tab="tijdlijn" onclick="renderToernooiTab('tijdlijn')">Tijdlijn</button>
-            <button class="toern-tab-btn" data-tab="spelers" onclick="renderToernooiTab('spelers')">Spelers</button>
-            <button class="toern-tab-btn" data-tab="bundeling" onclick="renderToernooiTab('bundeling')">Bundeling</button>
-          </div>
-
-          <!-- Tijdlijn tab -->
-          <div class="toern-tab-pane" data-tab="tijdlijn" style="padding:16px;">
-            <div id="toern-tijdlijn-wrap"></div>
-          </div>
-
-          <!-- Spelers tab -->
-          <div class="toern-tab-pane" data-tab="spelers" style="display:none;padding:16px;">
-            <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
-              <button class="btn btn-primary btn-sm" onclick="showAddPlayerForm(_currentTournamentId)">+ Speler koppelen</button>
-            </div>
-            <div id="toern-spelers-wrap"></div>
-          </div>
-
-          <!-- Bundeling tab -->
-          <div class="toern-tab-pane" data-tab="bundeling" style="display:none;padding:16px;">
-            <div id="toern-bundeling-wrap"></div>
-          </div>
-        </div>
-      </section>
-
 
   <nav class="bottom-nav" id="bottom-nav" aria-label="Hoofdnavigatie">
     <button class="bn-item active" data-view="dashboard" aria-label="Dashboard">

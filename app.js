@@ -22952,10 +22952,19 @@ function extractTournifyId(url){
   return null;
 }
 
+/* ============================================================
+ * Toernooi-backend basis-URL.
+ * Na de Cloudflare-deploy krijg je een URL zoals:
+ *   https://scoutinghub-toernooi.JOUW-SUBDOMEIN.workers.dev
+ * Vervang hieronder <JOUW-SUBDOMEIN> door je eigen subdomein.
+ * (De drie endpoints hangen er als pad achter: /parseToernooiUrl enz.)
+ * ============================================================ */
+const TOERNOOI_API_BASE = 'https://scoutinghub-api.marcelsteeman1.workers.dev';
+
 async function fetchTournifyData(tournifyId, rawUrl){
-  // Gebruik de parseToernooiUrl Cloud Function (europe-west1)
+  // Gebruik de parseToernooiUrl-functie (Cloudflare Worker)
   // rawUrl = de oorspronkelijke Tournify URL (voor HTML-parsing als fallback)
-  const FUNCTION_URL = 'https://europe-west1-database-scouting.cloudfunctions.net/parseToernooiUrl';
+  const FUNCTION_URL = `${TOERNOOI_API_BASE}/parseToernooiUrl`;
   const tournifyUrl = rawUrl || `https://tournifyapp.com/live/${encodeURIComponent(tournifyId)}`;
 
   // Haal Firebase ID-token op voor auth
@@ -23494,7 +23503,7 @@ window._toernCloseOverlay = _toernCloseOverlay;
 
 /* ---- Geauthenticeerde Cloud-Function call ------------------------ */
 async function _callTournamentFunction(name, body){
-  const FUNCTION_URL = `https://europe-west1-database-scouting.cloudfunctions.net/${name}`;
+  const FUNCTION_URL = `${TOERNOOI_API_BASE}/${name}`;
   let idToken = null;
   try { if(typeof auth !== 'undefined' && auth.currentUser) idToken = await auth.currentUser.getIdToken(); } catch(_){}
   const ctrl = new AbortController();

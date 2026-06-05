@@ -1,0 +1,6 @@
+name = "scoutinghub-toernooi"
+main = "worker.js"
+compatibility_date = "2024-09-01"
+
+# Geen extra instellingen nodig: de Worker doet alleen outbound fetch
+# naar tournifyapp.com en geeft JSON terug. Geen secrets, geen KV, geen DB.

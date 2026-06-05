@@ -3322,6 +3322,8 @@ function subscribeData(){
 
   unsubProgramma = onSnapshot(programmaCol(), snap=>{
     programmaCache = snap.docs.map(d => ({...d.data(), id: d.id}));
+    // Herstel verloren obs-drafts uit localStorage bij eerste load
+    if(typeof _obsBackupRecover === 'function') _obsBackupRecover().catch(()=>{});
     // s35bm: skip dashboard re-render zolang een snel-notitie open staat — anders
     // verdwijnt het formulier vanzelf na elke autosave (firestore -> snapshot -> render).
     const hasOpenSnelForm = !!document.querySelector(
@@ -6323,7 +6325,9 @@ function openObservatieForm(prog, sn){
         _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
         _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
         _d.modified = Date.now();
-        if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
+        // VEILIGHEIDSLAAG: ook auto-save gaat via backup systeem
+        if(typeof _obsBackupSaveAndSync === 'function') _obsBackupSaveAndSync(prog, _d);
+        else if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
       } catch(_){}
     };
     // Wire auto-save op alle invoervelden (debounced 800ms)
@@ -6445,13 +6449,11 @@ async function _obsSubmit(e){
         const _ti = _obsTerCont ? Array.from(_obsTerCont.querySelectorAll('.obs-term-in')) : Array.from(document.querySelectorAll('.obs-term-in'));
         _d.tekst = (_OBS_TERMS||[]).map(t => { const el = _ti.find(x => x.dataset.term===t); return t+':'+(el&&el.value.trim()?' '+el.value.trim():''); }).join('\n');
         _d.modified = Date.now();
-        if(typeof saveProgrammaItem === 'function'){
-          saveProgrammaItem(prog).then(() => {
-            if(typeof toast === 'function') toast('Notitie bewaard ✓');
-          }).catch(err => {
-            console.error('obs-draft flush fout:', err);
-            if(typeof toast === 'function') toast('Bewaren mislukt — controleer verbinding', true);
-          });
+        // VEILIGHEIDSLAAG: localStorage backup + Firestore met retry
+        if(typeof _obsBackupSaveAndSync === 'function'){
+          _obsBackupSaveAndSync(prog, _d);
+        } else if(typeof saveProgrammaItem === 'function'){
+          saveProgrammaItem(prog).catch(()=>{});
         }
       }
     } catch(_){}
@@ -7684,13 +7686,8 @@ function renderActiveScouting(){
           // Altijd een NIEUWE draft aanmaken — bestaande blijven bewaard
           const _obsDraft = { id: 'obs_' + Date.now() + '_' + Math.random().toString(36).slice(2,5), rapport_type: 'observatie', obs_draft: true, naam: '', tekst: '', created: Date.now() };
           _obsProg.snelnotities.push(_obsDraft);
-          // Sla DIRECT op naar Firestore — niet alleen debounced
-          if(typeof saveProgrammaItem === 'function'){
-            saveProgrammaItem(_obsProg).catch(err => {
-              console.error('obs-draft save fout:', err);
-              if(typeof toast === 'function') toast('Opslaan mislukt — controleer verbinding', true);
-            });
-          }
+          // VEILIGHEIDSLAAG: direct naar localStorage + Firestore met retry
+          _obsBackupSaveAndSync(_obsProg, _obsDraft);
           if(typeof renderActiveScouting === 'function') renderActiveScouting();
           openObservatieForm(_obsProg, _obsDraft);
         }
@@ -20491,6 +20488,114 @@ if(document.readyState === 'loading'){
   }
 })();
 
+
+/* ================================================================
+   OBS VEILIGHEIDS-LAAG — observaties gaan NOOIT verloren
+   
+   Werking:
+   1. Bij aanmaken/wijzigen obs-draft: direct naar localStorage
+   2. Dan naar Firestore (met retry bij fout)
+   3. Bij app-start: herstel alles uit localStorage dat nog niet
+      gesynchroniseerd is
+   4. Gebruiker ziet altijd de status van de opslag
+   ================================================================ */
+
+const _OBS_BACKUP_KEY = 'sh_obs_backup_v1';
+
+function _obsBackupSave(prog, sn){
+  try {
+    const store = JSON.parse(localStorage.getItem(_OBS_BACKUP_KEY) || '{}');
+    const key = `${prog.id}__${sn.id}`;
+    store[key] = {
+      prog: { id: prog.id, datum: prog.datum, thuis: prog.thuis, uit: prog.uit,
+              leeftijd: prog.leeftijd, plaats: prog.plaats },
+      sn: { ...sn },
+      savedAt: Date.now(),
+      synced: false
+    };
+    localStorage.setItem(_OBS_BACKUP_KEY, JSON.stringify(store));
+  } catch(e){ console.warn('obs backup write fout:', e); }
+}
+
+function _obsBackupMarkSynced(progId, snId){
+  try {
+    const store = JSON.parse(localStorage.getItem(_OBS_BACKUP_KEY) || '{}');
+    const key = `${progId}__${snId}`;
+    if(store[key]) store[key].synced = true;
+    // Verwijder gesyncte items ouder dan 48u
+    const cutoff = Date.now() - 48 * 60 * 60 * 1000;
+    Object.keys(store).forEach(k => {
+      if(store[k].synced && store[k].savedAt < cutoff) delete store[k];
+    });
+    localStorage.setItem(_OBS_BACKUP_KEY, JSON.stringify(store));
+  } catch(e){}
+}
+
+function _obsBackupGetUnsynced(){
+  try {
+    const store = JSON.parse(localStorage.getItem(_OBS_BACKUP_KEY) || '{}');
+    return Object.entries(store)
+      .filter(([, v]) => !v.synced)
+      .map(([k, v]) => ({ key: k, ...v }));
+  } catch(e){ return []; }
+}
+
+// Herstel ongesynchroniseerde obs bij app-start
+async function _obsBackupRecover(){
+  const unsynced = _obsBackupGetUnsynced();
+  if(!unsynced.length) return;
+  if(!currentUser) return;
+
+  let recovered = 0;
+  for(const item of unsynced){
+    try {
+      const prog = programmaCache && programmaCache.find(p => p && p.id === item.prog.id);
+      if(!prog) continue;
+      if(!Array.isArray(prog.snelnotities)) prog.snelnotities = [];
+      // Check of de snelnotitie al bestaat
+      const exists = prog.snelnotities.find(s => s && s.id === item.sn.id);
+      if(!exists) prog.snelnotities.push(item.sn);
+      else Object.assign(exists, item.sn); // update met meest recente versie
+      await saveProgrammaItem(prog);
+      _obsBackupMarkSynced(item.prog.id, item.sn.id);
+      recovered++;
+    } catch(e){ console.warn('obs herstel fout voor', item.key, e); }
+  }
+  if(recovered > 0){
+    toast(`${recovered} observatie${recovered===1?'':'s'} hersteld vanuit lokale opslag ✓`);
+    if(typeof renderActiveScouting === 'function') renderActiveScouting();
+  }
+}
+
+// Sla obs-draft op naar localStorage + Firestore met retry
+async function _obsBackupSaveAndSync(prog, sn){
+  // 1. DIRECT naar localStorage — dit gaat altijd goed
+  _obsBackupSave(prog, sn);
+
+  // 2. Probeer naar Firestore
+  let attempt = 0;
+  const maxAttempts = 3;
+  while(attempt < maxAttempts){
+    attempt++;
+    try {
+      await saveProgrammaItem(prog);
+      _obsBackupMarkSynced(prog.id, sn.id);
+      return true; // geslaagd
+    } catch(e){
+      if(attempt < maxAttempts){
+        await new Promise(r => setTimeout(r, attempt * 1000)); // wacht 1s, 2s
+      }
+    }
+  }
+  // Na 3 pogingen: lokaal bewaard, melding aan gebruiker
+  console.warn('obs sync mislukt na 3 pogingen — staat in localStorage');
+  toast('⚠️ Observatie lokaal bewaard — wordt gesynchroniseerd zodra verbinding hersteld is', false);
+  return false;
+}
+
+/* ================================================================
+   EINDE OBS VEILIGHEIDS-LAAG
+   ================================================================ */
 
 /* =============== IMPORT =============== */
 function openImportModal(){

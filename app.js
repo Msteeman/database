@@ -5225,7 +5225,12 @@ function resetInactivity(){
 async function doLogout(auto){
   if(inactivityTimer) clearTimeout(inactivityTimer);
   if(auto) toast('Sessie verlopen — log opnieuw in', true);
+  // Account-isolatie: wis lokale staat VOOR signOut, herlaad daarna naar login.
+  try { await _shPurgeLocalState(); } catch(_){}
+  try { localStorage.clear(); } catch(_){}
+  try { sessionStorage.clear(); } catch(_){}
   try { await signOut(auth); } catch(e){ console.error(e); }
+  try { location.reload(); } catch(_){}
 }
 function authErrorNL(code){
   const map = {
@@ -24621,6 +24626,24 @@ async function loadUserRole(){
 window.loadUserRole = loadUserRole;
 
 onAuthStateChanged(auth, async (user) => {
+  // === ACCOUNT-ISOLATIE ===
+  // Wisselt de ingelogde UID t.o.v. de vorige sessie? Dan kan in-memory data,
+  // localStorage en SW-cache van het vorige account nog rondzweven. Wis alles
+  // en herlaad met een schone lei. Voorkomt dat data van UID-A bij UID-B komt.
+  try {
+    const cachedUid = localStorage.getItem('sh_active_uid');
+    if(user && cachedUid && user.uid !== cachedUid){
+      console.warn('[ScoutingHub] account gewisseld (' + cachedUid + ' → ' + user.uid + ') — lokale staat wissen');
+      await _shPurgeLocalState();
+      try { localStorage.clear(); } catch(_){}
+      try { sessionStorage.clear(); } catch(_){}
+      location.reload();
+      return;
+    }
+    if(user) localStorage.setItem('sh_active_uid', user.uid);
+    else localStorage.removeItem('sh_active_uid');
+  } catch(_){}
+
   if(user){
     currentUser = user;
     try {
@@ -24629,6 +24652,7 @@ onAuthStateChanged(auth, async (user) => {
       showApp();
       go('dashboard');
       loadUserRole();
+      _shApplyAccountIdentity(user);   // PROBLEEM 2: naam/e-mail per account tonen
     } catch(err){
       console.error('Bootstrap fout:', err);
       const errEl = document.getElementById('login-error');
@@ -25022,3 +25046,82 @@ function _injectObsTrefwoorden(existingTags){
   host.parentNode.insertBefore(wrap, host);
 }
 window._injectObsTrefwoorden = _injectObsTrefwoorden;
+
+
+/* ================================================================
+   ACCOUNT-ISOLATIE — beveiligingshelpers (additief)
+   Voorkomen dat data of identiteit van het ene account bij een
+   ander account zichtbaar wordt. Wissen geen Firestore-data; alleen
+   lokale caches/subscriptions/identiteit.
+   ================================================================ */
+
+// Wis alle lokale staat: SW-caches, Firestore offline-persistence (indien aan),
+// lopende onSnapshot-subscriptions en in-memory caches.
+async function _shPurgeLocalState(){
+  try { if(typeof unsubscribeData === 'function') unsubscribeData(); } catch(_){}
+  try { if(typeof unsubTournaments !== 'undefined' && unsubTournaments){ unsubTournaments(); unsubTournaments = null; } } catch(_){}
+  try {
+    if(typeof window !== 'undefined' && 'caches' in window){
+      const keys = await caches.keys();
+      await Promise.all(keys.map(k => caches.delete(k)));
+    }
+  } catch(_){}
+  try {
+    const { clearIndexedDbPersistence } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
+    if(clearIndexedDbPersistence) await clearIndexedDbPersistence(db);
+  } catch(_){}
+}
+window._shPurgeLocalState = _shPurgeLocalState;
+
+// Centrale schrijf-guard: weiger writes buiten users/{huidige uid}/.
+// Additief — bestaande writes gebruiken al currentUser.uid-paden; deze helper is
+// een vangnet voor nieuwe/edge-writes.
+function guardedWrite(path, data, opts){
+  const uid = auth.currentUser && auth.currentUser.uid;
+  if(!uid) throw new Error('Niet ingelogd');
+  if(typeof path !== 'string' || !path.startsWith('users/' + uid + '/')){
+    console.error('[ScoutingHub] write geblokkeerd — verkeerde/ontbrekende UID in pad:', path);
+    throw new Error('Write naar verkeerde UID geblokkeerd');
+  }
+  return setDoc(doc(db, ...path.split('/')), data, opts || { merge: true });
+}
+window.guardedWrite = guardedWrite;
+
+// Lees-guard: waarschuw als een opgehaald document niet bij de huidige UID hoort.
+function guardedOwn(docPath){
+  const uid = auth.currentUser && auth.currentUser.uid;
+  if(!uid) return false;
+  const ok = typeof docPath === 'string' && docPath.startsWith('users/' + uid + '/');
+  if(!ok) console.warn('[ScoutingHub] document hoort niet bij huidige UID:', docPath);
+  return ok;
+}
+window.guardedOwn = guardedOwn;
+
+// PROBLEEM 2: toon naam/e-mail van het ACTUELE account (niet de hardcoded
+// sidebar-default). Overschrijft nooit het user-document.
+function _shApplyAccountIdentity(user){
+  try {
+    const nameEl = document.getElementById('scout-name');
+    const emailEl = document.getElementById('settings-email');
+    const display = (user.displayName && user.displayName.trim())
+      || (user.email ? user.email.split('@')[0] : 'Scout');
+    if(nameEl) nameEl.textContent = display;
+    if(emailEl) emailEl.textContent = user.email || '—';
+  } catch(_){}
+  _shLoadUserName(user).catch(() => {});
+}
+window._shApplyAccountIdentity = _shApplyAccountIdentity;
+
+// Lees (alleen-lezen) een naamveld uit het user-document en toon het. Schrijft
+// NOOIT displayName terug, zodat een bestaande naam niet wordt overschreven.
+async function _shLoadUserName(user){
+  try {
+    const snap = await getDoc(doc(db, 'users', user.uid));
+    if(snap.exists()){
+      const d = snap.data() || {};
+      const nm = d.displayName || d.name || d.naam;
+      if(nm){ const el = document.getElementById('scout-name'); if(el) el.textContent = nm; }
+    }
+  } catch(_){}
+}
+window._shLoadUserName = _shLoadUserName;

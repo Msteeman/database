@@ -2230,6 +2230,7 @@ algemeen:</textarea>
           <!-- Tabs -->
           <div class="toern-tabs">
             <button class="toern-tab-btn active" data-tab="tijdlijn" onclick="renderToernooiTab('tijdlijn')" aria-label="Programma">Programma</button>
+            <button class="toern-tab-btn" data-tab="mijn-programma" onclick="renderToernooiTab('mijn-programma')">Mijn programma</button>
             <button class="toern-tab-btn" data-tab="spelers" onclick="renderToernooiTab('spelers')">Spelers</button>
             <button class="toern-tab-btn" data-tab="bundeling" onclick="renderToernooiTab('bundeling')">Bundeling</button>
             <button class="toern-tab-btn" data-tab="standen" onclick="renderToernooiTab('standen')">Standen</button>
@@ -2238,6 +2239,11 @@ algemeen:</textarea>
           <!-- Tijdlijn tab -->
           <div class="toern-tab-pane" data-tab="tijdlijn" style="padding:16px;">
             <div id="toern-tijdlijn-wrap"></div>
+          </div>
+
+          <!-- Mijn programma tab -->
+          <div class="toern-tab-pane" data-tab="mijn-programma" style="display:none;padding:16px;">
+            <div id="toern-mijn-wrap"></div>
           </div>
 
           <!-- Spelers tab -->

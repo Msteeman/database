@@ -22331,7 +22331,7 @@ async function openMatchDetail(tid, matchId){
   if(header) header.textContent = `${match.teamAName||'?'} – ${match.teamBName||'?'}`;
   const sub = document.getElementById('toern-match-sub');
   if(sub) sub.textContent = [
-    match.startTime ? match.startTime.slice(11,16) : '',
+    _toernMatchClock(match),
     match.field ? 'Veld ' + match.field : '',
     match.categoryId || ''
   ].filter(Boolean).join(' · ');
@@ -22695,16 +22695,41 @@ async function renderSpelersTab(tid){
   wrap.innerHTML = `<div class="toern-club-grid">` + teams.map(t => {
     const n = (realByTeam[t.id] || []).length;
     const sub = n ? `${n} speler${n!==1?'s':''} gekoppeld` : 'Nog geen spelers gekoppeld';
-    return `<div class="toern-club-card" onclick="openTournamentTeamDetail('${tid}','${t.id}')">
+    const following = t.priority === true;
+    // Ster-toggle "Volgen": alle wedstrijden van een gevolgde club verschijnen
+    // automatisch in Mijn Programma.
+    const star = `<button class="toern-club-follow ${following?'on':''}" title="${following?'Club gevolgd — klik om te ontvolgen':'Volg deze club'}"
+        onclick="event.stopPropagation();toggleClubPriority('${tid}','${t.id}',${!following})">${following?'★':'☆'}</button>`;
+    return `<div class="toern-club-card ${following?'is-followed':''}" onclick="openTournamentTeamDetail('${tid}','${t.id}')">
       <div class="toern-club-avatar">${initials(t.name||'?')}</div>
       <div class="toern-club-info">
         <div class="toern-club-name">${escapeHtml(t.name||'?')}</div>
-        <div class="toern-club-meta">${sub}</div>
+        <div class="toern-club-meta">${sub}${following?' · <span class="toern-club-followed">gevolgd</span>':''}</div>
       </div>
+      ${star}
       <span class="toern-club-arrow" aria-hidden="true">›</span>
     </div>`;
   }).join('') + `</div>`;
 }
+
+// Club volgen/ontvolgen → team.priority (additief veld, merge).
+async function toggleClubPriority(tid, teamId, val){
+  tid = tid || _currentTournamentId;
+  try {
+    await setDoc(tournSubDoc(tid, 'teams', teamId), { priority: !!val }, { merge: true });
+  } catch(e){
+    console.error('toggleClubPriority error:', e);
+    toast('Opslaan mislukt', true);
+    return;
+  }
+  toast(val ? 'Club gevolgd ✓' : 'Club ontvolgd');
+  // Spelers-tab hertekenen (sterstatus) en Mijn Programma actueel houden
+  if(_currentTournamentId === tid){
+    if(_toernTab === 'spelers') renderSpelersTab(tid);
+    if(_toernTab === 'mijn-programma') renderMijnProgrammaTab(tid);
+  }
+}
+window.toggleClubPriority = toggleClubPriority;
 
 // Detailweergave van één club: echte gekoppelde spelers + koppel-knop.
 async function openTournamentTeamDetail(tid, teamId){
@@ -22809,6 +22834,7 @@ function renderToernooiTab(tab, tid){
     pane.style.display = pane.dataset.tab === tab ? '' : 'none';
   });
   if(tab === 'tijdlijn') renderTijdlijnTab(tid);
+  if(tab === 'mijn-programma') renderMijnProgrammaTab(tid);
   if(tab === 'spelers')  renderSpelersTab(tid);
   if(tab === 'bundeling') renderBundelingTab(tid);
   if(tab === 'standen' && typeof renderStandenTab === 'function') renderStandenTab(tid);
@@ -22820,12 +22846,14 @@ async function renderTijdlijnTab(tid){
   if(!wrap){ return; }
   wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
 
-  const [daysSnap, matchesSnap] = await Promise.all([
+  const [daysSnap, matchesSnap, playersSnap] = await Promise.all([
     getDocs(tournSubCol(tid, 'days')),
-    getDocs(query(tournSubCol(tid, 'matches'), orderBy('startTime')))
+    getDocs(query(tournSubCol(tid, 'matches'), orderBy('startTime'))),
+    getDocs(tournSubCol(tid, 'players'))
   ]);
   const days = daysSnap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const matches = matchesSnap.docs.map(d => ({...d.data(), id: d.id}));
+  const playersByTeam = _buildPlayersByTeam(playersSnap.docs.map(d => ({...d.data(), id: d.id})));
 
   if(days.length === 0){
     wrap.innerHTML = '<div class="toern-empty">Nog geen wedstrijddagen. <button class="btn btn-sm" onclick="showAddDayForm()">+ Dag toevoegen</button></div>';
@@ -22880,7 +22908,7 @@ async function renderTijdlijnTab(tid){
     } else {
       // Strakke kolom-tabel: [indicator] Tijd | Wedstrijd | Veld | Poule
       const rows = dayMatches.map(m => {
-        const time = m.startTime ? m.startTime.slice(11,16) : '—';
+        const time = _toernMatchClock(m) || '—';
         const endTime = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
         const timeLabel = endTime ? `${time}–${endTime}` : time;
         const field = m.field ? 'Veld ' + m.field : '';
@@ -22897,6 +22925,7 @@ async function renderTijdlijnTab(tid){
           <span class="tp-match" data-col="Wedstrijd">
             <span class="tp-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>
             <span class="tp-score" onclick="event.stopPropagation();promptManualScore('${tid}','${m.id}')" title="Uitslag invoeren/bewerken">${scoreBadge}</span>
+            ${_toernLinkedPlayersSub(m, playersByTeam)}
           </span>
           <span class="tp-field" data-col="Veld">${escapeHtml(field)}</span>
           <span class="tp-poule" data-col="Poule">${escapeHtml(poule)}</span>
@@ -23647,7 +23676,7 @@ function _addMinutesToClock(hhmm, mins){
 /* Eindtijd van een wedstrijd op basis van de effectieve regel */
 function tournamentMatchEndTime(tid, m){
   if(!m || !m.startTime) return '';
-  const start = m.startTime.slice(11, 16);
+  const start = _toernMatchClock(m);
   if(!/^\d{2}:\d{2}$/.test(start)) return '';
   const t = tourmCache.find(x => x.id === tid);
   const rule = getEffectiveTournamentRule(t, m.categoryId, m.stage || null);
@@ -24540,3 +24569,262 @@ onAuthStateChanged(auth, async (user) => {
     showLogin();
   }
 });
+
+
+/* ================================================================
+   MIJN PROGRAMMA — persoonlijk schema (club-volgen + handmatig)
+   + gedeelde helpers voor tijd-extractie en gekoppelde-spelers-subtekst.
+   Additief; raakt het standaard Programma-tab of scout-data nooit aan.
+   ================================================================ */
+
+// Robuuste tijd-extractie: werkt met ISO ("2026-06-07T10:30") én bare
+// "10:30" / "9:05", en valt terug op start/time/st. Lege string als niets.
+function _toernMatchClock(m){
+  for(const v of [m && m.startTime, m && m.start, m && m.time, m && m.st]){
+    const s = (v == null) ? '' : String(v);
+    let mm = s.match(/T(\d{2}:\d{2})/);
+    if(mm) return mm[1];
+    mm = s.match(/(?:^|[^\d])(\d{1,2}):(\d{2})/);
+    if(mm) return String(mm[1]).padStart(2,'0') + ':' + mm[2];
+  }
+  return '';
+}
+
+// id→namen-map van ECHTE (niet-placeholder) gekoppelde spelers per team.
+function _buildPlayersByTeam(players){
+  const map = {};
+  (players||[]).forEach(tp => {
+    if(isPlaceholderTournamentPlayer(tp)) return;
+    const nm = tp.quickName || (tp.playerId ? 'Speler' : '');
+    if(!nm) return;
+    (map[tp.teamId] = map[tp.teamId] || []).push(nm);
+  });
+  return map;
+}
+
+// Subtekst-regel met gekoppelde spelers van beide teams; leeg als geen.
+function _toernLinkedPlayersSub(m, playersByTeam){
+  if(!playersByTeam) return '';
+  const names = [].concat(playersByTeam[m && m.teamAId] || [], playersByTeam[m && m.teamBId] || []);
+  if(!names.length) return '';
+  return `<span class="tp-players">👤 ${escapeHtml(names.join(', '))}</span>`;
+}
+
+function _mpWsOf(m){ return ['watch','optional','skip'].includes(m.watchStatus) ? m.watchStatus : 'none'; }
+function _mpDot(ws){
+  return ws === 'optional'
+    ? '<span class="tp-dot tp-dot-optional" aria-hidden="true">?</span>'
+    : `<span class="tp-dot tp-dot-${ws}" aria-hidden="true"></span>`;
+}
+function _minutesBetweenClock(a, b){
+  const pa = String(a).match(/^(\d{2}):(\d{2})$/), pb = String(b).match(/^(\d{2}):(\d{2})$/);
+  if(!pa || !pb) return 0;
+  return (Number(pb[1])*60 + Number(pb[2])) - (Number(pa[1])*60 + Number(pa[2]));
+}
+
+function _mpRowHtml(tid, m, conflict, playersByTeam){
+  const time = _toernMatchClock(m) || '—';
+  const endTime = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
+  const timeLabel = endTime ? `${time}–${endTime}` : time;
+  const field = m.field ? 'Veld ' + m.field : '';
+  const poule = m.categoryId || '';
+  const ws = _mpWsOf(m);
+  const flag = conflict ? '<span class="mp-conflict-flag">⚠️ tegelijk!</span>' : '';
+  const sub = _toernLinkedPlayersSub(m, playersByTeam);
+  return `<div class="toern-prog-row toern-watch-${ws} ${conflict?'mp-conflict':''}" onclick="openMatchDetail('${tid}','${m.id}')">
+    <span class="tp-ind">${_mpDot(ws)}</span>
+    <span class="tp-time" data-col="Tijd">${escapeHtml(timeLabel)}</span>
+    <span class="tp-match" data-col="Wedstrijd"><span class="tp-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>${flag}${sub}</span>
+    <span class="tp-field" data-col="Veld">${escapeHtml(field)}</span>
+    <span class="tp-poule" data-col="Poule">${escapeHtml(poule)}</span>
+    <button class="mp-remove" title="Verwijder uit mijn programma" onclick="event.stopPropagation();removeFromMyProgram('${tid}','${m.id}')">×</button>
+  </div>`;
+}
+
+async function renderMijnProgrammaTab(tid){
+  tid = tid || _currentTournamentId;
+  const wrap = document.getElementById('toern-mijn-wrap');
+  if(!wrap) return;
+  wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
+
+  const [teamsSnap, matchesSnap, playersSnap] = await Promise.all([
+    getDocs(tournSubCol(tid, 'teams')),
+    getDocs(query(tournSubCol(tid, 'matches'), orderBy('startTime'))),
+    getDocs(tournSubCol(tid, 'players'))
+  ]);
+  const teams = teamsSnap.docs.map(d => ({...d.data(), id: d.id}));
+  const teamsById = {}; teams.forEach(t => { teamsById[t.id] = t; });
+  const followedCount = teams.filter(t => t.priority === true).length;
+  const allMatches = matchesSnap.docs.map(d => ({...d.data(), id: d.id}));
+  const playersByTeam = _buildPlayersByTeam(playersSnap.docs.map(d => ({...d.data(), id: d.id})));
+
+  const inMine = m => m.inMyProgram === true
+    || (teamsById[m.teamAId] && teamsById[m.teamAId].priority === true)
+    || (teamsById[m.teamBId] && teamsById[m.teamBId].priority === true);
+  let mine = allMatches.filter(inMine);
+
+  const header = `<div class="toern-mp-head">
+      <div class="toern-mp-title">Mijn programma — ${mine.length} wedstrijd${mine.length!==1?'en':''} | ${followedCount} club${followedCount!==1?'s':''} gevolgd</div>
+      <button class="btn btn-primary btn-sm" onclick="openMyProgramAddModal('${tid}')">+ Wedstrijd toevoegen</button>
+    </div>`;
+
+  if(mine.length === 0){
+    wrap.innerHTML = header + `<div class="toern-mp-empty">
+        <div class="toern-mp-empty-title">Je hebt nog geen persoonlijk programma.</div>
+        <ul class="toern-mp-empty-list">
+          <li>Volg clubs in de <strong>Spelers</strong>-tab om automatisch wedstrijden toe te voegen</li>
+          <li>Of klik op <strong>"+ Wedstrijd toevoegen"</strong> om handmatig te kiezen</li>
+        </ul>
+      </div>`;
+    return;
+  }
+
+  const wsRank = { watch: 0, optional: 1, none: 2, skip: 3 };
+  mine.sort((a,b) => {
+    const ta = _toernMatchClock(a), tb = _toernMatchClock(b);
+    if(ta !== tb) return ta.localeCompare(tb);
+    return wsRank[_mpWsOf(a)] - wsRank[_mpWsOf(b)];
+  });
+
+  // Tijdsloten groeperen (conflicten + pauzes), op basis van HH:MM
+  const slots = []; const idx = {};
+  for(const m of mine){
+    const k = _toernMatchClock(m) || '?';
+    if(idx[k] == null){ idx[k] = slots.length; slots.push({ key: k, start: _toernMatchClock(m) || '—', matches: [] }); }
+    slots[idx[k]].matches.push(m);
+  }
+  slots.forEach(s => {
+    let me = '';
+    s.matches.forEach(m => { const e = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : ''; if(e && e > me) me = e; });
+    s.maxEnd = me || s.start;
+    s.conflict = s.matches.length > 1 && /^\d{2}:\d{2}$/.test(s.start);
+  });
+  const conflictCount = slots.filter(s => s.conflict).length;
+
+  let rows = '';
+  slots.forEach((s, i) => {
+    if(i > 0){
+      const prev = slots[i-1];
+      if(/^\d{2}:\d{2}$/.test(prev.maxEnd) && /^\d{2}:\d{2}$/.test(s.start)){
+        const gap = _minutesBetweenClock(prev.maxEnd, s.start);
+        if(gap > 0) rows += `<div class="mp-pause">── ${gap} min pauze ──</div>`;
+      }
+    }
+    s.matches.forEach(m => { rows += _mpRowHtml(tid, m, s.conflict, playersByTeam); });
+  });
+
+  const firstT = slots[0].start;
+  const lastT = slots[slots.length - 1].start;
+  const footer = `<div class="toern-mp-footer">Eerste wedstrijd: ${escapeHtml(firstT)} | Laatste: ${escapeHtml(lastT)} | ${conflictCount} tijdsconflict${conflictCount!==1?'en':''}</div>`;
+
+  wrap.innerHTML = header + `<div class="toern-prog-table toern-mp-table">${rows}</div>` + footer;
+}
+window.renderMijnProgrammaTab = renderMijnProgrammaTab;
+
+async function toggleMatchInMyProgram(tid, matchId, val){
+  tid = tid || _currentTournamentId;
+  try {
+    await setDoc(tournSubDoc(tid, 'matches', matchId), { inMyProgram: !!val }, { merge: true });
+  } catch(e){
+    console.error('toggleMatchInMyProgram error:', e);
+    toast('Opslaan mislukt', true);
+  }
+}
+window.toggleMatchInMyProgram = toggleMatchInMyProgram;
+
+async function openMyProgramAddModal(tid){
+  tid = tid || _currentTournamentId;
+  const [teamsSnap, daysSnap, matchesSnap] = await Promise.all([
+    getDocs(tournSubCol(tid, 'teams')),
+    getDocs(tournSubCol(tid, 'days')),
+    getDocs(query(tournSubCol(tid, 'matches'), orderBy('startTime')))
+  ]);
+  const teamsById = {}; teamsSnap.docs.forEach(d => { teamsById[d.id] = d.data(); });
+  const days = daysSnap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  const matches = matchesSnap.docs.map(d => ({...d.data(), id: d.id}));
+  const clubDriven = m => (teamsById[m.teamAId] && teamsById[m.teamAId].priority === true) || (teamsById[m.teamBId] && teamsById[m.teamBId].priority === true);
+
+  let body = '';
+  if(!days.length){
+    body = '<div class="toern-empty toern-empty-sm">Nog geen wedstrijden in dit toernooi.</div>';
+  } else {
+    for(const day of days){
+      const dm = matches.filter(m => m.dayId === day.id).sort((a,b)=>String(a.startTime||'').localeCompare(String(b.startTime||'')));
+      if(!dm.length) continue;
+      body += `<div class="mp-add-day">${escapeHtml(day.label)} — ${escapeHtml(formatDate(day.date))}</div>`;
+      body += dm.map(m => {
+        const time = _toernMatchClock(m) || '—';
+        const field = m.field ? 'Veld ' + m.field : '';
+        const checked = (m.inMyProgram === true) ? 'checked' : '';
+        const via = clubDriven(m) ? '<span class="mp-add-via">volgt via club</span>' : '';
+        return `<label class="mp-add-row">
+          <input type="checkbox" ${checked} onchange="toggleMatchInMyProgram('${tid}','${m.id}',this.checked)" />
+          <span class="mp-add-time">${escapeHtml(time)}</span>
+          <span class="mp-add-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>
+          <span class="mp-add-field">${escapeHtml([field, m.categoryId||''].filter(Boolean).join(' · '))}</span>
+          ${via}
+        </label>`;
+      }).join('');
+    }
+  }
+  _toernOpenOverlay(`
+    <h3 style="margin:0 0 4px;">Wedstrijden toevoegen aan Mijn programma</h3>
+    <p style="margin:0 0 12px;font-size:12px;color:var(--muted,#888);">Vink de wedstrijden aan die je wilt volgen. Wedstrijden via een gevolgde club staan al automatisch in je programma.</p>
+    <div class="mp-add-list">${body}</div>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px;">
+      <button class="btn btn-sm btn-primary" onclick="closeMyProgramAddModal('${tid}')">Klaar</button>
+    </div>`);
+}
+window.openMyProgramAddModal = openMyProgramAddModal;
+
+function closeMyProgramAddModal(tid){
+  _toernCloseOverlay();
+  if(_currentTournamentId === tid) renderMijnProgrammaTab(tid);
+}
+window.closeMyProgramAddModal = closeMyProgramAddModal;
+
+async function removeFromMyProgram(tid, matchId){
+  tid = tid || _currentTournamentId;
+  const [mSnap, teamsSnap] = await Promise.all([
+    getDoc(tournSubDoc(tid, 'matches', matchId)),
+    getDocs(tournSubCol(tid, 'teams'))
+  ]);
+  if(!mSnap.exists()){ toast('Wedstrijd niet gevonden', true); return; }
+  const m = { ...mSnap.data(), id: matchId };
+  const teamsById = {}; teamsSnap.docs.forEach(d => { teamsById[d.id] = d.data(); });
+  const ta = teamsById[m.teamAId] || {}, tb = teamsById[m.teamBId] || {};
+  const drivers = [];
+  if(ta.priority === true) drivers.push({ id: m.teamAId, name: m.teamAName || ta.name || 'club' });
+  if(tb.priority === true) drivers.push({ id: m.teamBId, name: m.teamBName || tb.name || 'club' });
+
+  if(drivers.length){
+    if(m.inMyProgram === true){ try { await setDoc(tournSubDoc(tid, 'matches', matchId), { inMyProgram: false }, { merge: true }); } catch(_){} }
+    const buttons = drivers.map(d => `<button class="btn btn-sm" onclick="unfollowAndRefresh('${tid}','${d.id}')">Ontvolg ${escapeHtml(d.name)}</button>`).join('');
+    _toernOpenOverlay(`
+      <h3 style="margin:0 0 8px;">Wedstrijd staat er via een gevolgde club</h3>
+      <p style="margin:0 0 14px;font-size:13px;line-height:1.5;">Deze wedstrijd staat in je programma omdat je <strong>${escapeHtml(drivers.map(d=>d.name).join(' en '))}</strong> volgt. Wil je de hele club ontvolgen (dan verdwijnen álle wedstrijden van die club), of de wedstrijd in je programma houden?</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
+        <button class="btn btn-sm" onclick="_toernCloseOverlay()">Behouden</button>
+        ${buttons}
+      </div>`);
+    return;
+  }
+
+  try {
+    await setDoc(tournSubDoc(tid, 'matches', matchId), { inMyProgram: false }, { merge: true });
+  } catch(e){
+    console.error('removeFromMyProgram error:', e);
+    toast('Verwijderen mislukt', true);
+    return;
+  }
+  toast('Verwijderd uit Mijn programma');
+  if(_currentTournamentId === tid) renderMijnProgrammaTab(tid);
+}
+window.removeFromMyProgram = removeFromMyProgram;
+
+async function unfollowAndRefresh(tid, teamId){
+  await toggleClubPriority(tid, teamId, false);
+  _toernCloseOverlay();
+  if(_currentTournamentId === tid) renderMijnProgrammaTab(tid);
+}
+window.unfollowAndRefresh = unfollowAndRefresh;

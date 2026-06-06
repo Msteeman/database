@@ -11264,3 +11264,156 @@ body.modal-open {
   width: 100%;
   box-sizing: border-box;
 }
+
+/* ================================================================
+   TOERNOOI — Mijn programma, veldnaam-overflow, spelers-subtekst
+   en PWA-optimalisatie (mobiel 320–430px). Donkere huisstijl.
+   Appended; latere regels overschrijven waar nodig de eerdere.
+   ================================================================ */
+
+/* #3B — veldnaam mag nooit over de poule-kolom lopen */
+.tp-field { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* #2 — meer lucht per rij + ruimte voor spelers-subtekst */
+.toern-prog-head,
+.toern-prog-row { padding-top: 12px; padding-bottom: 12px; }
+.tp-match { flex-wrap: wrap; }
+.tp-players {
+  flex-basis: 100%; width: 100%;
+  font-size: 11.5px; color: var(--text-3);
+  margin-top: 3px; line-height: 1.35;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── Club volgen (ster) in Spelers-tab ────────────────────────── */
+.toern-club-card { position: relative; }
+.toern-club-card.is-followed { border-color: var(--accent); }
+.toern-club-follow {
+  background: none; border: none; cursor: pointer;
+  font-size: 20px; line-height: 1; color: var(--text-3);
+  padding: 4px; flex-shrink: 0; transition: color .15s, transform .1s;
+}
+.toern-club-follow:hover { transform: scale(1.12); color: var(--accent); }
+.toern-club-follow.on { color: var(--orange, #f59e0b); }
+.toern-club-followed { color: var(--orange, #f59e0b); font-weight: 700; }
+
+/* ── Mijn programma — header / footer / leeg ──────────────────── */
+.toern-mp-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.toern-mp-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.toern-mp-footer {
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--text-3);
+}
+.toern-mp-empty { padding: 22px 6px; color: var(--text-2); }
+.toern-mp-empty-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.toern-mp-empty-list { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-3); line-height: 1.7; }
+
+/* ── Mijn programma — tabel met verwijder-kolom ───────────────── */
+.toern-mp-table .toern-prog-row {
+  grid-template-columns: 20px 84px minmax(0,1fr) 70px 80px 26px;
+  position: relative;
+}
+.mp-remove {
+  background: none; border: none; color: var(--text-3);
+  font-size: 18px; line-height: 1; cursor: pointer; padding: 2px 4px;
+}
+.mp-remove:hover { color: var(--red, #ef4444); }
+.toern-prog-row.mp-conflict { background: rgba(245,158,11,.10); }
+.mp-conflict-flag { color: var(--orange, #f59e0b); font-size: 11px; font-weight: 700; margin-left: 8px; }
+.mp-pause {
+  text-align: center; font-size: 11px; color: var(--text-3);
+  padding: 7px 0; letter-spacing: .02em;
+}
+
+/* ── Mijn programma — "wedstrijd toevoegen" modal ─────────────── */
+.mp-add-list { max-height: 56vh; overflow-y: auto; }
+.mp-add-day {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--text-3); font-weight: 700; margin: 12px 0 4px;
+}
+.mp-add-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 4px; border-bottom: 1px solid var(--border);
+  cursor: pointer; font-size: 13px;
+}
+.mp-add-row input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; }
+.mp-add-time { font-variant-numeric: tabular-nums; color: var(--text-2); flex-shrink: 0; width: 42px; }
+.mp-add-teams { flex: 1; min-width: 0; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-add-field { font-size: 11.5px; color: var(--text-3); flex-shrink: 0; }
+.mp-add-via { font-size: 10.5px; color: var(--orange, #f59e0b); flex-shrink: 0; }
+
+/* ================================================================
+   PWA / MOBIEL (≤ 640px) — gestapelde kaarten, scrollbare filter,
+   full-screen modals, grote touch-targets, geen horizontale scroll
+   ================================================================ */
+@media (max-width: 640px) {
+  /* Programma + Mijn programma als gestapelde kaart per wedstrijd */
+  .toern-prog-head { display: none; }
+  .toern-prog-row,
+  .toern-mp-table .toern-prog-row {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "ind  time"
+      "match match"
+      "meta meta"
+      "players players";
+    column-gap: 8px; row-gap: 3px;
+    padding: 13px 14px; position: relative;
+    border-bottom: 1px solid var(--border);
+  }
+  .tp-ind   { grid-area: ind; align-self: center; }
+  .tp-time  { grid-area: time; align-self: center; font-weight: 600; font-size: 14px; }
+  .tp-match { grid-area: match; }
+  .tp-teams { font-size: 14px; white-space: normal; }
+  .tp-field { grid-area: meta; max-width: 70%; }
+  .tp-poule { grid-area: meta; justify-self: end; }
+  .tp-players { grid-area: players; font-size: 12px; }
+  .mp-remove { position: absolute; top: 10px; right: 8px; font-size: 22px; padding: 4px 8px; }
+
+  /* Filterbalk horizontaal scrollbaar, knoppen blijven op één regel */
+  .toern-prog-filters {
+    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+  .toern-prio-btn { flex: 0 0 auto; min-height: 40px; font-size: 13px; }
+  .toern-prog-counts { font-size: 11px; }
+
+  /* watchStatus-knoppen naast elkaar in het wedstrijd-detail */
+  .toern-status-row { flex-wrap: nowrap; gap: 6px; }
+  .toern-status-btn { flex: 1 1 0; min-width: 0; font-size: 12px; padding: 12px 4px; }
+
+  /* Wedstrijd-detail + bundeling modals full-screen */
+  .toern-modal, .toern-modal-lg {
+    width: 100vw; max-width: 100vw; min-height: 100vh;
+    border-radius: 0; margin: 0;
+  }
+  .toern-modal-close { width: 44px; height: 44px; font-size: 26px; }
+
+  /* Dynamische overlay (regels / reglement / toevoegen) full-screen */
+  #toern-dyn-overlay { padding: 0 !important; align-items: stretch !important; }
+  #toern-dyn-overlay .toern-dyn-card {
+    max-width: 100% !important; width: 100% !important;
+    border-radius: 0 !important; min-height: 100vh; box-shadow: none !important;
+  }
+
+  /* Spelers-tab: clubkaarten full-width met grote tik-targets */
+  .toern-club-grid { grid-template-columns: 1fr; }
+  .toern-club-card { min-height: 56px; }
+  .toern-club-follow { font-size: 24px; padding: 8px; }
+  .toern-team-detail-head .btn { min-height: 40px; }
+
+  /* Standen horizontaal scrollbaar, teamnamen niet afknippen */
+  #toern-standen-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #toern-standen-wrap table { min-width: 520px; }
+  #toern-standen-wrap td, #toern-standen-wrap th { white-space: nowrap; }
+
+  /* Touch-targets + leesbaarheid */
+  .toern-tab-btn { padding: 12px 12px; font-size: 13px; }
+  .toern-actions .btn { min-height: 40px; }
+
+  /* Geen horizontale pagina-scroll vanuit deze panes */
+  .toern-tab-pane { overflow-x: hidden; }
+}

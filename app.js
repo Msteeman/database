@@ -10655,6 +10655,7 @@ function _shOpenEditModal(m){
 
   const _cacheSpelers = (typeof loadPlayers === 'function' ? loadPlayers() : []).filter(p => {
     if(!p || !p.id) return false;
+    if(p.fromTournamentId) return false;   // gescheiden werelden: toernooi-spelers niet in reguliere wedstrijd
     const wd = p.wedstrijd || {};
     const pdatum = wd.datum || p.wedstrijd_datum || '';
     const pthuis = (wd.thuis || p.wedstrijd_thuis || '').toLowerCase().trim();
@@ -10670,7 +10671,8 @@ function _shOpenEditModal(m){
 
   // Merge: begin met players uit m.players, voeg cacheSpelers toe die nog niet in de lijst zitten
   const _seenIds = new Set(players.map(p => p && p.id).filter(Boolean));
-  const _allSpelers = [...players];
+  // Toernooi-afgeleide spelers (fromTournamentId) horen niet in een reguliere wedstrijd
+  const _allSpelers = [...players.filter(p => !(p && p.fromTournamentId))];
   _cacheSpelers.forEach(p => { if(!_seenIds.has(p.id)){ _allSpelers.push(p); _seenIds.add(p.id); } });
 
   // SNS (snel-notities / openstaande obs)
@@ -21913,7 +21915,9 @@ async function unlinkPlayerFromMatch(tid, matchPlayerId){
 
 // Auto-link: wanneer speler wordt toegevoegd, koppel aan alle bestaande matches van zijn team
 async function autoLinkPlayerToExistingMatches(tid, tournamentPlayerId, teamId){
-  if(!teamId) return;
+  // SCOPE: koppelt UITSLUITEND binnen dit toernooi (tournSubCol(tid,'matches')).
+  // Raakt nooit reguliere wedstrijden. Zonder tid/teamId niets doen.
+  if(!tid || !teamId) return;
   const matchSnap = await getDocs(query(
     tournSubCol(tid, 'matches'),
     where('teamAId','==',teamId)
@@ -21931,7 +21935,8 @@ async function autoLinkPlayerToExistingMatches(tid, tournamentPlayerId, teamId){
 
 // Auto-link: wanneer match wordt toegevoegd, koppel alle bestaande spelers van die teams
 async function autoLinkPlayersToMatch(tid, matchId, teamIds){
-  if(!teamIds || !teamIds.length) return;
+  // SCOPE: alleen binnen dit toernooi (tournSubCol). Nooit reguliere wedstrijden.
+  if(!tid || !teamIds || !teamIds.length) return;
   for(const teamId of teamIds){
     if(!teamId) continue;
     const snap = await getDocs(query(tournSubCol(tid, 'players'), where('teamId','==',teamId)));
@@ -22709,6 +22714,7 @@ async function renderSpelersTab(tid){
   const wrap = document.getElementById('toern-spelers-wrap');
   if(!wrap) return;
   if(_toernSpelersTeamId){ return renderTournamentTeamDetail(tid, _toernSpelersTeamId); }
+  const _spAdd = document.getElementById('toern-spelers-addrow'); if(_spAdd) _spAdd.style.display = '';
   wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
 
   const [playersSnap, teamsSnap] = await Promise.all([
@@ -22781,6 +22787,7 @@ window.openTournamentTeamDetail = openTournamentTeamDetail;
 async function renderTournamentTeamDetail(tid, teamId){
   const wrap = document.getElementById('toern-spelers-wrap');
   if(!wrap) return;
+  const _spAdd = document.getElementById('toern-spelers-addrow'); if(_spAdd) _spAdd.style.display = 'none';
   wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
   const [teamSnap, playersSnap] = await Promise.all([
     getDoc(tournSubDoc(tid, 'teams', teamId)),

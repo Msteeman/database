@@ -24580,12 +24580,21 @@ onAuthStateChanged(auth, async (user) => {
 // Robuuste tijd-extractie: werkt met ISO ("2026-06-07T10:30") én bare
 // "10:30" / "9:05", en valt terug op start/time/st. Lege string als niets.
 function _toernMatchClock(m){
-  for(const v of [m && m.startTime, m && m.start, m && m.time, m && m.st]){
-    const s = (v == null) ? '' : String(v);
-    let mm = s.match(/T(\d{2}:\d{2})/);
+  for(const v of [m && m.startTime, m && m.start, m && m.time, m && m.st, m && m.kickoff, m && m.datetime, m && m.tijd]){
+    if(v == null || v === '') continue;
+    const s = String(v);
+    // ISO of "YYYY-MM-DD HH:MM" (met T of spatie)
+    let mm = s.match(/\d{4}-\d{2}-\d{2}[T ](\d{2}:\d{2})/);
     if(mm) return mm[1];
+    // kale "HH:MM" / "H:MM" / "HH:MM:SS"
     mm = s.match(/(?:^|[^\d])(\d{1,2}):(\d{2})/);
     if(mm) return String(mm[1]).padStart(2,'0') + ':' + mm[2];
+    // epoch (seconden of milliseconden)
+    if(/^\d{10,13}$/.test(s)){
+      const ms = s.length <= 11 ? Number(s) * 1000 : Number(s);
+      const d = new Date(ms);
+      if(!isNaN(d.getTime())) return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
   }
   return '';
 }
@@ -24828,3 +24837,7 @@ async function unfollowAndRefresh(tid, teamId){
   if(_currentTournamentId === tid) renderMijnProgrammaTab(tid);
 }
 window.unfollowAndRefresh = unfollowAndRefresh;
+
+// Build-marker zodat je in de console kunt verifiëren welke app.js live is.
+window.__SH_TOERNOOI_BUILD = 'tijden-fix-v201';
+try { console.info('[ScoutingHub] toernooi-build:', window.__SH_TOERNOOI_BUILD); } catch(_){}

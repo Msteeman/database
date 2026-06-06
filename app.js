@@ -22449,6 +22449,9 @@ async function openMatchDetail(tid, matchId){
     noteEl.onblur = () => saveMatchNote(tid, matchId, noteEl.value);
   }
 
+  // TIP 4: lokale wedstrijd-timer (verdwijnt bij sluiten; niets opgeslagen)
+  _initMatchTimer(tid, match);
+
   bd.style.display = 'flex';
   document.body.classList.add('modal-open');
 }
@@ -22557,6 +22560,7 @@ window.startRapportVanuitMatch = startRapportVanuitMatch;
    ================================================================ */
 
 function closeMatchDetail(){
+  _wstrTimerStop();
   const bd = document.getElementById('toern-match-backdrop');
   if(bd) bd.style.display = 'none';
   document.body.classList.remove('modal-open');
@@ -25099,16 +25103,25 @@ window.guardedOwn = guardedOwn;
 
 // PROBLEEM 2: toon naam/e-mail van het ACTUELE account (niet de hardcoded
 // sidebar-default). Overschrijft nooit het user-document.
-function _shApplyAccountIdentity(user){
+async function _shApplyAccountIdentity(user){
+  // E-mail meteen tonen
+  try { const emailEl = document.getElementById('settings-email'); if(emailEl) emailEl.textContent = user.email || '—'; } catch(_){}
+  // Naam-volgorde (PROBLEEM 2): 1) Firestore user-doc, 2) Auth displayName, 3) e-mail-prefix.
+  // De Auth displayName van het demo-account staat fout ("Marcel Steeman") en kan niet
+  // via de Console worden gewijzigd; het Firestore-doc is leidend.
+  let name = '';
   try {
-    const nameEl = document.getElementById('scout-name');
-    const emailEl = document.getElementById('settings-email');
-    const display = (user.displayName && user.displayName.trim())
-      || (user.email ? user.email.split('@')[0] : 'Scout');
-    if(nameEl) nameEl.textContent = display;
-    if(emailEl) emailEl.textContent = user.email || '—';
+    const snap = await getDoc(doc(db, 'users', user.uid));
+    if(snap.exists()){ const d = snap.data() || {}; name = (d.displayName || d.name || d.naam || '').trim(); }
   } catch(_){}
-  _shLoadUserName(user).catch(() => {});
+  if(!name) name = (user.displayName && user.displayName.trim()) || '';
+  if(!name) name = user.email ? user.email.split('@')[0] : 'Scout';
+  try { const el = document.getElementById('scout-name'); if(el) el.textContent = name; } catch(_){}
+  // Initialen in de avatars meelopen met de naam (geen Marcel-initialen meer bij Demo)
+  try {
+    const ini = (name.split(/\s+/).filter(Boolean).slice(0,2).map(w => w[0]).join('') || 'SH').toUpperCase();
+    ['scout-avatar-initials','settings-photo-initials'].forEach(id => { const e = document.getElementById(id); if(e) e.textContent = ini; });
+  } catch(_){}
 }
 window._shApplyAccountIdentity = _shApplyAccountIdentity;
 
@@ -25125,3 +25138,76 @@ async function _shLoadUserName(user){
   } catch(_){}
 }
 window._shLoadUserName = _shLoadUserName;
+
+
+/* ================================================================
+   TIP 4 — lokale wedstrijd-timer in het wedstrijd-detail.
+   Toont per helft een meelopende klok op basis van de ingestelde
+   toernooiregels (halfDuration). Puur lokaal: niets wordt opgeslagen,
+   en de timer verdwijnt zodra de modal sluit.
+   ================================================================ */
+let _wstrTimerState = null;
+function _wstrTimerFmt(sec){
+  sec = Math.max(0, sec | 0);
+  const m = Math.floor(sec / 60), s = sec % 60;
+  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+}
+function _wstrTimerRender(){
+  const st = _wstrTimerState;
+  const el = document.getElementById('toern-match-timer-display');
+  if(!el || !st) return;
+  el.textContent = `${st.half}e helft: ${_wstrTimerFmt(st.sec)} / ${_wstrTimerFmt(st.halfLenSec)}`;
+  el.classList.toggle('over', st.sec >= st.halfLenSec);
+  const startBtn = document.getElementById('toern-timer-start');
+  if(startBtn) startBtn.textContent = st.running ? '⏸ Pauze' : '▶ Start';
+  const nextBtn = document.getElementById('toern-timer-next');
+  if(nextBtn) nextBtn.style.display = (st.half < st.halves) ? '' : 'none';
+}
+function _wstrTimerTick(){ if(!_wstrTimerState) return; _wstrTimerState.sec++; _wstrTimerRender(); }
+function toggleMatchTimer(){
+  const st = _wstrTimerState; if(!st) return;
+  if(st.running){ st.running = false; if(st.iv){ clearInterval(st.iv); st.iv = null; } }
+  else { st.running = true; st.iv = setInterval(_wstrTimerTick, 1000); }
+  _wstrTimerRender();
+}
+window.toggleMatchTimer = toggleMatchTimer;
+function resetMatchTimer(){
+  const st = _wstrTimerState; if(!st) return;
+  if(st.iv){ clearInterval(st.iv); st.iv = null; }
+  st.sec = 0; st.half = 1; st.running = false;
+  _wstrTimerRender();
+}
+window.resetMatchTimer = resetMatchTimer;
+function nextHalfTimer(){
+  const st = _wstrTimerState; if(!st) return;
+  if(st.half < st.halves){ st.half++; st.sec = 0; _wstrTimerRender(); }
+}
+window.nextHalfTimer = nextHalfTimer;
+function _wstrTimerStop(){
+  if(_wstrTimerState && _wstrTimerState.iv) clearInterval(_wstrTimerState.iv);
+  _wstrTimerState = null;
+}
+window._wstrTimerStop = _wstrTimerStop;
+function _initMatchTimer(tid, match){
+  _wstrTimerStop();
+  const host = document.getElementById('toern-match-timer');
+  if(!host) return;
+  const t = tourmCache.find(x => x.id === tid);
+  const rule = (typeof getEffectiveTournamentRule === 'function')
+    ? getEffectiveTournamentRule(t, match.categoryId, match.stage || null) : null;
+  const halfMin = rule && rule.halfDuration ? rule.halfDuration : null;
+  if(!halfMin){ host.innerHTML = ''; return; }   // geen regels → geen timer
+  const halves = rule && rule.numberOfHalves ? rule.numberOfHalves : 2;
+  _wstrTimerState = { sec: 0, running: false, half: 1, halfLenSec: halfMin * 60, halves, iv: null };
+  host.innerHTML = `
+    <div class="toern-timer">
+      <div class="toern-timer-display" id="toern-match-timer-display">1e helft: 00:00 / ${_wstrTimerFmt(halfMin * 60)}</div>
+      <div class="toern-timer-btns">
+        <button type="button" class="btn btn-xs" id="toern-timer-start" onclick="toggleMatchTimer()">▶ Start</button>
+        <button type="button" class="btn btn-xs" id="toern-timer-next" onclick="nextHalfTimer()" style="display:none;">Volgende helft</button>
+        <button type="button" class="btn btn-xs" onclick="resetMatchTimer()">↺ Reset</button>
+      </div>
+    </div>`;
+  _wstrTimerRender();
+}
+window._initMatchTimer = _initMatchTimer;

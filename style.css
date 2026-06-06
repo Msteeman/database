@@ -11417,3 +11417,40 @@ body.modal-open {
   /* Geen horizontale pagina-scroll vanuit deze panes */
   .toern-tab-pane { overflow-x: hidden; }
 }
+
+/* PWA: toernooi-tabbalk horizontaal scrollbaar zodat alle tabs (incl. Standen
+   en Bundeling) altijd bereikbaar zijn op smal scherm. */
+@media (max-width: 640px) {
+  .toern-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .toern-tabs::-webkit-scrollbar { display: none; }
+  .toern-tab-btn { flex: 0 0 auto; white-space: nowrap; padding: 12px 10px; }
+}
+
+/* PWA: wedstrijd-detail / bundeling modal — sluitknop (X) nooit achter de
+   telefoon-statusbalk. Safe-area top-padding + sticky header zodat de X
+   altijd zichtbaar en bereikbaar blijft. */
+@media (max-width: 640px) {
+  .toern-modal .toern-modal-header,
+  .toern-modal-lg .toern-modal-header {
+    position: sticky; top: 0; z-index: 3;
+    background: var(--panel, #0b0f15);
+    padding-top: calc(env(safe-area-inset-top, 20px) + 14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .toern-modal-close { width: 44px; height: 44px; font-size: 28px; }
+  /* Dynamische overlay (regels / reglement / wedstrijd toevoegen) */
+  #toern-dyn-overlay .toern-dyn-card {
+    padding-top: calc(env(safe-area-inset-top, 20px) + 18px) !important;
+  }
+  /* Modal-body scrollt onder de gepinde header door */
+  .toern-modal .toern-modal-body,
+  .toern-modal-lg .toern-modal-body {
+    max-height: calc(100vh - 64px - env(safe-area-inset-top, 20px));
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+}

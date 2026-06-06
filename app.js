@@ -5630,6 +5630,7 @@ function go(view){
     if(!confirmDiscard()) return;
   }
   currentView = view;
+  if(view === 'programma'){ try { setTimeout(function(){ if(typeof _renderProgrammaToernooiCards === 'function') _renderProgrammaToernooiCards(); }, 60); } catch(_){} }
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-'+view));
   $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
   $$('#bottom-nav .bn-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
@@ -21643,6 +21644,8 @@ function subscribeTournaments(){
       .sort((a,b) => (b.startDate||'').localeCompare(a.startDate||''));
     if(typeof __shTrace === 'function') __shTrace('tournaments-subscribe-ok', { count: tourmCache.length });
     if(currentView === 'toernooien' && !_currentTournamentId) renderToernooienList();
+    // Feature 15: programma-kaarten verversen zodra tourmCache binnen is
+    if(currentView === 'programma' && typeof _renderProgrammaToernooiCards === 'function') _renderProgrammaToernooiCards();
     setSync('ok');
   }, err => {
     console.error('Tournaments sync error:', err);
@@ -24720,6 +24723,7 @@ onAuthStateChanged(auth, async (user) => {
     try {
       await initApp();
       subscribeData();
+      try { subscribeTournaments(); } catch(_){}   // Feature 15: tourmCache vroeg vullen
       showApp();
       go('dashboard');
       loadUserRole();
@@ -25720,6 +25724,7 @@ function _renderProgrammaToernooiCards(){
     ms = iso(monday); ss = iso(sunday);
   } catch(_){ host.innerHTML = ''; return; }
   const cards = tourmCache.filter(t => { const sd = t.startDate || '', ed = t.endDate || t.startDate || ''; return sd && sd <= ss && ed >= ms; });
+  try { console.info('[Feature15] tourmCache:', Array.isArray(tourmCache)?tourmCache.length:0, '| week:', ms, '→', ss, '| match:', cards.length); } catch(_){}
   if(!cards.length){ host.innerHTML = ''; return; }
   const labels = { prep:'Voorbereiding', active:'Actief', closing:'Afsluiting', done:'Afgerond' };
   host.innerHTML = cards.map(t => {

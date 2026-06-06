@@ -22816,6 +22816,9 @@ async function renderTournamentTeamDetail(tid, teamId){
       const naam = tp.quickName || (tp.playerId ? 'Speler uit database' : '?');
       const badge = tp.type === 'spotted' ? '<span class="toern-badge toern-badge-spotted">Opgevallen</span>' : '<span class="toern-badge toern-badge-linked">Gekoppeld</span>';
       const mergeWarn = tp.mergeStatus === 'unlinked' ? '<div class="toern-merge-warn">⚠️ Niet gekoppeld aan spelersprofiel</div>' : '';
+      const _exp = tp.exportedAs
+        ? `<span class="toern-badge toern-badge-linked">✅ ${tp.exportedAs==='rapport'?'Rapport':'Verwerkt'}</span>`
+        : `<button class="btn btn-xs toern-exp-btn" onclick="event.stopPropagation();exportSingleTournamentPlayer('${tid}','${tp.id}')">→ ${tp.type==='spotted'?'Observatie':'Rapport'}</button>`;
       return `<div class="toern-speler-row">
         <div class="toern-player-avatar">${initials(naam)}</div>
         <div class="toern-speler-info">
@@ -22823,6 +22826,7 @@ async function renderTournamentTeamDetail(tid, teamId){
           <div class="toern-player-meta">${badge}</div>
           ${mergeWarn}
         </div>
+        ${_exp}
       </div>`;
     }).join('');
   }
@@ -25229,6 +25233,7 @@ window._initMatchTimer = _initMatchTimer;
 // BUG 8: bepaal status op basis van start-/einddatum (niet de opgeslagen 'active').
 function _toernEffectiveStatus(t){
   if(!t) return 'active';
+  if(t.status === 'done' || t.finishedAt) return 'done';   // expliciet afgerond
   const today = (typeof todayISO === 'function') ? todayISO() : new Date().toISOString().slice(0,10);
   const sd = t.startDate || '';
   const ed = t.endDate || t.startDate || '';
@@ -25293,3 +25298,194 @@ async function _injectEarlierObs(tid, tournamentPlayerId, currentMatchId){
   form.insertBefore(wrap, form.firstChild);
 }
 window._injectEarlierObs = _injectEarlierObs;
+
+
+/* ================================================================
+   FEATURE 1 — EINDE-TOERNOOI FLOW (bundeling → regulier rapport/observatie)
+   --------------------------------------------------------------------
+   Maakt NIEUWE documenten aan in de reguliere players-collectie via de
+   bestaande savePlayer(). Wijzigt de reguliere flow NIET. Alle toernooi-
+   schrijfacties zijn additief (merge). Exporteert als bewerkbaar concept.
+   ================================================================ */
+
+function _bestGrade(obs){
+  const order = { A:0, B:1, C:2, D:3 }; let best = null;
+  (obs||[]).forEach(o => { const g = o.grade || o.overallRating; if(g && order[g] != null && (best === null || order[g] < order[best])) best = g; });
+  return best;
+}
+
+// Stelt een leesbare analyse-tekst samen uit alle observaties van één speler.
+function _composeBundelText(entry, matchById, tournament){
+  const CATS = [['mentaliteit','MENTALITEIT'],['techniek','TECHNIEK'],['snelheid','SNELHEID'],['fysiek','FYSIEK'],['inzicht','INZICHT']];
+  const agg = {};
+  (entry.obs||[]).forEach(o => (o.tags||[]).forEach(t => {
+    const c = String(t.category||'').toLowerCase(); if(!c || !t.label) return;
+    agg[c] = agg[c] || {}; agg[c][t.label] = agg[c][t.label] || { good:0, average:0, poor:0 };
+    if(t.rating === 'good') agg[c][t.label].good++;
+    else if(t.rating === 'average') agg[c][t.label].average++;
+    else if(t.rating === 'poor') agg[c][t.label].poor++;
+  }));
+  let out = '';
+  CATS.forEach(([c,label]) => {
+    const labels = agg[c] ? Object.keys(agg[c]) : [];
+    if(!labels.length) return;
+    const parts = labels.map(lab => {
+      const a = agg[c][lab]; const tot = a.good + a.average + a.poor;
+      const dom = (a.good >= a.average && a.good >= a.poor) ? '🟢' : (a.average >= a.poor ? '🟠' : '🔴');
+      return `${dom} ${lab}${tot > 1 ? ` (${a.good}G/${a.average}O/${a.poor}R)` : ''}`;
+    });
+    out += `${label}: ${parts.join(', ')}\n`;
+  });
+  const notes = [];
+  (entry.obs||[]).forEach(o => {
+    if(!o.text || !o.text.trim()) return;
+    const m = matchById[o.matchId];
+    const ctx = m ? `${_toernMatchClock(m)||''} ${m.teamAName||''}–${m.teamBName||''}`.trim() : '';
+    notes.push(`${ctx ? `vs ${ctx}: ` : ''}${o.text.trim()}`);
+  });
+  if(notes.length) out += `\nNOTITIES:\n${notes.join('\n')}\n`;
+  const ctxList = (entry.obs||[]).map(o => {
+    const m = matchById[o.matchId]; if(!m) return null;
+    const sc = (m.scoreHome != null && m.scoreAway != null) ? ` (${m.scoreHome}-${m.scoreAway})` : '';
+    return `${_toernMatchClock(m)||''} ${m.teamAName||''} – ${m.teamBName||''}${sc} — ${_toernFieldLabel(m.field)||''} ${m.categoryId||''}`.replace(/\s+/g,' ').trim();
+  }).filter(Boolean);
+  if(ctxList.length) out += `\nWEDSTRIJD-CONTEXT:\n${[...new Set(ctxList)].join('\n')}\n`;
+  out += `\nBron: ${tournament.name || 'Toernooi'}${tournament.startDate ? ' · ' + formatDate(tournament.startDate) : ''}`;
+  return out.trim();
+}
+
+// Verzamel alle exporteerbare spelers (met observaties) + context.
+async function _collectTournamentExportData(tid){
+  const [teamsSnap, playersSnap, obsSnap, matchesSnap] = await Promise.all([
+    getDocs(tournSubCol(tid, 'teams')),
+    getDocs(tournSubCol(tid, 'players')),
+    getDocs(tournSubCol(tid, 'observations')),
+    getDocs(tournSubCol(tid, 'matches'))
+  ]);
+  const teamsById = {}; teamsSnap.docs.forEach(d => { teamsById[d.id] = d.data(); });
+  const matchById = {}; matchesSnap.docs.forEach(d => { matchById[d.id] = { ...d.data(), id: d.id }; });
+  const obsByTp = {}; obsSnap.docs.forEach(d => { const o = { ...d.data(), id: d.id }; (obsByTp[o.tournamentPlayerId] = obsByTp[o.tournamentPlayerId] || []).push(o); });
+  const entries = [];
+  playersSnap.docs.forEach(d => {
+    const tp = { ...d.data(), id: d.id };
+    if(isPlaceholderTournamentPlayer(tp)) return;
+    const obs = obsByTp[tp.id] || [];
+    if(!obs.length) return;   // alleen spelers met observaties
+    const club = teamsById[tp.teamId] ? teamsById[tp.teamId].name : '';
+    const categoryId = (matchById[(obs[0]||{}).matchId] || {}).categoryId || '';
+    entries.push({ tpId: tp.id, naam: tp.quickName || 'Onbekend', club, position: tp.position || '', categoryId, isLinked: tp.type !== 'spotted', obs, matchById, exported: tp.exportedAs || null });
+  });
+  return { entries, tournament: tourmCache.find(x => x.id === tid) || {} };
+}
+
+// Maak één regulier document (rapport of observatie) uit een speler-bundeling.
+async function _exportTournamentPlayer(tid, entry, tournament){
+  const mode = entry.isLinked ? 'rapport' : 'observatie';
+  const grade = _bestGrade(entry.obs) || '';
+  const notities = _composeBundelText(entry, entry.matchById, tournament);
+  const id = tuid('p');
+  const now = Date.now();
+  const tdatum = tournament.startDate || todayISO();
+  const club = entry.club || '';
+  const base = {
+    id, naam: entry.naam || 'Onbekend', club, positie: entry.position || '', elftal: entry.categoryId || '',
+    huidig_niveau: grade, potentieel_niveau: '', advies: '',
+    notities, notities_raw: notities,
+    wedstrijd: { datum: tdatum, thuis: club, uit: '', leeftijd: entry.categoryId || '', plaats: tournament.location || '', sportpark: '' },
+    wedstrijd_datum: tdatum, wedstrijd_thuis: club, wedstrijd_uit: '', wedstrijd_leeftijd: entry.categoryId || '',
+    fromTournamentId: tid, bron: tournament.name || '',
+    created: now, modified: now,
+    scout: (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.displayName || currentUser.email || '') : ''
+  };
+  const rec = (mode === 'rapport')
+    ? { ...base, concept: true }
+    : { ...base, rapport_type: 'observatie', status: 'observatie', concept: false, is_opvallend: true };
+  await savePlayer(rec);
+  // Markeer de toernooi-speler additief (geen overschrijven van bestaande velden)
+  try { await setDoc(tournSubDoc(tid, 'players', entry.tpId), { exportedAs: mode, exportedPlayerId: id, exportedAt: new Date().toISOString() }, { merge: true }); } catch(_){}
+  return { mode, id };
+}
+
+// STAP 1B/1C — één speler exporteren (vanuit Spelers-/Bundeling-tab).
+async function exportSingleTournamentPlayer(tid, tpId){
+  tid = tid || _currentTournamentId;
+  const { entries, tournament } = await _collectTournamentExportData(tid);
+  const e = entries.find(x => x.tpId === tpId);
+  if(!e){ toast('Nog geen observaties voor deze speler', true); return; }
+  if(e.exported){ toast('Al aangemaakt', true); return; }
+  try {
+    const r = await _exportTournamentPlayer(tid, e, tournament);
+    toast((r.mode === 'rapport' ? 'Rapport' : 'Observatie') + ' aangemaakt (concept) ✓');
+  } catch(err){ console.error('export error', err); toast('Aanmaken mislukt', true); return; }
+  if(_currentTournamentId === tid){
+    if(_toernTab === 'spelers') renderSpelersTab(tid);
+    if(_toernTab === 'bundeling') renderBundelingTab(tid);
+  }
+}
+window.exportSingleTournamentPlayer = exportSingleTournamentPlayer;
+
+// STAP 1D — bulk afronden.
+async function openTournamentAfrondenModal(tid){
+  tid = tid || _currentTournamentId;
+  const { entries, tournament } = await _collectTournamentExportData(tid);
+  if(!entries.length){ toast('Nog geen geobserveerde spelers om af te ronden', true); return; }
+  const linked = entries.filter(e => e.isLinked);
+  const spotted = entries.filter(e => !e.isLinked);
+  const row = e => {
+    const g = _bestGrade(e.obs) || '';
+    return `<label class="afr-row">
+      <input type="checkbox" class="afr-cb" data-tp="${e.tpId}" data-grade="${g}" ${e.exported ? 'disabled' : 'checked'} />
+      <span class="afr-grade grade-${g || 'none'}">${g || '—'}</span>
+      <span class="afr-name">${escapeHtml(e.naam)}</span>
+      <span class="afr-club">${escapeHtml(e.club || '')}</span>
+      <span class="afr-meta">${e.obs.length} obs${e.exported ? ` · ✅ ${e.exported === 'rapport' ? 'rapport' : 'verwerkt'}` : ''}</span>
+    </label>`;
+  };
+  _toernOpenOverlay(`
+    <h3 style="margin:0 0 4px;">Toernooi afronden — ${escapeHtml(tournament.name || '')}</h3>
+    <p style="margin:0 0 10px;font-size:12px;color:var(--muted,#888);">Geselecteerde spelers worden omgezet naar reguliere <strong>rapporten</strong> (gekoppelde spelers) en <strong>observaties</strong> (opgevallen spelers) — als bewerkbaar concept in je spelersdatabase.</p>
+    <div class="afr-quick">
+      <button type="button" class="btn btn-xs" onclick="_afrSelect('ab')">Selecteer A+B</button>
+      <button type="button" class="btn btn-xs" onclick="_afrSelect('all')">Alles</button>
+      <button type="button" class="btn btn-xs" onclick="_afrSelect('none')">Niets</button>
+    </div>
+    ${linked.length ? `<div class="afr-group-title">Gekoppelde spelers → rapport</div>${linked.map(row).join('')}` : ''}
+    ${spotted.length ? `<div class="afr-group-title">Opgevallen spelers → observatie</div>${spotted.map(row).join('')}` : ''}
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+      <button type="button" class="btn btn-sm btn-primary" onclick="_afrondTournament('${tid}')">Afronden</button>
+    </div>`);
+}
+window.openTournamentAfrondenModal = openTournamentAfrondenModal;
+
+function _afrSelect(mode){
+  document.querySelectorAll('.afr-cb:not([disabled])').forEach(cb => {
+    if(mode === 'all') cb.checked = true;
+    else if(mode === 'none') cb.checked = false;
+    else if(mode === 'ab') cb.checked = (cb.dataset.grade === 'A' || cb.dataset.grade === 'B');
+  });
+}
+window._afrSelect = _afrSelect;
+
+async function _afrondTournament(tid){
+  const cbs = Array.from(document.querySelectorAll('.afr-cb:checked:not([disabled])'));
+  if(!cbs.length){ toast('Selecteer minstens één speler', true); return; }
+  const tpIds = cbs.map(cb => cb.dataset.tp);
+  const { entries, tournament } = await _collectTournamentExportData(tid);
+  const byId = {}; entries.forEach(e => { byId[e.tpId] = e; });
+  let nRap = 0, nObs = 0;
+  for(const id of tpIds){
+    const e = byId[id]; if(!e) continue;
+    try { const r = await _exportTournamentPlayer(tid, e, tournament); if(r.mode === 'rapport') nRap++; else nObs++; }
+    catch(err){ console.error('afrond export error', err); }
+  }
+  try { await setDoc(tournDoc(tid), { status: 'done', finishedAt: new Date().toISOString() }, { merge: true }); } catch(_){}
+  _toernOpenOverlay(`
+    <h3 style="margin:0 0 8px;">Toernooi afgerond ✓</h3>
+    <p style="font-size:14px;line-height:1.5;">${nRap} rapport${nRap !== 1 ? 'en' : ''} en ${nObs} observatie${nObs !== 1 ? 's' : ''} aangemaakt (concept). Je vindt ze in de spelersdatabase — bewerkbaar voordat je ze indient.</p>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+      <button type="button" class="btn btn-sm" onclick="_toernCloseOverlay()">Terug naar toernooi</button>
+      <button type="button" class="btn btn-sm btn-primary" onclick="_toernCloseOverlay(); if(typeof go==='function') go('database');">Bekijk database</button>
+    </div>`);
+  if(_currentTournamentId === tid) renderToernooiDetail(tid);
+}
+window._afrondTournament = _afrondTournament;

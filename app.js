@@ -12,7 +12,8 @@ import {
   signOut, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, collection, doc,
+  getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
+  collection, doc,
   onSnapshot, setDoc, deleteDoc, getDoc,
   /* s35cg: extra imports voor rollen-systeem */
   updateDoc, query, where, getDocs, orderBy, addDoc
@@ -31,7 +32,15 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+// Feature 6 — offline persistence (IndexedDB) met multi-tab ondersteuning.
+// Bij falen (bv. privémodus) valt het terug op de gewone in-memory client.
+let db;
+try {
+  db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
+} catch(e){
+  console.warn('Offline-persistence init faalde, fallback naar getFirestore:', e);
+  db = getFirestore(app);
+}
 try { await setPersistence(auth, browserLocalPersistence); } catch(e) { console.warn('setPersistence failed (non-fatal):', e); }
 
 /* =============== CONFIG =============== */
@@ -25382,7 +25391,9 @@ async function _collectTournamentExportData(tid){
 async function _exportTournamentPlayer(tid, entry, tournament){
   const mode = entry.isLinked ? 'rapport' : 'observatie';
   const grade = _bestGrade(entry.obs) || '';
-  const notities = _composeBundelText(entry, entry.matchById, tournament);
+  const fullText = _composeBundelText(entry, entry.matchById, tournament);
+  const notesOnly = _composeNotesOnly(entry, entry.matchById, tournament);
+  const catText = _aggTagsByCat(entry.obs);
   const id = tuid('p');
   const now = Date.now();
   const tdatum = tournament.startDate || todayISO();
@@ -25390,16 +25401,31 @@ async function _exportTournamentPlayer(tid, entry, tournament){
   const base = {
     id, naam: entry.naam || 'Onbekend', club, positie: entry.position || '', elftal: entry.categoryId || '',
     huidig_niveau: grade, potentieel_niveau: '', advies: '',
-    notities, notities_raw: notities,
     wedstrijd: { datum: tdatum, thuis: club, uit: '', leeftijd: entry.categoryId || '', plaats: tournament.location || '', sportpark: '' },
     wedstrijd_datum: tdatum, wedstrijd_thuis: club, wedstrijd_uit: '', wedstrijd_leeftijd: entry.categoryId || '',
     fromTournamentId: tid, bron: tournament.name || '',
     created: now, modified: now,
     scout: (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.displayName || currentUser.email || '') : ''
   };
-  const rec = (mode === 'rapport')
-    ? { ...base, concept: true }
-    : { ...base, rapport_type: 'observatie', status: 'observatie', concept: false, is_opvallend: true };
+  let rec;
+  if(mode === 'rapport'){
+    // Tags → criterium-TEKSTvelden. De score-velden (*_huidig) blijven LEEG;
+    // die vult de scout zelf in bij het concept.
+    rec = { ...base, concept: true,
+      notities: notesOnly, notities_raw: notesOnly,
+      beoordelingen: {
+        techniek_huidig: '',      techniek_tekst:      catText.techniek    || '',
+        inzicht_huidig: '',       inzicht_tekst:       catText.inzicht     || '',
+        grit_huidig: '',          grit_tekst:          catText.mentaliteit || '',
+        explosiviteit_huidig: '', explosiviteit_tekst: '',
+        sprinten_huidig: '',      sprinten_tekst:      catText.snelheid    || '',
+        duelleren_huidig: '',     duelleren_tekst:     catText.fysiek      || '',
+        wendbaarheid_huidig: '',  wendbaarheid_tekst:  ''
+      }
+    };
+  } else {
+    rec = { ...base, notities: fullText, notities_raw: fullText, rapport_type: 'observatie', status: 'observatie', concept: false, is_opvallend: true };
+  }
   await savePlayer(rec);
   // Markeer de toernooi-speler additief (geen overschrijven van bestaande velden)
   try { await setDoc(tournSubDoc(tid, 'players', entry.tpId), { exportedAs: mode, exportedPlayerId: id, exportedAt: new Date().toISOString() }, { merge: true }); } catch(_){}
@@ -25489,3 +25515,64 @@ async function _afrondTournament(tid){
   if(_currentTournamentId === tid) renderToernooiDetail(tid);
 }
 window._afrondTournament = _afrondTournament;
+
+
+/* Mini-fix — tags per categorie als TEKST (geen scores) + losse notities. */
+function _aggTagsByCat(obs){
+  const agg = {};
+  (obs||[]).forEach(o => (o.tags||[]).forEach(t => {
+    const c = String(t.category||'').toLowerCase(); if(!c || !t.label) return;
+    agg[c] = agg[c] || {}; agg[c][t.label] = agg[c][t.label] || { good:0, average:0, poor:0 };
+    if(t.rating === 'good') agg[c][t.label].good++;
+    else if(t.rating === 'average') agg[c][t.label].average++;
+    else if(t.rating === 'poor') agg[c][t.label].poor++;
+  }));
+  const out = {};
+  Object.keys(agg).forEach(c => {
+    out[c] = Object.keys(agg[c]).map(lab => {
+      const a = agg[c][lab]; const tot = a.good + a.average + a.poor;
+      const dom = (a.good >= a.average && a.good >= a.poor) ? '🟢' : (a.average >= a.poor ? '🟠' : '🔴');
+      return `${dom} ${lab}${tot > 1 ? ` (${a.good}G/${a.average}O/${a.poor}R)` : ''}`;
+    }).join(', ');
+  });
+  return out;
+}
+function _composeNotesOnly(entry, matchById, tournament){
+  let out = '';
+  const notes = [];
+  (entry.obs||[]).forEach(o => {
+    if(!o.text || !o.text.trim()) return;
+    const m = matchById[o.matchId];
+    const ctx = m ? `${_toernMatchClock(m)||''} ${m.teamAName||''}–${m.teamBName||''}`.trim() : '';
+    notes.push(`${ctx ? `vs ${ctx}: ` : ''}${o.text.trim()}`);
+  });
+  if(notes.length) out += `${notes.join('\n')}\n`;
+  const ctxList = (entry.obs||[]).map(o => {
+    const m = matchById[o.matchId]; if(!m) return null;
+    const sc = (m.scoreHome != null && m.scoreAway != null) ? ` (${m.scoreHome}-${m.scoreAway})` : '';
+    return `${_toernMatchClock(m)||''} ${m.teamAName||''} – ${m.teamBName||''}${sc} — ${_toernFieldLabel(m.field)||''} ${m.categoryId||''}`.replace(/\s+/g,' ').trim();
+  }).filter(Boolean);
+  if(ctxList.length) out += `\nWEDSTRIJD-CONTEXT:\n${[...new Set(ctxList)].join('\n')}\n`;
+  out += `\nBron: ${tournament.name || 'Toernooi'}${tournament.startDate ? ' · ' + formatDate(tournament.startDate) : ''}`;
+  return out.trim();
+}
+
+/* ================================================================
+   FEATURE 6 — OFFLINE: connectiviteits-indicator + auto-sync.
+   (Firestore offline-persistence wordt bij de db-init geactiveerd;
+   writes worden offline gequeued en automatisch gesynct.)
+   ================================================================ */
+function _shUpdateConnBadge(){
+  const online = (typeof navigator !== 'undefined') ? navigator.onLine : true;
+  try { document.body.classList.toggle('sh-offline', !online); } catch(_){}
+  const txt = document.getElementById('sync-text');
+  if(txt) txt.textContent = online ? 'Cloud gesynchroniseerd' : 'Offline — wordt gesynchroniseerd bij verbinding';
+  const dot = document.getElementById('sync-dot');
+  if(dot) dot.style.background = online ? '' : 'var(--red, #ef4444)';
+}
+window._shUpdateConnBadge = _shUpdateConnBadge;
+try {
+  window.addEventListener('online', () => { _shUpdateConnBadge(); try { toast('Weer online — wijzigingen worden gesynchroniseerd'); } catch(_){} });
+  window.addEventListener('offline', () => { _shUpdateConnBadge(); try { toast('Offline — observaties worden lokaal bewaard', true); } catch(_){} });
+  _shUpdateConnBadge();
+} catch(_){}

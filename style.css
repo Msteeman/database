@@ -11578,3 +11578,7 @@ body.modal-open {
 .afr-club { color: var(--text-3); font-size: 12px; }
 .afr-meta { margin-left: auto; color: var(--text-3); font-size: 11.5px; white-space: nowrap; }
 .toern-exp-btn { flex-shrink: 0; }
+
+/* FEATURE 6 — offline-indicatie */
+body.sh-offline #sync-indicator { color: var(--red, #ef4444); }
+body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }

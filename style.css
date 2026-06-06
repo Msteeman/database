@@ -11582,3 +11582,42 @@ body.modal-open {
 /* FEATURE 6 — offline-indicatie */
 body.sh-offline #sync-indicator { color: var(--red, #ef4444); }
 body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
+
+/* ===== PRIO 2 — Feature 4/5/15 styling ===== */
+/* Feature 4 — wedstrijd-navigatie */
+.toern-match-nav { display: flex; align-items: center; gap: 4px; margin-right: 6px; }
+.toern-nav-arrow {
+  width: 32px; height: 32px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg-2); color: var(--text);
+  font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center;
+}
+.toern-nav-arrow:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.toern-nav-arrow:disabled { opacity: .35; cursor: default; }
+.toern-nav-count { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-3); min-width: 30px; text-align: center; }
+
+/* Feature 5 — must-scout ster */
+.toern-must-btn {
+  background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1;
+  color: var(--text-3); padding: 4px; flex-shrink: 0; transition: transform .1s, color .15s;
+}
+.toern-must-btn:hover { transform: scale(1.15); }
+.toern-must-btn.on { color: var(--orange, #f59e0b); }
+.tp-must { color: var(--orange, #f59e0b); }
+
+/* Feature 15 — toernooi-kaart in regulier programma */
+.prog-toernooi-cards { display: flex; flex-direction: column; gap: 8px; margin: 0 0 12px; }
+.prog-toern-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm); padding: 12px 14px; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.prog-toern-card:hover { border-color: var(--accent); background: var(--panel-2); }
+.prog-toern-card.toern-status-done { border-left-color: var(--text-3); opacity: .85; }
+.prog-toern-card.toern-status-prep { border-left-color: var(--orange, #f59e0b); }
+.ptc-main { flex: 1; min-width: 0; }
+.ptc-title { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ptc-meta { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.ptc-status { font-size: 11px; font-weight: 700; color: var(--text-2); padding: 3px 8px; border-radius: 999px; background: var(--bg-2); flex-shrink: 0; }
+.ptc-go { font-size: 12px; color: var(--accent); font-weight: 600; flex-shrink: 0; }
+@media (max-width: 640px) { .ptc-go { display: none; } }

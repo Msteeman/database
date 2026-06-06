@@ -1224,6 +1224,7 @@
         <!-- legacy weeklabel (JS verwacht #prog-weeklabel) -->
         <div id="prog-weeklabel" style="display:none"></div>
 
+        <div id="prog-toernooi-cards" class="prog-toernooi-cards"></div>
         <div id="programma-grid" class="prog-ev-list"></div>
 
         <div id="programma-empty" style="display:none; text-align:center; padding:40px 20px; color:var(--text-3);">
@@ -2223,6 +2224,7 @@ algemeen:</textarea>
             <button class="btn btn-ghost btn-sm" id="toern-btn-regels" onclick="openTournamentRulesModal()">⚙️ Toernooiregels</button>
             <button class="btn btn-ghost btn-sm" id="toern-btn-reglement" onclick="openReglementModal()">📄 Reglement toevoegen</button>
             <button class="btn btn-ghost btn-sm" id="toern-btn-sync" onclick="syncTournamentScores()">🔄 Uitslagen synchroniseren</button>
+            <button class="btn btn-ghost btn-sm" id="toern-btn-stats" onclick="openTournamentStats()" title="Statistieken">📊 Statistieken</button>
             <button class="btn btn-ghost btn-sm" id="toern-btn-afronden" onclick="openTournamentAfrondenModal()" title="Toernooi afronden → rapporten/observaties">🏁 Toernooi afronden</button>
             <button class="btn btn-ghost btn-sm toern-btn-delete" id="toern-btn-delete" onclick="confirmDeleteTournament()" title="Verwijder dit toernooi">🗑️ Verwijder toernooi</button>
             <span class="toern-sync-status" id="toern-sync-status" style="font-size:12px;color:var(--muted);align-self:center;"></span>
@@ -3509,6 +3511,7 @@ algemeen:</textarea>
         <div class="toern-modal-title" id="toern-match-title">—</div>
         <div class="toern-modal-sub" id="toern-match-sub"></div>
       </div>
+      <div id="toern-match-nav" class="toern-match-nav"></div>
       <button class="toern-modal-close" onclick="closeMatchDetail()">×</button>
     </div>
     <div class="toern-modal-body">

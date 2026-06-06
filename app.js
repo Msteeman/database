@@ -22363,6 +22363,16 @@ async function openMatchDetail(tid, matchId){
   if(!matchSnap.exists()){ toast('Wedstrijd niet gevonden', true); return; }
   const match = {...matchSnap.data(), id: matchSnap.id};
   const _teamsById = {}; teamsSnap.docs.forEach(d => { _teamsById[d.id] = d.data(); });
+  // Feature 4: wedstrijden in hetzelfde tijdsblok (zelfde dag + starttijd) voor navigatie
+  let _navIds = [matchId];
+  try {
+    const _dm = await getDocs(query(tournSubCol(tid, 'matches'), where('dayId','==', match.dayId||'')));
+    const _cur = _toernMatchClock(match);
+    const _sibs = _dm.docs.map(d => ({...d.data(), id: d.id})).filter(m => _toernMatchClock(m) === _cur)
+      .sort((a,b) => String(a.field||'').localeCompare(String(b.field||'')) || String(a.id).localeCompare(String(b.id)));
+    if(_sibs.length) _navIds = _sibs.map(m => m.id);
+  } catch(_){}
+  window._matchNav = { tid, ids: _navIds, idx: Math.max(0, _navIds.indexOf(matchId)) };
 
   // Haal TournamentPlayer info op
   const tpIds = mpList.map(mp => mp.tournamentPlayerId);
@@ -22437,6 +22447,7 @@ async function openMatchDetail(tid, matchId){
           </div>
           <div class="toern-player-card-right">
             ${hasObs ? `<span class="toern-obs-badge">${gradeLabel||'✓'}</span>` : '<span class="toern-obs-empty">Geen obs</span>'}
+            <button class="toern-must-btn ${tp.mustScout?'on':''}" title="Must scout" onclick="event.stopPropagation();toggleMustScout('${tid}','${tp.id}',${tp.mustScout?'false':'true'})">${tp.mustScout?'⭐':'☆'}</button>
             <button class="toern-rapport-btn" title="Rapport starten"
               onclick="event.stopPropagation();startRapportVanuitMatch('${tid}','${matchId}','${mp.id}','${tp.id}')">
               📋
@@ -22462,6 +22473,15 @@ async function openMatchDetail(tid, matchId){
 
   // TIP 4: lokale wedstrijd-timer (verdwijnt bij sluiten; niets opgeslagen)
   _initMatchTimer(tid, match);
+
+  // Feature 4: navigatiebalk vorige/volgende binnen het tijdsblok
+  const _navEl = document.getElementById('toern-match-nav');
+  if(_navEl){
+    const nv = window._matchNav;
+    _navEl.innerHTML = (nv && nv.ids && nv.ids.length > 1)
+      ? `<button type="button" class="toern-nav-arrow" ${nv.idx<=0?'disabled':''} onclick="navMatch(-1)" aria-label="Vorige">‹</button><span class="toern-nav-count">${nv.idx+1}/${nv.ids.length}</span><button type="button" class="toern-nav-arrow" ${nv.idx>=nv.ids.length-1?'disabled':''} onclick="navMatch(1)" aria-label="Volgende">›</button>`
+      : '';
+  }
 
   bd.style.display = 'flex';
   document.body.classList.add('modal-open');
@@ -22815,7 +22835,8 @@ async function renderTournamentTeamDetail(tid, teamId){
   ]);
   const team = teamSnap.exists() ? { ...teamSnap.data(), id: teamSnap.id } : { name: '?' };
   const roster = playersSnap.docs.map(d => ({...d.data(), id: d.id}))
-    .filter(tp => !isPlaceholderTournamentPlayer(tp));
+    .filter(tp => !isPlaceholderTournamentPlayer(tp))
+    .sort((a,b) => (b.mustScout?1:0) - (a.mustScout?1:0));
 
   let listHtml;
   if(roster.length === 0){
@@ -22835,6 +22856,7 @@ async function renderTournamentTeamDetail(tid, teamId){
           <div class="toern-player-meta">${badge}</div>
           ${mergeWarn}
         </div>
+        <button class="toern-must-btn ${tp.mustScout?'on':''}" title="Must scout" onclick="event.stopPropagation();toggleMustScout('${tid}','${tp.id}',${tp.mustScout?'false':'true'})">${tp.mustScout?'⭐':'☆'}</button>
         ${_exp}
       </div>`;
     }).join('');
@@ -22929,6 +22951,8 @@ async function renderTijdlijnTab(tid){
   const days = daysSnap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const matches = matchesSnap.docs.map(d => ({...d.data(), id: d.id}));
   const playersByTeam = _buildPlayersByTeam(playersSnap.docs.map(d => ({...d.data(), id: d.id})));
+  window._toernMustScoutTeams = new Set();
+  playersSnap.docs.forEach(d => { const _tp = d.data(); if(_tp.mustScout && _tp.teamId) window._toernMustScoutTeams.add(_tp.teamId); });
 
   if(days.length === 0){
     wrap.innerHTML = '<div class="toern-empty">Nog geen wedstrijddagen. <button class="btn btn-sm" onclick="showAddDayForm()">+ Dag toevoegen</button></div>';
@@ -24770,7 +24794,7 @@ function _mpRowHtml(tid, m, conflict, playersByTeam){
   return `<div class="toern-prog-row toern-watch-${ws} ${conflict?'mp-conflict':''}" onclick="openMatchDetail('${tid}','${m.id}')">
     <span class="tp-ind">${_mpDot(ws)}</span>
     <span class="tp-time" data-col="Tijd">${escapeHtml(timeLabel)}</span>
-    <span class="tp-match" data-col="Wedstrijd"><span class="tp-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>${flag}${sub}${note}</span>
+    <span class="tp-match" data-col="Wedstrijd"><span class="tp-teams">${_toernMustStar(m)}${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>${flag}${sub}${note}</span>
     <span class="tp-field" data-col="Veld">${escapeHtml(field)}</span>
     <span class="tp-poule" data-col="Poule">${escapeHtml(poule)}</span>
     <button class="mp-remove" title="Verwijder uit mijn programma" onclick="event.stopPropagation();removeFromMyProgram('${tid}','${m.id}')">×</button>
@@ -24793,6 +24817,8 @@ async function renderMijnProgrammaTab(tid){
   const followedCount = teams.filter(t => t.priority === true).length;
   const allMatches = matchesSnap.docs.map(d => ({...d.data(), id: d.id}));
   const playersByTeam = _buildPlayersByTeam(playersSnap.docs.map(d => ({...d.data(), id: d.id})));
+  window._toernMustScoutTeams = new Set();
+  playersSnap.docs.forEach(d => { const _tp = d.data(); if(_tp.mustScout && _tp.teamId) window._toernMustScoutTeams.add(_tp.teamId); });
 
   const inMine = m => m.inMyProgram === true
     || (teamsById[m.teamAId] && teamsById[m.teamAId].priority === true)
@@ -24987,7 +25013,7 @@ function _progRowHtml(tid, m, playersByTeam){
     <span class="tp-ind">${dot}</span>
     <span class="tp-time" data-col="Tijd">${escapeHtml(timeLabel)}</span>
     <span class="tp-match" data-col="Wedstrijd">
-      <span class="tp-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>
+      <span class="tp-teams">${_toernMustStar(m)}${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>
       <span class="tp-score" onclick="event.stopPropagation();promptManualScore('${tid}','${m.id}')" title="Uitslag invoeren/bewerken">${scoreBadge}</span>
       ${sub}${note}
     </span>
@@ -25575,4 +25601,145 @@ try {
   window.addEventListener('online', () => { _shUpdateConnBadge(); try { toast('Weer online — wijzigingen worden gesynchroniseerd'); } catch(_){} });
   window.addEventListener('offline', () => { _shUpdateConnBadge(); try { toast('Offline — observaties worden lokaal bewaard', true); } catch(_){} });
   _shUpdateConnBadge();
+} catch(_){}
+
+
+/* ================================================================
+   PRIO 2 — Feature 4 (navigatie), 5 (must-scout), 7 (stats), 15 (programma-kaart)
+   Alles additief; reguliere flows ongewijzigd.
+   ================================================================ */
+
+// Feature 4 — naar vorige/volgende wedstrijd binnen het tijdsblok.
+function navMatch(dir){
+  const nv = window._matchNav; if(!nv || !nv.ids) return;
+  const ni = nv.idx + dir;
+  if(ni < 0 || ni >= nv.ids.length) return;
+  openMatchDetail(nv.tid, nv.ids[ni]);
+}
+window.navMatch = navMatch;
+
+// Feature 5 — must-scout togglen (additief op het toernooi-speler-doc).
+async function toggleMustScout(tid, tpId, val){
+  tid = tid || _currentTournamentId;
+  const on = (val === true || val === 'true');
+  try { await setDoc(tournSubDoc(tid, 'players', tpId), { mustScout: on }, { merge: true }); }
+  catch(e){ console.error('toggleMustScout error:', e); toast('Opslaan mislukt', true); return; }
+  toast(on ? '⭐ Must-scout' : 'Must-scout verwijderd');
+  if(_currentTournamentId === tid){
+    if(window.__shOpenMatchDetailId) openMatchDetail(window.__shOpenMatchDetailTid, window.__shOpenMatchDetailId);
+    if(_toernTab === 'spelers') renderSpelersTab(tid);
+    if(_toernTab === 'tijdlijn') renderTijdlijnTab(tid);
+    if(_toernTab === 'mijn-programma') renderMijnProgrammaTab(tid);
+  }
+}
+window.toggleMustScout = toggleMustScout;
+
+// Feature 5 — ⭐ in programma-rij als een team een must-scout speler heeft.
+function _toernMustStar(m){
+  const set = window._toernMustScoutTeams;
+  if(set && (set.has(m.teamAId) || set.has(m.teamBId))) return '<span class="tp-must" title="Must-scout speler">⭐</span> ';
+  return '';
+}
+
+// Feature 7 — statistieken-samenvatting (automatisch berekend, geen opslag).
+async function openTournamentStats(tid){
+  tid = tid || _currentTournamentId;
+  const [teamsSnap, playersSnap, obsSnap, matchesSnap] = await Promise.all([
+    getDocs(tournSubCol(tid, 'teams')),
+    getDocs(tournSubCol(tid, 'players')),
+    getDocs(tournSubCol(tid, 'observations')),
+    getDocs(tournSubCol(tid, 'matches'))
+  ]);
+  const teamsById = {}; teamsSnap.docs.forEach(d => { teamsById[d.id] = d.data(); });
+  const teams = teamsSnap.docs.map(d => d.data());
+  const playersById = {}; playersSnap.docs.forEach(d => { const tp = { ...d.data(), id: d.id }; if(!isPlaceholderTournamentPlayer(tp)) playersById[tp.id] = tp; });
+  const obs = obsSnap.docs.map(d => d.data());
+  const obsByTp = {}; const matchSet = new Set(); const obsByTeam = {};
+  obs.forEach(o => {
+    if(!playersById[o.tournamentPlayerId]) return;
+    (obsByTp[o.tournamentPlayerId] = obsByTp[o.tournamentPlayerId] || []).push(o);
+    if(o.matchId) matchSet.add(o.matchId);
+    const tp = playersById[o.tournamentPlayerId];
+    if(tp && tp.teamId) obsByTeam[tp.teamId] = (obsByTeam[tp.teamId] || 0) + 1;
+  });
+  const observedTps = Object.keys(obsByTp);
+  let nA = 0, nB = 0;
+  observedTps.forEach(id => { const g = _bestGrade(obsByTp[id]); if(g === 'A') nA++; else if(g === 'B') nB++; });
+  const clubsGevolgd = teams.filter(t => t.priority).length;
+  let topClub = '—', topClubN = 0;
+  Object.keys(obsByTeam).forEach(k => { if(obsByTeam[k] > topClubN){ topClubN = obsByTeam[k]; topClub = (teamsById[k] ? teamsById[k].name : k); } });
+  let topPl = '—', topPlN = 0;
+  observedTps.forEach(id => { const n = obsByTp[id].length; if(n > topPlN){ topPlN = n; topPl = playersById[id].quickName || '?'; } });
+  const row = (label, val) => `<div class="afr-row" style="cursor:default;"><span class="afr-name">${escapeHtml(label)}</span><span class="afr-meta">${escapeHtml(String(val))}</span></div>`;
+  _toernOpenOverlay(`
+    <h3 style="margin:0 0 10px;">📊 Jouw toernooi in cijfers</h3>
+    ${row('Wedstrijden bekeken', `${matchSet.size} / ${matchesSnap.size}`)}
+    ${row('Spelers geobserveerd', observedTps.length)}
+    ${row('Observaties gemaakt', obs.length)}
+    ${row('A-spelers', nA)}
+    ${row('B-spelers', nB)}
+    ${row('Clubs gevolgd', clubsGevolgd)}
+    ${row('Meest bekeken club', topClubN ? `${topClub} (${topClubN})` : '—')}
+    ${row('Meest genoteerd speler', topPlN ? `${topPl} (${topPlN}×)` : '—')}
+  `);
+}
+window.openTournamentStats = openTournamentStats;
+
+// Feature 15 — toernooi-kaarten in het reguliere Programma-scherm (read-only).
+function _renderProgrammaToernooiCards(){
+  const host = document.getElementById('prog-toernooi-cards');
+  if(!host) return;
+  if(typeof getCurrentDisplayMonday !== 'function' || !Array.isArray(tourmCache)){ host.innerHTML = ''; return; }
+  let ms, ss;
+  try {
+    const monday = getCurrentDisplayMonday();
+    const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
+    const iso = d => { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
+    ms = iso(monday); ss = iso(sunday);
+  } catch(_){ host.innerHTML = ''; return; }
+  const cards = tourmCache.filter(t => { const sd = t.startDate || '', ed = t.endDate || t.startDate || ''; return sd && sd <= ss && ed >= ms; });
+  if(!cards.length){ host.innerHTML = ''; return; }
+  const labels = { prep:'Voorbereiding', active:'Actief', closing:'Afsluiting', done:'Afgerond' };
+  host.innerHTML = cards.map(t => {
+    const st = _toernEffectiveStatus(t);
+    const dates = `${formatDate(t.startDate)}${t.endDate && t.endDate !== t.startDate ? '–' + formatDate(t.endDate) : ''}`;
+    return `<div class="prog-toern-card toern-status-${st}" onclick="go('toernooien'); setTimeout(function(){ renderToernooiDetail('${t.id}'); }, 0);">
+      <div class="ptc-main">
+        <div class="ptc-title">🏆 ${escapeHtml(t.name || 'Toernooi')}</div>
+        <div class="ptc-meta">📍 ${escapeHtml(t.location || '')}${t.location ? ' · ' : ''}${escapeHtml(dates)}</div>
+      </div>
+      <span class="ptc-status">${labels[st] || st}</span>
+      <span class="ptc-go">Bekijken →</span>
+    </div>`;
+  }).join('');
+}
+window._renderProgrammaToernooiCards = _renderProgrammaToernooiCards;
+
+// Hooks (additief): toernooi-kaarten verversen bij navigeren naar/binnen Programma.
+try {
+  ['prog-prev-week','prog-next-week','programma-today-btn'].forEach(id => {
+    const b = document.getElementById(id); if(b) b.addEventListener('click', () => setTimeout(_renderProgrammaToernooiCards, 60));
+  });
+  document.querySelectorAll('[data-view="programma"]').forEach(el => el.addEventListener('click', () => setTimeout(_renderProgrammaToernooiCards, 90)));
+} catch(_){}
+
+// Feature 4 — toetsenbord (← →) en swipe binnen de wedstrijd-modal.
+try {
+  document.addEventListener('keydown', e => {
+    const bd = document.getElementById('toern-match-backdrop');
+    if(!bd || bd.style.display !== 'flex') return;
+    if(e.key === 'ArrowLeft') navMatch(-1);
+    else if(e.key === 'ArrowRight') navMatch(1);
+  });
+  const _mbd = document.getElementById('toern-match-backdrop');
+  if(_mbd){
+    let _x0 = null;
+    _mbd.addEventListener('touchstart', e => { _x0 = e.touches && e.touches[0] ? e.touches[0].clientX : null; }, { passive: true });
+    _mbd.addEventListener('touchend', e => {
+      if(_x0 == null) return;
+      const x1 = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : _x0;
+      const dx = x1 - _x0; _x0 = null;
+      if(Math.abs(dx) > 60) navMatch(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  }
 } catch(_){}

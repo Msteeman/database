@@ -11649,3 +11649,18 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
   transition: background .15s, border-color .15s, color .15s;
 }
 .cond-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ===== Bug D — bundeling donker thema + betere layout ===== */
+#toern-summ-backdrop .toern-modal { background: var(--panel, #0b0f15); color: var(--text); }
+#toern-summ-backdrop .toern-modal-body { background: var(--panel, #0b0f15); }
+.toern-summ-obs-block { background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+.toern-summ-obs-match { font-size: 12.5px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.bnd-cat { font-size: 12.5px; color: var(--text-2); margin: 4px 0; line-height: 1.5; }
+.bnd-cat-label { font-weight: 700; color: var(--text-3); text-transform: uppercase; font-size: 10.5px; letter-spacing: .04em; margin-right: 4px; }
+.toern-summ-obs-text { width: 100%; min-height: 64px; background: var(--bg-input, #0d1018); border: 1px solid var(--border-2, #2d3242); border-radius: 8px; color: var(--text); padding: 9px 11px; font: inherit; font-size: 13px; resize: vertical; margin-top: 6px; }
+.bnd-grade-chips { display: flex; gap: 8px; margin-top: 4px; }
+.bnd-grade-btn { flex: 1; min-height: 42px; border-radius: 10px; cursor: pointer; border: 1px solid var(--border); background: var(--bg-2); color: var(--text-2); font-size: 15px; font-weight: 800; transition: background .15s, color .15s, border-color .15s; }
+.bnd-grade-btn.active.grade-A { background: var(--grade-a, #22c55e); border-color: var(--grade-a, #22c55e); color: #06210f; }
+.bnd-grade-btn.active.grade-B { background: var(--grade-b, #84cc16); border-color: var(--grade-b, #84cc16); color: #0f1a06; }
+.bnd-grade-btn.active.grade-C { background: var(--grade-c, #f59e0b); border-color: var(--grade-c, #f59e0b); color: #1a1206; }
+.bnd-grade-btn.active.grade-D { background: var(--grade-d, #ef4444); border-color: var(--grade-d, #ef4444); color: #2a0a0a; }

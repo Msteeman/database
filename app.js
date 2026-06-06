@@ -10670,7 +10670,10 @@ function _shOpenEditModal(m){
 
   const _cacheSpelers = (typeof loadPlayers === 'function' ? loadPlayers() : []).filter(p => {
     if(!p || !p.id) return false;
-    if(p.fromTournamentId) return false;   // gescheiden werelden: toernooi-spelers niet in reguliere wedstrijd
+    // Bug C: toernooi-export-concepten WEL tonen in hun eigen entry (date+thuis matcht
+    // de wedstrijd al). Alleen blokkeren als er geen thuis is om op te scopen
+    // (voorkomt het cross-match-lek zonder de bewerk-/indien-functie te blokkeren).
+    if(p.fromTournamentId && !((p.wedstrijd && p.wedstrijd.thuis) || p.wedstrijd_thuis)) return false;
     const wd = p.wedstrijd || {};
     const pdatum = wd.datum || p.wedstrijd_datum || '';
     const pthuis = (wd.thuis || p.wedstrijd_thuis || '').toLowerCase().trim();
@@ -15432,11 +15435,14 @@ function aggregateMatches(players){
     if(!datum || (!thuis && !uit)) return;
     const ageHome = extractAge(thuis);
     const ageAway = extractAge(uit);
-    const age = ageHome || ageAway || '';
+    const lftFlat = (w.leeftijd || p.wedstrijd_leeftijd || '').trim();
+    const age = ageHome || ageAway || lftFlat || '';
+    const isToern = !!(w.toernooi || p.fromTournamentId);
     const key = [datum, thuis.toLowerCase(), uit.toLowerCase()].join('|');
     if(!map.has(key)){
       map.set(key, {
         datum, thuis, uit, age,
+        toernooi: isToern, toernooi_naam: (w.toernooi_naam || p.bron || ''),
         uitslag: (w.uitslag || '').trim(),
         opstelling: (w.opstelling || ''),
         players: []
@@ -15445,6 +15451,7 @@ function aggregateMatches(players){
     const entry = map.get(key);
     if(!entry.uitslag && (w.uitslag||'').trim()) entry.uitslag = w.uitslag.trim();
     if(!entry.age && age) entry.age = age;
+    if(isToern){ entry.toernooi = true; if(!entry.toernooi_naam) entry.toernooi_naam = (w.toernooi_naam || p.bron || ''); }
     // Dedupliceer op id
     if(!entry.players.some(x => x.id === p.id)){
       entry.players.push({
@@ -15880,10 +15887,12 @@ function renderMatches(){
           </div>
           <div class="match-teams match-toggle">
             <div class="match-teams-row">
-              <span class="match-team-home">${thuisClean}</span>
+              ${m.toernooi
+                ? `<span class="match-team-home">🏆 ${escapeHtml(m.toernooi_naam||'Toernooi')} — ${thuisClean}${m.age?` · ${escapeHtml(m.age)}`:''}</span>`
+                : `<span class="match-team-home">${thuisClean}</span>
               ${scoreHtml}
               <span class="match-team-away">${uitClean}</span>
-              ${ageBadge}
+              ${ageBadge}`}
               ${chevron}
             </div>
             <div class="match-meta">
@@ -22661,7 +22670,16 @@ async function openBundelingDetail(tid, summaryId){
 
   // Eindoordeel
   const gradeEl = document.getElementById('toern-summ-grade');
-  if(gradeEl) gradeEl.value = summ.overallGrade || '';
+  if(gradeEl){
+    gradeEl.value = summ.overallGrade || '';
+    gradeEl.style.display = 'none';
+    const gw = gradeEl.parentElement;
+    if(gw){
+      let chips = document.getElementById('toern-summ-grade-chips');
+      if(!chips){ chips = document.createElement('div'); chips.id = 'toern-summ-grade-chips'; chips.className = 'bnd-grade-chips'; gw.appendChild(chips); }
+      chips.innerHTML = ['A','B','C','D'].map(g => `<button type="button" class="bnd-grade-btn grade-${g} ${gradeEl.value===g?'active':''}" data-g="${g}" onclick="_bndSetGrade('${g}')">${g}</button>`).join('');
+    }
+  }
 
   // Observaties per dag
   const obsWrap = document.getElementById('toern-summ-obs');
@@ -22685,16 +22703,35 @@ async function openBundelingDetail(tid, summaryId){
         const match = matchSnap.exists() ? matchSnap.data() : null;
         const matchLabel = match ? `${match.teamAName||'?'} – ${match.teamBName||'?'}` : 'Wedstrijd';
         const editedMark = obs.editHistory && obs.editHistory.length ? ' <span class="toern-edited-mark" title="Bewerkt na afsluiting">✏️</span>' : '';
+        const _meta = match ? [ _toernMatchClock(match), _toernFieldLabel(match.field), match.categoryId||'' ].filter(Boolean).join(' · ') : '';
+        const _ctx = match ? `🏟️ ${match.teamAName||'?'} – ${match.teamBName||'?'}${_meta ? ' · ' + _meta : ''}` : matchLabel;
+        const _tbc = {};
+        (obs.tags||[]).forEach(t => { const c = String(t.category||'').toLowerCase(); if(!c || !t.label) return; (_tbc[c] = _tbc[c] || []).push(`${t.rating==='good'?'🟢':t.rating==='average'?'🟠':'🔴'} ${t.label}`); });
+        const _tagsHtml = Object.keys(_tbc).map(c => `<div class="bnd-cat"><span class="bnd-cat-label">${escapeHtml(c.toUpperCase())}</span> ${escapeHtml(_tbc[c].join('  '))}</div>`).join('');
         html += `<div class="toern-summ-obs-block">
-          <div class="toern-summ-obs-match">${escapeHtml(matchLabel)}${editedMark}</div>
-          <textarea class="toern-summ-obs-text" data-obs-id="${obsId}" rows="3">${escapeHtml(obs.text||'')}</textarea>
-          <div class="toern-summ-obs-grade">Oordeel: <select data-obs-grade="${obsId}">
-            <option value="">—</option>
-            ${['A','B+','B','C+','C','D'].map(g=>`<option ${obs.grade===g?'selected':''} value="${g}">${g}</option>`).join('')}
-          </select></div>
+          <div class="toern-summ-obs-match">${escapeHtml(_ctx)}${editedMark}</div>
+          ${_tagsHtml}
+          <textarea class="toern-summ-obs-text" data-obs-id="${obsId}" rows="3" placeholder="Notitie bij deze wedstrijd...">${escapeHtml(obs.text||'')}</textarea>
         </div>`;
       }
       html += '</div>';
+    }
+    // Samenvatting: alle tags gecombineerd met verdeling
+    const _agg = {};
+    allObs.forEach(o => (o.tags||[]).forEach(t => {
+      const c = String(t.category||'').toLowerCase(); if(!c || !t.label) return;
+      _agg[c] = _agg[c] || {}; _agg[c][t.label] = _agg[c][t.label] || { good:0, average:0, poor:0 };
+      if(t.rating==='good') _agg[c][t.label].good++; else if(t.rating==='average') _agg[c][t.label].average++; else if(t.rating==='poor') _agg[c][t.label].poor++;
+    }));
+    const _sumCats = Object.keys(_agg);
+    if(_sumCats.length){
+      let _sum = '<div class="toern-summ-day"><div class="toern-summ-day-label">Samenvatting tags</div>';
+      _sumCats.forEach(c => {
+        const parts = Object.keys(_agg[c]).map(lab => { const a=_agg[c][lab]; const tot=a.good+a.average+a.poor; const dom=(a.good>=a.average&&a.good>=a.poor)?'🟢':(a.average>=a.poor?'🟠':'🔴'); return `${dom} ${lab} (${tot})`; });
+        _sum += `<div class="bnd-cat"><span class="bnd-cat-label">${escapeHtml(c.toUpperCase())}</span> ${escapeHtml(parts.join('  '))}</div>`;
+      });
+      _sum += '</div>';
+      html += _sum;
     }
     obsWrap.innerHTML = html || '<div class="toern-empty">Geen observaties</div>';
   }
@@ -25450,11 +25487,12 @@ async function _exportTournamentPlayer(tid, entry, tournament){
   const now = Date.now();
   const tdatum = tournament.startDate || todayISO();
   const club = entry.club || '';
+  const age = _toernAgeLabel(tournament) || entry.categoryId || '';
   const base = {
-    id, naam: entry.naam || 'Onbekend', club, positie: entry.position || '', elftal: entry.categoryId || '',
+    id, naam: entry.naam || 'Onbekend', club, positie: entry.position || '', elftal: age,
     huidig_niveau: grade, potentieel_niveau: '', advies: '',
-    wedstrijd: { datum: tdatum, thuis: club, uit: '', leeftijd: entry.categoryId || '', plaats: tournament.location || '', sportpark: '' },
-    wedstrijd_datum: tdatum, wedstrijd_thuis: club, wedstrijd_uit: '', wedstrijd_leeftijd: entry.categoryId || '',
+    wedstrijd: { datum: tdatum, thuis: club, uit: '', leeftijd: age, plaats: tournament.location || '', sportpark: '', toernooi: true, toernooi_naam: tournament.name || '' },
+    wedstrijd_datum: tdatum, wedstrijd_thuis: club, wedstrijd_uit: '', wedstrijd_leeftijd: age,
     fromTournamentId: tid, bron: tournament.name || '',
     created: now, modified: now,
     scout: (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.displayName || currentUser.email || '') : ''
@@ -25896,3 +25934,21 @@ async function shareObservation(tid, matchId, tpId){
   } catch(e){ console.error('shareObservation error:', e); toast('Delen niet beschikbaar', true); }
 }
 window.shareObservation = shareObservation;
+
+
+/* Bug A — leeftijdscategorie afleiden uit het toernooi (categories[] of naam). */
+function _toernAgeLabel(t){
+  if(!t) return '';
+  const src = ((Array.isArray(t.categories) ? t.categories.join(' ') : '') + ' ' + (t.name || ''));
+  const m = src.match(/[UO]\s?\.?\s?-?\s?(\d{1,2})/i);
+  return m ? ('O' + m[1]) : '';
+}
+
+
+/* Bug D — eindoordeel-chips in de bundeling (synct met #toern-summ-grade). */
+function _bndSetGrade(g){
+  const sel = document.getElementById('toern-summ-grade');
+  if(sel) sel.value = g;
+  document.querySelectorAll('#toern-summ-grade-chips .bnd-grade-btn').forEach(b => b.classList.toggle('active', b.dataset.g === g));
+}
+window._bndSetGrade = _bndSetGrade;

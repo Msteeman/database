@@ -21607,6 +21607,17 @@ function tuid(prefix='t'){
   return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
 }
 
+// Placeholder-speler herkennen: de import maakt per team één markeerspeler
+// "Speler — <Teamnaam>" (geen playerId) zodat de scout direct kan toevoegen.
+// Deze placeholders mogen NIET als echte spelers worden getoond.
+function isPlaceholderTournamentPlayer(tp){
+  if(!tp || typeof tp !== 'object') return false;
+  if(tp.playerId) return false;                 // gekoppeld aan DB-profiel = echt
+  const nm = String(tp.quickName == null ? '' : tp.quickName).trim();
+  return /^Speler\s*[—–-]\s*\S/.test(nm);        // "Speler — Teamnaam"
+}
+window.isPlaceholderTournamentPlayer = isPlaceholderTournamentPlayer;
+
 // ── Subscribe tournaments (top-level lijst) ─────────────────────
 function subscribeTournaments(){
   if(unsubTournaments) return;
@@ -21673,6 +21684,46 @@ async function deleteTournament(id){
   try { await deleteDoc(tournDoc(id)); }
   catch(e){ toast('Verwijderen mislukt', true); setSync('offline'); throw e; }
 }
+
+// Recursief verwijderen: alle subcollecties van DIT toernooi + het doc zelf.
+// Raakt uitsluitend het geselecteerde toernooi (users/{uid}/tournaments/{id}/...).
+async function deleteTournamentDeep(id){
+  setSync('syncing');
+  const subs = ['matchPlayers', 'observations', 'summaries', 'players', 'matches', 'days', 'teams'];
+  try {
+    for(const sub of subs){
+      const snap = await getDocs(tournSubCol(id, sub));
+      const ids = snap.docs.map(d => d.id);
+      // In brokjes verwijderen zodat grote toernooien niet vastlopen
+      for(let i = 0; i < ids.length; i += 20){
+        await Promise.all(ids.slice(i, i + 20).map(docId => deleteDoc(tournSubDoc(id, sub, docId))));
+      }
+    }
+    await deleteDoc(tournDoc(id));
+    setSync('ok');
+  } catch(e){
+    console.error('deleteTournamentDeep error:', e);
+    toast('Verwijderen mislukt: ' + (e.message || e), true);
+    setSync('offline');
+    throw e;
+  }
+}
+window.deleteTournamentDeep = deleteTournamentDeep;
+
+// Bevestig + verwijder het huidige toernooi vanuit het detailscherm.
+async function confirmDeleteTournament(id){
+  id = id || _currentTournamentId || (typeof window !== 'undefined' ? window._currentTournamentId : null);
+  if(!id){ toast('Geen toernooi geselecteerd', true); return; }
+  const t = tourmCache.find(x => x.id === id);
+  const naam = t ? (t.name || 'dit toernooi') : 'dit toernooi';
+  if(!confirm(`Weet je zeker dat je "${naam}" wilt verwijderen?\n\nAlle teams, wedstrijden, observaties en rapporten worden verwijderd. Dit kan niet ongedaan worden gemaakt.`)) return;
+  try {
+    await deleteTournamentDeep(id);
+    toast('Toernooi verwijderd');
+    backToTournamentList();
+  } catch(_){ /* fout al getoast */ }
+}
+window.confirmDeleteTournament = confirmDeleteTournament;
 
 // ── Days ─────────────────────────────────────────────────────────
 async function saveDay(tid, day){
@@ -21776,6 +21827,27 @@ async function addMatch(tid, { dayId, startTime='', durationMinutes=25, field=''
 async function updateMatchStatus(tid, matchId, status){
   await setDoc(tournSubDoc(tid, 'matches', matchId), { status }, { merge: true });
 }
+window.updateMatchStatus = updateMatchStatus;
+
+// Scout-keuze "Bekijken / Optioneel / Niet haalbaar" → watchStatus op de match.
+// Additief veld; raakt geen scout-data. Schrijft, wacht, en ververst daarna de
+// modal-knoppen én de indicator in het programma (geen race meer).
+async function setMatchWatchStatus(tid, matchId, status){
+  tid = tid || _currentTournamentId;
+  if(!['watch','optional','skip'].includes(status)) return;
+  try {
+    await setDoc(tournSubDoc(tid, 'matches', matchId), { watchStatus: status }, { merge: true });
+  } catch(e){
+    console.error('setMatchWatchStatus error:', e);
+    toast('Status opslaan mislukt', true);
+    return;
+  }
+  // Modal opnieuw opbouwen zodat de actieve knop klopt
+  if(typeof openMatchDetail === 'function') await openMatchDetail(tid, matchId);
+  // Programma-indicator bijwerken
+  if(_currentTournamentId === tid && _toernTab === 'tijdlijn') renderTijdlijnTab(tid);
+}
+window.setMatchWatchStatus = setMatchWatchStatus;
 
 // ── TournamentPlayer ──────────────────────────────────────────────
 async function saveTournamentPlayer(tid, tp){
@@ -22264,12 +22336,14 @@ async function openMatchDetail(tid, matchId){
     match.categoryId || ''
   ].filter(Boolean).join(' · ');
 
-  // Status knoppen
+  // Status knoppen — scout-keuze (watchStatus). Standaard géén selectie.
   const statusWrap = document.getElementById('toern-match-status');
   if(statusWrap){
+    const cur = match.watchStatus;
+    const labels = { watch:'✅ Bekijken', optional:'🔶 Optioneel', skip:'❌ Niet haalbaar' };
     statusWrap.innerHTML = ['watch','optional','skip'].map(s => `
-      <button class="toern-status-btn ${match.status===s?'active':''}" onclick="updateMatchStatus('${tid}','${matchId}','${s}'); openMatchDetail('${tid}','${matchId}')">
-        ${s==='watch'?'✅ Bekijken':s==='optional'?'🔶 Optioneel':'❌ Niet haalbaar'}
+      <button class="toern-status-btn toern-status-${s} ${cur===s?'active':''}" data-st="${s}" onclick="setMatchWatchStatus('${tid}','${matchId}','${s}')">
+        ${labels[s]}
       </button>`).join('');
   }
 
@@ -22281,13 +22355,18 @@ async function openMatchDetail(tid, matchId){
       : `<span class="toern-badge toern-badge-open">Dag open</span>`;
   }
 
-  // Spelers lijst
+  // Spelers lijst — toon ALLEEN echte, door de scout gekoppelde spelers.
+  // Placeholder-spelers ("Speler — Teamnaam") uit de import worden uitgefilterd.
   const lijst = document.getElementById('toern-match-players');
   if(lijst){
-    if(mpList.length === 0){
-      lijst.innerHTML = '<div class="toern-empty">Geen spelers gekoppeld</div>';
+    const realMp = mpList.filter(mp => {
+      const tp = tpCache[mp.tournamentPlayerId];
+      return tp && !isPlaceholderTournamentPlayer(tp);
+    });
+    if(realMp.length === 0){
+      lijst.innerHTML = '<div class="toern-empty">Nog geen spelers gekoppeld aan deze wedstrijd</div>';
     } else {
-      lijst.innerHTML = mpList.map(mp => {
+      lijst.innerHTML = realMp.map(mp => {
         const tp = tpCache[mp.tournamentPlayerId];
         if(!tp) return '';
         const naam = tp.quickName || (tp.playerId ? '(speler uit database)' : 'Onbekend');
@@ -22581,10 +22660,15 @@ async function saveBundelingEdits(tid, summaryId){
 }
 window.saveBundelingEdits = saveBundelingEdits;
 
-// ── Spelers tab ────────────────────────────────────────────────────
+// ── Spelers tab — toont CLUBS (teams), niet de placeholder-spelers ──
+// Klik op een club → detailweergave met de echte, gekoppelde spelers van dat
+// team + de "+ Speler koppelen"-knop voor dat team.
+let _toernSpelersTeamId = null; // null = clublijst; anders team-detail
+
 async function renderSpelersTab(tid){
   const wrap = document.getElementById('toern-spelers-wrap');
   if(!wrap) return;
+  if(_toernSpelersTeamId){ return renderTournamentTeamDetail(tid, _toernSpelersTeamId); }
   wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
 
   const [playersSnap, teamsSnap] = await Promise.all([
@@ -22592,36 +22676,102 @@ async function renderSpelersTab(tid){
     getDocs(tournSubCol(tid, 'teams'))
   ]);
   const players = playersSnap.docs.map(d => ({...d.data(), id: d.id}));
-  const teams = teamsSnap.docs.map(d => ({...d.data(), id: d.id}));
-  const teamsById = {};
-  teams.forEach(t => { teamsById[t.id] = t; });
+  const teams = teamsSnap.docs.map(d => ({...d.data(), id: d.id}))
+    .sort((a,b) => String(a.name||'').localeCompare(String(b.name||'')));
 
-  if(players.length === 0){
-    wrap.innerHTML = '<div class="toern-empty">Nog geen spelers gekoppeld</div>';
+  // Echte (niet-placeholder) spelers per team tellen
+  const realByTeam = {};
+  players.forEach(tp => {
+    if(isPlaceholderTournamentPlayer(tp)) return;
+    const k = tp.teamId || '';
+    (realByTeam[k] = realByTeam[k] || []).push(tp);
+  });
+
+  if(teams.length === 0){
+    wrap.innerHTML = '<div class="toern-empty">Nog geen clubs in dit toernooi.</div>';
+    return;
+  }
+
+  wrap.innerHTML = `<div class="toern-club-grid">` + teams.map(t => {
+    const n = (realByTeam[t.id] || []).length;
+    const sub = n ? `${n} speler${n!==1?'s':''} gekoppeld` : 'Nog geen spelers gekoppeld';
+    return `<div class="toern-club-card" onclick="openTournamentTeamDetail('${tid}','${t.id}')">
+      <div class="toern-club-avatar">${initials(t.name||'?')}</div>
+      <div class="toern-club-info">
+        <div class="toern-club-name">${escapeHtml(t.name||'?')}</div>
+        <div class="toern-club-meta">${sub}</div>
+      </div>
+      <span class="toern-club-arrow" aria-hidden="true">›</span>
+    </div>`;
+  }).join('') + `</div>`;
+}
+
+// Detailweergave van één club: echte gekoppelde spelers + koppel-knop.
+async function openTournamentTeamDetail(tid, teamId){
+  _toernSpelersTeamId = teamId;
+  await renderTournamentTeamDetail(tid, teamId);
+}
+window.openTournamentTeamDetail = openTournamentTeamDetail;
+
+async function renderTournamentTeamDetail(tid, teamId){
+  const wrap = document.getElementById('toern-spelers-wrap');
+  if(!wrap) return;
+  wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
+  const [teamSnap, playersSnap] = await Promise.all([
+    getDoc(tournSubDoc(tid, 'teams', teamId)),
+    getDocs(query(tournSubCol(tid, 'players'), where('teamId','==',teamId)))
+  ]);
+  const team = teamSnap.exists() ? { ...teamSnap.data(), id: teamSnap.id } : { name: '?' };
+  const roster = playersSnap.docs.map(d => ({...d.data(), id: d.id}))
+    .filter(tp => !isPlaceholderTournamentPlayer(tp));
+
+  let listHtml;
+  if(roster.length === 0){
+    listHtml = '<div class="toern-empty toern-empty-sm">Nog geen spelers gekoppeld aan deze club</div>';
   } else {
-    wrap.innerHTML = players.map(tp => {
+    listHtml = roster.map(tp => {
       const naam = tp.quickName || (tp.playerId ? 'Speler uit database' : '?');
-      const team = teamsById[tp.teamId];
-      const teamLabel = team ? team.name : (tp.teamId || 'Geen team');
       const badge = tp.type === 'spotted' ? '<span class="toern-badge toern-badge-spotted">Opgevallen</span>' : '<span class="toern-badge toern-badge-linked">Gekoppeld</span>';
       const mergeWarn = tp.mergeStatus === 'unlinked' ? '<div class="toern-merge-warn">⚠️ Niet gekoppeld aan spelersprofiel</div>' : '';
       return `<div class="toern-speler-row">
         <div class="toern-player-avatar">${initials(naam)}</div>
         <div class="toern-speler-info">
           <div class="toern-player-name">${escapeHtml(naam)}${tp.quickNumber?' #'+tp.quickNumber:''}</div>
-          <div class="toern-player-meta">${escapeHtml(teamLabel)} · ${badge}</div>
+          <div class="toern-player-meta">${badge}</div>
           ${mergeWarn}
         </div>
       </div>`;
     }).join('');
   }
+
+  wrap.innerHTML = `
+    <div class="toern-team-detail-head">
+      <button class="btn btn-ghost btn-sm" onclick="backToTournamentClubs('${tid}')">← Clubs</button>
+      <div class="toern-team-detail-title">${escapeHtml(team.name||'?')}</div>
+      <button class="btn btn-primary btn-sm" onclick="showAddPlayerForm('${tid}','${teamId}')">+ Speler koppelen</button>
+    </div>
+    <div class="toern-team-detail-list">${listHtml}</div>`;
 }
+window.renderTournamentTeamDetail = renderTournamentTeamDetail;
+
+function backToTournamentClubs(tid){
+  _toernSpelersTeamId = null;
+  renderSpelersTab(tid || _currentTournamentId);
+}
+window.backToTournamentClubs = backToTournamentClubs;
 
 // ── Toernooi-overzicht scherm ─────────────────────────────────────
 let _toernTab = 'tijdlijn';
+let _progWatchFilter = 'all'; // programma prio-filter: all | watch | optional | skip
 
 async function renderToernooiDetail(tid){
   _currentTournamentId = tid;
+  // Houd de globale spiegel in sync zodat inline onclick-handlers in de actiebalk
+  // (Toernooiregels / Reglement / Sync / Verwijder) altijd een geldig id hebben.
+  if(typeof window !== 'undefined') window._currentTournamentId = tid;
+  // Reset view-state zodat keuzes van een ánder toernooi niet doorlekken
+  _toernSpelersTeamId = null;
+  _progWatchFilter = 'all';
   const tournament = tourmCache.find(t => t.id === tid);
   if(!tournament){ toast('Toernooi niet gevonden', true); return; }
 
@@ -22682,10 +22832,40 @@ async function renderTijdlijnTab(tid){
     return;
   }
 
-  const statusIcon = { watch:'🟢', optional:'🟠', skip:'⚫' };
-  let html = '';
+  // Normaliseer watchStatus → 'watch' | 'optional' | 'skip' | 'none'
+  const wsOf = m => (m.watchStatus === 'watch' || m.watchStatus === 'optional' || m.watchStatus === 'skip') ? m.watchStatus : 'none';
+  // Sorteervolgorde binnen een tijdslot (DEEL D): watch → optional → none → skip
+  const wsRank = { watch: 0, optional: 1, none: 2, skip: 3 };
+
+  // DEEL C: tellers over ALLE wedstrijden (ongeacht actief filter)
+  const counts = { watch: 0, optional: 0, skip: 0, none: 0 };
+  matches.forEach(m => { counts[wsOf(m)]++; });
+
+  const f = _progWatchFilter;
+  const filterBtn = (val, label, cls) =>
+    `<button class="toern-prio-btn ${cls||''} ${f===val?'active':''}" onclick="setProgWatchFilter('${tid}','${val}')">${label}</button>`;
+  let html = `<div class="toern-prog-filterbar">
+      <div class="toern-prog-filters">
+        ${filterBtn('all','Alle','')}
+        ${filterBtn('watch','🟢 Bekijken','prio-watch')}
+        ${filterBtn('optional','🟠 Optioneel','prio-optional')}
+        ${filterBtn('skip','🔴 Niet haalbaar','prio-skip')}
+      </div>
+      <div class="toern-prog-counts">🟢 ${counts.watch} bekijken &nbsp;·&nbsp; 🟠 ${counts.optional} optioneel &nbsp;·&nbsp; 🔴 ${counts.skip} overslaan &nbsp;·&nbsp; ⚪ ${counts.none} geen keuze</div>
+    </div>`;
+
   for(const day of days){
-    const dayMatches = matches.filter(m => m.dayId === day.id);
+    // Filter (DEEL C) + sorteer op tijd, daarna op prio binnen het tijdslot (DEEL D)
+    let dayMatches = matches.filter(m => m.dayId === day.id);
+    if(f !== 'all') dayMatches = dayMatches.filter(m => wsOf(m) === f);
+    dayMatches.sort((a,b) => {
+      const ta = String(a.startTime||''), tb = String(b.startTime||'');
+      if(ta !== tb) return ta.localeCompare(tb);
+      return (wsRank[wsOf(a)] - wsRank[wsOf(b)]);
+    });
+    // Onder een actief filter lege dagen overslaan (rust in de lijst)
+    if(f !== 'all' && dayMatches.length === 0) continue;
+
     const closedBadge = day.closedAt
       ? `<span class="toern-badge toern-badge-closed">Afgesloten</span>
          <button class="btn btn-xs" onclick="confirmReopenDay('${tid}','${day.id}')">Heropenen</button>`
@@ -22694,34 +22874,55 @@ async function renderTijdlijnTab(tid){
       <div class="toern-day-header">
         <span class="toern-day-label">${escapeHtml(day.label)} — ${formatDate(day.date)}</span>
         <div class="toern-day-actions">${closedBadge}</div>
-      </div>
-      <div class="toern-match-list">`;
+      </div>`;
     if(dayMatches.length === 0){
-      html += '<div class="toern-empty toern-empty-sm">Geen wedstrijden voor deze dag</div>';
+      html += '<div class="toern-prog-list"><div class="toern-empty toern-empty-sm">Geen wedstrijden voor deze dag</div></div>';
     } else {
-      html += dayMatches.map(m => {
+      // Strakke kolom-tabel: [indicator] Tijd | Wedstrijd | Veld | Poule
+      const rows = dayMatches.map(m => {
         const time = m.startTime ? m.startTime.slice(11,16) : '—';
         const endTime = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
         const timeLabel = endTime ? `${time}–${endTime}` : time;
         const field = m.field ? 'Veld ' + m.field : '';
+        const poule = m.categoryId || '';
         const scoreBadge = (typeof tournamentScoreBadge === 'function') ? tournamentScoreBadge(m) : '';
-        return `<div class="toern-match-row toern-match-status-${m.status}" onclick="openMatchDetail('${tid}','${m.id}')">
-          <span class="toern-match-icon">${statusIcon[m.status]||'⚪'}</span>
-          <span class="toern-match-time">${timeLabel}</span>
-          <span class="toern-match-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>
-          <span class="toern-match-score" onclick="event.stopPropagation();promptManualScore('${tid}','${m.id}')" title="Uitslag invoeren/bewerken" style="cursor:pointer;">${scoreBadge}</span>
-          <span class="toern-match-field">${escapeHtml(field)}</span>
-          <span class="toern-match-cat">${escapeHtml(m.categoryId||'')}</span>
+        // Indicator (DEEL B) als EERSTE element, vóór de tijd. Géén keuze = grijs.
+        const ws = wsOf(m);
+        const dot = ws === 'optional'
+          ? '<span class="tp-dot tp-dot-optional" aria-hidden="true">?</span>'
+          : `<span class="tp-dot tp-dot-${ws}" aria-hidden="true"></span>`;
+        return `<div class="toern-prog-row toern-watch-${ws}" onclick="openMatchDetail('${tid}','${m.id}')">
+          <span class="tp-ind">${dot}</span>
+          <span class="tp-time" data-col="Tijd">${escapeHtml(timeLabel)}</span>
+          <span class="tp-match" data-col="Wedstrijd">
+            <span class="tp-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>
+            <span class="tp-score" onclick="event.stopPropagation();promptManualScore('${tid}','${m.id}')" title="Uitslag invoeren/bewerken">${scoreBadge}</span>
+          </span>
+          <span class="tp-field" data-col="Veld">${escapeHtml(field)}</span>
+          <span class="tp-poule" data-col="Poule">${escapeHtml(poule)}</span>
         </div>`;
       }).join('');
+      html += `<div class="toern-prog-table">
+        <div class="toern-prog-head">
+          <span class="tp-ind"></span><span>Tijd</span><span>Wedstrijd</span><span>Veld</span><span>Poule</span>
+        </div>
+        ${rows}
+      </div>`;
     }
-    html += `</div>
-      <button class="btn btn-xs toern-add-match-btn" onclick="showAddMatchForm('${tid}','${day.id}')">+ Wedstrijd toevoegen</button>
+    html += `<button class="btn btn-xs toern-add-match-btn" onclick="showAddMatchForm('${tid}','${day.id}')">+ Wedstrijd toevoegen</button>
     </div>`;
   }
   html += `<button class="btn btn-sm toern-add-day-btn" onclick="showAddDayForm('${tid}')">+ Dag toevoegen</button>`;
   wrap.innerHTML = html;
 }
+
+// DEEL C: client-side prio-filter voor het programma. Bewaart de keuze en
+// hertekent de lijst — geen extra Firestore-queries.
+function setProgWatchFilter(tid, f){
+  _progWatchFilter = ['all','watch','optional','skip'].includes(f) ? f : 'all';
+  renderTijdlijnTab(tid || _currentTournamentId);
+}
+window.setProgWatchFilter = setProgWatchFilter;
 
 // ── Formulieren (inlijn, geen popup) ──────────────────────────────
 function showAddDayForm(tid){
@@ -22841,10 +23042,11 @@ async function submitAddMatch(tid, dayId, hasTeamDropdowns){
 }
 window.submitAddMatch = submitAddMatch;
 
-async function showAddPlayerForm(tid){
+async function showAddPlayerForm(tid, preselectTeamId){
+  tid = tid || _currentTournamentId;
   const teamsSnap = await getDocs(tournSubCol(tid, 'teams'));
   const teams = teamsSnap.docs.map(d => ({...d.data(), id: d.id}));
-  const teamOpts = teams.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('') || '<option value="">Geen teams aangemaakt</option>';
+  const teamOpts = teams.map(t => `<option value="${t.id}" ${preselectTeamId===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('') || '<option value="">Geen teams aangemaakt</option>';
   const wrap = document.getElementById('toern-spelers-wrap');
   if(!wrap) return;
   document.querySelectorAll('.toern-inline-form').forEach(f => f.remove());
@@ -23576,7 +23778,7 @@ async function openTournamentRulesModal(tid){
 
   _toernOpenOverlay(`
     <h3 style="margin:0 0 4px;">Toernooiregels — ${escapeHtml(t.name || '')}</h3>
-    <p style="margin:0 0 14px;font-size:12px;color:var(--muted,#888);">Speeltijd per categorie. Eindtijden in de tijdlijn en de observatie-timer gebruiken deze waarden.</p>
+    <p style="margin:0 0 14px;font-size:12px;color:var(--muted,#888);">Speeltijd per categorie. Eindtijden in het programma en de observatie-timer gebruiken deze waarden.</p>
     <div id="toern-rules-form">${rowHtml}</div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
       <button class="btn btn-sm" onclick="_toernCloseOverlay()">Annuleren</button>
@@ -23785,7 +23987,7 @@ async function syncTournamentScores(tid){
   if(!t){ toast('Toernooi niet gevonden', true); return; }
   const tournifyUrl = t.tournifyUrl || (t.tournifyId ? `https://tournifyapp.com/live/${encodeURIComponent(t.tournifyId)}` : '');
   if(!tournifyUrl){
-    if(statusEl) statusEl.textContent = 'Handmatig toernooi — voer uitslagen in via de tijdlijn (tik op de score).';
+    if(statusEl) statusEl.textContent = 'Handmatig toernooi — voer uitslagen in via het programma (tik op de score).';
     toast('Geen Tournify-bron — gebruik handmatige uitslagen', true);
     return;
   }
@@ -23945,23 +24147,38 @@ async function renderStandenTab(tid){
   wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
   const t = tourmCache.find(x => x.id === tid) || {};
 
+  // Wedstrijden altijd laden om te bepalen of er écht iets gespeeld is.
+  let matches = [];
+  try {
+    const snap = await getDocs(tournSubCol(tid, 'matches'));
+    matches = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+  } catch(_){}
+
+  // "Gespeeld" = afgefloten (resultStatus finished) OF een score die niet 0-0 is.
+  // Een 0-0 met resultStatus 'finished' is een echt resultaat en telt dus WEL mee.
+  const isPlayed = m => {
+    const rs = String(m.resultStatus || '').toLowerCase();
+    if(rs === 'finished') return true;
+    const sh = m.scoreHome, sa = m.scoreAway;
+    return sh != null && sa != null && (Number(sh) !== 0 || Number(sa) !== 0);
+  };
+  if(!matches.some(isPlayed)){
+    wrap.innerHTML = '<div class="toern-empty">Nog geen uitslagen beschikbaar.</div>';
+    return;
+  }
+
   let standings = (t.standings && Object.keys(t.standings).length) ? t.standings : null;
   let sourceNote;
   if(standings){
     sourceNote = t.lastSyncedAt ? `Gesynchroniseerd vanaf Tournify` : `Gesynchroniseerd`;
   } else {
-    let matches = [];
-    try {
-      const snap = await getDocs(tournSubCol(tid, 'matches'));
-      matches = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-    } catch(_){}
     standings = computeStandingsFromMatches(matches);
     sourceNote = 'Berekend op basis van ingevoerde uitslagen';
   }
 
   const groupNames = Object.keys(standings);
   if(!groupNames.length){
-    wrap.innerHTML = `<div class="toern-empty">Nog geen standen. Voer uitslagen in via de tijdlijn of gebruik <button class="btn btn-xs" onclick="syncTournamentScores('${tid}')">Synchroniseren</button>.</div>`;
+    wrap.innerHTML = `<div class="toern-empty">Nog geen standen. Voer uitslagen in via het programma of gebruik <button class="btn btn-xs" onclick="syncTournamentScores('${tid}')">Synchroniseren</button>.</div>`;
     return;
   }
 

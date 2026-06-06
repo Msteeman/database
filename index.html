@@ -2220,15 +2220,16 @@ algemeen:</textarea>
 
           <!-- Toernooi-acties: regels / reglement / sync -->
           <div class="toern-actions" id="toern-detail-actions" style="display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 8px;">
-            <button class="btn btn-ghost btn-sm" id="toern-btn-regels" onclick="openTournamentRulesModal(_currentTournamentId)">⚙️ Toernooiregels</button>
-            <button class="btn btn-ghost btn-sm" id="toern-btn-reglement" onclick="openReglementModal(_currentTournamentId)">📄 Reglement toevoegen</button>
-            <button class="btn btn-ghost btn-sm" id="toern-btn-sync" onclick="syncTournamentScores(_currentTournamentId)">🔄 Uitslagen synchroniseren</button>
+            <button class="btn btn-ghost btn-sm" id="toern-btn-regels" onclick="openTournamentRulesModal()">⚙️ Toernooiregels</button>
+            <button class="btn btn-ghost btn-sm" id="toern-btn-reglement" onclick="openReglementModal()">📄 Reglement toevoegen</button>
+            <button class="btn btn-ghost btn-sm" id="toern-btn-sync" onclick="syncTournamentScores()">🔄 Uitslagen synchroniseren</button>
+            <button class="btn btn-ghost btn-sm toern-btn-delete" id="toern-btn-delete" onclick="confirmDeleteTournament()" title="Verwijder dit toernooi">🗑️ Verwijder toernooi</button>
             <span class="toern-sync-status" id="toern-sync-status" style="font-size:12px;color:var(--muted);align-self:center;"></span>
           </div>
 
           <!-- Tabs -->
           <div class="toern-tabs">
-            <button class="toern-tab-btn active" data-tab="tijdlijn" onclick="renderToernooiTab('tijdlijn')">Tijdlijn</button>
+            <button class="toern-tab-btn active" data-tab="tijdlijn" onclick="renderToernooiTab('tijdlijn')" aria-label="Programma">Programma</button>
             <button class="toern-tab-btn" data-tab="spelers" onclick="renderToernooiTab('spelers')">Spelers</button>
             <button class="toern-tab-btn" data-tab="bundeling" onclick="renderToernooiTab('bundeling')">Bundeling</button>
             <button class="toern-tab-btn" data-tab="standen" onclick="renderToernooiTab('standen')">Standen</button>
@@ -2242,7 +2243,7 @@ algemeen:</textarea>
           <!-- Spelers tab -->
           <div class="toern-tab-pane" data-tab="spelers" style="display:none;padding:16px;">
             <div style="display:flex;justify-content:flex-end;margin-bottom:12px;">
-              <button class="btn btn-primary btn-sm" onclick="showAddPlayerForm(_currentTournamentId)">+ Speler koppelen</button>
+              <button class="btn btn-primary btn-sm" onclick="showAddPlayerForm()">+ Speler koppelen</button>
             </div>
             <div id="toern-spelers-wrap"></div>
           </div>

@@ -10880,6 +10880,116 @@ tr.db-row-obs td:first-child {
 .toern-add-match-btn { margin: 10px 16px; }
 .toern-add-day-btn { margin-top: 4px; }
 
+/* ── Programma — prio-filterbalk ──────────────────────────────── */
+.toern-prog-filterbar { padding: 0 4px 12px; }
+.toern-prog-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.toern-prio-btn {
+  background: var(--bg-2); border: 1px solid var(--border);
+  color: var(--text-2); font-size: 12px; font-weight: 600;
+  padding: 6px 11px; border-radius: 999px; cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.toern-prio-btn:hover { border-color: var(--accent); color: var(--text); }
+.toern-prio-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.toern-prio-btn.prio-watch.active    { background: var(--green, #22c55e);  border-color: var(--green, #22c55e);  color: #06210f; }
+.toern-prio-btn.prio-optional.active { background: var(--orange, #f59e0b); border-color: var(--orange, #f59e0b); color: #1a1206; }
+.toern-prio-btn.prio-skip.active     { background: var(--red, #ef4444);    border-color: var(--red, #ef4444);    color: #2a0a0a; }
+.toern-prog-counts { font-size: 11.5px; color: var(--text-3); margin-top: 8px; }
+
+/* ── Programma — strakke kolom-tabel ([ind] Tijd | Wedstrijd | Veld | Poule) ── */
+.toern-prog-table { width: 100%; }
+.toern-prog-head,
+.toern-prog-row {
+  display: grid;
+  grid-template-columns: 20px 84px minmax(0,1fr) 78px 92px;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 16px;
+}
+.tp-ind { display: flex; align-items: center; justify-content: center; }
+.toern-prog-head {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-3); font-weight: 700;
+  border-bottom: 1px solid var(--border); background: var(--bg-2);
+}
+.toern-prog-row {
+  border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background .12s;
+}
+.toern-prog-row:last-child { border-bottom: none; }
+.toern-prog-row:hover { background: var(--panel-2); }
+.toern-prog-row.toern-watch-skip { opacity: .55; }
+.tp-time { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tp-match { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tp-teams {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tp-score { font-size: 11.5px; color: var(--text-3); flex-shrink: 0; cursor: pointer; }
+.tp-field { font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+.tp-poule { font-size: 11.5px; color: var(--accent); font-weight: 600; white-space: nowrap; }
+
+/* Status-indicator (bolletje) — weerspiegelt de scout-keuze (watchStatus) */
+.tp-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  background: #6b7689; /* none = grijs (standaard, geen keuze) */
+}
+.tp-dot-watch    { background: var(--green, #22c55e); }
+.tp-dot-skip     { background: var(--red, #ef4444); }
+.tp-dot-none     { background: #6b7689; }
+.tp-dot-optional {
+  background: var(--orange, #f59e0b);
+  font-size: 8px; line-height: 1; font-weight: 900; color: #1a1206;
+}
+
+/* Responsief: op smal scherm stapelen de kolommen tot een compacte kaart.
+   De indicator blijft links staan, vóór de tijd. */
+@media (max-width: 640px) {
+  .toern-prog-head { display: none; }
+  .toern-prog-row {
+    grid-template-columns: 18px 50px minmax(0,1fr);
+    grid-template-areas:
+      "ind time match"
+      "ind time meta";
+    row-gap: 2px; padding: 10px 14px;
+  }
+  .tp-ind   { grid-area: ind; align-self: start; margin-top: 3px; }
+  .tp-time  { grid-area: time; align-self: start; font-weight: 600; }
+  .tp-match { grid-area: match; }
+  .tp-field { grid-area: meta; }
+  .tp-poule { grid-area: meta; justify-self: end; }
+}
+
+/* ── Spelers-tab: clubkaarten + team-detail ───────────────────── */
+.toern-club-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.toern-club-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.toern-club-card:hover { border-color: var(--accent); background: var(--panel-2); }
+.toern-club-avatar {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; flex-shrink: 0;
+}
+.toern-club-info { flex: 1; min-width: 0; }
+.toern-club-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toern-club-meta { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+.toern-club-arrow { font-size: 20px; color: var(--text-3); flex-shrink: 0; }
+.toern-team-detail-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px; flex-wrap: wrap;
+}
+.toern-team-detail-title { flex: 1; font-size: 15px; font-weight: 700; color: var(--text); min-width: 120px; }
+
+/* ── Verwijder-toernooi knop ──────────────────────────────────── */
+.toern-btn-delete { color: var(--red, #ef4444); border-color: rgba(239,68,68,.35); }
+.toern-btn-delete:hover { background: rgba(239,68,68,.12); border-color: var(--red, #ef4444); color: var(--red, #ef4444); }
+
 /* ── Match status knoppen ─────────────────────────────────────── */
 .toern-status-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .toern-status-btn {
@@ -10891,6 +11001,10 @@ tr.db-row-obs td:first-child {
 }
 .toern-status-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 .toern-status-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+/* Per-status actief-kleur zodat de keuze duidelijk afleesbaar is */
+.toern-status-btn.toern-status-watch.active    { background: var(--green, #22c55e);  border-color: var(--green, #22c55e);  color: #06210f; }
+.toern-status-btn.toern-status-optional.active { background: var(--orange, #f59e0b); border-color: var(--orange, #f59e0b); color: #1a1206; }
+.toern-status-btn.toern-status-skip.active     { background: var(--red, #ef4444);    border-color: var(--red, #ef4444);    color: #2a0a0a; }
 
 /* ── Speler kaartjes in match detail ──────────────────────────── */
 .toern-player-card {

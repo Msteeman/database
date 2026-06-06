@@ -1,6 +1,6 @@
 /* Scouting Platform — Service Worker
    Bump CACHE_VERSION whenever you ship a new index.html so users get the latest. */
-const CACHE_VERSION = 'sh-v198-obs-nooit-kwijt';
+const CACHE_VERSION = 'sh-v199-toernooi-ui';
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-rt`;
 
@@ -80,4 +80,8 @@ self.addEventListener('fetch', (event) => {
         }
         return res;
       }).catch(() => caches.match(req))
+    );
+    return;
+  }
+});
    

@@ -11454,3 +11454,93 @@ body.modal-open {
     overflow-y: auto; -webkit-overflow-scrolling: touch;
   }
 }
+
+/* ================================================================
+   ITT-feedback: tijdsblokken, matchNote, donkere overlay,
+   modal-sluiten, dropdowns, observatie-trefwoorden
+   ================================================================ */
+
+/* BUG 4 / TIP 6 — inklapbare tijdsblokken in het programma */
+.toern-timeblock {
+  border: 1px solid var(--border); border-radius: 10px;
+  margin-bottom: 10px; overflow: hidden; background: var(--panel);
+}
+.toern-timeblock.tb-alt { background: var(--bg-2); }
+.toern-timeblock.is-now { border-color: var(--green, #22c55e); box-shadow: inset 0 0 0 1px var(--green, #22c55e); }
+.toern-timeblock.is-next { border-color: var(--accent); }
+.toern-tb-head {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; background: transparent; border: none;
+  cursor: pointer; color: var(--text); font: inherit; text-align: left;
+  min-height: 44px;
+}
+.toern-tb-head:hover { background: var(--panel-2); }
+.tb-arrow { font-size: 11px; color: var(--text-3); transition: transform .15s; }
+.toern-timeblock.collapsed .tb-arrow { transform: rotate(-90deg); }
+.tb-time { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+.tb-count { margin-left: auto; font-size: 11px; color: var(--text-3); }
+.tb-now { font-size: 11px; font-weight: 800; color: var(--green, #22c55e); letter-spacing: .02em; }
+.tb-now.tb-next { color: var(--accent); }
+.toern-tb-body { overflow: hidden; max-height: 4000px; transition: max-height .2s ease; }
+.toern-timeblock.collapsed .toern-tb-body { max-height: 0; }
+.toern-timeblock .toern-prog-table { border-top: 1px solid var(--border); }
+
+/* TIP 3 — snelle wedstrijdnotitie (label in programma + veld in detail) */
+.tp-note { flex-basis: 100%; width: 100%; font-size: 11.5px; color: var(--orange, #f59e0b); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toern-match-note-wrap { margin: 4px 0 12px; }
+.toern-match-note-label { font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.toern-match-note {
+  width: 100%; background: var(--bg-input, #0d1018);
+  border: 1px solid var(--border-2, #2d3242); border-radius: 8px;
+  color: var(--text); padding: 9px 11px; font: inherit; font-size: 13px; resize: vertical;
+}
+.toern-match-note:focus { outline: none; border-color: var(--accent); }
+
+/* TIP 2 — donkere dynamische overlay + sluitknop onderaan */
+.toern-dyn-foot { display: flex; justify-content: flex-end; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+#toern-dyn-overlay .toern-dyn-card select,
+#toern-dyn-overlay .toern-dyn-card input {
+  background: var(--bg-input, #0d1018); color: var(--text); border: 1px solid var(--border-2, #2d3242);
+}
+.mp-add-row { color: var(--text); }
+
+/* BUG 2 — dropdown-styling in toernooi-formulieren */
+.toern-inline-form select, .toern-inline-form input {
+  background: var(--bg-input, #0d1018); color: var(--text);
+  border: 1px solid var(--border-2, #2d3242); border-radius: 6px; padding: 7px 9px; font: inherit;
+}
+
+/* BUG 7 — observatie-trefwoorden (4-staps) + blok-layout */
+.obs-field-block { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; background: var(--panel); }
+.obs-field-block > .obs-field-label { display: block; font-weight: 700; margin-bottom: 8px; color: var(--text); font-size: 13.5px; }
+.obs-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.obs-tag {
+  min-height: 36px; padding: 7px 12px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--bg-2); color: var(--text-2);
+  font-size: 12.5px; cursor: pointer; transition: background .15s, color .15s, border-color .15s;
+}
+.obs-tag[data-rating="good"]    { background: var(--green, #22c55e);  border-color: var(--green, #22c55e);  color: #06210f; font-weight: 700; }
+.obs-tag[data-rating="average"] { background: var(--orange, #f59e0b); border-color: var(--orange, #f59e0b); color: #1a1206; font-weight: 700; }
+.obs-tag[data-rating="poor"]    { background: var(--red, #ef4444);    border-color: var(--red, #ef4444);    color: #2a0a0a; font-weight: 700; }
+.obs-block-note { width: 100%; background: var(--bg-input, #0d1018); border: 1px solid var(--border-2, #2d3242); border-radius: 8px; color: var(--text); padding: 9px 11px; font: inherit; font-size: 13px; resize: vertical; }
+
+/* BUG 6 — modal sluitknop nooit achter statusbalk: ruimere top + bottom-knop */
+@media (max-width: 640px) {
+  .toern-modal .toern-modal-header,
+  .toern-modal-lg .toern-modal-header {
+    padding-top: max(80px, calc(env(safe-area-inset-top, 20px) + 28px));
+  }
+  #toern-dyn-overlay .toern-dyn-card {
+    padding-top: max(72px, calc(env(safe-area-inset-top, 20px) + 24px)) !important;
+  }
+  .toern-modal-foot-close {
+    position: sticky; bottom: 0; background: var(--panel, #0b0f15);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border);
+  }
+}
+.toern-modal-foot-close { display: none; }
+@media (max-width: 640px) { .toern-modal-foot-close { display: block; } }
+
+/* TIP 5 — actief gekozen team-knop in quick-add */
+.qa-team-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }

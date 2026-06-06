@@ -3513,9 +3513,17 @@ algemeen:</textarea>
     <div class="toern-modal-body">
       <div id="toern-match-day-info" style="margin-bottom:10px;"></div>
       <div id="toern-match-status" class="toern-status-row" style="margin-bottom:14px;"></div>
+      <!-- TIP 3: snelle wedstrijdnotitie -->
+      <div class="toern-match-note-wrap">
+        <div class="toern-match-note-label">Snelle notitie <span style="font-weight:400;color:var(--text-3);">(over de wedstrijd, niet per speler)</span></div>
+        <textarea id="toern-match-note" class="toern-match-note" rows="2" placeholder="Bijv. regen, slecht veld, wedstrijd gestaakt, niveau laag..."></textarea>
+      </div>
       <div class="toern-section-label">Spelers</div>
       <div id="toern-match-players"></div>
       <button class="btn btn-sm" style="margin-top:12px;width:100%;" id="toern-match-add-player">+ Opgevallen speler toevoegen</button>
+    </div>
+    <div class="toern-modal-foot-close">
+      <button class="btn btn-sm" style="width:100%;" onclick="closeMatchDetail()">Sluiten</button>
     </div>
   </div>
 </div>

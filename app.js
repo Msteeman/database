@@ -21835,17 +21835,24 @@ window.updateMatchStatus = updateMatchStatus;
 async function setMatchWatchStatus(tid, matchId, status){
   tid = tid || _currentTournamentId;
   if(!['watch','optional','skip'].includes(status)) return;
+  // Toggle: opnieuw op de actieve knop klikken → terug naar geen keuze (null)
+  let next = status;
   try {
-    await setDoc(tournSubDoc(tid, 'matches', matchId), { watchStatus: status }, { merge: true });
+    const snap = await getDoc(tournSubDoc(tid, 'matches', matchId));
+    if(snap.exists() && snap.data().watchStatus === status) next = null;
+  } catch(_){}
+  try {
+    await setDoc(tournSubDoc(tid, 'matches', matchId), { watchStatus: next }, { merge: true });
   } catch(e){
     console.error('setMatchWatchStatus error:', e);
     toast('Status opslaan mislukt', true);
     return;
   }
-  // Modal opnieuw opbouwen zodat de actieve knop klopt
   if(typeof openMatchDetail === 'function') await openMatchDetail(tid, matchId);
-  // Programma-indicator bijwerken
-  if(_currentTournamentId === tid && _toernTab === 'tijdlijn') renderTijdlijnTab(tid);
+  if(_currentTournamentId === tid){
+    if(_toernTab === 'tijdlijn') renderTijdlijnTab(tid);
+    if(_toernTab === 'mijn-programma') renderMijnProgrammaTab(tid);
+  }
 }
 window.setMatchWatchStatus = setMatchWatchStatus;
 
@@ -21859,11 +21866,11 @@ async function saveTournamentPlayer(tid, tp){
   } catch(e){ toast('Speler opslaan mislukt', true); setSync('offline'); throw e; }
 }
 
-async function addTournamentPlayer(tid, { playerId=null, teamId='', quickName=null, quickNumber=null, type='linked' }){
+async function addTournamentPlayer(tid, { playerId=null, teamId='', quickName=null, quickNumber=null, type='linked', position=null }){
   const id = tuid('tp');
   const tp = {
     id, tournamentId: tid, teamId,
-    playerId, quickName, quickNumber,
+    playerId, quickName, quickNumber, position,
     type,
     addedAt: new Date().toISOString(),
     addedByUserId: currentUser.uid,
@@ -22212,6 +22219,7 @@ async function openTournamentObs(tid, matchId, dayId, tournamentPlayerId, tpName
       await _tournObsSubmit();
     });
   }
+  _injectObsTrefwoorden(existingObs && Array.isArray(existingObs.tags) ? existingObs.tags : []);
 }
 
 async function _tournObsSubmit(){
@@ -22231,11 +22239,15 @@ async function _tournObsSubmit(){
       return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : '');
     }).join('\n');
 
+    const tagEls = document.querySelectorAll('#obs-trefwoorden .obs-tag[data-rating]');
+    const tags = Array.from(tagEls)
+      .map(el => ({ label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') }))
+      .filter(t => t.rating);
     await createOrUpdateObservation(ctx.tid, {
       matchId: ctx.matchId,
       dayId: ctx.dayId,
       tournamentPlayerId: ctx.tournamentPlayerId,
-      text, tags: [], position: positie, grade
+      text, tags, position: positie, grade
     });
 
     // Update speler naam bij quick add als naam ingevuld
@@ -22267,28 +22279,47 @@ async function _tournObsSubmit(){
 
 // ── Quick add speler (spotted) ────────────────────────────────────
 async function quickAddAndObserve(tid, matchId, dayId){
-  const naam = window.prompt('Naam speler (optioneel):') || '';
-  const rugStr = window.prompt('Rugnummer (optioneel):') || '';
-  // Zoek team van de wedstrijd
-  const matchSnap = await getDoc(tournSubDoc(tid, 'matches', matchId));
-  const match = matchSnap.exists() ? matchSnap.data() : null;
-  // Kies team via simpele prompt
-  let teamId = '';
-  if(match && match.teamAName && match.teamBName){
-    const keuze = window.prompt(`Team:\n1 = ${match.teamAName}\n2 = ${match.teamBName}\n\nGeef 1 of 2:`) || '1';
-    teamId = keuze.trim() === '2' ? (match.teamBId||'') : (match.teamAId||'');
-  }
-  const tp = await addTournamentPlayer(tid, {
-    playerId: null, teamId,
-    quickName: naam || null,
-    quickNumber: rugStr ? parseInt(rugStr)||null : null,
-    type: 'spotted'
-  });
-  // Direct koppelen aan deze wedstrijd (auto link doet rest)
-  await linkPlayerToMatch(tid, tp.id, matchId, 'manual');
-  // Open obs form
-  await openTournamentObs(tid, matchId, dayId, tp.id, naam || 'Nieuwe speler');
+  const snap = await getDoc(tournSubDoc(tid, 'matches', matchId));
+  const match = snap.exists() ? snap.data() : {};
+  const aName = match.teamAName || 'Team A', bName = match.teamBName || 'Team B';
+  _toernOpenOverlay(`
+    <h3 style="margin:0 0 4px;">Opgevallen speler toevoegen</h3>
+    <p style="margin:0 0 12px;font-size:12px;color:var(--muted,#888);">Kies het team van deze wedstrijd, vul de gegevens in en koppel direct.</p>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:12px;display:block;margin-bottom:6px;">Team</label>
+      <div class="qa-team-row" style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn qa-team-btn active" data-team="A" onclick="_qaPickTeam(this)">${escapeHtml(aName)}</button>
+        <button type="button" class="btn qa-team-btn" data-team="B" onclick="_qaPickTeam(this)">${escapeHtml(bName)}</button>
+      </div>
+    </div>
+    <div class="toern-form-row"><label>Naam</label><input id="qa-naam" type="text" placeholder="Voornaam Achternaam" /></div>
+    <div class="toern-form-row"><label>Rugnummer</label><input id="qa-rug" type="number" min="1" max="99" /></div>
+    <div class="toern-form-row"><label>Positie</label><select id="qa-positie"><option value="">— Kies —</option>${_toernPositieOpts()}</select></div>
+    <input type="hidden" id="qa-team" value="A" />
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+      <button class="btn btn-sm btn-primary" onclick="_qaSubmit('${tid}','${matchId}','${dayId||''}')">Toevoegen & observeren</button>
+    </div>`);
 }
+function _qaPickTeam(btn){
+  document.querySelectorAll('.qa-team-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  const h = document.getElementById('qa-team'); if(h) h.value = btn.dataset.team;
+}
+window._qaPickTeam = _qaPickTeam;
+async function _qaSubmit(tid, matchId, dayId){
+  const naam = (document.getElementById('qa-naam')||{}).value || '';
+  const rug = parseInt((document.getElementById('qa-rug')||{}).value) || null;
+  const positie = (document.getElementById('qa-positie')||{}).value || null;
+  const pick = (document.getElementById('qa-team')||{}).value || 'A';
+  const snap = await getDoc(tournSubDoc(tid, 'matches', matchId));
+  const match = snap.exists() ? snap.data() : {};
+  const teamId = pick === 'B' ? (match.teamBId || '') : (match.teamAId || '');
+  const tp = await addTournamentPlayer(tid, { playerId: null, teamId, quickName: (naam.trim() || null), quickNumber: rug, type: 'spotted', position: positie });
+  await linkPlayerToMatch(tid, tp.id, matchId, 'manual');
+  _toernCloseOverlay();
+  await openTournamentObs(tid, matchId, dayId, tp.id, naam.trim() || 'Nieuwe speler');
+}
+window._qaSubmit = _qaSubmit;
 
 // ── Match detail overlay ──────────────────────────────────────────
 window.__shOpenMatchDetailTid = null;
@@ -22302,13 +22333,15 @@ async function openMatchDetail(tid, matchId){
   if(!bd) return;
 
   // Laad data
-  const [matchSnap, mpList, obsSnap] = await Promise.all([
+  const [matchSnap, mpList, obsSnap, teamsSnap] = await Promise.all([
     getDoc(tournSubDoc(tid, 'matches', matchId)),
     getMatchPlayers(tid, matchId),
-    getObservationsForMatch(tid, matchId)
+    getObservationsForMatch(tid, matchId),
+    getDocs(tournSubCol(tid, 'teams'))
   ]);
   if(!matchSnap.exists()){ toast('Wedstrijd niet gevonden', true); return; }
   const match = {...matchSnap.data(), id: matchSnap.id};
+  const _teamsById = {}; teamsSnap.docs.forEach(d => { _teamsById[d.id] = d.data(); });
 
   // Haal TournamentPlayer info op
   const tpIds = mpList.map(mp => mp.tournamentPlayerId);
@@ -22332,7 +22365,7 @@ async function openMatchDetail(tid, matchId){
   const sub = document.getElementById('toern-match-sub');
   if(sub) sub.textContent = [
     _toernMatchClock(match),
-    match.field ? 'Veld ' + match.field : '',
+    _toernFieldLabel(match.field),
     match.categoryId || ''
   ].filter(Boolean).join(' · ');
 
@@ -22378,7 +22411,7 @@ async function openMatchDetail(tid, matchId){
             <div class="toern-player-avatar">${initials(naam)}</div>
             <div>
               <div class="toern-player-name">${escapeHtml(naam)}</div>
-              <div class="toern-player-meta">${tp.type==='spotted'?'Opgevallen':'Gekoppeld'}${mp.addedBy==='manual'?' · live':''}</div>
+              <div class="toern-player-meta">${(() => { const c = _teamsById[tp.teamId] && _teamsById[tp.teamId].name; return c ? escapeHtml(c) + ' · ' : ''; })()}${tp.type==='spotted'?'Opgevallen':'Gekoppeld'}${mp.addedBy==='manual'?' · live':''}</div>
             </div>
           </div>
           <div class="toern-player-card-right">
@@ -22397,6 +22430,13 @@ async function openMatchDetail(tid, matchId){
   const addBtn = document.getElementById('toern-match-add-player');
   if(addBtn){
     addBtn.onclick = () => quickAddAndObserve(tid, matchId, match.dayId||'');
+  }
+
+  // TIP 3: snelle wedstrijdnotitie (matchNote)
+  const noteEl = document.getElementById('toern-match-note');
+  if(noteEl){
+    noteEl.value = match.matchNote || '';
+    noteEl.onblur = () => saveMatchNote(tid, matchId, noteEl.value);
   }
 
   bd.style.display = 'flex';
@@ -22906,43 +22946,56 @@ async function renderTijdlijnTab(tid){
     if(dayMatches.length === 0){
       html += '<div class="toern-prog-list"><div class="toern-empty toern-empty-sm">Geen wedstrijden voor deze dag</div></div>';
     } else {
-      // Strakke kolom-tabel: [indicator] Tijd | Wedstrijd | Veld | Poule
-      const rows = dayMatches.map(m => {
-        const time = _toernMatchClock(m) || '—';
-        const endTime = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
-        const timeLabel = endTime ? `${time}–${endTime}` : time;
-        const field = m.field ? 'Veld ' + m.field : '';
-        const poule = m.categoryId || '';
-        const scoreBadge = (typeof tournamentScoreBadge === 'function') ? tournamentScoreBadge(m) : '';
-        // Indicator (DEEL B) als EERSTE element, vóór de tijd. Géén keuze = grijs.
-        const ws = wsOf(m);
-        const dot = ws === 'optional'
-          ? '<span class="tp-dot tp-dot-optional" aria-hidden="true">?</span>'
-          : `<span class="tp-dot tp-dot-${ws}" aria-hidden="true"></span>`;
-        return `<div class="toern-prog-row toern-watch-${ws}" onclick="openMatchDetail('${tid}','${m.id}')">
-          <span class="tp-ind">${dot}</span>
-          <span class="tp-time" data-col="Tijd">${escapeHtml(timeLabel)}</span>
-          <span class="tp-match" data-col="Wedstrijd">
-            <span class="tp-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>
-            <span class="tp-score" onclick="event.stopPropagation();promptManualScore('${tid}','${m.id}')" title="Uitslag invoeren/bewerken">${scoreBadge}</span>
-            ${_toernLinkedPlayersSub(m, playersByTeam)}
-          </span>
-          <span class="tp-field" data-col="Veld">${escapeHtml(field)}</span>
-          <span class="tp-poule" data-col="Poule">${escapeHtml(poule)}</span>
+      // BUG 4: groepeer per starttijd in inklapbare tijdsblokken
+      const groups = []; const gi = {};
+      for(const m of dayMatches){
+        const k = _toernMatchClock(m) || '—';
+        if(gi[k] == null){ gi[k] = groups.length; groups.push({ time: k, matches: [] }); }
+        groups[gi[k]].matches.push(m);
+      }
+      groups.forEach(g => {
+        let me = '';
+        g.matches.forEach(m => { const e = tournamentMatchEndTime(tid, m); if(e && e > me) me = e; });
+        g.maxEnd = me || g.time;
+      });
+      // TIP 6: markeer het tijdsblok dat NU speelt (of het eerstvolgende), alleen vandaag
+      const today = (typeof todayISO === 'function') ? todayISO() : '';
+      const now = new Date();
+      const nowHHMM = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+      const isToday = day.date && today && day.date === today;
+      let nowIdx = -1, nextIdx = -1;
+      if(isToday){
+        for(let i = 0; i < groups.length; i++){
+          const g = groups[i];
+          if(!/^\d{2}:\d{2}$/.test(g.time)) continue;
+          if(nowIdx === -1 && g.time <= nowHHMM && nowHHMM <= g.maxEnd) nowIdx = i;
+          if(nextIdx === -1 && g.time > nowHHMM) nextIdx = i;
+        }
+      }
+      html += groups.map((g, gIdx) => {
+        const rows = g.matches.map(m => _progRowHtml(tid, m, playersByTeam)).join('');
+        const isNow = gIdx === nowIdx;
+        const isNext = nowIdx === -1 && gIdx === nextIdx;
+        const nowTag = isNow ? '<span class="tb-now">▶ NU BEZIG</span>'
+          : (isNext ? '<span class="tb-now tb-next">▶ STRAKS</span>' : '');
+        return `<div class="toern-timeblock ${gIdx % 2 ? 'tb-alt' : ''} ${isNow ? 'is-now' : ''} ${isNext ? 'is-next' : ''}">
+          <button type="button" class="toern-tb-head" onclick="toggleTimeBlock(this)">
+            <span class="tb-arrow" aria-hidden="true">▼</span>
+            <span class="tb-time">${escapeHtml(g.time)}</span>
+            ${nowTag}
+            <span class="tb-count">${g.matches.length} wed</span>
+          </button>
+          <div class="toern-tb-body"><div class="toern-prog-table">${rows}</div></div>
         </div>`;
       }).join('');
-      html += `<div class="toern-prog-table">
-        <div class="toern-prog-head">
-          <span class="tp-ind"></span><span>Tijd</span><span>Wedstrijd</span><span>Veld</span><span>Poule</span>
-        </div>
-        ${rows}
-      </div>`;
     }
     html += `<button class="btn btn-xs toern-add-match-btn" onclick="showAddMatchForm('${tid}','${day.id}')">+ Wedstrijd toevoegen</button>
     </div>`;
   }
   html += `<button class="btn btn-sm toern-add-day-btn" onclick="showAddDayForm('${tid}')">+ Dag toevoegen</button>`;
   wrap.innerHTML = html;
+  const nowEl = wrap.querySelector('.is-now') || wrap.querySelector('.is-next');
+  if(nowEl){ try { nowEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch(_){} }
 }
 
 // DEEL C: client-side prio-filter voor het programma. Bewaart de keuze en
@@ -23093,6 +23146,9 @@ async function showAddPlayerForm(tid, preselectTeamId){
       <label>Team</label><select id="tf-p-team">${teamOpts}</select>
     </div>
     <div class="toern-form-row">
+      <label>Positie</label><select id="tf-p-positie"><option value="">— Kies —</option>${_toernPositieOpts()}</select>
+    </div>
+    <div class="toern-form-row">
       <label>Type</label>
       <select id="tf-p-type">
         <option value="linked">Gekoppeld (vooraf)</option>
@@ -23111,8 +23167,9 @@ async function submitAddPlayer(tid){
   const naam = document.getElementById('tf-p-naam')?.value.trim() || null;
   const rug  = parseInt(document.getElementById('tf-p-rug')?.value)||null;
   const teamId = document.getElementById('tf-p-team')?.value || '';
+  const positie = document.getElementById('tf-p-positie')?.value || null;
   const type   = document.getElementById('tf-p-type')?.value || 'linked';
-  await addTournamentPlayer(tid, { playerId: null, teamId, quickName: naam, quickNumber: rug, type });
+  await addTournamentPlayer(tid, { playerId: null, teamId, quickName: naam, quickNumber: rug, type, position: positie });
   document.querySelectorAll('.toern-inline-form').forEach(f => f.remove());
   toast('Speler gekoppeld ✓');
   renderSpelersTab(tid);
@@ -23708,10 +23765,11 @@ function tournamentScoreBadge(m){
   if(!m) return '';
   const has = (m.scoreHome != null && m.scoreAway != null);
   const rs = String(m.resultStatus || '').toLowerCase();
-  if(has && (rs === 'finished' || rs === '' )) return `✅ ${m.scoreHome}–${m.scoreAway}`;
+  const isZero = has && Number(m.scoreHome) === 0 && Number(m.scoreAway) === 0;
   if(rs === 'live') return has ? `🔴 ${m.scoreHome}–${m.scoreAway}` : '🔴';
-  if(has) return `✅ ${m.scoreHome}–${m.scoreAway}`;
-  return '⏱️';
+  // Echt gespeeld = finished, OF een score die niet 0-0 is
+  if(has && (rs === 'finished' || !isZero)) return `✅ ${m.scoreHome}–${m.scoreAway}`;
+  return '';   // nog niet gespeeld → niets tonen (geen 0-0)
 }
 window.tournamentScoreBadge = tournamentScoreBadge;
 
@@ -23721,7 +23779,7 @@ function _toernOpenOverlay(innerHtml){
   const ov = document.createElement('div');
   ov.id = 'toern-dyn-overlay';
   ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px;';
-  ov.innerHTML = `<div class="toern-dyn-card" style="background:var(--card,#fff);color:var(--text,#111);max-width:680px;width:100%;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3);padding:20px;">${innerHtml}</div>`;
+  ov.innerHTML = `<div class="toern-dyn-card" style="background:var(--panel,#111722);color:var(--text,#e5e9f5);border:1px solid var(--border,#2a2f3a);max-width:680px;width:100%;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.45);padding:20px;">${innerHtml}<div class="toern-dyn-foot"><button type="button" class="btn btn-sm" onclick="_toernCloseOverlay()">Sluiten</button></div></div>`;
   ov.addEventListener('click', e => { if(e.target === ov) _toernCloseOverlay(); });
   document.body.appendChild(ov);
   return ov;
@@ -24041,6 +24099,12 @@ async function syncTournamentScores(tid){
   let written = 0, unmatched = 0;
   for(const rm of remoteMatches){
     if(rm.scoreHome == null || rm.scoreAway == null) continue;   // alleen wedstrijden mét uitslag
+    // Niet-gespeelde wedstrijden (0-0 zonder 'finished') NIET importeren — anders
+    // tellen ze als gelijkspel in de standen.
+    const rsRemote = String(rm.resultStatus || '').toLowerCase();
+    const isZero = Number(rm.scoreHome) === 0 && Number(rm.scoreAway) === 0;
+    const played = rsRemote === 'finished' || rsRemote === 'live' || !isZero;
+    if(!played) continue;
     const rh = _normTeamName(rm.homeTeam), ra = _normTeamName(rm.awayTeam);
     let local = localMatches.find(lm => _normTeamName(lm.teamAName) === rh && _normTeamName(lm.teamBName) === ra);
     let swapped = false;
@@ -24053,7 +24117,7 @@ async function syncTournamentScores(tid){
     const sa = swapped ? rm.scoreHome : rm.scoreAway;
     try {
       await setDoc(tournSubDoc(tid, 'matches', local.id),
-        { scoreHome: sh, scoreAway: sa, resultStatus: rm.resultStatus || 'finished', lastSyncedAt: new Date().toISOString() },
+        { scoreHome: sh, scoreAway: sa, resultStatus: rsRemote === 'live' ? 'live' : 'finished', lastSyncedAt: new Date().toISOString() },
         { merge: true });
       written++;
     } catch(e){ console.error('sync match write error:', e); }
@@ -24579,6 +24643,12 @@ onAuthStateChanged(auth, async (user) => {
 
 // Robuuste tijd-extractie: werkt met ISO ("2026-06-07T10:30") én bare
 // "10:30" / "9:05", en valt terug op start/time/st. Lege string als niets.
+function _toernFieldLabel(field){
+  const f = (field == null) ? '' : String(field).trim();
+  if(!f) return '';
+  if(f === '0') return 'Hoofdveld';   // 'Veld 0' bestaat niet
+  return 'Veld ' + f;
+}
 function _toernMatchClock(m){
   for(const v of [m && m.startTime, m && m.start, m && m.time, m && m.st, m && m.kickoff, m && m.datetime, m && m.tijd]){
     if(v == null || v === '') continue;
@@ -24635,15 +24705,16 @@ function _mpRowHtml(tid, m, conflict, playersByTeam){
   const time = _toernMatchClock(m) || '—';
   const endTime = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
   const timeLabel = endTime ? `${time}–${endTime}` : time;
-  const field = m.field ? 'Veld ' + m.field : '';
+  const field = _toernFieldLabel(m.field);
   const poule = m.categoryId || '';
   const ws = _mpWsOf(m);
   const flag = conflict ? '<span class="mp-conflict-flag">⚠️ tegelijk!</span>' : '';
   const sub = _toernLinkedPlayersSub(m, playersByTeam);
+  const note = m.matchNote ? `<span class="tp-note">📝 ${escapeHtml(m.matchNote)}</span>` : '';
   return `<div class="toern-prog-row toern-watch-${ws} ${conflict?'mp-conflict':''}" onclick="openMatchDetail('${tid}','${m.id}')">
     <span class="tp-ind">${_mpDot(ws)}</span>
     <span class="tp-time" data-col="Tijd">${escapeHtml(timeLabel)}</span>
-    <span class="tp-match" data-col="Wedstrijd"><span class="tp-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>${flag}${sub}</span>
+    <span class="tp-match" data-col="Wedstrijd"><span class="tp-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>${flag}${sub}${note}</span>
     <span class="tp-field" data-col="Veld">${escapeHtml(field)}</span>
     <span class="tp-poule" data-col="Poule">${escapeHtml(poule)}</span>
     <button class="mp-remove" title="Verwijder uit mijn programma" onclick="event.stopPropagation();removeFromMyProgram('${tid}','${m.id}')">×</button>
@@ -24763,7 +24834,7 @@ async function openMyProgramAddModal(tid){
       body += `<div class="mp-add-day">${escapeHtml(day.label)} — ${escapeHtml(formatDate(day.date))}</div>`;
       body += dm.map(m => {
         const time = _toernMatchClock(m) || '—';
-        const field = m.field ? 'Veld ' + m.field : '';
+        const field = _toernFieldLabel(m.field);
         const checked = (m.inMyProgram === true) ? 'checked' : '';
         const via = clubDriven(m) ? '<span class="mp-add-via">volgt via club</span>' : '';
         return `<label class="mp-add-row">
@@ -24841,3 +24912,106 @@ window.unfollowAndRefresh = unfollowAndRefresh;
 // Build-marker zodat je in de console kunt verifiëren welke app.js live is.
 window.__SH_TOERNOOI_BUILD = 'tijden-fix-v201';
 try { console.info('[ScoutingHub] toernooi-build:', window.__SH_TOERNOOI_BUILD); } catch(_){}
+
+
+/* BUG 4/TIP3/TIP6 — gedeelde rij-render voor het standaard Programma, met
+   matchNote-label. + inklap-toggle voor tijdsblokken. */
+function _progRowHtml(tid, m, playersByTeam){
+  const time = _toernMatchClock(m) || '—';
+  const endTime = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
+  const timeLabel = endTime ? `${time}–${endTime}` : time;
+  const field = _toernFieldLabel(m.field);
+  const poule = m.categoryId || '';
+  const scoreBadge = (typeof tournamentScoreBadge === 'function') ? tournamentScoreBadge(m) : '';
+  const ws = _mpWsOf(m);
+  const dot = _mpDot(ws);
+  const sub = _toernLinkedPlayersSub(m, playersByTeam);
+  const note = m.matchNote ? `<span class="tp-note">📝 ${escapeHtml(m.matchNote)}</span>` : '';
+  return `<div class="toern-prog-row toern-watch-${ws}" onclick="openMatchDetail('${tid}','${m.id}')">
+    <span class="tp-ind">${dot}</span>
+    <span class="tp-time" data-col="Tijd">${escapeHtml(timeLabel)}</span>
+    <span class="tp-match" data-col="Wedstrijd">
+      <span class="tp-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>
+      <span class="tp-score" onclick="event.stopPropagation();promptManualScore('${tid}','${m.id}')" title="Uitslag invoeren/bewerken">${scoreBadge}</span>
+      ${sub}${note}
+    </span>
+    <span class="tp-field" data-col="Veld">${escapeHtml(field)}</span>
+    <span class="tp-poule" data-col="Poule">${escapeHtml(poule)}</span>
+  </div>`;
+}
+function toggleTimeBlock(btn){
+  const block = btn && btn.closest('.toern-timeblock');
+  if(block) block.classList.toggle('collapsed');
+}
+window.toggleTimeBlock = toggleTimeBlock;
+
+
+/* BUG 2 — standaard veldposities voor de toernooi-dropdowns */
+function _toernPositieOpts(){
+  const list = [
+    ['K','Keeper'], ['RB','Rechtsback'], ['CV','Centraal verdediger'], ['LB','Linksback'],
+    ['VDM','Verdedigende middenvelder'], ['CM','Centrale middenvelder'], ['AM','Aanvallende middenvelder'],
+    ['RW','Rechtsbuiten'], ['LW','Linksbuiten'], ['ST','Spits'], ['HS','Hangende spits']
+  ];
+  return list.map(([k,label]) => `<option value="${k}">${label} (${k})</option>`).join('');
+}
+
+/* TIP 3 — snelle wedstrijdnotitie opslaan op het match-document (merge) */
+async function saveMatchNote(tid, matchId, text){
+  tid = tid || _currentTournamentId;
+  const val = String(text == null ? '' : text).trim();
+  try {
+    await setDoc(tournSubDoc(tid, 'matches', matchId), { matchNote: val || null }, { merge: true });
+  } catch(e){
+    console.error('saveMatchNote error:', e);
+    toast('Notitie opslaan mislukt', true);
+    return;
+  }
+  if(_currentTournamentId === tid){
+    if(_toernTab === 'tijdlijn') renderTijdlijnTab(tid);
+    if(_toernTab === 'mijn-programma') renderMijnProgrammaTab(tid);
+  }
+}
+window.saveMatchNote = saveMatchNote;
+
+
+/* BUG 7 — observatie-trefwoorden met 4-staps toggle (goed/gemiddeld/ondermaats/uit).
+   Wordt alleen in de toernooi-obs-flow geïnjecteerd; tags worden additief op het
+   observatie-document opgeslagen. Bestaande observaties zonder tags blijven werken. */
+function _obsTagCycle(el){
+  const order = ['', 'good', 'average', 'poor'];
+  const cur = el.getAttribute('data-rating') || '';
+  const next = order[(order.indexOf(cur) + 1) % order.length];
+  if(next) el.setAttribute('data-rating', next); else el.removeAttribute('data-rating');
+}
+window._obsTagCycle = _obsTagCycle;
+
+function _injectObsTrefwoorden(existingTags){
+  const host = document.getElementById('obs-terms');
+  if(!host) return;
+  const prev = document.getElementById('obs-trefwoorden');
+  if(prev) prev.remove();
+  const cats = {
+    'Mentaliteit': ['Winnaar','Leider','Communicatief','Rustig','Nerveus','Emotioneel','Doorzetter','Opgeven','Concentratie','Gretig'],
+    'Techniek': ['Balbehandeling','Passing','Eerste aanname','Traptechniek','Koppen','Dribbel','Overzicht','Beide benen'],
+    'Snelheid': ['Startsnelheid','Topsnelheid','Wendbaarheid','Versnelling','Traag','Explosief'],
+    'Fysiek': ['Sterk','Licht','Lenig','Groot','Klein','Dualkracht','Uithoudingsvermogen'],
+    'Inzicht': ['Scannen','Positiespel','Ruimte zien','Anticipatie','Coaching','Rust aan de bal','Loopacties','Timing']
+  };
+  const ratingOf = (cat, label) => {
+    const t = (existingTags || []).find(x => x && x.label === label && String(x.category||'').toLowerCase() === cat.toLowerCase());
+    return t && t.rating ? t.rating : '';
+  };
+  const wrap = document.createElement('div');
+  wrap.id = 'obs-trefwoorden';
+  wrap.innerHTML = '<div class="obs-section-label" style="margin-top:6px;">Trefwoorden <span style="font-weight:400;color:var(--text-3);">(klik: 🟢 goed → 🟠 gemiddeld → 🔴 ondermaats → uit)</span></div>' +
+    Object.entries(cats).map(([cat, words]) => {
+      const chips = words.map(w => {
+        const r = ratingOf(cat, w);
+        return `<button type="button" class="obs-tag" data-category="${cat.toLowerCase()}" data-label="${escapeHtml(w)}"${r ? ` data-rating="${r}"` : ''} onclick="_obsTagCycle(this)">${escapeHtml(w)}</button>`;
+      }).join('');
+      return `<div class="obs-field-block"><span class="obs-field-label">${cat}</span><div class="obs-tags">${chips}</div></div>`;
+    }).join('');
+  host.parentNode.insertBefore(wrap, host);
+}
+window._injectObsTrefwoorden = _injectObsTrefwoorden;

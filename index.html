@@ -2224,6 +2224,7 @@ algemeen:</textarea>
             <button class="btn btn-ghost btn-sm" id="toern-btn-regels" onclick="openTournamentRulesModal()">⚙️ Toernooiregels</button>
             <button class="btn btn-ghost btn-sm" id="toern-btn-reglement" onclick="openReglementModal()">📄 Reglement toevoegen</button>
             <button class="btn btn-ghost btn-sm" id="toern-btn-sync" onclick="syncTournamentScores()">🔄 Uitslagen synchroniseren</button>
+            <button class="btn btn-ghost btn-sm" id="toern-btn-cond" onclick="openConditionsModal()" title="Weer & veldomstandigheden">🌤️ Omstandigheden</button>
             <button class="btn btn-ghost btn-sm" id="toern-btn-stats" onclick="openTournamentStats()" title="Statistieken">📊 Statistieken</button>
             <button class="btn btn-ghost btn-sm" id="toern-btn-afronden" onclick="openTournamentAfrondenModal()" title="Toernooi afronden → rapporten/observaties">🏁 Toernooi afronden</button>
             <button class="btn btn-ghost btn-sm toern-btn-delete" id="toern-btn-delete" onclick="confirmDeleteTournament()" title="Verwijder dit toernooi">🗑️ Verwijder toernooi</button>
@@ -2303,6 +2304,7 @@ algemeen:</textarea>
     </div>
   </div>
 
+  <button id="toern-fab" class="toern-fab" type="button" style="display:none;"></button>
   <nav class="bottom-nav" id="bottom-nav" aria-label="Hoofdnavigatie">
     <button class="bn-item active" data-view="dashboard" aria-label="Dashboard">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/></svg>

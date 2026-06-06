@@ -21857,6 +21857,7 @@ async function setMatchWatchStatus(tid, matchId, status){
     const snap = await getDoc(tournSubDoc(tid, 'matches', matchId));
     if(snap.exists() && snap.data().watchStatus === status) next = null;
   } catch(_){}
+  if(next === 'watch'){ try { if('Notification' in window && Notification.permission === 'default') Notification.requestPermission(); } catch(_){} }
   try {
     await setDoc(tournSubDoc(tid, 'matches', matchId), { watchStatus: next }, { merge: true });
   } catch(e){
@@ -22447,6 +22448,7 @@ async function openMatchDetail(tid, matchId){
           </div>
           <div class="toern-player-card-right">
             ${hasObs ? `<span class="toern-obs-badge">${gradeLabel||'✓'}</span>` : '<span class="toern-obs-empty">Geen obs</span>'}
+            ${hasObs ? `<button class="toern-share-btn" title="Deel observatie" onclick="event.stopPropagation();shareObservation('${tid}','${matchId}','${tp.id}')">↗</button>` : ''}
             <button class="toern-must-btn ${tp.mustScout?'on':''}" title="Must scout" onclick="event.stopPropagation();toggleMustScout('${tid}','${tp.id}',${tp.mustScout?'false':'true'})">${tp.mustScout?'⭐':'☆'}</button>
             <button class="toern-rapport-btn" title="Rapport starten"
               onclick="event.stopPropagation();startRapportVanuitMatch('${tid}','${matchId}','${mp.id}','${tp.id}')">
@@ -22967,6 +22969,26 @@ async function renderTijdlijnTab(tid){
   // DEEL C: tellers over ALLE wedstrijden (ongeacht actief filter)
   const counts = { watch: 0, optional: 0, skip: 0, none: 0 };
   matches.forEach(m => { counts[wsOf(m)]++; });
+
+  // Feature 8/9: watch-wedstrijden van vandaag (notificatie) + live-wedstrijd (FAB)
+  try {
+    const _today = (typeof todayISO === 'function') ? todayISO() : new Date().toISOString().slice(0,10);
+    const _dayDate = {}; days.forEach(d => { _dayDate[d.id] = d.date; });
+    const _now = new Date(); const _nowMin = _now.getHours()*60 + _now.getMinutes();
+    window._notifMatches = []; window._liveMatch = null;
+    matches.forEach(m => {
+      const tijd = _toernMatchClock(m); if(!tijd) return;
+      if(_dayDate[m.dayId] !== _today) return;
+      const mm = tijd.match(/^(\d{2}):(\d{2})$/); if(!mm) return;
+      const start = (+mm[1])*60 + (+mm[2]);
+      const teams = `${m.teamAName||''} – ${m.teamBName||''}`.trim();
+      if(m.watchStatus === 'watch') window._notifMatches.push({ id: m.id, time: tijd, teams, field: _toernFieldLabel(m.field) });
+      const endT = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
+      const em = String(endT||'').match(/^(\d{2}):(\d{2})$/);
+      const end = em ? (+em[1])*60 + (+em[2]) : start + 90;
+      if(_nowMin >= start && _nowMin <= end && !window._liveMatch) window._liveMatch = { tid, id: m.id, teams };
+    });
+  } catch(_){}
 
   const f = _progWatchFilter;
   const filterBtn = (val, label, cls) =>
@@ -25743,3 +25765,129 @@ try {
     }, { passive: true });
   }
 } catch(_){}
+
+
+/* ================================================================
+   PRIO 3 — Feature 8 (notificatie), 9 (FAB), 10 (omstandigheden), 11 (delen)
+   Alles additief; reguliere flows ongewijzigd.
+   ================================================================ */
+
+// Feature 8 — notificatie (in-app toast + optioneel push).
+const _notifiedSet = new Set();
+function _shNotify(text){
+  try { toast(text); } catch(_){}
+  try { if('Notification' in window && Notification.permission === 'granted') new Notification('ScoutingHub', { body: text }); } catch(_){}
+}
+try {
+  setInterval(() => {
+    const list = window._notifMatches;
+    if(!Array.isArray(list) || !list.length) return;
+    const now = new Date(); const nowMin = now.getHours()*60 + now.getMinutes();
+    list.forEach(m => {
+      const mm = String(m.time||'').match(/^(\d{2}):(\d{2})$/); if(!mm) return;
+      const start = (+mm[1])*60 + (+mm[2]); const diff = start - nowMin;
+      if(diff >= 0 && diff <= 5 && !_notifiedSet.has(m.id)){
+        _notifiedSet.add(m.id);
+        _shNotify(`🟢 Over ${diff} min: ${m.teams}${m.field ? ' op ' + m.field : ''}`);
+      }
+    });
+  }, 30000);
+} catch(_){}
+
+// Feature 9 — FAB: snel wisselen tussen programma en live wedstrijd.
+function _updateToernFab(){
+  const fab = document.getElementById('toern-fab');
+  if(!fab) return;
+  if((typeof currentView === 'undefined' || currentView !== 'toernooien') || !_currentTournamentId){ fab.style.display = 'none'; return; }
+  const bd = document.getElementById('toern-match-backdrop');
+  const matchOpen = bd && bd.style.display === 'flex';
+  if(matchOpen){
+    fab.style.display = ''; fab.textContent = '📋 Programma';
+    fab.onclick = () => { closeMatchDetail(); renderToernooiTab('tijdlijn'); _updateToernFab(); };
+    return;
+  }
+  const live = window._liveMatch;
+  if(live && live.tid === _currentTournamentId){
+    fab.style.display = ''; fab.textContent = '▶ ' + live.teams;
+    fab.onclick = () => { openMatchDetail(live.tid, live.id); };
+    return;
+  }
+  fab.style.display = 'none';
+}
+window._updateToernFab = _updateToernFab;
+try { setInterval(_updateToernFab, 4000); } catch(_){}
+
+// Feature 10 — weer & veldomstandigheden (per dag, op het toernooi-doc onder conditions[datum]).
+async function openConditionsModal(tid){
+  tid = tid || _currentTournamentId;
+  const t = tourmCache.find(x => x.id === tid) || {};
+  const today = (typeof todayISO === 'function') ? todayISO() : new Date().toISOString().slice(0,10);
+  const cur = (t.conditions && t.conditions[today]) || {};
+  const weathers = [['zon','☀️ Zon'],['bewolkt','🌤️ Bewolkt'],['regen','🌧️ Regen'],['wind','💨 Wind'],['koud','❄️ Koud']];
+  const fields = [['goed','✅ Goed'],['matig','🟡 Matig'],['slecht','🔴 Slecht']];
+  const wbtns = weathers.map(([k,l]) => `<button type="button" class="cond-chip ${cur.weather===k?'active':''}" data-w="${k}" onclick="_condPick('w','${k}')">${l}</button>`).join('');
+  const fbtns = fields.map(([k,l]) => `<button type="button" class="cond-chip ${cur.field===k?'active':''}" data-f="${k}" onclick="_condPick('f','${k}')">${l}</button>`).join('');
+  _toernOpenOverlay(`
+    <h3 style="margin:0 0 4px;">Omstandigheden — ${escapeHtml(formatDate(today))}</h3>
+    <p style="margin:0 0 12px;font-size:12px;color:var(--muted,#888);">Eenmalig per dag instellen; wordt meegenomen in de export.</p>
+    <input type="hidden" id="cond-weather" value="${cur.weather||''}" />
+    <input type="hidden" id="cond-field" value="${cur.field||''}" />
+    <div style="font-size:12px;margin-bottom:6px;">Weer</div>
+    <div class="cond-row" id="cond-weather-row">${wbtns}</div>
+    <div style="font-size:12px;margin:12px 0 6px;">Veld</div>
+    <div class="cond-row" id="cond-field-row">${fbtns}</div>
+    <div style="font-size:12px;margin:12px 0 6px;">Notitie</div>
+    <textarea id="cond-note" class="toern-match-note" rows="2" placeholder="Bijv. veld drassig na regen, harde wind tweede helft...">${escapeHtml(cur.note||'')}</textarea>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+      <button type="button" class="btn btn-sm btn-primary" onclick="saveConditions('${tid}','${today}')">Opslaan</button>
+    </div>`);
+}
+window.openConditionsModal = openConditionsModal;
+function _condPick(kind, val){
+  const rowId = kind === 'w' ? 'cond-weather-row' : 'cond-field-row';
+  const attr = kind === 'w' ? 'w' : 'f';
+  document.querySelectorAll('#' + rowId + ' .cond-chip').forEach(b => b.classList.toggle('active', b.dataset[attr] === val));
+  const hid = document.getElementById(kind === 'w' ? 'cond-weather' : 'cond-field');
+  if(hid) hid.value = val;
+}
+window._condPick = _condPick;
+async function saveConditions(tid, date){
+  const weather = (document.getElementById('cond-weather')||{}).value || '';
+  const field = (document.getElementById('cond-field')||{}).value || '';
+  const note = (document.getElementById('cond-note')||{}).value || '';
+  try { await setDoc(tournDoc(tid), { conditions: { [date]: { weather, field, note, updatedAt: new Date().toISOString() } } }, { merge: true }); }
+  catch(e){ console.error('saveConditions error:', e); toast('Opslaan mislukt', true); return; }
+  toast('Omstandigheden opgeslagen ✓');
+  _toernCloseOverlay();
+}
+window.saveConditions = saveConditions;
+
+// Feature 11 — deel een observatie (native share of klembord).
+async function shareObservation(tid, matchId, tpId){
+  try {
+    const [obsSnap, mSnap, pSnap, tSnap] = await Promise.all([
+      getDocs(query(tournSubCol(tid, 'observations'), where('matchId','==',matchId), where('tournamentPlayerId','==',tpId))),
+      getDoc(tournSubDoc(tid, 'matches', matchId)),
+      getDoc(tournSubDoc(tid, 'players', tpId)),
+      getDoc(tournDoc(tid))
+    ]);
+    const o = obsSnap.empty ? {} : obsSnap.docs[0].data();
+    const m = mSnap.exists() ? mSnap.data() : {};
+    const tp = pSnap.exists() ? pSnap.data() : {};
+    const t = tSnap.exists() ? tSnap.data() : {};
+    let club = '';
+    if(tp.teamId){ try { const ts = await getDoc(tournSubDoc(tid, 'teams', tp.teamId)); if(ts.exists()) club = ts.data().name || ''; } catch(_){} }
+    const tags = (o.tags||[]).map(x => `${x.rating==='good'?'🟢':x.rating==='average'?'🟠':'🔴'} ${x.label}`).join(' ');
+    const lines = [
+      `🏆 ${t.name||'Toernooi'} | ${m.teamAName||''} – ${m.teamBName||''} (${_toernMatchClock(m)||''})`,
+      `👤 ${tp.quickName||'?'}${club?` (${club})`:''}${o.grade?` — ⭐${o.grade}`:''}`
+    ];
+    if(tags) lines.push(tags);
+    if(o.text) lines.push(`Notitie: ${o.text}`);
+    const text = lines.join('\n');
+    if(navigator.share){ try { await navigator.share({ text }); return; } catch(_){} }
+    await navigator.clipboard.writeText(text);
+    toast('Observatie gekopieerd naar klembord ✓');
+  } catch(e){ console.error('shareObservation error:', e); toast('Delen niet beschikbaar', true); }
+}
+window.shareObservation = shareObservation;

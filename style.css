@@ -11621,3 +11621,31 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 .ptc-status { font-size: 11px; font-weight: 700; color: var(--text-2); padding: 3px 8px; border-radius: 999px; background: var(--bg-2); flex-shrink: 0; }
 .ptc-go { font-size: 12px; color: var(--accent); font-weight: 600; flex-shrink: 0; }
 @media (max-width: 640px) { .ptc-go { display: none; } }
+
+/* ===== PRIO 3 — Feature 8/9/10/11 styling ===== */
+/* Feature 11 — deel-knop */
+.toern-share-btn {
+  background: none; border: none; cursor: pointer; font-size: 16px; line-height: 1;
+  color: var(--text-3); padding: 4px 6px; flex-shrink: 0; transition: color .15s, transform .1s;
+}
+.toern-share-btn:hover { color: var(--accent); transform: scale(1.12); }
+
+/* Feature 9 — FAB */
+.toern-fab {
+  position: fixed; right: 16px; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); z-index: 1200;
+  max-width: 70vw; padding: 12px 18px; border-radius: 999px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, var(--accent, #e30613), #f5c518); color: #fff;
+  font-size: 13px; font-weight: 700; box-shadow: 0 6px 20px rgba(0,0,0,.35);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.toern-fab:hover { filter: brightness(1.05); }
+@media (min-width: 980px) { .toern-fab { bottom: 24px; right: 24px; } }
+
+/* Feature 10 — omstandigheden chips */
+.cond-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.cond-chip {
+  min-height: 40px; padding: 8px 12px; border-radius: 999px; cursor: pointer; font-size: 13px;
+  border: 1px solid var(--border); background: var(--bg-2); color: var(--text-2);
+  transition: background .15s, border-color .15s, color .15s;
+}
+.cond-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }

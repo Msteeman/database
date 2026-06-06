@@ -11544,3 +11544,22 @@ body.modal-open {
 
 /* TIP 5 — actief gekozen team-knop in quick-add */
 .qa-team-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* PRIO 1 — Feature 2 (overall A/B/C/D) + Feature 3 (eerdere obs) */
+#obs-overall { margin-bottom: 12px; }
+.obs-overall-row { display: flex; gap: 8px; }
+.obs-overall-btn {
+  flex: 1; min-height: 44px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg-2); color: var(--text-2);
+  font-size: 16px; font-weight: 800; transition: background .15s, color .15s, border-color .15s;
+}
+.obs-overall-btn.active.grade-A { background: var(--grade-a, #22c55e); border-color: var(--grade-a, #22c55e); color: #06210f; }
+.obs-overall-btn.active.grade-B { background: var(--grade-b, #84cc16); border-color: var(--grade-b, #84cc16); color: #0f1a06; }
+.obs-overall-btn.active.grade-C { background: var(--grade-c, #f59e0b); border-color: var(--grade-c, #f59e0b); color: #1a1206; }
+.obs-overall-btn.active.grade-D { background: var(--grade-d, #ef4444); border-color: var(--grade-d, #ef4444); color: #2a0a0a; }
+.obs-earlier-box { margin-bottom: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); padding: 8px 12px; }
+.obs-earlier-box > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.obs-earlier-item { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px; }
+.obs-earlier-ctx { font-size: 11.5px; color: var(--text-3); font-weight: 700; }
+.obs-earlier-tags { font-size: 12px; margin-top: 3px; }
+.obs-earlier-text { font-size: 12.5px; color: var(--text-2); margin-top: 3px; line-height: 1.4; }

@@ -21971,7 +21971,7 @@ async function createOrUpdateObservation(tid, { matchId, dayId, tournamentPlayer
     const existingDoc = existing.docs[0];
     const existingData = existingDoc.data();
     // Als al gesloten: sla edit op in history
-    const patch = { text, tags, position, grade, updatedAt: now };
+    const patch = { text, tags, position, grade, overallRating: grade, updatedAt: now };
     if(existingData.closedAt){
       patch.editHistory = [...(existingData.editHistory||[]), {
         editedAt: now,
@@ -21986,7 +21986,7 @@ async function createOrUpdateObservation(tid, { matchId, dayId, tournamentPlayer
   const id = tuid('obs');
   const obs = {
     id, tournamentId: tid, matchId, dayId: dayId||'', tournamentPlayerId,
-    text, tags, position, grade,
+    text, tags, position, grade, overallRating: grade,
     createdAt: now, updatedAt: now,
     closedAt: null, editHistory: []
   };
@@ -22230,6 +22230,8 @@ async function openTournamentObs(tid, matchId, dayId, tournamentPlayerId, tpName
     });
   }
   _injectObsTrefwoorden(existingObs && Array.isArray(existingObs.tags) ? existingObs.tags : []);
+  _injectOverallRating(existingObs ? (existingObs.grade || existingObs.overallRating || '') : '');
+  _injectEarlierObs(tid, tournamentPlayerId, matchId);
 }
 
 async function _tournObsSubmit(){
@@ -22871,7 +22873,11 @@ async function renderToernooiDetail(tid){
   // Status badge
   const statusEl = document.getElementById('toern-detail-status');
   const statusLabels = { prep:'Voorbereiding', active:'Actief', closing:'Afsluiting', done:'Afgerond' };
-  if(statusEl) statusEl.textContent = statusLabels[tournament.status] || tournament.status;
+  if(statusEl) statusEl.textContent = statusLabels[_toernEffectiveStatus(tournament)] || tournament.status;
+  // BUG 8: bij toekomstige startdatum tonen wanneer het toernooi begint
+  if(subEl && _toernEffectiveStatus(tournament) === 'prep' && tournament.startDate){
+    subEl.textContent = (subEl.textContent ? subEl.textContent + ' · ' : '') + 'Begint op ' + formatDate(tournament.startDate);
+  }
 
   // Render actieve tab
   renderToernooiTab(_toernTab, tid);
@@ -22953,7 +22959,9 @@ async function renderTijdlijnTab(tid){
     const closedBadge = day.closedAt
       ? `<span class="toern-badge toern-badge-closed">Afgesloten</span>
          <button class="btn btn-xs" onclick="confirmReopenDay('${tid}','${day.id}')">Heropenen</button>`
-      : `<button class="btn btn-xs" onclick="confirmCloseDay('${tid}','${day.id}')">Dag afsluiten</button>`;
+      : ((day.date && typeof todayISO === 'function' && day.date > todayISO())
+          ? `<span class="toern-badge">Begint ${formatDate(day.date)}</span>`
+          : `<button class="btn btn-xs" onclick="confirmCloseDay('${tid}','${day.id}')">Dag afsluiten</button>`);
     html += `<div class="toern-day-block">
       <div class="toern-day-header">
         <span class="toern-day-label">${escapeHtml(day.label)} — ${formatDate(day.date)}</span>
@@ -23225,7 +23233,7 @@ function renderToernooienList(){
         <div class="toern-list-card-name">${escapeHtml(t.name)}</div>
         <div class="toern-list-card-meta">${[t.location, formatDate(t.startDate)].filter(Boolean).join(' · ')}</div>
       </div>
-      <div class="toern-list-card-status toern-status-${t.status}">${statusLabel[t.status]||t.status}</div>
+      <div class="toern-list-card-status toern-status-${_toernEffectiveStatus(t)}">${statusLabel[_toernEffectiveStatus(t)]||t.status}</div>
     </div>`).join('');
 }
 
@@ -25211,3 +25219,77 @@ function _initMatchTimer(tid, match){
   _wstrTimerRender();
 }
 window._initMatchTimer = _initMatchTimer;
+
+
+/* ================================================================
+   PRIO 1 — BUG 8 (effectieve status), Feature 2 (overall A/B/C/D),
+   Feature 3 (eerdere observaties). Allemaal additief / read-only.
+   ================================================================ */
+
+// BUG 8: bepaal status op basis van start-/einddatum (niet de opgeslagen 'active').
+function _toernEffectiveStatus(t){
+  if(!t) return 'active';
+  const today = (typeof todayISO === 'function') ? todayISO() : new Date().toISOString().slice(0,10);
+  const sd = t.startDate || '';
+  const ed = t.endDate || t.startDate || '';
+  if(sd && sd > today) return 'prep';
+  if(ed && ed < today) return 'done';
+  return 'active';
+}
+window._toernEffectiveStatus = _toernEffectiveStatus;
+
+// Feature 2: prominente overall-rating (A/B/C/D) bovenaan het obs-formulier.
+// Synct met het bestaande #obs-niveau-veld zodat opslaan ongewijzigd blijft.
+function _injectOverallRating(current){
+  const form = document.getElementById('obs-form');
+  if(!form) return;
+  const prev = document.getElementById('obs-overall'); if(prev) prev.remove();
+  const grades = [['A','Uitzonderlijk'],['B','Goed'],['C','Gemiddeld'],['D','Onder niveau']];
+  const wrap = document.createElement('div');
+  wrap.id = 'obs-overall';
+  wrap.innerHTML = '<div class="obs-section-label" style="margin-top:0;">⭐ Overall beoordeling</div>' +
+    '<div class="obs-overall-row">' +
+    grades.map(([g,lbl]) => `<button type="button" class="obs-overall-btn grade-${g} ${current===g?'active':''}" data-g="${g}" title="${lbl}" onclick="_setOverall('${g}')">${g}</button>`).join('') +
+    '</div>';
+  form.insertBefore(wrap, form.firstChild);
+}
+window._injectOverallRating = _injectOverallRating;
+function _setOverall(g){
+  const sel = document.getElementById('obs-niveau');
+  if(sel) sel.value = g;
+  document.querySelectorAll('#obs-overall .obs-overall-btn').forEach(b => b.classList.toggle('active', b.dataset.g === g));
+}
+window._setOverall = _setOverall;
+
+// Feature 3: toon eerdere observaties van DEZELFDE speler in DIT toernooi.
+async function _injectEarlierObs(tid, tournamentPlayerId, currentMatchId){
+  const form = document.getElementById('obs-form');
+  if(!form) return;
+  const prev = document.getElementById('obs-earlier'); if(prev) prev.remove();
+  let earlier = [];
+  try {
+    const snap = await getDocs(query(tournSubCol(tid, 'observations'), where('tournamentPlayerId','==',tournamentPlayerId)));
+    earlier = snap.docs.map(d => ({...d.data(), id: d.id}))
+      .filter(o => o.matchId !== currentMatchId && (o.text || (o.tags && o.tags.length)));
+  } catch(_){}
+  if(!earlier.length) return;
+  const items = [];
+  for(const o of earlier.slice(0,5)){
+    let ctx = '';
+    try {
+      const ms = await getDoc(tournSubDoc(tid, 'matches', o.matchId));
+      if(ms.exists()){ const m = ms.data(); ctx = `${_toernMatchClock(m)||''} ${m.teamAName||''} – ${m.teamBName||''}`.trim(); }
+    } catch(_){}
+    const tags = (o.tags||[]).map(t => `${t.rating==='good'?'🟢':t.rating==='average'?'🟠':'🔴'} ${t.label}`).join('  ');
+    items.push(`<div class="obs-earlier-item">
+      <div class="obs-earlier-ctx">${escapeHtml(ctx || 'Eerder')}${o.grade ? ' · ⭐' + escapeHtml(o.grade) : ''}</div>
+      ${tags ? `<div class="obs-earlier-tags">${escapeHtml(tags)}</div>` : ''}
+      ${o.text ? `<div class="obs-earlier-text">${escapeHtml(o.text)}</div>` : ''}
+    </div>`);
+  }
+  const wrap = document.createElement('div');
+  wrap.id = 'obs-earlier';
+  wrap.innerHTML = `<details class="obs-earlier-box"><summary>📋 ${earlier.length} eerdere observatie${earlier.length!==1?'s':''} in dit toernooi</summary>${items.join('')}</details>`;
+  form.insertBefore(wrap, form.firstChild);
+}
+window._injectEarlierObs = _injectEarlierObs;

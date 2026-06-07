@@ -7898,9 +7898,8 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
   /* s35cg: rollen-systeem visibility gates */
   .nav-role-coord, .nav-role-admin { display: none !important; }
   body.role-coord .nav-role-coord { display: flex !important; }
-  body.role-admin .nav-role-coord,
-  /* s35cm: Admin-knop bewust uit nav verborgen — toegang via Instellingen */
-  /* body.role-admin .nav-role-admin { display: flex !important; }  -- disabled */
+  /* Fase 2: Beheer-knop zichtbaar voor admin (eerder bewust uit; nu via nav). */
+  body.role-admin .nav-role-admin { display: flex !important; }
   /* Admin-section in settings: alleen tonen voor admin */
   #settings-admin-section { display: none; }
   body.role-admin #settings-admin-section { display: block; }
@@ -12179,3 +12178,53 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 .sh-req-msg{ display:none; font-size:13px; margin:4px 0 8px; padding:8px 11px; border-radius:0 8px 8px 0; line-height:1.4; }
 .sh-req-msg.show{ display:block; }
 .sh-req-msg.error{ background:rgba(248,113,113,.12); border-left:3px solid var(--bad,#f87171); color:#fca5a5; }
+
+
+/* ============================================================
+   FASE 2 — Beheer-module (admin dashboard). Dark theme, mobiel/PWA.
+   ============================================================ */
+.bh-denied{ padding:24px; text-align:center; color:var(--text-2,#9aa8bd); background:#0b1220; border:1px solid #1f2937; border-radius:10px; }
+.bh-tabs{ display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+.bh-tab{ padding:9px 16px; border-radius:8px; background:#1f2937; color:#e5e7eb; cursor:pointer; border:1px solid #374151; font-size:14px; min-height:44px; }
+.bh-tab.active{ background:#4ea1ff; color:#06223f; border-color:#4ea1ff; font-weight:700; }
+.bh-section{ display:none; }
+.bh-section.active{ display:block; }
+.bh-filters{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.bh-filter{ padding:7px 14px; border-radius:999px; background:#0e1626; color:#9aa8bd; border:1px solid #1f2937; cursor:pointer; font-size:13px; min-height:40px; }
+.bh-filter.active{ background:rgba(78,161,255,.14); color:#e8edf5; border-color:#4ea1ff; }
+.bh-toolbar{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.bh-search{ flex:1 1 200px; min-width:0; background:#0e1626; border:1px solid #1f2937; color:#e8edf5; border-radius:8px; padding:10px 12px; font-size:14px; min-height:44px; box-sizing:border-box; }
+.bh-search:focus{ outline:none; border-color:#4ea1ff; }
+.bh-select{ background:#0e1626; border:1px solid #1f2937; color:#e8edf5; border-radius:8px; padding:10px 12px; font-size:14px; min-height:44px; }
+.bh-empty{ color:#9aa8bd; padding:28px 16px; text-align:center; font-size:14px; background:#0b1220; border:1px solid #1f2937; border-radius:10px; }
+.bh-card{ background:#0b1220; border:1px solid #1f2937; border-radius:10px; padding:14px 16px; margin-bottom:12px; }
+.bh-card-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.bh-card-name{ font-weight:700; font-size:15px; color:#e8edf5; }
+.bh-card-row{ display:flex; gap:10px; font-size:13.5px; padding:3px 0; color:#cdd6e4; }
+.bh-card-row span{ flex:0 0 110px; color:#8b97ad; }
+.bh-card-row b{ font-weight:600; word-break:break-word; }
+.bh-badge{ display:inline-block; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:700; text-transform:capitalize; }
+.bh-b-orange{ background:rgba(251,191,36,.16); color:#fcd34d; }
+.bh-b-green{ background:rgba(52,211,153,.16); color:#6ee7b7; }
+.bh-b-red{ background:rgba(248,113,113,.16); color:#fca5a5; }
+.bh-b-blue{ background:rgba(78,161,255,.16); color:#93c5fd; }
+.bh-b-purple{ background:rgba(167,139,250,.18); color:#c4b5fd; }
+.bh-b-grey{ background:#1f2937; color:#9aa8bd; }
+.bh-actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.bh-meta{ margin-top:10px; font-size:12.5px; color:#8b97ad; }
+.bh-btn{ background:#1f2937; border:1px solid #374151; color:#e8edf5; border-radius:8px; padding:9px 14px; font-size:13.5px; cursor:pointer; min-height:44px; }
+.bh-btn:hover{ border-color:#4ea1ff; }
+.bh-btn:disabled{ opacity:.5; cursor:not-allowed; }
+.bh-btn-green{ background:#34d399; color:#06251a; border-color:#34d399; font-weight:700; }
+.bh-btn-blue{ background:#4ea1ff; color:#06223f; border-color:#4ea1ff; font-weight:700; }
+.bh-btn-red{ background:#f87171; color:#2a0a0a; border-color:#f87171; font-weight:700; }
+.bh-btn-ghost{ background:none; }
+.bh-btn-active{ background:#4ea1ff; color:#06223f; border-color:#4ea1ff; font-weight:700; }
+.bh-modal-card{ max-width:420px; text-align:left; position:relative; }
+.bh-modal-body{ font-size:14px; color:#cdd6e4; line-height:1.5; }
+.bh-modal-actions{ display:flex; gap:8px; margin-top:16px; }
+.bh-modal-actions .bh-btn{ flex:1; }
+.bh-modal-note{ margin-top:12px; font-size:12px; color:#8b97ad; line-height:1.5; }
+.bh-role-pick{ display:flex; flex-direction:column; gap:8px; }
+.bh-role-pick .bh-btn{ text-transform:capitalize; width:100%; }
+.bh-detail .bh-card-row{ border-bottom:1px solid #14202f; }

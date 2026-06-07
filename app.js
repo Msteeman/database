@@ -5753,6 +5753,7 @@ function go(view){
   if(view === 'tips')      renderTips();
   if(view === 'ritten')    renderRitten();
   if(view === 'toernooien') renderToernooien();
+  if(view === 'admin')      { if(typeof renderBeheer === 'function') renderBeheer(); }
   if(view === 'player')    renderPlayer();
   // s35cr: privacy + voorwaarden zijn statische views — geen render-functie nodig
   window.scrollTo({top:0});
@@ -24936,6 +24937,7 @@ async function loadUserRole(){
     const snap = await getDoc(doc(db, 'users', currentUser.uid));
     const role = snap.exists() ? (snap.data().role || 'scout') : 'scout';
     window._shUserRole = role;
+    try { document.body.classList.toggle('role-admin', (role==='admin') || (currentUser && currentUser.email && currentUser.email.toLowerCase()==='marcelsteeman1@gmail.com')); } catch(_){}
     // Coordinator-features tonen/verbergen
     document.querySelectorAll('[data-role-min="coordinator"]').forEach(el => {
       el.style.display = (role === 'coordinator' || role === 'admin') ? '' : 'none';
@@ -24943,6 +24945,7 @@ async function loadUserRole(){
   } catch(_){
     // Geen rol-data beschikbaar — geen probleem, app werkt als standaard scout
     window._shUserRole = 'scout';
+    try { document.body.classList.toggle('role-admin', currentUser && currentUser.email && currentUser.email.toLowerCase()==='marcelsteeman1@gmail.com'); } catch(_){}
   }
 }
 window.loadUserRole = loadUserRole;
@@ -27760,3 +27763,281 @@ async function _shSubmitAccessRequest(closeFn){
   }
 }
 window._shSubmitAccessRequest = _shSubmitAccessRequest;
+
+
+/* ============================================================
+   FASE 2 — BEHEER (admin): Toegangsaanvragen + Gebruikers.
+   Additief. Admin = role 'admin' OF isAdminEmail (marcelsteeman1).
+   Leest access_requests (admin-read in rules) en users ROOT-docs
+   (admin-read toegevoegd; subcollecties blijven owner-only).
+   Muteert uitsluitend: access_requests.status/assignedRole/reviewed*,
+   en users.{uid}.role (rol wijzigen). Geen scoutdata aangeraakt.
+   ============================================================ */
+function _shIsAdmin(){
+  try {
+    if(window._shUserRole === 'admin') return true;
+    if(currentUser && currentUser.email && currentUser.email.toLowerCase() === 'marcelsteeman1@gmail.com') return true;
+  } catch(_){}
+  return false;
+}
+window._shIsAdmin = _shIsAdmin;
+
+let _bhAanvrFilter = 'pending';
+let _bhAanvrCache = [];
+let _bhUserCache = [];
+
+function _bhEsc(v){ return String(v==null?'':v).replace(/[&<>"]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
+function _bhDate(v){
+  if(!v) return '—';
+  try { var d = new Date(v); if(isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'}) + ' ' + d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+  } catch(_){ return '—'; }
+}
+function _bhStatusBadge(status){
+  var map = { pending:['Open','bh-b-orange'], approved:['Goedgekeurd','bh-b-green'], rejected:['Afgewezen','bh-b-red'] };
+  var m = map[status] || [status||'—','bh-b-grey'];
+  return '<span class="bh-badge '+m[1]+'">'+_bhEsc(m[0])+'</span>';
+}
+
+function _bhModal(title, bodyHtml, opts){
+  opts = opts || {};
+  var bd = document.createElement('div');
+  bd.className = 'sh-photo-menu-bd'; bd.id = 'bh-modal';
+  var actions = '';
+  if(opts.confirmLabel){
+    actions = '<div class="bh-modal-actions">' +
+      '<button type="button" class="bh-btn bh-btn-ghost" data-close="1">Annuleren</button>' +
+      '<button type="button" class="bh-btn '+(opts.confirmClass||'')+'" id="bh-modal-ok">'+_bhEsc(opts.confirmLabel)+'</button>' +
+    '</div>';
+  }
+  bd.innerHTML = '<div class="sh-photo-menu bh-modal-card" role="dialog" aria-modal="true" aria-label="'+_bhEsc(title)+'">' +
+    '<button type="button" class="sh-req-x" data-close="1" aria-label="Sluiten">×</button>' +
+    '<div class="sh-pm-title">'+_bhEsc(title)+'</div>' +
+    '<div class="bh-modal-body">'+bodyHtml+'</div>' + actions +
+  '</div>';
+  document.body.appendChild(bd);
+  function onKey(e){ if(e.key==='Escape') close(); }
+  function close(){ try { bd.remove(); } catch(_){} document.removeEventListener('keydown', onKey); }
+  document.addEventListener('keydown', onKey);
+  bd.addEventListener('click', function(e){ if(e.target===bd || (e.target.closest && e.target.closest('[data-close]'))) close(); });
+  var ok = document.getElementById('bh-modal-ok');
+  if(ok && typeof opts.onConfirm === 'function'){
+    ok.addEventListener('click', async function(){
+      ok.disabled = true;
+      try { await opts.onConfirm(); close(); }
+      catch(e){ ok.disabled = false; if(typeof toast==='function') toast('Er ging iets mis', true); }
+    });
+  }
+  return { close: close, root: bd };
+}
+
+async function renderBeheer(){
+  var denied = document.getElementById('bh-denied');
+  var wrap = document.getElementById('bh-wrap');
+  if(!_shIsAdmin()){
+    if(denied) denied.style.display='block';
+    if(wrap) wrap.style.display='none';
+    return;
+  }
+  if(denied) denied.style.display='none';
+  if(wrap) wrap.style.display='';
+  if(!window.__bhWired){
+    window.__bhWired = true;
+    document.querySelectorAll('.bh-tab').forEach(function(t){
+      t.addEventListener('click', function(){
+        var tab = t.dataset.bhTab;
+        document.querySelectorAll('.bh-tab').forEach(function(x){ x.classList.toggle('active', x===t); });
+        document.querySelectorAll('.bh-section').forEach(function(sec){ sec.classList.toggle('active', sec.id==='bh-section-'+tab); });
+        if(tab==='gebruikers') _bhLoadUsers(); else _bhLoadAanvragen();
+      });
+    });
+    document.querySelectorAll('#bh-aanvr-filters .bh-filter').forEach(function(f){
+      f.addEventListener('click', function(){
+        _bhAanvrFilter = f.dataset.status;
+        document.querySelectorAll('#bh-aanvr-filters .bh-filter').forEach(function(x){ x.classList.toggle('active', x===f); });
+        _bhRenderAanvragen();
+      });
+    });
+    var us = document.getElementById('bh-user-search'); if(us) us.addEventListener('input', _bhRenderUsers);
+    var ur = document.getElementById('bh-user-role'); if(ur) ur.addEventListener('change', _bhRenderUsers);
+    var usort = document.getElementById('bh-user-sort'); if(usort) usort.addEventListener('change', _bhRenderUsers);
+  }
+  _bhLoadAanvragen();
+}
+window.renderBeheer = renderBeheer;
+
+async function _bhLoadAanvragen(){
+  var list = document.getElementById('bh-aanvr-list');
+  if(list) list.innerHTML = '<div class="bh-empty">Laden…</div>';
+  try {
+    var snap;
+    try { snap = await getDocs(query(collection(db,'access_requests'), orderBy('requestedAt','desc'))); }
+    catch(_){ snap = await getDocs(collection(db,'access_requests')); }
+    _bhAanvrCache = [];
+    snap.forEach(function(d){ var x = d.data()||{}; x._id = d.id; _bhAanvrCache.push(x); });
+    _bhAanvrCache.sort(function(a,b){ return String(b.requestedAt||'').localeCompare(String(a.requestedAt||'')); });
+    _bhRenderAanvragen();
+  } catch(e){
+    if(list) list.innerHTML = '<div class="bh-empty">Kon aanvragen niet laden. Probeer het later opnieuw.</div>';
+  }
+}
+
+function _bhRenderAanvragen(){
+  var list = document.getElementById('bh-aanvr-list');
+  if(!list) return;
+  var rows = _bhAanvrCache;
+  if(_bhAanvrFilter !== 'all') rows = rows.filter(function(r){ return (r.status||'pending') === _bhAanvrFilter; });
+  if(!rows.length){
+    list.innerHTML = '<div class="bh-empty">' + (_bhAanvrFilter==='pending' ? 'Geen open aanvragen' : 'Geen aanvragen in deze categorie') + '</div>';
+    return;
+  }
+  list.innerHTML = rows.map(function(r){
+    var id = _bhEsc(r._id);
+    var status = r.status || 'pending';
+    var actions = (status==='pending')
+      ? '<div class="bh-actions">' +
+          '<button class="bh-btn bh-btn-green" data-bh-approve="'+id+'" data-role="scout">Goedkeuren als scout</button>' +
+          '<button class="bh-btn bh-btn-blue" data-bh-approve="'+id+'" data-role="coordinator">Goedkeuren als coördinator</button>' +
+          '<button class="bh-btn bh-btn-red" data-bh-reject="'+id+'">Afwijzen</button>' +
+        '</div>'
+      : '<div class="bh-meta">' + (r.assignedRole ? ('Rol: '+_bhEsc(r.assignedRole)+' · ') : '') + 'beoordeeld ' + _bhDate(r.reviewedAt) + '</div>';
+    return '<div class="bh-card">' +
+      '<div class="bh-card-top"><div class="bh-card-name">'+(_bhEsc(r.name)||'—')+'</div>'+_bhStatusBadge(status)+'</div>' +
+      '<div class="bh-card-row"><span>E-mail</span><b>'+_bhEsc(r.email)+'</b></div>' +
+      '<div class="bh-card-row"><span>Club</span><b>'+(_bhEsc(r.club)||'—')+'</b></div>' +
+      (r.message ? ('<div class="bh-card-row"><span>Reden</span><b>'+_bhEsc(r.message)+'</b></div>') : '') +
+      '<div class="bh-card-row"><span>Aangevraagd</span><b>'+_bhDate(r.requestedAt)+'</b></div>' +
+      actions +
+    '</div>';
+  }).join('');
+  list.querySelectorAll('[data-bh-approve]').forEach(function(b){
+    b.addEventListener('click', function(){ _bhApprove(b.getAttribute('data-bh-approve'), b.getAttribute('data-role'), b); });
+  });
+  list.querySelectorAll('[data-bh-reject]').forEach(function(b){
+    b.addEventListener('click', function(){ _bhConfirmReject(b.getAttribute('data-bh-reject')); });
+  });
+}
+
+async function _bhApprove(id, role, btn){
+  if(!id || !_shIsAdmin()) return;
+  if(role!=='scout' && role!=='coordinator') return;
+  var card = btn && btn.closest ? btn.closest('.bh-card') : null;
+  if(card) card.querySelectorAll('button').forEach(function(x){ x.disabled=true; });
+  try {
+    await updateDoc(doc(db,'access_requests',id), {
+      status: 'approved', assignedRole: role,
+      reviewedAt: new Date().toISOString(),
+      reviewedBy: (currentUser && currentUser.uid) || null
+    });
+    if(typeof toast==='function') toast('Aanvraag goedgekeurd als '+role+' ✓');
+    _bhLoadAanvragen();
+  } catch(e){
+    if(typeof toast==='function') toast('Kon niet goedkeuren', true);
+    if(card) card.querySelectorAll('button').forEach(function(x){ x.disabled=false; });
+  }
+}
+
+function _bhConfirmReject(id){
+  if(!id) return;
+  _bhModal('Aanvraag afwijzen?', '<p style="margin:0;color:#9aa8bd;font-size:14px;line-height:1.5;">De aanvraag wordt op <b>afgewezen</b> gezet. De aanvrager wordt niet automatisch geïnformeerd.</p>', {
+    confirmLabel: 'Afwijzen', confirmClass: 'bh-btn-red',
+    onConfirm: async function(){
+      if(!_shIsAdmin()) return;
+      await updateDoc(doc(db,'access_requests',id), {
+        status: 'rejected', reviewedAt: new Date().toISOString(),
+        reviewedBy: (currentUser && currentUser.uid) || null
+      });
+      if(typeof toast==='function') toast('Aanvraag afgewezen');
+      _bhLoadAanvragen();
+    }
+  });
+}
+
+async function _bhLoadUsers(){
+  var list = document.getElementById('bh-user-list');
+  if(list) list.innerHTML = '<div class="bh-empty">Laden…</div>';
+  try {
+    var snap = await getDocs(collection(db,'users'));
+    _bhUserCache = [];
+    snap.forEach(function(d){ var x = d.data()||{}; x._id = d.id; _bhUserCache.push(x); });
+    _bhRenderUsers();
+  } catch(e){
+    if(list) list.innerHTML = '<div class="bh-empty">Kon gebruikers niet laden. Zijn de admin-rules gepubliceerd?</div>';
+  }
+}
+
+function _bhRenderUsers(){
+  var list = document.getElementById('bh-user-list'); if(!list) return;
+  var qel = document.getElementById('bh-user-search');
+  var q = (qel && qel.value || '').toLowerCase().trim();
+  var rfEl = document.getElementById('bh-user-role'); var rf = rfEl && rfEl.value || '';
+  var sortEl = document.getElementById('bh-user-sort'); var sort = sortEl && sortEl.value || 'name';
+  var rows = _bhUserCache.slice();
+  if(rf) rows = rows.filter(function(u){ return (u.role||'scout')===rf; });
+  if(q) rows = rows.filter(function(u){ return ((u.displayName||'')+' '+(u.email||'')).toLowerCase().indexOf(q) !== -1; });
+  rows.sort(function(a,b){
+    return sort==='created'
+      ? String(b.createdAt||'').localeCompare(String(a.createdAt||''))
+      : (a.displayName||a.email||'').localeCompare(b.displayName||b.email||'');
+  });
+  if(!rows.length){ list.innerHTML = '<div class="bh-empty">Geen gebruikers gevonden</div>'; return; }
+  list.innerHTML = rows.map(function(u){
+    var id = _bhEsc(u._id); var role = u.role || 'scout';
+    var rcl = role==='admin' ? 'bh-b-purple' : (role==='coordinator' ? 'bh-b-blue' : 'bh-b-grey');
+    var roleBadge = '<span class="bh-badge '+rcl+'">'+_bhEsc(role)+'</span>';
+    return '<div class="bh-card">' +
+      '<div class="bh-card-top"><div class="bh-card-name">'+(_bhEsc(u.displayName)||_bhEsc(u.email)||'—')+'</div>'+roleBadge+'</div>' +
+      '<div class="bh-card-row"><span>E-mail</span><b>'+(_bhEsc(u.email)||'—')+'</b></div>' +
+      '<div class="bh-card-row"><span>Aangemaakt</span><b>'+_bhDate(u.createdAt)+'</b></div>' +
+      (u.isActive===false ? '<div class="bh-card-row"><span>Status</span><b>Gedeactiveerd</b></div>' : '') +
+      '<div class="bh-actions">' +
+        '<button class="bh-btn" data-bh-userdetail="'+id+'">Details</button>' +
+        '<button class="bh-btn bh-btn-blue" data-bh-userrole="'+id+'">Rol wijzigen</button>' +
+        '<button class="bh-btn bh-btn-ghost" disabled title="Komt in Fase 3 (server-side)">Deactiveren</button>' +
+        '<button class="bh-btn bh-btn-ghost" disabled title="Komt in Fase 3 (server-side)">Welkomstmail</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  list.querySelectorAll('[data-bh-userdetail]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserDetail(b.getAttribute('data-bh-userdetail')); }); });
+  list.querySelectorAll('[data-bh-userrole]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserRole(b.getAttribute('data-bh-userrole')); }); });
+}
+
+function _bhUserDetail(uid){
+  var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;
+  var rows = [
+    ['Naam', u.displayName||'—'], ['E-mail', u.email||'—'], ['Rol', u.role||'scout'],
+    ['Team', u.teamId||'—'], ['Aangemaakt', _bhDate(u.createdAt)], ['UID', u._id],
+    ['Status', u.isActive===false ? 'Gedeactiveerd' : 'Actief']
+  ];
+  var body = '<div class="bh-detail">' +
+    rows.map(function(r){ return '<div class="bh-card-row"><span>'+_bhEsc(r[0])+'</span><b>'+_bhEsc(r[1])+'</b></div>'; }).join('') +
+    '<div class="bh-modal-note">Alleen metadata. De scoutdata van deze gebruiker (spelers, rapporten, toernooien) is niet zichtbaar — die blijft eigenaar-only.</div></div>';
+  _bhModal('Gebruiker', body, {});
+}
+
+function _bhUserRole(uid){
+  var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;
+  var cur = u.role || 'scout';
+  var body = '<div class="bh-role-pick">' +
+    ['scout','coordinator','admin'].map(function(r){
+      return '<button type="button" class="bh-btn '+(r===cur?'bh-btn-active':'')+'" data-pick-role="'+r+'">'+r+(r===cur?' (huidig)':'')+'</button>';
+    }).join('') +
+  '</div><div class="bh-modal-note">Wijziging is direct actief; de gebruiker moet opnieuw inloggen om het zelf te zien.</div>';
+  var m = _bhModal('Rol wijzigen — '+(_bhEsc(u.displayName)||_bhEsc(u.email)||''), body, {});
+  m.root.querySelectorAll('[data-pick-role]').forEach(function(b){
+    b.addEventListener('click', async function(){
+      var role = b.getAttribute('data-pick-role');
+      if(role===cur){ m.close(); return; }
+      if(!_shIsAdmin()) return;
+      m.root.querySelectorAll('[data-pick-role]').forEach(function(x){ x.disabled=true; });
+      try {
+        await updateDoc(doc(db,'users',uid), { role: role });
+        if(typeof toast==='function') toast('Rol gewijzigd naar '+role+' ✓');
+        m.close(); _bhLoadUsers();
+      } catch(e){
+        if(typeof toast==='function') toast('Kon rol niet wijzigen', true);
+        m.root.querySelectorAll('[data-pick-role]').forEach(function(x){ x.disabled=false; });
+      }
+    });
+  });
+}

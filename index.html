@@ -819,7 +819,7 @@
         <!-- s35cg: Admin (alleen voor admin via body-class) -->
         <button class="nav-item nav-role-admin" data-view="admin">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          Admin
+          Beheer
         </button>
         <div class="nav-section-label">Analyse</div>
         <button class="nav-item" data-view="elftallen">
@@ -2410,20 +2410,41 @@ algemeen:</textarea>
       <!-- ====== s35cg: ADMIN-PANEEL (alleen admin) ====== -->
       <section class="view" id="view-admin">
         <div class="view-header">
-          <h2 style="margin:0 0 4px 0;">Gebruikersbeheer</h2>
-          <div style="color:#9ca3af; font-size:13px;">Rol en team per gebruiker instellen</div>
+          <h2 style="margin:0 0 4px 0;">Beheer</h2>
+          <div style="color:#9ca3af; font-size:13px;">Toegangsaanvragen en gebruikers</div>
         </div>
-        <div id="admin-users-list" style="background:#0b1220; border:1px solid #1f2937; border-radius:10px; overflow:hidden;">
-          <div class="to-empty">Laden…</div>
-        </div>
-        <div style="margin-top:14px; padding:12px; background:#0b1220; border:1px solid #1f2937; border-radius:10px;">
-          <div style="font-weight:600; margin-bottom:6px;">Toelichting</div>
-          <div style="font-size:13px; color:#9ca3af; line-height:1.5;">
-            <strong>Scout</strong>: ziet alleen eigen data.<br/>
-            <strong>Coördinator</strong>: ziet rapporten van alle scouts in zijn/haar team + kan wedstrijden inplannen voor scouts.<br/>
-            <strong>Admin</strong>: full control. Wijzigingen zijn direct actief; gebruiker moet opnieuw inloggen om het zelf te zien.<br/>
-            <br/>
-            <strong>TeamId leeg</strong> = individuele gebruiker (geen coordinator-toegang tot z'n data). Default voor nieuwe registraties — admin kan iemand pas in een team plaatsen door hier een teamId in te vullen.
+        <div id="bh-denied" class="bh-denied" style="display:none;">Je hebt geen toegang tot deze pagina.</div>
+        <div id="bh-wrap">
+          <div class="bh-tabs">
+            <button class="bh-tab active" data-bh-tab="aanvragen">Toegangsaanvragen</button>
+            <button class="bh-tab" data-bh-tab="gebruikers">Gebruikers</button>
+          </div>
+
+          <div class="bh-section active" id="bh-section-aanvragen">
+            <div class="bh-filters" id="bh-aanvr-filters">
+              <button class="bh-filter active" data-status="pending">Open</button>
+              <button class="bh-filter" data-status="all">Alle</button>
+              <button class="bh-filter" data-status="approved">Goedgekeurd</button>
+              <button class="bh-filter" data-status="rejected">Afgewezen</button>
+            </div>
+            <div id="bh-aanvr-list"><div class="bh-empty">Laden…</div></div>
+          </div>
+
+          <div class="bh-section" id="bh-section-gebruikers">
+            <div class="bh-toolbar">
+              <input type="search" id="bh-user-search" class="bh-search" placeholder="Zoek op naam of e-mail…" aria-label="Zoek gebruiker">
+              <select id="bh-user-role" class="bh-select" aria-label="Filter op rol">
+                <option value="">Alle rollen</option>
+                <option value="scout">Scout</option>
+                <option value="coordinator">Coördinator</option>
+                <option value="admin">Admin</option>
+              </select>
+              <select id="bh-user-sort" class="bh-select" aria-label="Sortering">
+                <option value="name">Naam A–Z</option>
+                <option value="created">Nieuwste eerst</option>
+              </select>
+            </div>
+            <div id="bh-user-list"><div class="bh-empty">Laden…</div></div>
           </div>
         </div>
       </section>

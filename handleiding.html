@@ -94,6 +94,12 @@
     color:var(--text-3); font-size:12.5px; text-align:center; padding:26px 16px; margin:12px 0;
   }
   .hb-shot::before{content:"📷  "; opacity:.8;}
+  .hb-shot.has-img{ padding:0; border:none; background:none; }
+  .hb-shot.has-img::before{ display:none; }
+  .hb-shot.has-img img{ width:100%; max-width:100%; height:auto; border-radius:10px; border:1px solid var(--border); box-shadow:0 4px 20px rgba(0,0,0,.3); display:block; margin:0 auto; }
+  .hb-shot.has-img img[src*="sidebar"]{ max-width:280px; }
+  .hb-shot.has-img img[src*="login"]{ max-width:420px; }
+  .hb-shot.has-img img[src*="obs-chips"]{ max-width:480px; }
   .hb-gif::before{content:"🎬  ";}
   .hb-step{counter-reset:hbstep; list-style:none; padding-left:0;}
   .hb-step li{position:relative; padding:6px 0 6px 38px; margin:0;}
@@ -210,7 +216,7 @@
           <li>Met het oogje in het wachtwoordveld kun je je invoer controleren.</li>
           <li><strong>Wachtwoord vergeten?</strong> Klik op de link onder het formulier. Je ontvangt een reset-link per e-mail.</li>
         </ul>
-        <div class="hb-shot">Screenshot: loginscherm met e-mail, wachtwoord en "Wachtwoord vergeten"</div>
+        <div class="hb-shot has-img"><img src="screenshot-login.png" alt="Loginscherm met e-mailadres, wachtwoord, oog-icoon en Wachtwoord vergeten link" loading="lazy"></div>
       </div>
 
       <div class="hb-sec" data-kw="dashboard kpi agenda live tegels snelknoppen rapport wedstrijd">
@@ -221,7 +227,7 @@
           <li><strong>Agenda &amp; live-tegels:</strong> je komende en lopende wedstrijden.</li>
           <li><strong>Snelknoppen:</strong> <strong>+ Rapport</strong> en <strong>+ Wedstrijd</strong> om meteen aan de slag te gaan.</li>
         </ul>
-        <div class="hb-shot">Screenshot: dashboard met KPI's, agenda en snelknoppen</div>
+        <div class="hb-shot has-img"><img src="screenshot-dashboard.png" alt="Dashboard met KPI-tegels, agenda, live-tegel, snelknoppen en recente rapporten" loading="lazy"></div>
       </div>
 
       <div class="hb-sec" data-kw="sidebar menu modules scouten analyse relaties overig navigatie">
@@ -234,7 +240,7 @@
           <li><strong>Overig:</strong> Ritten, Getipte spelers, Toernooien, Handleiding.</li>
         </ul>
         <p>Op mobiel klap je het menu in en uit met de menuknop.</p>
-        <div class="hb-shot">Screenshot: sidebar met de vier menugroepen</div>
+        <div class="hb-shot has-img"><img src="screenshot-sidebar.png" alt="Sidebar met vier menugroepen: Scouten, Analyse, Relaties, Overig" loading="lazy"></div>
       </div>
 
       <div class="hb-sec" data-kw="pwa installeren iphone safari android chrome beginscherm offline push notificaties">
@@ -306,7 +312,7 @@
           <li><strong>Fysiek</strong> — Sterk, Licht, Lenig, Groot, Klein, Dualkracht, Uithoudingsvermogen</li>
           <li><strong>Inzicht</strong> — Scannen, Positiespel, Ruimte zien, Anticipatie, Coaching, Rust aan de bal, Loopacties, Timing</li>
         </ul>
-        <div class="hb-shot hb-gif">GIF: chips tikken door de kleuren heen — vijf categorieën met trefwoorden</div>
+        <div class="hb-shot has-img"><img src="screenshot-obs-chips.png" alt="Observatieformulier met trefwoord-chips: groen is goed, oranje is gemiddeld, rood is ondermaats. Drie categorieën zichtbaar met notitieveld per categorie" loading="lazy"></div>
       </div>
 
       <div class="hb-sec" data-kw="notitie categorie tekstveld algemeen optioneel opmerkingen">
@@ -443,7 +449,7 @@
       <div class="hb-sec" data-kw="vormtrend sparkline trend grafiek ontwikkeling stijgend dalend stabiel">
         <h3>6.5 Vormtrend</h3>
         <p>Heeft een speler twee of meer rapporten, dan toont het profiel een <strong>📈 Vormtrend</strong>: een lijngrafiek van huidig- en potentieelniveau over tijd, plus per categorie een mini-grafiek (sparkline) met een trendpijl <strong>↗ stijgend · → stabiel · ↘ dalend</strong>. Bij minder dan 2 rapporten staat er "Onvoldoende data voor trend".</p>
-        <div class="hb-shot">Screenshot: vormtrend met lijngrafiek en per-categorie sparklines</div>
+        <div class="hb-shot has-img"><img src="screenshot-vormtrend.png" alt="Spelersprofiel met vormtrend: lijngrafiek van huidig en potentieel niveau over tijd, plus sparklines per categorie met trendpijlen" loading="lazy"></div>
       </div>
     </section>
 
@@ -471,7 +477,9 @@
       <div class="hb-sec" data-kw="contactpersonen relaties trainers coordinatoren">
         <h3>7.5 Contactpersonen</h3>
         <p>Houd je contactpersonen bij — trainers, coördinatoren en andere relaties.</p>
-        <div class="hb-shot">Screenshot: vergelijken, elftal analyse en ritten</div>
+        <div class="hb-shot has-img"><img src="screenshot-vergelijken.png" alt="Spelers vergelijken: totaalindruk met donuts, niveau-matrix en head-to-head balken per criterium" loading="lazy"></div>
+        <div class="hb-shot has-img"><img src="screenshot-elftal-analyse.png" alt="Elftal Analyse: pitch met opstelling, positie-detail en auto-kandidaten" loading="lazy"></div>
+        <div class="hb-shot has-img"><img src="screenshot-ritten.png" alt="Ritten: km-registratie met bedragen, maandtotalen en PDF-declaratie" loading="lazy"></div>
       </div>
     </section>
 

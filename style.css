@@ -12136,3 +12136,12 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
   min-height: 44px;
   touch-action: manipulation;
 }
+
+
+/* Screenshots ronde — landingspagina afbeeldingen */
+#landing-overlay .lp-visual:has(img){ aspect-ratio:auto; border:none; background:none; padding:0; display:block; }
+#landing-overlay .lp-visual img{
+  width:100%; max-width:100%; height:auto; border-radius:12px;
+  box-shadow:0 8px 40px rgba(0,0,0,.4); display:block;
+}
+#landing-overlay .lp-visual-step img{ border-radius:10px; box-shadow:0 6px 24px rgba(0,0,0,.32); }

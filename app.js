@@ -8,7 +8,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, onAuthStateChanged,
-  signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification,
+  signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification, reload,
   signOut, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
@@ -27882,9 +27882,12 @@ async function _shVerifyMyEmail(btn){
   }
 }
 window._shVerifyMyEmail = _shVerifyMyEmail;
-function _bhMaybeVerifyBanner(wrap){
+async function _bhMaybeVerifyBanner(wrap){
   try {
-    var needV = (typeof auth!=='undefined' && auth.currentUser && auth.currentUser.emailVerified === false);
+    if(typeof auth==='undefined' || !auth.currentUser){ var e0=document.getElementById('bh-verify'); if(e0) e0.remove(); return; }
+    // Verse verificatie-status ophalen; auth.currentUser.emailVerified is anders gecachet.
+    try { await reload(auth.currentUser); } catch(_){}
+    var needV = (auth.currentUser.emailVerified === false);
     var existing = document.getElementById('bh-verify');
     if(needV && !existing && wrap){
       var bn = document.createElement('div');

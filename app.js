@@ -24937,7 +24937,7 @@ async function loadUserRole(){
     const snap = await getDoc(doc(db, 'users', currentUser.uid));
     const role = snap.exists() ? (snap.data().role || 'scout') : 'scout';
     window._shUserRole = role;
-    try { document.body.classList.toggle('role-admin', (role==='admin') || (currentUser && currentUser.email && currentUser.email.toLowerCase()==='marcelsteeman1@gmail.com')); } catch(_){}
+    try { document.body.classList.toggle('role-admin', (role==='admin') || (currentUser && currentUser.email && ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1)); } catch(_){}
     // Coordinator-features tonen/verbergen
     document.querySelectorAll('[data-role-min="coordinator"]').forEach(el => {
       el.style.display = (role === 'coordinator' || role === 'admin') ? '' : 'none';
@@ -24945,7 +24945,7 @@ async function loadUserRole(){
   } catch(_){
     // Geen rol-data beschikbaar — geen probleem, app werkt als standaard scout
     window._shUserRole = 'scout';
-    try { document.body.classList.toggle('role-admin', currentUser && currentUser.email && currentUser.email.toLowerCase()==='marcelsteeman1@gmail.com'); } catch(_){}
+    try { document.body.classList.toggle('role-admin', currentUser && currentUser.email && ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1); } catch(_){}
   }
 }
 window.loadUserRole = loadUserRole;
@@ -27776,7 +27776,7 @@ window._shSubmitAccessRequest = _shSubmitAccessRequest;
 function _shIsAdmin(){
   try {
     if(window._shUserRole === 'admin') return true;
-    if(currentUser && currentUser.email && currentUser.email.toLowerCase() === 'marcelsteeman1@gmail.com') return true;
+    if(currentUser && currentUser.email && ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1) return true;
   } catch(_){}
   return false;
 }

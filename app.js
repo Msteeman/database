@@ -26229,7 +26229,7 @@ async function _shForgotPassword(){
      dan vangt de catch hieronder auth/user-not-found af met de beheerder-melding. */
   try {
     await sendPasswordResetEmail(auth, email);
-    _shLoginMsg('Herstel-link verstuurd naar ' + email + '. Check ook je spam-map.', 'success');
+    _shLoginMsg('Als er een account bestaat met dit e-mailadres, ontvang je een herstel-link. Check ook je spam-map.', 'success');
   } catch(e){
     const code = e && e.code;
     const map = {

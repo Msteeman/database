@@ -8,7 +8,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, onAuthStateChanged,
-  signInWithEmailAndPassword, sendPasswordResetEmail,
+  signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification,
   signOut, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
@@ -27841,6 +27841,7 @@ async function renderBeheer(){
   }
   if(denied) denied.style.display='none';
   if(wrap) wrap.style.display='';
+  _bhMaybeVerifyBanner(wrap);
   if(!window.__bhWired){
     window.__bhWired = true;
     document.querySelectorAll('.bh-tab').forEach(function(t){
@@ -27865,6 +27866,37 @@ async function renderBeheer(){
   _bhLoadAanvragen();
 }
 window.renderBeheer = renderBeheer;
+
+/* FASE 3 (eenmalig) — admin e-mailverificatie. Toont alleen een knop
+   zolang de ingelogde admin email_verified=false heeft; daarna weg. */
+async function _shVerifyMyEmail(btn){
+  try {
+    if(typeof auth==='undefined' || !auth.currentUser) return;
+    if(btn){ btn.disabled=true; btn.textContent='Versturen\u2026'; }
+    await sendEmailVerification(auth.currentUser);
+    if(typeof toast==='function') toast('Verificatie-mail verstuurd naar '+(auth.currentUser.email||'')+' \u2713');
+    if(btn){ btn.textContent='Mail verstuurd \u2014 check je inbox + spam'; }
+  } catch(e){
+    if(typeof toast==='function') toast('Kon verificatie-mail niet versturen', true);
+    if(btn){ btn.disabled=false; btn.textContent='Verstuur verificatie-mail'; }
+  }
+}
+window._shVerifyMyEmail = _shVerifyMyEmail;
+function _bhMaybeVerifyBanner(wrap){
+  try {
+    var needV = (typeof auth!=='undefined' && auth.currentUser && auth.currentUser.emailVerified === false);
+    var existing = document.getElementById('bh-verify');
+    if(needV && !existing && wrap){
+      var bn = document.createElement('div');
+      bn.id='bh-verify'; bn.className='bh-verify';
+      bn.innerHTML = '<div class="bh-verify-txt">Je e-mailadres (<b>'+_bhEsc(auth.currentUser.email||'')+'</b>) is nog niet geverifieerd. Dit is \u00e9\u00e9nmalig nodig om accounts te kunnen aanmaken en de lijsten te laden.</div>'+
+        '<button type="button" class="bh-btn bh-btn-blue" id="bh-verify-btn">Verstuur verificatie-mail</button>';
+      wrap.insertBefore(bn, wrap.firstChild);
+      var vb=document.getElementById('bh-verify-btn');
+      if(vb) vb.addEventListener('click', function(){ _shVerifyMyEmail(vb); });
+    } else if(!needV && existing){ existing.remove(); }
+  } catch(_){}
+}
 
 async function _bhLoadAanvragen(){
   var list = document.getElementById('bh-aanvr-list');

@@ -12228,3 +12228,8 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 .bh-role-pick{ display:flex; flex-direction:column; gap:8px; }
 .bh-role-pick .bh-btn{ text-transform:capitalize; width:100%; }
 .bh-detail .bh-card-row{ border-bottom:1px solid #14202f; }
+
+/* Fase 3 — eenmalige e-mailverificatie-banner (Beheer) */
+.bh-verify{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; justify-content:space-between; background:rgba(251,191,36,.10); border:1px solid rgba(251,191,36,.35); border-radius:10px; padding:12px 14px; margin-bottom:14px; }
+.bh-verify-txt{ font-size:13.5px; color:#fcd34d; line-height:1.5; flex:1 1 240px; }
+.bh-verify .bh-btn{ flex:0 0 auto; }

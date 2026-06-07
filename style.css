@@ -12155,3 +12155,10 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 .sh-lb-close:hover{ background:rgba(255,255,255,.3); }
 #landing-overlay .lp-visual img{ cursor:zoom-in; transition:transform .15s ease; }
 #landing-overlay .lp-visual img:hover{ transform:scale(1.02); }
+
+
+/* Login/reset meldingen */
+.sh-login-msg{ display:none; font-size:14px; margin:10px 0; padding:10px 14px; border-radius:0 8px 8px 0; line-height:1.45; animation:shLoginMsgIn .2s ease; }
+.sh-login-msg.error{ background:rgba(248,113,113,.12); border-left:3px solid var(--bad,#f87171); color:#fca5a5; }
+.sh-login-msg.success{ background:rgba(52,211,153,.12); border-left:3px solid var(--good,#34d399); color:#6ee7b7; }
+@keyframes shLoginMsgIn{ from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:none; } }

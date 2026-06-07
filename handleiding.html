@@ -36,7 +36,8 @@
   }
   .hb-burger{
     display:none; background:var(--bg-2); border:1px solid var(--border); color:var(--text);
-    width:40px; height:40px; border-radius:10px; font-size:18px; cursor:pointer; flex:0 0 auto;
+    width:44px; height:44px; border-radius:10px; font-size:20px; cursor:pointer; flex:0 0 auto;
+    align-items:center; justify-content:center; touch-action:manipulation; position:relative; z-index:31;
   }
   .hb-brand{display:flex; align-items:center; gap:9px; font-weight:800; letter-spacing:-.3px; flex:0 0 auto;}
   .hb-logo{width:26px; height:26px; border-radius:7px;
@@ -140,8 +141,8 @@
     .hb-search-wrap{max-width:none;}
     .hb-brand small{display:none;}
     .hb-nav{
-      position:fixed; top:0; left:0; bottom:0; width:280px; height:100vh; z-index:50;
-      background:var(--bg-2); border-right:1px solid var(--border);
+      position:fixed; top:0; left:0; bottom:0; width:280px; height:100vh; height:100dvh; z-index:50;
+      background:var(--bg-2); border-right:1px solid var(--border); overflow-y:auto;
       transform:translateX(-100%); transition:transform .25s ease; padding-top:calc(18px + env(safe-area-inset-top));
     }
     .hb-nav.open{transform:none;}
@@ -149,6 +150,15 @@
     .hb-content{padding:20px 16px 70px;}
     .hb-actions .hb-btn-label{display:none;}
   }
+
+  /* ===== Hoofdstuk-tabs (mobiel fallback-navigatie) ===== */
+  .hb-tabs{ display:none; }
+  .hb-tab{ flex:0 0 auto; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; background:var(--bg-2); border:1px solid var(--border); color:var(--text-2); cursor:pointer; touch-action:manipulation; padding:0; }
+  .hb-tab.active{ background:var(--accent); color:#06223f; border-color:var(--accent); }
+  @media (max-width:860px){
+    .hb-tabs{ display:flex; gap:8px; padding:10px 16px; overflow-x:auto; -webkit-overflow-scrolling:touch; position:sticky; top:calc(60px + env(safe-area-inset-top, 0px)); z-index:20; background:var(--bg); border-bottom:1px solid var(--border); }
+  }
+  @media print{ .hb-tabs{ display:none !important; } }
 
   /* ===== Quick Reference (print) ===== */
   #qr-print{display:none;}
@@ -191,6 +201,17 @@
     <button class="hb-btn" id="hb-print-qr">📄 <span class="hb-btn-label">Quick Reference</span></button>
     <a class="hb-btn hb-btn-primary" href="index.html">Naar de app</a>
   </div>
+</div>
+
+<div class="hb-tabs" id="hb-tabs">
+  <button class="hb-tab active" data-ch="1">1</button>
+  <button class="hb-tab" data-ch="2">2</button>
+  <button class="hb-tab" data-ch="3">3</button>
+  <button class="hb-tab" data-ch="4">4</button>
+  <button class="hb-tab" data-ch="5">5</button>
+  <button class="hb-tab" data-ch="6">6</button>
+  <button class="hb-tab" data-ch="7">7</button>
+  <button class="hb-tab" data-ch="8">8</button>
 </div>
 
 <div class="hb-nav-backdrop" id="hb-nav-backdrop"></div>
@@ -649,6 +670,7 @@
   function showChapter(n){
     document.querySelectorAll('.hb-chapter').forEach(function(c){ c.classList.toggle('active', c.dataset.ch === n); });
     document.querySelectorAll('.hb-ch').forEach(function(a){ a.classList.toggle('active', a.dataset.ch === n); });
+    document.querySelectorAll('.hb-tab').forEach(function(b){ b.classList.toggle('active', b.dataset.ch === n); });
     if(search) search.value='';
     applySearch('');
     window.scrollTo({top:0, behavior:'smooth'});
@@ -656,6 +678,9 @@
   }
   document.querySelectorAll('.hb-ch').forEach(function(a){
     a.addEventListener('click', function(){ showChapter(a.dataset.ch); });
+  });
+  document.querySelectorAll('.hb-tab').forEach(function(t){
+    t.addEventListener('click', function(){ showChapter(t.dataset.ch); });
   });
 
   function applySearch(q){

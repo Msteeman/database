@@ -5268,30 +5268,34 @@ async function doLogout(auto){
 }
 function authErrorNL(code){
   const map = {
-    'auth/invalid-email': 'Ongeldig e-mailadres.',
-    'auth/invalid-credential': 'E-mail of wachtwoord onjuist.',
-    'auth/wrong-password': 'E-mail of wachtwoord onjuist.',
-    'auth/user-not-found': 'Geen account met dit e-mailadres.',
+    'auth/user-not-found': 'Er bestaat geen account met dit e-mailadres. Neem contact op met de beheerder om een account aan te vragen.',
+    'auth/wrong-password': "Het wachtwoord is onjuist. Probeer het opnieuw of klik op 'Wachtwoord vergeten?'",
+    'auth/invalid-credential': 'De inloggegevens zijn onjuist. Controleer je e-mailadres en wachtwoord.',
+    'auth/invalid-email': 'Dit is geen geldig e-mailadres.',
+    'auth/user-disabled': 'Dit account is gedeactiveerd. Neem contact op met de beheerder.',
+    'auth/too-many-requests': 'Te veel pogingen. Wacht even en probeer het later opnieuw.',
+    'auth/network-request-failed': 'Geen internetverbinding. Controleer je verbinding en probeer het opnieuw.',
     'auth/email-already-in-use': 'Dit e-mailadres is al in gebruik.',
     'auth/weak-password': 'Wachtwoord moet minimaal 6 tekens zijn.',
-    'auth/too-many-requests': 'Te veel pogingen — probeer later opnieuw.',
-    'auth/network-request-failed': 'Geen internetverbinding.',
-    'auth/unauthorized-domain': 'Dit domein is niet toegestaan in Firebase. Voeg msteeman.github.io toe aan Authorized Domains in de Firebase Console.'
+    'auth/unauthorized-domain': 'Dit domein is niet toegestaan in Firebase. Voeg het toe aan Authorized Domains in de Firebase Console.'
   };
-  return map[code] || `Er ging iets mis (${code}). Probeer opnieuw.`;
+  return map[code] || 'Er ging iets mis bij het inloggen. Probeer het later opnieuw.';
 }
 window.tryLogin = async function tryLogin(){
   const btn = $('#login-btn');
   const email = $('#login-email').value.trim();
   const pw = $('#login-pw').value;
-  const err = $('#login-error');
-  err.textContent = '';
-  if(!email || !pw){ err.textContent = 'Vul e-mail en wachtwoord in.'; return; }
+  _shLoginMsg('', null);   // wis vorige melding bij nieuwe poging
+  // Lege velden vóór de Firebase-call afvangen
+  if(!email && !pw){ _shLoginMsg('Vul je e-mailadres en wachtwoord in.', 'error'); return; }
+  if(!email){ _shLoginMsg('Vul je e-mailadres in.', 'error'); return; }
+  if(!pw){ _shLoginMsg('Vul je wachtwoord in.', 'error'); return; }
   btn.disabled = true; btn.textContent = 'Bezig...';
   try {
     await signInWithEmailAndPassword(auth, email, pw);
+    _shLoginMsg('', null);   // succes — geen melding laten staan
   } catch(e){
-    err.textContent = authErrorNL(e.code);
+    _shLoginMsg(authErrorNL(e && e.code), 'error');
     $('#login-pw').value = '';
   } finally {
     btn.disabled = false; btn.textContent = 'Inloggen';
@@ -26216,13 +26220,24 @@ window._bndSetGrade = _bndSetGrade;
 /* H7 — wachtwoord-vergeten: stuurt een Firebase herstel-link naar het ingevulde e-mailadres. */
 async function _shForgotPassword(){
   const email = (document.getElementById('login-email') && document.getElementById('login-email').value || '').trim();
-  const errEl = document.getElementById('login-error');
-  if(!email){ if(errEl){ errEl.style.color=''; errEl.textContent = 'Vul eerst je e-mailadres in, dan sturen we een herstel-link.'; } return; }
+  _shLoginMsg('', null);
+  if(!email){ _shLoginMsg('Vul eerst je e-mailadres in voordat je een herstel-link aanvraagt.', 'error'); return; }
+  /* BEVEILIGINGSNOOT: staat Firebase 'Email enumeration protection' AAN, dan geeft
+     sendPasswordResetEmail ALTIJD success terug (ook bij een onbekend e-mailadres),
+     zodat aanvallers geen accounts kunnen raden — auth/user-not-found komt dan niet
+     voor en we tonen gewoon de succes-melding (veiliger). Staat de bescherming UIT,
+     dan vangt de catch hieronder auth/user-not-found af met de beheerder-melding. */
   try {
     await sendPasswordResetEmail(auth, email);
-    if(errEl){ errEl.style.color = '#7fd99e'; errEl.textContent = 'Herstel-link verstuurd naar ' + email + ' (check ook je spam).'; }
+    _shLoginMsg('Herstel-link verstuurd naar ' + email + '. Check ook je spam-map.', 'success');
   } catch(e){
-    if(errEl){ errEl.style.color = ''; errEl.textContent = (typeof authErrorNL === 'function') ? authErrorNL(e) : 'Kon geen herstel-link sturen — controleer het e-mailadres.'; }
+    const code = e && e.code;
+    const map = {
+      'auth/user-not-found': 'Er bestaat geen account met dit e-mailadres. Neem contact op met de beheerder om een account aan te vragen.',
+      'auth/invalid-email': 'Dit is geen geldig e-mailadres.',
+      'auth/too-many-requests': 'Te veel pogingen. Wacht even en probeer het later opnieuw.'
+    };
+    _shLoginMsg(map[code] || 'Er ging iets mis. Probeer het later opnieuw.', 'error');
   }
 }
 window._shForgotPassword = _shForgotPassword;
@@ -27639,3 +27654,19 @@ function _shSetKmTarief(val){
   } catch(_){}
 }
 window._shSetKmTarief = _shSetKmTarief;
+
+
+/* Login/reset — gestylede melding (rood = fout, groen = succes), auto-hide na 8s. */
+var _shLoginMsgTimer = null;
+function _shLoginMsg(text, type){
+  var el = document.getElementById('sh-login-msg');
+  if(!el) return;
+  if(_shLoginMsgTimer){ clearTimeout(_shLoginMsgTimer); _shLoginMsgTimer = null; }
+  if(!text){ el.style.display = 'none'; el.textContent = ''; el.className = 'sh-login-msg'; return; }
+  el.textContent = text;
+  el.className = 'sh-login-msg ' + (type === 'success' ? 'success' : 'error');
+  el.style.display = 'block';
+  el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+  _shLoginMsgTimer = setTimeout(function(){ el.style.display = 'none'; el.textContent = ''; el.className = 'sh-login-msg'; }, 8000);
+}
+window._shLoginMsg = _shLoginMsg;

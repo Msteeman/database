@@ -21,7 +21,7 @@ import {
 
 /* =============== FIREBASE CONFIG =============== */
 const firebaseConfig = {
-  apiKey: "AIzaSyBDeLaGfzM1PN8Cl8E6nlIe8FxxxXLwRyY",
+  apiKey: "AIzaSyDctki-dvGIzTsyZ3GWVhzHq2l1Mblj_ko",
   authDomain: "database-scouting.firebaseapp.com",
   projectId: "database-scouting",
   storageBucket: "database-scouting.firebasestorage.app",

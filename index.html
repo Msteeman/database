@@ -3749,6 +3749,9 @@ algemeen:</textarea>
 <!-- PRODUCTIE: draai eerst ./build.sh, zet daarna de app.min.js-regel AAN en de app.js-regel UIT.
      <script type="module" src="app.min.js"></script> -->
 <script type="module" src="app.js"></script>
+<script>
+(function(){function init(){var lb=document.getElementById("sh-lightbox");if(!lb){lb=document.createElement("div");lb.id="sh-lightbox";lb.className="sh-lb";lb.setAttribute("role","dialog");lb.setAttribute("aria-modal","true");lb.setAttribute("aria-label","Afbeelding vergroten");lb.innerHTML='<button class="sh-lb-close" aria-label="Sluiten">\u00d7</button><img class="sh-lb-img" src="" alt="">';document.body.appendChild(lb);}var img=lb.querySelector(".sh-lb-img");var closeBtn=lb.querySelector(".sh-lb-close");function openLb(src,alt){if(!src)return;img.src=src;img.alt=alt||"";lb.classList.add("open");document.body.style.overflow="hidden";}function closeLb(){lb.classList.remove("open");img.src="";document.body.style.overflow="";}lb.addEventListener("click",function(e){if(e.target===lb||e.target===closeBtn||(closeBtn&&closeBtn.contains(e.target)))closeLb();});document.addEventListener("keydown",function(e){if(e.key==="Escape"&&lb.classList.contains("open"))closeLb();});document.addEventListener("click",function(e){var t=e.target;if(!t||t.tagName!=="IMG"||!t.closest)return;if(t.closest("#sh-lightbox"))return;if(t.closest(".hb-shot.has-img")||t.closest("#landing-overlay")){e.preventDefault();openLb(t.currentSrc||t.src,t.alt);}});}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();})();
+</script>
 
 <!-- ====== TOERNOOI: WEDSTRIJD DETAIL OVERLAY ====== -->
 <div class="toern-backdrop" id="toern-match-backdrop" role="dialog" aria-modal="true" aria-label="Wedstrijd-detail" style="display:none;" onclick="if(event.target===this)closeMatchDetail()">

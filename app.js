@@ -27887,7 +27887,7 @@ async function _bhMaybeVerifyBanner(wrap){
     if(typeof auth==='undefined' || !auth.currentUser){ var e0=document.getElementById('bh-verify'); if(e0) e0.remove(); return; }
     // Verse verificatie-status ophalen; auth.currentUser.emailVerified is anders gecachet.
     try { await reload(auth.currentUser); } catch(_){}
-    var needV = (auth.currentUser.emailVerified === false);
+    var needV = (auth.currentUser.emailVerified === false) && (window._shUserRole !== 'admin');
     var existing = document.getElementById('bh-verify');
     if(needV && !existing && wrap){
       var bn = document.createElement('div');

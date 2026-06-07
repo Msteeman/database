@@ -27921,18 +27921,31 @@ function _bhRenderAanvragen(){
 async function _bhApprove(id, role, btn){
   if(!id || !_shIsAdmin()) return;
   if(role!=='scout' && role!=='coordinator') return;
+  var req = _bhAanvrCache.find(function(x){ return x._id===id; });
+  if(!req || !req.email){ if(typeof toast==='function') toast('Aanvraag niet gevonden', true); return; }
   var card = btn && btn.closest ? btn.closest('.bh-card') : null;
   if(card) card.querySelectorAll('button').forEach(function(x){ x.disabled=true; });
+  // FASE 3: account aanmaken via de worker (admin-idToken-gated accounts:signUp).
   try {
-    await updateDoc(doc(db,'access_requests',id), {
-      status: 'approved', assignedRole: role,
-      reviewedAt: new Date().toISOString(),
-      reviewedBy: (currentUser && currentUser.uid) || null
+    var idToken = '';
+    try { if(typeof auth!=='undefined' && auth.currentUser) idToken = await auth.currentUser.getIdToken(); } catch(_){}
+    if(!idToken) throw new Error('no-token');
+    var base = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE)
+      ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
+    var r = await fetch(base + '/api/create-account', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: idToken, email: req.email, displayName: req.name || '', role: role, accessRequestId: id })
     });
-    if(typeof toast==='function') toast('Aanvraag goedgekeurd als '+role+' ✓');
-    _bhLoadAanvragen();
+    var j = {}; try { j = await r.json(); } catch(_){}
+    if(r.ok && j && j.ok){
+      if(typeof toast==='function') toast('Account aangemaakt als '+role+' ✅' + (j.mailSent ? ' · welkomstmail verstuurd' : ' · mail niet verstuurd'));
+      _bhLoadAanvragen();
+    } else {
+      if(typeof toast==='function') toast((j && j.error) || 'Kon account niet aanmaken', true);
+      if(card) card.querySelectorAll('button').forEach(function(x){ x.disabled=false; });
+    }
   } catch(e){
-    if(typeof toast==='function') toast('Kon niet goedkeuren', true);
+    if(typeof toast==='function') toast('Geen verbinding met de server', true);
     if(card) card.querySelectorAll('button').forEach(function(x){ x.disabled=false; });
   }
 }

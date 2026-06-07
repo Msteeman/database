@@ -3018,26 +3018,27 @@ function _shGuardClose(k, closeFn){
 // ────────────────────────────────────────────────────────────────────────────
 
 // ── Gemini AI helper ─────────────────────────────────────────────────────────
-const _GEMINI_KEYS = [
-  ['AIzaSyDH58cAtoWrl','bpmu0MdbyrlsPgcQ','YduRV4'].join(''),
-  ['AIzaSyBDeLaGfzM1','PN8Cl8E6nlIe8Fxx','xXLwRyY'].join('') // fallback
-];
+// ── Gemini AI helper (via server-side worker-proxy) ──────────────────
+// SECURITY: de Gemini-key staat NIET meer in de frontend. De worker
+// (/api/gemini) houdt 'm server-side (Cloudflare Secret GEMINI_API_KEY) en
+// geeft alleen de gegenereerde tekst terug. Additief; geen data aangeraakt.
 async function callGemini(prompt, { temperature=0.3, maxTokens=512 }={}){
-  const body = JSON.stringify({
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { temperature, maxOutputTokens: maxTokens }
-  });
-  for(const key of _GEMINI_KEYS){
-    try {
-      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
-      const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body });
-      if(!res.ok) continue;
-      const data = await res.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      if(text) return text.trim();
-    } catch(_){}
+  const base = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE)
+    ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
+  try {
+    const res = await fetch(base + '/api/gemini', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, temperature, maxTokens })
+    });
+    if(!res.ok) throw new Error('proxy ' + res.status);
+    const data = await res.json();
+    const text = (data && data.text) ? data.text : '';
+    if(text) return String(text).trim();
+    throw new Error((data && data.error) || 'leeg antwoord');
+  } catch(_){
+    throw new Error('Gemini niet beschikbaar');
   }
-  throw new Error('Gemini niet beschikbaar');
 }
 window.callGemini = callGemini;
 

@@ -27731,7 +27731,9 @@ async function _shSubmitAccessRequest(closeFn){
   var btn = document.getElementById('sh-req-send');
   if(btn){ btn.disabled = true; btn.textContent = 'Versturen\u2026'; }
   try {
-    var r = await fetch(TOERNOOI_API_BASE + '/api/request-access', {
+    var _apiBase = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE)
+      ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
+    var r = await fetch(_apiBase + '/api/request-access', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: email, name: name, club: club, message: message })
     });

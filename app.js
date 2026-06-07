@@ -6276,12 +6276,17 @@ function openObservatieForm(prog, sn){
   const _parsedTerms = _obsParseAllTerms(_obsTermTekst);
   const termsEl = document.getElementById('obs-terms');
   if(termsEl){
-    termsEl.innerHTML = _OBS_TERMS.map(t => `
-      <div class="obs-term-row">
-        <span class="obs-term-label">${t}</span>
-        <input class="obs-term-in" data-term="${t}" type="text" placeholder="${escapeHtml(_OBS_TERM_PH[t]||'')}" value="${escapeHtml(_parsedTerms[t]||'')}" />
-      </div>`).join('');
+    // Chip-migratie: 4-staps trefwoord-chips i.p.v. 8 losse tekstvelden, plus één vrij "Algemeen"-veld.
+    const _algVal = _parsedTerms['algemeen'] || '';
+    termsEl.innerHTML = `
+      <div class="obs-term-row obs-term-row-algemeen">
+        <span class="obs-term-label">Algemeen / toelichting</span>
+        <input class="obs-term-in" data-term="algemeen" type="text" placeholder="bv. interessante speler, extra context (optioneel)..." value="${escapeHtml(_algVal)}" />
+      </div>`;
   }
+  // Chip-migratie: trefwoord-chips injecteren (zelfde component als toernooi-obs).
+  // De toernooi-flow injecteert hierna opnieuw met bestaande tags.
+  try { if(typeof _injectObsTrefwoorden === 'function') _injectObsTrefwoorden(sn && Array.isArray(sn.tags) ? sn.tags : []); } catch(_){}
   // Pre-fill player info from snelnotitie
   const setV = (id, v) => { const el = document.getElementById(id); if(el && v) el.value = v; else if(el) el.value = ''; };
   setV('obs-naam', sn && (sn.naam||''));
@@ -6493,6 +6498,9 @@ async function _obsSubmit(e){
     const _termsContainerSub = document.getElementById('obs-terms');
     const termIns = _termsContainerSub ? Array.from(_termsContainerSub.querySelectorAll('.obs-term-in')) : Array.from(document.querySelectorAll('.obs-term-in'));
     const tekst = _OBS_TERMS.map(t => { const el = termIns.find(x => x.dataset.term === t); return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : ''); }).join('\n');
+    // Chip-migratie: trefwoord-chips uitlezen -> tags[]
+    const _obsTagEls = document.querySelectorAll('#obs-trefwoorden .obs-tag[data-rating]');
+    const _obsTags = Array.from(_obsTagEls).map(el => ({ label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') })).filter(t => t.rating);
     // Split naam into voornaam/achternaam
     let voornaam = '', achternaam = '';
     if(naam){
@@ -6515,6 +6523,7 @@ async function _obsSubmit(e){
       huidig_niveau: niveau,
       potentieel_niveau: '',
       advies: advies,
+      tags: _obsTags,
       rapport_type: 'observatie',
       concept: false,
       status: 'observatie',
@@ -13302,12 +13311,24 @@ function renderDetailObsOverview(p){
     } catch(_){}
   }
 
-  const rowsHtml=rows.map(function(r){
+  // Chip-migratie: opgeslagen trefwoord-chips bovenaan tonen (indien aanwezig)
+  let _obsTagsHtml = '';
+  if(Array.isArray(p.tags) && p.tags.length){
+    const _byCat = {};
+    p.tags.forEach(function(t){ const c=String(t.category||'').toLowerCase(); if(!c||!t.label) return; (_byCat[c]=_byCat[c]||[]).push((t.rating==='good'?'🟢':t.rating==='average'?'🟠':'🔴')+' '+t.label); });
+    const _cats = Object.keys(_byCat);
+    if(_cats.length){
+      _obsTagsHtml = '<div class="obs-tags-summary" style="margin-bottom:12px;">' + _cats.map(function(c){ return '<div class="bnd-cat" style="margin-bottom:5px;"><span class="bnd-cat-label" style="font-weight:600;text-transform:uppercase;font-size:11px;opacity:.7;margin-right:6px;">'+escapeHtml(c)+'</span>'+escapeHtml(_byCat[c].join('  '))+'</div>'; }).join('') + '</div>';
+    }
+  }
+  // Bij chip-observaties alleen de ingevulde criteria-rijen tonen (geen lege rijen)
+  const _critRows = rows.filter(function(r){ return _obsTagsHtml ? !!r.val : true; }).map(function(r){
     return '<div class="obs-crit-row'+(r.val?'':' obs-crit-row-empty')+'">'
       +'<div class="obs-crit-label">'+escapeHtml(r.label)+'</div>'
       +'<div class="obs-crit-val">'+(r.val?escapeHtml(r.val):'<span class="obs-crit-empty">—</span>')+'</div>'
       +'</div>';
   }).join('');
+  const rowsHtml = _obsTagsHtml + _critRows;
 
   const overigHtml=overig.length
     ?`<div class="obs-overig">${escapeHtml(overig.join(' '))}</div>`:'';

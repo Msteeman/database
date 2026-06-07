@@ -1,6 +1,6 @@
 /* Scouting Platform — Service Worker
    Bump CACHE_VERSION whenever you ship a new index.html so users get the latest. */
-const CACHE_VERSION = 'sh-v220-blok3-5b';
+const CACHE_VERSION = 'sh-v221-chipmig';
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-rt`;
 

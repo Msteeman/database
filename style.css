@@ -12105,3 +12105,34 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 .rep-tag-cat-lbl{ font-weight:700; text-transform:uppercase; font-size:10.5px; letter-spacing:.04em; color:var(--text-3,#8b97ad); margin-right:6px; }
 .rep-obs-link{ margin-top:8px; font-size:12px; color:var(--text-3,#8b97ad); cursor:pointer; display:inline-block; }
 .rep-obs-link:hover{ color:var(--accent,#4ea1ff); text-decoration:underline; }
+
+
+/* ===================== BUGFIX RONDE 1 ===================== */
+
+/* B8 — sluitknoppen (×) onder de statusbalk op PWA (viewport-fit=cover) */
+.modal-close, .obs-modal-close, .toern-modal-close, .smart-modal-close,
+.sh-wiz-close, .changelog-close, .cmp-add-close, .demo-tour-close,
+.install-modal-close, .live-scout-close, .settings-close-btn,
+.sa-snel-close-head, .sa-snel-wstr-close-head, .sa-tile-close, .sa-tile-obs-close,
+.wstr-verwerk-close {
+  top: max(12px, env(safe-area-inset-top, 0px)) !important;
+}
+
+/* B9 — toernooi-view altijd full-width op PWA */
+#view-toernooien, #toern-list-pane, #toern-detail-pane, #toern-list-wrap, .toern-tab-pane {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* B10 — voorkom dubbel-tap-zoom op alle tikbare chips/knoppen */
+.obs-tag, .grade-pick, .adv-chip, .hb-grade, .toern-prio-btn, .cond-chip,
+.grade-picker button, .sa-live-btn, .rit-fav-chip, .psug-link,
+.report-trefwoorden .obs-tag, [class*="-chip"] {
+  touch-action: manipulation;
+}
+
+/* B11 — wedstrijdnotitie/obs-knoppen voldoende touch-target + geen zoom */
+.sa-live-btn, .sa-wstr-toggle-row, .sa-wstrnotitie-row {
+  min-height: 44px;
+  touch-action: manipulation;
+}

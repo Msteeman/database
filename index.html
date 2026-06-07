@@ -385,7 +385,7 @@
         <label>Wachtwoord</label>
         <div class="login-pw-wrap" style="position:relative;">
           <input id="login-pw" type="password" class="login-input" placeholder="Voer wachtwoord in" autocomplete="current-password" enterkeyhint="go" style="padding-right:40px;" />
-          <button type="button" id="login-pw-toggle" aria-label="Wachtwoord tonen of verbergen" onclick="(function(b){var i=document.getElementById('login-pw');if(!i)return;var on=i.type==='password';i.type=on?'text':'password';b.textContent=on?'\ud83d\ude48':'\ud83d\udc41';})(this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;font-size:16px;line-height:1;padding:4px;">\ud83d\udc41</button>
+          <button type="button" id="login-pw-toggle" aria-label="Wachtwoord tonen of verbergen" onclick="(function(b){var i=document.getElementById('login-pw');if(!i)return;var on=i.type==='password';i.type=on?'text':'password';b.textContent=on?'\ud83d\ude48':'\ud83d\udc41';})(this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;font-size:16px;line-height:1;padding:4px;">&#128065;</button>
         </div>
       </div>
       <button id="login-btn" type="submit" class="login-btn">Inloggen</button>
@@ -599,7 +599,7 @@
           </div>
           <div class="settings-field">
             <label for="settings-km-tarief">Km-vergoeding (€/km)</label>
-            <input type="number" step="0.01" min="0" id="settings-km-tarief" placeholder="0.23" onchange="try{localStorage.setItem('sh_km_tarief', this.value||'')}catch(_){}" />
+            <input type="number" step="0.01" min="0" id="settings-km-tarief" placeholder="0.23" onchange="window._shSetKmTarief && window._shSetKmTarief(this.value)" />
           </div>
           <div class="settings-btn-row">
             <button type="button" class="settings-btn" id="settings-personal-save">Opslaan</button>

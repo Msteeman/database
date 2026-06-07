@@ -13406,7 +13406,7 @@ function renderDetailObsOverview(p){
       +'<div class="obs-crit-val">'+(r.val?escapeHtml(r.val):'<span class="obs-crit-empty">—</span>')+'</div>'
       +'</div>';
   }).join('');
-  const rowsHtml = _obsTagsHtml + _critRows;
+  const rowsHtml = _obsTagsHtml ? _obsTagsHtml : _critRows;
 
   const overigHtml=overig.length
     ?`<div class="obs-overig">${escapeHtml(overig.join(' '))}</div>`:'';
@@ -15163,7 +15163,7 @@ function resetReportForm(){
   $$('.grade-pick').forEach(b=>b.classList.remove('selected'));
   $$('.grade-picker').forEach(p=>p.dataset.value='');
   try { document.querySelectorAll('#f-advies-chips .adv-chip').forEach(b => b.classList.remove('active')); } catch(_){}
-  try { window.__shObsLink = null; } catch(_){}
+  try { if(!window.__shObsPrefilling) window.__shObsLink = null; } catch(_){}
   // s35x: scouting-context loslaten zodat autosave terugvalt op localStorage
   window.__shScoutingCtx = null;
   setDirty(false);
@@ -26359,7 +26359,7 @@ window._nieuweObsVoorSpeler = _nieuweObsVoorSpeler;
 
 
 /* M13 — km-vergoeding helpers, PDF-declaratie, en tarief-instelling. */
-function _kmTarief(){ try { const v = parseFloat(localStorage.getItem('sh_km_tarief')); return (Number.isFinite(v) && v >= 0) ? v : 0.23; } catch(_){ return 0.23; } }
+function _kmTarief(){ try { var uid=(typeof auth!=='undefined'&&auth.currentUser)?auth.currentUser.uid:''; var v=parseFloat(localStorage.getItem('sh_km_tarief_'+uid)); if(!Number.isFinite(v)) v=parseFloat(localStorage.getItem('sh_km_tarief')); return (Number.isFinite(v) && v >= 0) ? v : 0.23; } catch(_){ return 0.23; } }
 function _fmtEur(n){ return '\u20ac ' + (Number(n)||0).toFixed(2).replace('.', ','); }
 function _ritExportPdf(){
   const van=(document.getElementById('rit-filter-van')||{}).value||'';
@@ -26391,7 +26391,7 @@ function _ritExportPdf(){
 }
 window._ritExportPdf=_ritExportPdf;
 // M13 — km-tarief-instelling laden in de Instellingen-modal
-function _initKmTariefField(){ const el=document.getElementById('settings-km-tarief'); if(el){ try{ const v=localStorage.getItem('sh_km_tarief'); if(v!=null && v!=='') el.value=v; }catch(_){} } }
+function _initKmTariefField(){ const el=document.getElementById('settings-km-tarief'); if(el){ try{ var uid=(typeof auth!=='undefined'&&auth.currentUser)?auth.currentUser.uid:''; var v=localStorage.getItem('sh_km_tarief_'+uid); if(v==null||v==='') v=localStorage.getItem('sh_km_tarief'); if(v!=null && v!=='') el.value=v; }catch(_){} } }
 try { if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', _initKmTariefField); else _initKmTariefField(); } catch(_){}
 
 
@@ -26408,14 +26408,49 @@ function _cmpExportPdf(){
   const esc = s => String(s==null?'':s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
   let radarImg = '';
   try { const c = document.getElementById('cmp-radar'); if(c && c.toDataURL) radarImg = '<img src="' + c.toDataURL('image/png') + '" style="max-width:520px;width:100%;height:auto;display:block;margin:8px auto 18px;">'; } catch(_){}
-  const cards = players.map(p => '<div class="pcard"><div class="pn">' + esc(p.naam||'?') + '</div><div class="pc">' + esc(p.club||'') + (p.positie ? ' \u00b7 ' + esc((typeof positionLabel==='function'?positionLabel(p.positie):p.positie)||'') : '') + '</div><div class="pl">Huidig: <b>' + esc(p.huidig_niveau||'-') + '</b> \u2192 Potentieel: <b>' + esc(p.potentieel_niveau||'-') + '</b></div><div class="pa">Advies: ' + esc(_cmpAdvLabel(p)||'\u2014') + '</div>' + (p.wapen ? '<div class="pa">Wapen: ' + esc(p.wapen) + '</div>' : '') + '</div>').join('');
-  const html = '<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>Spelersvergelijking</title>' +
-    '<style>body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px;}h1{font-size:18px;margin:0 0 12px;}.pcard{border:1px solid #ddd;border-radius:8px;padding:10px 12px;margin:0 0 8px;}.pn{font-size:14px;font-weight:bold;}.pc{font-size:12px;color:#555;margin:2px 0 6px;}.pl,.pa{font-size:12px;margin:2px 0;}@media print{body{margin:0;}}</style></head><body>' +
-    '<h1>Spelersvergelijking \u2014 ' + esc(new Date().toLocaleDateString('nl-NL')) + '</h1>' + radarImg + cards + '</body></html>';
+  const crits = (typeof CMP_CRITERIA !== 'undefined') ? CMP_CRITERIA : [];
+  const gv = { A:4, B:3, C:2, D:1 };
+  function trendOf(p){
+    try {
+      var r = (typeof reportsForPlayer==='function') ? reportsForPlayer(p.id) : [];
+      if(!r || r.length < 2) return '';
+      var s = r.slice().sort(function(a,b){ var da=a.datum||'', db=b.datum||''; return da<db?-1:da>db?1:0; });
+      var f = gv[(s[0].huidig_niveau||'').toUpperCase()]||0, l = gv[(s[s.length-1].huidig_niveau||'').toUpperCase()]||0;
+      if(!f||!l) return '';
+      return l>f ? '\u2197 stijgend' : l<f ? '\u2198 dalend' : '\u2192 stabiel';
+    } catch(_){ return ''; }
+  }
+  const cards = players.map(function(p){
+    var b = p.beoordelingen || {};
+    var rows = crits.map(function(c){ var g = b[c.key] || (c.key==='grit_huidig'?b.drit_huidig:'') || '-'; return '<tr><td>'+esc(c.label)+'</td><td class="g g'+esc(g)+'">'+esc(g)+'</td></tr>'; }).join('');
+    var sterk = crits.filter(function(c){ var g=b[c.key]||(c.key==='grit_huidig'?b.drit_huidig:''); return g==='A'||g==='B'; }).map(function(c){ return esc(c.label); });
+    var tr = trendOf(p);
+    return '<div class="pcard">'+
+      '<div class="pn">'+esc(p.naam||'?')+'</div>'+
+      '<div class="pc">'+esc(p.club||'')+(p.positie?(' \u00b7 '+esc((typeof positionLabel==='function'?positionLabel(p.positie):p.positie)||'')):'')+'</div>'+
+      '<div class="pl">Huidig <b>'+esc(p.huidig_niveau||'-')+'</b> \u2192 Potentieel <b>'+esc(p.potentieel_niveau||'-')+'</b>'+(tr?(' \u00b7 '+tr):'')+'</div>'+
+      '<div class="pa">Advies: '+esc(_cmpAdvLabel(p)||'\u2014')+'</div>'+
+      (sterk.length?('<div class="pa">Sterktes: '+sterk.join(', ')+'</div>'):'')+
+      (p.wapen?('<div class="pa">Wapen: '+esc(p.wapen)+'</div>'):'')+
+      '<table class="ct"><thead><tr><th>Criterium</th><th>Niveau</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    '</div>';
+  }).join('');
+  const html = '<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>ScoutingHub \u2014 Spelersvergelijking</title>'+
+    '<style>body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;margin:24px;}h1{font-size:18px;margin:0 0 2px;}.sub{font-size:12px;color:#666;margin:0 0 14px;}'+
+    '.pcard{border:1px solid #ddd;border-radius:8px;padding:12px 14px;margin:0 0 10px;page-break-inside:avoid;}'+
+    '.pn{font-size:15px;font-weight:bold;}.pc{font-size:12px;color:#555;margin:2px 0 6px;}.pl,.pa{font-size:12px;margin:2px 0;}'+
+    '.ct{width:100%;border-collapse:collapse;margin-top:8px;}.ct th,.ct td{border:1px solid #e3e3e3;padding:4px 8px;font-size:11.5px;text-align:left;}.ct th{background:#f4f4f4;}'+
+    '.g{font-weight:bold;text-align:center;width:54px;}.gA{color:#16a34a;}.gB{color:#2563eb;}.gC{color:#b45309;}.gD{color:#dc2626;}'+
+    '.foot{margin-top:16px;font-size:10.5px;color:#888;border-top:1px solid #eee;padding-top:8px;}@media print{body{margin:0;}}</style></head><body>'+
+    '<h1>ScoutingHub \u2014 Spelersvergelijking</h1>'+
+    '<div class="sub">'+esc(new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}))+' \u00b7 '+players.length+' spelers</div>'+
+    radarImg + cards +
+    '<div class="foot">Gegenereerd met ScoutingHub</div>'+
+    '</body></html>';
   const w = window.open('', '_blank');
   if(!w){ if(typeof toast === 'function') toast('Pop-up geblokkeerd \u2014 sta pop-ups toe', true); return; }
   w.document.open(); w.document.write(html); w.document.close(); w.focus();
-  setTimeout(function(){ try { w.print(); } catch(_){} }, 350);
+  setTimeout(function(){ try { w.print(); } catch(_){} }, 400);
 }
 function _cmpDelen(){
   const players = _cmpSelectedPlayers();
@@ -26442,6 +26477,8 @@ function _obsToRapport(obs){
   const _byCat = {};
   _tags.forEach(t => { const c=String(t.category||'').toLowerCase(); if(!c||!t.label) return; (_byCat[c]=_byCat[c]||[]).push((t.rating==='good'?'\ud83d\udfe2':t.rating==='average'?'\ud83d\udfe0':'\ud83d\udd34')+' '+t.label); });
   const _compose = (cat) => { const chips=(_byCat[cat]||[]).join('  '); const note=(_cn[cat]||'').trim(); return [chips, note].filter(Boolean).join(chips&&note?' \u2014 ':''); };
+  window.__shObsPrefilling = true;
+  window.__shObsLink = _linkObj;
   if(typeof go === 'function') go('report');
   const _fill = () => {
     try {
@@ -26467,6 +26504,9 @@ function _obsToRapport(obs){
   };
   let _tr=0; const _tick=()=>{ _fill(); if(++_tr<6) requestAnimationFrame(_tick); };
   requestAnimationFrame(_tick);
+  // B3/B4: her-assert na async re-renders (renderActiveScouting@80ms e.d.) zodat de prefill blijft staan
+  [120, 250, 420].forEach(function(ms){ setTimeout(function(){ try { _fill(); } catch(_){} }, ms); });
+  setTimeout(function(){ window.__shObsPrefilling = false; }, 520);
   if(typeof toast==='function') toast('Rapport gestart vanuit observatie');
 }
 window._obsToRapport = _obsToRapport;
@@ -27588,3 +27628,14 @@ document.addEventListener('click', function(e){
   var el = e.target.closest ? e.target.closest('.rep-obs-link[data-obs]') : null;
   if(el && el.dataset.obs){ e.preventDefault(); if(typeof openDetail === 'function') openDetail(el.dataset.obs); }
 }, false);
+
+
+/* Bugfix ronde 1 — B6: km-tarief uid-scoped opslaan + ritten herberekenen. */
+function _shSetKmTarief(val){
+  try {
+    var uid = (typeof auth !== 'undefined' && auth.currentUser) ? auth.currentUser.uid : '';
+    localStorage.setItem('sh_km_tarief_' + uid, String(val == null ? '' : val).trim());
+    if(typeof renderRitten === 'function' && typeof currentView !== 'undefined' && currentView === 'ritten') renderRitten();
+  } catch(_){}
+}
+window._shSetKmTarief = _shSetKmTarief;

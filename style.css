@@ -12162,3 +12162,20 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 .sh-login-msg.error{ background:rgba(248,113,113,.12); border-left:3px solid var(--bad,#f87171); color:#fca5a5; }
 .sh-login-msg.success{ background:rgba(52,211,153,.12); border-left:3px solid var(--good,#34d399); color:#6ee7b7; }
 @keyframes shLoginMsgIn{ from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:none; } }
+
+
+/* Fase 1 — Toegang aanvragen */
+.login-req-btn{ background:none; border:1px solid var(--border,#1f2937); color:var(--text-2,#9aa8bd); border-radius:8px; padding:9px 16px; font-size:13px; cursor:pointer; min-height:40px; }
+.login-req-btn:hover{ border-color:var(--accent,#4ea1ff); color:var(--text,#e8edf5); }
+.sh-req-card{ max-width:380px; text-align:left; position:relative; }
+.sh-req-x{ position:absolute; top:max(8px, env(safe-area-inset-top,0px)); right:8px; background:none; border:none; color:var(--text-2,#9aa8bd); font-size:22px; cursor:pointer; line-height:1; width:44px; height:44px; }
+.sh-req-sub{ font-size:13px; color:var(--text-2,#9aa8bd); margin:2px 0 12px; line-height:1.5; }
+.sh-req-l{ display:block; font-size:12px; color:var(--text-3,#8b97ad); margin:8px 0 3px; }
+.sh-req-i{ width:100%; background:var(--bg-2,#0e1626); border:1px solid var(--border,#1f2937); color:var(--text,#e8edf5); border-radius:8px; padding:10px 12px; font-size:14px; box-sizing:border-box; font-family:inherit; }
+.sh-req-i:focus{ outline:none; border-color:var(--accent,#4ea1ff); }
+.sh-req-actions{ display:flex; gap:8px; margin-top:14px; }
+.sh-req-actions .settings-btn{ flex:1; min-height:44px; }
+.sh-req-send{ background:var(--accent,#4ea1ff); color:#06223f; border-color:var(--accent,#4ea1ff); font-weight:700; }
+.sh-req-msg{ display:none; font-size:13px; margin:4px 0 8px; padding:8px 11px; border-radius:0 8px 8px 0; line-height:1.4; }
+.sh-req-msg.show{ display:block; }
+.sh-req-msg.error{ background:rgba(248,113,113,.12); border-left:3px solid var(--bad,#f87171); color:#fca5a5; }

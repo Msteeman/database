@@ -27670,3 +27670,90 @@ function _shLoginMsg(text, type){
   _shLoginMsgTimer = setTimeout(function(){ el.style.display = 'none'; el.textContent = ''; el.className = 'sh-login-msg'; }, 8000);
 }
 window._shLoginMsg = _shLoginMsg;
+
+
+/* ============================================================
+   FASE 1 — Invite-only: "Toegang aanvragen" flow.
+   Stuurt naar de worker (POST /api/request-access). Geen account
+   nodig; raakt geen bestaande data aan. Mailbox-logica zit in de worker
+   (admin@scoutinghub.nl voor auth/aanvragen).
+   ============================================================ */
+function _shReqMsg(text, type){
+  var el = document.getElementById('sh-req-msg'); if(!el) return;
+  el.textContent = text || '';
+  el.className = 'sh-req-msg' + (text ? (' show ' + (type || 'error')) : '');
+}
+function _shRequestAccess(){
+  if(document.getElementById('sh-req-access')) return;
+  var bd = document.createElement('div');
+  bd.id = 'sh-req-access'; bd.className = 'sh-photo-menu-bd';
+  bd.innerHTML =
+    '<div class="sh-photo-menu sh-req-card" role="dialog" aria-modal="true" aria-label="Toegang aanvragen">' +
+      '<button type="button" class="sh-req-x" data-close="1" aria-label="Sluiten">\u00d7</button>' +
+      '<div class="sh-pm-title">Toegang aanvragen</div>' +
+      '<div class="sh-req-sub">ScoutingHub is op uitnodiging. Vraag toegang aan \u2014 de beheerder neemt binnen 24 uur contact met je op.</div>' +
+      '<div class="sh-req-msg" id="sh-req-msg" role="alert" aria-live="polite"></div>' +
+      '<label class="sh-req-l" for="sh-req-email">E-mailadres *</label>' +
+      '<input type="email" id="sh-req-email" class="sh-req-i" placeholder="jouw@email.nl" autocomplete="email">' +
+      '<label class="sh-req-l" for="sh-req-name">Naam</label>' +
+      '<input type="text" id="sh-req-name" class="sh-req-i" placeholder="Optioneel">' +
+      '<label class="sh-req-l" for="sh-req-club">Club / organisatie</label>' +
+      '<input type="text" id="sh-req-club" class="sh-req-i" placeholder="Optioneel">' +
+      '<label class="sh-req-l" for="sh-req-message">Reden / opmerking</label>' +
+      '<textarea id="sh-req-message" class="sh-req-i" rows="3" placeholder="Optioneel"></textarea>' +
+      '<div class="sh-req-actions">' +
+        '<button type="button" class="settings-btn ghost" data-close="1">Annuleren</button>' +
+        '<button type="button" class="settings-btn sh-req-send" id="sh-req-send">Verstuur aanvraag</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(bd);
+  var onKey = function(e){ if(e.key === 'Escape') closeReq(); };
+  function closeReq(){ try { bd.remove(); } catch(_){} document.removeEventListener('keydown', onKey); }
+  document.addEventListener('keydown', onKey);
+  bd.addEventListener('click', function(e){
+    if(e.target === bd || (e.target.closest && e.target.closest('[data-close]'))) closeReq();
+  });
+  var sendBtn = document.getElementById('sh-req-send');
+  if(sendBtn) sendBtn.addEventListener('click', function(){ _shSubmitAccessRequest(closeReq); });
+  setTimeout(function(){ try { document.getElementById('sh-req-email').focus(); } catch(_){} }, 60);
+}
+window._shRequestAccess = _shRequestAccess;
+async function _shSubmitAccessRequest(closeFn){
+  var gv = function(id){ var el = document.getElementById(id); return el ? (el.value || '') : ''; };
+  var email = gv('sh-req-email').trim();
+  var name = gv('sh-req-name').trim();
+  var club = gv('sh-req-club').trim();
+  var message = gv('sh-req-message').trim();
+  _shReqMsg('', null);
+  if(!email){ _shReqMsg('Vul je e-mailadres in.', 'error'); return; }
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ _shReqMsg('Dit is geen geldig e-mailadres.', 'error'); return; }
+  var btn = document.getElementById('sh-req-send');
+  if(btn){ btn.disabled = true; btn.textContent = 'Versturen\u2026'; }
+  try {
+    var r = await fetch(TOERNOOI_API_BASE + '/api/request-access', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email, name: name, club: club, message: message })
+    });
+    var j = {}; try { j = await r.json(); } catch(_){}
+    if(r.ok && j && j.ok){
+      var card = document.querySelector('#sh-req-access .sh-req-card');
+      if(card){
+        card.innerHTML =
+          '<button type="button" class="sh-req-x" data-close="1" aria-label="Sluiten">\u00d7</button>' +
+          '<div style="text-align:center; padding:8px 4px;">' +
+            '<div style="font-size:36px; line-height:1; margin-bottom:6px;">\u2705</div>' +
+            '<div class="sh-pm-title">Aanvraag ontvangen</div>' +
+            '<div class="sh-req-sub">We nemen binnen 24 uur contact met je op. Check ook je spam-map.</div>' +
+            '<button type="button" class="settings-btn sh-req-send" data-close="1" style="margin-top:10px; width:100%;">Sluiten</button>' +
+          '</div>';
+      }
+    } else {
+      _shReqMsg((j && j.error) || 'Er ging iets mis. Probeer het later opnieuw.', 'error');
+      if(btn){ btn.disabled = false; btn.textContent = 'Verstuur aanvraag'; }
+    }
+  } catch(e){
+    _shReqMsg('Geen verbinding. Controleer je internet en probeer het opnieuw.', 'error');
+    if(btn){ btn.disabled = false; btn.textContent = 'Verstuur aanvraag'; }
+  }
+}
+window._shSubmitAccessRequest = _shSubmitAccessRequest;

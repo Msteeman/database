@@ -156,6 +156,188 @@
 })();
 </script>
 
+<!-- =================== LANDINGSPAGINA (pre-login) =================== -->
+<div id="landing-overlay" style="display:none;">
+  <header class="lp-nav">
+    <div class="lp-brand"><span class="lp-logo-dot" aria-hidden="true"></span> ScoutingHub</div>
+    <div style="display:flex; gap:8px; align-items:center;">
+      <a class="lp-btn lp-btn-ghost lp-btn-sm" href="handleiding.html">&#128214; Handleiding</a>
+      <button type="button" class="lp-btn lp-btn-ghost lp-btn-sm" onclick="_lpLogin()">Inloggen</button>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <section class="lp-hero lp-reveal">
+    <div class="lp-hero-text">
+      <h1 class="lp-h1">Van veldrand naar rapport in &eacute;&eacute;n tik.</h1>
+      <p class="lp-sub">Scout spelers met &eacute;&eacute;n hand langs de lijn. Maak complete rapporten in minuten &mdash; niet uren. Werkt offline, op je telefoon, zonder app store.</p>
+      <div class="lp-cta-row">
+        <button type="button" class="lp-btn lp-btn-primary" onclick="_lpLogin()">Inloggen</button>
+        <button type="button" class="lp-btn lp-btn-ghost" onclick="document.getElementById('lp-hoe').scrollIntoView({behavior:'smooth'})">Bekijk de demo</button>
+      </div>
+    </div>
+    <div class="lp-hero-visual">
+      <div class="lp-visual lp-visual-16x9"><span>Screenshot komt hier</span></div>
+    </div>
+  </section>
+
+  <!-- INTERACTIEVE DEMO — carousel met mockups -->
+  <section class="lp-section lp-reveal">
+    <h2 class="lp-h2">Zo werkt het</h2>
+    <div class="lp-carousel" id="lp-carousel">
+      <div class="lp-car-viewport">
+        <div class="lp-carousel-track" id="lp-carousel-track">
+
+          <!-- SLIDE 1: Dashboard -->
+          <div class="lp-slide">
+            <div class="lp-mock">
+              <div class="lp-mock-bar">Dashboard</div>
+              <div class="lp-mock-kpis">
+                <div class="lp-kpi"><b>24</b><span>Spelers</span></div>
+                <div class="lp-kpi"><b>8</b><span>Wedstrijden</span></div>
+                <div class="lp-kpi"><b>3</b><span>Toernooien</span></div>
+              </div>
+              <div class="lp-mock-row"><span class="lp-dot lp-dot-live"></span> AZ O13 &ndash; Feyenoord O13 <em>nu</em></div>
+              <div class="lp-mock-row">FC Utrecht O12 &ndash; Ajax O12 <em>za 14:00</em></div>
+            </div>
+            <div class="lp-slide-cap"><div class="lp-slide-t">Alles in &eacute;&eacute;n oogopslag</div><div class="lp-slide-s">Je dashboard toont je wedstrijden, statistieken en snelle acties.</div></div>
+          </div>
+
+          <!-- SLIDE 2: Chips -->
+          <div class="lp-slide">
+            <div class="lp-mock">
+              <div class="lp-mock-bar">Observatie &mdash; Daan Jansen</div>
+              <div class="lp-mock-cat">Techniek</div>
+              <div class="lp-chips"><span class="lp-chip g">Passing</span><span class="lp-chip r">Dribbel</span><span class="lp-chip o">Overzicht</span><span class="lp-chip">Koppen</span></div>
+              <div class="lp-mock-cat">Mentaliteit</div>
+              <div class="lp-chips"><span class="lp-chip g">Leider</span><span class="lp-chip g">Winnaar</span><span class="lp-chip">Rustig</span></div>
+            </div>
+            <div class="lp-slide-cap"><div class="lp-slide-t">E&eacute;n tik = &eacute;&eacute;n observatie</div><div class="lp-slide-s">Beoordeel spelers met chips &mdash; geen toetsenbord nodig.</div></div>
+          </div>
+
+          <!-- SLIDE 3: Toernooi-programma -->
+          <div class="lp-slide">
+            <div class="lp-mock">
+              <div class="lp-mock-bar">Demo Cup U12 &mdash; Programma</div>
+              <div class="lp-tb">09:00 <span class="lp-now">&#9654; NU</span></div>
+              <div class="lp-mock-row"><span class="lp-dot g"></span> FC Utrecht &ndash; Ajax &middot; Veld 1</div>
+              <div class="lp-mock-row"><span class="lp-dot o"></span> PSV &ndash; AZ &middot; Veld 2</div>
+              <div class="lp-tb">09:30</div>
+              <div class="lp-mock-row"><span class="lp-dot r"></span> Feyenoord &ndash; Twente &middot; Veld 1</div>
+            </div>
+            <div class="lp-slide-cap"><div class="lp-slide-t">Heel het toernooi in je broekzak</div><div class="lp-slide-s">Importeer, plan, scout en rapporteer.</div></div>
+          </div>
+
+          <!-- SLIDE 4: Rapport -->
+          <div class="lp-slide">
+            <div class="lp-mock">
+              <div class="lp-mock-bar">Rapport &mdash; Daan Jansen</div>
+              <div class="lp-mock-cat">Functionele techniek</div>
+              <div class="lp-chips"><span class="lp-chip g">Passing</span><span class="lp-chip o">Dribbel</span></div>
+              <div class="lp-grades"><span class="lp-grade on">A</span><span class="lp-grade">B</span><span class="lp-grade">C</span><span class="lp-grade">D</span></div>
+              <div class="lp-mock-note">Scherpe passing, beide benen&hellip;</div>
+            </div>
+            <div class="lp-slide-cap"><div class="lp-slide-t">Van observatie naar rapport</div><div class="lp-slide-s">Promoot je live-notities naar een volledig rapport.</div></div>
+          </div>
+
+          <!-- SLIDE 5: Vergelijken -->
+          <div class="lp-slide">
+            <div class="lp-mock lp-mock-center">
+              <div class="lp-mock-bar">Vergelijken</div>
+              <svg class="lp-radar" viewBox="0 0 140 140" aria-hidden="true">
+                <polygon points="70,16 122,48 102,116 38,116 18,48" fill="none" stroke="#2f3b52" stroke-width="1"/>
+                <polygon points="70,40 100,58 89,96 51,96 40,58" fill="none" stroke="#2f3b52" stroke-width="1"/>
+                <polygon points="70,22 114,52 92,108 52,98 28,60" fill="rgba(78,161,255,.32)" stroke="#4ea1ff" stroke-width="1.5"/>
+                <polygon points="70,42 96,60 85,92 54,88 47,62" fill="rgba(245,197,24,.28)" stroke="#f5c518" stroke-width="1.5"/>
+              </svg>
+              <div class="lp-legend"><span class="lp-lg lp-lg-a">Daan</span><span class="lp-lg lp-lg-b">Sem</span></div>
+            </div>
+            <div class="lp-slide-cap"><div class="lp-slide-t">Vergelijk objectief</div><div class="lp-slide-s">Zet spelers naast elkaar met radar en scores.</div></div>
+          </div>
+
+          <!-- SLIDE 6: PWA op telefoon -->
+          <div class="lp-slide">
+            <div class="lp-phone">
+              <div class="lp-phone-notch"></div>
+              <div class="lp-phone-screen">
+                <div class="lp-mock-bar">ScoutingHub</div>
+                <div class="lp-mock-row"><span class="lp-dot g"></span> Live scouten</div>
+                <div class="lp-chips" style="margin-top:8px;"><span class="lp-chip g">Snel</span><span class="lp-chip o">Sterk</span></div>
+                <div class="lp-grades" style="margin-top:8px;"><span class="lp-grade on">A</span><span class="lp-grade">B</span><span class="lp-grade">C</span></div>
+              </div>
+            </div>
+            <div class="lp-slide-cap"><div class="lp-slide-t">Werkt als een echte app</div><div class="lp-slide-s">Installeer als PWA, werkt offline.</div></div>
+          </div>
+
+          <!-- SLIDE 7: Offline -->
+          <div class="lp-slide">
+            <div class="lp-mock">
+              <div class="lp-mock-bar">ScoutingHub <span class="lp-offline">&#9679; Offline</span></div>
+              <div class="lp-mock-row">Observatie opgeslagen &mdash; wordt gesynchroniseerd</div>
+              <div class="lp-mock-row">Rapport bewaard &mdash; lokaal veilig</div>
+              <div class="lp-mock-row" style="color:var(--text-3,#8b97ad);">Verbinding hersteld &rarr; alles gesynct</div>
+            </div>
+            <div class="lp-slide-cap"><div class="lp-slide-t">Geen bereik? Geen probleem.</div><div class="lp-slide-s">Alles wordt gesynchroniseerd zodra je weer online bent.</div></div>
+          </div>
+
+        </div>
+      </div>
+      <button type="button" class="lp-car-arrow lp-car-prev" onclick="_lpCarMove(-1)" aria-label="Vorige">&lsaquo;</button>
+      <button type="button" class="lp-car-arrow lp-car-next" onclick="_lpCarMove(1)" aria-label="Volgende">&rsaquo;</button>
+      <div class="lp-car-dots" id="lp-car-dots"></div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="lp-section lp-reveal">
+    <h2 class="lp-h2">Alles wat een scout nodig heeft</h2>
+    <div class="lp-features">
+      <div class="lp-feat"><div class="lp-feat-ic">⚡</div><div class="lp-feat-t">E&eacute;n tik = &eacute;&eacute;n observatie</div><div class="lp-feat-s">Beoordeel spelers met chips langs de lijn &mdash; geen typen nodig.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">🏆</div><div class="lp-feat-t">Toernooi-modus</div><div class="lp-feat-s">Importeer elk toernooi, plan je schema, scout en rapporteer in &eacute;&eacute;n flow.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">📊</div><div class="lp-feat-t">Vergelijk objectief</div><div class="lp-feat-s">Zet spelers naast elkaar met radar-charts en criterium-scores.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">📝</div><div class="lp-feat-t">Van observatie naar rapport</div><div class="lp-feat-s">Promoot je live-notities naar een volledig rapport met &eacute;&eacute;n klik.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">📱</div><div class="lp-feat-t">Werkt als een echte app</div><div class="lp-feat-s">Installeer als PWA &mdash; geen app store nodig. Werkt offline.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">🔒</div><div class="lp-feat-t">Jouw data, jouw controle</div><div class="lp-feat-s">Alleen jij ziet je observaties en rapporten.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">📍</div><div class="lp-feat-t">Ritten bijhouden</div><div class="lp-feat-s">Automatische km-registratie en declaratie-PDF.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">👥</div><div class="lp-feat-t">Clubs in je adresboek</div><div class="lp-feat-s">Nederlandse jeugdclubs met locatie en contactgegevens.</div></div>
+    </div>
+  </section>
+
+  <!-- HOE HET WERKT -->
+  <section class="lp-section lp-reveal" id="lp-hoe">
+    <h2 class="lp-h2">Hoe het werkt</h2>
+    <div class="lp-steps">
+      <div class="lp-step"><div class="lp-step-n">1</div><div class="lp-step-ic">🗓️</div><div class="lp-step-t">Plan</div><div class="lp-step-s">Maak een wedstrijd aan of importeer een toernooi.</div><div class="lp-visual lp-visual-step"><span>Screenshot</span></div></div>
+      <div class="lp-step"><div class="lp-step-n">2</div><div class="lp-step-ic">⚡</div><div class="lp-step-t">Scout</div><div class="lp-step-s">Tik chips langs de lijn &mdash; snel, met &eacute;&eacute;n hand.</div><div class="lp-visual lp-visual-step"><span>GIF</span></div></div>
+      <div class="lp-step"><div class="lp-step-n">3</div><div class="lp-step-ic">📝</div><div class="lp-step-t">Rapporteer</div><div class="lp-step-s">Promoot je notities naar een rapport met A/B/C/D.</div><div class="lp-visual lp-visual-step"><span>Screenshot</span></div></div>
+      <div class="lp-step"><div class="lp-step-n">4</div><div class="lp-step-ic">📤</div><div class="lp-step-t">Deel</div><div class="lp-step-s">Exporteer als PDF of deel met je co&ouml;rdinator.</div><div class="lp-visual lp-visual-step"><span>Screenshot</span></div></div>
+    </div>
+  </section>
+
+  <!-- SOCIAL PROOF (verborgen tot er quotes zijn; toon via .has-testimonials) -->
+  <section class="lp-section lp-reveal lp-testimonials" id="lp-testimonials">
+    <h2 class="lp-h2">Wat scouts zeggen</h2>
+    <div class="lp-quote">&ldquo;[Quote komt hier]&rdquo;<span class="lp-quote-by">&mdash; [Naam, Club]</span></div>
+  </section>
+
+  <!-- CTA + LOGIN -->
+  <section class="lp-section lp-cta-final lp-reveal">
+    <h2 class="lp-h2">Klaar om te scouten?</h2>
+    <button type="button" class="lp-btn lp-btn-primary lp-btn-lg" onclick="_lpLogin()">Inloggen</button>
+  </section>
+
+  <!-- FOOTER -->
+  <footer class="lp-footer">
+    <div>ScoutingHub &mdash; Gemaakt voor scouts, door scouts.</div>
+    <div class="lp-footer-links">
+      <a href="handleiding.html">Handleiding</a> &middot;
+      <a href="#" onclick="event.preventDefault();">Privacy</a> &middot;
+      <a href="#" onclick="event.preventDefault();">Voorwaarden</a> &middot;
+      <a href="#" onclick="event.preventDefault();">Contact</a>
+    </div>
+  </footer>
+</div>
+
 <!-- =================== LOGIN OVERLAY =================== -->
 <div id="login-overlay" style="display:none;">
   <div class="login-card">
@@ -381,7 +563,7 @@
                 <button type="button" class="settings-btn" id="settings-photo-pick">Foto kiezen</button>
                 <button type="button" class="settings-btn ghost" id="settings-photo-reset">Standaard</button>
               </div>
-              <div class="settings-photo-hint">JPG of PNG. Wordt lokaal opgeslagen op dit apparaat.</div>
+              <div class="settings-photo-hint">JPG of PNG. Wordt veilig opgeslagen — zichtbaar op al je apparaten.</div>
             </div>
           </div>
         </div>
@@ -415,6 +597,10 @@
             <label for="settings-voorkeuren">Voorkeuren / notitie</label>
             <textarea id="settings-voorkeuren" placeholder="Bijv. favoriete regio, talen, beschikbaarheid..."></textarea>
           </div>
+          <div class="settings-field">
+            <label for="settings-km-tarief">Km-vergoeding (€/km)</label>
+            <input type="number" step="0.01" min="0" id="settings-km-tarief" placeholder="0.23" onchange="try{localStorage.setItem('sh_km_tarief', this.value||'')}catch(_){}" />
+          </div>
           <div class="settings-btn-row">
             <button type="button" class="settings-btn" id="settings-personal-save">Opslaan</button>
             <span class="settings-saved-pill" id="settings-personal-saved">&#x2713; Opgeslagen</span>
@@ -441,12 +627,28 @@
             <button type="button" class="settings-btn ghost" id="settings-clear-cache">Cache wissen</button>
           </div>
           <div class="settings-row">
+            <span class="settings-row-label">Herinnering vóór prio-wedstrijden</span>
+            <label class="sh-switch"><input type="checkbox" id="settings-reminders-toggle"><span class="sh-switch-slider"></span></label>
+          </div>
+          <div class="settings-row" id="settings-reminder-min-row">
+            <span class="settings-row-label">Herinner me van tevoren</span>
+            <select class="settings-btn" id="settings-reminder-minutes" style="cursor:pointer;">
+              <option value="5">5 minuten</option>
+              <option value="10">10 minuten</option>
+              <option value="15">15 minuten</option>
+            </select>
+          </div>
+          <div class="settings-row">
             <span class="settings-row-label">Demo-rondleiding bekijken (wat is nieuw)</span>
             <button type="button" class="settings-btn" id="settings-open-tour">Rondleiding starten</button>
           </div>
           <div class="settings-row" id="settings-seed-row" style="display:none;">
             <span class="settings-row-label">Demo-data laden in dit account</span>
             <button type="button" class="settings-btn ghost" id="settings-seed-demo">Demo vullen</button>
+          </div>
+          <div class="settings-row" id="settings-seed-tournament-row" style="display:none;">
+            <span class="settings-row-label">Demo-toernooi aanmaken (Demo Cup U12 2026)</span>
+            <button type="button" class="settings-btn ghost" id="settings-seed-tournament" onclick="window._seedDemoData && window._seedDemoData()">Toernooi seeden</button>
           </div>
           <div class="settings-row" id="settings-reset-row" style="display:none;">
             <span class="settings-row-label">Alle demo-data wissen + opnieuw vullen</span>
@@ -587,6 +789,7 @@
       </div>
 
       <nav class="nav">
+        <div class="nav-section-label">Scouten</div>
         <button class="nav-item active" data-view="dashboard">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
           Dashboard
@@ -613,6 +816,7 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
           Admin
         </button>
+        <div class="nav-section-label">Analyse</div>
         <button class="nav-item" data-view="elftallen">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Gescoute teams
@@ -626,6 +830,7 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="1"/><line x1="12" y1="5" x2="12" y2="19"/><circle cx="12" cy="12" r="2"/></svg>
           Elftal analyse
         </button>
+        <div class="nav-section-label">Relaties</div>
         <button class="nav-item" data-view="adresboek">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
           Clubs & locaties
@@ -634,7 +839,8 @@
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           Contactpersonen
         </button>
-                <button class="nav-item" data-view="ritten">
+                <div class="nav-section-label">Overig</div>
+        <button class="nav-item" data-view="ritten">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13l2-5a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 8l2 5"/><path d="M3 13h18v5a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H4a1 1 0 0 1-1-1z"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/></svg>
           Ritten
         </button>
@@ -645,6 +851,10 @@
         <button class="nav-item" data-view="toernooien">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
           Toernooien
+        </button>
+        <button class="nav-item" onclick="window.open('handleiding.html','_blank')">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Handleiding
         </button>
       </nav>
 
@@ -906,6 +1116,8 @@
             <div class="page-sub">Selecteer 2 tot 6 spelers en zie ze naast elkaar — radar, balken, gauges en details.</div>
           </div>
           <div class="topbar-actions">
+            <button class="btn btn-sm" type="button" onclick="_cmpExportPdf()" title="Exporteer de vergelijking als PDF">📄 PDF</button>
+            <button class="btn btn-sm" type="button" onclick="_cmpDelen()" title="Deel de vergelijking">↗ Delen</button>
             <button class="btn btn-sm" id="cmp-clear">Wissen</button>
           </div>
         </div>
@@ -1637,7 +1849,7 @@ algemeen:</textarea>
             <div class="form-section-title">Eindbeoordeling</div>
             <div class="dual-grade">
               <div class="field">
-                <label><span class="dual-label-pill pill-current">Huidig niveau *</span></label>
+                <label><span class="dual-label-pill pill-current">Huidig niveau *</span> <button type="button" class="sh-help" aria-label="Help" data-help="Kies het huidige niveau: A = uitzonderlijk, B = goed, C = gemiddeld, D = onder.">?</button></label>
                 <div class="grade-picker" data-key="huidig_niveau" data-required="1"></div>
               </div>
               <div class="field">
@@ -1648,14 +1860,20 @@ algemeen:</textarea>
 
             <div class="field-row" style="margin-top:14px;">
               <div class="field">
-                <label>Advies *</label>
-                <select id="f-advies" required>
+                <label>Advies * <button type="button" class="sh-help" aria-label="Help" data-help="Wat adviseer je? Dit wordt getoond aan de co&ouml;rdinator.">?</button></label>
+                <select id="f-advies" style="display:none;" aria-hidden="true" tabindex="-1">
                   <option value="">Kies...</option>
                   <option value="4">Direct contracteren</option>
                   <option value="3">Op proef uitnodigen</option>
                   <option value="2">Periodiek monitoren</option>
                   <option value="1">Geen vervolgstap</option>
                 </select>
+                <div class="adv-chips" id="f-advies-chips">
+                  <button type="button" class="adv-chip" data-v="4" onclick="_repPickAdvies(this,'4')">Direct contracteren</button>
+                  <button type="button" class="adv-chip" data-v="3" onclick="_repPickAdvies(this,'3')">Op proef uitnodigen</button>
+                  <button type="button" class="adv-chip" data-v="2" onclick="_repPickAdvies(this,'2')">Periodiek monitoren</button>
+                  <button type="button" class="adv-chip" data-v="1" onclick="_repPickAdvies(this,'1')">Geen vervolgstap</button>
+                </div>
               </div>
               <div class="field">
                 <label>Persoonlijk wapen</label>
@@ -1897,10 +2115,13 @@ algemeen:</textarea>
           <div>
             <div class="page-title">Ritten</div>
           </div>
-          <button class="btn btn-primary" id="rit-new-btn">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Nieuwe rit
-          </button>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary" id="rit-fav-manage-btn" type="button">⭐ Routes</button>
+            <button class="btn btn-primary" id="rit-new-btn">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Nieuwe rit
+            </button>
+          </div>
         </div>
 
         <div class="ritten-filterbar">
@@ -1919,6 +2140,7 @@ algemeen:</textarea>
           <div class="rf-field" style="margin-left:auto; min-width:0;">
             <label>&nbsp;</label>
             <button class="btn btn-secondary" id="rit-export-csv" type="button" style="padding:8px 14px;">CSV-export</button>
+            <button class="btn btn-secondary" id="rit-export-pdf" type="button" style="padding:8px 14px;">PDF-declaratie</button>
           </div>
         </div>
 
@@ -1926,6 +2148,7 @@ algemeen:</textarea>
           <div class="ritten-kpi"><div class="kpi-label">Totaal ritten</div><div class="kpi-value" id="rit-kpi-aantal">0</div></div>
           <div class="ritten-kpi"><div class="kpi-label">Totaal km</div><div class="kpi-value" id="rit-kpi-km">0</div></div>
           <div class="ritten-kpi"><div class="kpi-label">Periode</div><div class="kpi-value" id="rit-kpi-periode" style="font-size:15px;">—</div></div>
+          <div class="ritten-kpi"><div class="kpi-label">Totaal bedrag</div><div class="kpi-value" id="rit-kpi-bedrag">€ 0,00</div></div>
         </div>
 
         <div id="ritten-list" class="ritten-list"></div>
@@ -1943,6 +2166,8 @@ algemeen:</textarea>
           <input type="hidden" id="rit-vertrek-lon" />
           <input type="hidden" id="rit-aankomst-lat" />
           <input type="hidden" id="rit-aankomst-lon" />
+
+          <div id="rit-fav-bar" class="rit-fav-bar" style="display:none;"></div>
 
           <div class="rm-row">
             <div class="rm-field">
@@ -1992,6 +2217,7 @@ algemeen:</textarea>
 
           <div class="rm-actions">
             <button class="btn btn-danger" id="rit-delete-btn" type="button" style="margin-right:auto; display:none;">Verwijderen</button>
+            <button class="btn btn-secondary" id="rit-fav-save-btn" type="button">⭐ Bewaar route</button>
             <button class="btn btn-secondary" id="rit-cancel-btn" type="button">Annuleren</button>
             <button class="btn btn-primary" id="rit-save-btn" type="button">Opslaan</button>
           </div>
@@ -2315,7 +2541,7 @@ algemeen:</textarea>
     </div>
   </div>
 
-  <button id="toern-fab" class="toern-fab" type="button" style="display:none;"></button>
+  <button id="toern-fab" class="toern-fab" type="button" style="display:none;" aria-label="Snel naar live wedstrijd of programma"></button>
   <nav class="bottom-nav" id="bottom-nav" aria-label="Hoofdnavigatie">
     <button class="bn-item active" data-view="dashboard" aria-label="Dashboard">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V10"/></svg>
@@ -2391,7 +2617,7 @@ algemeen:</textarea>
   <div class="modal" id="prog-match-detail-modal">
     <div class="modal-header">
       <div class="modal-title" id="pmd-title">Wedstrijddetails</div>
-      <button class="modal-close" id="prog-match-detail-close">×</button>
+      <button class="modal-close" id="prog-match-detail-close" aria-label="Sluiten">×</button>
     </div>
     <div class="modal-body">
       <div class="pmd-grid">
@@ -2450,7 +2676,7 @@ algemeen:</textarea>
   <div class="modal" id="prog-match-modal">
     <div class="modal-header">
       <div class="modal-title" id="prog-match-title">Afspraak inplannen</div>
-      <button class="modal-close" id="prog-match-close">×</button>
+      <button class="modal-close" id="prog-match-close" aria-label="Sluiten">×</button>
     </div>
     <div class="modal-body">
       <form id="prog-match-form" autocomplete="off">
@@ -2581,7 +2807,7 @@ algemeen:</textarea>
   <div class="modal" id="prog-player-modal">
     <div class="modal-header">
       <div class="modal-title" id="prog-player-title">Speler toevoegen aan plan</div>
-      <button class="modal-close" id="prog-player-close">×</button>
+      <button class="modal-close" id="prog-player-close" aria-label="Sluiten">×</button>
     </div>
     <div class="modal-body">
       <form id="prog-player-form" autocomplete="off">
@@ -2654,7 +2880,7 @@ algemeen:</textarea>
   <div class="modal" id="prog-reminder-modal" style="max-width:520px;">
     <div class="modal-header">
       <div class="modal-title">Let op — onverwerkte planning</div>
-      <button class="modal-close" id="prog-reminder-close">×</button>
+      <button class="modal-close" id="prog-reminder-close" aria-label="Sluiten">×</button>
     </div>
     <div class="modal-body">
       <div style="font-size:14px; line-height:1.5; color:var(--text-2);" id="prog-reminder-text">
@@ -2674,7 +2900,7 @@ algemeen:</textarea>
   <div class="modal" id="modal">
     <div class="modal-header">
       <div class="modal-title">Speler detail</div>
-      <button class="modal-close" id="modal-close">×</button>
+      <button class="modal-close" id="modal-close" aria-label="Sluiten">×</button>
     </div>
     <div class="modal-body" id="modal-body"></div>
   </div>
@@ -2685,7 +2911,7 @@ algemeen:</textarea>
   <div class="modal" id="picker-modal">
     <div class="modal-header">
       <div class="modal-title">Speler koppelen aan positie</div>
-      <button class="modal-close" id="picker-close">×</button>
+      <button class="modal-close" id="picker-close" aria-label="Sluiten">×</button>
     </div>
     <div class="modal-body">
       <input id="picker-search" class="player-picker-search" type="text" placeholder="Zoek op naam, club, positie..." />
@@ -2699,7 +2925,7 @@ algemeen:</textarea>
   <div class="modal" id="contact-modal">
     <div class="modal-header">
       <div class="modal-title" id="contact-modal-title">Nieuw contact</div>
-      <button class="modal-close" id="contact-close">×</button>
+      <button class="modal-close" id="contact-close" aria-label="Sluiten">×</button>
     </div>
     <div class="modal-body">
       <form id="contact-form" autocomplete="off">
@@ -2752,7 +2978,7 @@ algemeen:</textarea>
   <div class="modal" id="tip-modal">
     <div class="modal-header">
       <div class="modal-title" id="tip-modal-title">Nieuwe tip</div>
-      <button class="modal-close" id="tip-close">×</button>
+      <button class="modal-close" id="tip-close" aria-label="Sluiten">×</button>
     </div>
     <div class="modal-body">
       <form id="tip-form" autocomplete="off">
@@ -2841,7 +3067,7 @@ algemeen:</textarea>
   <div class="modal" id="mreport-modal">
     <div class="modal-header">
       <div class="modal-title" id="mreport-modal-title">Wedstrijd rapporteren</div>
-      <button class="modal-close" id="mreport-close">×</button>
+      <button class="modal-close" id="mreport-close" aria-label="Sluiten">×</button>
     </div>
     <div class="modal-body">
       <div id="mr-readonly" style="display:none;">
@@ -2916,7 +3142,7 @@ algemeen:</textarea>
   <div class="modal" id="import-modal">
     <div class="modal-header">
       <div class="modal-title">Rapport importeren</div>
-      <button class="modal-close" id="import-close">×</button>
+      <button class="modal-close" id="import-close" aria-label="Sluiten">×</button>
     </div>
     <div class="modal-body">
       <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.5;">
@@ -2950,7 +3176,7 @@ algemeen:</textarea>
   <div class="modal" id="mreport-import-modal">
     <div class="modal-header">
       <div class="modal-title">Wedstrijdrapporten importeren</div>
-      <button class="modal-close" id="mreport-import-close">×</button>
+      <button class="modal-close" id="mreport-import-close" aria-label="Sluiten">×</button>
     </div>
     <div class="modal-body">
       <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.5;">
@@ -2984,7 +3210,7 @@ algemeen:</textarea>
   <div class="modal" id="mreport-bulkdel-modal">
     <div class="modal-header">
       <div class="modal-title">Wedstrijdrapporten verwijderen (via import-bestand)</div>
-      <button class="modal-close" id="mreport-bulkdel-close">×</button>
+      <button class="modal-close" id="mreport-bulkdel-close" aria-label="Sluiten">×</button>
     </div>
     <div class="modal-body">
       <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.5;">
@@ -3018,7 +3244,7 @@ algemeen:</textarea>
   <div class="modal" id="player-bulkdel-modal">
     <div class="modal-header">
       <div class="modal-title">Spelers verwijderen (via import-bestand)</div>
-      <button class="modal-close" id="player-bulkdel-close">×</button>
+      <button class="modal-close" id="player-bulkdel-close" aria-label="Sluiten">×</button>
     </div>
     <div class="modal-body">
       <div style="font-size:13px; color:var(--text-2); margin-bottom:12px; line-height:1.5;">
@@ -3049,13 +3275,13 @@ algemeen:</textarea>
 
 <!-- =================== OBSERVATIE MODAL (s102) =================== -->
 <div class="obs-backdrop" id="obs-backdrop" style="display:none;">
-  <div class="obs-modal" id="obs-modal">
+  <div class="obs-modal" id="obs-modal" role="dialog" aria-modal="true" aria-label="Observatie">
     <div class="obs-modal-header">
       <div>
         <div class="obs-modal-title">Observatie</div>
         <div class="obs-modal-sub" id="obs-modal-sub">Opgevallen speler</div>
       </div>
-      <button class="obs-modal-close" id="obs-modal-close" type="button">×</button>
+      <button class="obs-modal-close" id="obs-modal-close" type="button" aria-label="Sluiten">×</button>
     </div>
     <div id="obs-form" autocomplete="off">
       <div class="obs-section-label">Speler</div>
@@ -3109,13 +3335,19 @@ algemeen:</textarea>
         </div>
         <div class="obs-field obs-field-grow">
           <label>Advies</label>
-          <select id="obs-advies">
+          <select id="obs-advies" style="display:none;" aria-hidden="true" tabindex="-1">
             <option value="">—</option>
             <option value="direct_contracteren">Direct contracteren</option>
             <option value="volgen">Blijven volgen</option>
             <option value="nog_volgen">Nog een keer zien</option>
             <option value="geen_interesse">Geen interesse</option>
           </select>
+          <div class="adv-chips" id="obs-advies-chips">
+            <button type="button" class="adv-chip" data-v="direct_contracteren" onclick="_obsPickAdvies(this,'direct_contracteren')">Direct contracteren</button>
+            <button type="button" class="adv-chip" data-v="volgen" onclick="_obsPickAdvies(this,'volgen')">Blijven volgen</button>
+            <button type="button" class="adv-chip" data-v="nog_volgen" onclick="_obsPickAdvies(this,'nog_volgen')">Nog een keer zien</button>
+            <button type="button" class="adv-chip" data-v="geen_interesse" onclick="_obsPickAdvies(this,'geen_interesse')">Geen interesse</button>
+          </div>
         </div>
       </div>
 
@@ -3514,10 +3746,12 @@ algemeen:</textarea>
 <!-- Static data (HV clubs) — loaded before app.js -->
 <script src="clubs-data.js"></script>
 <!-- Main application -->
+<!-- PRODUCTIE: draai eerst ./build.sh, zet daarna de app.min.js-regel AAN en de app.js-regel UIT.
+     <script type="module" src="app.min.js"></script> -->
 <script type="module" src="app.js"></script>
 
 <!-- ====== TOERNOOI: WEDSTRIJD DETAIL OVERLAY ====== -->
-<div class="toern-backdrop" id="toern-match-backdrop" style="display:none;" onclick="if(event.target===this)closeMatchDetail()">
+<div class="toern-backdrop" id="toern-match-backdrop" role="dialog" aria-modal="true" aria-label="Wedstrijd-detail" style="display:none;" onclick="if(event.target===this)closeMatchDetail()">
   <div class="toern-modal">
     <div class="toern-modal-header">
       <div>
@@ -3525,7 +3759,7 @@ algemeen:</textarea>
         <div class="toern-modal-sub" id="toern-match-sub"></div>
       </div>
       <div id="toern-match-nav" class="toern-match-nav"></div>
-      <button class="toern-modal-close" onclick="closeMatchDetail()">×</button>
+      <button class="toern-modal-close" onclick="closeMatchDetail()" aria-label="Sluiten">×</button>
     </div>
     <div class="toern-modal-body">
       <div id="toern-match-day-info" style="margin-bottom:10px;"></div>
@@ -3556,19 +3790,19 @@ algemeen:</textarea>
 </div>
 
 <!-- ====== TOERNOOI: BUNDELING DETAIL OVERLAY ====== -->
-<div class="toern-backdrop" id="toern-summ-backdrop" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
+<div class="toern-backdrop" id="toern-summ-backdrop" role="dialog" aria-modal="true" aria-label="Bundeling" style="display:none;" onclick="if(event.target===this)this.style.display='none'">
   <div class="toern-modal toern-modal-lg">
     <div class="toern-modal-header">
       <div>
         <div class="toern-modal-title" id="toern-summ-title">Bundeling</div>
       </div>
-      <button class="toern-modal-close" onclick="document.getElementById('toern-summ-backdrop').style.display='none'">×</button>
+      <button class="toern-modal-close" onclick="document.getElementById('toern-summ-backdrop').style.display='none'" aria-label="Sluiten">×</button>
     </div>
     <div class="toern-modal-body">
-      <div class="toern-section-label">Algemene samenvatting</div>
+      <div class="toern-section-label">Algemene samenvatting <button type="button" class="sh-help" aria-label="Help" data-help="Schrijf een korte samenvatting van alle observaties van deze speler.">?</button></div>
       <textarea id="toern-summ-text" class="toern-summ-textarea" rows="4" placeholder="Schrijf hier een samenvatting van alle observaties..."></textarea>
       <div class="toern-form-row" style="margin-top:10px;">
-        <label>Eindoordeel</label>
+        <label>Eindoordeel <button type="button" class="sh-help" aria-label="Help" data-help="Hier zie je alle observaties van deze speler gebundeld. Kies een eindoordeel.">?</button></label>
         <select id="toern-summ-grade" class="toern-select">
           <option value="">—</option>
           <option value="A">A — Toptalent</option>

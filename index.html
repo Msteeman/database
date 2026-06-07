@@ -201,9 +201,15 @@
       </div>
       <div class="login-field">
         <label>Wachtwoord</label>
-        <input id="login-pw" type="password" class="login-input" placeholder="Voer wachtwoord in" autocomplete="current-password" />
+        <div class="login-pw-wrap" style="position:relative;">
+          <input id="login-pw" type="password" class="login-input" placeholder="Voer wachtwoord in" autocomplete="current-password" enterkeyhint="go" style="padding-right:40px;" />
+          <button type="button" id="login-pw-toggle" aria-label="Wachtwoord tonen of verbergen" onclick="(function(b){var i=document.getElementById('login-pw');if(!i)return;var on=i.type==='password';i.type=on?'text':'password';b.textContent=on?'\ud83d\ude48':'\ud83d\udc41';})(this)" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;cursor:pointer;font-size:16px;line-height:1;padding:4px;">\ud83d\udc41</button>
+        </div>
       </div>
       <button id="login-btn" type="submit" class="login-btn">Inloggen</button>
+      <div style="text-align:center;margin-top:8px;">
+        <a href="#" id="login-forgot" onclick="event.preventDefault(); window._shForgotPassword && window._shForgotPassword();" style="font-size:12px;color:var(--text-3,#9aa3b7);text-decoration:none;">Wachtwoord vergeten?</a>
+      </div>
       <div id="login-error" class="login-error"></div>
       <div class="login-legal">
         <a href="#" onclick="event.preventDefault(); window.go && window.go('voorwaarden');">Voorwaarden</a>
@@ -609,7 +615,7 @@
         </button>
         <button class="nav-item" data-view="elftallen">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Elftallen
+          Gescoute teams
         </button>
         <button class="nav-item" data-view="compare">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="8" cy="12" r="5"/><circle cx="16" cy="12" r="5"/><path d="M12 8v8"/></svg>
@@ -622,11 +628,11 @@
         </button>
         <button class="nav-item" data-view="adresboek">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-          Adresboek
+          Clubs & locaties
         </button>
         <button class="nav-item" data-view="contacts">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          Contacten
+          Contactpersonen
         </button>
                 <button class="nav-item" data-view="ritten">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13l2-5a2 2 0 0 1 1.9-1.4h10.2A2 2 0 0 1 19 8l2 5"/><path d="M3 13h18v5a1 1 0 0 1-1 1h-1a2 2 0 0 1-4 0H9a2 2 0 0 1-4 0H4a1 1 0 0 1-1-1z"/><circle cx="7.5" cy="17.5" r="1.5"/><circle cx="16.5" cy="17.5" r="1.5"/></svg>
@@ -634,7 +640,7 @@
         </button>
         <button class="nav-item" data-view="tips">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4 12.7c.6.5 1 1.3 1 2.1V18h6v-1.2c0-.8.4-1.6 1-2.1A7 7 0 0 0 12 2z"/></svg>
-          Tips
+          Getipte spelers
         </button>
         <button class="nav-item" data-view="toernooien">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
@@ -689,7 +695,11 @@
             <div class="page-title">Dashboard</div>
             <div class="page-sub" id="dashboard-date">—</div>
           </div>
-
+          <!-- H8: snelle acties -->
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button class="btn btn-primary" type="button" data-go="report">+ Spelersrapport</button>
+            <button class="btn btn-secondary" type="button" onclick="window.go && window.go('programma')">+ Wedstrijd</button>
+          </div>
         </div>
 
         <!-- s19: Vandaag banner — prominente melding als er vandaag een wedstrijd is met spelers -->
@@ -875,7 +885,7 @@
       <section class="view" id="view-elftallen">
         <div class="topbar">
           <div>
-            <div class="page-title">Elftallen</div>
+            <div class="page-title">Gescoute teams</div>
             <div class="page-sub">Zoek op club en elftal — bekijk alle spelers die je hebt gezien.</div>
           </div>
         </div>
@@ -1158,6 +1168,7 @@
         <div class="m-stats" id="match-stats">
           <div class="m-stat"><div class="m-stat-num" id="m-stat-total">0</div><div class="m-stat-lbl">Totaal</div></div>
           <div class="m-stat verwerkt"><div class="m-stat-num" id="m-stat-verwerkt">0</div><div class="m-stat-lbl">Verwerkt</div></div>
+          <div class="m-stat nog-verwerken"><div class="m-stat-num" id="m-stat-nog">0</div><div class="m-stat-lbl">Nog te verwerken</div></div>
         </div>
 
         <!-- s35bq: zoek + sort -->
@@ -1387,7 +1398,7 @@ algemeen:</textarea>
               </div>
               <div class="field">
                 <label>Rugnummer</label>
-                <input id="f-rugnummer" type="text" />
+                <input id="f-rugnummer" type="text" inputmode="numeric" />
               </div>
               <div class="field">
                 <label>Voorkeursbeen *</label>
@@ -1671,11 +1682,11 @@ algemeen:</textarea>
               <span class="text" id="report-autosave-text">Automatisch opgeslagen</span>
             </div>
             <!-- s35ca-3: Opslaan-knop naast Indienen — bewaart als concept zonder verplichte niveaus -->
-            <button type="button" class="btn btn-secondary" id="report-save-draft-btn" style="margin-right:8px;">
+            <button type="button" class="btn btn-secondary" id="report-save-draft-btn" style="margin-right:8px;" title="Opslaan = bewaar als concept (nog niet definitief; niveaus niet verplicht)">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
               Opslaan
             </button>
-            <button type="submit" form="report-form" class="btn btn-primary" id="report-save-btn">
+            <button type="submit" form="report-form" class="btn btn-primary" id="report-save-btn" title="Indienen = maak het rapport definitief">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               Indienen
             </button>
@@ -1813,7 +1824,7 @@ algemeen:</textarea>
       <section class="view" id="view-adresboek">
         <div class="topbar">
           <div>
-            <div class="page-title">Adresboek</div>
+            <div class="page-title">Clubs & locaties</div>
             <div class="page-sub" id="adresboek-sub">Alle clubs uit de databank — klik op een kaart voor route in Google Maps</div>
           </div>
           <!-- v70f: Adressen-vernieuwen knop verwijderd (gaat naar Instellingen in v70h) -->
@@ -1845,7 +1856,7 @@ algemeen:</textarea>
       <section class="view" id="view-tips">
         <div class="topbar">
           <div>
-            <div class="page-title">Tips</div>
+            <div class="page-title">Getipte spelers</div>
             <div class="page-sub" id="tips-sub">Spelers die getipt zijn — door coaches, ouders, scouts en andere contacten</div>
           </div>
           <button class="btn btn-primary" id="tip-new-btn">
@@ -3055,7 +3066,7 @@ algemeen:</textarea>
         </div>
         <div class="obs-field obs-field-sm">
           <label>Rugnummer</label>
-          <input id="obs-rug" type="text" placeholder="#" maxlength="3" />
+          <input id="obs-rug" type="text" inputmode="numeric" placeholder="#" maxlength="3" />
         </div>
       </div>
       <div class="obs-row">
@@ -3090,7 +3101,7 @@ algemeen:</textarea>
           <label>Huidig niveau</label>
           <select id="obs-niveau">
             <option value="">—</option>
-            <option value="A">A — Toptaient</option>
+            <option value="A">A — Toptalent</option>
             <option value="B">B — Regionaal talent</option>
             <option value="C">C — Aardig</option>
             <option value="D">D — Matig</option>
@@ -3519,6 +3530,14 @@ algemeen:</textarea>
     <div class="toern-modal-body">
       <div id="toern-match-day-info" style="margin-bottom:10px;"></div>
       <div id="toern-match-status" class="toern-status-row" style="margin-bottom:14px;"></div>
+      <!-- H4: inline uitslag-invoer (niet meer via losse browser-prompt) -->
+      <div class="toern-match-score-wrap" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+        <span class="toern-section-label" style="margin:0;">Uitslag</span>
+        <input id="toern-match-score-a" type="number" inputmode="numeric" min="0" max="99" placeholder="\u2013" style="width:54px;text-align:center;" />
+        <span>\u2013</span>
+        <input id="toern-match-score-b" type="number" inputmode="numeric" min="0" max="99" placeholder="\u2013" style="width:54px;text-align:center;" />
+        <button type="button" class="btn btn-sm" id="toern-match-score-save">Opslaan</button>
+      </div>
       <!-- TIP 4: lokale wedstrijd-timer (alleen bij ingestelde toernooiregels) -->
       <div id="toern-match-timer"></div>
       <!-- TIP 3: snelle wedstrijdnotitie -->
@@ -3563,6 +3582,7 @@ algemeen:</textarea>
       <div class="toern-section-label" style="margin-top:16px;">Observaties per wedstrijd</div>
       <div id="toern-summ-obs"></div>
       <div class="toern-summ-actions">
+        <button class="btn" type="button" onclick="document.getElementById('toern-summ-backdrop').style.display='none'">Sluiten</button>
         <button class="btn btn-secondary" onclick="saveBundelingEdits(_currentTournamentId, _currentSummaryId)">Opslaan</button>
         <button class="btn btn-primary" id="toern-summ-ready-btn">Markeer als klaar</button>
         <button class="btn btn-primary" id="toern-summ-report-btn" style="display:none;background:var(--green)">Maak definitief rapport</button>

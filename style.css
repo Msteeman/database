@@ -328,7 +328,7 @@
   --border-2: #2f3b52;
   --text: #e8edf5;
   --text-2: #9aa8bd;
-  --text-3: #6b7689;
+  --text-3: #8b97ad; /* A3: lichter voor beter contrast (WCAG AA) op donkere achtergrond */
   --primary: #e30613;        /* FC Twente rood */
   --primary-2: #ff2a3a;
   --secondary: #f5c518;      /* Heracles geel */
@@ -11664,3 +11664,16 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 .bnd-grade-btn.active.grade-B { background: var(--grade-b, #84cc16); border-color: var(--grade-b, #84cc16); color: #0f1a06; }
 .bnd-grade-btn.active.grade-C { background: var(--grade-c, #f59e0b); border-color: var(--grade-c, #f59e0b); color: #1a1206; }
 .bnd-grade-btn.active.grade-D { background: var(--grade-d, #ef4444); border-color: var(--grade-d, #ef4444); color: #2a0a0a; }
+
+/* ══════════════════════════════════════════════════════════════
+   H3 — Globale safe-area voor topbars (notch / statusbalk PWA).
+   Voorheen hadden alleen enkele specifieke topbars de inset-clamp;
+   nu krijgt elke pagina-topbar hem zodat titels niet meer achter
+   de statusbalk/batterij verspringen op iPhone/Android PWA.
+   ══════════════════════════════════════════════════════════════ */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .view > .topbar,
+  .login-card {
+    padding-top: max(16px, calc(env(safe-area-inset-top) + 8px));
+  }
+}

@@ -8,7 +8,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, onAuthStateChanged,
-  signInWithEmailAndPassword,
+  signInWithEmailAndPassword, sendPasswordResetEmail,
   signOut, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
@@ -5445,7 +5445,7 @@ async function deleteConceptRecord(id){
       const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
       const filtered = players.filter(p => p.id !== id);
       if(typeof savePlayers === 'function') await savePlayers(filtered);
-      else localStorage.setItem('playersCache', JSON.stringify(filtered));
+      else { try { const _uid = (typeof auth!=='undefined' && auth.currentUser) ? auth.currentUser.uid : 'anon'; localStorage.setItem('playersCache_' + _uid, JSON.stringify(filtered)); } catch(_){} }
       if(Array.isArray(window.playersCache)) window.playersCache = filtered;
     }
   } catch(e){ console.warn('deleteConceptRecord faalde:', e); }
@@ -11610,7 +11610,7 @@ window._elfBackToTiles = function(){
   if(resultsEl) _elfShowTeamTiles(loadPlayers(), resultsEl, q);
 };
 
-function _elfDoSearch(query){ _elfShowTeamTiles(loadPlayers(), document.getElementById('elf-results'), query); }
+/* C1: _elfDoSearch (ongebruikt) verwijderd. */
 window.renderElftallen = renderElftallen;
 window.openDetail = openDetail;
 
@@ -13799,7 +13799,14 @@ function renderDetailOverview(p){
   const _dtlDelTop = document.getElementById('dtl-del-top');
   if(_dtlDelTop) _dtlDelTop.addEventListener('click', async () => {
     const naam = (p.naam || '').trim() || 'onbekende speler';
-    if(!confirm('Rapport van ' + naam + ' verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
+    // K4: zelfde typed-confirm-drempel als de onderste verwijderknop
+    const _ok = await showTypedDeleteConfirm({
+      title: 'Rapport verwijderen?',
+      body: `Het rapport van <b>${naam.replace(/</g,'&lt;')}</b> wordt permanent verwijderd. Deze actie kan niet ongedaan worden gemaakt.`,
+      label: 'Type de naam van de speler om te bevestigen:',
+      confirmWord: naam
+    });
+    if(!_ok) return;
     try { await deletePlayer(p.id); go(previousViewBeforePlayer || 'database'); if(typeof toast==='function') toast('Rapport verwijderd'); }
     catch(err){ if(typeof toast==='function') toast('Verwijderen mislukt', true); }
   });
@@ -15577,6 +15584,7 @@ function renderMatches(){
   const _setText = (id, n) => { const el = document.getElementById(id); if(el) el.textContent = n; };
   _setText('m-stat-total', _statTotal);
   _setText('m-stat-verwerkt', _statVerwerkt);
+  _setText('m-stat-nog', _statNogVerwerken);
 
   // Filters
   const search = ($('#match-search').value || '').toLowerCase().trim();
@@ -15622,8 +15630,7 @@ function renderMatches(){
     matches = matches.filter(m =>
       m.thuis.toLowerCase().includes(search) ||
       m.uit.toLowerCase().includes(search) ||
-      (m.age || '').toLowerCase().includes(search) ||
-      (m.opmerking || '').toLowerCase().includes(search)
+      (m.age || '').toLowerCase().includes(search)
     );
   }
   if(ageFilter){
@@ -21744,7 +21751,24 @@ async function confirmDeleteTournament(id){
   if(!id){ toast('Geen toernooi geselecteerd', true); return; }
   const t = tourmCache.find(x => x.id === id);
   const naam = t ? (t.name || 'dit toernooi') : 'dit toernooi';
-  if(!confirm(`Weet je zeker dat je "${naam}" wilt verwijderen?\n\nAlle teams, wedstrijden, observaties en rapporten worden verwijderd. Dit kan niet ongedaan worden gemaakt.`)) return;
+  // K1: tel onderliggende data (read-only) voor de waarschuwing
+  let _nM = 0, _nP = 0, _nO = 0;
+  try {
+    const [_ms, _ps, _os] = await Promise.all([
+      getDocs(tournSubCol(id, 'matches')),
+      getDocs(tournSubCol(id, 'players')),
+      getDocs(tournSubCol(id, 'observations'))
+    ]);
+    _nM = _ms.size; _nP = _ps.size; _nO = _os.size;
+  } catch(_){}
+  // K1: typed-confirm — toernooinaam exact typen (zelfde drempel als spelersrapport-delete)
+  const _ok = await showTypedDeleteConfirm({
+    title: 'Toernooi verwijderen?',
+    body: `Je staat op het punt <b>${String(naam).replace(/</g,'&lt;')}</b> permanent te verwijderen.<br><br>Hiermee verdwijnen <b>${_nM}</b> wedstrijd${_nM===1?'':'en'}, <b>${_nP}</b> speler${_nP===1?'':'s'} en <b>${_nO}</b> observatie${_nO===1?'':'s'} — onomkeerbaar.`,
+    label: 'Type de toernooinaam om te bevestigen:',
+    confirmWord: naam
+  });
+  if(!_ok) return;
   try {
     await deleteTournamentDeep(id);
     toast('Toernooi verwijderd');
@@ -22391,8 +22415,11 @@ async function openMatchDetail(tid, matchId){
   const tpIds = mpList.map(mp => mp.tournamentPlayerId);
   const tpCache = {};
   if(tpIds.length){
-    const tpSnap = await getDocs(query(tournSubCol(tid, 'players'), where('__name__','in', tpIds.slice(0,30))));
-    tpSnap.docs.forEach(d => { tpCache[d.id] = {...d.data(), id: d.id}; });
+    for(let _i = 0; _i < tpIds.length; _i += 30){
+      const _chunk = tpIds.slice(_i, _i + 30);
+      const tpSnap = await getDocs(query(tournSubCol(tid, 'players'), where('__name__','in', _chunk)));
+      tpSnap.docs.forEach(d => { tpCache[d.id] = {...d.data(), id: d.id}; });
+    }
   }
 
   // Bouw obs lookup
@@ -22460,9 +22487,9 @@ async function openMatchDetail(tid, matchId){
           </div>
           <div class="toern-player-card-right">
             ${hasObs ? `<span class="toern-obs-badge">${gradeLabel||'✓'}</span>` : '<span class="toern-obs-empty">Geen obs</span>'}
-            ${hasObs ? `<button class="toern-share-btn" title="Deel observatie" onclick="event.stopPropagation();shareObservation('${tid}','${matchId}','${tp.id}')">↗</button>` : ''}
-            <button class="toern-must-btn ${tp.mustScout?'on':''}" title="Must scout" onclick="event.stopPropagation();toggleMustScout('${tid}','${tp.id}',${tp.mustScout?'false':'true'})">${tp.mustScout?'⭐':'☆'}</button>
-            <button class="toern-rapport-btn" title="Rapport starten"
+            ${hasObs ? `<button class="toern-share-btn" title="Deel observatie" aria-label="Deel observatie" onclick="event.stopPropagation();shareObservation('${tid}','${matchId}','${tp.id}')">↗</button>` : ''}
+            <button class="toern-must-btn ${tp.mustScout?'on':''}" title="Must scout" aria-label="Must-scout aan- of uitzetten" onclick="event.stopPropagation();toggleMustScout('${tid}','${tp.id}',${tp.mustScout?'false':'true'})">${tp.mustScout?'⭐':'☆'}</button>
+            <button class="toern-rapport-btn" title="Rapport starten" aria-label="Rapport starten"
               onclick="event.stopPropagation();startRapportVanuitMatch('${tid}','${matchId}','${mp.id}','${tp.id}')">
               📋
             </button>
@@ -22484,6 +22511,13 @@ async function openMatchDetail(tid, matchId){
     noteEl.value = match.matchNote || '';
     noteEl.onblur = () => saveMatchNote(tid, matchId, noteEl.value);
   }
+  // H4: inline uitslag-invoer in de detail-modal
+  const _scA = document.getElementById('toern-match-score-a');
+  const _scB = document.getElementById('toern-match-score-b');
+  if(_scA) _scA.value = (match.scoreHome != null ? match.scoreHome : '');
+  if(_scB) _scB.value = (match.scoreAway != null ? match.scoreAway : '');
+  const _scBtn = document.getElementById('toern-match-score-save');
+  if(_scBtn) _scBtn.onclick = () => _saveMatchScoreInline(tid, matchId);
 
   // TIP 4: lokale wedstrijd-timer (verdwijnt bij sluiten; niets opgeslagen)
   _initMatchTimer(tid, match);
@@ -22677,7 +22711,7 @@ async function openBundelingDetail(tid, summaryId){
     if(gw){
       let chips = document.getElementById('toern-summ-grade-chips');
       if(!chips){ chips = document.createElement('div'); chips.id = 'toern-summ-grade-chips'; chips.className = 'bnd-grade-chips'; gw.appendChild(chips); }
-      chips.innerHTML = ['A','B','C','D'].map(g => `<button type="button" class="bnd-grade-btn grade-${g} ${gradeEl.value===g?'active':''}" data-g="${g}" onclick="_bndSetGrade('${g}')">${g}</button>`).join('');
+      chips.innerHTML = ['A','B+','B','C+','C','D'].map(g => `<button type="button" class="bnd-grade-btn grade-${g.replace('+','')} ${gradeEl.value===g?'active':''}" data-g="${g}" onclick="_bndSetGrade('${g}')">${g}</button>`).join('');
     }
   }
 
@@ -22688,6 +22722,7 @@ async function openBundelingDetail(tid, summaryId){
     const allObs = await getObservationsForPlayer(tid, summ.tournamentPlayerId);
     const obsById = {};
     allObs.forEach(o => { obsById[o.id] = o; });
+    const _matchCache = {}; // C4: memoize match-reads (voorkom N+1)
     const daysSnap = await getDocs(tournSubCol(tid, 'days'));
     const daysById = {};
     daysSnap.docs.forEach(d => { daysById[d.id] = d.data(); });
@@ -22699,8 +22734,12 @@ async function openBundelingDetail(tid, summaryId){
       for(const obsId of (block.observationIds||[])){
         const obs = obsById[obsId];
         if(!obs){ continue; }
-        const matchSnap = await getDoc(tournSubDoc(tid, 'matches', obs.matchId));
-        const match = matchSnap.exists() ? matchSnap.data() : null;
+        let match = _matchCache[obs.matchId];
+        if(match === undefined){
+          try { const _ms = await getDoc(tournSubDoc(tid, 'matches', obs.matchId)); match = _ms.exists() ? _ms.data() : null; }
+          catch(_){ match = null; }
+          _matchCache[obs.matchId] = match;
+        }
         const matchLabel = match ? `${match.teamAName||'?'} – ${match.teamBName||'?'}` : 'Wedstrijd';
         const editedMark = obs.editHistory && obs.editHistory.length ? ' <span class="toern-edited-mark" title="Bewerkt na afsluiting">✏️</span>' : '';
         const _meta = match ? [ _toernMatchClock(match), _toernFieldLabel(match.field), match.categoryId||'' ].filter(Boolean).join(' · ') : '';
@@ -22895,10 +22934,10 @@ async function renderTournamentTeamDetail(tid, teamId){
         <div class="toern-player-avatar">${initials(naam)}</div>
         <div class="toern-speler-info">
           <div class="toern-player-name">${escapeHtml(naam)}${tp.quickNumber?' #'+tp.quickNumber:''}</div>
-          <div class="toern-player-meta">${badge}</div>
+          <div class="toern-player-meta">${tp.position ? '<span style="opacity:.8;">'+escapeHtml((typeof positionLabel==='function'?(positionLabel(tp.position)||tp.position):tp.position))+'</span> \u00b7 ' : ''}${badge}</div>
           ${mergeWarn}
         </div>
-        <button class="toern-must-btn ${tp.mustScout?'on':''}" title="Must scout" onclick="event.stopPropagation();toggleMustScout('${tid}','${tp.id}',${tp.mustScout?'false':'true'})">${tp.mustScout?'⭐':'☆'}</button>
+        <button class="toern-must-btn ${tp.mustScout?'on':''}" title="Must scout" aria-label="Must-scout aan- of uitzetten" onclick="event.stopPropagation();toggleMustScout('${tid}','${tp.id}',${tp.mustScout?'false':'true'})">${tp.mustScout?'⭐':'☆'}</button>
         ${_exp}
       </div>`;
     }).join('');
@@ -23901,8 +23940,8 @@ function _toernOpenOverlay(innerHtml){
   _toernCloseOverlay();
   const ov = document.createElement('div');
   ov.id = 'toern-dyn-overlay';
-  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px;';
-  ov.innerHTML = `<div class="toern-dyn-card" style="background:var(--panel,#111722);color:var(--text,#e5e9f5);border:1px solid var(--border,#2a2f3a);max-width:680px;width:100%;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.45);padding:20px;">${innerHtml}<div class="toern-dyn-foot"><button type="button" class="btn btn-sm" onclick="_toernCloseOverlay()">Sluiten</button></div></div>`;
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:max(24px, calc(env(safe-area-inset-top) + 16px)) 12px 24px;';
+  ov.innerHTML = `<div class="toern-dyn-card" style="position:relative;background:var(--panel,#111722);color:var(--text,#e5e9f5);border:1px solid var(--border,#2a2f3a);max-width:680px;width:100%;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.45);padding:20px;"><button type="button" aria-label="Sluiten" onclick="_toernCloseOverlay()" style="position:absolute;top:10px;right:10px;background:none;border:0;color:var(--text-3,#9aa3b7);font-size:22px;line-height:1;cursor:pointer;padding:4px;">\u00d7</button>${innerHtml}<div class="toern-dyn-foot"><button type="button" class="btn btn-sm" onclick="_toernCloseOverlay()">Sluiten</button></div></div>`;
   ov.addEventListener('click', e => { if(e.target === ov) _toernCloseOverlay(); });
   document.body.appendChild(ov);
   return ov;
@@ -24413,7 +24452,8 @@ async function renderStandenTab(tid){
     </tr>`).join('');
     html += `<div class="toern-stand-group" style="margin-bottom:16px;">
       <div class="toern-stand-title" style="font-weight:600;margin-bottom:4px;">${escapeHtml(g)}</div>
-      <table style="width:100%;font-size:12px;border-collapse:collapse;">
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+      <table style="width:100%;min-width:480px;font-size:12px;border-collapse:collapse;">
         <thead><tr style="text-align:left;border-bottom:1px solid var(--border,#ddd);">
           <th style="text-align:center;">#</th><th>Team</th><th style="text-align:center;">G</th>
           <th style="text-align:center;">W</th><th style="text-align:center;">GL</th><th style="text-align:center;">V</th>
@@ -24421,6 +24461,7 @@ async function renderStandenTab(tid){
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
+      </div>
     </div>`;
   }
   wrap.innerHTML = html;
@@ -24680,17 +24721,7 @@ function switchMatchesSubview(sub){
   if(sub === 'wedstrijden' && typeof renderMatchReports === 'function') renderMatchReports();
 }
 window.switchMatchesSubview = switchMatchesSubview;
-window.__shDebugSpeler = function(naam){
-  const p = (typeof playersCache !== 'undefined' ? playersCache : []).find(x => x && x.naam === naam);
-  if(!p){ console.log('NIET GEVONDEN in playersCache'); return; }
-  console.log('Fields:', Object.keys(p).join(', '));
-  console.log('notities:', JSON.stringify(p.notities||''));
-  console.log('notities_raw:', JSON.stringify(p.notities_raw||''));
-  console.log('tekst:', JSON.stringify(p.tekst||''));
-  console.log('opmerkingen:', JSON.stringify(p.opmerkingen||''));
-  console.log('id:', p.id);
-  console.log('rapport_type:', p.rapport_type);
-};
+/* K3: __shDebugSpeler debug-helper verwijderd (lekte spelersdata naar console). */
 
 // ── Intro overlay dismiss ────────────────────────────────────────────────────
 (function setupIntro(){
@@ -25056,7 +25087,7 @@ window.unfollowAndRefresh = unfollowAndRefresh;
 
 // Build-marker zodat je in de console kunt verifiëren welke app.js live is.
 window.__SH_TOERNOOI_BUILD = 'tijden-fix-v201';
-try { console.info('[ScoutingHub] toernooi-build:', window.__SH_TOERNOOI_BUILD); } catch(_){}
+/* K3: build-marker console.info verwijderd; window.__SH_TOERNOOI_BUILD blijft beschikbaar. */
 
 
 /* BUG 4/TIP3/TIP6 — gedeelde rij-render voor het standaard Programma, met
@@ -25174,6 +25205,8 @@ window._injectObsTrefwoorden = _injectObsTrefwoorden;
 async function _shPurgeLocalState(){
   try { if(typeof unsubscribeData === 'function') unsubscribeData(); } catch(_){}
   try { if(typeof unsubTournaments !== 'undefined' && unsubTournaments){ unsubTournaments(); unsubTournaments = null; } } catch(_){}
+  // K2: lokale spelers-cache (write-only fallback) per-account opruimen tegen data-at-rest-lek
+  try { Object.keys(localStorage).filter(k => k.indexOf('playersCache') === 0).forEach(k => localStorage.removeItem(k)); } catch(_){}
   try {
     if(typeof window !== 'undefined' && 'caches' in window){
       const keys = await caches.keys();
@@ -25507,10 +25540,10 @@ async function _exportTournamentPlayer(tid, entry, tournament){
         techniek_huidig: '',      techniek_tekst:      catText.techniek    || '',
         inzicht_huidig: '',       inzicht_tekst:       catText.inzicht     || '',
         grit_huidig: '',          grit_tekst:          catText.mentaliteit || '',
-        explosiviteit_huidig: '', explosiviteit_tekst: '',
+        explosiviteit_huidig: '', explosiviteit_tekst: catText.snelheid    || '',
         sprinten_huidig: '',      sprinten_tekst:      catText.snelheid    || '',
         duelleren_huidig: '',     duelleren_tekst:     catText.fysiek      || '',
-        wendbaarheid_huidig: '',  wendbaarheid_tekst:  ''
+        wendbaarheid_huidig: '',  wendbaarheid_tekst:  catText.fysiek      || ''
       }
     };
   } else {
@@ -25762,7 +25795,7 @@ function _renderProgrammaToernooiCards(){
     ms = iso(monday); ss = iso(sunday);
   } catch(_){ host.innerHTML = ''; return; }
   const cards = tourmCache.filter(t => { const sd = t.startDate || '', ed = t.endDate || t.startDate || ''; return sd && sd <= ss && ed >= ms; });
-  try { console.info('[Feature15] tourmCache:', Array.isArray(tourmCache)?tourmCache.length:0, '| week:', ms, '→', ss, '| match:', cards.length); } catch(_){}
+  /* K3: [Feature15] debug-log verwijderd. */
   if(!cards.length){ host.innerHTML = ''; return; }
   const labels = { prep:'Voorbereiding', active:'Actief', closing:'Afsluiting', done:'Afgerond' };
   host.innerHTML = cards.map(t => {
@@ -25952,3 +25985,47 @@ function _bndSetGrade(g){
   document.querySelectorAll('#toern-summ-grade-chips .bnd-grade-btn').forEach(b => b.classList.toggle('active', b.dataset.g === g));
 }
 window._bndSetGrade = _bndSetGrade;
+
+
+/* H7 — wachtwoord-vergeten: stuurt een Firebase herstel-link naar het ingevulde e-mailadres. */
+async function _shForgotPassword(){
+  const email = (document.getElementById('login-email') && document.getElementById('login-email').value || '').trim();
+  const errEl = document.getElementById('login-error');
+  if(!email){ if(errEl){ errEl.style.color=''; errEl.textContent = 'Vul eerst je e-mailadres in, dan sturen we een herstel-link.'; } return; }
+  try {
+    await sendPasswordResetEmail(auth, email);
+    if(errEl){ errEl.style.color = '#7fd99e'; errEl.textContent = 'Herstel-link verstuurd naar ' + email + ' (check ook je spam).'; }
+  } catch(e){
+    if(errEl){ errEl.style.color = ''; errEl.textContent = (typeof authErrorNL === 'function') ? authErrorNL(e) : 'Kon geen herstel-link sturen — controleer het e-mailadres.'; }
+  }
+}
+window._shForgotPassword = _shForgotPassword;
+
+
+/* H4 — uitslag opslaan vanuit de wedstrijd-detail-modal (inline; beide leeg = wissen). */
+async function _saveMatchScoreInline(tid, matchId){
+  const ha = document.getElementById('toern-match-score-a');
+  const hb = document.getElementById('toern-match-score-b');
+  const va = (ha && ha.value !== '') ? Number(ha.value) : null;
+  const vb = (hb && hb.value !== '') ? Number(hb.value) : null;
+  let patch;
+  if(va == null && vb == null){
+    patch = { scoreHome: null, scoreAway: null, resultStatus: 'scheduled', lastSyncedAt: new Date().toISOString() };
+  } else if(!Number.isFinite(va) || !Number.isFinite(vb)){
+    toast('Vul beide scores in (of laat beide leeg om te wissen)', true); return;
+  } else {
+    patch = { scoreHome: va, scoreAway: vb, resultStatus: 'finished', lastSyncedAt: new Date().toISOString() };
+  }
+  try {
+    await setDoc(tournSubDoc(tid, 'matches', matchId), patch, { merge: true });
+    toast(patch.scoreHome == null ? 'Uitslag gewist' : 'Uitslag opgeslagen');
+    if(_currentTournamentId === tid){
+      if(_toernTab === 'tijdlijn') renderTijdlijnTab(tid);
+      if(_toernTab === 'standen' && typeof renderStandenTab === 'function') renderStandenTab(tid);
+    }
+  } catch(e){
+    console.error('_saveMatchScoreInline error:', e);
+    toast('Opslaan mislukt: ' + (e.message || e), true);
+  }
+}
+window._saveMatchScoreInline = _saveMatchScoreInline;

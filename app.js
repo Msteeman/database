@@ -6596,7 +6596,7 @@ function openPlayerLiveForm(prog, sp){
     opv.onclick = () => _plfToggleOpvallend(opv);
   }
   const closeEl = document.getElementById('plf-close'); if(closeEl) closeEl.onclick = () => { _plfSoftSave(false); _plfClose(); };
-  const cancelEl = document.getElementById('plf-cancel'); if(cancelEl) cancelEl.onclick = () => { _plfSoftSave(false); _plfClose(); };
+  const cancelEl = document.getElementById('plf-cancel'); if(cancelEl) cancelEl.onclick = () => { _plfClose(); };
   const saveEl = document.getElementById('plf-save'); if(saveEl) saveEl.onclick = () => { _plfSoftSave(true); _plfClose(); };
 
   bd.style.display = 'flex';
@@ -6962,7 +6962,7 @@ async function openMatchLiveForm(prog){
     _mlfUpdateBadges();
   }
   const cl=document.getElementById('mlf-close'); if(cl) cl.onclick=function(){ _mlfSync(false); _mlfClose(); };
-  const ca=document.getElementById('mlf-cancel'); if(ca) ca.onclick=function(){ _mlfSync(false); _mlfClose(); };
+  const ca=document.getElementById('mlf-cancel'); if(ca) ca.onclick=function(){ _mlfClose(); };
   const sv=document.getElementById('mlf-save'); if(sv) sv.onclick=function(){ _mlfSync(true); _mlfClose(); };
 
   bd.style.display='flex';
@@ -7605,16 +7605,6 @@ function renderActiveScouting(){
                 <div class="sa-obs-draft-info">
                   <div class="sa-obs-draft-naam">${_nm}</div>
                   ${_sub ? `<div class="sa-obs-draft-sub">${_sub}</div>` : ''}
-                </div>
-                <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
-                  <span class="sa-obs-draft-arrow">Bewerken →</span>
-                  <button class="btn btn-xs sa-obs-indien-btn"
-                    data-obs-indien-progid="${escapeHtml(prog.id)}"
-                    data-obs-indien-snid="${escapeHtml(sn.id||'')}"
-                    style="background:var(--green);border-color:var(--green);color:#fff;white-space:nowrap;"
-                    title="Direct indienen naar spelersdatabase">
-                    Indienen ✓
-                  </button>
                 </div>
               </div>`;
             }).join('')}
@@ -16502,7 +16492,6 @@ function renderMatches(){
               </div>
               <div class="pm-item-acts">
                 <button type="button" class="pm-item-btn new" data-pm-sn-obs="${escapeHtml(m.progId)}" data-pm-sn-id="${escapeHtml(sn.id||'')}">\u2192 Observatie</button>
-                <button type="button" class="pm-item-btn" data-pm-convert="${escapeHtml(m.progId)}" data-pm-convert-sn="${escapeHtml(sn.id||'')}" title="Omzetten naar spelersrapport">\u2192 Rapport</button>
               </div>
             </div>`;
           }).join('');

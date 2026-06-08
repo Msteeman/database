@@ -6824,8 +6824,8 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
 }
 .match-age-badge {
   display: inline-flex; align-items: center; gap: 4px;
-  background: rgba(78,161,255,.12); border: 1px solid rgba(78,161,255,.3);
-  color: var(--accent);
+  background: transparent; border: 1px solid rgba(255,255,255,.25);
+  color: #fff;
   padding: 2px 8px; border-radius: 999px;
   font-size: 11px; font-weight: 700;
 }

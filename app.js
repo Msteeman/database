@@ -28667,7 +28667,7 @@ async function _bhApprove(id, role, btn){
       ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
     var r = await fetch(base + '/api/create-account', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken: idToken, email: req.email, displayName: req.name || '', role: role, accessRequestId: id })
+      body: JSON.stringify({ idToken: idToken, email: req.email, displayName: req.name || '', role: role, club: req.club || '', accessRequestId: id })
     });
     var j = {}; try { j = await r.json(); } catch(_){}
     if(r.ok && j && j.ok){

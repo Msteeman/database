@@ -27901,13 +27901,22 @@ function _bhRenderAudit(){
   var noSid=_bhAuditCache.filter(function(a){ return !a.sessionId; });
   var byPair={};
   noSid.forEach(function(a){ var k=(a.adminUid||'')+'__'+(a.targetUid||''); (byPair[k]=byPair[k]||[]).push(a); });
+  var GAP_MS = 90*60*1000;   // veiligheidsnet: > anderhalf uur stilte = zeker nieuwe sessie
   Object.keys(byPair).forEach(function(k){
     var items=byPair[k].slice().sort(function(a,b){ return _suMs(a.timestamp)-_suMs(b.timestamp); });
-    var curr=null;
+    var curr=null, lastMs=0;
     items.forEach(function(a){
-      if(curr===null){ curr=_mkGroup(a); allGroups.push(curr); }
+      var act=a.action, ms=_suMs(a.timestamp);
+      var startNew = false;
+      if(curr===null) startNew=true;
+      else if(act==='request_created') startNew=true;                 // elk nieuw verzoek = nieuwe sessie
+      else if(act==='grant_started' && curr._hasGrantStart) startNew=true; // 2e grant-start = nieuwe sessie
+      else if(lastMs && (ms - lastMs) > GAP_MS) startNew=true;         // grote stilte = nieuwe sessie
+      if(startNew){ curr=_mkGroup(a); curr._hasGrantStart=false; allGroups.push(curr); }
       _addToGroup(curr,a);
-      if(_isEnd(a.action)) curr=null;
+      if(act==='grant_started') curr._hasGrantStart=true;
+      lastMs = ms;
+      if(_isEnd(act)) { curr=null; lastMs=0; }
     });
   });
   // Nieuwste sessie eerst.

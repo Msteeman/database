@@ -16434,11 +16434,9 @@ function renderMatches(){
         if(_extraPlayers.length > 0){
           _dropRows += _extraPlayers.map(p => {
             const isConcept = typeof _shPlayerIsConcept === 'function' ? _shPlayerIsConcept(p) : false;
-            const statusBadge = isConcept
-              ? `<span style="font-size:10px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3);border-radius:4px;padding:1px 7px;font-weight:600;">Concept</span>`
-              : `<span style="font-size:10px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:1px 7px;font-weight:600;">✓ Ingediend</span>`;
+            const statusBadge = '';
             const posLabel = typeof positionLabel === 'function' ? (positionLabel(p.positie)||p.positie||'') : (p.positie||'');
-            return `<div class="pm-item-row">
+            return `<div class="pm-item-row${isConcept?'':' submitted-glow-row'}">
               <div class="pm-item-info" style="flex:1;">
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <span class="pm-item-name" style="cursor:pointer;" data-player-id="${escapeHtml(p.id)}">${escapeHtml(p.naam||'?')}</span>
@@ -16459,11 +16457,7 @@ function renderMatches(){
           const naam = sp.naam||[sp.voornaam,sp.achternaam].filter(Boolean).join(' ')||'?';
           const sn = _sns.find(s => s && s.spelerKey === sp.id);
           const prev = sn && sn.tekst ? escapeHtml(sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' \u00b7 ').trim().slice(0,60)) : '';
-          const statusBadge = isVerwerkt
-            ? `<span style="font-size:10px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:1px 7px;font-weight:600;">✓ Ingediend</span>`
-            : concept
-              ? `<span style="font-size:10px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3);border-radius:4px;padding:1px 7px;font-weight:600;">Concept</span>`
-              : '';
+          const statusBadge = '';
           return `<div class="pm-item-row${isVerwerkt?' submitted-glow-row':''}">
             <div class="pm-item-info" style="flex:1;">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
@@ -16501,10 +16495,9 @@ function renderMatches(){
       const _wstrOpmerking = (_wstr && _wstr.opmerking) ? _wstr.opmerking : ((_wstr && _wstr.tekst) ? _wstr.tekst : '');
       let _wstrSec = '';
       if(_wstrVerwerkt){
-        _wstrSec = `<div class="pm-section-hdr">WEDSTRIJDNOTITIE</div>
-        <div class="pm-wstr-inline submitted-glow-row" style="border-radius:7px;padding:8px 12px;">
+        _wstrSec = `<div class="pm-section-hdr submitted-glow-row">WEDSTRIJDNOTITIE</div>
+        <div class="pm-wstr-inline" style="border-radius:7px;padding:8px 12px;">
           <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-size:11px;font-weight:700;color:#22c55e;">✓ Ingediend</span>
             <button type="button" class="pm-item-link" data-pm-wstr-readonly="${escapeHtml(m.progId)}" style="font-size:12px;margin-left:auto;">Bekijk →</button>
           </div>
         </div>`;
@@ -16540,7 +16533,7 @@ function renderMatches(){
               <span class="match-vs">\u2014</span>
               <span class="match-team-away">${escapeHtml(_uitF)}</span>
               ${_progP && _progP.leeftijd ? `<span class="match-age-badge" style="margin-left:6px;">${escapeHtml(_progP.leeftijd)}</span>` : ''}
-              ${_allVerwerkt ? '<span class="pm-done-badge pm-done-full">✓ Ingediend</span>' : _chevP}
+              ${_chevP}
             </div>
             ${_progP && _progP.tijd ? `<div class="match-meta"><span class="match-players-count">${escapeHtml(_progP.tijd)}</span></div>` : ''}
           </div>

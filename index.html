@@ -3401,6 +3401,28 @@ algemeen:</textarea>
   </div>
 </div>
 
+<!-- =================== PLAYER LIVE FORM v2 (live gekoppelde speler) =================== -->
+<div class="obs-backdrop" id="plf-backdrop" style="display:none;">
+  <div class="obs-modal" id="plf-modal" role="dialog" aria-modal="true" aria-label="Live spelernotitie">
+    <div class="obs-modal-header">
+      <div style="min-width:0;">
+        <div class="obs-modal-title" id="plf-title">Live spelernotitie</div>
+        <div class="obs-modal-sub" id="plf-sub">Live aantekening (concept)</div>
+      </div>
+      <button class="obs-modal-close" id="plf-close" type="button" aria-label="Sluiten">&times;</button>
+    </div>
+    <div id="plf-form" autocomplete="off">
+      <div class="plf-ctx" id="plf-ctx"></div>
+      <div class="plf-fields" id="plf-fields"></div>
+      <div class="obs-actions">
+        <button type="button" class="plf-opvallend-btn" id="plf-opvallend">&#9734; Opvallend</button>
+        <button type="button" class="btn btn-secondary" id="plf-cancel">Sluiten</button>
+        <button type="button" class="btn btn-primary" id="plf-save">Opslaan &amp; sluiten</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- =================== CHANGELOG MODAL (s35bk-3) =================== -->
 <div class="changelog-backdrop" id="changelog-backdrop">
   <div class="changelog-modal">

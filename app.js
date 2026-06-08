@@ -6478,6 +6478,155 @@ function openObservatieForm(prog, sn){
 }
 window.openObservatieForm = openObservatieForm;
 
+/* ============================================================
+   PlayerLiveForm v2 — stabiele live gekoppelde-speler invoer.
+   Per-veld state (playerLiveState[matchId][playerId][field]) — GEEN
+   compose/parse, dus geen cascade/overlap. Modal-chrome zoals obs
+   (sticky header/action bar, 44px close, 16px inputs, focus-center).
+   Concept-opslag in de bestaande snelnotitie (sn.fields). GEEN
+   definitief rapport. Soft sync/prefill volgen in latere fase.
+   ============================================================ */
+const PLF_FIELDS = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
+const PLF_PH = { techniek:'bv. scherp, snel', inzicht:'bv. leest spel goed', mentaliteit:'bv. werkt hard, leidt', explosiviteit:'bv. eerste 5m sterk', sprinten:'bv. topsnelheid hoog', duelleren:'bv. wint 1-op-1', wendbaarheid:'bv. soepel, lichtvoetig', algemeen:'bv. interessante speler' };
+const playerLiveState = {};
+let _plfCtx = null;
+let _plfTm = null;
+
+function _plfFindSn(prog, sp){
+  if(!prog || !Array.isArray(prog.snelnotities)) return null;
+  return prog.snelnotities.find(s => s && s.spelerKey === sp.id) || null;
+}
+function _plfSeedState(matchId, playerId, sn){
+  if(!playerLiveState[matchId]) playerLiveState[matchId] = {};
+  const seed = {};
+  PLF_FIELDS.forEach(f => {
+    let v = '';
+    if(sn && sn.fields && typeof sn.fields[f] === 'string'){ v = sn.fields[f]; }
+    else if(sn && sn.tekst){
+      const lines = String(sn.tekst).split('\n');
+      const pref = f + ':';
+      const line = lines.find(l => l.trim().toLowerCase().indexOf(pref) === 0);
+      v = line ? line.trim().slice(pref.length).trim() : '';
+      if(PLF_FIELDS.some(tt => v.toLowerCase().indexOf(tt + ':') === 0)) v = '';
+    }
+    seed[f] = v;
+  });
+  playerLiveState[matchId][playerId] = seed;
+  return seed;
+}
+
+function openPlayerLiveForm(prog, sp){
+  const bd = document.getElementById('plf-backdrop'); if(!bd || !prog || !sp) return;
+  const matchId = prog.id, playerId = sp.id;
+  const sn = _plfFindSn(prog, sp);
+  const st = _plfSeedState(matchId, playerId, sn);
+  _plfCtx = { matchId, playerId, progId: prog.id };
+
+  const naam = sp.naam || [sp.voornaam, sp.achternaam].filter(Boolean).join(' ') || 'Speler';
+  const titleEl = document.getElementById('plf-title'); if(titleEl) titleEl.textContent = naam;
+  const subEl = document.getElementById('plf-sub'); if(subEl) subEl.textContent = 'Live aantekening (concept)';
+  const teamCtx = (prog.thuis||'?') + (prog.thuis_elftal?' '+prog.thuis_elftal:'') + ' — ' + (prog.uit||'?') + (prog.uit_elftal?' '+prog.uit_elftal:'');
+  const ctxEl = document.getElementById('plf-ctx');
+  if(ctxEl) ctxEl.innerHTML =
+    '<div class="plf-ctx-player">Speler: <b>'+escapeHtml(naam)+'</b>'+(sp.rugnummer?' <span class="plf-ctx-dim">#'+escapeHtml(String(sp.rugnummer))+'</span>':'')+(sp.positie?' <span class="plf-ctx-dim">· '+escapeHtml(sp.positie)+'</span>':'')+'</div>'+
+    '<div class="plf-ctx-match">Live wedstrijd: '+escapeHtml(teamCtx)+'</div>'+
+    '<div class="plf-ctx-note">Concept — het definitieve rapport maak je na de wedstrijd in Wedstrijden.</div>';
+
+  const fieldsEl = document.getElementById('plf-fields');
+  if(fieldsEl){
+    fieldsEl.innerHTML = PLF_FIELDS.map(f =>
+      '<div class="plf-row"><label class="plf-label" for="plf-in-'+f+'">'+f+'</label>'+
+      '<input class="plf-field-in" id="plf-in-'+f+'" data-field="'+f+'" type="text" autocomplete="off" placeholder="'+escapeHtml(PLF_PH[f]||'')+'" value="'+escapeHtml(st[f]||'')+'" /></div>'
+    ).join('');
+    Array.from(fieldsEl.querySelectorAll('.plf-field-in')).forEach(inp => {
+      inp.addEventListener('input', () => {
+        const f = inp.dataset.field;
+        if(playerLiveState[matchId] && playerLiveState[matchId][playerId]) playerLiveState[matchId][playerId][f] = inp.value;
+        clearTimeout(_plfTm); _plfTm = setTimeout(() => _plfSoftSave(false), 600);
+      });
+    });
+    if(!fieldsEl._plfFocusWired){
+      fieldsEl._plfFocusWired = true;
+      fieldsEl.addEventListener('focusin', (e) => {
+        const t = e.target; if(!t || t.tagName !== 'INPUT') return;
+        setTimeout(() => { try { t.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} }, 300);
+      });
+    }
+  }
+
+  const opv = document.getElementById('plf-opvallend');
+  if(opv){
+    const isOpv = !!(sn && sn.is_opvallend);
+    opv.textContent = isOpv ? '⭐ Opgevallen' : '☆ Opvallend';
+    opv.classList.toggle('is-opvallend', isOpv);
+    opv.onclick = () => _plfToggleOpvallend(opv);
+  }
+  const closeEl = document.getElementById('plf-close'); if(closeEl) closeEl.onclick = () => { _plfSoftSave(false); _plfClose(); };
+  const cancelEl = document.getElementById('plf-cancel'); if(cancelEl) cancelEl.onclick = () => { _plfSoftSave(false); _plfClose(); };
+  const saveEl = document.getElementById('plf-save'); if(saveEl) saveEl.onclick = () => { _plfSoftSave(true); _plfClose(); };
+
+  bd.style.display = 'flex';
+  document.body.style.top = '-' + window.scrollY + 'px';
+  document.body.classList.add('modal-open');
+  setTimeout(() => { const fst = document.getElementById('plf-in-techniek'); if(fst) fst.focus(); }, 80);
+}
+window.openPlayerLiveForm = openPlayerLiveForm;
+
+function _plfSoftSave(showToast){
+  try {
+    if(!_plfCtx) return;
+    const matchId = _plfCtx.matchId, playerId = _plfCtx.playerId, progId = _plfCtx.progId;
+    const prog = programmaCache.find(p => p.id === progId); if(!prog) return;
+    if(typeof _shIsMatchLocked === 'function' && _shIsMatchLocked(prog)) return;
+    const sp = (prog.spelers||[]).find(s => s && s.id === playerId); if(!sp) return;
+    const st = (playerLiveState[matchId] && playerLiveState[matchId][playerId]) || {};
+    const fields = {}; PLF_FIELDS.forEach(f => { fields[f] = (st[f]||'').trim(); });
+    const tekst = PLF_FIELDS.map(f => f + ':' + (fields[f] ? ' ' + fields[f] : '')).join('\n');
+    const hasContent = PLF_FIELDS.some(f => fields[f]);
+    if(!Array.isArray(prog.snelnotities)) prog.snelnotities = [];
+    let sn = prog.snelnotities.find(s => s && s.spelerKey === sp.id);
+    if(!sn && !hasContent) return;
+    if(!sn){
+      sn = { id:'sn_'+(sp.id||Date.now()), naam: sp.naam||[sp.voornaam,sp.achternaam].filter(Boolean).join(' ')||'', rugnummer: sp.rugnummer||'', positie: sp.positie||'', spelerKey: sp.id, created: Date.now() };
+      prog.snelnotities.push(sn);
+    }
+    sn.fields = fields;
+    sn.tekst = tekst;
+    sn.modified = Date.now();
+    prog.modified = Date.now();
+    if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
+    if(showToast && typeof toast === 'function') toast('Live notitie opgeslagen ✓');
+  } catch(_){}
+}
+
+function _plfToggleOpvallend(btn){
+  try {
+    if(!_plfCtx) return;
+    const prog = programmaCache.find(p => p.id === _plfCtx.progId); if(!prog) return;
+    const sp = (prog.spelers||[]).find(s => s && s.id === _plfCtx.playerId); if(!sp) return;
+    if(!Array.isArray(prog.snelnotities)) prog.snelnotities = [];
+    let sn = prog.snelnotities.find(s => s && s.spelerKey === sp.id);
+    if(!sn){ _plfSoftSave(false); sn = prog.snelnotities.find(s => s && s.spelerKey === sp.id); }
+    if(!sn) return;
+    sn.is_opvallend = !sn.is_opvallend;
+    prog.modified = Date.now();
+    btn.textContent = sn.is_opvallend ? '⭐ Opgevallen' : '☆ Opvallend';
+    btn.classList.toggle('is-opvallend', !!sn.is_opvallend);
+    if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
+  } catch(_){}
+}
+
+function _plfClose(){
+  const bd = document.getElementById('plf-backdrop'); if(bd) bd.style.display = 'none';
+  const y = parseInt(document.body.style.top || '0') * -1;
+  document.body.classList.remove('modal-open');
+  document.body.style.top = '';
+  if(y) window.scrollTo(0, y);
+  _plfCtx = null;
+  try { if(typeof renderActiveScouting === 'function') renderActiveScouting(); } catch(_){}
+}
+window._plfClose = _plfClose;
+
 function _obsClose(){
   try { window.__obsTriggerAutosave=null; window.__obsCaptureChips=null; } catch(_){}
   const bd = document.getElementById('obs-backdrop');
@@ -7388,6 +7537,12 @@ function renderActiveScouting(){
       // tile zelf: toggle uitklappen — alleen via naam-balk, niet via panel-inhoud
       if(e.target.matches('input, textarea, select')) return;
       if(e.target.closest('.sa-tile-panel')) return;  // klik in content panel → niet sluiten
+      // PlayerLiveForm v2: open de nieuwe stabiele live-modal i.p.v. het oude inline paneel.
+      try {
+        const _plfProg = programmaCache.find(p => p.id === tile.dataset.progId);
+        const _plfSp = _plfProg && (_plfProg.spelers||[])[parseInt(tile.dataset.spIdx,10)];
+        if(_plfProg && _plfSp && typeof openPlayerLiveForm === 'function'){ openPlayerLiveForm(_plfProg, _plfSp); return; }
+      } catch(_){}
       const isOpen = tile.classList.contains('open');
       // sluit andere tiles in dezelfde sa-card
       const card = tile.closest('.sa-card');

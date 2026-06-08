@@ -8943,9 +8943,14 @@ function renderVandaagBanner(){
   }
   const now = new Date();
   const today = [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-');
-  // Wedstrijden vandaag met minstens 1 speler
-  // s19: toon elk programma-item van vandaag (ook zonder spelers)
-  const items = programmaCache.filter(p => p && p.datum === today && (p.thuis || p.uit));
+  // STAP C/optie B: toon ALLEEN KOMENDE wedstrijden van vandaag.
+  // LIVE -> staat in de live-sectie; GESPEELD -> staat gedempt in "Wedstrijden vandaag".
+  const items = programmaCache.filter(p => {
+    if(!(p && p.datum === today && (p.thuis || p.uit))) return false;
+    if(typeof isMatchInWindow === 'function' && isMatchInWindow(p, now)) return false;      // live eruit
+    if(typeof getMatchWindow === 'function'){ const w = getMatchWindow(p); if(w && w.end < now) return false; } // gespeeld eruit
+    return true;
+  });
   if(items.length === 0){ wrap.innerHTML = ''; wrap.style.display = 'none'; return; }
 
   items.sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));

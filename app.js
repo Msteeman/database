@@ -16502,6 +16502,7 @@ function renderMatches(){
               </div>
               <div class="pm-item-acts">
                 <button type="button" class="pm-item-btn new" data-pm-sn-obs="${escapeHtml(m.progId)}" data-pm-sn-id="${escapeHtml(sn.id||'')}">\u2192 Observatie</button>
+                <button type="button" class="pm-item-btn" data-pm-convert="${escapeHtml(m.progId)}" data-pm-convert-sn="${escapeHtml(sn.id||'')}" title="Omzetten naar spelersrapport">\u2192 Rapport</button>
               </div>
             </div>`;
           }).join('');
@@ -16886,6 +16887,7 @@ function renderMatches(){
           }
         } else if(typeof openScoutingPlayerForm === 'function'){
           openScoutingPlayerForm(prog, sp, player, concept);
+          try { if(typeof _liveToReport==='function') _liveToReport(prog.id, sp.id); } catch(_){}
         }
         return;
       }
@@ -16922,6 +16924,20 @@ function renderMatches(){
           const sn2Submit = sn2 ? Object.assign({}, sn2, { obs_draft: false }) : { obs_draft: false };
           openObservatieForm(prog2, sn2Submit);
         }
+        return;
+      }
+      // A3: opgevallen speler -> omzetten naar spelersrapport (chips geprefilld)
+      const btnConvert = e.target.closest('[data-pm-convert]');
+      if(btnConvert){
+        e.stopPropagation();
+        const _cpid = btnConvert.dataset.pmConvert, _csn = btnConvert.dataset.pmConvertSn;
+        const _cprog = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === _cpid) : null;
+        const _csnObj = _cprog && (_cprog.snelnotities||[]).find(s => s && s.id === _csn);
+        if(!_csnObj){ if(typeof toast==='function') toast('Observatie niet gevonden', true); return; }
+        const _cdup = (typeof playersCache!=='undefined' && Array.isArray(playersCache)) ? playersCache.some(p => p && p.concept===false && (p.naam||'').toLowerCase()===String(_csnObj.naam||'').toLowerCase()) : false;
+        if(_cdup && !confirm('Er bestaat al een rapport voor deze speler.\n\nToch doorgaan en een nieuw rapport maken?')) return;
+        const _cobs = { id:null, naam:_csnObj.naam||'', club:_csnObj.club||'', positie:_csnObj.positie||'', elftal:_csnObj.elftal||'', tags: Array.isArray(_csnObj.tags)?_csnObj.tags:[], category_notes: _csnObj.fields||{}, wedstrijd:{ datum:_cprog.datum||'', thuis:_cprog.thuis||'', uit:_cprog.uit||'' } };
+        if(typeof _obsToRapport==='function') _obsToRapport(_cobs);
         return;
       }
       // s93: wedstrijdrapport knop
@@ -27121,6 +27137,25 @@ function _obsToRapport(obs){
   if(typeof toast==='function') toast('Rapport gestart vanuit observatie');
 }
 window._obsToRapport = _obsToRapport;
+
+/* A2 — prefill de bestaande rapport-chips uit live_match_notes (gekoppelde speler).
+   Zet GEEN obs-id -> verandert niets aan live data, verwijdert niets. */
+function _liveToReport(matchId, playerId){
+  try {
+    if(typeof currentUser==='undefined'||!currentUser||!currentUser.uid) return;
+    getDoc(doc(db,'users',currentUser.uid,'live_match_notes', matchId+'_'+playerId)).then(function(ds){
+      if(!ds || !ds.exists()) return;
+      var note = ds.data()||{};
+      var tags = Array.isArray(note.tags) ? note.tags.map(function(t){ return { label:t.label, category:t.category, rating:t.rating }; }).filter(function(t){ return t.rating; }) : [];
+      if(!tags.length) return;
+      window.__shObsPrefilling = true;
+      var apply = function(){ try { window.__shObsLink = { id:null, tags:tags }; if(typeof _injectReportTrefwoorden==='function') _injectReportTrefwoorden(tags); } catch(_){} };
+      requestAnimationFrame(apply);
+      [150,300,500].forEach(function(ms){ setTimeout(apply, ms); });
+    }).catch(function(){});
+  } catch(_){}
+}
+window._liveToReport = _liveToReport;
 
 
 /* Onderdeel 2 — keuze-modal na het opslaan van een observatie. */

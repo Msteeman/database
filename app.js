@@ -16580,7 +16580,7 @@ function renderMatches(){
       const _plNotities = (pl.notities_raw || pl.notities || pl.opmerkingen || '').trim();
       const _plNoteSnippet = _plNotities ? escapeHtml(_plNotities.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' · ').trim().slice(0,80)) + (_plNotities.length > 80 ? '…' : '') : '';
       return `
-        <button type="button" class="match-dropdown-row" data-player-id="${escapeHtml(pl.id)}">
+        <button type="button" class="match-dropdown-row${isConcept?'':' submitted-glow-row'}" data-player-id="${escapeHtml(pl.id)}">
           <span class="match-dropdown-avatar">${escapeHtml(initials || '?')}</span>
           <span class="match-dropdown-info">
             <span class="match-dropdown-name">${escapeHtml(pl.naam || '—')}${conceptBadge}</span>

@@ -12435,3 +12435,8 @@ body.sh-onb-open{ overflow:hidden; }
   .mlf-show-uit .mlf-col[data-team="thuis"]{ display:none; }
   .mlf-note{ font-size:16px !important; }
 }
+
+/* Post-match: rustig ingeklapt + groene gloed (DEEL 1 + 3) */
+.match-card:not(.open) .match-players{ display:none; }
+.match-card.locked{ background:rgba(34,197,94,.06); box-shadow:0 0 0 1px rgba(34,197,94,.22), 0 0 16px rgba(34,197,94,.10); }
+.match-dropdown-row.submitted-glow-row{ background:rgba(34,197,94,.06); box-shadow:inset 0 0 0 1px rgba(34,197,94,.16); border-radius:8px; }

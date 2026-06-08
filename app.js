@@ -8560,18 +8560,22 @@ function renderTodayMatches(){
   // s35ba: filter active wedstrijd (bezig of warmup) — die staat al boven in geel
   // s91: verberg ook wedstrijden waarvan het window al voorbij is (afgelopen)
   const __nowF = new Date();
-  const items = programmaCache.filter(p => {
-    if(!p || p.datum !== today) return false;
-    if(typeof isMatchInWindow === 'function' && isMatchInWindow(p, __nowF)) return false;
-    // Verberg afgelopen wedstrijden: window bestaat én is al voorbij
-    if(typeof getMatchWindow === 'function'){
-      const w = getMatchWindow(p);
-      if(w && w.end < __nowF) return false;
-    }
-    return true;
+  // STAP C: LIVE blijft eruit (staat in de live-sectie). Splits in KOMEND + GESPEELD.
+  const _komend = [], _gespeeld = [];
+  programmaCache.forEach(p => {
+    if(!p || p.datum !== today) return;
+    if(typeof isMatchInWindow === 'function' && isMatchInWindow(p, __nowF)) return; // live -> niet hier
+    let _fin = false;
+    if(typeof getMatchWindow === 'function'){ const w = getMatchWindow(p); if(w && w.end < __nowF) _fin = true; }
+    (_fin ? _gespeeld : _komend).push(p);
   });
-  if(items.length === 0){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
-  items.sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
+  if(_komend.length === 0 && _gespeeld.length === 0){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  const _byTijd = (a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99');
+  _komend.sort(_byTijd); _gespeeld.sort(_byTijd);
+  const _komendCount = _komend.length;
+  const _gespeeldIds = new Set(_gespeeld.map(p => p.id));
+  const items = _komend.concat(_gespeeld);
+  let _sepDone = false;
   const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
   const expandedId = wrap.dataset.expandedId || '';
 
@@ -8666,8 +8670,10 @@ function renderTodayMatches(){
         </div>
       `;
     }
-    return `
-      <div class="today-match-card${isOpen ? ' open' : ''}" data-prog-id="${it.id}">
+    const _isGespeeld = _gespeeldIds.has(it.id);
+    const _sep = (_isGespeeld && !_sepDone) ? (_sepDone = true, '<div class="today-sep-gespeeld">Gespeeld</div>') : '';
+    return _sep + `
+      <div class="today-match-card${isOpen ? ' open' : ''}${_isGespeeld ? ' today-match-gespeeld' : ''}" data-prog-id="${it.id}">
         <div class="today-match-row1">
           <div class="today-match-teams">${teams}</div>
           <div class="today-match-time">${escapeHtml(tijd)}</div>
@@ -8691,7 +8697,7 @@ function renderTodayMatches(){
       <div class="today-matches-head" data-toggle-today="1">
         <div class="today-matches-title">Wedstrijden vandaag</div>
         <div class="today-matches-right">
-          <div class="today-matches-count">${items.length} ingepland</div>
+          <div class="today-matches-count">${_komendCount} ingepland</div>
           ${chev}
         </div>
       </div>
@@ -16868,9 +16874,11 @@ function renderMatches(){
         const { player } = (typeof findPlayerMatch === 'function') ? findPlayerMatch(sp) : { player: null };
         const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(prog.id, sp.id) : null;
         const isVerwerkt = concept && !_shPlayerIsConcept(concept);
-        if(isVerwerkt && concept && typeof openDetail === 'function'){
-          // Ingediend → profiel openen (alleen lezen)
-          openDetail(concept.id);
+        if(isVerwerkt && concept){
+          // A4: bewerken na indienen -> expliciete waarschuwing, daarna bewerkbaar openen
+          if(confirm('\u26a0\ufe0f Let op\n\nJe gaat een ingediend rapport bewerken. Weet je dit zeker?')){
+            if(typeof openScoutingPlayerForm === 'function') openScoutingPlayerForm(prog, sp, player, concept);
+          }
         } else if(typeof openScoutingPlayerForm === 'function'){
           openScoutingPlayerForm(prog, sp, player, concept);
         }
@@ -27298,7 +27306,7 @@ function _shShowOnboarding(force){
     '<div class="sh-wiz-ic">👋</div><h3>Welkom bij ScoutingHub, ' + escapeHtml(first) + '!</h3><p>In 4 stappen leggen we uit hoe je scout als een pro.</p><div class="lp-mock sh-wiz-mock"><div class="lp-mock-bar">Dashboard</div><div class="lp-mock-kpis"><div class="lp-kpi"><b>24</b><span>Spelers</span></div><div class="lp-kpi"><b>8</b><span>Wedstrijden</span></div><div class="lp-kpi"><b>3</b><span>Toernooien</span></div></div></div>',
     '<h3>Scout met één tik</h3><p>Gebruik chips om spelers snel te beoordelen langs de lijn. 🟢 goed · 🟠 normaal · 🔴 matig — tik nogmaals om te resetten.</p><div class="lp-mock sh-wiz-mock"><div class="lp-mock-cat">Techniek</div><div class="lp-chips"><span class="lp-chip g">Passing</span><span class="lp-chip r">Dribbel</span><span class="lp-chip o">Overzicht</span></div><div class="lp-mock-cat">Mentaliteit</div><div class="lp-chips"><span class="lp-chip g">Leider</span><span class="lp-chip">Rustig</span></div></div>',
     '<h3>Van observatie naar rapport</h3><p>Promoot je live-notities naar een volledig rapport met A/B/C/D beoordeling.</p><div class="lp-mock sh-wiz-mock"><div class="lp-mock-bar">Rapport</div><div class="lp-mock-cat">Functionele techniek</div><div class="lp-chips"><span class="lp-chip g">Passing</span></div><div class="lp-grades"><span class="lp-grade on">A</span><span class="lp-grade">B</span><span class="lp-grade">C</span><span class="lp-grade">D</span></div></div>',
-    '<div class="sh-wiz-ic">🎉</div><h3>Je bent klaar!</h3><p>Maak je eerste wedstrijd aan of importeer een toernooi.</p><div class="sh-wiz-actions"><button type="button" class="lp-btn lp-btn-primary lp-btn-sm" data-wiz-go="programma">+ Nieuwe wedstrijd</button><button type="button" class="lp-btn lp-btn-ghost lp-btn-sm" data-wiz-go="toernooien">🏆 Importeer toernooi</button></div><label class="sh-wiz-check"><input type="checkbox" id="sh-wiz-nomore" checked> Niet meer tonen</label>'
+    '<div class="sh-wiz-ic">🎉</div><h3>Je bent klaar!</h3><p>Maak je eerste wedstrijd aan of importeer een toernooi.</p><div class="sh-wiz-actions"><button type="button" class="lp-btn lp-btn-primary lp-btn-sm" data-wiz-go="programma">+ Nieuwe wedstrijd</button><button type="button" class="lp-btn lp-btn-ghost lp-btn-sm" data-wiz-go="toernooien">🏆 Importeer toernooi</button></div>'
   ];
   var i = 0;
   var bd = document.createElement('div');
@@ -27307,6 +27315,7 @@ function _shShowOnboarding(force){
     '<button type="button" class="sh-wiz-close" aria-label="Sluiten" data-wiz-skip>×</button>' +
     '<div class="sh-wiz-body" id="sh-wiz-body"></div>' +
     '<div class="sh-wiz-dots" id="sh-wiz-dots"></div>' +
+    '<label class="sh-wiz-check sh-wiz-check-persist"><input type="checkbox" id="sh-wiz-nomore"> Niet meer tonen bij inloggen</label>' +
     '<div class="sh-wiz-nav"><button type="button" class="lp-btn lp-btn-ghost lp-btn-sm" id="sh-wiz-prev">← Vorige</button><button type="button" class="lp-btn lp-btn-ghost lp-btn-sm" data-wiz-skip>Overslaan</button><button type="button" class="lp-btn lp-btn-primary lp-btn-sm" id="sh-wiz-next">Volgende →</button></div>' +
     '</div>';
   document.body.appendChild(bd);
@@ -27314,7 +27323,13 @@ function _shShowOnboarding(force){
   var body = bd.querySelector('#sh-wiz-body'), dotsH = bd.querySelector('#sh-wiz-dots');
   var prev = bd.querySelector('#sh-wiz-prev'), next = bd.querySelector('#sh-wiz-next');
   function _close(done){
-    if(done){ var nm = document.getElementById('sh-wiz-nomore'); if(!nm || nm.checked) _shSetOnbDone(uid); }
+    if(done){
+      var nm = document.getElementById('sh-wiz-nomore');
+      if(nm && nm.checked){
+        _shSetOnbDone(uid); // lokaal (offline/snel)
+        try { if(uid && typeof setDoc==='function' && typeof db!=='undefined'){ setDoc(doc(db,'users',uid), { onboardingDismissed: true }, { merge:true }).catch(function(){}); } } catch(_){}
+      }
+    }
     try { bd.remove(); } catch(_){}
     document.removeEventListener('keydown', _onKey);
   }
@@ -27340,7 +27355,17 @@ window._shShowOnboarding = _shShowOnboarding;
 /* Auto-trigger bij eerste login (localStorage-gated). */
 try {
   if(typeof auth!=='undefined' && typeof onAuthStateChanged==='function'){
-    onAuthStateChanged(auth, function(u){ if(u){ setTimeout(function(){ try { _shShowOnboarding(false); } catch(_){} }, 1200); } });
+    onAuthStateChanged(auth, function(u){ if(u){ setTimeout(function(){
+      try {
+        if(typeof _shOnbDone==='function' && _shOnbDone(u.uid)) return; // al lokaal gedismissed
+        if(typeof getDoc==='function' && typeof db!=='undefined'){
+          getDoc(doc(db,'users',u.uid)).then(function(snap){
+            if(snap && snap.exists() && snap.data().onboardingDismissed === true){ try{ _shSetOnbDone(u.uid); }catch(_){} return; }
+            try { _shShowOnboarding(false); } catch(_){}
+          }).catch(function(){ try { _shShowOnboarding(false); } catch(_){} });
+        } else { try { _shShowOnboarding(false); } catch(_){} }
+      } catch(_){ try { _shShowOnboarding(false); } catch(_){} }
+    }, 1200); } });
   }
 } catch(_){}
 

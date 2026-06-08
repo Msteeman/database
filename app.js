@@ -28418,6 +28418,16 @@ function _bhDate(v){
     return d.toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'}) + ' ' + d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
   } catch(_){ return '—'; }
 }
+function _bhDateShort(v){
+  if(!v) return '—';
+  try {
+    var ms = (v && typeof v.toMillis==='function') ? v.toMillis()
+           : (v && v.seconds) ? v.seconds*1000 : 0;
+    var d = ms ? new Date(ms) : new Date(v);
+    if(isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'});
+  } catch(_){ return '—'; }
+}
 function _bhStatusBadge(status){
   var map = { pending:['Open','bh-b-orange'], approved:['Goedgekeurd','bh-b-green'], rejected:['Afgewezen','bh-b-red'] };
   var m = map[status] || [status||'—','bh-b-grey'];
@@ -28731,29 +28741,101 @@ function _bhRenderUsers(){
     var id = _bhEsc(u._id); var role = u.role || 'scout';
     var rcl = role==='admin' ? 'bh-b-purple' : (role==='coordinator' ? 'bh-b-blue' : 'bh-b-grey');
     var roleBadge = '<span class="bh-badge '+rcl+'">'+_bhEsc(role)+'</span>';
+    var _myUid = ((typeof currentUser!=='undefined'&&currentUser)?currentUser.uid:'');
+    var _canDelete = (u._id !== _myUid) && (role !== 'admin');
     return '<div class="bh-card">' +
       '<div class="bh-card-top"><div class="bh-card-name">'+(_bhEsc(u.displayName)||_bhEsc(u.email)||'—')+'</div>'+roleBadge+'</div>' +
       '<div class="bh-card-row"><span>E-mail</span><b>'+(_bhEsc(u.email)||'—')+'</b></div>' +
-      '<div class="bh-card-row"><span>Aangemaakt</span><b>'+_bhDate(u.createdAt)+'</b></div>' +
+      '<div class="bh-card-row"><span>Aangemaakt</span><b>'+_bhDateShort(u.createdAt)+'</b></div>' +
       (u.isActive===false ? '<div class="bh-card-row"><span>Status</span><b>Gedeactiveerd</b></div>' : '') +
       '<div class="bh-actions">' +
         '<button class="bh-btn" data-bh-userdetail="'+id+'">Details</button>' +
         '<button class="bh-btn bh-btn-blue" data-bh-userrole="'+id+'">Rol wijzigen</button>' +
-        ((u._id !== ((typeof currentUser!=='undefined'&&currentUser)?currentUser.uid:'')) ? '<button class="bh-btn bh-btn-amber" data-bh-support="'+id+'">Supporttoegang</button>' : '') +
+        ((u._id !== _myUid) ? '<button class="bh-btn bh-btn-amber" data-bh-support="'+id+'">Supporttoegang</button>' : '') +
         '<button class="bh-btn bh-btn-ghost" disabled title="Komt later (server-side)">Deactiveren</button>' +
       '</div>' +
+      (_canDelete ? '<div class="bh-actions-danger"><button class="bh-btn bh-btn-danger-outline" data-bh-userdelete="'+id+'">Verwijderen</button></div>' : '') +
     '</div>';
   }).join('');
   list.querySelectorAll('[data-bh-userdetail]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserDetail(b.getAttribute('data-bh-userdetail')); }); });
   list.querySelectorAll('[data-bh-userrole]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserRole(b.getAttribute('data-bh-userrole')); }); });
   list.querySelectorAll('[data-bh-support]').forEach(function(b){ b.addEventListener('click', function(){ _suRequestAccess(b.getAttribute('data-bh-support')); }); });
+  list.querySelectorAll('[data-bh-userdelete]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserDelete(b.getAttribute('data-bh-userdelete')); }); });
+}
+
+/* ============================================================
+   Account verwijderen (admin-only). Soft-delete via de worker:
+   Firebase Auth-account weg + profiel op status:"deleted"
+   (isActive:false). Observaties/rapporten blijven eigenaar-only
+   behouden. Admin-accounts en je eigen account zijn beschermd.
+   Bevestiging vereist het exact typen van "VERWIJDEREN".
+   ============================================================ */
+function _bhUserDelete(uid){
+  if(!_shIsAdmin()) return;
+  var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;
+  var myUid = (typeof currentUser!=='undefined' && currentUser) ? currentUser.uid : '';
+  if(uid === myUid){ if(typeof toast==='function') toast('Je kunt je eigen account niet verwijderen', true); return; }
+  if((u.role||'scout')==='admin'){ if(typeof toast==='function') toast('Admin-accounts kunnen niet verwijderd worden', true); return; }
+  var rawNaam = u.displayName || u.email || 'deze gebruiker';
+  var naam = _bhEsc(rawNaam);
+  var body =
+    '<p style="margin:0 0 12px;color:#9aa8bd;font-size:14px;line-height:1.5;">Je staat op het punt het account van <b>'+naam+'</b> te verwijderen.</p>' +
+    '<div class="bh-danger-box">' +
+      '<p style="margin:0 0 6px;color:#fca5a5;"><b>Dit wordt verwijderd:</b></p>' +
+      '<ul style="margin:0 0 10px;padding-left:18px;color:#cbd5e1;"><li>het inlog-account</li><li>het gebruikersprofiel</li></ul>' +
+      '<p style="margin:0;color:#cbd5e1;"><b>Dit blijft behouden:</b> alle observaties, rapporten en toernooidata van deze gebruiker.</p>' +
+    '</div>' +
+    '<label class="sh-req-l" for="bh-del-confirm" style="display:block;margin-top:14px;">Typ <b>VERWIJDEREN</b> om te bevestigen</label>' +
+    '<input type="text" id="bh-del-confirm" class="sh-req-i" autocomplete="off" autocapitalize="characters" placeholder="VERWIJDEREN" style="width:100%;">';
+  var m = _bhModal('Account verwijderen', body, {
+    confirmLabel: 'Definitief verwijderen', confirmClass: 'bh-btn-red',
+    onConfirm: async function(){
+      var inp = m.root.querySelector('#bh-del-confirm');
+      if(!inp || inp.value.trim() !== 'VERWIJDEREN'){ var _e0 = new Error('confirm'); _e0._handled = true; throw _e0; }
+      await _bhDoDeleteAccount(uid, rawNaam);
+    }
+  });
+  var ok = m.root.querySelector('#bh-modal-ok');
+  var inp = m.root.querySelector('#bh-del-confirm');
+  if(ok) ok.disabled = true;
+  if(inp && ok){
+    inp.addEventListener('input', function(){ ok.disabled = (inp.value.trim() !== 'VERWIJDEREN'); });
+    setTimeout(function(){ try { inp.focus(); } catch(_){} }, 60);
+  }
+}
+
+async function _bhDoDeleteAccount(uid, rawNaam){
+  if(!_shIsAdmin()){ var _ea = new Error('not-admin'); _ea._handled = true; throw _ea; }
+  var idToken = '';
+  try { if(typeof auth!=='undefined' && auth.currentUser) idToken = await auth.currentUser.getIdToken(true); } catch(_){}
+  if(!idToken){ if(typeof toast==='function') toast('Geen sessie — log opnieuw in', true); var _e1 = new Error('no-token'); _e1._handled = true; throw _e1; }
+  var base = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE)
+    ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
+  var r, j = {};
+  try {
+    r = await fetch(base + '/api/delete-account', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken: idToken, targetUid: uid })
+    });
+    try { j = await r.json(); } catch(_){}
+  } catch(_){
+    if(typeof toast==='function') toast('Geen verbinding met de server', true);
+    var _e2 = new Error('net'); _e2._handled = true; throw _e2;
+  }
+  if(r.ok && j && j.ok){
+    if(typeof toast==='function') toast('Account van '+rawNaam+' is verwijderd');
+    _bhLoadUsers();
+    return;
+  }
+  if(typeof toast==='function') toast((j && j.error) || 'Kon account niet verwijderen', true);
+  var _e3 = new Error('fail'); _e3._handled = true; throw _e3;
 }
 
 function _bhUserDetail(uid){
   var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;
   var rows = [
     ['Naam', u.displayName||'—'], ['E-mail', u.email||'—'], ['Rol', u.role||'scout'],
-    ['Team', u.teamId||'—'], ['Aangemaakt', _bhDate(u.createdAt)], ['UID', u._id],
+    ['Team', u.teamId||'—'], ['Aangemaakt', _bhDateShort(u.createdAt)], ['UID', u._id],
     ['Status', u.isActive===false ? 'Gedeactiveerd' : 'Actief']
   ];
   var body = '<div class="bh-detail">' +

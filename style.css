@@ -12467,3 +12467,10 @@ body.sh-onb-open{ overflow:hidden; }
 .pm-row-click{ cursor:pointer; min-height:44px; transition:background .15s ease; border-radius:8px; }
 .pm-row-click:hover{ background:rgba(255,255,255,.05); }
 .pm-row-chev{ margin-left:auto; color:var(--text-3,#8b93a8); font-size:18px; line-height:1; flex-shrink:0; }
+
+/* Beheer — Account verwijderen (aparte rode rij, danger-box, outline-knop) */
+.bh-actions-danger{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:flex-end;}
+.bh-btn-danger-outline{background:transparent;border:1px solid rgba(239,68,68,.55);color:#fca5a5;}
+.bh-btn-danger-outline:hover{background:rgba(239,68,68,.12);border-color:#ef4444;color:#fecaca;}
+.bh-danger-box{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.30);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.5;}
+.bh-danger-box ul{margin:0;}

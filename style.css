@@ -12445,3 +12445,5 @@ body.sh-onb-open{ overflow:hidden; }
 .pm-card:not(.pm-open) .pm-progress{ display:none; }
 .pm-card.submitted-glow{ background:rgba(34,197,94,.07); box-shadow:0 0 0 1px rgba(34,197,94,.28), 0 0 18px rgba(34,197,94,.12); border-color:rgba(34,197,94,.3) !important; }
 .pm-item-row.submitted-glow-row{ background:rgba(34,197,94,.06); box-shadow:inset 0 0 0 1px rgba(34,197,94,.18); border-radius:8px; }
+
+/* build-stamp: sh-v283-pm-3secties */

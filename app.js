@@ -28767,6 +28767,7 @@ function _bhRenderUsers(){
   var rfEl = document.getElementById('bh-user-role'); var rf = rfEl && rfEl.value || '';
   var sortEl = document.getElementById('bh-user-sort'); var sort = sortEl && sortEl.value || 'name';
   var rows = _bhUserCache.slice();
+  rows = rows.filter(function(u){ return (u.status || '') !== 'deleted'; });   // verwijderde accounts verbergen
   if(rf) rows = rows.filter(function(u){ return (u.role||'scout')===rf; });
   if(q) rows = rows.filter(function(u){ return ((u.displayName||'')+' '+(u.email||'')).toLowerCase().indexOf(q) !== -1; });
   rows.sort(function(a,b){
@@ -28790,7 +28791,11 @@ function _bhRenderUsers(){
         '<button class="bh-btn" data-bh-userdetail="'+id+'">Details</button>' +
         '<button class="bh-btn bh-btn-blue" data-bh-userrole="'+id+'">Rol wijzigen</button>' +
         ((u._id !== _myUid) ? '<button class="bh-btn bh-btn-amber" data-bh-support="'+id+'">Supporttoegang</button>' : '') +
-        '<button class="bh-btn bh-btn-ghost" disabled title="Komt later (server-side)">Deactiveren</button>' +
+        ((role !== 'admin' && u._id !== _myUid)
+           ? (u.isActive===false
+                ? '<button class="bh-btn bh-btn-green" data-bh-activate="'+id+'">Reactiveren</button>'
+                : '<button class="bh-btn bh-btn-ghost" data-bh-deactivate="'+id+'">Deactiveren</button>')
+           : '<button class="bh-btn bh-btn-ghost" disabled>Deactiveren</button>') +
       '</div>' +
       (_canDelete ? '<div class="bh-actions-danger"><button class="bh-btn bh-btn-danger-outline" data-bh-userdelete="'+id+'">Verwijderen</button></div>' : '') +
     '</div>';
@@ -28799,6 +28804,8 @@ function _bhRenderUsers(){
   list.querySelectorAll('[data-bh-userrole]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserRole(b.getAttribute('data-bh-userrole')); }); });
   list.querySelectorAll('[data-bh-support]').forEach(function(b){ b.addEventListener('click', function(){ _suRequestAccess(b.getAttribute('data-bh-support')); }); });
   list.querySelectorAll('[data-bh-userdelete]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserDelete(b.getAttribute('data-bh-userdelete')); }); });
+  list.querySelectorAll('[data-bh-deactivate]').forEach(function(b){ b.addEventListener('click', function(){ _bhToggleActive(b.getAttribute('data-bh-deactivate'), false); }); });
+  list.querySelectorAll('[data-bh-activate]').forEach(function(b){ b.addEventListener('click', function(){ _bhToggleActive(b.getAttribute('data-bh-activate'), true); }); });
 }
 
 /* ============================================================
@@ -28844,30 +28851,42 @@ function _bhUserDelete(uid){
 
 async function _bhDoDeleteAccount(uid, rawNaam){
   if(!_shIsAdmin()){ var _ea = new Error('not-admin'); _ea._handled = true; throw _ea; }
-  var idToken = '';
-  try { if(typeof auth!=='undefined' && auth.currentUser) idToken = await auth.currentUser.getIdToken(true); } catch(_){}
-  if(!idToken){ if(typeof toast==='function') toast('Geen sessie — log opnieuw in', true); var _e1 = new Error('no-token'); _e1._handled = true; throw _e1; }
-  var base = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE)
-    ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
-  var r, j = {};
+  // Soft-delete client-side: een admin mag (via de Security Rules) het users-doc
+  // bijwerken — net als 'Rol wijzigen'. Het Firebase Auth-account zelf kan niet
+  // client-side worden verwijderd (vereist een service-account); de gebruiker
+  // verdwijnt uit Beheer en wordt op status:'deleted'/isActive:false gezet.
+  // Observaties, rapporten en toernooidata blijven behouden.
   try {
-    r = await fetch(base + '/api/delete-account', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken: idToken, targetUid: uid })
+    await updateDoc(doc(db,'users',uid), {
+      status: 'deleted', isActive: false,
+      deletedAt: new Date(),
+      deletedBy: (typeof currentUser!=='undefined' && currentUser ? currentUser.uid : '') || ''
     });
-    try { j = await r.json(); } catch(_){}
-  } catch(_){
-    if(typeof toast==='function') toast('Geen verbinding met de server', true);
-    var _e2 = new Error('net'); _e2._handled = true; throw _e2;
+  } catch(e){
+    if(typeof toast==='function') toast('Kon account niet verwijderen', true);
+    var _e3 = new Error('fail'); _e3._handled = true; throw _e3;
   }
-  if(r.ok && j && j.ok){
-    if(typeof toast==='function') toast('Account van '+rawNaam+' is verwijderd');
-    _bhLoadUsers();
-    return;
-  }
-  if(typeof toast==='function') toast((j && j.error) || 'Kon account niet verwijderen', true);
-  var _e3 = new Error('fail'); _e3._handled = true; throw _e3;
+  if(typeof toast==='function') toast('Account van '+rawNaam+' is verwijderd');
+  _bhLoadUsers();
 }
+
+// Account (de)activeren — client-side toggle op isActive (admin-only).
+async function _bhToggleActive(uid, makeActive){
+  if(!_shIsAdmin()) return;
+  var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;
+  var myUid = (typeof currentUser!=='undefined' && currentUser) ? currentUser.uid : '';
+  if(uid === myUid){ if(typeof toast==='function') toast('Je kunt je eigen account niet deactiveren', true); return; }
+  if((u.role||'scout')==='admin'){ if(typeof toast==='function') toast('Admin-accounts kun je niet deactiveren', true); return; }
+  var naam = u.displayName || u.email || 'gebruiker';
+  try {
+    await updateDoc(doc(db,'users',uid), { isActive: !!makeActive });
+    if(typeof toast==='function') toast('Account van '+naam+(makeActive ? ' is gereactiveerd' : ' is gedeactiveerd'));
+    _bhLoadUsers();
+  } catch(e){
+    if(typeof toast==='function') toast('Kon de status niet wijzigen', true);
+  }
+}
+
 
 function _bhUserDetail(uid){
   var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;

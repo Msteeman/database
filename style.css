@@ -12678,3 +12678,20 @@ body.sh-onb-open{ overflow:hidden; }
 /* sh-v300: video-crop exact op de geverifieerde content-box (sidebar + demo-balk weg) */
 #landing-overlay .lp-vidcrop{ aspect-ratio: 1.766; }
 #landing-overlay .lp-vidcrop video{ top: -6.75%; left: -16.6%; width: 117.7%; }
+
+/* sh-v301: landingsmedia perfect — scherpe screenshots, compacte flow */
+/* Subtiele helderheid/contrast zodat dark screenshots premium ogen (niet vaal) */
+#landing-overlay .lp-media img{ filter: brightness(1.06) contrast(1.05) saturate(1.06); }
+
+/* Compacte 4-stappen-flow (vervangt grote kaarten met screenshots) */
+.lp-section-tight{ padding-top: 26px; padding-bottom: 26px; }
+.lp-flow{ display:flex; align-items:stretch; justify-content:center; gap:10px; flex-wrap:wrap; max-width:880px; margin:0 auto; }
+.lp-flow-step{ flex:1 1 180px; max-width:215px; background:var(--panel,#111722); border:1px solid var(--border,#232d40); border-radius:12px; padding:16px 14px; text-align:center; }
+.lp-flow-ic{ font-size:24px; margin-bottom:6px; line-height:1; }
+.lp-flow-t{ font-weight:700; font-size:15px; margin-bottom:4px; }
+.lp-flow-s{ font-size:12.5px; color:var(--text-2,#9aa8bd); line-height:1.45; }
+.lp-flow-arrow{ align-self:center; color:var(--text-3,#8b97ad); font-size:18px; flex:0 0 auto; }
+@media (max-width:680px){
+  .lp-flow-arrow{ display:none; }
+  .lp-flow-step{ flex-basis:100%; max-width:none; }
+}

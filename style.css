@@ -12440,3 +12440,8 @@ body.sh-onb-open{ overflow:hidden; }
 .match-card:not(.open) .match-players{ display:none; }
 .match-card.locked{ background:rgba(34,197,94,.06); box-shadow:0 0 0 1px rgba(34,197,94,.22), 0 0 16px rgba(34,197,94,.10); }
 .match-dropdown-row.submitted-glow-row{ background:rgba(34,197,94,.06); box-shadow:inset 0 0 0 1px rgba(34,197,94,.16); border-radius:8px; }
+
+/* Post-match pm-card: rustig ingeklapt + groene gloed (v281) */
+.pm-card:not(.pm-open) .pm-progress{ display:none; }
+.pm-card.submitted-glow{ background:rgba(34,197,94,.07); box-shadow:0 0 0 1px rgba(34,197,94,.28), 0 0 18px rgba(34,197,94,.12); border-color:rgba(34,197,94,.3) !important; }
+.pm-item-row.submitted-glow-row{ background:rgba(34,197,94,.06); box-shadow:inset 0 0 0 1px rgba(34,197,94,.18); border-radius:8px; }

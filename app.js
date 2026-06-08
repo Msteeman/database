@@ -27787,6 +27787,7 @@ window._shIsAdmin = _shIsAdmin;
 let _bhAanvrFilter = 'pending';
 let _bhAanvrCache = [];
 let _bhUserCache = [];
+let _bhAuditCache = [];
 
 function _bhEsc(v){ return String(v==null?'':v).replace(/[&<>"]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
 function _bhDate(v){
@@ -27851,7 +27852,7 @@ async function renderBeheer(){
         var tab = t.dataset.bhTab;
         document.querySelectorAll('.bh-tab').forEach(function(x){ x.classList.toggle('active', x===t); });
         document.querySelectorAll('.bh-section').forEach(function(sec){ sec.classList.toggle('active', sec.id==='bh-section-'+tab); });
-        if(tab==='gebruikers') _bhLoadUsers(); else _bhLoadAanvragen();
+        if(tab==='gebruikers') _bhLoadUsers(); else if(tab==='logboek') _bhLoadAudit(); else _bhLoadAanvragen();
       });
     });
     document.querySelectorAll('#bh-aanvr-filters .bh-filter').forEach(function(f){
@@ -27868,6 +27869,38 @@ async function renderBeheer(){
   _bhLoadAanvragen();
 }
 window.renderBeheer = renderBeheer;
+
+/* FASE 4 — Supportlogboek in Beheer (leesbaar audit-overzicht). */
+function _bhDateTime(v){ try { var ms=_suMs(v); if(!ms) return '—'; var d=new Date(ms); return d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}); } catch(_){ return '—'; } }
+function _bhUserLabel(uid){ if(!uid) return '—'; var u=_bhUserCache.find(function(x){ return x._id===uid; }); return u ? (_bhEsc(u.displayName)||_bhEsc(u.email)||String(uid).slice(0,6)) : String(uid).slice(0,6); }
+async function _bhLoadAudit(){
+  var list=document.getElementById('bh-audit-list');
+  if(list) list.innerHTML='<div class="bh-empty">Laden…</div>';
+  try {
+    if(!_bhUserCache.length){ try { var us=await getDocs(collection(db,'users')); _bhUserCache=[]; us.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhUserCache.push(x); }); } catch(_){} }
+    var snap;
+    try { snap=await getDocs(query(collection(db,'support_audit'), orderBy('timestamp','desc'))); }
+    catch(_){ snap=await getDocs(collection(db,'support_audit')); }
+    _bhAuditCache=[]; snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhAuditCache.push(x); });
+    _bhAuditCache.sort(function(a,b){ return _suMs(b.timestamp)-_suMs(a.timestamp); });
+    _bhRenderAudit();
+  } catch(e){ if(list) list.innerHTML='<div class="bh-empty">Kon logboek niet laden.</div>'; }
+}
+function _bhRenderAudit(){
+  var list=document.getElementById('bh-audit-list'); if(!list) return;
+  if(!_bhAuditCache.length){ list.innerHTML='<div class="bh-empty">Nog geen logregels</div>'; return; }
+  var L={ request_created:['📨','Verzoek aangemaakt','bh-b-grey'], request_approved:['✅','Toegestaan','bh-b-green'], request_rejected:['⛔','Geweigerd','bh-b-red'], grant_started:['🔓','Sessie gestart','bh-b-blue'], session_opened:['👁️','Omgeving geopend','bh-b-blue'], session_ended_by_admin:['🔒','Beëindigd door admin','bh-b-orange'], session_ended_by_user:['🔒','Beëindigd door gebruiker','bh-b-orange'], session_expired:['⏱️','Verlopen','bh-b-grey'] };
+  list.innerHTML=_bhAuditCache.map(function(a){
+    var m=L[a.action]||['•',(a.action||'—'),'bh-b-grey'];
+    return '<div class="bh-card bh-audit-card">' +
+      '<div class="bh-card-top"><div class="bh-card-name">'+m[0]+' '+_bhEsc(m[1])+'</div><span class="bh-badge '+m[2]+'">'+_bhDateTime(a.timestamp)+'</span></div>' +
+      '<div class="bh-card-row"><span>Admin</span><b>'+_bhUserLabel(a.adminUid)+'</b></div>' +
+      '<div class="bh-card-row"><span>Gebruiker</span><b>'+_bhUserLabel(a.targetUid)+'</b></div>' +
+      (a.details ? ('<div class="bh-card-row"><span>Details</span><b>'+_bhEsc(a.details)+'</b></div>') : '') +
+    '</div>';
+  }).join('');
+}
+window._bhLoadAudit = _bhLoadAudit;
 
 /* FASE 3 (eenmalig) — admin e-mailverificatie. Toont alleen een knop
    zolang de ingelogde admin email_verified=false heeft; daarna weg. */
@@ -27889,7 +27922,9 @@ async function _bhMaybeVerifyBanner(wrap){
     if(typeof auth==='undefined' || !auth.currentUser){ var e0=document.getElementById('bh-verify'); if(e0) e0.remove(); return; }
     // Verse verificatie-status ophalen; auth.currentUser.emailVerified is anders gecachet.
     try { await reload(auth.currentUser); } catch(_){}
-    var needV = (auth.currentUser.emailVerified === false) && (window._shUserRole !== 'admin');
+    var _em = (auth.currentUser.email||'').toLowerCase();
+    var _isAdminEmail = ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'].indexOf(_em) !== -1;
+    var needV = (auth.currentUser.emailVerified === false) && (window._shUserRole !== 'admin') && !_isAdminEmail;
     var existing = document.getElementById('bh-verify');
     if(needV && !existing && wrap){
       var bn = document.createElement('div');

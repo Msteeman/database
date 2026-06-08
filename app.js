@@ -16428,7 +16428,7 @@ function renderMatches(){
       let _dropRows = '';
       // Spelersrapporten
       if(_spelers.length > 0 || _unlinkedSns.length > 0 || _extraPlayers.length > 0){
-        _dropRows += `<div class="pm-section-hdr">Spelersrapporten</div>`;
+        _dropRows += `<div class="pm-section-hdr">GEKOPPELDE SPELERS (${_spelers.length})</div>`;
         // Ingediende observaties/rapporten uit playersCache
         if(_extraPlayers.length > 0){
           _dropRows += _extraPlayers.map(p => {
@@ -16463,7 +16463,7 @@ function renderMatches(){
             : concept
               ? `<span style="font-size:10px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3);border-radius:4px;padding:1px 7px;font-weight:600;">Concept</span>`
               : '';
-          return `<div class="pm-item-row">
+          return `<div class="pm-item-row${isVerwerkt?' submitted-glow-row':''}">
             <div class="pm-item-info" style="flex:1;">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 <span class="pm-item-name" style="cursor:pointer;" data-player-id="${concept ? escapeHtml(concept.id) : ''}">${escapeHtml(naam)}${sn&&sn.is_opvallend?' \u2b50':''}</span>
@@ -16481,7 +16481,7 @@ function renderMatches(){
           </div>`;
         }).join('');
         if(_unlinkedSns.length > 0){
-          _dropRows += `<div class="pm-section-hdr pm-section-sub">Opgevallen spelers (${_unlinkedSns.length})</div>`;
+          _dropRows += `<div class="pm-section-hdr">OPGEVALLEN SPELERS (${_unlinkedSns.length})</div>`;
           _dropRows += _unlinkedSns.map(sn => {
             const prev = sn.tekst ? escapeHtml(sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' \u00b7 ').trim().slice(0,60)) : '';
             return `<div class="pm-item-row">
@@ -16496,22 +16496,24 @@ function renderMatches(){
           }).join('');
         }
       }
-      // Wedstrijdrapport — compacte weergave (geen textarea)
+      // SECTIE 1: WEDSTRIJDNOTITIE (bovenaan)
       const _wstrOpmerking = (_wstr && _wstr.opmerking) ? _wstr.opmerking : ((_wstr && _wstr.tekst) ? _wstr.tekst : '');
+      let _wstrSec = '';
       if(_wstrVerwerkt){
-        _dropRows += `<div class="pm-section-hdr" style="color:#3b82f6;">Wedstrijdrapport</div>
-        <div class="pm-wstr-inline" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:7px;padding:8px 12px;">
+        _wstrSec = `<div class="pm-section-hdr">WEDSTRIJDNOTITIE</div>
+        <div class="pm-wstr-inline submitted-glow-row" style="border-radius:7px;padding:8px 12px;">
           <div style="display:flex;align-items:center;gap:10px;">
-            <span style="font-size:11px;font-weight:700;color:#3b82f6;">✓ Ingediend</span>
+            <span style="font-size:11px;font-weight:700;color:#22c55e;">✓ Ingediend</span>
             <button type="button" class="pm-item-link" data-pm-wstr-readonly="${escapeHtml(m.progId)}" style="font-size:12px;margin-left:auto;">Bekijk →</button>
           </div>
         </div>`;
       } else {
-        _dropRows += `<div class="pm-section-hdr">Wedstrijdrapport</div>
+        _wstrSec = `<div class="pm-section-hdr">WEDSTRIJDNOTITIE</div>
         <div class="pm-wstr-inline">
-          <button type="button" class="wstr-edit-note-action primary" data-pm-wstr-rapport="${escapeHtml(m.progId)}" style="margin:0;">→ Wedstrijdrapport</button>
+          <button type="button" class="wstr-edit-note-action primary" data-pm-wstr-rapport="${escapeHtml(m.progId)}" style="margin:0;">→ Wedstrijdnotitie</button>
         </div>`;
       }
+      _dropRows = _wstrSec + _dropRows;
       const _chevP = `<span class="match-chevron pm-chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;
       // M12: compacte post-wedstrijd progress-regel
       const _spDoneM12 = _spelers.filter(sp => { const c = (typeof findSlotConcept==='function')?findSlotConcept(m.progId, sp.id):null; return c && !_shPlayerIsConcept(c); }).length;
@@ -16540,7 +16542,6 @@ function renderMatches(){
               ${_allVerwerkt ? '<span class="pm-done-badge pm-done-full">✓ Ingediend</span>' : _chevP}
             </div>
             ${_progP && _progP.tijd ? `<div class="match-meta"><span class="match-players-count">${escapeHtml(_progP.tijd)}</span></div>` : ''}
-            ${_mProg}
           </div>
           <div class="match-dropdown pm-dropdown" style="display:none">${_dropRows}</div>
         </div>

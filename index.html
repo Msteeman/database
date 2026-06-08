@@ -124,7 +124,13 @@
       <div class="lp-sub-link">Nog geen account? <a href="#" onclick="event.preventDefault(); window._shRequestAccess && window._shRequestAccess()">Toegang aanvragen &rarr;</a></div>
     </div>
     <div class="lp-hero-visual">
-      <div class="lp-visual lp-visual-16x9"><img src="lp-shot-dashboard.jpg" alt="ScoutingHub dashboard met statistieken, recente rapporten en niveauverdeling" loading="lazy"></div>
+      <div class="lp-media lp-media-hero lp-float">
+        <div class="lp-vidcrop" style="background-image:url('lp-shot-dashboard.jpg')">
+          <video class="lp-autovid" muted loop playsinline preload="metadata" aria-label="ScoutingHub dashboard in actie">
+            <source src="lp-vid-dashboard.mp4" type="video/mp4">
+          </video>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -142,32 +148,32 @@
         <div class="lp-carousel-track" id="lp-carousel-track">
 
           <div class="lp-slide">
-            <div class="lp-visual lp-shot"><img src="screenshot-obs-chips.png" alt="Observatieformulier met trefwoord-chips per categorie" loading="lazy"></div>
+            <div class="lp-media lp-float"><img src="screenshot-obs-chips.png" alt="Observatieformulier met trefwoord-chips per categorie" loading="lazy"></div>
             <div class="lp-slide-cap"><div class="lp-slide-t">E&eacute;n tik. E&eacute;n beoordeling.</div><div class="lp-slide-s">Beoordeel spelers met trefwoorden langs de lijn. Groen, oranje, rood &mdash; geen toetsenbord nodig. Snel, objectief, consistent.</div></div>
           </div>
 
           <div class="lp-slide">
-            <div class="lp-visual lp-shot"><img src="lp-shot-wedstrijden.jpg" alt="Wedstrijdenoverzicht met filters, datums en statusindicatie" loading="lazy"></div>
+            <div class="lp-media lp-float"><img src="lp-shot-wedstrijden.jpg" alt="Wedstrijdenoverzicht met filters, datums en statusindicatie" loading="lazy"></div>
             <div class="lp-slide-cap"><div class="lp-slide-t">Live langs de lijn.</div><div class="lp-slide-s">Volg wedstrijden in real-time. Noteer per speler, per aspect. Alles wordt automatisch bewaard &mdash; jij focust op het spel.</div></div>
           </div>
 
           <div class="lp-slide">
-            <div class="lp-visual lp-shot lp-gif"><img src="lp-gif-spelersoverzicht.gif" alt="Spelersoverzicht van Finn Bosman met niveau, potentieel, score, observatie en vormtrend" loading="lazy"></div>
+            <div class="lp-media lp-float"><img src="lp-shot-spelersoverzicht.jpg" alt="Spelersoverzicht van Finn Bosman met niveau, potentieel, score, observatie en vormtrend" loading="lazy"></div>
             <div class="lp-slide-cap"><div class="lp-slide-t">Onderbouw je advies.</div><div class="lp-slide-s">Je observaties worden automatisch klaargezet als concept-rapport. Beoordeel, vul aan, dien in. Professioneel en compleet.</div></div>
           </div>
 
           <div class="lp-slide">
-            <div class="lp-visual lp-shot"><img src="lp-shot-spelersdatabase.jpg" alt="Spelersdatabase met niveau, potentieel en advies per speler en filters bovenaan" loading="lazy"></div>
-            <div class="lp-slide-cap"><div class="lp-slide-t">Je hele selectie in beeld.</div><div class="lp-slide-s">Al je spelers in &eacute;&eacute;n database &mdash; met niveau, potentieel en advies. Filter, zoek en vind het talent dat je zoekt.</div></div>
-          </div>
-
-          <div class="lp-slide">
-            <div class="lp-visual lp-shot lp-gif"><img src="lp-gif-vergelijken.gif" alt="Twee spelers head-to-head vergelijken met radar-chart en criteriumscores" loading="lazy"></div>
+            <div class="lp-media lp-float"><div class="lp-vidcrop"><video class="lp-autovid" muted loop playsinline preload="none" aria-label="Twee spelers head-to-head vergelijken"><source src="lp-vid-vergelijken.mp4" type="video/mp4"></video></div></div>
             <div class="lp-slide-cap"><div class="lp-slide-t">Vergelijk objectief.</div><div class="lp-slide-s">Zet spelers naast elkaar. Radar-charts, head-to-head, criteriumscores. Data die je advies onderbouwt.</div></div>
           </div>
 
           <div class="lp-slide">
-            <div class="lp-visual lp-shot"><img src="lp-shot-teams.jpg" alt="Gescoute teams als kaarten met club, leeftijd en aantal rapporten" loading="lazy"></div>
+            <div class="lp-media lp-float"><div class="lp-vidcrop" style="background-image:url('lp-shot-spelersdatabase.jpg')"><video class="lp-autovid" muted loop playsinline preload="none" aria-label="Spelersdatabase met filters"><source src="lp-vid-spelersdatabase.mp4" type="video/mp4"></video></div></div>
+            <div class="lp-slide-cap"><div class="lp-slide-t">Je hele selectie in beeld.</div><div class="lp-slide-s">Al je spelers in &eacute;&eacute;n database &mdash; met niveau, potentieel en advies. Filter, zoek en vind het talent dat je zoekt.</div></div>
+          </div>
+
+          <div class="lp-slide">
+            <div class="lp-media lp-float"><img src="lp-shot-teams.jpg" alt="Gescoute teams als kaarten met club, leeftijd en aantal rapporten" loading="lazy"></div>
             <div class="lp-slide-cap"><div class="lp-slide-t">Analyseer het elftal.</div><div class="lp-slide-s">Bekijk je elftal visueel. Zie open posities, koppel kandidaten, bouw aan de toekomst.</div></div>
           </div>
 
@@ -201,7 +207,7 @@
     <div class="lp-steps">
       <div class="lp-step"><div class="lp-step-n">1</div><div class="lp-step-ic">&#128197;</div><div class="lp-step-t">Plan</div><div class="lp-step-s">Maak een wedstrijd aan of importeer een toernooi. Koppel spelers, kies je focus.</div><div class="lp-visual lp-visual-step"><img src="lp-shot-programma.jpg" alt="Programma-weekoverzicht met geplande wedstrijden" loading="lazy"></div></div>
       <div class="lp-step"><div class="lp-step-n">2</div><div class="lp-step-ic">&#128064;</div><div class="lp-step-t">Scout</div><div class="lp-step-s">Observeer langs de lijn met chips en notities. Snel, met &eacute;&eacute;n hand, zonder afleiding.</div><div class="lp-visual lp-visual-step"><img src="screenshot-obs-chips.png" alt="Observatieformulier met trefwoord-chips" loading="lazy"></div></div>
-      <div class="lp-step"><div class="lp-step-n">3</div><div class="lp-step-ic">&#128203;</div><div class="lp-step-t">Rapporteer</div><div class="lp-step-s">Je observaties staan klaar als concept-rapport. Vul aan met niveau, potentieel en advies.</div><div class="lp-visual lp-visual-step"><img src="lp-gif-spelersoverzicht-poster.jpg" alt="Spelersoverzicht met niveau, potentieel en advies" loading="lazy"></div></div>
+      <div class="lp-step"><div class="lp-step-n">3</div><div class="lp-step-ic">&#128203;</div><div class="lp-step-t">Rapporteer</div><div class="lp-step-s">Je observaties staan klaar als concept-rapport. Vul aan met niveau, potentieel en advies.</div><div class="lp-visual lp-visual-step"><img src="lp-shot-spelersoverzicht.jpg" alt="Spelersoverzicht met niveau, potentieel en advies" loading="lazy"></div></div>
       <div class="lp-step"><div class="lp-step-n">4</div><div class="lp-step-ic">&#128228;</div><div class="lp-step-t">Deel</div><div class="lp-step-s">Exporteer als PDF of deel direct met je co&ouml;rdinator of technisch directeur.</div><div class="lp-visual lp-visual-step"><span>Screenshot &mdash; binnenkort</span></div></div>
     </div>
   </section>

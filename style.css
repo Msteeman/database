@@ -12561,3 +12561,116 @@ body.sh-onb-open{ overflow:hidden; }
     transform: perspective(1500px) rotateY(0) rotateX(0) scale(1);
   }
 }
+
+/* ============================================================
+   LANDINGSPAGINA VISUELE UPGRADE (sh-v296)
+   Video's, glow, perspectief, floating, diepte, compacter.
+   Bouwt voort op bestaande .lp-* stijl — dark theme onveranderd.
+   ============================================================ */
+
+/* ---- Achtergrond-laag: animated gradient + accent-glows + dot-texture ---- */
+#landing-overlay::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(rgba(255,255,255,.045) 1px, transparent 1.6px) 0 0 / 24px 24px,
+    radial-gradient(55% 45% at 78% 10%, rgba(230,57,70,.12), transparent 62%),
+    radial-gradient(50% 42% at 18% 88%, rgba(78,161,255,.10), transparent 62%),
+    linear-gradient(180deg, #0a0c12 0%, #0f131d 48%, #0b0e16 72%, #0a0c12 100%);
+  background-size: 24px 24px, auto, auto, 100% 200%;
+  animation: lpBgShift 22s ease-in-out infinite alternate;
+}
+@keyframes lpBgShift{ from{ background-position:0 0,0 0,0 0,50% 0%; } to{ background-position:0 0,0 0,0 0,50% 100%; } }
+#landing-overlay > *{ position:relative; z-index:1; }
+
+/* ---- Video-crop: verbergt sidebar + DEMO-balk (content-only) ---- */
+#landing-overlay .lp-vidcrop{
+  position:relative; width:100%; aspect-ratio:1.75; overflow:hidden;
+  border-radius:8px; background:#0a0c12 center center / cover no-repeat;
+}
+#landing-overlay .lp-vidcrop video{
+  position:absolute; top:-7.2%; left:-17.2%; width:118.6%; height:auto;
+  display:block; border:0; background:#0a0c12;
+}
+
+/* ---- Media-wrapper: glow + perspectief + floating ---- */
+#landing-overlay .lp-media{
+  position:relative; isolation:isolate; width:100%; max-width:600px; margin:0 auto;
+  border-radius:8px;
+}
+#landing-overlay .lp-media > img,
+#landing-overlay .lp-media > .lp-vidcrop{
+  position:relative; z-index:1; display:block; width:100%; border-radius:8px;
+  box-shadow:0 20px 55px rgba(0,0,0,.55); cursor:zoom-in;
+}
+/* zachte rood/blauwe glow achter de media */
+#landing-overlay .lp-media::before{
+  content:""; position:absolute; inset:-9% -7%; z-index:0; border-radius:26px; pointer-events:none;
+  background:radial-gradient(60% 60% at 50% 42%, rgba(230,57,70,.32), rgba(78,161,255,.16) 55%, transparent 76%);
+  filter:blur(30px); opacity:.55;
+}
+#landing-overlay .lp-media-hero{ max-width:560px; }
+
+/* perspectief + zweef-animatie alleen op desktop */
+@media (min-width:901px){
+  #landing-overlay .lp-media{ transform:perspective(1600px) rotateX(2deg) rotateY(-4deg); transition:transform .5s cubic-bezier(.22,.61,.36,1); }
+  #landing-overlay .lp-media-hero{ transform:perspective(1500px) rotateX(2.5deg) rotateY(-6deg); }
+  #landing-overlay .lp-media.lp-float:hover{ transform:perspective(1600px) rotateX(0) rotateY(0) translateY(-6px); }
+  @keyframes lpFloat{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-7px); } }
+  #landing-overlay .lp-media.lp-float > img,
+  #landing-overlay .lp-media.lp-float > .lp-vidcrop{ animation:lpFloat 6.5s ease-in-out infinite; }
+}
+
+/* ---- Hero-media entrance: slide-in van onder + glow ---- */
+#landing-overlay .lp-hero-visual{ animation:lpHeroRise 1s cubic-bezier(.22,.61,.36,1) both; animation-delay:.5s; }
+@keyframes lpHeroRise{ from{ opacity:0; transform:translateY(54px) scale(.96); } to{ opacity:1; transform:none; } }
+
+/* ---- Accent-glow achter de CTA ---- */
+#landing-overlay .lp-cta-final{ position:relative; }
+#landing-overlay .lp-cta-final::before{
+  content:""; position:absolute; left:50%; top:40%; width:60%; height:60%; transform:translate(-50%,-50%);
+  z-index:0; pointer-events:none; border-radius:50%;
+  background:radial-gradient(closest-side, rgba(230,57,70,.18), transparent 70%); filter:blur(40px);
+}
+#landing-overlay .lp-cta-final > *{ position:relative; z-index:1; }
+
+/* ============================================================
+   COMPACTER — minder scrollen, tekst-naast-beeld in carousel
+   ============================================================ */
+#landing-overlay .lp-section{ padding:40px 24px; }
+#landing-overlay .lp-kern{ padding:30px 24px; }
+#landing-overlay .lp-hero{ padding:54px 24px 40px; }
+#landing-overlay .lp-feat{ padding:16px; }
+#landing-overlay .lp-feat-ic{ font-size:23px; margin-bottom:8px; }
+#landing-overlay .lp-feat-t{ font-size:14.5px; }
+#landing-overlay .lp-feat-s{ font-size:12.5px; }
+
+/* Carousel: beeld links, tekst rechts op desktop (compacter, max 58% beeld) */
+@media (min-width:760px){
+  #landing-overlay .lp-slide{ flex-direction:row; align-items:center; gap:30px; padding:10px 30px 4px; }
+  #landing-overlay .lp-slide .lp-media{ flex:0 0 58%; max-width:58%; margin:0; }
+  #landing-overlay .lp-slide-cap{ flex:1; text-align:left; padding:0; }
+  #landing-overlay .lp-carousel{ max-width:980px; }
+}
+
+/* ============================================================
+   SCROLL-CASCADE — feature-kaarten 1 voor 1 in beeld
+   ============================================================ */
+#landing-overlay .lp-features .lp-feat{ opacity:0; transform:translateY(16px); transition:opacity .5s ease, transform .5s ease; }
+#landing-overlay .lp-reveal.lp-in .lp-features .lp-feat{ opacity:1; transform:none; }
+#landing-overlay .lp-features .lp-feat:nth-child(1){ transition-delay:.03s; }
+#landing-overlay .lp-features .lp-feat:nth-child(2){ transition-delay:.09s; }
+#landing-overlay .lp-features .lp-feat:nth-child(3){ transition-delay:.15s; }
+#landing-overlay .lp-features .lp-feat:nth-child(4){ transition-delay:.21s; }
+#landing-overlay .lp-features .lp-feat:nth-child(5){ transition-delay:.27s; }
+#landing-overlay .lp-features .lp-feat:nth-child(6){ transition-delay:.33s; }
+#landing-overlay .lp-features .lp-feat:nth-child(7){ transition-delay:.39s; }
+#landing-overlay .lp-features .lp-feat:nth-child(8){ transition-delay:.45s; }
+
+/* ---- Reduced motion: alle landingsanimaties uit ---- */
+@media (prefers-reduced-motion: reduce){
+  #landing-overlay::before{ animation:none; }
+  #landing-overlay .lp-hero-visual,
+  #landing-overlay .lp-media.lp-float > img,
+  #landing-overlay .lp-media.lp-float > .lp-vidcrop{ animation:none !important; }
+  #landing-overlay .lp-features .lp-feat{ opacity:1; transform:none; transition:none; }
+}

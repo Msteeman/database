@@ -27173,6 +27173,19 @@ try {
     }, { threshold: 0.12 });
     const _lpWire = function(){ document.querySelectorAll('.lp-reveal:not(.lp-in)').forEach(function(el){ _lpIo.observe(el); }); };
     if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _lpWire); else _lpWire();
+
+    // Lazy autoplay: landingsvideo's spelen alleen als ze in beeld zijn (CPU-zuinig,
+    // en in de carousel speelt zo enkel de zichtbare slide). Respecteert reduced-motion.
+    var _lpReduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var _lpVidIo = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        var v = en.target;
+        if(en.isIntersecting && !_lpReduce){ var pr = v.play(); if(pr && pr.catch) pr.catch(function(){}); }
+        else { try { v.pause(); } catch(_){} }
+      });
+    }, { threshold: 0.4 });
+    var _lpVidWire = function(){ document.querySelectorAll('#landing-overlay video.lp-autovid').forEach(function(v){ try { _lpVidIo.observe(v); } catch(_){} }); };
+    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _lpVidWire); else _lpVidWire();
   }
 } catch(_){}
 

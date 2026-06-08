@@ -27886,17 +27886,37 @@ async function _bhLoadAudit(){
     _bhRenderAudit();
   } catch(e){ if(list) list.innerHTML='<div class="bh-empty">Kon logboek niet laden.</div>'; }
 }
+var _BH_AUDIT_L = { request_created:['📨','Verzoek aangemaakt'], request_approved:['✅','Toegestaan'], request_rejected:['⛔','Geweigerd'], grant_started:['🔓','Sessie gestart'], session_opened:['👁️','Omgeving geopend'], session_ended_by_admin:['🔒','Beëindigd door admin'], session_ended_by_user:['🔒','Beëindigd door gebruiker'], session_expired:['⏱️','Verlopen'] };
 function _bhRenderAudit(){
   var list=document.getElementById('bh-audit-list'); if(!list) return;
   if(!_bhAuditCache.length){ list.innerHTML='<div class="bh-empty">Nog geen logregels</div>'; return; }
-  var L={ request_created:['📨','Verzoek aangemaakt','bh-b-grey'], request_approved:['✅','Toegestaan','bh-b-green'], request_rejected:['⛔','Geweigerd','bh-b-red'], grant_started:['🔓','Sessie gestart','bh-b-blue'], session_opened:['👁️','Omgeving geopend','bh-b-blue'], session_ended_by_admin:['🔒','Beëindigd door admin','bh-b-orange'], session_ended_by_user:['🔒','Beëindigd door gebruiker','bh-b-orange'], session_expired:['⏱️','Verlopen','bh-b-grey'] };
-  list.innerHTML=_bhAuditCache.map(function(a){
-    var m=L[a.action]||['•',(a.action||'—'),'bh-b-grey'];
-    return '<div class="bh-card bh-audit-card">' +
-      '<div class="bh-card-top"><div class="bh-card-name">'+m[0]+' '+_bhEsc(m[1])+'</div><span class="bh-badge '+m[2]+'">'+_bhDateTime(a.timestamp)+'</span></div>' +
-      '<div class="bh-card-row"><span>Admin</span><b>'+_bhUserLabel(a.adminUid)+'</b></div>' +
-      '<div class="bh-card-row"><span>Gebruiker</span><b>'+_bhUserLabel(a.targetUid)+'</b></div>' +
-      (a.details ? ('<div class="bh-card-row"><span>Details</span><b>'+_bhEsc(a.details)+'</b></div>') : '') +
+  // Groepeer per sessie (sessionId). Oude regels zonder sessionId = eigen groep.
+  var groups={}, order=[];
+  _bhAuditCache.forEach(function(a){
+    var key=a.sessionId || ('solo_'+a._id);
+    if(!groups[key]){ groups[key]={ items:[], adminUid:a.adminUid, targetUid:a.targetUid, reason:(a.reason||''), latest:_suMs(a.timestamp) }; order.push(key); }
+    var g=groups[key]; g.items.push(a);
+    if(a.reason && !g.reason) g.reason=a.reason;
+    if(!g.targetUid && a.targetUid) g.targetUid=a.targetUid;
+    if(!g.adminUid && a.adminUid) g.adminUid=a.adminUid;
+    var ms=_suMs(a.timestamp); if(ms>g.latest) g.latest=ms;
+  });
+  list.innerHTML=order.map(function(key){
+    var g=groups[key];
+    g.items.sort(function(a,b){ return _suMs(a.timestamp)-_suMs(b.timestamp); });   // tijdlijn oplopend
+    var ended=g.items.some(function(a){ return a.action==='session_ended_by_admin'||a.action==='session_ended_by_user'||a.action==='session_expired'; });
+    var rejected=g.items.some(function(a){ return a.action==='request_rejected'; });
+    var statusBadge = rejected ? '<span class="bh-badge bh-b-red">Geweigerd</span>' : (ended ? '<span class="bh-badge bh-b-grey">Afgesloten</span>' : '<span class="bh-badge bh-b-green">Actief</span>');
+    var timeline = g.items.map(function(a){
+      var m=_BH_AUDIT_L[a.action]||['•',(a.action||'—')];
+      return '<div class="bh-tl-row"><span class="bh-tl-t">'+_suTime(a.timestamp)+'</span><span class="bh-tl-ic">'+m[0]+'</span><span class="bh-tl-lbl">'+_bhEsc(m[1])+'</span></div>';
+    }).join('');
+    return '<div class="bh-card bh-sess-card">' +
+      '<div class="bh-card-top"><div class="bh-card-name">🔒 Sessie — '+_bhUserLabel(g.targetUid)+'</div>'+statusBadge+'</div>' +
+      (g.reason ? ('<div class="bh-card-row"><span>Reden</span><b>'+_bhEsc(g.reason)+'</b></div>') : '') +
+      '<div class="bh-card-row"><span>Admin</span><b>'+_bhUserLabel(g.adminUid)+'</b></div>' +
+      '<div class="bh-card-row"><span>Datum</span><b>'+_bhDateTime(g.latest)+'</b></div>' +
+      '<div class="bh-tl">'+timeline+'</div>' +
     '</div>';
   }).join('');
 }
@@ -28145,7 +28165,9 @@ async function _suAudit(action, data){
       targetUid: (data && data.targetUid) || '',
       action: action,
       timestamp: new Date(),
-      details: (data && data.details) || ''
+      details: (data && data.details) || '',
+      sessionId: (data && data.sessionId) || '',
+      reason: (data && data.reason) || ''
     });
   } catch(_){}
 }
@@ -28173,9 +28195,10 @@ function _suRequestAccess(uid){
       var _ta = document.getElementById('su-reason');
       if(!reason){ if(_errEl){ _errEl.textContent='Reden is verplicht'; _errEl.style.display='block'; } if(_ta) _ta.classList.add('su-input-err'); var _re = new Error('no-reason'); _re._handled = true; throw _re; }
       if(_errEl){ _errEl.textContent=''; _errEl.style.display='none'; } if(_ta) _ta.classList.remove('su-input-err');
+      var sessionId = currentUser.uid + '_' + uid + '_' + Date.now();
       var payload = {
         targetUid: uid, requestedByUid: currentUser.uid, reason: reason,
-        durationMinutes: minutes, status: 'pending',
+        durationMinutes: minutes, status: 'pending', sessionId: sessionId,
         requestedAt: new Date(), approvedAt: null, rejectedAt: null, expiresAt: null
       };
       // TIJDELIJKE DEBUG-LOGS (Fase 4): payload + exacte fout in de console.
@@ -28188,7 +28211,7 @@ function _suRequestAccess(uid){
         try { err._handled = true; } catch(_){}
         throw err;
       }
-      await _suAudit('request_created', { adminUid: currentUser.uid, targetUid: uid, details: 'min='+minutes });
+      await _suAudit('request_created', { adminUid: currentUser.uid, targetUid: uid, details: 'min='+minutes, sessionId: sessionId, reason: reason });
       try {
         var idToken = await auth.currentUser.getIdToken();
         var base = (typeof TOERNOOI_API_BASE!=='undefined' && TOERNOOI_API_BASE) ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
@@ -28229,11 +28252,12 @@ function _suShowConsent(req){
       await setDoc(doc(db,'support_grants',gid), {
         targetUid: currentUser.uid, targetEmail: (currentUser.email||''), targetName: (currentUser.displayName||''),
         adminUid: req.requestedByUid, status: 'active', scope: 'read_only',
+        sessionId: (req.sessionId||''), reason: (req.reason||''),
         approvedAt: new Date(), expiresAt: expires, endedAt: null, endedBy: null
       });
       await updateDoc(doc(db,'support_requests',req._id), { status:'approved', approvedAt: new Date(), expiresAt: expires });
-      await _suAudit('request_approved', { adminUid: req.requestedByUid, targetUid: currentUser.uid });
-      await _suAudit('grant_started', { adminUid: req.requestedByUid, targetUid: currentUser.uid, details:'min='+minutes });
+      await _suAudit('request_approved', { adminUid: req.requestedByUid, targetUid: currentUser.uid, sessionId: (req.sessionId||''), reason: (req.reason||'') });
+      await _suAudit('grant_started', { adminUid: req.requestedByUid, targetUid: currentUser.uid, details:'min='+minutes, sessionId: (req.sessionId||''), reason: (req.reason||'') });
       if(typeof toast==='function') toast('Toegang verleend tot '+_suTime(expires));
       close();
     } catch(e){
@@ -28245,7 +28269,7 @@ function _suShowConsent(req){
     deny.disabled=true; if(allow) allow.disabled=true;
     try {
       await updateDoc(doc(db,'support_requests',req._id), { status:'rejected', rejectedAt: new Date() });
-      await _suAudit('request_rejected', { adminUid: req.requestedByUid, targetUid: currentUser.uid });
+      await _suAudit('request_rejected', { adminUid: req.requestedByUid, targetUid: currentUser.uid, sessionId: (req.sessionId||''), reason: (req.reason||'') });
       if(typeof toast==='function') toast('Verzoek geweigerd');
       close();
     } catch(e){ if(typeof toast==='function') toast('Kon niet opslaan', true); deny.disabled=false; if(allow) allow.disabled=false; }
@@ -28322,7 +28346,7 @@ async function _suEndGrant(g, endedBy){
       targetUid:g.targetUid, adminUid:g.adminUid, scope:'read_only',
       status:'ended', expiresAt: now, endedAt: now, endedBy: endedBy
     });
-    await _suAudit(endedBy==='admin'?'session_ended_by_admin':'session_ended_by_user', { adminUid:g.adminUid, targetUid:g.targetUid, details:'endedBy='+endedBy });
+    await _suAudit(endedBy==='admin'?'session_ended_by_admin':'session_ended_by_user', { adminUid:g.adminUid, targetUid:g.targetUid, details:'endedBy='+endedBy, sessionId: (g.sessionId||''), reason: (g.reason||'') });
     var pe=document.getElementById('su-env'); if(pe) pe.remove();
     window.__suCtx=null; document.body.classList.remove('support-mode');
     if(typeof toast==='function') toast('Ondersteuning beëindigd');
@@ -28334,7 +28358,7 @@ async function _suEndGrant(g, endedBy){
 async function _suOpenEnvPanel(g){
   if(document.getElementById('su-env')) return;
   window.__suCtx = g.targetUid; document.body.classList.add('support-mode');
-  try { await _suAudit('session_opened', { adminUid:g.adminUid, targetUid:g.targetUid }); } catch(_){}
+  try { await _suAudit('session_opened', { adminUid:g.adminUid, targetUid:g.targetUid, sessionId: (g.sessionId||''), reason: (g.reason||'') }); } catch(_){}
   var who=_bhEsc(g.targetEmail)||_bhEsc(g.targetName)||'gebruiker';
   var ov=document.createElement('div'); ov.id='su-env'; ov.className='su-env';
   ov.innerHTML='<div class="su-env-card">' +

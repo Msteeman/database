@@ -12300,3 +12300,12 @@ body.sh-onb-open{ overflow:hidden; }
 /* Fase 4 — Supportlogboek */
 .bh-audit-head{ font-size:13px; color:#9aa8bd; margin-bottom:12px; }
 .bh-audit-card{ margin-bottom:10px; }
+
+
+/* Fase 4 — Logboek per sessie (tijdlijn) */
+.bh-sess-card{ margin-bottom:12px; }
+.bh-tl{ margin-top:10px; border-top:1px solid #14202f; padding-top:8px; display:flex; flex-direction:column; gap:4px; }
+.bh-tl-row{ display:flex; align-items:center; gap:10px; font-size:13px; color:#cdd6e4; padding:2px 0; }
+.bh-tl-t{ flex:0 0 46px; color:#8b97ad; font-variant-numeric:tabular-nums; font-size:12.5px; }
+.bh-tl-ic{ flex:0 0 18px; text-align:center; }
+.bh-tl-lbl{ flex:1 1 auto; }

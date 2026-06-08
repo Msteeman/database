@@ -4808,6 +4808,7 @@ function openMatchReportModal(id){
   if(delBtn)  delBtn.style.display = r ? '' : 'none';
 
   bd.classList.add('open');
+  try { if(typeof _rdInjectBanner==='function') _rdInjectBanner(r); } catch(_){}
   // Als rapport al ingediend: direct read-only tonen
   if(r && r.concept === false && r.status === 'verwerkt'){
     _mrShowReadOnly(r);
@@ -6639,6 +6640,7 @@ function _plfSoftSave(showToast){
     sn.modified = Date.now();
     prog.modified = Date.now();
     if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
+    _plfSyncLiveNote(prog, sp, fields, (sn.tags||[]), !!sn.is_opvallend);
     if(showToast && typeof toast === 'function') toast('Live notitie opgeslagen ✓');
   } catch(_){}
 }
@@ -6657,9 +6659,32 @@ function _plfToggleOpvallend(btn){
     btn.textContent = sn.is_opvallend ? '⭐ Opgevallen' : '☆ Opvallend';
     btn.classList.toggle('is-opvallend', !!sn.is_opvallend);
     if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
+    _plfSyncLiveNote(prog, sp, (sn.fields||{}), (sn.tags||[]), !!sn.is_opvallend);
   } catch(_){}
 }
 
+async function _plfSyncLiveNote(prog, sp, fields, tags, isOpvallend){
+  try {
+    if(typeof currentUser === 'undefined' || !currentUser || !currentUser.uid) return;
+    const id = prog.id + '_' + sp.id;
+    const ref = doc(db, 'users', currentUser.uid, 'live_match_notes', id);
+    await setDoc(ref, {
+      matchId: prog.id,
+      playerId: sp.id,
+      playerName: sp.naam || [sp.voornaam, sp.achternaam].filter(Boolean).join(' ') || '',
+      type: 'player_live',
+      status: 'live',
+      fields: fields || {},
+      tags: tags || [],
+      is_opvallend: !!isOpvallend,
+      match_thuis: prog.thuis || '',
+      match_uit: prog.uit || '',
+      match_datum: prog.datum || '',
+      updatedAt: new Date(),
+      updatedBy: currentUser.uid
+    }, { merge: true });
+  } catch(_){}
+}
 function _plfClose(){
   const bd = document.getElementById('plf-backdrop'); if(bd) bd.style.display = 'none';
   const y = parseInt(document.body.style.top || '0') * -1;
@@ -6670,6 +6695,175 @@ function _plfClose(){
   try { if(typeof renderActiveScouting === 'function') renderActiveScouting(); } catch(_){}
 }
 window._plfClose = _plfClose;
+
+/* ============================================================
+   DEEL 6 — Post-match prefill -> report_drafts -> definitief.
+   Bron: live_match_notes (NIET aangepast/verwijderd). Tussenstap:
+   report_drafts (bewerkbaar concept). Indienen spiegelt de bestaande
+   obs-record en gaat via savePlayer naar de players-collectie. Additief.
+   ============================================================ */
+const RD_FIELDS = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
+let _rdState = null;
+
+function _rdDraftsCol(){ return collection(db, 'users', currentUser.uid, 'report_drafts'); }
+function _rdNorm(x){ return String(x||'').trim().toLowerCase(); }
+
+async function _rdLiveNotesForMatch(r){
+  try {
+    if(typeof currentUser==='undefined'||!currentUser||!currentUser.uid) return [];
+    const snap = await getDocs(collection(db,'users',currentUser.uid,'live_match_notes'));
+    const out=[]; snap.forEach(d=>{ const x=d.data()||{}; x._id=d.id; out.push(x); });
+    return out.filter(n => _rdNorm(n.match_thuis)===_rdNorm(r.thuis) && _rdNorm(n.match_uit)===_rdNorm(r.uit) && (!r.datum||!n.match_datum||n.match_datum===r.datum));
+  } catch(_){ return []; }
+}
+
+async function _rdInjectBanner(r){
+  try {
+    const old=document.getElementById('rd-live-banner'); if(old) old.remove();
+    if(!r||!r.thuis||!r.uit) return;
+    const notes = await _rdLiveNotesForMatch(r);
+    if(!notes.length) return;
+    const form=document.getElementById('mreport-form'); if(!form||!form.parentNode) return;
+    const b=document.createElement('div'); b.id='rd-live-banner'; b.className='rd-live-banner';
+    b.innerHTML='<div class="rd-live-banner-txt">📋 Live notities beschikbaar voor <b>'+notes.length+'</b> speler'+(notes.length===1?'':'s')+'</div><button type="button" class="btn btn-primary" id="rd-gen-btn">Rapport genereren</button>';
+    form.parentNode.insertBefore(b, form);
+    const btn=document.getElementById('rd-gen-btn'); if(btn) btn.onclick=()=>_rdGenerate(r, notes);
+  } catch(_){}
+}
+window._rdInjectBanner = _rdInjectBanner;
+
+async function _rdGenerate(r, notes){
+  try {
+    for(const n of notes){
+      const id=(n.matchId||'')+'_'+(n.playerId||'');
+      const ref=doc(_rdDraftsCol(), id);
+      let ex=null; try { const ds=await getDoc(ref); if(ds.exists()) ex=ds.data(); } catch(_){}
+      if(ex && ex.status==='submitted') continue;
+      await setDoc(ref, {
+        matchId:n.matchId||'', playerId:n.playerId||'', playerName:n.playerName||'',
+        fields:n.fields||{}, tags:n.tags||[], is_opvallend:!!n.is_opvallend,
+        matchContext:{thuis:n.match_thuis||'',uit:n.match_uit||'',datum:n.match_datum||''},
+        status:'draft', createdFrom:'live_match_notes',
+        createdAt: (ex&&ex.createdAt)?ex.createdAt:new Date(), updatedAt:new Date(), updatedBy:currentUser.uid
+      }, {merge:true});
+    }
+    _rdOpenList(r);
+  } catch(e){ if(typeof toast==='function') toast('Genereren mislukt', true); }
+}
+
+async function _rdOpenList(r){
+  const bd=document.getElementById('rdraft-backdrop'); if(!bd) return;
+  const title=document.getElementById('rdraft-title'); if(title) title.textContent='Rapporten uit live-notities';
+  const sub=document.getElementById('rdraft-sub'); if(sub) sub.textContent=(r.thuis||'')+' — '+(r.uit||'');
+  const cl=document.getElementById('rdraft-close'); if(cl) cl.onclick=_rdClose;
+  const body=document.getElementById('rdraft-body');
+  let drafts=[];
+  try { const snap=await getDocs(_rdDraftsCol()); snap.forEach(d=>{ const x=d.data()||{}; x._id=d.id; drafts.push(x); }); } catch(_){}
+  drafts=drafts.filter(d => _rdNorm(d.matchContext&&d.matchContext.thuis)===_rdNorm(r.thuis) && _rdNorm(d.matchContext&&d.matchContext.uit)===_rdNorm(r.uit));
+  if(body){
+    if(!drafts.length){ body.innerHTML='<div class="rd-empty">Geen live-notities voor deze wedstrijd.</div>'; }
+    else body.innerHTML='<div class="rd-list">'+drafts.map(d=>{
+      const existing=(Array.isArray(playersCache)?playersCache.some(p=>p&&p.concept===false&&_rdNorm(p.naam)===_rdNorm(d.playerName)&&p.id!==('rep_'+d.matchId+'_'+d.playerId)):false);
+      const badge=d.status==='submitted'?'<span class="rd-badge rd-b-green">Ingediend</span>':'<span class="rd-badge rd-b-grey">Concept</span>';
+      const warn=existing?'<div class="rd-warn">⚠️ Er bestaat al een rapport voor deze speler — indienen maakt een aparte versie</div>':'';
+      const nNotes=RD_FIELDS.filter(f=>d.fields&&d.fields[f]).length; const nChips=(d.tags||[]).length;
+      return '<div class="rd-card"><div class="rd-card-top"><div class="rd-card-name">'+escapeHtml(d.playerName||'Speler')+(d.is_opvallend?' ⭐':'')+'</div>'+badge+'</div>'+
+        '<div class="rd-card-meta">'+nNotes+' notitie(s) · '+nChips+' chip(s)</div>'+warn+
+        '<button type="button" class="btn btn-secondary rd-edit-btn" data-rd-id="'+escapeHtml(d._id)+'">Openen &amp; bewerken</button></div>';
+    }).join('')+'</div>';
+    body.querySelectorAll('.rd-edit-btn').forEach(btn=>{ btn.onclick=()=>_rdOpenEditor(btn.dataset.rdId, r); });
+  }
+  bd.style.display='flex'; document.body.classList.add('modal-open'); document.body.style.top='-'+window.scrollY+'px';
+}
+window._rdOpenList=_rdOpenList;
+
+async function _rdOpenEditor(draftId, r){
+  const ref=doc(_rdDraftsCol(), draftId);
+  let d=null; try { const ds=await getDoc(ref); if(ds.exists()){ d=ds.data(); d._id=ds.id; } } catch(_){}
+  if(!d) return;
+  _rdState={ draftId, listCtx:r||null, fields:Object.assign({}, d.fields||{}), tags:(d.tags||[]).slice(), is_opvallend:!!d.is_opvallend, playerName:d.playerName||'', matchId:d.matchId, playerId:d.playerId, matchContext:d.matchContext||{} };
+  const title=document.getElementById('rdraft-title'); if(title) title.textContent=d.playerName||'Speler';
+  const sub=document.getElementById('rdraft-sub'); if(sub) sub.textContent='Conceptrapport — bewerk en dien in';
+  const cl=document.getElementById('rdraft-close'); if(cl) cl.onclick=_rdClose;
+  const ratingOf=(cat,label)=>{ const t=_rdState.tags.find(x=>x&&x.label===label&&_rdNorm(x.category)===_rdNorm(cat)); return t&&t.rating?t.rating:''; };
+  const PH={techniek:'bv. scherp, snel',inzicht:'bv. leest spel goed',mentaliteit:'bv. werkt hard',explosiviteit:'bv. eerste 5m',sprinten:'bv. topsnelheid',duelleren:'bv. wint 1-op-1',wendbaarheid:'bv. soepel',algemeen:'bv. interessante speler'};
+  const CHIPS=(typeof PLF_CHIP_CATS!=='undefined')?PLF_CHIP_CATS:{};
+  const mc=_rdState.matchContext||{};
+  const body=document.getElementById('rdraft-body');
+  body.innerHTML='<div class="rd-ctx"><b>'+escapeHtml(_rdState.playerName||'Speler')+'</b><div class="rd-ctx-sub">'+escapeHtml((mc.thuis||'')+' — '+(mc.uit||''))+(mc.datum?' · '+escapeHtml(mc.datum):'')+'</div><div class="rd-ctx-note">Conceptrapport uit je live-notities. Pas aan en kies daarna Indienen.</div></div>'+
+    '<div class="plf-fields" id="rd-fields">'+RD_FIELDS.map(f=>{
+      const chips=(CHIPS[f]||[]).map(w=>{ const rr=ratingOf(f,w); return '<button type="button" class="obs-tag" data-category="'+f+'" data-label="'+escapeHtml(w)+'"'+(rr?' data-rating="'+rr+'"':'')+' onclick="_rdTagCycle(this)">'+escapeHtml(w)+'</button>'; }).join('');
+      return '<div class="plf-aspect"><div class="plf-aspect-label">'+f+'</div>'+(chips?'<div class="obs-tags plf-aspect-chips">'+chips+'</div>':'')+'<input class="plf-field-in" data-field="'+f+'" type="text" autocomplete="off" placeholder="'+escapeHtml(PH[f]||'')+'" value="'+escapeHtml(_rdState.fields[f]||'')+'" /></div>';
+    }).join('')+'</div>'+
+    '<div class="obs-actions"><button type="button" class="plf-opvallend-btn'+(_rdState.is_opvallend?' is-opvallend':'')+'" id="rd-opv">'+(_rdState.is_opvallend?'⭐ Opgevallen':'☆ Opvallend')+'</button>'+
+    '<button type="button" class="btn btn-secondary" id="rd-save">Opslaan als concept</button>'+
+    '<button type="button" class="btn btn-primary" id="rd-submit">Indienen</button></div>';
+  body.querySelectorAll('#rd-fields .plf-field-in').forEach(inp=>{ inp.addEventListener('input',()=>{ _rdState.fields[inp.dataset.field]=inp.value; }); });
+  if(!body._rdFocusWired){ body._rdFocusWired=true; body.addEventListener('focusin',e=>{ const t=e.target; if(t&&t.tagName==='INPUT') setTimeout(()=>{ try{ t.scrollIntoView({block:'center',behavior:'smooth'}); }catch(_){} },300); }); }
+  const opv=document.getElementById('rd-opv'); if(opv) opv.onclick=()=>{ _rdState.is_opvallend=!_rdState.is_opvallend; opv.classList.toggle('is-opvallend',_rdState.is_opvallend); opv.textContent=_rdState.is_opvallend?'⭐ Opgevallen':'☆ Opvallend'; };
+  const sv=document.getElementById('rd-save'); if(sv) sv.onclick=()=>_rdSaveDraft();
+  const su=document.getElementById('rd-submit'); if(su) su.onclick=()=>_rdSubmit();
+}
+window._rdOpenEditor=_rdOpenEditor;
+
+function _rdCollectTags(){ try { return Array.from(document.querySelectorAll('#rd-fields .obs-tag[data-rating]')).map(el=>({label:el.dataset.label,category:el.dataset.category,rating:el.getAttribute('data-rating')})).filter(t=>t.rating); } catch(_){ return _rdState?_rdState.tags:[]; } }
+function _rdTagCycle(el){ const order=['','good','average','poor']; const cur=el.getAttribute('data-rating')||''; const next=order[(order.indexOf(cur)+1)%order.length]; if(next) el.setAttribute('data-rating',next); else el.removeAttribute('data-rating'); }
+window._rdTagCycle=_rdTagCycle;
+
+async function _rdSaveDraft(){
+  if(!_rdState) return;
+  try {
+    _rdState.tags=_rdCollectTags();
+    await setDoc(doc(_rdDraftsCol(), _rdState.draftId), { fields:_rdState.fields, tags:_rdState.tags, is_opvallend:!!_rdState.is_opvallend, status:'draft', updatedAt:new Date(), updatedBy:currentUser.uid }, {merge:true});
+    if(typeof toast==='function') toast('Concept opgeslagen ✓');
+    _rdClose();
+  } catch(_){ if(typeof toast==='function') toast('Opslaan mislukt', true); }
+}
+
+async function _rdSubmit(){
+  if(!_rdState) return;
+  try {
+    _rdState.tags=_rdCollectTags();
+    const prog=(Array.isArray(programmaCache)?programmaCache.find(p=>p&&p.id===_rdState.matchId):null);
+    const sp=prog&&Array.isArray(prog.spelers)?prog.spelers.find(s=>s&&s.id===_rdState.playerId):null;
+    const rec=_rdBuildPlayerRec(_rdState, sp||{});
+    if(typeof savePlayer==='function') await savePlayer(rec);
+    await setDoc(doc(_rdDraftsCol(), _rdState.draftId), { status:'submitted', submittedAt:new Date(), updatedAt:new Date() }, {merge:true});
+    if(typeof toast==='function') toast('Rapport ingediend ✓');
+    _rdClose();
+  } catch(e){ if(typeof toast==='function') toast('Indienen mislukt', true); }
+}
+
+function _rdBuildPlayerRec(st, sp){
+  const naam=st.playerName||''; const parts=naam.split(/\s+/); const voornaam=parts[0]||''; const achternaam=parts.slice(1).join(' ');
+  const full=(Array.isArray(playersCache)?playersCache.find(p=>p&&p.id===st.playerId):null)||{};
+  const g=k=>(sp&&sp[k])||full[k]||'';
+  const fields=st.fields||{};
+  const notities=RD_FIELDS.map(f=>f+':'+(fields[f]?' '+fields[f]:'')).join('\n');
+  const mc=st.matchContext||{};
+  return {
+    id: st.playerId ? ('rep_'+st.matchId+'_'+st.playerId) : ('obs_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)),
+    naam, voornaam, achternaam, naam_onbekend:false, omschrijving:'',
+    club:g('club'), positie:g('positie'), elftal:g('elftal')||g('team')||'', rugnummer:g('rugnummer'),
+    notities, huidig_niveau:'', potentieel_niveau:'', advies:'',
+    tags: st.tags||[], category_notes: fields,
+    rapport_type:'observatie', concept:false, status:'observatie',
+    is_opvallend: !!st.is_opvallend, notities_raw: notities,
+    datum: mc.datum || new Date().toISOString().slice(0,10),
+    wedstrijd: { datum:mc.datum||'', thuis:mc.thuis||'', uit:mc.uit||'', leeftijd:'', plaats:'', sportpark:'' },
+    wedstrijd_datum:mc.datum||'', wedstrijd_thuis:mc.thuis||'', wedstrijd_uit:mc.uit||'', wedstrijd_leeftijd:'',
+    programma_link: (st.matchId&&st.playerId)?{progId:st.matchId, spelerKey:st.playerId}:null,
+    created: Date.now(), modified: Date.now(),
+    scout: (typeof currentUser!=='undefined'&&currentUser)?(currentUser.displayName||currentUser.email||''):''
+  };
+}
+
+function _rdClose(){
+  const bd=document.getElementById('rdraft-backdrop'); if(bd) bd.style.display='none';
+  const y=parseInt(document.body.style.top||'0')*-1; document.body.classList.remove('modal-open'); document.body.style.top=''; if(y) window.scrollTo(0,y);
+  _rdState=null;
+}
+window._rdClose=_rdClose;
 
 function _obsClose(){
   try { window.__obsTriggerAutosave=null; window.__obsCaptureChips=null; } catch(_){}

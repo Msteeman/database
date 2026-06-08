@@ -6450,6 +6450,25 @@ function openObservatieForm(prog, sn){
     _obsSubmitBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); _obsSubmit(e); });
   }
 
+  // PWA (#input-positie): bij focus het veld netjes boven het toetsenbord brengen.
+  // block:'center' -> midden van de modal-scrollport, NIET bovenin/onderin. Korte
+  // delay zodat iOS het toetsenbord eerst opent; visualViewport-bewust.
+  const _obsFormFocus = document.getElementById('obs-form');
+  if(_obsFormFocus && !_obsFormFocus._obsFocusWired){
+    _obsFormFocus._obsFocusWired = true;
+    _obsFormFocus.addEventListener('focusin', function(e){
+      const t = e.target;
+      if(!t || !/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+      const _doScroll = function(){ try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(_){} };
+      setTimeout(_doScroll, 300);
+      // Extra: zodra het toetsenbord het visuele viewport verkleint, opnieuw centreren.
+      if(window.visualViewport && !t._obsVvWired){
+        t._obsVvWired = true;
+        const _vv = function(){ if(document.activeElement === t){ _doScroll(); } };
+        window.visualViewport.addEventListener('resize', _vv, { once: true });
+      }
+    });
+  }
   bd.style.display = 'flex';
   // iOS PWA: blokkeer body-scroll (voorkomt focus-scroll weg)
   const _scrollY = window.scrollY;

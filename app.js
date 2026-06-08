@@ -27890,19 +27890,29 @@ var _BH_AUDIT_L = { request_created:['📨','Verzoek aangemaakt'], request_appro
 function _bhRenderAudit(){
   var list=document.getElementById('bh-audit-list'); if(!list) return;
   if(!_bhAuditCache.length){ list.innerHTML='<div class="bh-empty">Nog geen logregels</div>'; return; }
-  // Groepeer per sessie (sessionId). Oude regels zonder sessionId = eigen groep.
-  var groups={}, order=[];
-  _bhAuditCache.forEach(function(a){
-    var key=a.sessionId || ('solo_'+a._id);
-    if(!groups[key]){ groups[key]={ items:[], adminUid:a.adminUid, targetUid:a.targetUid, reason:(a.reason||''), latest:_suMs(a.timestamp) }; order.push(key); }
-    var g=groups[key]; g.items.push(a);
-    if(a.reason && !g.reason) g.reason=a.reason;
-    if(!g.targetUid && a.targetUid) g.targetUid=a.targetUid;
-    if(!g.adminUid && a.adminUid) g.adminUid=a.adminUid;
-    var ms=_suMs(a.timestamp); if(ms>g.latest) g.latest=ms;
+  function _mkGroup(a){ return { items:[], adminUid:a.adminUid, targetUid:a.targetUid, reason:(a.reason||''), latest:_suMs(a.timestamp) }; }
+  function _addToGroup(g,a){ g.items.push(a); if(a.reason && !g.reason) g.reason=a.reason; if(!g.targetUid && a.targetUid) g.targetUid=a.targetUid; if(!g.adminUid && a.adminUid) g.adminUid=a.adminUid; var ms=_suMs(a.timestamp); if(ms>g.latest) g.latest=ms; }
+  function _isEnd(act){ return act==='session_ended_by_admin' || act==='session_ended_by_user' || act==='session_expired' || act==='request_rejected'; }
+  var allGroups=[];
+  // 1) Regels MET sessionId -> exact groeperen.
+  var withSid={};
+  _bhAuditCache.forEach(function(a){ if(a.sessionId){ if(!withSid[a.sessionId]){ withSid[a.sessionId]=_mkGroup(a); allGroups.push(withSid[a.sessionId]); } _addToGroup(withSid[a.sessionId], a); } });
+  // 2) Regels ZONDER sessionId -> reconstrueer sessies per admin+gebruiker, gesplitst op eind-gebeurtenissen.
+  var noSid=_bhAuditCache.filter(function(a){ return !a.sessionId; });
+  var byPair={};
+  noSid.forEach(function(a){ var k=(a.adminUid||'')+'__'+(a.targetUid||''); (byPair[k]=byPair[k]||[]).push(a); });
+  Object.keys(byPair).forEach(function(k){
+    var items=byPair[k].slice().sort(function(a,b){ return _suMs(a.timestamp)-_suMs(b.timestamp); });
+    var curr=null;
+    items.forEach(function(a){
+      if(curr===null){ curr=_mkGroup(a); allGroups.push(curr); }
+      _addToGroup(curr,a);
+      if(_isEnd(a.action)) curr=null;
+    });
   });
-  list.innerHTML=order.map(function(key){
-    var g=groups[key];
+  // Nieuwste sessie eerst.
+  allGroups.sort(function(a,b){ return b.latest-a.latest; });
+  list.innerHTML=allGroups.map(function(g){
     g.items.sort(function(a,b){ return _suMs(a.timestamp)-_suMs(b.timestamp); });   // tijdlijn oplopend
     var ended=g.items.some(function(a){ return a.action==='session_ended_by_admin'||a.action==='session_ended_by_user'||a.action==='session_expired'; });
     var rejected=g.items.some(function(a){ return a.action==='request_rejected'; });

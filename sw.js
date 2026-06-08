@@ -1,6 +1,6 @@
 /* Scouting Platform — Service Worker
    Bump CACHE_VERSION whenever you ship a new index.html so users get the latest. */
-const CACHE_VERSION = 'sh-v293-beheer-datum-delete';
+const CACHE_VERSION = 'sh-v295-landing-media';
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-rt`;
 
@@ -16,8 +16,7 @@ const CORE_ASSETS = [
   'screenshot-vergelijken.png',
   'screenshot-elftal-analyse.png',
   'screenshot-ritten.png',
-  'lp-hero-dashboard.png',
-  'lp-plan-modal.png',
+  'lp-shot-dashboard.jpg',
   './app.min.js',
   './clubs-data.js',
   './manifest.webmanifest',

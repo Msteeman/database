@@ -12550,3 +12550,14 @@ body.sh-onb-open{ overflow:hidden; }
 /* Login — scheidingslijn boven "Toegang aanvragen" (sh-v294) */
 .login-sep{ display:flex; align-items:center; gap:10px; margin:16px 0 2px; color:var(--text-3,#8b97ad); font-size:12px; }
 .login-sep::before, .login-sep::after{ content:""; flex:1; height:1px; background:var(--border,#232d40); }
+
+/* Hero — licht 3D-perspectief op de dashboard-screenshot (alleen desktop) (sh-v295) */
+@media (min-width: 901px) {
+  #landing-overlay .lp-hero-visual .lp-visual img {
+    transform: perspective(1500px) rotateY(-5deg) rotateX(1.5deg) scale(.99);
+    transition: transform .45s cubic-bezier(.22,.61,.36,1);
+  }
+  #landing-overlay .lp-hero-visual:hover .lp-visual img {
+    transform: perspective(1500px) rotateY(0) rotateX(0) scale(1);
+  }
+}

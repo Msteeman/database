@@ -28661,7 +28661,7 @@ async function _bhApprove(id, role, btn){
   // FASE 3: account aanmaken via de worker (admin-idToken-gated accounts:signUp).
   try {
     var idToken = '';
-    try { if(typeof auth!=='undefined' && auth.currentUser) idToken = await auth.currentUser.getIdToken(); } catch(_){}
+    try { if(typeof auth!=='undefined' && auth.currentUser) idToken = await auth.currentUser.getIdToken(true); } catch(_){}
     if(!idToken) throw new Error('no-token');
     var base = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE)
       ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';

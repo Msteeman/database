@@ -6488,6 +6488,13 @@ window.openObservatieForm = openObservatieForm;
    ============================================================ */
 const PLF_FIELDS = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
 const PLF_PH = { techniek:'bv. scherp, snel', inzicht:'bv. leest spel goed', mentaliteit:'bv. werkt hard, leidt', explosiviteit:'bv. eerste 5m sterk', sprinten:'bv. topsnelheid hoog', duelleren:'bv. wint 1-op-1', wendbaarheid:'bv. soepel, lichtvoetig', algemeen:'bv. interessante speler' };
+const PLF_CHIP_CATS = {
+  'Mentaliteit': ['Winnaar','Leider','Communicatief','Rustig','Nerveus','Emotioneel','Doorzetter','Opgeven','Concentratie','Gretig'],
+  'Techniek': ['Balbehandeling','Passing','Eerste aanname','Traptechniek','Koppen','Dribbel','Overzicht','Beide benen'],
+  'Snelheid': ['Startsnelheid','Topsnelheid','Wendbaarheid','Versnelling','Traag','Explosief'],
+  'Fysiek': ['Sterk','Licht','Lenig','Groot','Klein','Duelkracht','Uithoudingsvermogen'],
+  'Inzicht': ['Scannen','Positiespel','Ruimte zien','Anticipatie','Coaching','Rust aan de bal','Loopacties','Timing']
+};
 const playerLiveState = {};
 let _plfCtx = null;
 let _plfTm = null;
@@ -6526,9 +6533,18 @@ function openPlayerLiveForm(prog, sp){
   const titleEl = document.getElementById('plf-title'); if(titleEl) titleEl.textContent = naam;
   const subEl = document.getElementById('plf-sub'); if(subEl) subEl.textContent = 'Live aantekening (concept)';
   const teamCtx = (prog.thuis||'?') + (prog.thuis_elftal?' '+prog.thuis_elftal:'') + ' — ' + (prog.uit||'?') + (prog.uit_elftal?' '+prog.uit_elftal:'');
+  // Bekende gekoppelde-speler data (sp + volledig record uit playersCache).
+  const _plfFull = (typeof playersCache !== 'undefined' && Array.isArray(playersCache)) ? playersCache.find(p => p && p.id === sp.id) : null;
+  const _g = (k) => (sp[k]!=null && sp[k]!=='') ? sp[k] : ((_plfFull && _plfFull[k]!=null && _plfFull[k]!=='') ? _plfFull[k] : '');
+  const _metaParts = [];
+  if(_g('rugnummer')) _metaParts.push('#'+_g('rugnummer'));
+  if(_g('positie')) _metaParts.push(_g('positie'));
+  if(_g('club') || prog.thuis) _metaParts.push(_g('club') || prog.thuis);
+  if(_g('geboorte')) _metaParts.push('geb. '+_g('geboorte')); else if(_g('leeftijd')) _metaParts.push(_g('leeftijd')+' jr');
   const ctxEl = document.getElementById('plf-ctx');
   if(ctxEl) ctxEl.innerHTML =
-    '<div class="plf-ctx-player">Speler: <b>'+escapeHtml(naam)+'</b>'+(sp.rugnummer?' <span class="plf-ctx-dim">#'+escapeHtml(String(sp.rugnummer))+'</span>':'')+(sp.positie?' <span class="plf-ctx-dim">· '+escapeHtml(sp.positie)+'</span>':'')+'</div>'+
+    '<div class="plf-ctx-player">Speler: <b>'+escapeHtml(naam)+'</b></div>'+
+    (_metaParts.length ? '<div class="plf-ctx-meta">'+_metaParts.map(escapeHtml).join(' · ')+'</div>' : '')+
     '<div class="plf-ctx-match">Live wedstrijd: '+escapeHtml(teamCtx)+'</div>'+
     '<div class="plf-ctx-note">Concept — het definitieve rapport maak je na de wedstrijd in Wedstrijden.</div>';
 
@@ -6554,6 +6570,18 @@ function openPlayerLiveForm(prog, sp){
     }
   }
 
+  // Chips per categorie (snelle tap-rating). Eigen handler; obs-chips ongemoeid.
+  const chipsEl = document.getElementById('plf-chips');
+  if(chipsEl){
+    const seedTags = (sn && Array.isArray(sn.tags)) ? sn.tags : [];
+    const ratingOf = (cat, label) => { const t = seedTags.find(x => x && x.label===label && String(x.category||'').toLowerCase()===cat.toLowerCase()); return t && t.rating ? t.rating : ''; };
+    chipsEl.innerHTML = '<div class="plf-section-label">Trefwoorden <span class="plf-dim">(tik: groen \u2192 oranje \u2192 rood \u2192 uit)</span></div>' +
+      Object.keys(PLF_CHIP_CATS).map(cat => {
+        const chips = PLF_CHIP_CATS[cat].map(w => { const r = ratingOf(cat, w); return '<button type="button" class="obs-tag" data-category="'+cat.toLowerCase()+'" data-label="'+escapeHtml(w)+'"'+(r?' data-rating="'+r+'"':'')+' onclick="_plfTagCycle(this)">'+escapeHtml(w)+'</button>'; }).join('');
+        return '<div class="plf-chip-block"><span class="plf-chip-cat">'+cat+'</span><div class="obs-tags">'+chips+'</div></div>';
+      }).join('');
+  }
+
   const opv = document.getElementById('plf-opvallend');
   if(opv){
     const isOpv = !!(sn && sn.is_opvallend);
@@ -6572,6 +6600,15 @@ function openPlayerLiveForm(prog, sp){
 }
 window.openPlayerLiveForm = openPlayerLiveForm;
 
+function _plfTagCycle(el){
+  const order = ['', 'good', 'average', 'poor'];
+  const cur = el.getAttribute('data-rating') || '';
+  const next = order[(order.indexOf(cur) + 1) % order.length];
+  if(next) el.setAttribute('data-rating', next); else el.removeAttribute('data-rating');
+  clearTimeout(_plfTm); _plfTm = setTimeout(() => _plfSoftSave(false), 500);
+}
+window._plfTagCycle = _plfTagCycle;
+
 function _plfSoftSave(showToast){
   try {
     if(!_plfCtx) return;
@@ -6583,14 +6620,16 @@ function _plfSoftSave(showToast){
     const fields = {}; PLF_FIELDS.forEach(f => { fields[f] = (st[f]||'').trim(); });
     const tekst = PLF_FIELDS.map(f => f + ':' + (fields[f] ? ' ' + fields[f] : '')).join('\n');
     const hasContent = PLF_FIELDS.some(f => fields[f]);
+    let hasChips = false; try { hasChips = document.querySelectorAll('#plf-chips .obs-tag[data-rating]').length > 0; } catch(_){}
     if(!Array.isArray(prog.snelnotities)) prog.snelnotities = [];
     let sn = prog.snelnotities.find(s => s && s.spelerKey === sp.id);
-    if(!sn && !hasContent) return;
+    if(!sn && !hasContent && !hasChips) return;
     if(!sn){
       sn = { id:'sn_'+(sp.id||Date.now()), naam: sp.naam||[sp.voornaam,sp.achternaam].filter(Boolean).join(' ')||'', rugnummer: sp.rugnummer||'', positie: sp.positie||'', spelerKey: sp.id, created: Date.now() };
       prog.snelnotities.push(sn);
     }
     sn.fields = fields;
+    try { sn.tags = Array.from(document.querySelectorAll('#plf-chips .obs-tag[data-rating]')).map(el => ({ label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') })).filter(t => t.rating); } catch(_){}
     sn.tekst = tekst;
     sn.modified = Date.now();
     prog.modified = Date.now();

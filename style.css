@@ -12275,3 +12275,23 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 .sh-onb-nav{ display:flex; gap:10px; margin-top:18px; }
 .sh-onb-nav .bh-btn{ flex:1; }
 body.sh-onb-open{ overflow:hidden; }
+
+
+/* ============================================================
+   FASE 4 FINAL — user-banner, env-paneel, verplichte-reden
+   ============================================================ */
+.su-req-star{ color:#f87171; font-weight:800; }
+.su-field-err{ display:none; color:#fca5a5; font-size:12.5px; margin:4px 0 2px; }
+.su-input-err{ border-color:#f87171 !important; }
+/* Gebruiker-banner bovenaan (admin-banner blijft onderaan) */
+.su-banner-user{ top:0; bottom:auto; border-top:none; border-bottom:2px solid #f59e0b; padding-top:calc(10px + env(safe-area-inset-top,0px)); padding-bottom:10px; box-shadow:0 4px 18px rgba(0,0,0,.4); }
+/* Volledige read-only omgeving */
+.su-env{ position:fixed; inset:0; z-index:9200; background:rgba(4,8,14,.92); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:16px; padding-top:calc(16px + env(safe-area-inset-top,0px)); padding-bottom:calc(60px + env(safe-area-inset-bottom,0px)); }
+.su-env-card{ width:100%; max-width:560px; max-height:100%; display:flex; flex-direction:column; background:#0b1220; border:1px solid #f59e0b; border-radius:14px; overflow:hidden; box-shadow:0 16px 60px rgba(0,0,0,.6); }
+.su-env-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; border-bottom:1px solid #1f2937; }
+.su-env-title{ font-weight:700; font-size:15px; color:#e8edf5; }
+.su-env-ro{ font-size:11px; color:#111827; background:#f59e0b; border-radius:999px; padding:2px 8px; margin-left:6px; font-weight:700; }
+.su-env-tabs{ display:flex; gap:6px; overflow-x:auto; padding:10px 14px; border-bottom:1px solid #1f2937; }
+.su-env-tab{ flex:0 0 auto; padding:8px 13px; border-radius:8px; background:#1f2937; color:#9aa8bd; border:1px solid #374151; font-size:13px; cursor:pointer; min-height:40px; }
+.su-env-tab.active{ background:#4ea1ff; color:#06223f; border-color:#4ea1ff; font-weight:700; }
+.su-env-body{ overflow-y:auto; padding:14px 16px; }

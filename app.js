@@ -27827,7 +27827,7 @@ function _bhModal(title, bodyHtml, opts){
     ok.addEventListener('click', async function(){
       ok.disabled = true;
       try { await opts.onConfirm(); close(); }
-      catch(e){ ok.disabled = false; if(typeof toast==='function') toast('Er ging iets mis', true); }
+      catch(e){ ok.disabled = false; if(!(e && e._handled) && typeof toast==='function') toast('Er ging iets mis', true); }
     });
   }
   return { close: close, root: bd };
@@ -28102,7 +28102,7 @@ function _bhUserRole(uid){
    ============================================================ */
 function _suGrantId(adminUid, targetUid){ return adminUid + '_' + targetUid; }
 function _suMs(v){ try { if(!v) return 0; if(typeof v.toMillis==='function') return v.toMillis(); if(v.seconds) return v.seconds*1000; var d=new Date(v); return isNaN(d.getTime())?0:d.getTime(); } catch(_){ return 0; } }
-function _suTime(d){ try { return new Date(d).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}); } catch(_){ return ''; } }
+function _suTime(d){ try { var ms=_suMs(d); if(!ms) return ''; return new Date(ms).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}); } catch(_){ return ''; } }
 async function _suAudit(action, data){
   try {
     await addDoc(collection(db,'support_audit'), {
@@ -28123,8 +28123,9 @@ function _suRequestAccess(uid){
   var who = _bhEsc(u.displayName) || _bhEsc(u.email) || '';
   var body =
     '<p style="margin:0 0 10px;color:#9aa8bd;font-size:13px;">Je vraagt <b>tijdelijke, read-only</b> toegang tot het account van <b>'+who+'</b>. De gebruiker moet dit eerst toestaan; de toegang verloopt automatisch.</p>' +
-    '<label class="sh-req-l" for="su-reason">Reden *</label>' +
+    '<label class="sh-req-l" for="su-reason">Reden <span class="su-req-star">*</span></label>' +
     '<textarea id="su-reason" class="sh-req-i" rows="3" placeholder="Bijv. bug onderzoeken in rapportoverzicht"></textarea>' +
+    '<div id="su-reason-err" class="su-field-err" role="alert"></div>' +
     '<label class="sh-req-l" for="su-duration">Duur</label>' +
     '<select id="su-duration" class="bh-select" style="width:100%;"><option value="30">30 minuten</option><option value="60">60 minuten</option></select>';
   _bhModal('Supporttoegang vragen', body, {
@@ -28133,7 +28134,10 @@ function _suRequestAccess(uid){
       var reason = (document.getElementById('su-reason') && document.getElementById('su-reason').value || '').trim();
       var minutes = parseInt((document.getElementById('su-duration') && document.getElementById('su-duration').value) || '30', 10);
       if(minutes!==30 && minutes!==60) minutes = 30;
-      if(!reason){ if(typeof toast==='function') toast('Geef een reden op', true); throw new Error('no-reason'); }
+      var _errEl = document.getElementById('su-reason-err');
+      var _ta = document.getElementById('su-reason');
+      if(!reason){ if(_errEl){ _errEl.textContent='Reden is verplicht'; _errEl.style.display='block'; } if(_ta) _ta.classList.add('su-input-err'); var _re = new Error('no-reason'); _re._handled = true; throw _re; }
+      if(_errEl){ _errEl.textContent=''; _errEl.style.display='none'; } if(_ta) _ta.classList.remove('su-input-err');
       var payload = {
         targetUid: uid, requestedByUid: currentUser.uid, reason: reason,
         durationMinutes: minutes, status: 'pending',
@@ -28146,6 +28150,7 @@ function _suRequestAccess(uid){
       } catch(err){
         try { console.error('[support] create FAILED — code=', (err && err.code), 'message=', (err && err.message), err); } catch(_){}
         if(typeof toast==='function') toast('Verzoek mislukt: ' + ((err && err.message) ? err.message : 'onbekend'), true);
+        try { err._handled = true; } catch(_){}
         throw err;
       }
       await _suAudit('request_created', { adminUid: currentUser.uid, targetUid: uid, details: 'min='+minutes });
@@ -28163,18 +28168,7 @@ function _suRequestAccess(uid){
 }
 window._suRequestAccess = _suRequestAccess;
 
-/* ---- GEBRUIKER: openstaand verzoek + in-app consent ---- */
-async function _suCheckPending(){
-  try {
-    if(!currentUser) return;
-    var snap = await getDocs(query(collection(db,'support_requests'), where('targetUid','==',currentUser.uid)));
-    var reqs = [];
-    snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; if((x.status||'pending')==='pending') reqs.push(x); });
-    if(!reqs.length) return;
-    reqs.sort(function(a,b){ return _suMs(b.requestedAt) - _suMs(a.requestedAt); });
-    _suShowConsent(reqs[0]);
-  } catch(_){}
-}
+/* ---- GEBRUIKER: in-app consent-modal ---- */
 function _suShowConsent(req){
   if(document.getElementById('su-consent')) return;
   var minutes = req.durationMinutes || 30;
@@ -28183,7 +28177,7 @@ function _suShowConsent(req){
     '<div class="bh-card-row"><span>Reden</span><b>'+(_bhEsc(req.reason)||'—')+'</b></div>' +
     '<div class="bh-card-row"><span>Duur</span><b>'+minutes+' minuten</b></div>' +
     '<div class="bh-card-row"><span>Toegang</span><b>Alleen lezen</b></div>' +
-    '<div class="bh-modal-note">Zonder jouw toestemming krijgt niemand toegang. Je kunt de toegang later intrekken; ze verloopt sowieso automatisch.</div>' +
+    '<div class="bh-modal-note">Zonder jouw toestemming krijgt niemand toegang. Je kunt de ondersteuning op elk moment beëindigen; ze verloopt sowieso automatisch.</div>' +
     '<div class="bh-modal-actions"><button type="button" class="bh-btn bh-btn-ghost" id="su-deny">Weigeren</button><button type="button" class="bh-btn bh-btn-green" id="su-allow">Toestaan</button></div>';
   var bd = document.createElement('div');
   bd.id='su-consent'; bd.className='sh-photo-menu-bd';
@@ -28200,7 +28194,7 @@ function _suShowConsent(req){
       await setDoc(doc(db,'support_grants',gid), {
         targetUid: currentUser.uid, targetEmail: (currentUser.email||''), targetName: (currentUser.displayName||''),
         adminUid: req.requestedByUid, status: 'active', scope: 'read_only',
-        approvedAt: new Date(), expiresAt: expires
+        approvedAt: new Date(), expiresAt: expires, endedAt: null, endedBy: null
       });
       await updateDoc(doc(db,'support_requests',req._id), { status:'approved', approvedAt: new Date(), expiresAt: expires });
       await _suAudit('request_approved', { adminUid: req.requestedByUid, targetUid: currentUser.uid });
@@ -28223,84 +28217,134 @@ function _suShowConsent(req){
   });
 }
 
-/* ---- ADMIN: support-mode banner + read-only paneel ---- */
-async function _suCheckActiveGrant(){
-  try {
-    if(!currentUser){ _suRenderBanner([]); return; }
-    var snap = await getDocs(query(collection(db,'support_grants'), where('adminUid','==',currentUser.uid)));
-    var now = Date.now(); var active = [];
-    snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; if(x.status==='active' && _suMs(x.expiresAt) > now) active.push(x); });
-    _suRenderBanner(active);
-  } catch(_){ }
+/* ---- REALTIME: onSnapshot voor requests (gebruiker) + grants (beide rollen) ---- */
+function _suStopSubs(){
+  ['__suUnsubReq','__suUnsubGrantT','__suUnsubGrantA'].forEach(function(k){
+    try { if(window[k]){ window[k](); window[k]=null; } } catch(_){}
+  });
 }
-function _suRenderBanner(active){
-  var existing = document.getElementById('su-banner');
-  if(!active || !active.length){ if(existing) existing.remove(); return; }
-  var g = active[0];
-  var html = '<span class="su-banner-ic">🔒</span>' +
-    '<span class="su-banner-txt"><b>Ondersteuningsmodus actief</b> · '+(_bhEsc(g.targetEmail)||_bhEsc(g.targetName)||'gebruiker')+' · geldig tot '+_suTime(g.expiresAt)+' · alleen-lezen</span>' +
-    '<span class="su-banner-actions"><button type="button" class="su-banner-btn" id="su-view">Bekijk data</button><button type="button" class="su-banner-btn ghost" id="su-end">Beëindig</button></span>';
-  if(existing){ existing.innerHTML = html; }
-  else {
-    var bn = document.createElement('div'); bn.id='su-banner'; bn.className='su-banner'; bn.innerHTML = html;
-    document.body.appendChild(bn);
-  }
-  var vb=document.getElementById('su-view'); if(vb) vb.onclick=function(){ _suOpenDataPanel(g); };
-  var eb=document.getElementById('su-end'); if(eb) eb.onclick=function(){ _suEndGrant(g); };
-}
-async function _suEndGrant(g){
-  try {
-    await updateDoc(doc(db,'support_grants',g._id), {
-      targetUid: g.targetUid, adminUid: g.adminUid, scope: 'read_only', status: 'expired', endedAt: new Date()
-    });
-    await _suAudit('grant_ended', { adminUid: currentUser.uid, targetUid: g.targetUid });
-    if(typeof toast==='function') toast('Ondersteuningsmodus beëindigd');
-    _suCheckActiveGrant();
-  } catch(e){ if(typeof toast==='function') toast('Kon niet beëindigen', true); }
-}
-async function _suOpenDataPanel(g){
-  await _suAudit('session_opened', { adminUid: currentUser.uid, targetUid: g.targetUid });
-  var who = _bhEsc(g.targetEmail) || _bhEsc(g.targetName) || 'gebruiker';
-  var body = '<div class="su-ro-note">🔒 Alleen-lezen. Je kunt hier niets wijzigen, verwijderen of indienen.</div><div id="su-ro-body"><div class="bh-empty">Laden…</div></div>';
-  var m = _bhModal('Support — '+who, body, {});
-  try {
-    var pSnap = await getDocs(collection(db,'users',g.targetUid,'players'));
-    var rSnap = await getDocs(collection(db,'users',g.targetUid,'match_reports'));
-    var tSnap = await getDocs(collection(db,'users',g.targetUid,'tournaments'));
-    var players=[]; pSnap.forEach(function(d){ var x=d.data()||{}; players.push(x); });
-    var tournaments=[]; tSnap.forEach(function(d){ var x=d.data()||{}; tournaments.push(x); });
-    var html =
-      '<div class="su-ro-stats">' +
-        '<div class="su-ro-stat"><b>'+players.length+'</b><span>spelers</span></div>' +
-        '<div class="su-ro-stat"><b>'+rSnap.size+'</b><span>wedstrijdrapporten</span></div>' +
-        '<div class="su-ro-stat"><b>'+tournaments.length+'</b><span>toernooien</span></div>' +
-      '</div>';
-    html += '<div class="su-ro-h">Spelers</div>';
-    if(players.length){
-      html += '<div class="su-ro-list">' + players.slice(0,50).map(function(pl){
-        var nm = pl.naam || [pl.voornaam,pl.achternaam].filter(Boolean).join(' ') || '—';
-        return '<div class="su-ro-row"><b>'+_bhEsc(nm)+'</b><span>'+(_bhEsc(pl.club)||'')+(pl.positie?(' · '+_bhEsc(pl.positie)):'')+'</span></div>';
-      }).join('') + '</div>' + (players.length>50?('<div class="su-ro-more">+ '+(players.length-50)+' meer</div>'):'');
-    } else { html += '<div class="bh-empty">Geen spelers</div>'; }
-    if(tournaments.length){
-      html += '<div class="su-ro-h">Toernooien</div><div class="su-ro-list">' + tournaments.slice(0,30).map(function(t){
-        return '<div class="su-ro-row"><b>'+(_bhEsc(t.naam)||_bhEsc(t.name)||'—')+'</b><span>'+(_bhEsc(t.datum)||_bhEsc(t.date)||'')+'</span></div>';
-      }).join('') + '</div>';
-    }
-    var bodyEl = document.getElementById('su-ro-body'); if(bodyEl) bodyEl.innerHTML = html;
-  } catch(e){
-    var be = document.getElementById('su-ro-body'); if(be) be.innerHTML = '<div class="bh-empty">Kon data niet laden (grant verlopen of ingetrokken?).</div>';
-  }
-}
-
 function _suInit(){
-  try { _suCheckPending(); } catch(_){}
-  try { _suCheckActiveGrant(); } catch(_){}
-  if(!window.__suTimer){
-    window.__suTimer = setInterval(function(){ try { _suCheckActiveGrant(); } catch(_){} }, 60000);
-  }
+  if(!currentUser) return;
+  _suStopSubs();
+  // (a) inkomende verzoeken voor MIJ -> consent realtime
+  try {
+    window.__suUnsubReq = onSnapshot(query(collection(db,'support_requests'), where('targetUid','==',currentUser.uid)), function(snap){
+      var pending=[]; snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; if((x.status||'pending')==='pending') pending.push(x); });
+      if(pending.length){ pending.sort(function(a,b){ return _suMs(b.requestedAt)-_suMs(a.requestedAt); }); _suShowConsent(pending[0]); }
+      else { var c=document.getElementById('su-consent'); if(c) c.remove(); }
+    }, function(){});
+  } catch(_){}
+  // (b) grants waar IK de target ben -> gebruiker-banner realtime
+  try {
+    window.__suUnsubGrantT = onSnapshot(query(collection(db,'support_grants'), where('targetUid','==',currentUser.uid)), function(snap){
+      var now=Date.now(), active=null;
+      snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; if(x.status==='active' && _suMs(x.expiresAt)>now) active=x; });
+      _suRenderUserBanner(active);
+    }, function(){});
+  } catch(_){}
+  // (c) grants waar IK admin ben -> admin-banner realtime
+  try {
+    window.__suUnsubGrantA = onSnapshot(query(collection(db,'support_grants'), where('adminUid','==',currentUser.uid)), function(snap){
+      var now=Date.now(), active=null;
+      snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; if(x.status==='active' && _suMs(x.expiresAt)>now) active=x; });
+      _suRenderAdminBanner(active);
+    }, function(){});
+  } catch(_){}
 }
 window._suInit = _suInit;
+
+/* ---- BANNERS (realtime, datum-veilig) ---- */
+function _suMountBanner(id, extraClass, html){
+  var el=document.getElementById(id);
+  if(!el){ el=document.createElement('div'); el.id=id; el.className='su-banner'+(extraClass?(' '+extraClass):''); document.body.appendChild(el); }
+  el.innerHTML=html;
+}
+function _suRenderAdminBanner(g){
+  var ex=document.getElementById('su-banner');
+  if(!g){ if(ex) ex.remove(); if(window.__suCtx){ window.__suCtx=null; document.body.classList.remove('support-mode'); var pe=document.getElementById('su-env'); if(pe) pe.remove(); } return; }
+  var html='<span class="su-banner-ic">🔒</span>' +
+    '<span class="su-banner-txt"><b>ONDERSTEUNINGSMODUS ACTIEF</b> — je kijkt mee in: '+(_bhEsc(g.targetEmail)||_bhEsc(g.targetName)||'gebruiker')+' · geldig tot '+_suTime(g.expiresAt)+' · alleen-lezen</span>' +
+    '<span class="su-banner-actions"><button type="button" class="su-banner-btn" id="su-view">Bekijk omgeving</button><button type="button" class="su-banner-btn ghost" id="su-end">Beëindig sessie</button></span>';
+  _suMountBanner('su-banner','', html);
+  var vb=document.getElementById('su-view'); if(vb) vb.onclick=function(){ _suOpenEnvPanel(g); };
+  var eb=document.getElementById('su-end'); if(eb) eb.onclick=function(){ _suEndGrant(g,'admin'); };
+}
+function _suRenderUserBanner(g){
+  var ex=document.getElementById('su-ubanner');
+  if(!g){ if(ex) ex.remove(); return; }
+  var html='<span class="su-banner-ic">🔒</span>' +
+    '<span class="su-banner-txt"><b>ONDERSTEUNING ACTIEF</b> — een beheerder kijkt tijdelijk mee in jouw account · geldig tot '+_suTime(g.expiresAt)+' · alleen-lezen</span>' +
+    '<span class="su-banner-actions"><button type="button" class="su-banner-btn ghost" id="su-uend">Ondersteuning beëindigen</button></span>';
+  _suMountBanner('su-ubanner','su-banner-user', html);
+  var eb=document.getElementById('su-uend'); if(eb) eb.onclick=function(){ _suEndGrant(g,'user'); };
+}
+
+/* ---- SESSIE BEËINDIGEN (admin OF gebruiker) ---- */
+async function _suEndGrant(g, endedBy){
+  try {
+    var now=new Date();
+    await updateDoc(doc(db,'support_grants',g._id), {
+      targetUid:g.targetUid, adminUid:g.adminUid, scope:'read_only',
+      status:'ended', expiresAt: now, endedAt: now, endedBy: endedBy
+    });
+    await _suAudit(endedBy==='admin'?'session_ended_by_admin':'session_ended_by_user', { adminUid:g.adminUid, targetUid:g.targetUid, details:'endedBy='+endedBy });
+    var pe=document.getElementById('su-env'); if(pe) pe.remove();
+    window.__suCtx=null; document.body.classList.remove('support-mode');
+    if(typeof toast==='function') toast('Ondersteuning beëindigd');
+    // de realtime onSnapshot-listeners verwijderen de banners aan beide kanten vanzelf
+  } catch(e){ if(typeof toast==='function') toast('Kon niet beëindigen', true); }
+}
+
+/* ---- READ-ONLY: volledige omgeving van de gebruiker (apart paneel) ---- */
+async function _suOpenEnvPanel(g){
+  if(document.getElementById('su-env')) return;
+  window.__suCtx = g.targetUid; document.body.classList.add('support-mode');
+  try { await _suAudit('session_opened', { adminUid:g.adminUid, targetUid:g.targetUid }); } catch(_){}
+  var who=_bhEsc(g.targetEmail)||_bhEsc(g.targetName)||'gebruiker';
+  var ov=document.createElement('div'); ov.id='su-env'; ov.className='su-env';
+  ov.innerHTML='<div class="su-env-card">' +
+    '<div class="su-env-top"><div class="su-env-title">🔒 Omgeving van '+who+' <span class="su-env-ro">alleen-lezen</span></div><button type="button" class="bh-btn bh-btn-ghost" id="su-env-close">Sluiten</button></div>' +
+    '<div class="su-env-tabs" id="su-env-tabs"></div><div class="su-env-body" id="su-env-body"><div class="bh-empty">Laden…</div></div></div>';
+  document.body.appendChild(ov);
+  document.getElementById('su-env-close').onclick=function(){ ov.remove(); window.__suCtx=null; document.body.classList.remove('support-mode'); };
+  var tabs=[['dashboard','Overzicht'],['spelers','Spelers'],['programma','Programma'],['rapporten','Rapporten'],['toernooien','Toernooien']];
+  var tabsEl=document.getElementById('su-env-tabs');
+  tabsEl.innerHTML=tabs.map(function(t,k){ return '<button type="button" class="su-env-tab'+(k===0?' active':'')+'" data-et="'+t[0]+'">'+t[1]+'</button>'; }).join('');
+  var data={ players:[], reports:[], programma:[], tournaments:[] };
+  try {
+    var r=await Promise.all([
+      getDocs(collection(db,'users',g.targetUid,'players')),
+      getDocs(collection(db,'users',g.targetUid,'match_reports')),
+      getDocs(collection(db,'users',g.targetUid,'programma')),
+      getDocs(collection(db,'users',g.targetUid,'tournaments'))
+    ]);
+    r[0].forEach(function(d){ data.players.push(d.data()||{}); });
+    r[1].forEach(function(d){ data.reports.push(d.data()||{}); });
+    r[2].forEach(function(d){ data.programma.push(d.data()||{}); });
+    r[3].forEach(function(d){ data.tournaments.push(d.data()||{}); });
+  } catch(e){ var b0=document.getElementById('su-env-body'); if(b0) b0.innerHTML='<div class="bh-empty">Kon data niet laden (grant verlopen of ingetrokken?).</div>'; return; }
+  function row(a,c){ return '<div class="su-ro-row"><b>'+a+'</b><span>'+c+'</span></div>'; }
+  function renderTab(which){
+    var b=document.getElementById('su-env-body'); if(!b) return;
+    if(which==='dashboard'){
+      b.innerHTML='<div class="su-ro-stats">' +
+        '<div class="su-ro-stat"><b>'+data.players.length+'</b><span>spelers</span></div>' +
+        '<div class="su-ro-stat"><b>'+data.reports.length+'</b><span>rapporten</span></div>' +
+        '<div class="su-ro-stat"><b>'+data.programma.length+'</b><span>programma</span></div>' +
+        '<div class="su-ro-stat"><b>'+data.tournaments.length+'</b><span>toernooien</span></div></div>';
+    } else if(which==='spelers'){
+      b.innerHTML = data.players.length ? ('<div class="su-ro-list">'+data.players.slice(0,200).map(function(pl){ var nm=pl.naam||[pl.voornaam,pl.achternaam].filter(Boolean).join(' ')||'—'; return row(_bhEsc(nm), (_bhEsc(pl.club)||'')+(pl.positie?(' · '+_bhEsc(pl.positie)):'')); }).join('')+'</div>') : '<div class="bh-empty">Geen spelers</div>';
+    } else if(which==='programma'){
+      b.innerHTML = data.programma.length ? ('<div class="su-ro-list">'+data.programma.slice(0,200).map(function(m){ return row(_bhEsc(m.thuis||m.home||'')+' - '+_bhEsc(m.uit||m.away||''), _bhEsc(m.datum||m.date||'')); }).join('')+'</div>') : '<div class="bh-empty">Geen programma</div>';
+    } else if(which==='rapporten'){
+      b.innerHTML = data.reports.length ? ('<div class="su-ro-list">'+data.reports.slice(0,200).map(function(rp){ return row(_bhEsc(rp.speler||rp.naam||rp.playerName||'rapport'), _bhEsc(rp.datum||rp.date||'')); }).join('')+'</div>') : '<div class="bh-empty">Geen rapporten</div>';
+    } else if(which==='toernooien'){
+      b.innerHTML = data.tournaments.length ? ('<div class="su-ro-list">'+data.tournaments.slice(0,100).map(function(t){ return row(_bhEsc(t.naam||t.name||'—'), _bhEsc(t.datum||t.date||'')); }).join('')+'</div>') : '<div class="bh-empty">Geen toernooien</div>';
+    }
+  }
+  tabsEl.querySelectorAll('[data-et]').forEach(function(tb){ tb.addEventListener('click', function(){ tabsEl.querySelectorAll('.su-env-tab').forEach(function(x){ x.classList.toggle('active', x===tb); }); renderTab(tb.getAttribute('data-et')); }); });
+  renderTab('dashboard');
+}
 
 
 /* ============================================================

@@ -1,6 +1,6 @@
 /* Scouting Platform — Service Worker
    Bump CACHE_VERSION whenever you ship a new index.html so users get the latest. */
-const CACHE_VERSION = 'sh-v270-input-focus';
+const CACHE_VERSION = 'sh-v272-tile-fields';
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-rt`;
 

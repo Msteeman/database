@@ -6841,13 +6841,13 @@ function renderActiveScouting(){
   // s35bb: skip rerender als gebruiker actief in een snel-notitie-form aan het typen is
   // (anders gooit elke autosave de open form weg en verdwijnt het keyboard)
   try {
+    const act = document.activeElement;
+    // 1) Open snel-notitie-form met focus -> niet herrenderen (keyboard/state behouden)
     const openForm = wrap.querySelector('.sa-snel-form[style*="display: block"], .sa-snel-form[style*="display:block"]');
-    if(openForm){
-      const act = document.activeElement;
-      if(act && openForm.contains(act)){
-        return; // bewaar de form-state
-      }
-    }
+    if(openForm && act && openForm.contains(act)){ return; }
+    // 2) Open gekoppelde-speler tile met focus -> niet herrenderen. Voorkomt remount
+    //    (collapse) + her-compose/parse die waarden naar het verkeerde veld schuift.
+    if(act && wrap.contains(act) && act.closest && act.closest('.sa-tile')){ return; }
   } catch(_){}
   if(typeof programmaCache === 'undefined' || !Array.isArray(programmaCache) || programmaCache.length === 0){
     wrap.style.display = 'none'; wrap.innerHTML = ''; return;
@@ -6938,12 +6938,20 @@ function renderActiveScouting(){
           const m = tekst.match(re);
           if(!m || !m[1]) return '';
           const v = m[1].trim();
+          // shift-junk: waarde begint met een ANDERE term-naam ("wendbaarheid: ..") -> leeg
+          if(_TILE_TERMS.some(function(tt){ return new RegExp('^' + tt + '\\s*:', 'i').test(v); })) return '';
           if(_TILE_TERMS.indexOf(v.toLowerCase().replace(/:\s*$/, '')) >= 0) return '';
           return v;
         };
+        // Per-veld opslag is leidend (sn.fields). Legacy notities zonder fields:
+        // val terug op de parse (met shift-junk filter) tot de eerste verse save.
+        const _tileFieldVal = (term) => {
+          if(existingSn && existingSn.fields && typeof existingSn.fields[term] === 'string') return existingSn.fields[term];
+          return _parseTileTerm(snelTekst, term);
+        };
         const panelHtml = `
           <div class="sa-tile-terms">
-            ${_TILE_TERMS.map(t => `<div class="sa-snel-term-row"><span class="sa-snel-term-label">${t}</span><input class="sa-tile-term-in" data-term="${t}" type="text" placeholder="${escapeHtml(_TILE_TERM_PH[t]||'')}" value="${escapeHtml(_parseTileTerm(snelTekst, t))}" /></div>`).join('')}
+            ${_TILE_TERMS.map(t => `<div class="sa-snel-term-row"><span class="sa-snel-term-label">${t}</span><input class="sa-tile-term-in" data-term="${t}" type="text" placeholder="${escapeHtml(_TILE_TERM_PH[t]||'')}" value="${escapeHtml(_tileFieldVal(t))}" /></div>`).join('')}
           </div>
           <div class="sa-tile-save-status"></div>
           <div class="sa-tile-acts-row">
@@ -7403,7 +7411,10 @@ function renderActiveScouting(){
           let saveTm;
           const saveStatus = tile.querySelector('.sa-tile-save-status');
           const _TERMS3 = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
-          const composeTileTekst = () => _TERMS3.map(t => { const el = tileTermIns.find(x => x.dataset.term === t); return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : ''); }).join('\n');
+          // Lees ALTIJD de huidige DOM-inputs (niet de closure-refs) -> geen stale/detached nodes.
+          const _liveIns = () => Array.from(tile.querySelectorAll('.sa-tile-term-in'));
+          const composeTileTekst = () => { const ins=_liveIns(); return _TERMS3.map(t => { const el = ins.find(x => x.dataset.term === t); return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : ''); }).join('\n'); };
+          const composeTileFields = () => { const ins=_liveIns(); const o={}; _TERMS3.forEach(t => { const el = ins.find(x => x.dataset.term === t); o[t] = el ? el.value.trim() : ''; }); return o; };
           const doTileSave = async () => {
             const pid3 = tile.dataset.progId;
             const spi3 = parseInt(tile.dataset.spIdx, 10);
@@ -7419,11 +7430,13 @@ function renderActiveScouting(){
             if(!Array.isArray(pr3.snelnotities)) pr3.snelnotities = [];
             let sn3 = pr3.snelnotities.find(s => s && s.spelerKey === sp3.id);
             const tekst3 = composeTileTekst();
+            const fields3 = composeTileFields();
             if(!sn3){
-              sn3 = { id: 'sn_'+(sp3.id||Date.now()), naam: sp3.naam||[sp3.voornaam,sp3.achternaam].filter(Boolean).join(' ')||'', rugnummer: sp3.rugnummer||'', positie: sp3.positie||'', tekst: tekst3, spelerKey: sp3.id, created: Date.now() };
+              sn3 = { id: 'sn_'+(sp3.id||Date.now()), naam: sp3.naam||[sp3.voornaam,sp3.achternaam].filter(Boolean).join(' ')||'', rugnummer: sp3.rugnummer||'', positie: sp3.positie||'', tekst: tekst3, fields: fields3, spelerKey: sp3.id, created: Date.now() };
               pr3.snelnotities.push(sn3);
             } else {
               sn3.tekst = tekst3;
+              sn3.fields = fields3;
             }
             pr3.modified = Date.now();
             try {

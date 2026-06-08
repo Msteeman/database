@@ -243,6 +243,20 @@
   </footer>
 </div>
 
+<!-- Browserbezoeker: toon DIRECT de landingspagina i.p.v. de "Verbinden met
+     cloud..."-loader. PWA (standalone) houdt de loader tot de auth-check klaar is. -->
+<script>
+(function(){
+  try{
+    var standalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+    if(!standalone){
+      var ld = document.getElementById('loader'); if(ld) ld.style.display = 'none';
+      var land = document.getElementById('landing-overlay'); if(land) land.style.display = 'flex';
+    }
+  }catch(_){}
+})();
+</script>
+
 <!-- =================== LOGIN OVERLAY =================== -->
 <div id="login-overlay" style="display:none;">
   <div class="login-card">

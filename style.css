@@ -12674,3 +12674,7 @@ body.sh-onb-open{ overflow:hidden; }
   #landing-overlay .lp-media.lp-float > .lp-vidcrop{ animation:none !important; }
   #landing-overlay .lp-features .lp-feat{ opacity:1; transform:none; transition:none; }
 }
+
+/* sh-v300: video-crop exact op de geverifieerde content-box (sidebar + demo-balk weg) */
+#landing-overlay .lp-vidcrop{ aspect-ratio: 1.766; }
+#landing-overlay .lp-vidcrop video{ top: -6.75%; left: -16.6%; width: 117.7%; }

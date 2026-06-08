@@ -6365,6 +6365,7 @@ function openObservatieForm(prog, sn){
   bd._obsContext = { prog, sn };
 
   // Auto-save naar obs-draft snelnotitie als dit een draft is (heropenbaar tijdens wedstrijd)
+  try { window.__obsTriggerAutosave=null; window.__obsCaptureChips=null; } catch(_){}
   const _isObsDraft = sn && sn.obs_draft === true && prog;
   if(_isObsDraft){
     const _obsAutoSave = () => {
@@ -6381,6 +6382,11 @@ function openObservatieForm(prog, sn){
         _d.positie= (document.getElementById('obs-positie')?.value||'').trim();
         _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
         _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
+        // #4: chips + categorie-notities ook live meebewaren
+        try {
+          _d.tags = Array.from(document.querySelectorAll('#obs-trefwoorden .obs-tag[data-rating]')).map(function(el){ return { label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') }; }).filter(function(t){ return t.rating; });
+          var _cnA = {}; document.querySelectorAll('#obs-trefwoorden .obs-cat-note').forEach(function(ta){ var c=ta.dataset.catNote, v=(ta.value||'').trim(); if(c&&v) _cnA[c]=v; }); _d.category_notes = _cnA;
+        } catch(_){}
         _d.modified = Date.now();
         // VEILIGHEIDSLAAG: ook auto-save gaat via backup systeem
         if(typeof _obsBackupSaveAndSync === 'function') _obsBackupSaveAndSync(prog, _d);
@@ -6395,6 +6401,15 @@ function openObservatieForm(prog, sn){
       el._obsAutoSaveHandler = () => { clearTimeout(_obsAsTm); _obsAsTm = setTimeout(_obsAutoSave, 800); };
       el.addEventListener('input', el._obsAutoSaveHandler);
     });
+    // #4: chip-klikken direct in-memory vastleggen + debounced sync
+    window.__obsCaptureChips = function(){
+      try {
+        var _dd = (prog.snelnotities||[]).find(function(s){ return s && s.id === sn.id; }); if(!_dd) return;
+        _dd.tags = Array.from(document.querySelectorAll('#obs-trefwoorden .obs-tag[data-rating]')).map(function(el){ return { label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') }; }).filter(function(t){ return t.rating; });
+        var _cnB = {}; document.querySelectorAll('#obs-trefwoorden .obs-cat-note').forEach(function(ta){ var c=ta.dataset.catNote, v=(ta.value||'').trim(); if(c&&v) _cnB[c]=v; }); _dd.category_notes = _cnB;
+      } catch(_){}
+    };
+    window.__obsTriggerAutosave = function(){ clearTimeout(_obsAsTm); _obsAsTm = setTimeout(_obsAutoSave, 500); };
   }
 
   // Knoptekst: draft = "Opslaan & sluiten", definitief = "Opslaan als observatie"
@@ -6404,34 +6419,10 @@ function openObservatieForm(prog, sn){
     _submitBtn.textContent = _isObsDraft ? 'Opslaan & sluiten' : 'Opslaan als observatie';
   }
 
-  // Bij draft-modus: voeg "Indienen" knop toe zodat observatie direct naar spelersdatabase gaat
-  const _obsActions = document.querySelector('.obs-actions');
+  // LIVE STABILISATIE (#7): GEEN "Indienen" tijdens live obs. Indienen gebeurt
+  // pas in de Wedstrijden-tab. Verwijder een eventuele eerder toegevoegde knop.
   const _existingIndien = document.getElementById('obs-indien-btn');
   if(_existingIndien) _existingIndien.remove();
-  if(_isObsDraft && _obsActions && _submitBtn){
-    const _indienBtn = document.createElement('button');
-    _indienBtn.type = 'button';
-    _indienBtn.id = 'obs-indien-btn';
-    _indienBtn.className = 'btn btn-primary';
-    _indienBtn.textContent = 'Indienen →';
-    _indienBtn.title = 'Sla op en voeg toe aan spelersdatabase';
-    _indienBtn.style.cssText = 'background:var(--green);border-color:var(--green);margin-left:6px;';
-    // Klik: tijdelijk obs_draft op false zetten zodat _obsSubmit de echte submit doet
-    _indienBtn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const _bd2 = document.getElementById('obs-backdrop');
-      const _ctx2 = _bd2 && _bd2._obsContext ? _bd2._obsContext : {};
-      const _sn2 = _ctx2.sn;
-      if(_sn2) _sn2.obs_draft = false; // tijdelijk: forceer echte submit
-      _indienBtn.disabled = true;
-      _indienBtn.textContent = 'Bezig...';
-      if(_submitBtn) { _submitBtn.disabled = true; }
-      await _obsSubmit(null);
-    });
-    // Voeg in na de submit-knop
-    _submitBtn.insertAdjacentElement('afterend', _indienBtn);
-  }
 
   // Verwijder-knop: alleen voor obs-drafts (heropenbare opgevallen spelers)
   const _obsDelBtn = document.getElementById('obs-delete-btn');
@@ -6469,6 +6460,7 @@ function openObservatieForm(prog, sn){
 window.openObservatieForm = openObservatieForm;
 
 function _obsClose(){
+  try { window.__obsTriggerAutosave=null; window.__obsCaptureChips=null; } catch(_){}
   const bd = document.getElementById('obs-backdrop');
   if(bd) bd.style.display = 'none';
   // Herstel scroll positie na body.modal-open
@@ -25344,6 +25336,7 @@ function _obsTagCycle(el){
   const cur = el.getAttribute('data-rating') || '';
   const next = order[(order.indexOf(cur) + 1) % order.length];
   if(next) el.setAttribute('data-rating', next); else el.removeAttribute('data-rating');
+  try { if(typeof window.__obsCaptureChips === 'function') window.__obsCaptureChips(); if(typeof window.__obsTriggerAutosave === 'function') window.__obsTriggerAutosave(); } catch(_){}
 }
 window._obsTagCycle = _obsTagCycle;
 

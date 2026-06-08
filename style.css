@@ -12461,3 +12461,9 @@ body.sh-onb-open{ overflow:hidden; }
 .pm-section-hdr.submitted-glow-row{ background:none !important; box-shadow:none !important; color:#86efac; text-shadow:0 0 8px rgba(34,197,94,.45); }
 .pm-card.submitted-glow .match-team-home,
 .pm-card.submitted-glow .match-team-away{ color:#dcfce7; text-shadow:0 0 9px rgba(34,197,94,.5); }
+
+/* RESET batch 3 — hele rij klikbaar (DEEL 2D), losse open-knoppen weg */
+.pm-item-row .pm-item-acts{ display:none !important; }
+.pm-row-click{ cursor:pointer; min-height:44px; transition:background .15s ease; border-radius:8px; }
+.pm-row-click:hover{ background:rgba(255,255,255,.05); }
+.pm-row-chev{ margin-left:auto; color:var(--text-3,#8b93a8); font-size:18px; line-height:1; flex-shrink:0; }

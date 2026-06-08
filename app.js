@@ -16436,7 +16436,7 @@ function renderMatches(){
             const isConcept = typeof _shPlayerIsConcept === 'function' ? _shPlayerIsConcept(p) : false;
             const statusBadge = '';
             const posLabel = typeof positionLabel === 'function' ? (positionLabel(p.positie)||p.positie||'') : (p.positie||'');
-            return `<div class="pm-item-row${isConcept?'':' submitted-glow-row'}">
+            return `<div class="pm-item-row pm-row-click${isConcept?'':' submitted-glow-row'}" data-player-id="${escapeHtml(p.id)}">
               <div class="pm-item-info" style="flex:1;">
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <span class="pm-item-name" style="cursor:pointer;" data-player-id="${escapeHtml(p.id)}">${escapeHtml(p.naam||'?')}</span>
@@ -16458,7 +16458,7 @@ function renderMatches(){
           const sn = _sns.find(s => s && s.spelerKey === sp.id);
           const prev = sn && sn.tekst ? escapeHtml(sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' \u00b7 ').trim().slice(0,60)) : '';
           const statusBadge = '';
-          return `<div class="pm-item-row${isVerwerkt?' submitted-glow-row':''}">
+          return `<div class="pm-item-row pm-row-click${isVerwerkt?' submitted-glow-row':''}" data-pm-rapport="${escapeHtml(m.progId)}" data-pm-sp-id="${escapeHtml(sp.id)}">
             <div class="pm-item-info" style="flex:1;">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 <span class="pm-item-name" style="cursor:pointer;" data-player-id="${concept ? escapeHtml(concept.id) : ''}">${escapeHtml(naam)}${sn&&sn.is_opvallend?' \u2b50':''}</span>
@@ -16479,7 +16479,7 @@ function renderMatches(){
           _dropRows += `<div class="pm-section-hdr">OPGEVALLEN SPELERS (${_unlinkedSns.length})</div>`;
           _dropRows += _unlinkedSns.map(sn => {
             const prev = sn.tekst ? escapeHtml(sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' \u00b7 ').trim().slice(0,60)) : '';
-            return `<div class="pm-item-row">
+            return `<div class="pm-item-row pm-row-click" data-pm-sn-obs="${escapeHtml(m.progId)}" data-pm-sn-id="${escapeHtml(sn.id||'')}">
               <div class="pm-item-info">
                 <span class="pm-item-name">${escapeHtml(sn.naam||'?')}${sn.is_opvallend?' \u2b50':''}</span>
                 ${prev ? `<div class="pm-item-preview">${prev}</div>` : ''}
@@ -16496,15 +16496,13 @@ function renderMatches(){
       let _wstrSec = '';
       if(_wstrVerwerkt){
         _wstrSec = `<div class="pm-section-hdr submitted-glow-row">WEDSTRIJDNOTITIE</div>
-        <div class="pm-wstr-inline" style="border-radius:7px;padding:8px 12px;">
-          <div style="display:flex;align-items:center;gap:10px;">
-            <button type="button" class="pm-item-link" data-pm-wstr-readonly="${escapeHtml(m.progId)}" style="font-size:12px;margin-left:auto;">Bekijk →</button>
-          </div>
+        <div class="pm-wstr-inline pm-row-click" data-pm-wstr-readonly="${escapeHtml(m.progId)}" style="border-radius:7px;padding:10px 12px;display:flex;align-items:center;">
+          <span style="font-size:12.5px;color:var(--text-2,#9aa3b7);">Wedstrijdnotitie bekijken</span><span class="pm-row-chev">›</span>
         </div>`;
       } else {
         _wstrSec = `<div class="pm-section-hdr">WEDSTRIJDNOTITIE</div>
-        <div class="pm-wstr-inline">
-          <button type="button" class="wstr-edit-note-action primary" data-pm-wstr-rapport="${escapeHtml(m.progId)}" style="margin:0;">→ Wedstrijdnotitie</button>
+        <div class="pm-wstr-inline pm-row-click" data-pm-wstr-rapport="${escapeHtml(m.progId)}" style="border-radius:7px;padding:10px 12px;display:flex;align-items:center;">
+          <span style="font-size:12.5px;color:var(--text-2,#9aa3b7);">Concept openen</span><span class="pm-row-chev">›</span>
         </div>`;
       }
       _dropRows = _wstrSec + _dropRows;
@@ -16949,7 +16947,7 @@ function renderMatches(){
         return;
       }
       // s93: profiel-knop (verwerkte spelers) + klikbare spelernaam
-      const btnLink = e.target.closest('.pm-item-link[data-player-id], .pm-item-name[data-player-id]');
+      const btnLink = e.target.closest('.pm-item-link[data-player-id], .pm-item-name[data-player-id], .pm-row-click[data-player-id]');
       if(btnLink){
         e.stopPropagation();
         const pid = btnLink.dataset.playerId;

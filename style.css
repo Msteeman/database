@@ -12233,3 +12233,45 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 .bh-verify{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; justify-content:space-between; background:rgba(251,191,36,.10); border:1px solid rgba(251,191,36,.35); border-radius:10px; padding:12px 14px; margin-bottom:14px; }
 .bh-verify-txt{ font-size:13.5px; color:#fcd34d; line-height:1.5; flex:1 1 240px; }
 .bh-verify .bh-btn{ flex:0 0 auto; }
+
+
+/* ============================================================
+   FASE 4 — Support mode (banner + read-only paneel)
+   ============================================================ */
+.bh-btn-amber{ background:#f59e0b; color:#111827; border-color:#f59e0b; font-weight:700; }
+.su-banner{ position:fixed; left:0; right:0; bottom:0; z-index:9000; display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:center; background:#7c2d12; color:#ffedd5; border-top:2px solid #f59e0b; padding:10px 16px; padding-bottom:calc(10px + env(safe-area-inset-bottom,0px)); font-size:13.5px; box-shadow:0 -4px 18px rgba(0,0,0,.4); }
+.su-banner-ic{ font-size:16px; }
+.su-banner-txt{ flex:1 1 auto; min-width:0; }
+.su-banner-actions{ display:flex; gap:8px; flex:0 0 auto; }
+.su-banner-btn{ background:#f59e0b; color:#111827; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; min-height:40px; }
+.su-banner-btn.ghost{ background:transparent; color:#ffedd5; border:1px solid #f59e0b; }
+.su-ro-note{ background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.35); color:#fcd34d; border-radius:8px; padding:8px 12px; font-size:12.5px; margin-bottom:12px; }
+.su-ro-stats{ display:flex; gap:10px; margin-bottom:14px; }
+.su-ro-stat{ flex:1; background:#0e1626; border:1px solid #1f2937; border-radius:8px; padding:10px; text-align:center; }
+.su-ro-stat b{ display:block; font-size:20px; color:#e8edf5; }
+.su-ro-stat span{ font-size:11.5px; color:#8b97ad; }
+.su-ro-h{ font-weight:700; color:#9aa8bd; font-size:13px; margin:12px 0 6px; }
+.su-ro-list{ display:flex; flex-direction:column; gap:6px; }
+.su-ro-row{ display:flex; justify-content:space-between; gap:10px; background:#0b1220; border:1px solid #1f2937; border-radius:8px; padding:8px 10px; font-size:13px; }
+.su-ro-row b{ color:#e8edf5; }
+.su-ro-row span{ color:#8b97ad; }
+.su-ro-more{ color:#8b97ad; font-size:12px; padding:6px 2px; }
+
+
+/* ============================================================
+   FASE 5 — Role-based onboarding (fullscreen)
+   ============================================================ */
+.sh-onb{ position:fixed; inset:0; z-index:9500; background:radial-gradient(1000px 500px at 50% -10%, #11203a 0%, #0a1019 60%), #0a1019; display:flex; align-items:center; justify-content:center; padding:20px; padding-top:calc(20px + env(safe-area-inset-top,0px)); padding-bottom:calc(20px + env(safe-area-inset-bottom,0px)); overflow-y:auto; }
+.sh-onb-card{ width:100%; max-width:440px; background:#0b1220; border:1px solid #1f2937; border-radius:16px; padding:26px 22px 20px; box-shadow:0 16px 60px rgba(0,0,0,.5); }
+.sh-onb-prog{ font-size:12px; color:#8b97ad; font-weight:700; letter-spacing:.5px; margin-bottom:14px; text-align:center; }
+.sh-onb-body{ min-height:220px; }
+.sh-onb-body h2{ margin:0 0 8px; font-size:21px; color:#e8edf5; }
+.sh-onb-body p{ margin:0 0 12px; font-size:14.5px; line-height:1.6; color:#9aa8bd; }
+.sh-onb-ic{ font-size:44px; line-height:1; margin-bottom:10px; }
+.sh-onb-role{ margin-top:14px; font-size:14px; color:#9aa8bd; }
+.sh-onb-actions{ display:flex; flex-direction:column; gap:10px; margin:10px 0 6px; }
+.sh-onb-actions .bh-btn{ width:100%; }
+.sh-onb-skip-note{ font-size:12px; color:#8b97ad; text-align:center; margin-top:4px; }
+.sh-onb-nav{ display:flex; gap:10px; margin-top:18px; }
+.sh-onb-nav .bh-btn{ flex:1; }
+body.sh-onb-open{ overflow:hidden; }

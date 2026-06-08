@@ -24938,6 +24938,7 @@ async function loadUserRole(){
     const role = snap.exists() ? (snap.data().role || 'scout') : 'scout';
     window._shUserRole = role;
     try { document.body.classList.toggle('role-admin', (role==='admin') || (currentUser && currentUser.email && ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1)); } catch(_){}
+    try { if(snap.exists() && snap.data().onboardingCompleted === false && typeof _obStart==='function'){ _obStart(role, snap.data()); } } catch(_){}
     // Coordinator-features tonen/verbergen
     document.querySelectorAll('[data-role-min="coordinator"]').forEach(el => {
       el.style.display = (role === 'coordinator' || role === 'admin') ? '' : 'none';
@@ -24978,6 +24979,7 @@ onAuthStateChanged(auth, async (user) => {
       showApp();
       go('dashboard');
       loadUserRole();
+      try { _suInit(); } catch(_){}
       _shApplyAccountIdentity(user);   // PROBLEEM 2: naam/e-mail per account tonen
     } catch(err){
       console.error('Bootstrap fout:', err);
@@ -28041,13 +28043,14 @@ function _bhRenderUsers(){
       '<div class="bh-actions">' +
         '<button class="bh-btn" data-bh-userdetail="'+id+'">Details</button>' +
         '<button class="bh-btn bh-btn-blue" data-bh-userrole="'+id+'">Rol wijzigen</button>' +
-        '<button class="bh-btn bh-btn-ghost" disabled title="Komt in Fase 3 (server-side)">Deactiveren</button>' +
-        '<button class="bh-btn bh-btn-ghost" disabled title="Komt in Fase 3 (server-side)">Welkomstmail</button>' +
+        ((u._id !== ((typeof currentUser!=='undefined'&&currentUser)?currentUser.uid:'')) ? '<button class="bh-btn bh-btn-amber" data-bh-support="'+id+'">Supporttoegang</button>' : '') +
+        '<button class="bh-btn bh-btn-ghost" disabled title="Komt later (server-side)">Deactiveren</button>' +
       '</div>' +
     '</div>';
   }).join('');
   list.querySelectorAll('[data-bh-userdetail]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserDetail(b.getAttribute('data-bh-userdetail')); }); });
   list.querySelectorAll('[data-bh-userrole]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserRole(b.getAttribute('data-bh-userrole')); }); });
+  list.querySelectorAll('[data-bh-support]').forEach(function(b){ b.addEventListener('click', function(){ _suRequestAccess(b.getAttribute('data-bh-support')); }); });
 }
 
 function _bhUserDetail(uid){
@@ -28089,3 +28092,290 @@ function _bhUserRole(uid){
     });
   });
 }
+
+
+/* ============================================================
+   FASE 4 — Delegated support (read-only, tijdelijk, auditbaar).
+   Admin vraagt -> gebruiker geeft in-app toestemming -> tijdelijke
+   read-only grant. Support mode = banner + apart read-only paneel.
+   Geen impersonatie; admin blijft admin. Alles additief.
+   ============================================================ */
+function _suGrantId(adminUid, targetUid){ return adminUid + '_' + targetUid; }
+function _suMs(v){ try { if(!v) return 0; if(typeof v.toMillis==='function') return v.toMillis(); if(v.seconds) return v.seconds*1000; var d=new Date(v); return isNaN(d.getTime())?0:d.getTime(); } catch(_){ return 0; } }
+function _suTime(d){ try { return new Date(d).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}); } catch(_){ return ''; } }
+async function _suAudit(action, data){
+  try {
+    await addDoc(collection(db,'support_audit'), {
+      adminUid: (data && data.adminUid) || '',
+      targetUid: (data && data.targetUid) || '',
+      action: action,
+      timestamp: new Date(),
+      details: (data && data.details) || ''
+    });
+  } catch(_){}
+}
+
+/* ---- ADMIN: supporttoegang aanvragen ---- */
+function _suRequestAccess(uid){
+  if(!_shIsAdmin()) return;
+  var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;
+  if(uid === (currentUser && currentUser.uid)){ if(typeof toast==='function') toast('Niet op je eigen account', true); return; }
+  var who = _bhEsc(u.displayName) || _bhEsc(u.email) || '';
+  var body =
+    '<p style="margin:0 0 10px;color:#9aa8bd;font-size:13px;">Je vraagt <b>tijdelijke, read-only</b> toegang tot het account van <b>'+who+'</b>. De gebruiker moet dit eerst toestaan; de toegang verloopt automatisch.</p>' +
+    '<label class="sh-req-l" for="su-reason">Reden *</label>' +
+    '<textarea id="su-reason" class="sh-req-i" rows="3" placeholder="Bijv. bug onderzoeken in rapportoverzicht"></textarea>' +
+    '<label class="sh-req-l" for="su-duration">Duur</label>' +
+    '<select id="su-duration" class="bh-select" style="width:100%;"><option value="30">30 minuten</option><option value="60">60 minuten</option></select>';
+  _bhModal('Supporttoegang vragen', body, {
+    confirmLabel: 'Verstuur verzoek', confirmClass: 'bh-btn-blue',
+    onConfirm: async function(){
+      var reason = (document.getElementById('su-reason') && document.getElementById('su-reason').value || '').trim();
+      var minutes = parseInt((document.getElementById('su-duration') && document.getElementById('su-duration').value) || '30', 10);
+      if(minutes!==30 && minutes!==60) minutes = 30;
+      if(!reason){ if(typeof toast==='function') toast('Geef een reden op', true); throw new Error('no-reason'); }
+      await addDoc(collection(db,'support_requests'), {
+        targetUid: uid, requestedByUid: currentUser.uid, reason: reason,
+        durationMinutes: minutes, status: 'pending',
+        requestedAt: new Date(), approvedAt: null, rejectedAt: null, expiresAt: null
+      });
+      await _suAudit('request_created', { adminUid: currentUser.uid, targetUid: uid, details: 'min='+minutes });
+      try {
+        var idToken = await auth.currentUser.getIdToken();
+        var base = (typeof TOERNOOI_API_BASE!=='undefined' && TOERNOOI_API_BASE) ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
+        await fetch(base + '/api/support-notify', {
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ idToken: idToken, targetEmail: u.email, targetName: u.displayName||'', reason: reason, durationMinutes: minutes })
+        });
+      } catch(_){}
+      if(typeof toast==='function') toast('Supportverzoek verstuurd ✅');
+    }
+  });
+}
+window._suRequestAccess = _suRequestAccess;
+
+/* ---- GEBRUIKER: openstaand verzoek + in-app consent ---- */
+async function _suCheckPending(){
+  try {
+    if(!currentUser) return;
+    var snap = await getDocs(query(collection(db,'support_requests'), where('targetUid','==',currentUser.uid)));
+    var reqs = [];
+    snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; if((x.status||'pending')==='pending') reqs.push(x); });
+    if(!reqs.length) return;
+    reqs.sort(function(a,b){ return _suMs(b.requestedAt) - _suMs(a.requestedAt); });
+    _suShowConsent(reqs[0]);
+  } catch(_){}
+}
+function _suShowConsent(req){
+  if(document.getElementById('su-consent')) return;
+  var minutes = req.durationMinutes || 30;
+  var body =
+    '<p style="margin:0 0 12px;color:#cdd6e4;font-size:14px;line-height:1.5;">Een beheerder van ScoutingHub vraagt <b>tijdelijke, alleen-lezen</b> toegang tot jouw account om je te helpen of een probleem te onderzoeken.</p>' +
+    '<div class="bh-card-row"><span>Reden</span><b>'+(_bhEsc(req.reason)||'—')+'</b></div>' +
+    '<div class="bh-card-row"><span>Duur</span><b>'+minutes+' minuten</b></div>' +
+    '<div class="bh-card-row"><span>Toegang</span><b>Alleen lezen</b></div>' +
+    '<div class="bh-modal-note">Zonder jouw toestemming krijgt niemand toegang. Je kunt de toegang later intrekken; ze verloopt sowieso automatisch.</div>' +
+    '<div class="bh-modal-actions"><button type="button" class="bh-btn bh-btn-ghost" id="su-deny">Weigeren</button><button type="button" class="bh-btn bh-btn-green" id="su-allow">Toestaan</button></div>';
+  var bd = document.createElement('div');
+  bd.id='su-consent'; bd.className='sh-photo-menu-bd';
+  bd.innerHTML='<div class="sh-photo-menu bh-modal-card" role="dialog" aria-modal="true" aria-label="Supportverzoek"><div class="sh-pm-title">Verzoek om ondersteuningstoegang</div><div class="bh-modal-body">'+body+'</div></div>';
+  document.body.appendChild(bd);
+  function close(){ try { bd.remove(); } catch(_){} }
+  var allow = document.getElementById('su-allow');
+  var deny = document.getElementById('su-deny');
+  if(allow) allow.addEventListener('click', async function(){
+    allow.disabled=true; if(deny) deny.disabled=true;
+    try {
+      var expires = new Date(Date.now() + minutes*60000);
+      var gid = _suGrantId(req.requestedByUid, currentUser.uid);
+      await setDoc(doc(db,'support_grants',gid), {
+        targetUid: currentUser.uid, targetEmail: (currentUser.email||''), targetName: (currentUser.displayName||''),
+        adminUid: req.requestedByUid, status: 'active', scope: 'read_only',
+        approvedAt: new Date(), expiresAt: expires
+      });
+      await updateDoc(doc(db,'support_requests',req._id), { status:'approved', approvedAt: new Date(), expiresAt: expires });
+      await _suAudit('request_approved', { adminUid: req.requestedByUid, targetUid: currentUser.uid });
+      await _suAudit('grant_started', { adminUid: req.requestedByUid, targetUid: currentUser.uid, details:'min='+minutes });
+      if(typeof toast==='function') toast('Toegang verleend tot '+_suTime(expires));
+      close();
+    } catch(e){
+      if(typeof toast==='function') toast('Kon toestemming niet opslaan', true);
+      allow.disabled=false; if(deny) deny.disabled=false;
+    }
+  });
+  if(deny) deny.addEventListener('click', async function(){
+    deny.disabled=true; if(allow) allow.disabled=true;
+    try {
+      await updateDoc(doc(db,'support_requests',req._id), { status:'rejected', rejectedAt: new Date() });
+      await _suAudit('request_rejected', { adminUid: req.requestedByUid, targetUid: currentUser.uid });
+      if(typeof toast==='function') toast('Verzoek geweigerd');
+      close();
+    } catch(e){ if(typeof toast==='function') toast('Kon niet opslaan', true); deny.disabled=false; if(allow) allow.disabled=false; }
+  });
+}
+
+/* ---- ADMIN: support-mode banner + read-only paneel ---- */
+async function _suCheckActiveGrant(){
+  try {
+    if(!currentUser){ _suRenderBanner([]); return; }
+    var snap = await getDocs(query(collection(db,'support_grants'), where('adminUid','==',currentUser.uid)));
+    var now = Date.now(); var active = [];
+    snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; if(x.status==='active' && _suMs(x.expiresAt) > now) active.push(x); });
+    _suRenderBanner(active);
+  } catch(_){ }
+}
+function _suRenderBanner(active){
+  var existing = document.getElementById('su-banner');
+  if(!active || !active.length){ if(existing) existing.remove(); return; }
+  var g = active[0];
+  var html = '<span class="su-banner-ic">🔒</span>' +
+    '<span class="su-banner-txt"><b>Ondersteuningsmodus actief</b> · '+(_bhEsc(g.targetEmail)||_bhEsc(g.targetName)||'gebruiker')+' · geldig tot '+_suTime(g.expiresAt)+' · alleen-lezen</span>' +
+    '<span class="su-banner-actions"><button type="button" class="su-banner-btn" id="su-view">Bekijk data</button><button type="button" class="su-banner-btn ghost" id="su-end">Beëindig</button></span>';
+  if(existing){ existing.innerHTML = html; }
+  else {
+    var bn = document.createElement('div'); bn.id='su-banner'; bn.className='su-banner'; bn.innerHTML = html;
+    document.body.appendChild(bn);
+  }
+  var vb=document.getElementById('su-view'); if(vb) vb.onclick=function(){ _suOpenDataPanel(g); };
+  var eb=document.getElementById('su-end'); if(eb) eb.onclick=function(){ _suEndGrant(g); };
+}
+async function _suEndGrant(g){
+  try {
+    await updateDoc(doc(db,'support_grants',g._id), {
+      targetUid: g.targetUid, adminUid: g.adminUid, scope: 'read_only', status: 'expired', endedAt: new Date()
+    });
+    await _suAudit('grant_ended', { adminUid: currentUser.uid, targetUid: g.targetUid });
+    if(typeof toast==='function') toast('Ondersteuningsmodus beëindigd');
+    _suCheckActiveGrant();
+  } catch(e){ if(typeof toast==='function') toast('Kon niet beëindigen', true); }
+}
+async function _suOpenDataPanel(g){
+  await _suAudit('session_opened', { adminUid: currentUser.uid, targetUid: g.targetUid });
+  var who = _bhEsc(g.targetEmail) || _bhEsc(g.targetName) || 'gebruiker';
+  var body = '<div class="su-ro-note">🔒 Alleen-lezen. Je kunt hier niets wijzigen, verwijderen of indienen.</div><div id="su-ro-body"><div class="bh-empty">Laden…</div></div>';
+  var m = _bhModal('Support — '+who, body, {});
+  try {
+    var pSnap = await getDocs(collection(db,'users',g.targetUid,'players'));
+    var rSnap = await getDocs(collection(db,'users',g.targetUid,'match_reports'));
+    var tSnap = await getDocs(collection(db,'users',g.targetUid,'tournaments'));
+    var players=[]; pSnap.forEach(function(d){ var x=d.data()||{}; players.push(x); });
+    var tournaments=[]; tSnap.forEach(function(d){ var x=d.data()||{}; tournaments.push(x); });
+    var html =
+      '<div class="su-ro-stats">' +
+        '<div class="su-ro-stat"><b>'+players.length+'</b><span>spelers</span></div>' +
+        '<div class="su-ro-stat"><b>'+rSnap.size+'</b><span>wedstrijdrapporten</span></div>' +
+        '<div class="su-ro-stat"><b>'+tournaments.length+'</b><span>toernooien</span></div>' +
+      '</div>';
+    html += '<div class="su-ro-h">Spelers</div>';
+    if(players.length){
+      html += '<div class="su-ro-list">' + players.slice(0,50).map(function(pl){
+        var nm = pl.naam || [pl.voornaam,pl.achternaam].filter(Boolean).join(' ') || '—';
+        return '<div class="su-ro-row"><b>'+_bhEsc(nm)+'</b><span>'+(_bhEsc(pl.club)||'')+(pl.positie?(' · '+_bhEsc(pl.positie)):'')+'</span></div>';
+      }).join('') + '</div>' + (players.length>50?('<div class="su-ro-more">+ '+(players.length-50)+' meer</div>'):'');
+    } else { html += '<div class="bh-empty">Geen spelers</div>'; }
+    if(tournaments.length){
+      html += '<div class="su-ro-h">Toernooien</div><div class="su-ro-list">' + tournaments.slice(0,30).map(function(t){
+        return '<div class="su-ro-row"><b>'+(_bhEsc(t.naam)||_bhEsc(t.name)||'—')+'</b><span>'+(_bhEsc(t.datum)||_bhEsc(t.date)||'')+'</span></div>';
+      }).join('') + '</div>';
+    }
+    var bodyEl = document.getElementById('su-ro-body'); if(bodyEl) bodyEl.innerHTML = html;
+  } catch(e){
+    var be = document.getElementById('su-ro-body'); if(be) be.innerHTML = '<div class="bh-empty">Kon data niet laden (grant verlopen of ingetrokken?).</div>';
+  }
+}
+
+function _suInit(){
+  try { _suCheckPending(); } catch(_){}
+  try { _suCheckActiveGrant(); } catch(_){}
+  if(!window.__suTimer){
+    window.__suTimer = setInterval(function(){ try { _suCheckActiveGrant(); } catch(_){} }, 60000);
+  }
+}
+window._suInit = _suInit;
+
+
+/* ============================================================
+   FASE 5 — Role-based onboarding (fullscreen, PWA-first).
+   Triggert wanneer users/{uid}.onboardingCompleted === false
+   (nieuwe, via admin goedgekeurde accounts). 5 stappen, rol-aware.
+   Schrijft alleen onboardingCompleted + onboardingStep (+ optioneel
+   displayName/club). Geen bestaande velden/flows aangeraakt.
+   ============================================================ */
+function _obComplete(uid, state, nav){
+  try {
+    var payload = { onboardingCompleted: true, onboardingStep: 5 };
+    if(state){ if(state.displayName) payload.displayName = state.displayName; if(state.club) payload.club = state.club; }
+    updateDoc(doc(db,'users',uid), payload).catch(function(){});
+  } catch(_){}
+  var ov = document.getElementById('sh-onb'); if(ov){ try { ov.remove(); } catch(_){} }
+  document.body.classList.remove('sh-onb-open');
+  if(nav && typeof go==='function'){ try { go(nav); } catch(_){} }
+}
+function _obStart(role, data){
+  if(document.getElementById('sh-onb')) return;
+  var uid = (currentUser && currentUser.uid) || (typeof auth!=='undefined' && auth.currentUser && auth.currentUser.uid) || '';
+  if(!uid) return;
+  try { if(typeof _shSetOnbDone==='function') _shSetOnbDone(uid); } catch(_){}     // onderdruk losse welkomst-wizard
+  try { var wz=document.getElementById('sh-wiz-backdrop'); if(wz) wz.remove(); } catch(_){}
+  var isCoord = (role === 'coordinator');
+  var roleLabel = isCoord ? 'Coördinator' : 'Scout';
+  var state = { displayName: (data && data.displayName) || (currentUser && currentUser.displayName) || '', club: (data && data.club) || '', role: role };
+  var i = 0; var TOTAL = 5;
+
+  var ov = document.createElement('div');
+  ov.id = 'sh-onb'; ov.className = 'sh-onb';
+  ov.innerHTML = '<div class="sh-onb-card" role="dialog" aria-modal="true" aria-label="Onboarding">' +
+    '<div class="sh-onb-prog" id="ob-prog"></div>' +
+    '<div class="sh-onb-body" id="ob-body"></div>' +
+    '<div class="sh-onb-nav"><button type="button" class="bh-btn bh-btn-ghost" id="ob-back">← Vorige</button><button type="button" class="bh-btn bh-btn-blue" id="ob-next">Start</button></div>' +
+  '</div>';
+  document.body.appendChild(ov);
+  document.body.classList.add('sh-onb-open');
+
+  var body = document.getElementById('ob-body');
+  var prog = document.getElementById('ob-prog');
+  var back = document.getElementById('ob-back');
+  var next = document.getElementById('ob-next');
+
+  function stepHtml(n){
+    if(n===0) return '<div class="sh-onb-ic">👋</div><h2>Welkom bij ScoutingHub</h2><p>We zetten je in een paar korte stappen op weg. Het duurt minder dan een minuut.</p>';
+    if(n===1) return '<h2>Je profiel</h2>' +
+      '<label class="sh-req-l" for="ob-name">Naam *</label>' +
+      '<input type="text" id="ob-name" class="sh-req-i" value="' + _bhEsc(state.displayName) + '" placeholder="Je naam">' +
+      '<label class="sh-req-l" for="ob-club">Club / organisatie</label>' +
+      '<input type="text" id="ob-club" class="sh-req-i" value="' + _bhEsc(state.club) + '" placeholder="Optioneel">' +
+      '<div class="sh-onb-role">Jouw rol: <span class="bh-badge ' + (isCoord?'bh-b-blue':'bh-b-grey') + '">' + roleLabel + '</span></div>';
+    if(n===2) return isCoord
+      ? '<div class="sh-onb-ic">📋</div><h2>Jouw team overzien</h2><p>Als coördinator zie je de rapporten van de scouts in je team en kun je wedstrijden voor hen inplannen — zo houd je grip op alle observaties.</p>'
+      : '<div class="sh-onb-ic">⚽</div><h2>Scouten met chips</h2><p>Beoordeel spelers langs de lijn met één tik: 🟢 goed · 🟠 normaal · 🔴 matig. Promoot een observatie later tot een volledig rapport.</p>';
+    if(n===3) return '<div class="sh-onb-ic">🚀</div><h2>Je eerste actie</h2><p>Begin meteen — je vindt alles later terug in het menu.</p>' +
+      '<div class="sh-onb-actions">' +
+        (isCoord
+          ? '<button type="button" class="bh-btn bh-btn-blue" data-ob-go="programma">Bekijk programma</button><button type="button" class="bh-btn" data-ob-go="database">Bekijk spelers</button>'
+          : '<button type="button" class="bh-btn bh-btn-blue" data-ob-go="database">Voeg eerste speler toe</button><button type="button" class="bh-btn" data-ob-go="programma">Bekijk programma</button>') +
+      '</div><div class="sh-onb-skip-note">Of klik op Volgende om af te ronden.</div>';
+    return '<div class="sh-onb-ic">🎉</div><h2>Je bent klaar!</h2><p>Veel succes met scouten. Deze uitleg vind je later terug in de Handleiding.</p>';
+  }
+  function saveProfile(){
+    var nEl = document.getElementById('ob-name'); var cEl = document.getElementById('ob-club');
+    if(nEl) state.displayName = (nEl.value || '').trim();
+    if(cEl) state.club = (cEl.value || '').trim();
+  }
+  function render(){
+    body.innerHTML = stepHtml(i);
+    prog.innerHTML = 'Stap ' + (i+1) + ' / ' + TOTAL;
+    back.style.visibility = (i===0) ? 'hidden' : '';
+    next.textContent = (i===TOTAL-1) ? 'Naar dashboard' : ((i===0) ? 'Start' : 'Volgende →');
+    body.querySelectorAll('[data-ob-go]').forEach(function(b){
+      b.addEventListener('click', function(){ saveProfile(); _obComplete(uid, state, b.getAttribute('data-ob-go')); });
+    });
+  }
+  back.addEventListener('click', function(){ if(i>0){ if(i===1) saveProfile(); i--; render(); } });
+  next.addEventListener('click', function(){
+    if(i===1){ saveProfile(); if(!state.displayName){ if(typeof toast==='function') toast('Vul je naam in', true); return; } }
+    if(i < TOTAL-1){ i++; render(); }
+    else { _obComplete(uid, state, 'dashboard'); }
+  });
+  render();
+}
+window._obStart = _obStart;

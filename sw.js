@@ -1,6 +1,6 @@
 /* Scouting Platform — Service Worker
    Bump CACHE_VERSION whenever you ship a new index.html so users get the latest. */
-const CACHE_VERSION = 'sh-v275-plf-chips-per-aspect';
+const CACHE_VERSION = 'sh-v276-plf-meta-full';
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-rt`;
 

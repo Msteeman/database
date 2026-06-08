@@ -6525,6 +6525,7 @@ function _plfSeedState(matchId, playerId, sn){
   return seed;
 }
 
+function _plfAge(d){ try { const b=new Date(d); if(isNaN(b.getTime())) return ''; const n=new Date(); let a=n.getFullYear()-b.getFullYear(); const m=n.getMonth()-b.getMonth(); if(m<0||(m===0&&n.getDate()<b.getDate())) a--; return (a>0&&a<120)?String(a):''; } catch(_){ return ''; } }
 function openPlayerLiveForm(prog, sp){
   const bd = document.getElementById('plf-backdrop'); if(!bd || !prog || !sp) return;
   const matchId = prog.id, playerId = sp.id;
@@ -6539,11 +6540,17 @@ function openPlayerLiveForm(prog, sp){
   // Bekende gekoppelde-speler data (sp + volledig record uit playersCache).
   const _plfFull = (typeof playersCache !== 'undefined' && Array.isArray(playersCache)) ? playersCache.find(p => p && p.id === sp.id) : null;
   const _g = (k) => (sp[k]!=null && sp[k]!=='') ? sp[k] : ((_plfFull && _plfFull[k]!=null && _plfFull[k]!=='') ? _plfFull[k] : '');
+  const _club = _g('club') || prog.thuis || '';
+  const _team = _g('elftal') || _g('team') || prog.thuis_elftal || prog.uit_elftal || prog.leeftijd || '';
+  const _pos = _g('positie'); const _rug = _g('rugnummer'); const _geb = _g('geboorte');
+  const _leef = _g('leeftijd') || (_geb ? _plfAge(_geb) : '');
   const _metaParts = [];
-  if(_g('rugnummer')) _metaParts.push('#'+_g('rugnummer'));
-  if(_g('positie')) _metaParts.push(_g('positie'));
-  if(_g('club') || prog.thuis) _metaParts.push(_g('club') || prog.thuis);
-  if(_g('geboorte')) _metaParts.push('geb. '+_g('geboorte')); else if(_g('leeftijd')) _metaParts.push(_g('leeftijd')+' jr');
+  if(_club) _metaParts.push('Club: '+_club);
+  if(_team) _metaParts.push('Team: '+_team);
+  if(_pos) _metaParts.push('Positie: '+_pos);
+  if(_rug) _metaParts.push('Rug #'+_rug);
+  if(_leef) _metaParts.push(_leef+' jr');
+  if(_geb) _metaParts.push('geb. '+_geb);
   const ctxEl = document.getElementById('plf-ctx');
   if(ctxEl) ctxEl.innerHTML =
     '<div class="plf-ctx-player">Speler: <b>'+escapeHtml(naam)+'</b></div>'+

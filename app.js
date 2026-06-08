@@ -16525,7 +16525,7 @@ function renderMatches(){
           + `</div>`
         : '';
       html += `
-        <div class="match-card pm-card" data-prog-match-id="${escapeHtml(m.progId)}" data-match-key="${escapeHtml(_shKeyP)}">
+        <div class="match-card pm-card${_allVerwerkt?' submitted-glow':''}" data-prog-match-id="${escapeHtml(m.progId)}" data-match-key="${escapeHtml(_shKeyP)}">
           <div class="match-date pm-toggle">
             <div class="match-date-day">${d.day}</div>
             <div class="match-date-month">${d.month}</div>

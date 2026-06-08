@@ -28134,11 +28134,20 @@ function _suRequestAccess(uid){
       var minutes = parseInt((document.getElementById('su-duration') && document.getElementById('su-duration').value) || '30', 10);
       if(minutes!==30 && minutes!==60) minutes = 30;
       if(!reason){ if(typeof toast==='function') toast('Geef een reden op', true); throw new Error('no-reason'); }
-      await addDoc(collection(db,'support_requests'), {
+      var payload = {
         targetUid: uid, requestedByUid: currentUser.uid, reason: reason,
         durationMinutes: minutes, status: 'pending',
         requestedAt: new Date(), approvedAt: null, rejectedAt: null, expiresAt: null
-      });
+      };
+      // TIJDELIJKE DEBUG-LOGS (Fase 4): payload + exacte fout in de console.
+      try { console.log('[support] write support_requests; durationMinutes=', minutes, 'type=', typeof minutes, '; myUid=', currentUser.uid, '; role=', window._shUserRole, '; payload=', payload); } catch(_){}
+      try {
+        await addDoc(collection(db,'support_requests'), payload);
+      } catch(err){
+        try { console.error('[support] create FAILED — code=', (err && err.code), 'message=', (err && err.message), err); } catch(_){}
+        if(typeof toast==='function') toast('Verzoek mislukt: ' + ((err && err.message) ? err.message : 'onbekend'), true);
+        throw err;
+      }
       await _suAudit('request_created', { adminUid: currentUser.uid, targetUid: uid, details: 'min='+minutes });
       try {
         var idToken = await auth.currentUser.getIdToken();

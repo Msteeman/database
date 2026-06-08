@@ -25531,6 +25531,23 @@ async function loadUserRole(){
 }
 window.loadUserRole = loadUserRole;
 
+// LOGIN-GATE: gedeactiveerde (isActive:false) of verwijderde (status:'deleted')
+// accounts mogen na login NIET verder de app in. Admins blijven altijd toegelaten.
+let _shGatedMsg = null;
+async function _shAccountGate(uid, email){
+  try {
+    const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const _db = getFirestore();
+    const snap = await getDoc(doc(_db, 'users', uid));
+    if(!snap.exists()) return { blocked: false };   // geen user-doc → bestaand gedrag behouden
+    const d = snap.data() || {};
+    const adminEmails = ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'];
+    const isAdminAcc = (d.role === 'admin') || (email && adminEmails.indexOf(String(email).toLowerCase()) !== -1);
+    if(isAdminAcc) return { blocked: false };        // admin-accounts nooit blokkeren
+    return { blocked: (d.isActive === false) || (d.status === 'deleted') };
+  } catch(_){ return { blocked: false }; }           // bij twijfel niet blokkeren
+}
+
 onAuthStateChanged(auth, async (user) => {
   // === ACCOUNT-ISOLATIE ===
   // Wisselt de ingelogde UID t.o.v. de vorige sessie? Dan kan in-memory data,
@@ -25552,6 +25569,16 @@ onAuthStateChanged(auth, async (user) => {
 
   if(user){
     currentUser = user;
+    // LOGIN-GATE: blokkeer gedeactiveerde/verwijderde accounts VÓÓR er data laadt.
+    try {
+      const _gate = await _shAccountGate(user.uid, user.email);
+      if(_gate && _gate.blocked){
+        _shGatedMsg = 'Dit account is gedeactiveerd of verwijderd. Neem contact op met ScoutingHub via contact@scoutinghub.nl.';
+        currentUser = null;
+        try { await signOut(auth); } catch(_){}
+        return;   // de null-branch toont het loginscherm met de melding
+      }
+    } catch(_){}
     try {
       await initApp();
       subscribeData();
@@ -25569,7 +25596,17 @@ onAuthStateChanged(auth, async (user) => {
     }
   } else {
     currentUser = null;
-    showLogin();
+    if(_shGatedMsg){
+      // Geweigerd account: toon het loginformulier (niet de landingspagina) + melding.
+      var _g = _shGatedMsg; _shGatedMsg = null;
+      try { var _l = document.getElementById('loader'); if(_l) _l.style.display='none'; } catch(_){}
+      try { var _a = document.getElementById('app'); if(_a) _a.style.display='none'; } catch(_){}
+      try { var _ldo = document.getElementById('landing-overlay'); if(_ldo) _ldo.style.display='none'; } catch(_){}
+      try { var _lo = document.getElementById('login-overlay'); if(_lo) _lo.style.display='flex'; } catch(_){}
+      try { if(typeof _shLoginMsg==='function') _shLoginMsg(_g, 'error'); } catch(_){}
+    } else {
+      showLogin();
+    }
   }
 });
 

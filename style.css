@@ -12402,3 +12402,36 @@ body.sh-onb-open{ overflow:hidden; }
 .rd-b-green{ background:rgba(34,197,94,.18); color:#4ade80; }
 .rd-b-grey{ background:rgba(148,163,184,.15); color:#94a3b8; }
 .rd-empty{ color:var(--text-3,#8b93a8); font-size:13px; text-align:center; padding:18px; }
+
+/* MatchLiveForm — live wedstrijdnotities */
+.mlf-modal{ max-width: 760px; }
+#mlf-form{ padding:16px 20px 20px; }
+.mlf-ctx{ background:rgba(79,110,247,.07); border:1px solid rgba(79,110,247,.2); border-radius:10px; padding:10px 12px; margin-bottom:14px; }
+.mlf-ctx-match{ font-size:15px; font-weight:700; color:var(--text-1,#e5e9f5); }
+.mlf-ctx-meta{ font-size:12.5px; color:var(--text-2,#9aa3b7); margin-top:3px; }
+.mlf-ctx-note{ font-size:11.5px; color:var(--text-3,#8b93a8); margin-top:6px; font-style:italic; }
+.mlf-tabs{ display:none; gap:8px; margin-bottom:12px; }
+.mlf-tab{ flex:1; min-height:44px; border-radius:9px; background:var(--bg-3,#141824); border:1px solid var(--border,#2a2f45); color:var(--text-2,#9aa3b7); font-size:14px; font-weight:600; cursor:pointer; }
+.mlf-tab.active{ background:#4ea1ff; color:#06223f; border-color:#4ea1ff; }
+.mlf-tab-badge{ font-size:12px; opacity:.8; }
+.mlf-cols{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.mlf-col{ border:1px solid var(--border,#232838); border-radius:11px; padding:11px; }
+.mlf-col[data-team="thuis"]{ background:rgba(78,161,255,.05); border-color:rgba(78,161,255,.25); }
+.mlf-col[data-team="uit"]{ background:rgba(245,158,66,.05); border-color:rgba(245,158,66,.25); }
+.mlf-team-head{ font-size:13px; font-weight:800; margin-bottom:10px; padding-bottom:7px; border-bottom:1px solid var(--border,#232838); }
+.mlf-team-thuis{ color:#4ea1ff; }
+.mlf-team-uit{ color:#f59e42; }
+.mlf-cat{ margin-bottom:13px; }
+.mlf-cat:last-child{ margin-bottom:0; }
+.mlf-cat-label{ font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-3,#8b93a8); font-weight:700; margin-bottom:6px; }
+.mlf-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:7px; }
+.mlf-chip{ padding:6px 11px; border-radius:999px; background:var(--bg-3,#141824); border:1px solid var(--border,#2a2f45); color:var(--text-2,#9aa3b7); font-size:12.5px; cursor:pointer; min-height:34px; }
+.mlf-chip.active{ background:rgba(78,161,255,.2); border-color:#4ea1ff; color:#cfe6ff; font-weight:600; }
+.mlf-shared{ margin-top:14px; border-top:1px solid var(--border,#232838); padding-top:12px; }
+@media (max-width:768px){
+  .mlf-tabs{ display:flex; }
+  .mlf-cols{ grid-template-columns:1fr; gap:0; }
+  .mlf-show-thuis .mlf-col[data-team="uit"]{ display:none; }
+  .mlf-show-uit .mlf-col[data-team="thuis"]{ display:none; }
+  .mlf-note{ font-size:16px !important; }
+}

@@ -6865,6 +6865,162 @@ function _rdClose(){
 }
 window._rdClose=_rdClose;
 
+/* ============================================================
+   MatchLiveForm — live wedstrijdnotities (split thuis/uit + gedeeld).
+   Per-veld state (matchLiveState[matchId]), chips per categorie,
+   modal-chrome zoals obs/plf, soft sync naar live_match_notes/{id}_match.
+   Concept — GEEN definitief rapport, GEEN Indienen in live.
+   OBS en PlayerLiveForm v2 NIET aangeraakt.
+   ============================================================ */
+const MLF_TEAM_CATS = [
+  ['tactiek','Tactiek',['Opbouw','Pressing','Omschakeling','Positiespel','Speelwijze','Veldbezetting']],
+  ['score_verloop','Score / verloop',['Voorsprong','Achterstand','Gelijkspel','Strafschoppen','Rode kaart','Blessure']],
+  ['opvallende_momenten','Opvallende momenten',['Doelpunt','Assist','Fout','Wissel','Blessure','Rode kaart','Opvallend positief','Opvallend negatief']],
+  ['teamanalyse','Teamanalyse',['Sterke 1e helft','Sterke 2e helft','Zwakke 1e helft','Zwakke 2e helft','Goede organisatie','Slechte organisatie','Hoog tempo','Laag tempo']]
+];
+const MLF_WEER = ['Droog','Nat','Wind','Kunstgras','Natuurgras','Slecht veld','Goed veld'];
+const matchLiveState = {};
+let _mlfCtx = null;
+let _mlfTm = null;
+
+function _mlfEmptyTeam(){ const o={}; MLF_TEAM_CATS.forEach(c => { o[c[0]] = { chips:[], note:'' }; }); return o; }
+function _mlfEmptyState(){ return { thuis:_mlfEmptyTeam(), uit:_mlfEmptyTeam(), gedeeld:{ weer:{chips:[],note:''}, algemeen:{note:''} } }; }
+function _mlfMigrateOld(prog, st){
+  try {
+    const wn = Array.isArray(prog.wedstrijdnotities) ? prog.wedstrijdnotities.map(w => (w&&w.tekst)||'').filter(Boolean) : [];
+    const old = (wn.join(' \u00b7 ') || (prog.notities||'')).trim();
+    if(old && !st.gedeeld.algemeen.note) st.gedeeld.algemeen.note = old;
+  } catch(_){}
+}
+function _mlfFromDoc(d){
+  const st = _mlfEmptyState();
+  ['thuis','uit'].forEach(team => {
+    if(d[team]) MLF_TEAM_CATS.forEach(c => { const x=d[team][c[0]]; if(x){ st[team][c[0]] = { chips: Array.isArray(x.chips)?x.chips:[], note: x.note||'' }; } });
+  });
+  if(d.gedeeld){ if(d.gedeeld.weer){ st.gedeeld.weer = { chips: Array.isArray(d.gedeeld.weer.chips)?d.gedeeld.weer.chips:[], note: d.gedeeld.weer.note||'' }; } if(d.gedeeld.algemeen){ st.gedeeld.algemeen = { note: d.gedeeld.algemeen.note||'' }; } }
+  return st;
+}
+
+async function openMatchLiveForm(prog){
+  const bd = document.getElementById('mlf-backdrop'); if(!bd || !prog) return;
+  const matchId = prog.id;
+  if(!matchLiveState[matchId]){
+    let seed = _mlfEmptyState();
+    try {
+      const ds = await getDoc(doc(db,'users',currentUser.uid,'live_match_notes', matchId+'_match'));
+      if(ds.exists()) seed = _mlfFromDoc(ds.data()||{}); else _mlfMigrateOld(prog, seed);
+    } catch(_){ _mlfMigrateOld(prog, seed); }
+    matchLiveState[matchId] = seed;
+  }
+  _mlfCtx = { matchId, progId: prog.id, thuis: prog.thuis||'', uit: prog.uit||'' };
+  const st = matchLiveState[matchId];
+
+  const titleEl = document.getElementById('mlf-title'); if(titleEl) titleEl.textContent = (prog.thuis||'?') + ' — ' + (prog.uit||'?');
+  const subEl = document.getElementById('mlf-sub'); if(subEl) subEl.textContent = 'Live wedstrijdnotitie (concept)';
+  const ctxParts = [];
+  if(prog.datum) ctxParts.push(prog.datum + (prog.tijd?' · '+prog.tijd:''));
+  if(prog.veld) ctxParts.push('Veld '+prog.veld); else if(prog.locatie) ctxParts.push(prog.locatie);
+  if(prog.competitie || prog.toernooi) ctxParts.push(prog.competitie||prog.toernooi);
+  if(prog.leeftijd) ctxParts.push(prog.leeftijd);
+  const ctxEl = document.getElementById('mlf-ctx');
+  if(ctxEl) ctxEl.innerHTML = '<div class="mlf-ctx-match">'+escapeHtml((prog.thuis||'?')+' — '+(prog.uit||'?'))+'</div>'+(ctxParts.length?'<div class="mlf-ctx-meta">'+ctxParts.map(escapeHtml).join(' · ')+'</div>':'')+'<div class="mlf-ctx-note">📋 Live concept — definitief rapport maak je na de wedstrijd in Wedstrijden.</div>';
+
+  const renderTeam = (team, teamName) => {
+    return '<div class="mlf-col" data-team="'+team+'"><div class="mlf-team-head mlf-team-'+team+'">'+escapeHtml(teamName||team)+'</div>'+
+      MLF_TEAM_CATS.map(function(c){
+        const cat=c[0], label=c[1], chips=c[2];
+        const cst=(st[team]&&st[team][cat])||{chips:[],note:''};
+        const chipHtml=chips.map(function(w){ const on=(cst.chips||[]).indexOf(w)>=0; return '<button type="button" class="mlf-chip'+(on?' active':'')+'" data-team="'+team+'" data-cat="'+cat+'" data-label="'+escapeHtml(w)+'">'+escapeHtml(w)+'</button>'; }).join('');
+        return '<div class="mlf-cat"><div class="mlf-cat-label">'+label+'</div><div class="mlf-chips">'+chipHtml+'</div><input class="mlf-note plf-field-in" data-team="'+team+'" data-cat="'+cat+'" type="text" autocomplete="off" placeholder="Notitie..." value="'+escapeHtml(cst.note||'')+'" /></div>';
+      }).join('')+'</div>';
+  };
+  const weerChips = MLF_WEER.map(function(w){ const on=(st.gedeeld.weer.chips||[]).indexOf(w)>=0; return '<button type="button" class="mlf-chip'+(on?' active':'')+'" data-team="gedeeld" data-cat="weer" data-label="'+escapeHtml(w)+'">'+escapeHtml(w)+'</button>'; }).join('');
+  const sharedHtml = '<div class="mlf-shared"><div class="mlf-cat"><div class="mlf-cat-label">Weer / omstandigheden</div><div class="mlf-chips">'+weerChips+'</div><input class="mlf-note plf-field-in" data-team="gedeeld" data-cat="weer" type="text" autocomplete="off" placeholder="Notitie..." value="'+escapeHtml(st.gedeeld.weer.note||'')+'" /></div>'+
+    '<div class="mlf-cat"><div class="mlf-cat-label">Algemeen</div><input class="mlf-note plf-field-in" data-team="gedeeld" data-cat="algemeen" type="text" autocomplete="off" placeholder="Overige opmerkingen..." value="'+escapeHtml(st.gedeeld.algemeen.note||'')+'" /></div></div>';
+
+  const tabs = '<div class="mlf-tabs"><button type="button" class="mlf-tab active" data-mlf-tab="thuis">Thuis <span class="mlf-tab-badge" data-badge="thuis"></span></button><button type="button" class="mlf-tab" data-mlf-tab="uit">Uit <span class="mlf-tab-badge" data-badge="uit"></span></button></div>';
+  const body = document.getElementById('mlf-body');
+  if(body){
+    body.className = 'mlf-show-thuis';
+    body.innerHTML = tabs + '<div class="mlf-cols">' + renderTeam('thuis', prog.thuis) + renderTeam('uit', prog.uit) + '</div>' + sharedHtml;
+    if(!body._mlfWired){
+      body._mlfWired = true;
+      body.addEventListener('click', function(e){
+        const chip = e.target.closest('.mlf-chip');
+        if(chip){ _mlfToggleChip(chip); return; }
+        const tab = e.target.closest('.mlf-tab');
+        if(tab){ _mlfSwitchTab(tab.dataset.mlfTab); return; }
+      });
+      body.addEventListener('input', function(e){
+        const n = e.target.closest('.mlf-note'); if(!n) return;
+        _mlfSetNote(n.dataset.team, n.dataset.cat, n.value);
+        clearTimeout(_mlfTm); _mlfTm = setTimeout(function(){ _mlfSync(false); }, 600);
+        _mlfUpdateBadges();
+      });
+      body.addEventListener('focusin', function(e){ const t=e.target; if(t&&t.tagName==='INPUT') setTimeout(function(){ try{ t.scrollIntoView({block:'center',behavior:'smooth'}); }catch(_){} },300); });
+    }
+    _mlfUpdateBadges();
+  }
+  const cl=document.getElementById('mlf-close'); if(cl) cl.onclick=function(){ _mlfSync(false); _mlfClose(); };
+  const ca=document.getElementById('mlf-cancel'); if(ca) ca.onclick=function(){ _mlfSync(false); _mlfClose(); };
+  const sv=document.getElementById('mlf-save'); if(sv) sv.onclick=function(){ _mlfSync(true); _mlfClose(); };
+
+  bd.style.display='flex';
+  document.body.style.top='-'+window.scrollY+'px';
+  document.body.classList.add('modal-open');
+}
+window.openMatchLiveForm = openMatchLiveForm;
+
+function _mlfStTeam(team){ const st=matchLiveState[_mlfCtx.matchId]; return team==='gedeeld'?st.gedeeld:st[team]; }
+function _mlfToggleChip(el){
+  if(!_mlfCtx) return;
+  const team=el.dataset.team, cat=el.dataset.cat, label=el.dataset.label;
+  const slot=_mlfStTeam(team)[cat]; if(!slot) return;
+  if(!Array.isArray(slot.chips)) slot.chips=[];
+  const i=slot.chips.indexOf(label);
+  if(i>=0){ slot.chips.splice(i,1); el.classList.remove('active'); } else { slot.chips.push(label); el.classList.add('active'); }
+  clearTimeout(_mlfTm); _mlfTm=setTimeout(function(){ _mlfSync(false); }, 500);
+  _mlfUpdateBadges();
+}
+function _mlfSetNote(team, cat, val){ if(!_mlfCtx) return; const slot=_mlfStTeam(team)[cat]; if(slot) slot.note=val; }
+function _mlfSwitchTab(tab){
+  const body=document.getElementById('mlf-body'); if(!body) return;
+  body.className = (tab==='uit')?'mlf-show-uit':'mlf-show-thuis';
+  body.querySelectorAll('.mlf-tab').forEach(function(t){ t.classList.toggle('active', t.dataset.mlfTab===tab); });
+}
+function _mlfTeamCount(team){
+  const t=_mlfStTeam(team); let n=0; MLF_TEAM_CATS.forEach(function(c){ const s=t[c[0]]; if(s){ n+=(s.chips||[]).length + (s.note?1:0); } }); return n;
+}
+function _mlfUpdateBadges(){
+  try {
+    const body=document.getElementById('mlf-body'); if(!body) return;
+    [['thuis'],['uit']].forEach(function(a){ const team=a[0]; const el=body.querySelector('.mlf-tab-badge[data-badge="'+team+'"]'); if(el){ const n=_mlfTeamCount(team); el.textContent=n?('('+n+')'):''; } });
+  } catch(_){}
+}
+async function _mlfSync(showToast){
+  try {
+    if(!_mlfCtx) return;
+    const matchId=_mlfCtx.matchId;
+    const prog=programmaCache.find(function(p){ return p && p.id===_mlfCtx.progId; }); if(!prog) return;
+    if(typeof _shIsMatchLocked==='function' && _shIsMatchLocked(prog)) return;
+    const st=matchLiveState[matchId];
+    const ref=doc(db,'users',currentUser.uid,'live_match_notes', matchId+'_match');
+    await setDoc(ref, {
+      matchId: matchId, type:'match_report', status:'live',
+      thuis: st.thuis, uit: st.uit, gedeeld: st.gedeeld,
+      matchContext: { thuis: prog.thuis||'', uit: prog.uit||'', datum: prog.datum||'', veld: prog.veld||'', competitie: prog.competitie||prog.toernooi||'' },
+      updatedAt: new Date(), updatedBy: currentUser.uid
+    }, { merge:true });
+    if(showToast && typeof toast==='function') toast('Wedstrijdnotitie opgeslagen ✓');
+  } catch(_){}
+}
+function _mlfClose(){
+  const bd=document.getElementById('mlf-backdrop'); if(bd) bd.style.display='none';
+  const y=parseInt(document.body.style.top||'0')*-1; document.body.classList.remove('modal-open'); document.body.style.top=''; if(y) window.scrollTo(0,y);
+  _mlfCtx=null;
+}
+window._mlfClose=_mlfClose;
+
 function _obsClose(){
   try { window.__obsTriggerAutosave=null; window.__obsCaptureChips=null; } catch(_){}
   const bd = document.getElementById('obs-backdrop');
@@ -8174,6 +8330,8 @@ function renderActiveScouting(){
           openObservatieForm(_obsProg, _obsDraft);
         }
       } else if(act === 'add-snel-wstr'){
+        // MatchLiveForm: nieuwe wedstrijdnotitie-modal i.p.v. plat tekstvak.
+        try { const _mlfProg = programmaCache.find(p => p.id === progId); if(_mlfProg && typeof openMatchLiveForm === 'function'){ openMatchLiveForm(_mlfProg); return; } } catch(_){}
         // s35be: snel wedstrijdnotitie (vrije tekst — tactiek/score/weer).
         // s35bm: trigger-toggle verwijderd, no-op bij re-click.
         const card = btn.closest('.sa-card');

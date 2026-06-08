@@ -3437,6 +3437,27 @@ algemeen:</textarea>
   </div>
 </div>
 
+<!-- =================== MATCH LIVE FORM (live wedstrijdnotities) =================== -->
+<div class="obs-backdrop" id="mlf-backdrop" style="display:none;">
+  <div class="obs-modal mlf-modal" id="mlf-modal" role="dialog" aria-modal="true" aria-label="Live wedstrijdnotitie">
+    <div class="obs-modal-header">
+      <div style="min-width:0;">
+        <div class="obs-modal-title" id="mlf-title">Wedstrijdnotitie</div>
+        <div class="obs-modal-sub" id="mlf-sub">Live wedstrijdnotitie (concept)</div>
+      </div>
+      <button class="obs-modal-close" id="mlf-close" type="button" aria-label="Sluiten">&times;</button>
+    </div>
+    <div id="mlf-form">
+      <div class="mlf-ctx" id="mlf-ctx"></div>
+      <div id="mlf-body"></div>
+      <div class="obs-actions">
+        <button type="button" class="btn btn-secondary" id="mlf-cancel">Sluiten</button>
+        <button type="button" class="btn btn-primary" id="mlf-save">Opslaan &amp; sluiten</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- =================== CHANGELOG MODAL (s35bk-3) =================== -->
 <div class="changelog-backdrop" id="changelog-backdrop">
   <div class="changelog-modal">

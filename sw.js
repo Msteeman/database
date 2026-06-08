@@ -1,6 +1,6 @@
 /* Scouting Platform — Service Worker
    Bump CACHE_VERSION whenever you ship a new index.html so users get the latest. */
-const CACHE_VERSION = 'sh-v298-login-gate';
+const CACHE_VERSION = 'sh-v299-privacy-gate-texts';
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-rt`;
 
@@ -8,6 +8,8 @@ const CORE_ASSETS = [
   './',
   './index.html',
   './handleiding.html',
+  './privacy.html',
+  './voorwaarden.html',
   'screenshot-login.png',
   'screenshot-dashboard.png',
   'screenshot-sidebar.png',

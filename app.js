@@ -25539,13 +25539,16 @@ async function _shAccountGate(uid, email){
     const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const _db = getFirestore();
     const snap = await getDoc(doc(_db, 'users', uid));
-    if(!snap.exists()) return { blocked: false };   // geen user-doc → bestaand gedrag behouden
+    if(!snap.exists()) return { blocked: false, reason: null };   // geen user-doc → bestaand gedrag behouden
     const d = snap.data() || {};
     const adminEmails = ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'];
     const isAdminAcc = (d.role === 'admin') || (email && adminEmails.indexOf(String(email).toLowerCase()) !== -1);
-    if(isAdminAcc) return { blocked: false };        // admin-accounts nooit blokkeren
-    return { blocked: (d.isActive === false) || (d.status === 'deleted') };
-  } catch(_){ return { blocked: false }; }           // bij twijfel niet blokkeren
+    if(isAdminAcc) return { blocked: false, reason: null };        // admin-accounts nooit blokkeren
+    // 'deleted' gaat vóór 'inactive' (een verwijderd account heeft ook isActive:false).
+    if(d.status === 'deleted') return { blocked: true, reason: 'deleted' };
+    if(d.isActive === false)   return { blocked: true, reason: 'inactive' };
+    return { blocked: false, reason: null };
+  } catch(_){ return { blocked: false, reason: null }; }           // bij twijfel niet blokkeren
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -25573,7 +25576,9 @@ onAuthStateChanged(auth, async (user) => {
     try {
       const _gate = await _shAccountGate(user.uid, user.email);
       if(_gate && _gate.blocked){
-        _shGatedMsg = 'Dit account is gedeactiveerd of verwijderd. Neem contact op met ScoutingHub via contact@scoutinghub.nl.';
+        _shGatedMsg = (_gate.reason === 'deleted')
+          ? 'Dit account is verwijderd. Je kunt niet meer inloggen op ScoutingHub. Aan dit account gekoppelde persoonsgegevens en gebruikersdata worden verwijderd of geanonimiseerd volgens het verwijderbeleid van ScoutingHub. Neem contact op via contact@scoutinghub.nl voor vragen.'
+          : 'Dit account is gedeactiveerd. Je kunt op dit moment geen gebruik maken van ScoutingHub. Je gegevens blijven bewaard zodat je account later eventueel opnieuw geactiveerd kan worden. Neem contact op via contact@scoutinghub.nl als je denkt dat dit niet klopt.';
         currentUser = null;
         try { await signOut(auth); } catch(_){}
         return;   // de null-branch toont het loginscherm met de melding
@@ -28382,7 +28387,7 @@ function _shRequestAccess(){
       '</select>' +
       '<label class="sh-req-l" for="sh-req-message">Reden / motivatie</label>' +
       '<textarea id="sh-req-message" class="sh-req-i" rows="3" placeholder="Waarom wil je ScoutingHub gebruiken?"></textarea>' +
-      '<label class="sh-req-check"><input type="checkbox" id="sh-req-terms"><span>Ik ga akkoord met de <a href="https://scoutinghub.nl/voorwaarden" target="_blank" rel="noopener">Algemene Voorwaarden</a> en het <a href="https://scoutinghub.nl/privacy" target="_blank" rel="noopener">Privacybeleid</a> van ScoutingHub.</span></label>' +
+      '<label class="sh-req-check"><input type="checkbox" id="sh-req-terms"><span>Ik ga akkoord met de <a href="voorwaarden.html" target="_blank" rel="noopener">Algemene Voorwaarden</a> en het <a href="privacy.html" target="_blank" rel="noopener">Privacybeleid</a> van ScoutingHub.</span></label>' +
       '<label class="sh-req-check"><input type="checkbox" id="sh-req-news" checked><span>Ik ontvang graag de ScoutingHub nieuwsbrief (max. 1x per maand).</span></label>' +
       '<div class="sh-req-actions">' +
         '<button type="button" class="settings-btn ghost" data-close="1">Annuleren</button>' +
@@ -28863,9 +28868,9 @@ function _bhUserDelete(uid){
   var body =
     '<p style="margin:0 0 12px;color:#9aa8bd;font-size:14px;line-height:1.5;">Je staat op het punt het account van <b>'+naam+'</b> te verwijderen.</p>' +
     '<div class="bh-danger-box">' +
-      '<p style="margin:0 0 6px;color:#fca5a5;"><b>Dit wordt verwijderd:</b></p>' +
-      '<ul style="margin:0 0 10px;padding-left:18px;color:#cbd5e1;"><li>het inlog-account</li><li>het gebruikersprofiel</li></ul>' +
-      '<p style="margin:0;color:#cbd5e1;"><b>Dit blijft behouden:</b> alle observaties, rapporten en toernooidata van deze gebruiker.</p>' +
+      '<p style="margin:0 0 6px;color:#fca5a5;"><b>Wat gebeurt er?</b></p>' +
+      '<ul style="margin:0;padding-left:18px;color:#cbd5e1;"><li>de gebruiker kan niet meer inloggen;</li><li>de gebruiker verdwijnt uit Beheer;</li><li>de gekoppelde gebruikersdata wordt verwijderd of geanonimiseerd volgens het verwijderbeleid.</li></ul>' +
+      '<p style="margin:8px 0 0;color:#cbd5e1;">Wil je de toegang alleen tijdelijk blokkeren met behoud van gegevens? Gebruik dan <b>Deactiveren</b>.</p>' +
     '</div>' +
     '<label class="sh-req-l" for="bh-del-confirm" style="display:block;margin-top:14px;">Typ <b>VERWIJDEREN</b> om te bevestigen</label>' +
     '<input type="text" id="bh-del-confirm" class="sh-req-i" autocomplete="off" autocapitalize="characters" placeholder="VERWIJDEREN" style="width:100%;">';

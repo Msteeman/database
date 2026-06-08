@@ -12474,3 +12474,79 @@ body.sh-onb-open{ overflow:hidden; }
 .bh-btn-danger-outline:hover{background:rgba(239,68,68,.12);border-color:#ef4444;color:#fecaca;}
 .bh-danger-box{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.30);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.5;}
 .bh-danger-box ul{margin:0;}
+
+/* ============================================================
+   LANDINGSPAGINA REDESIGN (sh-v294) — entrance + nieuwe secties.
+   Bouwt voort op de bestaande .lp-* stijl (dark theme onveranderd).
+   ============================================================ */
+
+/* Nav-acties + 44px touch targets binnen de landingspagina */
+.lp-nav-actions { display: flex; gap: 8px; align-items: center; }
+#landing-overlay .lp-btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+
+/* CSS-only entrance — vervangt de verwijderde introvideo.
+   Speelt eenmalig af zodra de landingspagina zichtbaar wordt (~1s totaal). */
+@keyframes lpNavIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+@keyframes lpRise  { from { opacity: 0; transform: translateY(22px); }  to { opacity: 1; transform: none; } }
+@keyframes lpFade  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lpPop   { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: none; } }
+#landing-overlay .lp-nav            { animation: lpNavIn .45s ease both; animation-delay: .05s; }
+#landing-overlay .lp-hero .lp-h1    { animation: lpRise .55s cubic-bezier(.22,.61,.36,1) both; animation-delay: .30s; }
+#landing-overlay .lp-hero .lp-sub   { animation: lpRise .55s cubic-bezier(.22,.61,.36,1) both; animation-delay: .48s; }
+#landing-overlay .lp-hero .lp-cta-row  { animation: lpFade .5s ease both; animation-delay: .66s; }
+#landing-overlay .lp-hero .lp-sub-link { animation: lpFade .5s ease both; animation-delay: .80s; }
+#landing-overlay .lp-hero .lp-hero-visual { animation: lpPop .6s cubic-bezier(.22,.61,.36,1) both; animation-delay: .58s; }
+@media (prefers-reduced-motion: reduce) {
+  #landing-overlay .lp-nav,
+  #landing-overlay .lp-hero .lp-h1,
+  #landing-overlay .lp-hero .lp-sub,
+  #landing-overlay .lp-hero .lp-cta-row,
+  #landing-overlay .lp-hero .lp-sub-link,
+  #landing-overlay .lp-hero .lp-hero-visual { animation: none !important; }
+}
+
+/* Hero sub-link "Toegang aanvragen" */
+.lp-sub-link { margin-top: 16px; font-size: 14px; color: var(--text-3, #8b97ad); }
+.lp-sub-link a { color: var(--accent, #4ea1ff); text-decoration: none; font-weight: 600; }
+.lp-sub-link a:hover { text-decoration: underline; }
+
+/* 3C — Kernbelofte */
+.lp-kern { text-align: center; padding: 44px 24px; max-width: 920px; margin: 0 auto; width: 100%; }
+.lp-kern-line { font-size: clamp(24px, 4.4vw, 40px); font-weight: 800; letter-spacing: -.6px; line-height: 1.12; }
+
+/* Sectie-subtitel onder een .lp-h2.has-sub */
+.lp-h2.has-sub { margin-bottom: 8px; }
+.lp-h2-sub { text-align: center; color: var(--text-2, #9aa8bd); font-size: clamp(14px, 1.9vw, 16px); margin: 0 auto 30px; max-width: 560px; }
+
+/* Carousel screenshots + placeholders */
+#landing-overlay .lp-shot { width: 100%; max-width: 760px; margin: 0 auto; }
+#landing-overlay .lp-shot.lp-shot-ph { aspect-ratio: 16 / 10; }
+
+/* 3G — Quote */
+.lp-quotebox { text-align: center; max-width: 720px; margin: 0 auto; }
+.lp-quote-big { font-size: clamp(22px, 3.4vw, 30px); font-weight: 800; letter-spacing: -.4px; line-height: 1.2; }
+.lp-quote-p { margin-top: 14px; color: var(--text-2, #9aa8bd); font-size: 15px; line-height: 1.6; }
+
+/* 3H — CTA */
+.lp-cta-sub { color: var(--text-2, #9aa8bd); font-size: clamp(14px, 2vw, 16px); max-width: 540px; margin: 0 auto 22px; line-height: 1.6; }
+.lp-cta-row-center { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* Mobiel: CTA-knoppen volle breedte, gestapeld */
+@media (max-width: 560px) {
+  .lp-cta-row-center { flex-direction: column; }
+  .lp-cta-row-center .lp-btn { width: 100%; }
+  .lp-nav-actions .lp-btn-sm { padding: 9px 13px; }
+}
+
+/* Aanvraagformulier — functie-dropdown, voorwaarden/nieuwsbrief, disabled-state (sh-v294) */
+.sh-req-select{ appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239aa8bd' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center; padding-right:34px; cursor:pointer; }
+.sh-req-check{ display:flex; align-items:flex-start; gap:9px; margin-top:12px; font-size:13px; line-height:1.45; color:var(--text-2,#9aa8bd); cursor:pointer; }
+.sh-req-check input[type="checkbox"]{ flex:0 0 auto; width:18px; height:18px; min-width:18px; margin-top:1px; accent-color:var(--accent,#4ea1ff); cursor:pointer; }
+.sh-req-check a{ color:var(--accent,#4ea1ff); text-decoration:underline; }
+.sh-req-send.is-disabled{ opacity:.5; cursor:not-allowed; }
+
+/* Login — scheidingslijn boven "Toegang aanvragen" (sh-v294) */
+.login-sep{ display:flex; align-items:center; gap:10px; margin:16px 0 2px; color:var(--text-3,#8b97ad); font-size:12px; }
+.login-sep::before, .login-sep::after{ content:""; flex:1; height:1px; background:var(--border,#232d40); }

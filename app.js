@@ -5312,17 +5312,32 @@ setTimeout(() => {
   }
 }, 8000);
 
+// PWA-detectie: is de app als standalone geïnstalleerd (home-screen / app-window)?
+// Dan slaan we de landingspagina over — die is uitsluitend voor browserbezoekers.
+function _shIsStandalone(){
+  try {
+    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
+      || window.navigator.standalone === true;
+  } catch(_){ return false; }
+}
+window._shIsStandalone = _shIsStandalone;
 function showLogin(){
   _loginShown = true;
   const _ld = document.getElementById('loader');
   const _lo = document.getElementById('login-overlay');
   const _ap = document.getElementById('app');
   if(_ld) _ld.style.display = 'none';
-  if(_lo) _lo.style.display = 'flex';
   if(_ap) _ap.style.display = 'none';
-  // Landingspagina tonen vóór het login-formulier ("Inloggen" onthult login).
   const _land = document.getElementById('landing-overlay');
-  if(_land) _land.style.display = 'flex';
+  // PWA (geïnstalleerd) → direct het login-formulier, géén landingspagina.
+  // Browser (desktop/mobiel) → eerst de landingspagina; "Inloggen" onthult login.
+  if(_shIsStandalone()){
+    if(_land) _land.style.display = 'none';
+    if(_lo) _lo.style.display = 'flex';
+  } else {
+    if(_lo) _lo.style.display = 'none';
+    if(_land) _land.style.display = 'flex';
+  }
 }
 function showApp(){
   $('#loader').style.display = 'none';
@@ -25489,29 +25504,9 @@ function switchMatchesSubview(sub){
 window.switchMatchesSubview = switchMatchesSubview;
 /* K3: __shDebugSpeler debug-helper verwijderd (lekte spelersdata naar console). */
 
-// ── Intro overlay dismiss ────────────────────────────────────────────────────
-(function setupIntro(){
-  var _dismissed = false;
-  function dismiss(){
-    if(_dismissed) return;
-    _dismissed = true;
-    var overlay = document.getElementById('intro-overlay');
-    if(!overlay) return;
-    overlay.classList.add('intro-gone');
-  }
-  function wire(){
-    var overlay = document.getElementById('intro-overlay');
-    if(!overlay){ setTimeout(dismiss, 100); return; }
-    // Dismiss op elke interactie: click, touch, keydown
-    overlay.addEventListener('click', dismiss);
-    document.addEventListener('keydown', dismiss, {once: true});
-    document.addEventListener('touchstart', dismiss, {once: true, passive: true});
-    // Auto-dismiss na 3 seconden
-    setTimeout(dismiss, 3000);
-  }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
-  else wire();
-})();
+// ── Cinematic intro verwijderd ───────────────────────────────────────────────
+// De vroegere intro-overlay is weg; de landingspagina verschijnt nu zelf met een
+// CSS-only entrance-animatie. Geen JS-timers of overlay-dismiss meer nodig.
 
 // s35cg: laad gebruikersrol vanuit Firestore (coordinator/admin check)
 async function loadUserRole(){
@@ -28319,19 +28314,29 @@ function _shRequestAccess(){
     '<div class="sh-photo-menu sh-req-card" role="dialog" aria-modal="true" aria-label="Toegang aanvragen">' +
       '<button type="button" class="sh-req-x" data-close="1" aria-label="Sluiten">\u00d7</button>' +
       '<div class="sh-pm-title">Toegang aanvragen</div>' +
-      '<div class="sh-req-sub">ScoutingHub is op uitnodiging. Vraag toegang aan \u2014 de beheerder neemt binnen 24 uur contact met je op.</div>' +
+      '<div class="sh-req-sub">Vul je gegevens in en we nemen zo snel mogelijk contact met je op.</div>' +
       '<div class="sh-req-msg" id="sh-req-msg" role="alert" aria-live="polite"></div>' +
+      '<label class="sh-req-l" for="sh-req-name">Naam *</label>' +
+      '<input type="text" id="sh-req-name" class="sh-req-i" placeholder="Je volledige naam" autocomplete="name">' +
       '<label class="sh-req-l" for="sh-req-email">E-mailadres *</label>' +
-      '<input type="email" id="sh-req-email" class="sh-req-i" placeholder="jouw@email.nl" autocomplete="email">' +
-      '<label class="sh-req-l" for="sh-req-name">Naam</label>' +
-      '<input type="text" id="sh-req-name" class="sh-req-i" placeholder="Optioneel">' +
-      '<label class="sh-req-l" for="sh-req-club">Club / organisatie</label>' +
-      '<input type="text" id="sh-req-club" class="sh-req-i" placeholder="Optioneel">' +
-      '<label class="sh-req-l" for="sh-req-message">Reden / opmerking</label>' +
-      '<textarea id="sh-req-message" class="sh-req-i" rows="3" placeholder="Optioneel"></textarea>' +
+      '<input type="email" id="sh-req-email" class="sh-req-i" placeholder="je@email.com" autocomplete="email">' +
+      '<label class="sh-req-l" for="sh-req-club">Club / organisatie *</label>' +
+      '<input type="text" id="sh-req-club" class="sh-req-i" placeholder="Naam van je club of organisatie">' +
+      '<label class="sh-req-l" for="sh-req-func">Functie *</label>' +
+      '<select id="sh-req-func" class="sh-req-i sh-req-select">' +
+        '<option value="">Kies je functie\u2026</option>' +
+        '<option value="scout">Scout</option>' +
+        '<option value="coordinator">Co\u00f6rdinator</option>' +
+        '<option value="td">Technisch directeur</option>' +
+        '<option value="anders">Anders</option>' +
+      '</select>' +
+      '<label class="sh-req-l" for="sh-req-message">Reden / motivatie</label>' +
+      '<textarea id="sh-req-message" class="sh-req-i" rows="3" placeholder="Waarom wil je ScoutingHub gebruiken?"></textarea>' +
+      '<label class="sh-req-check"><input type="checkbox" id="sh-req-terms"><span>Ik ga akkoord met de <a href="https://scoutinghub.nl/voorwaarden" target="_blank" rel="noopener">Algemene Voorwaarden</a> en het <a href="https://scoutinghub.nl/privacy" target="_blank" rel="noopener">Privacybeleid</a> van ScoutingHub.</span></label>' +
+      '<label class="sh-req-check"><input type="checkbox" id="sh-req-news" checked><span>Ik ontvang graag de ScoutingHub nieuwsbrief (max. 1x per maand).</span></label>' +
       '<div class="sh-req-actions">' +
         '<button type="button" class="settings-btn ghost" data-close="1">Annuleren</button>' +
-        '<button type="button" class="settings-btn sh-req-send" id="sh-req-send">Verstuur aanvraag</button>' +
+        '<button type="button" class="settings-btn sh-req-send is-disabled" id="sh-req-send">Aanvraag versturen</button>' +
       '</div>' +
     '</div>';
   document.body.appendChild(bd);
@@ -28342,8 +28347,12 @@ function _shRequestAccess(){
     if(e.target === bd || (e.target.closest && e.target.closest('[data-close]'))) closeReq();
   });
   var sendBtn = document.getElementById('sh-req-send');
+  var termsEl = document.getElementById('sh-req-terms');
+  function _syncTerms(){ if(sendBtn) sendBtn.classList.toggle('is-disabled', !(termsEl && termsEl.checked)); }
+  if(termsEl) termsEl.addEventListener('change', _syncTerms);
+  _syncTerms();
   if(sendBtn) sendBtn.addEventListener('click', function(){ _shSubmitAccessRequest(closeReq); });
-  setTimeout(function(){ try { document.getElementById('sh-req-email').focus(); } catch(_){} }, 60);
+  setTimeout(function(){ try { document.getElementById('sh-req-name').focus(); } catch(_){} }, 60);
 }
 window._shRequestAccess = _shRequestAccess;
 async function _shSubmitAccessRequest(closeFn){
@@ -28351,10 +28360,19 @@ async function _shSubmitAccessRequest(closeFn){
   var email = gv('sh-req-email').trim();
   var name = gv('sh-req-name').trim();
   var club = gv('sh-req-club').trim();
+  var functie = gv('sh-req-func').trim();
   var message = gv('sh-req-message').trim();
+  var termsEl = document.getElementById('sh-req-terms');
+  var newsEl = document.getElementById('sh-req-news');
+  var acceptedTerms = !!(termsEl && termsEl.checked);
+  var newsletterOptIn = !!(newsEl && newsEl.checked);
   _shReqMsg('', null);
+  if(!name){ _shReqMsg('Vul je naam in.', 'error'); return; }
   if(!email){ _shReqMsg('Vul je e-mailadres in.', 'error'); return; }
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ _shReqMsg('Dit is geen geldig e-mailadres.', 'error'); return; }
+  if(!club){ _shReqMsg('Vul je club of organisatie in.', 'error'); return; }
+  if(!functie){ _shReqMsg('Kies je functie.', 'error'); return; }
+  if(!acceptedTerms){ _shReqMsg('Accepteer eerst de voorwaarden.', 'error'); return; }
   var btn = document.getElementById('sh-req-send');
   if(btn){ btn.disabled = true; btn.textContent = 'Versturen\u2026'; }
   try {
@@ -28362,7 +28380,7 @@ async function _shSubmitAccessRequest(closeFn){
       ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
     var r = await fetch(_apiBase + '/api/request-access', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email, name: name, club: club, message: message })
+      body: JSON.stringify({ email: email, name: name, club: club, message: message, functie: functie, acceptedTerms: acceptedTerms, newsletterOptIn: newsletterOptIn })
     });
     var j = {}; try { j = await r.json(); } catch(_){}
     if(r.ok && j && j.ok){
@@ -28379,11 +28397,11 @@ async function _shSubmitAccessRequest(closeFn){
       }
     } else {
       _shReqMsg((j && j.error) || 'Er ging iets mis. Probeer het later opnieuw.', 'error');
-      if(btn){ btn.disabled = false; btn.textContent = 'Verstuur aanvraag'; }
+      if(btn){ btn.disabled = false; btn.textContent = 'Aanvraag versturen'; }
     }
   } catch(e){
     _shReqMsg('Geen verbinding. Controleer je internet en probeer het opnieuw.', 'error');
-    if(btn){ btn.disabled = false; btn.textContent = 'Verstuur aanvraag'; }
+    if(btn){ btn.disabled = false; btn.textContent = 'Aanvraag versturen'; }
   }
 }
 window._shSubmitAccessRequest = _shSubmitAccessRequest;
@@ -28427,6 +28445,10 @@ function _bhDateShort(v){
     if(isNaN(d.getTime())) return '—';
     return d.toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'});
   } catch(_){ return '—'; }
+}
+function _bhFunctieLabel(f){
+  var map = { scout:'Scout', coordinator:'Co\u00f6rdinator', td:'Technisch directeur', anders:'Anders' };
+  return map[f] || f || '\u2014';
 }
 function _bhStatusBadge(status){
   var map = { pending:['Open','bh-b-orange'], approved:['Goedgekeurd','bh-b-green'], rejected:['Afgewezen','bh-b-red'] };
@@ -28648,7 +28670,10 @@ function _bhRenderAanvragen(){
       '<div class="bh-card-top"><div class="bh-card-name">'+(_bhEsc(r.name)||'—')+'</div>'+_bhStatusBadge(status)+'</div>' +
       '<div class="bh-card-row"><span>E-mail</span><b>'+_bhEsc(r.email)+'</b></div>' +
       '<div class="bh-card-row"><span>Club</span><b>'+(_bhEsc(r.club)||'—')+'</b></div>' +
+      (r.functie ? ('<div class="bh-card-row"><span>Functie</span><b>'+_bhEsc(_bhFunctieLabel(r.functie))+'</b></div>') : '') +
       (r.message ? ('<div class="bh-card-row"><span>Reden</span><b>'+_bhEsc(r.message)+'</b></div>') : '') +
+      (typeof r.acceptedTerms !== 'undefined' ? ('<div class="bh-card-row"><span>Voorwaarden</span><b>'+(r.acceptedTerms ? ('\u2705 Geaccepteerd'+(r.acceptedTermsAt ? (' ('+_bhDateShort(r.acceptedTermsAt)+')') : '')) : '\u2014')+'</b></div>') : '') +
+      (typeof r.newsletterOptIn !== 'undefined' ? ('<div class="bh-card-row"><span>Nieuwsbrief</span><b>'+(r.newsletterOptIn ? '\ud83d\udcec Ja' : 'Nee')+'</b></div>') : '') +
       '<div class="bh-card-row"><span>Aangevraagd</span><b>'+_bhDate(r.requestedAt)+'</b></div>' +
       actions +
     '</div>';

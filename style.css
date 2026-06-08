@@ -12377,3 +12377,9 @@ body.sh-onb-open{ overflow:hidden; }
 .plf-chip-block{ margin-bottom:10px; }
 .plf-chip-cat{ display:block; font-size:11px; color:var(--text-2,#9aa3b7); font-weight:600; margin-bottom:5px; text-transform:capitalize; }
 .plf-fields-label{ font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--text-3,#8b93a8); font-weight:700; margin-bottom:8px; }
+
+/* PlayerLiveForm v2 — aspect-blok (chips + notitie samen) */
+.plf-aspect{ margin-bottom:16px; padding-bottom:13px; border-bottom:1px solid var(--border,#232838); }
+.plf-aspect:last-child{ border-bottom:none; margin-bottom:4px; }
+.plf-aspect-label{ font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--accent,#4f6ef7); font-weight:700; margin-bottom:7px; }
+.plf-aspect-chips{ margin-bottom:8px; }

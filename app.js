@@ -6489,11 +6489,14 @@ window.openObservatieForm = openObservatieForm;
 const PLF_FIELDS = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
 const PLF_PH = { techniek:'bv. scherp, snel', inzicht:'bv. leest spel goed', mentaliteit:'bv. werkt hard, leidt', explosiviteit:'bv. eerste 5m sterk', sprinten:'bv. topsnelheid hoog', duelleren:'bv. wint 1-op-1', wendbaarheid:'bv. soepel, lichtvoetig', algemeen:'bv. interessante speler' };
 const PLF_CHIP_CATS = {
-  'Mentaliteit': ['Winnaar','Leider','Communicatief','Rustig','Nerveus','Emotioneel','Doorzetter','Opgeven','Concentratie','Gretig'],
-  'Techniek': ['Balbehandeling','Passing','Eerste aanname','Traptechniek','Koppen','Dribbel','Overzicht','Beide benen'],
-  'Snelheid': ['Startsnelheid','Topsnelheid','Wendbaarheid','Versnelling','Traag','Explosief'],
-  'Fysiek': ['Sterk','Licht','Lenig','Groot','Klein','Duelkracht','Uithoudingsvermogen'],
-  'Inzicht': ['Scannen','Positiespel','Ruimte zien','Anticipatie','Coaching','Rust aan de bal','Loopacties','Timing']
+  techniek: ['Balbehandeling','Passing','Eerste aanname','Traptechniek','Koppen','Dribbel','Beide benen','Overzicht'],
+  inzicht: ['Scannen','Positiespel','Ruimte zien','Anticipatie','Coaching','Timing','Loopacties'],
+  mentaliteit: ['Winnaar','Leider','Communicatief','Rustig','Doorzetter','Concentratie','Gretig','Emotioneel'],
+  explosiviteit: ['Eerste 5m','Versnelling','Explosief','Sprongkracht','Krachtig'],
+  sprinten: ['Startsnelheid','Topsnelheid','Diepgang','Traag'],
+  duelleren: ['Sterk','1-op-1','Lichaamsinzet','Kopduel','Wint duels','Fel'],
+  wendbaarheid: ['Soepel','Lichtvoetig','Draaien','Balans','Wendbaar'],
+  algemeen: ['Interessant','Opvolgen','Uitblinker','Aanrader']
 };
 const playerLiveState = {};
 let _plfCtx = null;
@@ -6550,10 +6553,17 @@ function openPlayerLiveForm(prog, sp){
 
   const fieldsEl = document.getElementById('plf-fields');
   if(fieldsEl){
-    fieldsEl.innerHTML = PLF_FIELDS.map(f =>
-      '<div class="plf-row"><label class="plf-label" for="plf-in-'+f+'">'+f+'</label>'+
-      '<input class="plf-field-in" id="plf-in-'+f+'" data-field="'+f+'" type="text" autocomplete="off" placeholder="'+escapeHtml(PLF_PH[f]||'')+'" value="'+escapeHtml(st[f]||'')+'" /></div>'
-    ).join('');
+    const seedTags = (sn && Array.isArray(sn.tags)) ? sn.tags : [];
+    const ratingOf = (cat, label) => { const t = seedTags.find(x => x && x.label===label && String(x.category||'').toLowerCase()===cat.toLowerCase()); return t && t.rating ? t.rating : ''; };
+    fieldsEl.innerHTML = '<div class="plf-section-label">Per aspect <span class="plf-dim">(tik chip: groen \u2192 oranje \u2192 rood \u2192 uit, + eigen notitie)</span></div>' +
+      PLF_FIELDS.map(f => {
+        const chips = (PLF_CHIP_CATS[f]||[]).map(w => { const r = ratingOf(f, w); return '<button type="button" class="obs-tag" data-category="'+f+'" data-label="'+escapeHtml(w)+'"'+(r?' data-rating="'+r+'"':'')+' onclick="_plfTagCycle(this)">'+escapeHtml(w)+'</button>'; }).join('');
+        return '<div class="plf-aspect">'+
+          '<div class="plf-aspect-label">'+f+'</div>'+
+          (chips ? '<div class="obs-tags plf-aspect-chips">'+chips+'</div>' : '')+
+          '<input class="plf-field-in" id="plf-in-'+f+'" data-field="'+f+'" type="text" autocomplete="off" placeholder="'+escapeHtml(PLF_PH[f]||'')+'" value="'+escapeHtml(st[f]||'')+'" />'+
+        '</div>';
+      }).join('');
     Array.from(fieldsEl.querySelectorAll('.plf-field-in')).forEach(inp => {
       inp.addEventListener('input', () => {
         const f = inp.dataset.field;
@@ -6568,18 +6578,6 @@ function openPlayerLiveForm(prog, sp){
         setTimeout(() => { try { t.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} }, 300);
       });
     }
-  }
-
-  // Chips per categorie (snelle tap-rating). Eigen handler; obs-chips ongemoeid.
-  const chipsEl = document.getElementById('plf-chips');
-  if(chipsEl){
-    const seedTags = (sn && Array.isArray(sn.tags)) ? sn.tags : [];
-    const ratingOf = (cat, label) => { const t = seedTags.find(x => x && x.label===label && String(x.category||'').toLowerCase()===cat.toLowerCase()); return t && t.rating ? t.rating : ''; };
-    chipsEl.innerHTML = '<div class="plf-section-label">Trefwoorden <span class="plf-dim">(tik: groen \u2192 oranje \u2192 rood \u2192 uit)</span></div>' +
-      Object.keys(PLF_CHIP_CATS).map(cat => {
-        const chips = PLF_CHIP_CATS[cat].map(w => { const r = ratingOf(cat, w); return '<button type="button" class="obs-tag" data-category="'+cat.toLowerCase()+'" data-label="'+escapeHtml(w)+'"'+(r?' data-rating="'+r+'"':'')+' onclick="_plfTagCycle(this)">'+escapeHtml(w)+'</button>'; }).join('');
-        return '<div class="plf-chip-block"><span class="plf-chip-cat">'+cat+'</span><div class="obs-tags">'+chips+'</div></div>';
-      }).join('');
   }
 
   const opv = document.getElementById('plf-opvallend');
@@ -6620,7 +6618,7 @@ function _plfSoftSave(showToast){
     const fields = {}; PLF_FIELDS.forEach(f => { fields[f] = (st[f]||'').trim(); });
     const tekst = PLF_FIELDS.map(f => f + ':' + (fields[f] ? ' ' + fields[f] : '')).join('\n');
     const hasContent = PLF_FIELDS.some(f => fields[f]);
-    let hasChips = false; try { hasChips = document.querySelectorAll('#plf-chips .obs-tag[data-rating]').length > 0; } catch(_){}
+    let hasChips = false; try { hasChips = document.querySelectorAll('#plf-fields .obs-tag[data-rating]').length > 0; } catch(_){}
     if(!Array.isArray(prog.snelnotities)) prog.snelnotities = [];
     let sn = prog.snelnotities.find(s => s && s.spelerKey === sp.id);
     if(!sn && !hasContent && !hasChips) return;
@@ -6629,7 +6627,7 @@ function _plfSoftSave(showToast){
       prog.snelnotities.push(sn);
     }
     sn.fields = fields;
-    try { sn.tags = Array.from(document.querySelectorAll('#plf-chips .obs-tag[data-rating]')).map(el => ({ label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') })).filter(t => t.rating); } catch(_){}
+    try { sn.tags = Array.from(document.querySelectorAll('#plf-fields .obs-tag[data-rating]')).map(el => ({ label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') })).filter(t => t.rating); } catch(_){}
     sn.tekst = tekst;
     sn.modified = Date.now();
     prog.modified = Date.now();

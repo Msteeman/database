@@ -12309,3 +12309,20 @@ body.sh-onb-open{ overflow:hidden; }
 .bh-tl-t{ flex:0 0 46px; color:#8b97ad; font-variant-numeric:tabular-nums; font-size:12.5px; }
 .bh-tl-ic{ flex:0 0 18px; text-align:center; }
 .bh-tl-lbl{ flex:1 1 auto; }
+
+
+/* PWA fix: iOS auto-zoom voorkomen op obs/live-wedstrijd inputs.
+   font-size < 16px laat iOS Safari inzoomen bij focus -> viewport springt.
+   16px op touch-schermen lost de scroll-jump op; desktop blijft ongemoeid. */
+@media (max-width: 860px){
+  .obs-term-in,
+  .sa-snel-term-input,
+  .sn-edit-term-in,
+  #obs-form input,
+  #obs-form select,
+  #obs-form textarea,
+  .obs-block-note,
+  .obs-in {
+    font-size: 16px !important;
+  }
+}

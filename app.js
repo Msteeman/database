@@ -7295,7 +7295,7 @@ function renderActiveScouting(){
         // Focus op eerste term-input
         const firstTerm = form.querySelector('.sa-snel-term-input');
         if(firstTerm) firstTerm.focus();
-        try { form.scrollIntoView({behavior:'smooth', block:'center'}); } catch(_){}
+        try { form.scrollIntoView({behavior:'smooth', block:'nearest'}); } catch(_){}
       } catch(_){}
     }, 60);
   }
@@ -7740,7 +7740,7 @@ function renderActiveScouting(){
           if(sn && typeof form.__shFillFromSn === 'function'){
             form.__shFillFromSn(sn);
           }
-          try { form.scrollIntoView({behavior:'smooth', block:'center'}); } catch(_){}
+          try { form.scrollIntoView({behavior:'smooth', block:'nearest'}); } catch(_){}
         }
         if(naamIn) naamIn.focus();
       } else if(act === 'add-observatie'){
@@ -7872,7 +7872,7 @@ function renderActiveScouting(){
         const triggerBtn = card.querySelector('.sa-trigger-wstr[data-progid="' + progId + '"]');
         if(triggerBtn) triggerBtn.click();
         if(wn && typeof form.__shFillFromWn === 'function') form.__shFillFromWn(wn);
-        try { form.scrollIntoView({behavior:'smooth', block:'center'}); } catch(_){}
+        try { form.scrollIntoView({behavior:'smooth', block:'nearest'}); } catch(_){}
       } else if(act === 'del-snel-wstr'){
         const idx = parseInt(btn.dataset.wnidx, 10);
         const prog = programmaCache.find(p => p.id === progId);

@@ -6345,7 +6345,18 @@ function openObservatieForm(prog, sn){
   setV('obs-naam', sn && (sn.naam||''));
   setV('obs-rug', sn && (sn.rugnummer||''));
   setV('obs-omschrijving', '');
-  setV('obs-positie', sn && (sn.positie||''));
+  // BATCH A — FIX 2: positie is nu een dropdown. Graceful: een opgeslagen waarde
+  // die niet in de standaardlijst staat, als extra optie injecteren zodat ze
+  // zichtbaar/bewaard blijft.
+  (function _obsSetPositie(){
+    const _pEl = document.getElementById('obs-positie');
+    const _pv = (sn && sn.positie || '').trim();
+    if(!_pEl) return;
+    if(_pv && !Array.from(_pEl.options).some(o => o.value === _pv)){
+      const _o = document.createElement('option'); _o.value = _pv; _o.textContent = _pv; _pEl.appendChild(_o);
+    }
+    _pEl.value = _pv;
+  })();
   // DEEL 1: clubkeuze thuis/uit — NIET blind één club defaulten. Bij een nieuwe
   // draft het clubveld leeg laten (placeholder "Kies club") en de gebruiker laten
   // kiezen uit de twee ploegen van deze wedstrijd. Bij heropenen blijft de eerder
@@ -6388,10 +6399,17 @@ function openObservatieForm(prog, sn){
   const _obsCancelEl = document.getElementById('obs-cancel');
   if(_obsCloseEl) _obsCloseEl.onclick = _obsClose;
   if(_obsCancelEl) _obsCancelEl.onclick = _obsClose;
-  setV('obs-niveau', '');
-  setV('obs-advies', '');
-  // H5: advies-chips resetten (select is leeg)
-  try { document.querySelectorAll('#obs-advies-chips .adv-chip').forEach(b => b.classList.remove('active')); } catch(_){}
+  // BATCH A — FIX 3: huidig niveau + advies prefillen vanuit de opgeslagen
+  // (concept-)observatie i.p.v. altijd leeg te zetten. Zonder dit gingen
+  // niveau/advies bij heropenen verloren.
+  const _obsNiveau = (sn && (sn.huidig_niveau || sn.niveau)) || '';
+  const _obsAdvies = (sn && sn.advies) || '';
+  setV('obs-niveau', _obsNiveau);
+  setV('obs-advies', _obsAdvies);
+  // Advies-chips: markeer de actieve chip (of reset als er geen advies is)
+  try {
+    document.querySelectorAll('#obs-advies-chips .adv-chip').forEach(b => b.classList.toggle('active', !!_obsAdvies && b.dataset.v === _obsAdvies));
+  } catch(_){}
   // Wire club autocomplete
   const clubIn = document.getElementById('obs-club');
   if(clubIn && typeof shWireClubAC === 'function' && !clubIn._obsAcWired){
@@ -6433,6 +6451,9 @@ function openObservatieForm(prog, sn){
         _d.positie= (document.getElementById('obs-positie')?.value||'').trim();
         _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
         _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
+        // BATCH A — FIX 3: huidig niveau + advies meebewaren zodat ze na heropenen terugkomen
+        _d.huidig_niveau = (document.getElementById('obs-niveau')?.value||'').trim();
+        _d.advies = (document.getElementById('obs-advies')?.value||'').trim();
         // #4: chips + categorie-notities ook live meebewaren
         try {
           _d.tags = Array.from(document.querySelectorAll('#obs-trefwoorden .obs-tag[data-rating]')).map(function(el){ return { label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') }; }).filter(function(t){ return t.rating; });
@@ -7219,6 +7240,9 @@ async function _obsSubmit(e){
         _d.positie = (document.getElementById('obs-positie')?.value||'').trim();
         _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
         _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
+        // BATCH A — FIX 3: huidig niveau + advies meebewaren zodat ze na heropenen terugkomen
+        _d.huidig_niveau = (document.getElementById('obs-niveau')?.value||'').trim();
+        _d.advies = (document.getElementById('obs-advies')?.value||'').trim();
         const _obsTerCont = document.getElementById('obs-terms');
         const _ti = _obsTerCont ? Array.from(_obsTerCont.querySelectorAll('.obs-term-in')) : Array.from(document.querySelectorAll('.obs-term-in'));
         _d.tekst = (_OBS_TERMS||[]).map(t => { const el = _ti.find(x => x.dataset.term===t); return t+':'+(el&&el.value.trim()?' '+el.value.trim():''); }).join('\n');
@@ -7397,6 +7421,9 @@ async function _obsSubmit(e){
             _d.positie = (document.getElementById('obs-positie')?.value||'').trim();
             _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
             _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
+        // BATCH A — FIX 3: huidig niveau + advies meebewaren zodat ze na heropenen terugkomen
+        _d.huidig_niveau = (document.getElementById('obs-niveau')?.value||'').trim();
+        _d.advies = (document.getElementById('obs-advies')?.value||'').trim();
             const _obsTcBd = document.getElementById('obs-terms');
             const _ti = _obsTcBd ? Array.from(_obsTcBd.querySelectorAll('.obs-term-in')) : Array.from(document.querySelectorAll('.obs-term-in'));
             _d.tekst = (_OBS_TERMS||[]).map(t => { const el = _ti.find(x => x.dataset.term===t); return t+':'+(el&&el.value.trim()?' '+el.value.trim():''); }).join('\n');
@@ -7683,7 +7710,7 @@ function renderActiveScouting(){
           <div class="sa-tile-obs-header">
             <div class="sa-tile-obs-naam">${escapeHtml(naam)}</div>
             ${meta ? `<div class="sa-tile-obs-sub">${escapeHtml(meta)}</div>` : ''}
-            <button type="button" class="sa-tile-obs-close" data-tile-act="close">×</button>
+            <button type="button" class="sa-tile-obs-close" data-tile-act="close" aria-label="Sluiten" title="Sluiten">×</button>
           </div>
           <div class="sa-tile-panel">
             ${panelHtml}
@@ -11641,8 +11668,8 @@ function _shOpenEditModal(m){
     </div>`;
 
   if(wrIngProg){
-    html += `<div class="wstr-player-row" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:10px 12px;">
-      <span style="color:#3b82f6;font-size:13px;font-weight:600;">📋 Wedstrijdrapport ingediend</span>
+    html += `<div class="wstr-player-row wstr-wr-done" style="background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.28);border-radius:8px;padding:10px 12px;">
+      <span style="color:#34d399;font-size:13px;font-weight:600;">📋 Wedstrijdrapport ingediend</span>
       <button type="button" class="wstr-edit-note-action" data-wr-open-modal="${escapeHtml(wrIngProg.id)}" style="margin-left:auto;">Bekijk →</button>
     </div>`;
   } else if(wrConceptProg){
@@ -20049,6 +20076,18 @@ async function saveProgMatchFromForm(e){
   });
   const _pmType = ($('#pm-type')?.value || 'wedstrijd');
   const _pmNaam = ($('#pm-naam')?.value || '').trim();
+  // BATCH A — FIX 1: tijd verplicht bij een wedstrijd. Rood markeren + fouttekst +
+  // scroll/focus naar het tijdveld; formulier niet opslaan zonder tijd.
+  const _pmTijd = ($('#pm-tijd')?.value || '').trim();
+  if(_pmType === 'wedstrijd' && !_pmTijd){
+    if(typeof _shFieldError === 'function') _shFieldError('pm-tijd', 'Vul een aftraptijd in.');
+    const _tEl = document.getElementById('pm-tijd');
+    if(_tEl){ try { _tEl.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} setTimeout(() => { try { _tEl.focus(); } catch(_){} }, 200); }
+    if(typeof toast === 'function') toast('Tijd is verplicht — vul het rood gemarkeerde veld in', true);
+    __savingProgMatch = false;
+    if(_submitBtn){ _submitBtn.disabled = false; if(_submitBtn.dataset._origText){ _submitBtn.textContent = _submitBtn.dataset._origText; delete _submitBtn.dataset._origText; } }
+    return;
+  }
   const item = {
     id,
     datum,
@@ -29528,3 +29567,34 @@ window._obStart = _obStart;
     setTimeout(function(){ try { t.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} }, 300);
   }, true);
 })();
+
+/* ============================================================
+   BATCH A — FIX 1/4 — zichtbare veld-validatie (rood + fouttekst).
+   Generieke helper: markeert een veld rood, toont een fouttekst eronder,
+   en wist die zodra de gebruiker het veld aanpast. Geen data-impact.
+   ============================================================ */
+function _shFieldError(id, msg){
+  const el = document.getElementById(id); if(!el) return;
+  el.classList.add('sh-field-error'); el.setAttribute('aria-invalid', 'true');
+  let m = document.getElementById(id + '-err');
+  if(!m){
+    m = document.createElement('div');
+    m.id = id + '-err';
+    m.className = 'sh-field-error-msg';
+    if(el.parentNode) el.parentNode.insertBefore(m, el.nextSibling);
+  }
+  m.textContent = msg;
+  if(!el._shErrWired){
+    el._shErrWired = true;
+    const clear = () => _shClearFieldError(id);
+    el.addEventListener('input', clear);
+    el.addEventListener('change', clear);
+  }
+}
+function _shClearFieldError(id){
+  const el = document.getElementById(id);
+  if(el){ el.classList.remove('sh-field-error'); el.removeAttribute('aria-invalid'); }
+  const m = document.getElementById(id + '-err'); if(m) m.remove();
+}
+window._shFieldError = _shFieldError;
+window._shClearFieldError = _shClearFieldError;

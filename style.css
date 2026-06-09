@@ -12851,3 +12851,48 @@ textarea.sh-grow-note{
 .wstr-player-row:has(.wstr-status-label.ingediend){
   box-shadow: inset 0 0 0 1px rgba(34,197,94,0.22), 0 0 14px rgba(34,197,94,0.10);
 }
+
+/* ============================================================
+   BATCH A v306 — validatie, gloed, touch targets
+   ============================================================ */
+
+/* FIX 1/4 — zichtbare veld-validatie: rood veld + fouttekst eronder */
+.sh-field-error{
+  border-color:#ef4444 !important;
+  box-shadow:0 0 0 2px rgba(239,68,68,0.18) !important;
+}
+.sh-field-error-msg{
+  color:#f87171;
+  font-size:11.5px;
+  margin-top:4px;
+  line-height:1.3;
+}
+
+/* FIX 4 — groene gloed iets feller als statusindicator (niet schreeuwerig) */
+.wstr-player-row:has(.wstr-status-label.ingediend),
+.wstr-player-row.wstr-wr-done{
+  box-shadow: inset 0 0 0 1px rgba(34,197,94,0.30), 0 0 16px rgba(34,197,94,0.16);
+  border-radius:8px;
+}
+.wstr-player-row:has(.wstr-type-label.observatie){
+  box-shadow: inset 0 0 0 1px rgba(34,197,94,0.20), 0 0 12px rgba(34,197,94,0.10);
+  border-radius:8px;
+}
+
+/* FIX 5 — touch targets ≥44px voor delete/icon-only knoppen (website én PWA) */
+#report-delete-concept,
+#obs-delete-btn,
+.match-report-delete{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+#report-delete-concept{ font-size:13px !important; padding:6px 16px !important; }
+.sa-tile-close,
+.sa-tile-obs-close{
+  min-width:44px;
+  min-height:44px;
+  font-size:20px;
+}

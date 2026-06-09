@@ -6332,7 +6332,7 @@ function openObservatieForm(prog, sn){
     termsEl.innerHTML = `
       <div class="obs-term-row obs-term-row-algemeen">
         <span class="obs-term-label">Algemeen / toelichting</span>
-        <input class="obs-term-in" data-term="algemeen" type="text" placeholder="bv. interessante speler, extra context (optioneel)..." value="${escapeHtml(_algVal)}" />
+        <textarea class="obs-term-in sh-grow-note" data-term="algemeen" rows="2" placeholder="bv. interessante speler, extra context (optioneel)...">${escapeHtml(_algVal)}</textarea>
       </div>`;
   }
   // Chip-migratie: trefwoord-chips injecteren (zelfde component als toernooi-obs).
@@ -6344,7 +6344,40 @@ function openObservatieForm(prog, sn){
   setV('obs-rug', sn && (sn.rugnummer||''));
   setV('obs-omschrijving', '');
   setV('obs-positie', sn && (sn.positie||''));
-  setV('obs-club', sn && (sn.club || (prog && (prog.uit||prog.thuis)||'')));
+  // DEEL 1: clubkeuze thuis/uit — NIET blind één club defaulten. Bij een nieuwe
+  // draft het clubveld leeg laten (placeholder "Kies club") en de gebruiker laten
+  // kiezen uit de twee ploegen van deze wedstrijd. Bij heropenen blijft de eerder
+  // gekozen club staan en wordt de bijbehorende knop actief.
+  const _obsHomeClub = (prog && prog.thuis || '').trim();
+  const _obsAwayClub = (prog && prog.uit || '').trim();
+  const _obsExistingClub = (sn && sn.club || '').trim();
+  setV('obs-club', _obsExistingClub);
+  (function _obsRenderClubChoice(){
+    const choiceEl = document.getElementById('obs-club-choice');
+    const clubInp = document.getElementById('obs-club');
+    if(!choiceEl || !clubInp) return;
+    if(_obsHomeClub || _obsAwayClub){
+      clubInp.placeholder = 'Kies club hieronder of typ zelf';
+      const mk = (val, icon, rol) => val
+        ? '<button type="button" class="obs-club-opt'+(_obsExistingClub===val?' active':'')+'" data-club="'+escapeHtml(val)+'"><span class="obs-club-opt-rol">'+icon+' '+rol+'</span><span class="obs-club-opt-naam">'+escapeHtml(val)+'</span></button>'
+        : '';
+      choiceEl.innerHTML = mk(_obsHomeClub, '🏠', 'Thuisploeg') + mk(_obsAwayClub, '✈️', 'Uitploeg');
+      choiceEl.style.display = '';
+      choiceEl.querySelectorAll('.obs-club-opt').forEach(b => {
+        b.onclick = () => {
+          clubInp.value = b.dataset.club || '';
+          choiceEl.querySelectorAll('.obs-club-opt').forEach(x => x.classList.remove('active'));
+          b.classList.add('active');
+          // Trigger autosave + sluit clubsuggestie
+          try { clubInp.dispatchEvent(new Event('input', { bubbles: true })); } catch(_){}
+        };
+      });
+    } else {
+      clubInp.placeholder = 'Clubnaam';
+      choiceEl.style.display = 'none';
+      choiceEl.innerHTML = '';
+    }
+  })();
   // elftal: uit snelnotitie, anders uit programma
   const _obsElftal = (sn && sn.elftal) || (prog && ((prog.thuis_elftal||'').trim() || (prog.uit_elftal||'').trim() || (prog.leeftijd||'').trim())) || '';
   setV('obs-elftal', _obsElftal);
@@ -6490,7 +6523,9 @@ function openObservatieForm(prog, sn){
   const _scrollY = window.scrollY;
   document.body.style.top = `-${_scrollY}px`;
   document.body.classList.add('modal-open');
-  setTimeout(() => { const n = document.getElementById('obs-naam'); if(n) n.focus(); }, 80);
+  // DEEL 2: GEEN auto-focus bij openen. Auto-focus opent direct het toetsenbord
+  // waardoor het scherm op mobiel/PWA naar beneden springt. De wedstrijdnotitie
+  // (MatchLiveForm) doet dit ook niet — gebruiker tikt zelf het eerste veld aan.
 }
 window.openObservatieForm = openObservatieForm;
 
@@ -6584,7 +6619,7 @@ function openPlayerLiveForm(prog, sp){
         return '<div class="plf-aspect">'+
           '<div class="plf-aspect-label">'+f+'</div>'+
           (chips ? '<div class="obs-tags plf-aspect-chips">'+chips+'</div>' : '')+
-          '<input class="plf-field-in" id="plf-in-'+f+'" data-field="'+f+'" type="text" autocomplete="off" placeholder="'+escapeHtml(PLF_PH[f]||'')+'" value="'+escapeHtml(st[f]||'')+'" />'+
+          '<textarea class="plf-field-in sh-grow-note" id="plf-in-'+f+'" data-field="'+f+'" rows="2" autocomplete="off" placeholder="'+escapeHtml(PLF_PH[f]||'')+'">'+escapeHtml(st[f]||'')+'</textarea>'+
         '</div>';
       }).join('');
     Array.from(fieldsEl.querySelectorAll('.plf-field-in')).forEach(inp => {
@@ -6597,7 +6632,7 @@ function openPlayerLiveForm(prog, sp){
     if(!fieldsEl._plfFocusWired){
       fieldsEl._plfFocusWired = true;
       fieldsEl.addEventListener('focusin', (e) => {
-        const t = e.target; if(!t || t.tagName !== 'INPUT') return;
+        const t = e.target; if(!t || (t.tagName !== 'INPUT' && t.tagName !== 'TEXTAREA')) return;
         setTimeout(() => { try { t.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} }, 300);
       });
     }
@@ -6617,7 +6652,8 @@ function openPlayerLiveForm(prog, sp){
   bd.style.display = 'flex';
   document.body.style.top = '-' + window.scrollY + 'px';
   document.body.classList.add('modal-open');
-  setTimeout(() => { const fst = document.getElementById('plf-in-techniek'); if(fst) fst.focus(); }, 80);
+  // DEEL 2: GEEN auto-focus bij openen (zelfde reden als obs/wedstrijdnotitie):
+  // voorkomt dat het toetsenbord meteen opent en de viewport naar beneden springt.
 }
 window.openPlayerLiveForm = openPlayerLiveForm;
 
@@ -6808,13 +6844,13 @@ async function _rdOpenEditor(draftId, r){
   body.innerHTML='<div class="rd-ctx"><b>'+escapeHtml(_rdState.playerName||'Speler')+'</b><div class="rd-ctx-sub">'+escapeHtml((mc.thuis||'')+' — '+(mc.uit||''))+(mc.datum?' · '+escapeHtml(mc.datum):'')+'</div><div class="rd-ctx-note">Conceptrapport uit je live-notities. Pas aan en kies daarna Indienen.</div></div>'+
     '<div class="plf-fields" id="rd-fields">'+RD_FIELDS.map(f=>{
       const chips=(CHIPS[f]||[]).map(w=>{ const rr=ratingOf(f,w); return '<button type="button" class="obs-tag" data-category="'+f+'" data-label="'+escapeHtml(w)+'"'+(rr?' data-rating="'+rr+'"':'')+' onclick="_rdTagCycle(this)">'+escapeHtml(w)+'</button>'; }).join('');
-      return '<div class="plf-aspect"><div class="plf-aspect-label">'+f+'</div>'+(chips?'<div class="obs-tags plf-aspect-chips">'+chips+'</div>':'')+'<input class="plf-field-in" data-field="'+f+'" type="text" autocomplete="off" placeholder="'+escapeHtml(PH[f]||'')+'" value="'+escapeHtml(_rdState.fields[f]||'')+'" /></div>';
+      return '<div class="plf-aspect"><div class="plf-aspect-label">'+f+'</div>'+(chips?'<div class="obs-tags plf-aspect-chips">'+chips+'</div>':'')+'<textarea class="plf-field-in sh-grow-note" data-field="'+f+'" rows="2" autocomplete="off" placeholder="'+escapeHtml(PH[f]||'')+'">'+escapeHtml(_rdState.fields[f]||'')+'</textarea></div>';
     }).join('')+'</div>'+
     '<div class="obs-actions"><button type="button" class="plf-opvallend-btn'+(_rdState.is_opvallend?' is-opvallend':'')+'" id="rd-opv">'+(_rdState.is_opvallend?'⭐ Opgevallen':'☆ Opvallend')+'</button>'+
     '<button type="button" class="btn btn-secondary" id="rd-save">Opslaan als concept</button>'+
     '<button type="button" class="btn btn-primary" id="rd-submit">Indienen</button></div>';
   body.querySelectorAll('#rd-fields .plf-field-in').forEach(inp=>{ inp.addEventListener('input',()=>{ _rdState.fields[inp.dataset.field]=inp.value; }); });
-  if(!body._rdFocusWired){ body._rdFocusWired=true; body.addEventListener('focusin',e=>{ const t=e.target; if(t&&t.tagName==='INPUT') setTimeout(()=>{ try{ t.scrollIntoView({block:'center',behavior:'smooth'}); }catch(_){} },300); }); }
+  if(!body._rdFocusWired){ body._rdFocusWired=true; body.addEventListener('focusin',e=>{ const t=e.target; if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) setTimeout(()=>{ try{ t.scrollIntoView({block:'center',behavior:'smooth'}); }catch(_){} },300); }); }
   const opv=document.getElementById('rd-opv'); if(opv) opv.onclick=()=>{ _rdState.is_opvallend=!_rdState.is_opvallend; opv.classList.toggle('is-opvallend',_rdState.is_opvallend); opv.textContent=_rdState.is_opvallend?'⭐ Opgevallen':'☆ Opvallend'; };
   const sv=document.getElementById('rd-save'); if(sv) sv.onclick=()=>_rdSaveDraft();
   const su=document.getElementById('rd-submit'); if(su) su.onclick=()=>_rdSubmit();
@@ -6946,12 +6982,12 @@ async function openMatchLiveForm(prog){
         const cat=c[0], label=c[1], chips=c[2];
         const cst=(st[team]&&st[team][cat])||{chips:[],note:''};
         const chipHtml=chips.map(function(w){ const on=(cst.chips||[]).indexOf(w)>=0; return '<button type="button" class="mlf-chip'+(on?' active':'')+'" data-team="'+team+'" data-cat="'+cat+'" data-label="'+escapeHtml(w)+'">'+escapeHtml(w)+'</button>'; }).join('');
-        return '<div class="mlf-cat"><div class="mlf-cat-label">'+label+'</div><div class="mlf-chips">'+chipHtml+'</div><input class="mlf-note plf-field-in" data-team="'+team+'" data-cat="'+cat+'" type="text" autocomplete="off" placeholder="Notitie..." value="'+escapeHtml(cst.note||'')+'" /></div>';
+        return '<div class="mlf-cat"><div class="mlf-cat-label">'+label+'</div><div class="mlf-chips">'+chipHtml+'</div><textarea class="mlf-note plf-field-in sh-grow-note" data-team="'+team+'" data-cat="'+cat+'" rows="2" autocomplete="off" placeholder="Notitie...">'+escapeHtml(cst.note||'')+'</textarea></div>';
       }).join('')+'</div>';
   };
   const weerChips = MLF_WEER.map(function(w){ const on=(st.gedeeld.weer.chips||[]).indexOf(w)>=0; return '<button type="button" class="mlf-chip'+(on?' active':'')+'" data-team="gedeeld" data-cat="weer" data-label="'+escapeHtml(w)+'">'+escapeHtml(w)+'</button>'; }).join('');
-  const sharedHtml = '<div class="mlf-shared"><div class="mlf-cat"><div class="mlf-cat-label">Weer / omstandigheden</div><div class="mlf-chips">'+weerChips+'</div><input class="mlf-note plf-field-in" data-team="gedeeld" data-cat="weer" type="text" autocomplete="off" placeholder="Notitie..." value="'+escapeHtml(st.gedeeld.weer.note||'')+'" /></div>'+
-    '<div class="mlf-cat"><div class="mlf-cat-label">Algemeen</div><input class="mlf-note plf-field-in" data-team="gedeeld" data-cat="algemeen" type="text" autocomplete="off" placeholder="Overige opmerkingen..." value="'+escapeHtml(st.gedeeld.algemeen.note||'')+'" /></div></div>';
+  const sharedHtml = '<div class="mlf-shared"><div class="mlf-cat"><div class="mlf-cat-label">Weer / omstandigheden</div><div class="mlf-chips">'+weerChips+'</div><textarea class="mlf-note plf-field-in sh-grow-note" data-team="gedeeld" data-cat="weer" rows="2" autocomplete="off" placeholder="Notitie...">'+escapeHtml(st.gedeeld.weer.note||'')+'</textarea></div>'+
+    '<div class="mlf-cat"><div class="mlf-cat-label">Algemeen</div><textarea class="mlf-note plf-field-in sh-grow-note" data-team="gedeeld" data-cat="algemeen" rows="2" autocomplete="off" placeholder="Overige opmerkingen...">'+escapeHtml(st.gedeeld.algemeen.note||'')+'</textarea></div></div>';
 
   const tabs = '<div class="mlf-tabs"><button type="button" class="mlf-tab active" data-mlf-tab="thuis">Thuis <span class="mlf-tab-badge" data-badge="thuis"></span></button><button type="button" class="mlf-tab" data-mlf-tab="uit">Uit <span class="mlf-tab-badge" data-badge="uit"></span></button></div>';
   const body = document.getElementById('mlf-body');
@@ -6972,7 +7008,7 @@ async function openMatchLiveForm(prog){
         clearTimeout(_mlfTm); _mlfTm = setTimeout(function(){ _mlfSync(false); }, 600);
         _mlfUpdateBadges();
       });
-      body.addEventListener('focusin', function(e){ const t=e.target; if(t&&t.tagName==='INPUT') setTimeout(function(){ try{ t.scrollIntoView({block:'center',behavior:'smooth'}); }catch(_){} },300); });
+      body.addEventListener('focusin', function(e){ const t=e.target; if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) setTimeout(function(){ try{ t.scrollIntoView({block:'center',behavior:'smooth'}); }catch(_){} },300); });
     }
     _mlfUpdateBadges();
   }
@@ -7074,6 +7110,13 @@ async function _obsSubmit(e){
         const _obsTerCont = document.getElementById('obs-terms');
         const _ti = _obsTerCont ? Array.from(_obsTerCont.querySelectorAll('.obs-term-in')) : Array.from(document.querySelectorAll('.obs-term-in'));
         _d.tekst = (_OBS_TERMS||[]).map(t => { const el = _ti.find(x => x.dataset.term===t); return t+':'+(el&&el.value.trim()?' '+el.value.trim():''); }).join('\n');
+        // DEEL 4: chips + categorie-notities ook flushen bij snel sluiten. De
+        // debounced autosave kan nog niet gevuurd hebben; zonder deze flush gaan
+        // de trefwoord-chips verloren en is na heropenen "niets zichtbaar".
+        try {
+          _d.tags = Array.from(document.querySelectorAll('#obs-trefwoorden .obs-tag[data-rating]')).map(function(el){ return { label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') }; }).filter(function(t){ return t.rating; });
+          var _cnF = {}; document.querySelectorAll('#obs-trefwoorden .obs-cat-note').forEach(function(ta){ var c=ta.dataset.catNote, v=(ta.value||'').trim(); if(c&&v) _cnF[c]=v; }); _d.category_notes = _cnF;
+        } catch(_){}
         _d.modified = Date.now();
         // VEILIGHEIDSLAAG: localStorage backup + Firestore met retry
         if(typeof _obsBackupSaveAndSync === 'function'){
@@ -7321,7 +7364,7 @@ Houd elke waarde onder 120 tekens.`;
         });
         if(hint) hint.textContent = `✓ ${filled_count} term${filled_count===1?'':'s'} aangevuld`;
       } catch(err){
-        if(hint) hint.textContent = '⚠ AI niet beschikbaar';
+        if(hint) hint.textContent = 'ℹ AI-functie nog niet beschikbaar';
         console.warn('Gemini obs error:', err);
       } finally {
         btn.disabled = false;
@@ -12218,7 +12261,7 @@ window._elfOpenUnassigned = function(){
 function _elfShowPlayerTiles(club, elftal, players){
   const resultsEl = document.getElementById('elf-results');
   if(!resultsEl) return;
-  const NIVEAU = { A:'Toptalent', B:'Belofte', C:'Gemiddeld', D:'Beperkt' };
+  const NIVEAU = { A:'Champions League', B:'Top Eredivisie', C:'Eredivisie', D:'KKD' };
 
   let html = `<div class="elf-back-bar">
   <button class="elf-back-btn" onclick="window._elfBackToTiles()">&#8592; Terug</button>
@@ -18665,7 +18708,7 @@ async function generatePlayerPDF(p){
 }
 
 function gradeLabel(g){
-  return ({A:'A — uitstekend',B:'B — bovengemiddeld',C:'C — gemiddeld',D:'D — onder gemiddeld'})[(g||'').toUpperCase()] || '';
+  return ({A:'A — Champions League',B:'B — Top Eredivisie',C:'C — Eredivisie',D:'D — KKD'})[(g||'').toUpperCase()] || '';
 }
 
 
@@ -20007,7 +20050,7 @@ function renderPpSuggestions(){
         <div class="pp-sug-name">${escapeHtml(naam)}</div>
         ${metaParts.length ? `<div class="pp-sug-meta">${escapeHtml(metaParts.join(' · '))}</div>` : ''}
       </div>
-      <span class="pp-sug-apply">VUL IN</span>
+      <span class="pp-sug-apply">Koppelen</span>
     </div>`;
   }).join('');
   wrap.innerHTML = `<div class="pp-sug-title">Uit spelersdatabase (${suggestions.length})</div>${rows}`;
@@ -20183,7 +20226,7 @@ function pmppRenderSuggestions(){
         <div class="pp-sug-name">${escapeHtml(naam)}</div>
         ${metaParts.length ? `<div class="pp-sug-meta">${escapeHtml(metaParts.join(' · '))}</div>` : ''}
       </div>
-      <span class="pp-sug-apply">VUL IN</span>
+      <span class="pp-sug-apply">Koppelen</span>
     </div>`;
   }).join('');
   wrap.innerHTML = `<div class="pp-sug-title">Uit spelersdatabase (${suggestions.length})</div>${rows}`;
@@ -29313,3 +29356,44 @@ function _obStart(role, data){
   render();
 }
 window._obStart = _obStart;
+
+/* ============================================================
+   DEEL 3 — Auto-grow voor meerregelige notitievelden (.sh-grow-note).
+   Eén gedelegeerde listener voor alle textareas met deze klasse, in
+   welke modal dan ook (opgevallen speler, gekoppelde speler,
+   wedstrijdnotitie, conceptrapport). Groeit mee met de inhoud tot de
+   CSS max-height; daarna scrollt het veld. Geen per-component wiring.
+   ============================================================ */
+(function _shGrowNotesInit(){
+  function grow(el){
+    if(!el || !el.classList || !el.classList.contains('sh-grow-note')) return;
+    el.style.height = 'auto';
+    var max = 150; // px — spiegelt CSS max-height, voorkomt exploderende modal
+    el.style.height = Math.min(el.scrollHeight, max) + 'px';
+    el.style.overflowY = (el.scrollHeight > max) ? 'auto' : 'hidden';
+  }
+  // Groeien tijdens typen
+  document.addEventListener('input', function(e){ grow(e.target); }, true);
+  // Bij focus (waarde reeds geprefilld) direct op de juiste hoogte zetten
+  document.addEventListener('focusin', function(e){ grow(e.target); }, true);
+  window._shGrowNote = grow;
+})();
+
+/* ============================================================
+   DEEL 7 — Toetsenbord/scroll-stabilisatie programma "wedstrijd aanmaken".
+   Thuis/uit-ploeg en elftal thuis/uit (+ speler-koppelvelden) centreren
+   zichzelf netjes boven het toetsenbord, net als de wedstrijdnotitie —
+   in plaats van dat het scherm naar beneden schiet. Eén gedelegeerde
+   focusin-listener, alleen actief op de bekende programmavelden.
+   ============================================================ */
+(function _pmKeyboardStabilizeInit(){
+  var IDS = { 'pm-thuis':1, 'pm-uit':1, 'pm-thuis-elftal':1, 'pm-uit-elftal':1,
+              'pmpp-voornaam':1, 'pmpp-achternaam':1, 'pmpp-geboorte':1, 'pmpp-club':1 };
+  document.addEventListener('focusin', function(e){
+    var t = e.target;
+    if(!t || !t.id || !IDS[t.id]) return;
+    if(!/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+    // Korte delay zodat iOS het toetsenbord eerst opent, dan centreren.
+    setTimeout(function(){ try { t.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} }, 300);
+  }, true);
+})();

@@ -12695,3 +12695,71 @@ body.sh-onb-open{ overflow:hidden; }
   .lp-flow-arrow{ display:none; }
   .lp-flow-step{ flex-basis:100%; max-width:none; }
 }
+
+/* ============================================================
+   BUGFIXRONDE live-notities — DEEL 1 + DEEL 3
+   ============================================================ */
+
+/* DEEL 3 — meerregelige notitievelden (auto-grow textareas).
+   .sh-grow-note hangt op .plf-field-in / .mlf-note / .obs-term-in, die
+   hun kleur/rand/padding al meegeven via de class-selector. Hier alleen
+   de textarea-specifieke eigenschappen: hoogte, wrap en geen handvat. */
+textarea.sh-grow-note{
+  display:block;
+  width:100%;
+  box-sizing:border-box;
+  min-height:72px;
+  max-height:150px;
+  line-height:1.45;
+  resize:none;                 /* hoogte volgt auto-grow in JS */
+  overflow-y:auto;             /* prefilled lange tekst blijft scrollbaar vóór focus */
+  white-space:pre-wrap;        /* netjes wrappen, newlines behouden */
+  word-break:break-word;
+  font-family:inherit;
+  vertical-align:top;
+}
+/* Mobiel: 16px voorkomt iOS-zoom bij focus (consistent met inputs) */
+@media (max-width:860px){
+  textarea.sh-grow-note{ font-size:16px !important; }
+}
+
+/* DEEL 1 — clubkeuze thuisploeg / uitploeg bij "Opgevallen speler". */
+.obs-club-choice{
+  display:flex;
+  gap:8px;
+  margin-bottom:8px;
+  flex-wrap:wrap;
+}
+.obs-club-opt{
+  flex:1 1 0;
+  min-width:120px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:2px;
+  padding:8px 11px;
+  border-radius:9px;
+  border:1px solid var(--border,#232838);
+  background:var(--bg-3,#141824);
+  color:var(--text-1,#e5e9f5);
+  cursor:pointer;
+  text-align:left;
+  transition:border-color .15s, background .15s;
+}
+.obs-club-opt:hover{ border-color:#4ea1ff; }
+.obs-club-opt.active{
+  border-color:#4ea1ff;
+  background:rgba(78,161,255,0.12);
+}
+.obs-club-opt-rol{
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:.4px;
+  color:var(--text-3,#8b93a8);
+}
+.obs-club-opt.active .obs-club-opt-rol{ color:#8cc4ff; }
+.obs-club-opt-naam{
+  font-size:13px;
+  font-weight:600;
+  line-height:1.2;
+}

@@ -12763,3 +12763,76 @@ textarea.sh-grow-note{
   font-weight:600;
   line-height:1.2;
 }
+
+/* ============================================================
+   MASTER BUGFIXRONDE live-flows — DEEL 2/3 + DEEL 8
+   ============================================================ */
+
+/* DEEL 2/3 — read-only "Live wedstrijdnotities" blok boven het wedstrijdrapport */
+.mlf-rapport-banner{
+  background:rgba(78,161,255,0.06);
+  border:1px solid rgba(78,161,255,0.22);
+  border-radius:10px;
+  padding:10px 12px;
+  margin-bottom:12px;
+}
+.mlf-rb-title{
+  font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+  color:#8cc4ff; margin-bottom:6px;
+}
+.mlf-rb-body{
+  margin:0; white-space:pre-wrap; word-break:break-word;
+  font-family:inherit; font-size:12.5px; line-height:1.5;
+  color:var(--text-1,#e5e9f5); max-height:180px; overflow-y:auto;
+}
+.mlf-rb-hint{
+  margin-top:6px; font-size:11px; color:var(--text-3,#8b93a8); font-style:italic;
+}
+
+/* DEEL 8 — groene GLOED als statusindicator i.p.v. groen vinkje/badge. */
+.wstr-player-row:has(.wstr-status-label.ingediend){
+  box-shadow: inset 0 0 0 1px rgba(34,197,94,0.22), 0 0 14px rgba(34,197,94,0.10);
+  border-radius:8px;
+}
+.wstr-status-label.ingediend{
+  background:transparent !important;
+  border:none !important;
+  color:#34d399 !important;
+  font-weight:600;
+  padding:0 2px !important;
+  box-shadow:none !important;
+}
+
+/* ============================================================
+   VERVOLGFIX v304 — B5 melding + E2 knop/touch
+   ============================================================ */
+
+/* FIX 1 (B5) — informatieve melding "geen live wedstrijdnotities" */
+.mlf-rapport-banner.mlf-rb-empty{
+  background:rgba(148,163,184,0.06);
+  border:1px solid rgba(148,163,184,0.20);
+}
+.mlf-rb-empty-txt{
+  font-size:12.5px; color:var(--text-3,#8b93a8); line-height:1.4;
+}
+
+/* FIX 3/4 (E2) — "Rapport voor [naam]" + touch targets ≥44px in wedstrijd-bewerken */
+.wstr-edit-mini-btn,
+.wstr-edit-note-action{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 14px;
+  font-size:13px;
+  border-radius:9px;
+}
+.wstr-edit-mini-btn.primary{
+  font-weight:600;
+}
+.wstr-mini-tap{
+  max-width:60%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}

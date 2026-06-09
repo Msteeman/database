@@ -4883,6 +4883,8 @@ function _mrShowReadOnly(r){
 
 function closeMatchReportModal(){
   _shResetDirty('mreport'); // s91
+  // DEEL 2/3: live-notitieblok opruimen bij sluiten
+  try { const _mlfB = document.getElementById('mlf-rapport-banner'); if(_mlfB) _mlfB.remove(); } catch(_){}
   $('#mreport-backdrop').classList.remove('open');
   // Reset: zorg dat form zichtbaar is bij volgende open
   const ro = document.getElementById('mr-readonly');
@@ -7072,6 +7074,116 @@ function _mlfClose(){
 }
 window._mlfClose=_mlfClose;
 
+/* ============================================================
+   DEEL 2/3 — Live wedstrijdnotities als bron in het wedstrijdrapport.
+   De MatchLiveForm-chips/notities staan in live_match_notes/{id}_match.
+   Bij het openen van het wedstrijdrapport (Verwerken / → Wedstrijdrapport)
+   lezen we die op, stellen er een leesbare tekst uit samen, en:
+     1) vullen het lege "Opmerking"-veld voor;
+     2) tonen een read-only blok "Live wedstrijdnotities" boven het formulier.
+   Puur additief: bestaande concept-/rapporttekst wordt NOOIT overschreven.
+   ============================================================ */
+function _mlfComposeRapportText(d){
+  if(!d) return '';
+  const mc = d.matchContext || {};
+  const cats = (typeof MLF_TEAM_CATS !== 'undefined') ? MLF_TEAM_CATS : [];
+  const lines = [];
+  const teamBlock = (teamKey, teamName) => {
+    const t = d[teamKey]; if(!t) return;
+    const parts = [];
+    cats.forEach(c => {
+      const cat = c[0], label = c[1]; const s = t[cat]; if(!s) return;
+      const chips = Array.isArray(s.chips) ? s.chips : [];
+      const note = (s.note || '').trim();
+      if(!chips.length && !note) return;
+      let line = label + ': ';
+      if(chips.length) line += chips.join(', ');
+      if(note) line += (chips.length ? ' — ' : '') + note;
+      parts.push(line);
+    });
+    if(parts.length){ lines.push('— ' + (teamName || teamKey) + ' —'); parts.forEach(p => lines.push(p)); lines.push(''); }
+  };
+  teamBlock('thuis', mc.thuis);
+  teamBlock('uit', mc.uit);
+  const g = d.gedeeld || {};
+  if(g.weer && ((g.weer.chips && g.weer.chips.length) || (g.weer.note || '').trim())){
+    let l = 'Weer / omstandigheden: ';
+    if(g.weer.chips && g.weer.chips.length) l += g.weer.chips.join(', ');
+    if((g.weer.note || '').trim()) l += ((g.weer.chips && g.weer.chips.length) ? ' — ' : '') + g.weer.note.trim();
+    lines.push(l);
+  }
+  if(g.algemeen && (g.algemeen.note || '').trim()) lines.push('Algemeen: ' + g.algemeen.note.trim());
+  return lines.join('\n').trim();
+}
+
+async function _mlfReadMatchNote(progId){
+  if(!progId || typeof currentUser === 'undefined' || !currentUser || !currentUser.uid) return null;
+  try { const ds = await getDoc(doc(db, 'users', currentUser.uid, 'live_match_notes', progId + '_match')); if(ds.exists()) return ds.data(); } catch(_){}
+  return null;
+}
+async function _mlfInjectRapportPrefill(progId, opts){
+  opts = opts || {};
+  try {
+    const d = await _mlfReadMatchNote(progId);
+    const txt = d ? _mlfComposeRapportText(d) : '';
+    const form = document.getElementById('mreport-form');
+    const opm = document.getElementById('mr-opmerking');
+    if(txt){
+      // 1) Opmerkingveld voorvullen — alleen als nog leeg (niets overschrijven)
+      if(opm && !opm.value.trim()){ opm.value = txt; try { if(typeof _shGrowNote === 'function') _shGrowNote(opm); } catch(_){} }
+      // 2) Read-only blok "Live wedstrijdnotities" boven het formulier
+      if(form && form.parentNode){
+        const old = document.getElementById('mlf-rapport-banner'); if(old) old.remove();
+        const b = document.createElement('div');
+        b.id = 'mlf-rapport-banner';
+        b.className = 'mlf-rapport-banner';
+        b.innerHTML = '<div class="mlf-rb-title">📋 Live wedstrijdnotities</div><pre class="mlf-rb-body">' + escapeHtml(txt) + '</pre><div class="mlf-rb-hint">Deze live-notities zijn als startpunt in de Opmerking gezet. Pas aan en sla op of dien in.</div>';
+        form.parentNode.insertBefore(b, form);
+      }
+      return;
+    }
+    // FIX 1 (B5): geen live-notities. Toon informatieve melding — maar NIET als er
+    // al een concept is (fromConcept) of als de Opmerking al tekst bevat
+    // (bestaand concept / wedstrijdnotitie). Geen foutmelding; puur informatief.
+    if(opts.fromConcept) return;
+    if(opm && opm.value.trim()) return;
+    if(form && form.parentNode){
+      const old = document.getElementById('mlf-rapport-banner'); if(old) old.remove();
+      const b = document.createElement('div');
+      b.id = 'mlf-rapport-banner';
+      b.className = 'mlf-rapport-banner mlf-rb-empty';
+      b.innerHTML = '<div class="mlf-rb-empty-txt">ℹ️ Geen live wedstrijdnotities gevonden voor deze wedstrijd.</div>';
+      form.parentNode.insertBefore(b, form);
+    }
+  } catch(_){}
+}
+window._mlfInjectRapportPrefill = _mlfInjectRapportPrefill;
+
+/* FIX 2 (C1/C2) — match-level live_match_notes mede-canoniek voor de status
+   in "Wedstrijd bewerken". Async upgrade van de "Nog geen rapport"-rij naar
+   "Live wedstrijdnotitie aanwezig" zodra {id}_match inhoud bevat. */
+async function _mlfMaybeUpgradeWrStatus(progId){
+  try {
+    if(!progId) return;
+    const row = document.getElementById('wstr-wr-norow');
+    if(!row) return; // alleen de "nog geen rapport"-staat upgraden
+    const d = await _mlfReadMatchNote(progId);
+    if(!d) return;
+    const txt = _mlfComposeRapportText(d);
+    if(!txt) return; // geen inhoud → "Nog geen rapport" laten staan
+    row.innerHTML = '<span style="font-size:13px;color:var(--text-2);">📋 Live wedstrijdnotitie aanwezig</span>' +
+      '<button type="button" class="wstr-edit-note-action primary" style="margin-left:auto;">→ Wedstrijdrapport</button>';
+    const btn = row.querySelector('button');
+    if(btn) btn.onclick = (e) => {
+      e.preventDefault(); e.stopPropagation();
+      if(typeof _shCloseEditModal === 'function') _shCloseEditModal();
+      if(typeof _shConvertWstrNotitieToRapport === 'function') _shConvertWstrNotitieToRapport(progId, -1);
+      setTimeout(() => { try { _mlfInjectRapportPrefill(progId); } catch(_){} }, 160);
+    };
+  } catch(_){}
+}
+window._mlfMaybeUpgradeWrStatus = _mlfMaybeUpgradeWrStatus;
+
 function _obsClose(){
   try { window.__obsTriggerAutosave=null; window.__obsCaptureChips=null; } catch(_){}
   const bd = document.getElementById('obs-backdrop');
@@ -7253,8 +7365,10 @@ async function _obsSubmit(e){
         }
       }
     };
-    if(typeof _showObsKeuze === 'function'){ _showObsKeuze(rec, _obsAfterSaveNav); }
-    else { setTimeout(_obsAfterSaveNav, 600); }
+    // DEEL 7: OBS blijft OBS — GEEN keuze-modal "observatie bewaren of omzetten
+    // naar rapport". Opslaan = observatie opslaan + terug naar wedstrijdcontext.
+    // Een spelersrapport maak je bewust via de aparte rapportflow.
+    setTimeout(_obsAfterSaveNav, 400);
   } catch(err){
     console.error('obs submit error', err);
     if(typeof toast === 'function') toast('Fout bij opslaan', true);
@@ -7695,7 +7809,12 @@ function renderActiveScouting(){
           <!-- s35bg: onderaan-instructie weg (heading is nu close-trigger) -->
         </div>
         ${(()=>{
-          // s92: toon opgeslagen snelnotities van ongekoppelde spelers
+          // DEEL 6: legacy gele "Opgeslagen notities"-sectie niet meer renderen
+          // als primaire UI. Data blijft bestaan (snelnotities) en komt via de
+          // moderne secties (Spelers / Opgevallen spelers / Wedstrijdnotitie).
+          return '';
+          // eslint-disable-next-line no-unreachable
+          // s92 (legacy): toon opgeslagen snelnotities van ongekoppelde spelers
           const _linkedKeys = new Set((prog.spelers||[]).map(s => s && s.id).filter(Boolean));
           const _unsaved = (prog.snelnotities||[]).filter(sn => sn && sn.naam && !_linkedKeys.has(sn.spelerKey) && !(sn.rapport_type === 'observatie'));
           if(!_unsaved.length) return '';
@@ -9358,7 +9477,11 @@ function renderDashboard(){
 
   // Obs: gebruik wedstrijd datum als fallback voor sortering
   const _getPlayerDate = p => p.datum || p.wedstrijd_datum || (p.wedstrijd&&p.wedstrijd.datum) || '';
-  const recent = [...players].sort((a,b)=> new Date(_getPlayerDate(b)||0) - new Date(_getPlayerDate(a)||0)).slice(0,8);
+  // DEEL 10: gekoppelde-speler concepten (nog geen echt rapport) niet als losse
+  // dashboardnotitie tonen. Echte observaties en ingediende rapporten blijven;
+  // alleen concept-drafts worden hier verborgen tot ze ingediend zijn.
+  const _isConceptRec = p => (typeof _shPlayerIsConcept === 'function') ? _shPlayerIsConcept(p) : !!p.concept;
+  const recent = [...players].filter(p => !_isConceptRec(p)).sort((a,b)=> new Date(_getPlayerDate(b)||0) - new Date(_getPlayerDate(a)||0)).slice(0,8);
   const list = $('#recent-list');
   list.innerHTML = recent.map(p => {
     const isObs = p.rapport_type === 'observatie';
@@ -11436,7 +11559,7 @@ function _shOpenEditModal(m){
       <span class="wstr-type-dot obs"></span>
       <span class="wstr-player-naam">${escapeHtml(naam)}</span>
       <span class="wstr-type-label observatie">OBS</span>
-      <span class="wstr-status-label ingediend">✓ Ingediend</span>
+      <span class="wstr-status-label ingediend">Ingediend</span>
     </div>`;
   });
 
@@ -11474,14 +11597,14 @@ function _shOpenEditModal(m){
         <span class="wstr-type-dot ${isObs?'obs':'rapport'}"></span>
         <span class="wstr-player-naam">${escapeHtml(naam)}</span>
         ${typeLabel}
-        <button type="button" class="wstr-edit-mini-btn primary" data-edit-player="${escapeHtml(pl.id)}">→ Indienen</button>
+        <button type="button" class="wstr-edit-mini-btn ${isObs?'obs':'primary'} wstr-mini-tap" data-edit-player="${escapeHtml(pl.id)}">${isObs?'Bewerken':('Rapport voor '+escapeHtml((naam||'').split(/\s+/)[0]||'speler'))}</button>
       </div>`;
     } else {
       html += `<div class="wstr-player-row" data-open-player-db="${escapeHtml(pl.id)}" style="cursor:pointer;">
         <span class="wstr-type-dot ${isObs?'obs':'rapport'}"></span>
         <span class="wstr-player-naam">${escapeHtml(naam)}</span>
         ${typeLabel}
-        <span class="wstr-status-label ingediend">✓ Ingediend</span>
+        <span class="wstr-status-label ingediend">Ingediend</span>
       </div>`;
     }
   });
@@ -11497,7 +11620,7 @@ function _shOpenEditModal(m){
       <span class="wstr-type-dot obs"></span>
       <span class="wstr-player-naam">${num}${escapeHtml(naam)}</span>
       <span class="wstr-type-label observatie">OBS</span>
-      <button type="button" class="wstr-edit-mini-btn obs" data-edit-snel-obs="${escapeHtml(progId)}" data-edit-snel-obs-idx="${snIdx}">→ Indienen</button>
+      <button type="button" class="wstr-edit-mini-btn obs" data-edit-snel-obs="${escapeHtml(progId)}" data-edit-snel-obs-idx="${snIdx}">Bewerken</button>
     </div>`;
   });
 
@@ -11519,23 +11642,26 @@ function _shOpenEditModal(m){
 
   if(wrIngProg){
     html += `<div class="wstr-player-row" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:10px 12px;">
-      <span style="color:#3b82f6;font-size:13px;font-weight:600;">📋 Wedstrijdrapport</span>
-      <span class="wstr-status-label" style="background:rgba(59,130,246,.15);color:#3b82f6;border-color:rgba(59,130,246,.3);">✓ Ingediend</span>
+      <span style="color:#3b82f6;font-size:13px;font-weight:600;">📋 Wedstrijdrapport ingediend</span>
       <button type="button" class="wstr-edit-note-action" data-wr-open-modal="${escapeHtml(wrIngProg.id)}" style="margin-left:auto;">Bekijk →</button>
     </div>`;
   } else if(wrConceptProg){
     html += `<div class="wstr-player-row">
-      <span style="font-size:13px;color:var(--text-2);">📝 Concept aanwezig</span>
+      <span style="font-size:13px;color:var(--text-2);">📝 Concept wedstrijdrapport aanwezig</span>
       <button type="button" class="wstr-edit-note-action primary" data-wr-open-modal="${escapeHtml(wrConceptProg.id)}" style="margin-left:auto;">→ Wedstrijdrapport</button>
     </div>`;
   } else {
-    html += `<div class="wstr-player-row">
+    // FIX 2 (C1/C2): id zodat _mlfMaybeUpgradeWrStatus deze rij async kan upgraden
+    // naar "Live wedstrijdnotitie aanwezig" als {id}_match inhoud bevat.
+    html += `<div class="wstr-player-row" id="wstr-wr-norow">
       <span style="font-size:12px;color:var(--text-3);">Nog geen rapport</span>
       ${_firstProgId2 ? `<button type="button" class="wstr-edit-note-action primary" data-edit-wstr-prog="${escapeHtml(_firstProgId2)}" data-edit-wstr-idx="-1" style="margin-left:auto;">→ Wedstrijdrapport</button>` : ''}
     </div>`;
   }
   html += `</div>`;
   bodyEl.innerHTML = html;
+  // FIX 2 (C1/C2): live_match_notes meetellen — upgrade "Nog geen rapport"-status
+  try { if(_firstProgId2 && typeof _mlfMaybeUpgradeWrStatus === 'function') _mlfMaybeUpgradeWrStatus(_firstProgId2); } catch(_){}
 
   // Footer-acties (preserveer class-namen zodat bestaande handlers werken)
   const footEl = document.getElementById("wstr-edit-foot");
@@ -11644,6 +11770,8 @@ function _shOpenEditModal(m){
       _shCloseEditModal();
       // s35bu: open Wedstrijdrapport-modal met prefill uit (snel-)wedstrijdnotitie
       _shConvertWstrNotitieToRapport(progId, wnIdx);
+      // DEEL 2/3: live wedstrijdnotities (chips/categorieën) ook meenemen
+      setTimeout(() => { try { if(typeof _mlfInjectRapportPrefill === 'function') _mlfInjectRapportPrefill(progId); } catch(_){} }, 160);
     });
   });
   // s35dg Fase F: "Open wedstrijdrapport"-knop op concept-record
@@ -11680,6 +11808,9 @@ function _shOpenEditModal(m){
               const tekst = wr.tekst || '';
               if(tekst) opm.value = tekst;
             }
+            // DEEL 2/3: live wedstrijdnotities (chips/categorieën) als bron meenemen.
+            // fromConcept: hier bestaat al een concept → geen "geen notities"-melding.
+            if(typeof _mlfInjectRapportPrefill === 'function') _mlfInjectRapportPrefill(progId, { fromConcept: true });
           } catch(_){}
         }, 60);
       } else {

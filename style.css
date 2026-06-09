@@ -12836,3 +12836,18 @@ textarea.sh-grow-note{
   overflow:hidden;
   text-overflow:ellipsis;
 }
+
+/* ============================================================
+   BASISFLOW v305 — FLOW E: groene gloed breder als statusindicator
+   (geen vinkjes). Subtiel; geen badge-rommel.
+   ============================================================ */
+/* OBS-rij met inhoud → zachte groene gloed (status: observatie aanwezig) */
+.wstr-player-row:has(.wstr-type-label.observatie){
+  box-shadow: inset 0 0 0 1px rgba(34,197,94,0.16), 0 0 10px rgba(34,197,94,0.07);
+  border-radius:8px;
+}
+/* Ingediende rij heeft voorrang met iets sterkere gloed (al gedefinieerd),
+   maar borg de combinatie OBS + ingediend met de sterkere variant: */
+.wstr-player-row:has(.wstr-status-label.ingediend){
+  box-shadow: inset 0 0 0 1px rgba(34,197,94,0.22), 0 0 14px rgba(34,197,94,0.10);
+}

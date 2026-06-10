@@ -16122,7 +16122,7 @@ function loadIntoForm(p){
   $('#f-w-datum').value = w.datum || '';
   $('#f-w-thuis').value = w.thuis || w.tegenstander || '';
   $('#f-w-uit').value = w.uit || '';
-  $('#f-w-uitslag').value = w.uitslag || '';
+  if($('#f-w-uitslag')) $('#f-w-uitslag').value = w.uitslag || '';
   $('#f-w-opstelling').value = w.opstelling || '';
   $('#f-w-context').value = w.context || '';
   /* s35dg Fase H: locatie-velden bij reload van concept */
@@ -20978,7 +20978,7 @@ function collectReportFormData(){
       datum: $('#f-w-datum').value,
       thuis: $('#f-w-thuis').value.trim(),
       uit: $('#f-w-uit').value.trim(),
-      uitslag: $('#f-w-uitslag').value.trim(),
+      uitslag: $('#f-w-uitslag') ? $('#f-w-uitslag').value.trim() : '',
       opstelling: $('#f-w-opstelling').value.trim(),
       context: $('#f-w-context').value.trim(),
       /* s35dg Fase H */

@@ -16645,6 +16645,10 @@ function renderMatches(){
       const _spelerIds = new Set(_spelers.map(sp => sp && sp.id).filter(Boolean));
       const _extraPlayers = (typeof playersCache !== 'undefined' ? playersCache : []).filter(p => {
         if(!p || !p.id || _spelerIds.has(p.id)) return false;
+        // BATCH 1 / 1A-ii: een rapport dat aan een programma-slot hangt dat hierboven
+        // al via _spelers getoond wordt, NIET nóg een keer als los rapport tonen.
+        // (Dit veroorzaakte de dubbele "Liam de Boer": slot + ingediend rapport.)
+        if(p.programma_link && p.programma_link.progId === m.progId && _spelerIds.has(p.programma_link.spelerKey)) return false;
         const wd = p.wedstrijd || {};
         if(!wd.datum || wd.datum !== _matchDatum) return false;
         // Fuzzy thuis-match: speler heeft "Go Ahead Eagles", wedstrijd "Go Ahead Eagles O.13-1"

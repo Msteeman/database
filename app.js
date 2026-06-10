@@ -14695,8 +14695,9 @@ function renderDetailOverview(p){
   const topBtn = document.getElementById('dtl-show-report-top');
   if(topBtn) topBtn.addEventListener('click', handleShowReport);
   // BATCH 1 / 1B — vanuit de wedstrijd direct het volledige rapport tonen i.p.v.
-  // eerst het overzicht/voorrapport (alleen bij één concreet rapport, niet avg).
-  if(window.__shOpenFullReport && mode !== 'average'){
+  // eerst het overzicht/voorrapport. Geldt in elke modus: bij meerdere rapporten
+  // toont 'vp' het gemiddelde rapport, bij één rapport dat rapport.
+  if(window.__shOpenFullReport){
     window.__shOpenFullReport = false;
     try { renderDetailFullReport(vp); return; } catch(_){}
   }

@@ -15606,7 +15606,29 @@ function renderDetailFullReport(p){
   // BATCH 1 / 1B — "Beoordeling per onderdeel": per onderdeel het A-D-cijfer, de
   // chips (uit rapport_tags, met categorie) én de toelichting samen tonen, zodat
   // het volledige rapport leest zoals je het hebt ingevuld.
-  const _repTagsFR = Array.isArray(p.rapport_tags) ? p.rapport_tags : [];
+  let _repTagsFR = Array.isArray(p.rapport_tags) ? p.rapport_tags.slice() : [];
+  // BATCH 1 / 1B — backfill ALLEEN VOOR WEERGAVE: heeft het rapport geen chips
+  // (bv. ingediend vóór de live→rapport-prefill), haal ze dan uit de live-notitie
+  // van deze speler. Er wordt GEEN data gewijzigd; bij opnieuw indienen persist v315 ze.
+  if(!_repTagsFR.length && typeof programmaCache !== 'undefined' && Array.isArray(programmaCache)){
+    var _pidBF = p.id || '', _pnmBF = (p.naam || '').toLowerCase().trim();
+    var _catSecBF = { techniek:'techniek_huidig', inzicht:'inzicht_huidig', mentaliteit:'mentaliteit_huidig', explosiviteit:'explosiviteit_huidig', sprinten:'sprinten_huidig', duelleren:'duelleren_huidig', wendbaarheid:'wendbaarheid_huidig' };
+    for(var _bfi=0; _bfi<programmaCache.length && !_repTagsFR.length; _bfi++){
+      var _bfp = programmaCache[_bfi]; if(!_bfp || !Array.isArray(_bfp.snelnotities)) continue;
+      for(var _bfj=0; _bfj<_bfp.snelnotities.length; _bfj++){
+        var _bfsn = _bfp.snelnotities[_bfj];
+        if(!_bfsn || !Array.isArray(_bfsn.tags) || !_bfsn.tags.length) continue;
+        var _bfMatch = (_pidBF && (_bfsn.player_id===_pidBF || _bfsn.__convertedToPlayerId===_pidBF)) || (_pnmBF && (_bfsn.naam||'').toLowerCase().trim()===_pnmBF);
+        if(!_bfMatch) continue;
+        _repTagsFR = _bfsn.tags.map(function(t){
+          var sec = t && _catSecBF[(t.category||'').toLowerCase()];
+          if(!sec || !t.rating) return null;
+          return { label:t.label, rating:t.rating, rapport_section:sec, category:(t.category||'').toLowerCase() };
+        }).filter(Boolean);
+        if(_repTagsFR.length) break;
+      }
+    }
+  }
   // Notities per onderdeel uit het "key: value"-notitieveld halen (zelfde bron als Scout-notities),
   // zodat chips + notitie SAMEN bij het juiste onderdeel staan.
   const _noteMapFR = {};

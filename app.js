@@ -6091,6 +6091,24 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
         slotConcept = (typeof findSlotConcept === 'function')
           ? findSlotConcept(prog.id, progSp.id) : null;
       }
+      // BATCH 1 / 1B — live-chips (gekoppelde speler) → rapportchips prefillen.
+      // Herbruikbaar zodat het OOK in de concept-tak draait (die eerder terugkeerde
+      // vóór de prefill). Live is leidend; injecteert alleen als er nog geen chips staan.
+      const _shTryLiveChips = function(){
+        try {
+          if(document.querySelectorAll('#view-report .report-trefwoorden .obs-tag[data-rating]').length) return;
+          if(!Array.isArray(prog.snelnotities)) return;
+          var _snC = prog.snelnotities.find(function(s){ return s && s.spelerKey === progSp.id; });
+          if(!_snC || !Array.isArray(_snC.tags) || !_snC.tags.length) return;
+          var _c2s = { techniek:'techniek_huidig', inzicht:'inzicht_huidig', mentaliteit:'mentaliteit_huidig', explosiviteit:'explosiviteit_huidig', sprinten:'sprinten_huidig', duelleren:'duelleren_huidig', wendbaarheid:'wendbaarheid_huidig' };
+          var _mc = _snC.tags.map(function(t){
+            var sec = t && _c2s[(t.category||'').toLowerCase()];
+            if(!sec || !t.rating) return null;
+            return { label:t.label, rating:t.rating, rapport_section:sec, category:(t.category||'').toLowerCase() };
+          }).filter(Boolean);
+          if(_mc.length && typeof _injectReportTrefwoorden === 'function') _injectReportTrefwoorden(_mc);
+        } catch(_e){ console.warn('live-chip-prefill', _e); }
+      };
       if(slotConcept){
         loadIntoForm(slotConcept);
         const dispNaam = slotConcept.naam
@@ -6102,6 +6120,7 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
         if($('#f-w-thuis') && !$('#f-w-thuis').value) $('#f-w-thuis').value = prog.thuis || '';
         if($('#f-w-uit') && !$('#f-w-uit').value) $('#f-w-uit').value = prog.uit || '';
         try { const _s = document.getElementById('rep-prog-autofill-strip'); if(_s) _s.hidden = false; } catch(_){}
+        _shTryLiveChips();
         injectScoutingBanner(prog, progSp, matchedPlayer);
         return;
       }
@@ -6274,24 +6293,8 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
       } catch(_snErr){ console.warn('sn-map', _snErr); }
       // ────────────────────────────────────────────────────────────────────
 
-      // BATCH 1 / 1B — live-chips (gekoppelde speler) → rapportchips prefillen.
-      // Live is leidend: map de live-categorie naar de rapport-sectie en injecteer,
-      // tenzij er al concept-chips in het formulier staan (die niet overschrijven).
-      try {
-        var _existingChipCount = document.querySelectorAll('#view-report .report-trefwoorden .obs-tag[data-rating]').length;
-        if(!_existingChipCount && Array.isArray(prog.snelnotities)){
-          var _snChips = prog.snelnotities.find(function(s){ return s && s.spelerKey === progSp.id; });
-          if(_snChips && Array.isArray(_snChips.tags) && _snChips.tags.length){
-            var _catToSec = { techniek:'techniek_huidig', inzicht:'inzicht_huidig', mentaliteit:'mentaliteit_huidig', explosiviteit:'explosiviteit_huidig', sprinten:'sprinten_huidig', duelleren:'duelleren_huidig', wendbaarheid:'wendbaarheid_huidig' };
-            var _mappedChips = _snChips.tags.map(function(t){
-              var sec = t && _catToSec[(t.category||'').toLowerCase()];
-              if(!sec || !t.rating) return null;
-              return { label:t.label, rating:t.rating, rapport_section:sec, category:(t.category||'').toLowerCase() };
-            }).filter(Boolean);
-            if(_mappedChips.length && typeof _injectReportTrefwoorden === 'function') _injectReportTrefwoorden(_mappedChips);
-          }
-        }
-      } catch(_lcErr){ console.warn('live-chip-prefill', _lcErr); }
+      // BATCH 1 / 1B — live-chips → rapportchips (zelfde helper als in de concept-tak).
+      _shTryLiveChips();
 
       // Banner met concept-status
       injectScoutingBanner(prog, progSp, matchedPlayer);
@@ -15666,6 +15669,7 @@ function renderDetailFullReport(p){
 
   $('#player-view-body').innerHTML = `
     ${backBtnHtml}
+    ${p.niet_gerapporteerd ? `<div class="detail-section" style="background:rgba(251,191,36,0.08);border:1px solid rgba(251,191,36,0.3);"><h4 style="margin:0 0 4px;">Niet gerapporteerd</h4><div class="detail-notes">Reden: ${escapeHtml(p.niet_gerapporteerd_reden||'—')}${p.niet_gerapporteerd_note?(' · '+escapeHtml(p.niet_gerapporteerd_note)):''}</div></div>` : ''}
     <div class="detail-header">
       <button type="button" class="detail-avatar sh-avatar-btn" data-pid="${escapeAttr(p.id)}" title="Foto toevoegen of wijzigen" aria-label="Spelerfoto">${_shAvatarInner(p)}<span class="sh-avatar-cam" aria-hidden="true">📷</span></button>
       <div style="flex:1;">
@@ -16307,7 +16311,19 @@ async function submitReport(e){
   if(typeof _shClearFieldError === 'function'){ _shClearFieldError('f-voornaam'); _shClearFieldError('f-achternaam'); }
   if(typeof _shMarkPickerError === 'function'){ _shMarkPickerError('huidig_niveau', false); _shMarkPickerError('potentieel_niveau', false); }
   if(typeof _shMarkAdviesError === 'function') _shMarkAdviesError(false);
-  if(__mode === 'submit'){
+  // BATCH 1 / 1B — "niet gerapporteerd": dan zijn niveau/advies/onderdelen NIET van
+  // toepassing. Alleen een reden is verplicht; een notitie is optioneel.
+  const _ngChecked = !!(document.getElementById('f-niet-gerapporteerd') && document.getElementById('f-niet-gerapporteerd').checked);
+  const _ngReden = ($('#f-niet-gerapporteerd-reden') ? $('#f-niet-gerapporteerd-reden').value : '').trim();
+  const _ngNote = ($('#f-niet-gerapporteerd-note') ? $('#f-niet-gerapporteerd-note').value : '').trim();
+  if(__mode === 'submit' && _ngChecked){
+    if(!_ngReden){
+      if(typeof toast === 'function') toast('Kies een reden waarom de speler niet gerapporteerd is', true);
+      var _ngRe = document.getElementById('f-niet-gerapporteerd-reden');
+      if(_ngRe){ try { _ngRe.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} setTimeout(function(){ try { _ngRe.focus(); } catch(_){} }, 150); }
+      return;
+    }
+  } else if(__mode === 'submit'){
     const _miss = [];
     if(!voornaam){ _miss.push('voornaam'); if(typeof _shFieldError==='function') _shFieldError('f-voornaam','Vul een voornaam in.'); }
     if(!achternaam){ _miss.push('achternaam'); if(typeof _shFieldError==='function') _shFieldError('f-achternaam','Vul een achternaam in.'); }
@@ -16393,7 +16409,11 @@ async function submitReport(e){
     huidig_niveau: huidig,
     potentieel_niveau: pot,
     datum: $('#f-w-datum').value || todayISO(),
-    concept: (__mode === 'draft')
+    concept: (__mode === 'draft'),
+    // BATCH 1 / 1B — "niet gerapporteerd"-status meebewaren
+    niet_gerapporteerd: _ngChecked,
+    niet_gerapporteerd_reden: _ngChecked ? _ngReden : '',
+    niet_gerapporteerd_note: _ngChecked ? _ngNote : ''
   };
     await savePlayer(player);
     // Toernooicontext: patch rapport met tournament-velden indien aangemaakt vanuit bundeling
@@ -21047,6 +21067,11 @@ function shSyncNietGerapporteerdUI(){
   const cb = document.getElementById('f-niet-gerapporteerd');
   const wrap = document.getElementById('niet-gerapporteerd-reden-wrap');
   if(cb && wrap) wrap.style.display = cb.checked ? '' : 'none';
+  // BATCH 1 / 1B — "niet gerapporteerd": bij aanvinken alle overige rapport-secties
+  // verbergen (alleen reden + optionele notitie + Indienen blijven). Class op het
+  // formulier; CSS verbergt de rest. Niets verwijderd, puur weergave.
+  const _ngForm = document.getElementById('report-form');
+  if(_ngForm) _ngForm.classList.toggle('sh-ng-active', !!(cb && cb.checked));
 }
 window.shSyncNietGerapporteerdUI = shSyncNietGerapporteerdUI;
 /* s36f: zichtbaarheid betrouwbaar bijwerken zolang het rapport-formulier

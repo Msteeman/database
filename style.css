@@ -12904,3 +12904,9 @@ textarea.sh-grow-note{
   outline-offset:2px;
   border-radius:8px;
 }
+
+/* BATCH 1 / 1B — "niet gerapporteerd": verberg alle overige rapport-secties,
+   alleen de niet-gerapporteerd-sectie (reden + notitie) en de Indienen-balk blijven. */
+#report-form.sh-ng-active > *:not(#niet-gerapporteerd-section):not(#report-form-actions){
+  display:none !important;
+}

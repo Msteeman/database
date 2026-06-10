@@ -11543,17 +11543,31 @@ function _shOpenEditModal(m){
   const _openSns = sns.filter(s => !s.ingediend);
   const _ingediendSns = sns.filter(s => s.ingediend);
 
-  // ── Sectie: Spelers — dedup op naam over ALLE bronnen ──
+  // ── Sectie: Spelers — dedup over ALLE bronnen ──
   const _getoondNamen = new Set();
 
-  // Bouw unieke spelerlijst uit _allSpelers (dedup op naam)
-  const _uniekeSpelers = [];
+  // BATCH 1 / 1A-ii — dedup nu op programma-SLOT (val terug op genormaliseerde
+  // naam) en laat bij dubbel het INGEDIENDE rapport winnen van het concept.
+  // Zo verdwijnt het achtergebleven concept als dubbele regel zodra er een
+  // ingediend rapport is. Het concept-record blijft in de database (niet verwijderd).
+  const _normNaam = s => (s||'').toLowerCase().replace(/\s+/g,' ').trim();
+  const _isConc = pl => (typeof _shPlayerIsConcept === 'function' ? _shPlayerIsConcept(pl) : !!(pl && pl.concept));
+  const _slotKey = pl => (pl && pl.programma_link && pl.programma_link.spelerKey)
+    ? ('slot:' + pl.programma_link.spelerKey)
+    : ('naam:' + _normNaam(pl && pl.naam));
+  const _tsOf = pl => (pl && (pl.modified || pl.created)) || 0;
+  const _bestByKey = new Map();
   _allSpelers.forEach(pl => {
-    const nk = (pl.naam||'').toLowerCase().trim();
-    if(nk && _getoondNamen.has(nk)) return;
-    if(nk) _getoondNamen.add(nk);
-    _uniekeSpelers.push(pl);
+    const k = _slotKey(pl);
+    const cur = _bestByKey.get(k);
+    if(!cur){ _bestByKey.set(k, pl); return; }
+    const curConc = _isConc(cur), plConc = _isConc(pl);
+    if(curConc && !plConc) _bestByKey.set(k, pl);                 // ingediend wint van concept
+    else if(curConc === plConc && _tsOf(pl) > _tsOf(cur)) _bestByKey.set(k, pl); // nieuwste wint bij gelijk type
   });
+  const _uniekeSpelers = Array.from(_bestByKey.values());
+  // _getoondNamen vullen zodat de snel-notitie-dedup verderop blijft werken
+  _uniekeSpelers.forEach(pl => { const nk = _normNaam(pl && pl.naam); if(nk) _getoondNamen.add(nk); });
 
   // Ingediende snel-notities die NIET al getoond zijn op naam
   const _uniekeSns = [];

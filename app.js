@@ -6274,6 +6274,25 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
       } catch(_snErr){ console.warn('sn-map', _snErr); }
       // ────────────────────────────────────────────────────────────────────
 
+      // BATCH 1 / 1B — live-chips (gekoppelde speler) → rapportchips prefillen.
+      // Live is leidend: map de live-categorie naar de rapport-sectie en injecteer,
+      // tenzij er al concept-chips in het formulier staan (die niet overschrijven).
+      try {
+        var _existingChipCount = document.querySelectorAll('#view-report .report-trefwoorden .obs-tag[data-rating]').length;
+        if(!_existingChipCount && Array.isArray(prog.snelnotities)){
+          var _snChips = prog.snelnotities.find(function(s){ return s && s.spelerKey === progSp.id; });
+          if(_snChips && Array.isArray(_snChips.tags) && _snChips.tags.length){
+            var _catToSec = { techniek:'techniek_huidig', inzicht:'inzicht_huidig', mentaliteit:'mentaliteit_huidig', explosiviteit:'explosiviteit_huidig', sprinten:'sprinten_huidig', duelleren:'duelleren_huidig', wendbaarheid:'wendbaarheid_huidig' };
+            var _mappedChips = _snChips.tags.map(function(t){
+              var sec = t && _catToSec[(t.category||'').toLowerCase()];
+              if(!sec || !t.rating) return null;
+              return { label:t.label, rating:t.rating, rapport_section:sec, category:(t.category||'').toLowerCase() };
+            }).filter(Boolean);
+            if(_mappedChips.length && typeof _injectReportTrefwoorden === 'function') _injectReportTrefwoorden(_mappedChips);
+          }
+        }
+      } catch(_lcErr){ console.warn('live-chip-prefill', _lcErr); }
+
       // Banner met concept-status
       injectScoutingBanner(prog, progSp, matchedPlayer);
       // s35am (#6): voor-rapport (progSp.voor_notities) read-only bovenaan rapport.
@@ -15588,29 +15607,40 @@ function renderDetailFullReport(p){
   // chips (uit rapport_tags, met categorie) én de toelichting samen tonen, zodat
   // het volledige rapport leest zoals je het hebt ingevuld.
   const _repTagsFR = Array.isArray(p.rapport_tags) ? p.rapport_tags : [];
+  // Notities per onderdeel uit het "key: value"-notitieveld halen (zelfde bron als Scout-notities),
+  // zodat chips + notitie SAMEN bij het juiste onderdeel staan.
+  const _noteMapFR = {};
+  (p.notities_raw || p.notities || '').split('\n').forEach(function(l){
+    var ci = l.indexOf(':'); if(ci < 0) return;
+    var k = l.slice(0, ci).trim().toLowerCase(); var v = l.slice(ci+1).trim();
+    if(k && v && v.toLowerCase() !== 'nvt') _noteMapFR[k] = v;
+  });
   const _ondFR = [
-    { label:'Functionele techniek', grade:b.techniek_huidig,      sec:'techniek_huidig',      note:b.techniek_tekst },
-    { label:'Spelintelligentie',    grade:b.inzicht_huidig,       sec:'inzicht_huidig',       note:b.inzicht_tekst },
-    { label:'Mentaliteit & Drive',  grade:gritVal,                sec:'mentaliteit_huidig',   note:b.grit_tekst },
-    { label:'Explosiviteit',        grade:b.explosiviteit_huidig, sec:'explosiviteit_huidig', note:b.explosiviteit_tekst },
-    { label:'Sprinten',             grade:b.sprinten_huidig,      sec:'sprinten_huidig',      note:b.sprinten_tekst },
-    { label:'Duelleren',            grade:b.duelleren_huidig,     sec:'duelleren_huidig',     note:b.duelleren_tekst },
-    { label:'Wendbaarheid',         grade:b.wendbaarheid_huidig,  sec:'wendbaarheid_huidig',  note:b.wendbaarheid_tekst }
+    { label:'Functionele techniek', grade:b.techniek_huidig,      sec:'techniek_huidig',      nk:'techniek',      note:b.techniek_tekst },
+    { label:'Spelintelligentie',    grade:b.inzicht_huidig,       sec:'inzicht_huidig',       nk:'inzicht',       note:b.inzicht_tekst },
+    { label:'Mentaliteit & Drive',  grade:gritVal,                sec:'mentaliteit_huidig',   nk:'mentaliteit',   note:b.grit_tekst },
+    { label:'Explosiviteit',        grade:b.explosiviteit_huidig, sec:'explosiviteit_huidig', nk:'explosiviteit', note:b.explosiviteit_tekst },
+    { label:'Sprinten',             grade:b.sprinten_huidig,      sec:'sprinten_huidig',      nk:'sprinten',      note:b.sprinten_tekst },
+    { label:'Duelleren',            grade:b.duelleren_huidig,     sec:'duelleren_huidig',     nk:'duelleren',     note:b.duelleren_tekst },
+    { label:'Wendbaarheid',         grade:b.wendbaarheid_huidig,  sec:'wendbaarheid_huidig',  nk:'wendbaarheid',  note:b.wendbaarheid_tekst }
   ];
   const _ondRowsFR = _ondFR.map(o => {
     const cat = o.sec.replace('_huidig','');
     const chips = _repTagsFR.filter(t => t && (t.rapport_section === o.sec || t.category === cat));
-    if(!o.grade && !o.note && !chips.length) return '';
+    const note = _noteMapFR[o.nk] || o.note || '';
+    if(!o.grade && !note && !chips.length) return '';
     return `<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border,#2a2f3a);">
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
         <span style="font-weight:600;">${escapeHtml(o.label)}</span>
         ${o.grade ? `<span class="grade ${o.grade}">${o.grade}</span>` : ''}
       </div>
       ${chips.length ? `<div class="rep-tw-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">${chips.map(t => `<span class="obs-tag"${t.rating?(' data-rating="'+escapeAttr(t.rating)+'"'):''}>${escapeHtml(t.label||'')}</span>`).join('')}</div>` : ''}
-      ${o.note ? `<div class="detail-notes">${escapeHtml(o.note)}</div>` : ''}
+      ${note ? `<div class="detail-notes">${escapeHtml(note)}</div>` : ''}
     </div>`;
   }).join('');
-  const perOnderdeelBlock = _ondRowsFR ? `<div class="detail-section"><h4>Beoordeling per onderdeel</h4>${_ondRowsFR}</div>` : '';
+  const _algNoteFR = _noteMapFR['algemeen'] || '';
+  const _algRowFR = _algNoteFR ? `<div style="margin-top:4px;"><span style="font-weight:600;">Algemeen</span><div class="detail-notes" style="margin-top:4px;">${escapeHtml(_algNoteFR)}</div></div>` : '';
+  const perOnderdeelBlock = (_ondRowsFR || _algRowFR) ? `<div class="detail-section"><h4>Beoordeling per onderdeel</h4>${_ondRowsFR}${_algRowFR}</div>` : '';
 
   $('#player-view-body').innerHTML = `
     ${backBtnHtml}
@@ -15666,7 +15696,7 @@ function renderDetailFullReport(p){
       <div class="detail-notes">${escapeHtml(p.wapen)}</div>
     </div>` : ''}
 
-    ${_shRenderNotitiesBlock(p)}
+    ${(Object.keys(_noteMapFR).length ? '' : _shRenderNotitiesBlock(p))}
 
     <div class="detail-section">
       <h4>Context</h4>
@@ -28534,14 +28564,16 @@ if(typeof document !== 'undefined'){
 
 /* Chip-grid per rapport-categorie in het bewerkformulier. */
 function _injectReportTrefwoorden(existingTags){
+  // BATCH 1 / 1B — chip-set gelijkgetrokken met de LIVE-set (PLF_CHIP_CATS).
+  // Live is leidend, zodat live-chips 1-op-1 naar het rapport prefillen.
   var MAP = {
-    'techniek_huidig':     { section:'techniek_huidig',     chips:['Balbehandeling','Passing','Eerste aanname','Traptechniek','Koppen','Dribbel','Overzicht','Beide benen'] },
-    'inzicht_huidig':      { section:'inzicht_huidig',      chips:['Scannen','Positiespel','Ruimte zien','Anticipatie','Coaching','Rust aan de bal','Loopacties','Timing'] },
-    'grit_huidig':         { section:'mentaliteit_huidig',  chips:['Winnaar','Leider','Communicatief','Rustig','Nerveus','Emotioneel','Doorzetter','Opgeven','Concentratie','Gretig'] },
-    'explosiviteit_huidig':{ section:'explosiviteit_huidig',chips:['Startsnelheid','Versnelling','Explosief'] },
-    'sprinten_huidig':     { section:'sprinten_huidig',     chips:['Topsnelheid','Traag'] },
-    'duelleren_huidig':    { section:'duelleren_huidig',    chips:['Sterk','Dualkracht','Licht'] },
-    'wendbaarheid_huidig': { section:'wendbaarheid_huidig', chips:['Wendbaarheid','Lenig'] }
+    'techniek_huidig':     { section:'techniek_huidig',     chips:['Balbehandeling','Passing','Eerste aanname','Traptechniek','Koppen','Dribbel','Beide benen','Overzicht'] },
+    'inzicht_huidig':      { section:'inzicht_huidig',      chips:['Scannen','Positiespel','Ruimte zien','Anticipatie','Coaching','Timing','Loopacties'] },
+    'grit_huidig':         { section:'mentaliteit_huidig',  chips:['Winnaar','Leider','Communicatief','Rustig','Doorzetter','Concentratie','Gretig','Emotioneel'] },
+    'explosiviteit_huidig':{ section:'explosiviteit_huidig',chips:['Eerste 5m','Versnelling','Explosief','Sprongkracht','Krachtig'] },
+    'sprinten_huidig':     { section:'sprinten_huidig',     chips:['Startsnelheid','Topsnelheid','Diepgang','Traag'] },
+    'duelleren_huidig':    { section:'duelleren_huidig',    chips:['Sterk','1-op-1','Lichaamsinzet','Kopduel','Wint duels','Fel'] },
+    'wendbaarheid_huidig': { section:'wendbaarheid_huidig', chips:['Soepel','Lichtvoetig','Draaien','Balans','Wendbaar'] }
   };
   var tags = Array.isArray(existingTags) ? existingTags : [];
   function ratingOf(section, label){

@@ -16256,7 +16256,7 @@ async function submitReport(e){
       datum: $('#f-w-datum').value,
       thuis: $('#f-w-thuis').value.trim(),
       uit: $('#f-w-uit').value.trim(),
-      uitslag: $('#f-w-uitslag').value.trim(),
+      uitslag: $('#f-w-uitslag') ? $('#f-w-uitslag').value.trim() : ((_existRep.wedstrijd && _existRep.wedstrijd.uitslag) || ''),
       opstelling: $('#f-w-opstelling').value,
       context: $('#f-w-context').value.trim(),
       /* s35dg Fase H */

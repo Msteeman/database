@@ -12896,3 +12896,11 @@ textarea.sh-grow-note{
   min-height:44px;
   font-size:20px;
 }
+
+/* BATCH 1 / 1A — verplichte niveau-picker / advies-chips rood bij ontbreken */
+.grade-picker.sh-picker-error,
+#f-advies-chips.sh-picker-error{
+  outline:2px solid #ef4444;
+  outline-offset:2px;
+  border-radius:8px;
+}

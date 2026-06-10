@@ -16192,20 +16192,31 @@ async function submitReport(e){
   const achternaam = ($('#f-achternaam')?.value || '').trim();
   syncNaamHidden('f');
   const naam = $('#f-naam').value.trim();
-  if(!voornaam){ toast('Vul een voornaam in', true); return; }
-  if(!achternaam){ toast('Vul een achternaam in', true); return; }
-  if(!naam){ toast('Vul een naam in', true); return; }
   const huidig = getPickerValue('huidig_niveau');
   const pot = getPickerValue('potentieel_niveau');
-  if(__mode === 'submit' && (!huidig || !pot)){
-    toast('Geef huidig én potentieel niveau op', true);
-    return;
+  // BATCH 1 / 1A — Indienen mag NOOIT stil niets doen. Verzamel ALLE ontbrekende
+  // verplichte velden, markeer ze rood (veld + niveau-picker + advies-chips) en
+  // toon één duidelijke lijst "Je moet nog invullen: ...". Een concept (draft)
+  // mag onvolledig zijn; alleen bij 'submit' (Indienen) afdwingen.
+  if(typeof _shClearFieldError === 'function'){ _shClearFieldError('f-voornaam'); _shClearFieldError('f-achternaam'); }
+  if(typeof _shMarkPickerError === 'function'){ _shMarkPickerError('huidig_niveau', false); _shMarkPickerError('potentieel_niveau', false); }
+  if(typeof _shMarkAdviesError === 'function') _shMarkAdviesError(false);
+  if(__mode === 'submit'){
+    const _miss = [];
+    if(!voornaam){ _miss.push('voornaam'); if(typeof _shFieldError==='function') _shFieldError('f-voornaam','Vul een voornaam in.'); }
+    if(!achternaam){ _miss.push('achternaam'); if(typeof _shFieldError==='function') _shFieldError('f-achternaam','Vul een achternaam in.'); }
+    if(!huidig){ _miss.push('huidig niveau'); if(typeof _shMarkPickerError==='function') _shMarkPickerError('huidig_niveau'); }
+    if(!pot){ _miss.push('potentieel niveau'); if(typeof _shMarkPickerError==='function') _shMarkPickerError('potentieel_niveau'); }
+    if(!$('#f-advies').value){ _miss.push('advies'); if(typeof _shMarkAdviesError==='function') _shMarkAdviesError(); }
+    if(_miss.length){
+      if(typeof toast === 'function') toast('Je moet nog invullen: ' + _miss.join(', '), true);
+      const _feId = !voornaam ? 'f-voornaam' : (!achternaam ? 'f-achternaam' : null);
+      const _fe = (_feId && document.getElementById(_feId)) || document.querySelector('.grade-picker.sh-picker-error') || document.getElementById('f-advies-chips');
+      if(_fe){ try { _fe.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} setTimeout(() => { try { _fe.focus && _fe.focus(); } catch(_){} }, 150); }
+      return;
+    }
   }
-  // H5: advies verplicht bij Indienen (chips vervangen de HTML5 required)
-  if(__mode === 'submit' && !$('#f-advies').value){
-    toast('Kies een advies', true);
-    return;
-  }
+  if(!naam){ if(typeof toast==='function') toast('Vul een naam in', true); return; }
   const isEdit = !!$('#f-id').value;
   const _existRep = (isEdit && typeof loadPlayers === 'function') ? (loadPlayers().find(x => x && x.id === id) || {}) : {};
   const player = {
@@ -16317,7 +16328,15 @@ async function submitReport(e){
         go('database');
       }
     }
-  } catch(e){ /* error already toasted */ }
+  } catch(e){
+    // BATCH 1 / 1A — niet meer stil slikken. savePlayer toont al een toast bij
+    // netwerkfout; een onverwachte fout mag nooit onzichtbaar blijven, en de
+    // Indienen-knop moet weer klikbaar worden zodat de gebruiker opnieuw kan.
+    console.error('submitReport/savePlayer fout:', e);
+    if(typeof toast === 'function') toast('Indienen mislukt — ' + ((e && e.message) ? e.message : 'onbekende fout') + '. Probeer opnieuw.', true);
+    const _rpBtnErr = document.getElementById('report-save-btn');
+    if(_rpBtnErr){ _rpBtnErr.disabled = false; _rpBtnErr.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Indienen'; }
+  }
 }
 
 /* =============== PITCH / ANALYSES =============== */
@@ -29598,3 +29617,20 @@ function _shClearFieldError(id){
 }
 window._shFieldError = _shFieldError;
 window._shClearFieldError = _shClearFieldError;
+
+/* ============================================================
+   BATCH 1 / 1A — picker/advies-foutmarkering (rood) bij Indienen.
+   Markeert de niveau-grade-pickers en de advies-chips rood wanneer ze
+   verplicht maar leeg zijn. Wist bij de volgende submit-poging (submitReport
+   reset de markeringen aan het begin) of bij interactie.
+   ============================================================ */
+function _shMarkPickerError(key, on){
+  const p = document.querySelector('.grade-picker[data-key="' + key + '"]');
+  if(p) p.classList.toggle('sh-picker-error', on !== false);
+}
+function _shMarkAdviesError(on){
+  const c = document.getElementById('f-advies-chips');
+  if(c) c.classList.toggle('sh-picker-error', on !== false);
+}
+window._shMarkPickerError = _shMarkPickerError;
+window._shMarkAdviesError = _shMarkAdviesError;

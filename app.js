@@ -14100,6 +14100,9 @@ function openDetail(id, opts){
   if(!p) return;
   currentPlayerId = id;
   currentReportSelection = (opts && opts.reportId) ? opts.reportId : null;
+  // BATCH 1 / 1B — vlag: direct het volledige rapport tonen (sla het overzicht/
+  // voorrapport over). Wordt elke openDetail opnieuw gezet zodat hij niet blijft hangen.
+  window.__shOpenFullReport = !!(opts && opts.full);
   if(currentView !== 'player') previousViewBeforePlayer = currentView || 'database';
   go('player');
 }
@@ -14691,6 +14694,12 @@ function renderDetailOverview(p){
   const _dsr = document.getElementById('dtl-show-report'); if(_dsr) _dsr.addEventListener('click', handleShowReport);
   const topBtn = document.getElementById('dtl-show-report-top');
   if(topBtn) topBtn.addEventListener('click', handleShowReport);
+  // BATCH 1 / 1B — vanuit de wedstrijd direct het volledige rapport tonen i.p.v.
+  // eerst het overzicht/voorrapport (alleen bij één concreet rapport, niet avg).
+  if(window.__shOpenFullReport && mode !== 'average'){
+    window.__shOpenFullReport = false;
+    try { renderDetailFullReport(vp); return; } catch(_){}
+  }
   const showAvgBtn = document.getElementById('dtl-show-avg');
   if(showAvgBtn) showAvgBtn.addEventListener('click', () => {
     currentReportSelection = null;
@@ -15574,6 +15583,34 @@ function renderDetailFullReport(p){
       </div>`
     : '';
 
+  // BATCH 1 / 1B — "Beoordeling per onderdeel": per onderdeel het A-D-cijfer, de
+  // chips (uit rapport_tags, met categorie) én de toelichting samen tonen, zodat
+  // het volledige rapport leest zoals je het hebt ingevuld.
+  const _repTagsFR = Array.isArray(p.rapport_tags) ? p.rapport_tags : [];
+  const _ondFR = [
+    { label:'Functionele techniek', grade:b.techniek_huidig,      sec:'techniek_huidig',      note:b.techniek_tekst },
+    { label:'Spelintelligentie',    grade:b.inzicht_huidig,       sec:'inzicht_huidig',       note:b.inzicht_tekst },
+    { label:'Mentaliteit & Drive',  grade:gritVal,                sec:'mentaliteit_huidig',   note:b.grit_tekst },
+    { label:'Explosiviteit',        grade:b.explosiviteit_huidig, sec:'explosiviteit_huidig', note:b.explosiviteit_tekst },
+    { label:'Sprinten',             grade:b.sprinten_huidig,      sec:'sprinten_huidig',      note:b.sprinten_tekst },
+    { label:'Duelleren',            grade:b.duelleren_huidig,     sec:'duelleren_huidig',     note:b.duelleren_tekst },
+    { label:'Wendbaarheid',         grade:b.wendbaarheid_huidig,  sec:'wendbaarheid_huidig',  note:b.wendbaarheid_tekst }
+  ];
+  const _ondRowsFR = _ondFR.map(o => {
+    const cat = o.sec.replace('_huidig','');
+    const chips = _repTagsFR.filter(t => t && (t.rapport_section === o.sec || t.category === cat));
+    if(!o.grade && !o.note && !chips.length) return '';
+    return `<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--border,#2a2f3a);">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px;">
+        <span style="font-weight:600;">${escapeHtml(o.label)}</span>
+        ${o.grade ? `<span class="grade ${o.grade}">${o.grade}</span>` : ''}
+      </div>
+      ${chips.length ? `<div class="rep-tw-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">${chips.map(t => `<span class="obs-tag"${t.rating?(' data-rating="'+escapeAttr(t.rating)+'"'):''}>${escapeHtml(t.label||'')}</span>`).join('')}</div>` : ''}
+      ${o.note ? `<div class="detail-notes">${escapeHtml(o.note)}</div>` : ''}
+    </div>`;
+  }).join('');
+  const perOnderdeelBlock = _ondRowsFR ? `<div class="detail-section"><h4>Beoordeling per onderdeel</h4>${_ondRowsFR}</div>` : '';
+
   $('#player-view-body').innerHTML = `
     ${backBtnHtml}
     <div class="detail-header">
@@ -15615,6 +15652,8 @@ function renderDetailFullReport(p){
         </div>
       </div>
     </div>
+
+    ${perOnderdeelBlock}
 
     ${wedstrijdBlock}
 
@@ -17211,7 +17250,7 @@ function renderMatches(){
       if(btnLink){
         e.stopPropagation();
         const pid = btnLink.dataset.playerId;
-        if(pid && typeof openDetail === 'function') openDetail(pid);
+        if(pid && typeof openDetail === 'function') openDetail(pid, { full:true });
         return;
       }
       // Edit-modal op klik op datum/teams (niet op knop/link)

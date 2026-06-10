@@ -16217,6 +16217,9 @@ async function submitReport(e){
     }
   }
   if(!naam){ if(typeof toast==='function') toast('Vul een naam in', true); return; }
+  // BATCH 1 / 1A — heel het opbouw+opslag-pad in try/catch zodat een fout bij het
+  // samenstellen van het rapport NOOIT meer stil is (was: alleen savePlayer beschermd).
+  try {
   const isEdit = !!$('#f-id').value;
   const _existRep = (isEdit && typeof loadPlayers === 'function') ? (loadPlayers().find(x => x && x.id === id) || {}) : {};
   const player = {
@@ -16286,7 +16289,6 @@ async function submitReport(e){
     datum: $('#f-w-datum').value || todayISO(),
     concept: (__mode === 'draft')
   };
-  try {
     await savePlayer(player);
     // Toernooicontext: patch rapport met tournament-velden indien aangemaakt vanuit bundeling
     if(window.__shTournamentContext){

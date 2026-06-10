@@ -328,7 +328,7 @@
   --border-2: #2f3b52;
   --text: #e8edf5;
   --text-2: #9aa8bd;
-  --text-3: #6b7689;
+  --text-3: #8b97ad; /* A3: lichter voor beter contrast (WCAG AA) op donkere achtergrond */
   --primary: #e30613;        /* FC Twente rood */
   --primary-2: #ff2a3a;
   --secondary: #f5c518;      /* Heracles geel */
@@ -6824,8 +6824,8 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
 }
 .match-age-badge {
   display: inline-flex; align-items: center; gap: 4px;
-  background: rgba(78,161,255,.12); border: 1px solid rgba(78,161,255,.3);
-  color: var(--accent);
+  background: transparent; border: 1px solid rgba(255,255,255,.25);
+  color: #fff;
   padding: 2px 8px; border-radius: 999px;
   font-size: 11px; font-weight: 700;
 }
@@ -7898,9 +7898,8 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
   /* s35cg: rollen-systeem visibility gates */
   .nav-role-coord, .nav-role-admin { display: none !important; }
   body.role-coord .nav-role-coord { display: flex !important; }
-  body.role-admin .nav-role-coord,
-  /* s35cm: Admin-knop bewust uit nav verborgen — toegang via Instellingen */
-  /* body.role-admin .nav-role-admin { display: flex !important; }  -- disabled */
+  /* Fase 2: Beheer-knop zichtbaar voor admin (eerder bewust uit; nu via nav). */
+  body.role-admin .nav-role-admin { display: flex !important; }
   /* Admin-section in settings: alleen tonen voor admin */
   #settings-admin-section { display: none; }
   body.role-admin #settings-admin-section { display: block; }
@@ -10880,6 +10879,116 @@ tr.db-row-obs td:first-child {
 .toern-add-match-btn { margin: 10px 16px; }
 .toern-add-day-btn { margin-top: 4px; }
 
+/* ── Programma — prio-filterbalk ──────────────────────────────── */
+.toern-prog-filterbar { padding: 0 4px 12px; }
+.toern-prog-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.toern-prio-btn {
+  background: var(--bg-2); border: 1px solid var(--border);
+  color: var(--text-2); font-size: 12px; font-weight: 600;
+  padding: 6px 11px; border-radius: 999px; cursor: pointer;
+  transition: background .15s, border-color .15s, color .15s;
+}
+.toern-prio-btn:hover { border-color: var(--accent); color: var(--text); }
+.toern-prio-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.toern-prio-btn.prio-watch.active    { background: var(--green, #22c55e);  border-color: var(--green, #22c55e);  color: #06210f; }
+.toern-prio-btn.prio-optional.active { background: var(--orange, #f59e0b); border-color: var(--orange, #f59e0b); color: #1a1206; }
+.toern-prio-btn.prio-skip.active     { background: var(--red, #ef4444);    border-color: var(--red, #ef4444);    color: #2a0a0a; }
+.toern-prog-counts { font-size: 11.5px; color: var(--text-3); margin-top: 8px; }
+
+/* ── Programma — strakke kolom-tabel ([ind] Tijd | Wedstrijd | Veld | Poule) ── */
+.toern-prog-table { width: 100%; }
+.toern-prog-head,
+.toern-prog-row {
+  display: grid;
+  grid-template-columns: 20px 84px minmax(0,1fr) 78px 92px;
+  gap: 10px;
+  align-items: center;
+  padding: 9px 16px;
+}
+.tp-ind { display: flex; align-items: center; justify-content: center; }
+.toern-prog-head {
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em;
+  color: var(--text-3); font-weight: 700;
+  border-bottom: 1px solid var(--border); background: var(--bg-2);
+}
+.toern-prog-row {
+  border-bottom: 1px solid var(--border);
+  cursor: pointer; transition: background .12s;
+}
+.toern-prog-row:last-child { border-bottom: none; }
+.toern-prog-row:hover { background: var(--panel-2); }
+.toern-prog-row.toern-watch-skip { opacity: .55; }
+.tp-time { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tp-match { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.tp-teams {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.tp-score { font-size: 11.5px; color: var(--text-3); flex-shrink: 0; cursor: pointer; }
+.tp-field { font-size: 11.5px; color: var(--text-3); white-space: nowrap; }
+.tp-poule { font-size: 11.5px; color: var(--accent); font-weight: 600; white-space: nowrap; }
+
+/* Status-indicator (bolletje) — weerspiegelt de scout-keuze (watchStatus) */
+.tp-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center;
+  background: #6b7689; /* none = grijs (standaard, geen keuze) */
+}
+.tp-dot-watch    { background: var(--green, #22c55e); }
+.tp-dot-skip     { background: var(--red, #ef4444); }
+.tp-dot-none     { background: #6b7689; }
+.tp-dot-optional {
+  background: var(--orange, #f59e0b);
+  font-size: 8px; line-height: 1; font-weight: 900; color: #1a1206;
+}
+
+/* Responsief: op smal scherm stapelen de kolommen tot een compacte kaart.
+   De indicator blijft links staan, vóór de tijd. */
+@media (max-width: 640px) {
+  .toern-prog-head { display: none; }
+  .toern-prog-row {
+    grid-template-columns: 18px 50px minmax(0,1fr);
+    grid-template-areas:
+      "ind time match"
+      "ind time meta";
+    row-gap: 2px; padding: 10px 14px;
+  }
+  .tp-ind   { grid-area: ind; align-self: start; margin-top: 3px; }
+  .tp-time  { grid-area: time; align-self: start; font-weight: 600; }
+  .tp-match { grid-area: match; }
+  .tp-field { grid-area: meta; }
+  .tp-poule { grid-area: meta; justify-self: end; }
+}
+
+/* ── Spelers-tab: clubkaarten + team-detail ───────────────────── */
+.toern-club-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.toern-club-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px 14px;
+  cursor: pointer; transition: border-color .15s, background .15s;
+}
+.toern-club-card:hover { border-color: var(--accent); background: var(--panel-2); }
+.toern-club-avatar {
+  width: 38px; height: 38px; border-radius: 10px;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 800; flex-shrink: 0;
+}
+.toern-club-info { flex: 1; min-width: 0; }
+.toern-club-name { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toern-club-meta { font-size: 11.5px; color: var(--text-3); margin-top: 2px; }
+.toern-club-arrow { font-size: 20px; color: var(--text-3); flex-shrink: 0; }
+.toern-team-detail-head {
+  display: flex; align-items: center; gap: 10px;
+  margin-bottom: 12px; flex-wrap: wrap;
+}
+.toern-team-detail-title { flex: 1; font-size: 15px; font-weight: 700; color: var(--text); min-width: 120px; }
+
+/* ── Verwijder-toernooi knop ──────────────────────────────────── */
+.toern-btn-delete { color: var(--red, #ef4444); border-color: rgba(239,68,68,.35); }
+.toern-btn-delete:hover { background: rgba(239,68,68,.12); border-color: var(--red, #ef4444); color: var(--red, #ef4444); }
+
 /* ── Match status knoppen ─────────────────────────────────────── */
 .toern-status-row { display: flex; gap: 6px; flex-wrap: wrap; }
 .toern-status-btn {
@@ -10891,6 +11000,10 @@ tr.db-row-obs td:first-child {
 }
 .toern-status-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
 .toern-status-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+/* Per-status actief-kleur zodat de keuze duidelijk afleesbaar is */
+.toern-status-btn.toern-status-watch.active    { background: var(--green, #22c55e);  border-color: var(--green, #22c55e);  color: #06210f; }
+.toern-status-btn.toern-status-optional.active { background: var(--orange, #f59e0b); border-color: var(--orange, #f59e0b); color: #1a1206; }
+.toern-status-btn.toern-status-skip.active     { background: var(--red, #ef4444);    border-color: var(--red, #ef4444);    color: #2a0a0a; }
 
 /* ── Speler kaartjes in match detail ──────────────────────────── */
 .toern-player-card {
@@ -11149,4 +11262,1637 @@ body.modal-open {
   color: var(--text, #e5e9f5) !important;
   width: 100%;
   box-sizing: border-box;
+}
+
+/* ================================================================
+   TOERNOOI — Mijn programma, veldnaam-overflow, spelers-subtekst
+   en PWA-optimalisatie (mobiel 320–430px). Donkere huisstijl.
+   Appended; latere regels overschrijven waar nodig de eerdere.
+   ================================================================ */
+
+/* #3B — veldnaam mag nooit over de poule-kolom lopen */
+.tp-field { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* #2 — meer lucht per rij + ruimte voor spelers-subtekst */
+.toern-prog-head,
+.toern-prog-row { padding-top: 12px; padding-bottom: 12px; }
+.tp-match { flex-wrap: wrap; }
+.tp-players {
+  flex-basis: 100%; width: 100%;
+  font-size: 11.5px; color: var(--text-3);
+  margin-top: 3px; line-height: 1.35;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* ── Club volgen (ster) in Spelers-tab ────────────────────────── */
+.toern-club-card { position: relative; }
+.toern-club-card.is-followed { border-color: var(--accent); }
+.toern-club-follow {
+  background: none; border: none; cursor: pointer;
+  font-size: 20px; line-height: 1; color: var(--text-3);
+  padding: 4px; flex-shrink: 0; transition: color .15s, transform .1s;
+}
+.toern-club-follow:hover { transform: scale(1.12); color: var(--accent); }
+.toern-club-follow.on { color: var(--orange, #f59e0b); }
+.toern-club-followed { color: var(--orange, #f59e0b); font-weight: 700; }
+
+/* ── Mijn programma — header / footer / leeg ──────────────────── */
+.toern-mp-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.toern-mp-title { font-size: 14px; font-weight: 700; color: var(--text); }
+.toern-mp-footer {
+  margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border);
+  font-size: 12px; color: var(--text-3);
+}
+.toern-mp-empty { padding: 22px 6px; color: var(--text-2); }
+.toern-mp-empty-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+.toern-mp-empty-list { margin: 0; padding-left: 18px; font-size: 13px; color: var(--text-3); line-height: 1.7; }
+
+/* ── Mijn programma — tabel met verwijder-kolom ───────────────── */
+.toern-mp-table .toern-prog-row {
+  grid-template-columns: 20px 84px minmax(0,1fr) 70px 80px 26px;
+  position: relative;
+}
+.mp-remove {
+  background: none; border: none; color: var(--text-3);
+  font-size: 18px; line-height: 1; cursor: pointer; padding: 2px 4px;
+}
+.mp-remove:hover { color: var(--red, #ef4444); }
+.toern-prog-row.mp-conflict { background: rgba(245,158,11,.10); }
+.mp-conflict-flag { color: var(--orange, #f59e0b); font-size: 11px; font-weight: 700; margin-left: 8px; }
+.mp-pause {
+  text-align: center; font-size: 11px; color: var(--text-3);
+  padding: 7px 0; letter-spacing: .02em;
+}
+
+/* ── Mijn programma — "wedstrijd toevoegen" modal ─────────────── */
+.mp-add-list { max-height: 56vh; overflow-y: auto; }
+.mp-add-day {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .05em;
+  color: var(--text-3); font-weight: 700; margin: 12px 0 4px;
+}
+.mp-add-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 4px; border-bottom: 1px solid var(--border);
+  cursor: pointer; font-size: 13px;
+}
+.mp-add-row input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; cursor: pointer; }
+.mp-add-time { font-variant-numeric: tabular-nums; color: var(--text-2); flex-shrink: 0; width: 42px; }
+.mp-add-teams { flex: 1; min-width: 0; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mp-add-field { font-size: 11.5px; color: var(--text-3); flex-shrink: 0; }
+.mp-add-via { font-size: 10.5px; color: var(--orange, #f59e0b); flex-shrink: 0; }
+
+/* ================================================================
+   PWA / MOBIEL (≤ 640px) — gestapelde kaarten, scrollbare filter,
+   full-screen modals, grote touch-targets, geen horizontale scroll
+   ================================================================ */
+@media (max-width: 640px) {
+  /* Programma + Mijn programma als gestapelde kaart per wedstrijd */
+  .toern-prog-head { display: none; }
+  .toern-prog-row,
+  .toern-mp-table .toern-prog-row {
+    grid-template-columns: auto 1fr;
+    grid-template-areas:
+      "ind  time"
+      "match match"
+      "meta meta"
+      "players players";
+    column-gap: 8px; row-gap: 3px;
+    padding: 13px 14px; position: relative;
+    border-bottom: 1px solid var(--border);
+  }
+  .tp-ind   { grid-area: ind; align-self: center; }
+  .tp-time  { grid-area: time; align-self: center; font-weight: 600; font-size: 14px; }
+  .tp-match { grid-area: match; }
+  .tp-teams { font-size: 14px; white-space: normal; }
+  .tp-field { grid-area: meta; max-width: 70%; }
+  .tp-poule { grid-area: meta; justify-self: end; }
+  .tp-players { grid-area: players; font-size: 12px; }
+  .mp-remove { position: absolute; top: 10px; right: 8px; font-size: 22px; padding: 4px 8px; }
+
+  /* Filterbalk horizontaal scrollbaar, knoppen blijven op één regel */
+  .toern-prog-filters {
+    flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch;
+    padding-bottom: 4px;
+  }
+  .toern-prio-btn { flex: 0 0 auto; min-height: 40px; font-size: 13px; }
+  .toern-prog-counts { font-size: 11px; }
+
+  /* watchStatus-knoppen naast elkaar in het wedstrijd-detail */
+  .toern-status-row { flex-wrap: nowrap; gap: 6px; }
+  .toern-status-btn { flex: 1 1 0; min-width: 0; font-size: 12px; padding: 12px 4px; }
+
+  /* Wedstrijd-detail + bundeling modals full-screen */
+  .toern-modal, .toern-modal-lg {
+    width: 100vw; max-width: 100vw; min-height: 100vh;
+    border-radius: 0; margin: 0;
+  }
+  .toern-modal-close { width: 44px; height: 44px; font-size: 26px; }
+
+  /* Dynamische overlay (regels / reglement / toevoegen) full-screen */
+  #toern-dyn-overlay { padding: 0 !important; align-items: stretch !important; }
+  #toern-dyn-overlay .toern-dyn-card {
+    max-width: 100% !important; width: 100% !important;
+    border-radius: 0 !important; min-height: 100vh; box-shadow: none !important;
+  }
+
+  /* Spelers-tab: clubkaarten full-width met grote tik-targets */
+  .toern-club-grid { grid-template-columns: 1fr; }
+  .toern-club-card { min-height: 56px; }
+  .toern-club-follow { font-size: 24px; padding: 8px; }
+  .toern-team-detail-head .btn { min-height: 40px; }
+
+  /* Standen horizontaal scrollbaar, teamnamen niet afknippen */
+  #toern-standen-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  #toern-standen-wrap table { min-width: 520px; }
+  #toern-standen-wrap td, #toern-standen-wrap th { white-space: nowrap; }
+
+  /* Touch-targets + leesbaarheid */
+  .toern-tab-btn { padding: 12px 12px; font-size: 13px; }
+  .toern-actions .btn { min-height: 40px; }
+
+  /* Geen horizontale pagina-scroll vanuit deze panes */
+  .toern-tab-pane { overflow-x: hidden; }
+}
+
+/* PWA: toernooi-tabbalk horizontaal scrollbaar zodat alle tabs (incl. Standen
+   en Bundeling) altijd bereikbaar zijn op smal scherm. */
+@media (max-width: 640px) {
+  .toern-tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+  .toern-tabs::-webkit-scrollbar { display: none; }
+  .toern-tab-btn { flex: 0 0 auto; white-space: nowrap; padding: 12px 10px; }
+}
+
+/* PWA: wedstrijd-detail / bundeling modal — sluitknop (X) nooit achter de
+   telefoon-statusbalk. Safe-area top-padding + sticky header zodat de X
+   altijd zichtbaar en bereikbaar blijft. */
+@media (max-width: 640px) {
+  .toern-modal .toern-modal-header,
+  .toern-modal-lg .toern-modal-header {
+    position: sticky; top: 0; z-index: 3;
+    background: var(--panel, #0b0f15);
+    padding-top: calc(env(safe-area-inset-top, 20px) + 14px);
+    border-bottom: 1px solid var(--border);
+  }
+  .toern-modal-close { width: 44px; height: 44px; font-size: 28px; }
+  /* Dynamische overlay (regels / reglement / wedstrijd toevoegen) */
+  #toern-dyn-overlay .toern-dyn-card {
+    padding-top: calc(env(safe-area-inset-top, 20px) + 18px) !important;
+  }
+  /* Modal-body scrollt onder de gepinde header door */
+  .toern-modal .toern-modal-body,
+  .toern-modal-lg .toern-modal-body {
+    max-height: calc(100vh - 64px - env(safe-area-inset-top, 20px));
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ================================================================
+   ITT-feedback: tijdsblokken, matchNote, donkere overlay,
+   modal-sluiten, dropdowns, observatie-trefwoorden
+   ================================================================ */
+
+/* BUG 4 / TIP 6 — inklapbare tijdsblokken in het programma */
+.toern-timeblock {
+  border: 1px solid var(--border); border-radius: 10px;
+  margin-bottom: 10px; overflow: hidden; background: var(--panel);
+}
+.toern-timeblock.tb-alt { background: var(--bg-2); }
+.toern-timeblock.is-now { border-color: var(--green, #22c55e); box-shadow: inset 0 0 0 1px var(--green, #22c55e); }
+.toern-timeblock.is-next { border-color: var(--accent); }
+.toern-tb-head {
+  width: 100%; display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; background: transparent; border: none;
+  cursor: pointer; color: var(--text); font: inherit; text-align: left;
+  min-height: 44px;
+}
+.toern-tb-head:hover { background: var(--panel-2); }
+.tb-arrow { font-size: 11px; color: var(--text-3); transition: transform .15s; }
+.toern-timeblock.collapsed .tb-arrow { transform: rotate(-90deg); }
+.tb-time { font-weight: 700; font-size: 14px; font-variant-numeric: tabular-nums; }
+.tb-count { margin-left: auto; font-size: 11px; color: var(--text-3); }
+.tb-now { font-size: 11px; font-weight: 800; color: var(--green, #22c55e); letter-spacing: .02em; }
+.tb-now.tb-next { color: var(--accent); }
+.toern-tb-body { overflow: hidden; max-height: 4000px; transition: max-height .2s ease; }
+.toern-timeblock.collapsed .toern-tb-body { max-height: 0; }
+.toern-timeblock .toern-prog-table { border-top: 1px solid var(--border); }
+
+/* TIP 3 — snelle wedstrijdnotitie (label in programma + veld in detail) */
+.tp-note { flex-basis: 100%; width: 100%; font-size: 11.5px; color: var(--orange, #f59e0b); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.toern-match-note-wrap { margin: 4px 0 12px; }
+.toern-match-note-label { font-size: 12px; font-weight: 600; color: var(--text-2); margin-bottom: 6px; }
+.toern-match-note {
+  width: 100%; background: var(--bg-input, #0d1018);
+  border: 1px solid var(--border-2, #2d3242); border-radius: 8px;
+  color: var(--text); padding: 9px 11px; font: inherit; font-size: 13px; resize: vertical;
+}
+.toern-match-note:focus { outline: none; border-color: var(--accent); }
+
+/* TIP 2 — donkere dynamische overlay + sluitknop onderaan */
+.toern-dyn-foot { display: flex; justify-content: flex-end; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--border); }
+#toern-dyn-overlay .toern-dyn-card select,
+#toern-dyn-overlay .toern-dyn-card input {
+  background: var(--bg-input, #0d1018); color: var(--text); border: 1px solid var(--border-2, #2d3242);
+}
+.mp-add-row { color: var(--text); }
+
+/* BUG 2 — dropdown-styling in toernooi-formulieren */
+.toern-inline-form select, .toern-inline-form input {
+  background: var(--bg-input, #0d1018); color: var(--text);
+  border: 1px solid var(--border-2, #2d3242); border-radius: 6px; padding: 7px 9px; font: inherit;
+}
+
+/* BUG 7 — observatie-trefwoorden (4-staps) + blok-layout */
+.obs-field-block { border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; background: var(--panel); }
+.obs-field-block > .obs-field-label { display: block; font-weight: 700; margin-bottom: 8px; color: var(--text); font-size: 13.5px; }
+.obs-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.obs-tag {
+  min-height: 36px; padding: 7px 12px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--bg-2); color: var(--text-2);
+  font-size: 12.5px; cursor: pointer; transition: background .15s, color .15s, border-color .15s;
+}
+.obs-tag[data-rating="good"]    { background: var(--green, #22c55e);  border-color: var(--green, #22c55e);  color: #06210f; font-weight: 700; }
+.obs-tag[data-rating="average"] { background: var(--orange, #f59e0b); border-color: var(--orange, #f59e0b); color: #1a1206; font-weight: 700; }
+.obs-tag[data-rating="poor"]    { background: var(--red, #ef4444);    border-color: var(--red, #ef4444);    color: #2a0a0a; font-weight: 700; }
+.obs-block-note { width: 100%; background: var(--bg-input, #0d1018); border: 1px solid var(--border-2, #2d3242); border-radius: 8px; color: var(--text); padding: 9px 11px; font: inherit; font-size: 13px; resize: vertical; }
+
+/* BUG 6 — modal sluitknop nooit achter statusbalk: ruimere top + bottom-knop */
+@media (max-width: 640px) {
+  .toern-modal .toern-modal-header,
+  .toern-modal-lg .toern-modal-header {
+    padding-top: max(80px, calc(env(safe-area-inset-top, 20px) + 28px));
+  }
+  #toern-dyn-overlay .toern-dyn-card {
+    padding-top: max(72px, calc(env(safe-area-inset-top, 20px) + 24px)) !important;
+  }
+  .toern-modal-foot-close {
+    position: sticky; bottom: 0; background: var(--panel, #0b0f15);
+    padding: 12px 16px calc(12px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border);
+  }
+}
+.toern-modal-foot-close { display: none; }
+@media (max-width: 640px) { .toern-modal-foot-close { display: block; } }
+
+/* TIP 5 — actief gekozen team-knop in quick-add */
+.qa-team-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* PRIO 1 — Feature 2 (overall A/B/C/D) + Feature 3 (eerdere obs) */
+#obs-overall { margin-bottom: 12px; }
+.obs-overall-row { display: flex; gap: 8px; }
+.obs-overall-btn {
+  flex: 1; min-height: 44px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg-2); color: var(--text-2);
+  font-size: 16px; font-weight: 800; transition: background .15s, color .15s, border-color .15s;
+}
+.obs-overall-btn.active.grade-A { background: var(--grade-a, #22c55e); border-color: var(--grade-a, #22c55e); color: #06210f; }
+.obs-overall-btn.active.grade-B { background: var(--grade-b, #84cc16); border-color: var(--grade-b, #84cc16); color: #0f1a06; }
+.obs-overall-btn.active.grade-C { background: var(--grade-c, #f59e0b); border-color: var(--grade-c, #f59e0b); color: #1a1206; }
+.obs-overall-btn.active.grade-D { background: var(--grade-d, #ef4444); border-color: var(--grade-d, #ef4444); color: #2a0a0a; }
+.obs-earlier-box { margin-bottom: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); padding: 8px 12px; }
+.obs-earlier-box > summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--text-2); }
+.obs-earlier-item { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 8px; }
+.obs-earlier-ctx { font-size: 11.5px; color: var(--text-3); font-weight: 700; }
+.obs-earlier-tags { font-size: 12px; margin-top: 3px; }
+.obs-earlier-text { font-size: 12.5px; color: var(--text-2); margin-top: 3px; line-height: 1.4; }
+
+/* FEATURE 1 — Toernooi afronden modal */
+.afr-quick { display: flex; gap: 6px; margin-bottom: 8px; }
+.afr-group-title { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); font-weight: 700; margin: 12px 0 6px; }
+.afr-row { display: flex; align-items: center; gap: 10px; padding: 9px 4px; border-bottom: 1px solid var(--border); font-size: 13px; cursor: pointer; }
+.afr-row input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; }
+.afr-grade { width: 24px; height: 24px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; flex-shrink: 0; background: var(--bg-2); color: var(--text-3); }
+.afr-grade.grade-A { background: var(--grade-a, #22c55e); color: #06210f; }
+.afr-grade.grade-B { background: var(--grade-b, #84cc16); color: #0f1a06; }
+.afr-grade.grade-C { background: var(--grade-c, #f59e0b); color: #1a1206; }
+.afr-grade.grade-D { background: var(--grade-d, #ef4444); color: #2a0a0a; }
+.afr-name { font-weight: 600; color: var(--text); }
+.afr-club { color: var(--text-3); font-size: 12px; }
+.afr-meta { margin-left: auto; color: var(--text-3); font-size: 11.5px; white-space: nowrap; }
+.toern-exp-btn { flex-shrink: 0; }
+
+/* FEATURE 6 — offline-indicatie */
+body.sh-offline #sync-indicator { color: var(--red, #ef4444); }
+body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
+
+/* ===== PRIO 2 — Feature 4/5/15 styling ===== */
+/* Feature 4 — wedstrijd-navigatie */
+.toern-match-nav { display: flex; align-items: center; gap: 4px; margin-right: 6px; }
+.toern-nav-arrow {
+  width: 32px; height: 32px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--bg-2); color: var(--text);
+  font-size: 18px; line-height: 1; display: flex; align-items: center; justify-content: center;
+}
+.toern-nav-arrow:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.toern-nav-arrow:disabled { opacity: .35; cursor: default; }
+.toern-nav-count { font-size: 12px; font-variant-numeric: tabular-nums; color: var(--text-3); min-width: 30px; text-align: center; }
+
+/* Feature 5 — must-scout ster */
+.toern-must-btn {
+  background: none; border: none; cursor: pointer; font-size: 18px; line-height: 1;
+  color: var(--text-3); padding: 4px; flex-shrink: 0; transition: transform .1s, color .15s;
+}
+.toern-must-btn:hover { transform: scale(1.15); }
+.toern-must-btn.on { color: var(--orange, #f59e0b); }
+.tp-must { color: var(--orange, #f59e0b); }
+
+/* Feature 15 — toernooi-kaart in regulier programma */
+.prog-toernooi-cards { display: flex; flex-direction: column; gap: 8px; margin: 0 0 12px; }
+.prog-toern-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--panel); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  border-radius: var(--radius-sm); padding: 12px 14px; cursor: pointer;
+  transition: border-color .15s, background .15s;
+}
+.prog-toern-card:hover { border-color: var(--accent); background: var(--panel-2); }
+.prog-toern-card.toern-status-done { border-left-color: var(--text-3); opacity: .85; }
+.prog-toern-card.toern-status-prep { border-left-color: var(--orange, #f59e0b); }
+.ptc-main { flex: 1; min-width: 0; }
+.ptc-title { font-size: 14px; font-weight: 700; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ptc-meta { font-size: 12px; color: var(--text-3); margin-top: 2px; }
+.ptc-status { font-size: 11px; font-weight: 700; color: var(--text-2); padding: 3px 8px; border-radius: 999px; background: var(--bg-2); flex-shrink: 0; }
+.ptc-go { font-size: 12px; color: var(--accent); font-weight: 600; flex-shrink: 0; }
+@media (max-width: 640px) { .ptc-go { display: none; } }
+
+/* ===== PRIO 3 — Feature 8/9/10/11 styling ===== */
+/* Feature 11 — deel-knop */
+.toern-share-btn {
+  background: none; border: none; cursor: pointer; font-size: 16px; line-height: 1;
+  color: var(--text-3); padding: 4px 6px; flex-shrink: 0; transition: color .15s, transform .1s;
+}
+.toern-share-btn:hover { color: var(--accent); transform: scale(1.12); }
+
+/* Feature 9 — FAB */
+.toern-fab {
+  position: fixed; right: 16px; bottom: calc(60px + env(safe-area-inset-bottom, 0px) + 16px); z-index: 1200;
+  max-width: 70vw; padding: 12px 18px; border-radius: 999px; border: none; cursor: pointer;
+  background: linear-gradient(135deg, var(--accent, #e30613), #f5c518); color: #fff;
+  font-size: 13px; font-weight: 700; box-shadow: 0 6px 20px rgba(0,0,0,.35);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.toern-fab:hover { filter: brightness(1.05); }
+@media (min-width: 980px) { .toern-fab { bottom: 24px; right: 24px; } }
+
+/* Feature 10 — omstandigheden chips */
+.cond-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.cond-chip {
+  min-height: 40px; padding: 8px 12px; border-radius: 999px; cursor: pointer; font-size: 13px;
+  border: 1px solid var(--border); background: var(--bg-2); color: var(--text-2);
+  transition: background .15s, border-color .15s, color .15s;
+}
+.cond-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ===== Bug D — bundeling donker thema + betere layout ===== */
+#toern-summ-backdrop .toern-modal { background: var(--panel, #0b0f15); color: var(--text); }
+#toern-summ-backdrop .toern-modal-body { background: var(--panel, #0b0f15); }
+.toern-summ-obs-block { background: var(--bg-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+.toern-summ-obs-match { font-size: 12.5px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.bnd-cat { font-size: 12.5px; color: var(--text-2); margin: 4px 0; line-height: 1.5; }
+.bnd-cat-label { font-weight: 700; color: var(--text-3); text-transform: uppercase; font-size: 10.5px; letter-spacing: .04em; margin-right: 4px; }
+.toern-summ-obs-text { width: 100%; min-height: 64px; background: var(--bg-input, #0d1018); border: 1px solid var(--border-2, #2d3242); border-radius: 8px; color: var(--text); padding: 9px 11px; font: inherit; font-size: 13px; resize: vertical; margin-top: 6px; }
+.bnd-grade-chips { display: flex; gap: 8px; margin-top: 4px; }
+.bnd-grade-btn { flex: 1; min-height: 42px; border-radius: 10px; cursor: pointer; border: 1px solid var(--border); background: var(--bg-2); color: var(--text-2); font-size: 15px; font-weight: 800; transition: background .15s, color .15s, border-color .15s; }
+.bnd-grade-btn.active.grade-A { background: var(--grade-a, #22c55e); border-color: var(--grade-a, #22c55e); color: #06210f; }
+.bnd-grade-btn.active.grade-B { background: var(--grade-b, #84cc16); border-color: var(--grade-b, #84cc16); color: #0f1a06; }
+.bnd-grade-btn.active.grade-C { background: var(--grade-c, #f59e0b); border-color: var(--grade-c, #f59e0b); color: #1a1206; }
+.bnd-grade-btn.active.grade-D { background: var(--grade-d, #ef4444); border-color: var(--grade-d, #ef4444); color: #2a0a0a; }
+
+/* ══════════════════════════════════════════════════════════════
+   H3 — Globale safe-area voor topbars (notch / statusbalk PWA).
+   Voorheen hadden alleen enkele specifieke topbars de inset-clamp;
+   nu krijgt elke pagina-topbar hem zodat titels niet meer achter
+   de statusbalk/batterij verspringen op iPhone/Android PWA.
+   ══════════════════════════════════════════════════════════════ */
+@supports (padding-top: env(safe-area-inset-top)) {
+  .view > .topbar,
+  .login-card {
+    padding-top: max(16px, calc(env(safe-area-inset-top) + 8px));
+  }
+}
+
+
+/* H5 — advies-chips (observatie) */
+.adv-chips { display:flex; flex-wrap:wrap; gap:6px; }
+.adv-chip {
+  background: var(--panel-2,#1d2533); color: var(--text-2,#9aa8bd);
+  border: 1px solid var(--border,#232d40); border-radius: 999px;
+  padding: 7px 13px; font-size: 12.5px; cursor: pointer; line-height:1;
+  min-height: 34px;
+}
+.adv-chip:hover { border-color: var(--border-2,#2f3b52); color: var(--text,#e8edf5); }
+.adv-chip.active {
+  background: var(--accent,#4ea1ff); border-color: var(--accent,#4ea1ff);
+  color: #08111f; font-weight: 600;
+}
+
+
+/* M1 — sidebar sectiekoppen */
+.nav-section-label {
+  font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
+  color: var(--text-3, #8b97ad); padding: 13px 14px 4px; opacity: .7;
+  pointer-events: none; user-select: none;
+}
+.nav-section-label:first-child { padding-top: 4px; }
+
+
+/* M12 — post-wedstrijd progress-regel op programmakaart */
+.pm-progress {
+  margin-top: 6px; font-size: 11.5px; color: var(--text-3, #8b97ad);
+  display: flex; flex-wrap: wrap; gap: 4px; align-items: center; line-height: 1.4;
+}
+
+
+/* M13 — ritten bedrag + maand-subtotalen */
+.rit-bedrag { font-size: 11px; color: var(--text-3, #8b97ad); }
+.ritten-subtotals { margin: 0 0 12px; background: var(--panel-2,#1d2533); border:1px solid var(--border,#232d40); border-radius: 8px; padding: 6px 12px; }
+.ritten-subtotals summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--text-2,#9aa8bd); padding: 4px 0; }
+.ritten-sub-row { display:flex; justify-content:space-between; gap:10px; font-size:12px; color: var(--text-2,#9aa8bd); padding: 4px 0; border-top: 1px solid var(--border,#232d40); }
+
+
+/* Onderdeel 1 — notitie per categorie in obs-formulier */
+.obs-cat-note {
+  display:block; width:100%; margin-top:6px;
+  background:var(--bg-input,#0d1018); border:1px solid var(--border,#232d40);
+  color:var(--text,#e8edf5); border-radius:6px; padding:6px 8px;
+  font:inherit; font-size:12.5px; resize:none; min-height:32px; line-height:1.4; outline:none;
+}
+.obs-cat-note:focus { border-color:var(--accent,#4ea1ff); }
+.obs-cat-note::placeholder { color:var(--text-3,#8b97ad); }
+
+
+/* Onderdeel 2 — keuze-modal (obs of rapport) */
+.obs-keuze-backdrop {
+  position:fixed; inset:0; z-index:10000; background:rgba(0,0,0,.6);
+  display:flex; align-items:center; justify-content:center; padding:max(20px, env(safe-area-inset-top)) 16px 20px;
+  animation:fadeIn .15s ease;
+}
+.obs-keuze-card {
+  background:var(--panel,#111722); color:var(--text,#e8edf5); border:1px solid var(--border,#232d40);
+  border-radius:14px; max-width:440px; width:100%; padding:20px; box-shadow:0 12px 40px rgba(0,0,0,.5);
+}
+.obs-keuze-title { font-size:16px; font-weight:700; }
+.obs-keuze-meta { font-size:13.5px; color:var(--text-2,#9aa8bd); margin-top:6px; }
+.obs-keuze-sub { font-size:12px; color:var(--text-3,#8b97ad); margin-top:2px; }
+.obs-keuze-q { font-size:13px; color:var(--text-2,#9aa8bd); margin:16px 0 8px; }
+.obs-keuze-btn {
+  display:block; width:100%; text-align:left; background:var(--panel-2,#1d2533);
+  border:1px solid var(--border,#232d40); border-radius:10px; padding:12px 14px; margin-bottom:10px; cursor:pointer;
+}
+.obs-keuze-btn:hover { border-color:var(--border-2,#2f3b52); }
+.obs-keuze-btn.primary { border-color:var(--accent,#4ea1ff); }
+.obs-keuze-btn .okb-t { display:block; font-size:14px; font-weight:600; color:var(--text,#e8edf5); }
+.obs-keuze-btn .okb-s { display:block; font-size:12px; color:var(--text-3,#8b97ad); margin-top:3px; line-height:1.4; }
+
+/* ══════════════════════════════════════════════════════════════
+   LANDINGSPAGINA (pre-login) — dark, responsive, geen dependencies
+   ══════════════════════════════════════════════════════════════ */
+#landing-overlay {
+  position: fixed; inset: 0; z-index: 5000;
+  background: var(--bg, #0a0c12); color: var(--text, #e8edf5);
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
+  display: none; flex-direction: column;
+  font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+#landing-overlay > * { flex-shrink: 0; }
+
+.lp-nav {
+  position: sticky; top: 0; z-index: 2;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: max(12px, env(safe-area-inset-top)) 20px 12px;
+  background: rgba(10,12,18,.85); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--border, #232d40);
+}
+.lp-brand { font-weight: 800; font-size: 17px; letter-spacing: -.3px; display: flex; align-items: center; gap: 9px; }
+.lp-logo-dot { width: 12px; height: 12px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary, #e30613), var(--secondary, #f5c518)); display: inline-block; }
+
+.lp-btn {
+  border: 1px solid var(--border-2, #2f3b52); background: var(--panel-2, #1d2533);
+  color: var(--text, #e8edf5); border-radius: 10px; padding: 11px 20px;
+  font-size: 14.5px; font-weight: 600; cursor: pointer; line-height: 1;
+  transition: transform .12s ease, background .15s ease, border-color .15s ease;
+}
+.lp-btn:hover { transform: translateY(-1px); border-color: var(--accent, #4ea1ff); }
+.lp-btn-sm { padding: 8px 14px; font-size: 13.5px; }
+.lp-btn-lg { padding: 14px 30px; font-size: 16px; }
+.lp-btn-primary { background: linear-gradient(135deg, var(--primary, #e30613), var(--primary-2, #ff2a3a)); border-color: transparent; color: #fff; }
+.lp-btn-primary:hover { filter: brightness(1.06); border-color: transparent; }
+.lp-btn-ghost { background: transparent; }
+
+.lp-hero {
+  display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center;
+  max-width: 1140px; margin: 0 auto; padding: 64px 24px 48px; width: 100%;
+}
+.lp-h1 { font-size: clamp(30px, 5vw, 52px); line-height: 1.08; font-weight: 800; letter-spacing: -1px; margin: 0 0 16px; }
+.lp-sub { font-size: clamp(15px, 2vw, 18px); color: var(--text-2, #9aa8bd); max-width: 540px; margin: 0 0 26px; }
+.lp-cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+
+.lp-hero-visual { display: flex; justify-content: center; }
+.lp-visual {
+  width: 100%; max-width: 800px; border: 2px dashed var(--border-2, #2f3b52); border-radius: 14px;
+  background: var(--panel, #111722); display: flex; align-items: center; justify-content: center;
+  color: var(--text-3, #8b97ad); font-size: 13px; letter-spacing: .5px;
+}
+.lp-visual-16x9 { aspect-ratio: 16 / 9; }
+.lp-visual-step { aspect-ratio: 16 / 10; margin-top: 12px; font-size: 11px; }
+
+.lp-section { max-width: 1140px; margin: 0 auto; padding: 48px 24px; width: 100%; }
+.lp-h2 { font-size: clamp(22px, 3.4vw, 32px); font-weight: 800; letter-spacing: -.5px; text-align: center; margin: 0 0 32px; }
+
+.lp-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
+.lp-feat {
+  background: var(--panel, #111722); border: 1px solid var(--border, #232d40); border-radius: 14px; padding: 20px;
+  transition: transform .15s ease, border-color .15s ease;
+}
+.lp-feat:hover { transform: translateY(-3px); border-color: var(--border-2, #2f3b52); }
+.lp-feat-ic { font-size: 26px; margin-bottom: 10px; }
+.lp-feat-t { font-size: 15.5px; font-weight: 700; margin-bottom: 6px; }
+.lp-feat-s { font-size: 13.5px; color: var(--text-2, #9aa8bd); line-height: 1.5; }
+
+.lp-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; }
+.lp-step { background: var(--panel, #111722); border: 1px solid var(--border, #232d40); border-radius: 14px; padding: 20px; text-align: center; }
+.lp-step-n { width: 32px; height: 32px; border-radius: 50%; margin: 0 auto 10px;
+  display: flex; align-items: center; justify-content: center; font-weight: 800; color: #08111f;
+  background: linear-gradient(135deg, var(--accent, #4ea1ff), #7fd99e); }
+.lp-step-ic { font-size: 24px; }
+.lp-step-t { font-size: 15px; font-weight: 700; margin: 6px 0 4px; }
+.lp-step-s { font-size: 13px; color: var(--text-2, #9aa8bd); line-height: 1.5; }
+
+.lp-testimonials { display: none; }            /* verborgen tot er quotes zijn */
+#landing-overlay.has-testimonials .lp-testimonials { display: block; }
+.lp-quote { max-width: 680px; margin: 0 auto; text-align: center; font-size: 18px; font-style: italic; color: var(--text-2, #9aa8bd); }
+.lp-quote-by { display: block; margin-top: 10px; font-style: normal; font-size: 13px; color: var(--text-3, #8b97ad); }
+
+.lp-cta-final { text-align: center; padding: 56px 24px; }
+
+.lp-footer {
+  margin-top: auto; padding: 28px 24px calc(28px + env(safe-area-inset-bottom));
+  border-top: 1px solid var(--border, #232d40); text-align: center;
+  color: var(--text-3, #8b97ad); font-size: 13px; display: flex; flex-direction: column; gap: 8px;
+}
+.lp-footer-links a { color: var(--text-2, #9aa8bd); text-decoration: none; }
+.lp-footer-links a:hover { color: var(--accent, #4ea1ff); }
+
+/* subtiele fade-in bij scrollen */
+.lp-reveal { opacity: 0; transform: translateY(16px); transition: opacity .55s ease, transform .55s ease; }
+.lp-reveal.lp-in { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .lp-reveal { opacity: 1; transform: none; transition: none; } }
+
+/* Tablet */
+@media (max-width: 900px) {
+  .lp-hero { grid-template-columns: 1fr; gap: 28px; padding: 44px 20px 36px; text-align: center; }
+  .lp-sub { margin-left: auto; margin-right: auto; }
+  .lp-cta-row { justify-content: center; }
+  .lp-steps { grid-template-columns: repeat(2, 1fr); }
+}
+/* Mobiel */
+@media (max-width: 560px) {
+  .lp-section { padding: 36px 16px; }
+  .lp-hero { padding: 32px 16px 28px; }
+  .lp-features { grid-template-columns: 1fr; }
+  .lp-steps { grid-template-columns: 1fr; }
+  .lp-cta-row .lp-btn { flex: 1; }
+}
+
+/* ── Landing carousel (interactieve demo met mockups) ── */
+.lp-carousel { position: relative; max-width: 820px; margin: 0 auto; }
+.lp-car-viewport { overflow: hidden; border-radius: 16px; }
+.lp-carousel-track { display: flex; transition: transform .5s cubic-bezier(.4,.0,.2,1); will-change: transform; }
+.lp-slide { min-width: 100%; box-sizing: border-box; padding: 8px 8px 4px; display: flex; flex-direction: column; align-items: center; }
+.lp-slide-cap { text-align: center; padding: 16px 12px 6px; }
+.lp-slide-t { font-size: 18px; font-weight: 800; letter-spacing: -.3px; }
+.lp-slide-s { font-size: 14px; color: var(--text-2, #9aa8bd); margin-top: 4px; }
+
+/* mock "scherm" */
+.lp-mock { width: 100%; max-width: 460px; background: var(--panel, #111722); border: 1px solid var(--border, #232d40);
+  border-radius: 14px; padding: 14px; min-height: 230px; box-shadow: 0 10px 30px rgba(0,0,0,.35); }
+.lp-mock-center { display: flex; flex-direction: column; align-items: center; }
+.lp-mock-bar { font-size: 13px; font-weight: 700; color: var(--text, #e8edf5); padding-bottom: 10px; margin-bottom: 10px; border-bottom: 1px solid var(--border, #232d40); display: flex; justify-content: space-between; align-items: center; }
+.lp-mock-kpis { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
+.lp-kpi { background: var(--panel-2, #1d2533); border-radius: 10px; padding: 10px; text-align: center; }
+.lp-kpi b { display: block; font-size: 20px; color: var(--accent, #4ea1ff); }
+.lp-kpi span { font-size: 11px; color: var(--text-3, #8b97ad); }
+.lp-mock-row { font-size: 13px; color: var(--text-2, #9aa8bd); padding: 8px 10px; background: var(--panel-2, #1d2533); border-radius: 8px; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+.lp-mock-row em { margin-left: auto; font-style: normal; font-size: 11px; color: var(--text-3, #8b97ad); }
+.lp-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--text-3, #8b97ad); flex-shrink: 0; }
+.lp-dot.g { background: #22c55e; } .lp-dot.o { background: #f59e0b; } .lp-dot.r { background: #ef4444; }
+.lp-dot-live { background: #22c55e; box-shadow: 0 0 0 3px rgba(34,197,94,.25); }
+.lp-mock-cat { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-3, #8b97ad); margin: 10px 0 6px; }
+.lp-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.lp-chip { font-size: 12px; padding: 6px 11px; border-radius: 999px; background: var(--panel-2, #1d2533); border: 1px solid var(--border, #232d40); color: var(--text-2, #9aa8bd); }
+.lp-chip.g { background: rgba(34,197,94,.16); border-color: rgba(34,197,94,.5); color: #7fe0a0; }
+.lp-chip.o { background: rgba(245,158,11,.16); border-color: rgba(245,158,11,.5); color: #f5c87a; }
+.lp-chip.r { background: rgba(239,68,68,.16); border-color: rgba(239,68,68,.5); color: #f3a0a0; }
+.lp-tb { font-size: 12px; font-weight: 700; color: var(--text, #e8edf5); margin: 10px 0 6px; display: flex; align-items: center; gap: 8px; }
+.lp-now { font-size: 10px; font-weight: 700; color: #08111f; background: #22c55e; border-radius: 5px; padding: 2px 6px; }
+.lp-grades { display: flex; gap: 6px; margin: 10px 0; }
+.lp-grade { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; background: var(--panel-2, #1d2533); border: 1px solid var(--border, #232d40); color: var(--text-3, #8b97ad); }
+.lp-grade.on { background: linear-gradient(135deg, var(--primary, #e30613), var(--primary-2, #ff2a3a)); color: #fff; border-color: transparent; }
+.lp-mock-note { font-size: 12.5px; color: var(--text-2, #9aa8bd); background: var(--panel-2, #1d2533); border-radius: 8px; padding: 8px 10px; }
+.lp-radar { width: 200px; height: 200px; margin: 6px auto; display: block; }
+.lp-legend { display: flex; gap: 14px; justify-content: center; font-size: 12px; }
+.lp-lg { display: flex; align-items: center; gap: 6px; color: var(--text-2, #9aa8bd); }
+.lp-lg::before { content: ''; width: 10px; height: 10px; border-radius: 2px; }
+.lp-lg-a::before { background: #4ea1ff; } .lp-lg-b::before { background: #f5c518; }
+.lp-offline { font-size: 11px; color: #ef4444; font-weight: 700; }
+
+/* telefoon-frame */
+.lp-phone { width: 230px; margin: 0 auto; border: 8px solid #1a2030; border-radius: 30px; background: var(--bg, #0a0c12); padding: 14px 10px 16px; position: relative; box-shadow: 0 12px 36px rgba(0,0,0,.45); }
+.lp-phone-notch { width: 80px; height: 16px; background: #1a2030; border-radius: 0 0 12px 12px; margin: -14px auto 10px; }
+.lp-phone-screen .lp-mock-bar { font-size: 12px; }
+
+/* pijlen + dots */
+.lp-car-arrow { position: absolute; top: 38%; transform: translateY(-50%); width: 38px; height: 38px; border-radius: 50%;
+  border: 1px solid var(--border-2, #2f3b52); background: rgba(17,23,34,.9); color: var(--text, #e8edf5); font-size: 22px; cursor: pointer; line-height: 1; }
+.lp-car-arrow:hover { border-color: var(--accent, #4ea1ff); }
+.lp-car-prev { left: -6px; } .lp-car-next { right: -6px; }
+.lp-car-dots { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
+.lp-dot-nav { width: 9px; height: 9px; border-radius: 50%; border: 0; padding: 0; cursor: pointer; background: var(--border-2, #2f3b52); }
+.lp-dot-nav.on { background: var(--accent, #4ea1ff); width: 22px; border-radius: 5px; }
+
+@media (max-width: 560px){
+  .lp-car-arrow { width: 32px; height: 32px; font-size: 18px; }
+  .lp-car-prev { left: 2px; } .lp-car-next { right: 2px; }
+  .lp-mock { min-height: 200px; }
+}
+
+/* ── Onboarding-wizard ── */
+.sh-wiz-backdrop {
+  position: fixed; inset: 0; z-index: 10001; background: rgba(0,0,0,.62);
+  display: flex; align-items: center; justify-content: center;
+  padding: max(20px, env(safe-area-inset-top)) 16px 20px; animation: fadeIn .15s ease;
+}
+.sh-wiz-card {
+  position: relative; background: var(--panel, #111722); color: var(--text, #e8edf5);
+  border: 1px solid var(--border, #232d40); border-radius: 16px; max-width: 460px; width: 100%;
+  padding: 24px 22px 18px; box-shadow: 0 16px 50px rgba(0,0,0,.55); text-align: center;
+}
+.sh-wiz-close { position: absolute; top: 10px; right: 12px; background: none; border: 0; color: var(--text-3, #8b97ad); font-size: 24px; line-height: 1; cursor: pointer; padding: 4px; }
+.sh-wiz-body h3 { font-size: 20px; font-weight: 800; margin: 6px 0 8px; letter-spacing: -.4px; }
+.sh-wiz-body p { font-size: 14.5px; color: var(--text-2, #9aa8bd); line-height: 1.55; margin: 0 auto; max-width: 360px; }
+.sh-wiz-ic { font-size: 44px; line-height: 1; margin-bottom: 6px; }
+.sh-wiz-mock { margin: 16px auto 0; max-width: 340px; min-height: 0; text-align: left; }
+.sh-wiz-dots { display: flex; gap: 8px; justify-content: center; margin: 18px 0 14px; }
+.sh-wiz-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--border-2, #2f3b52); }
+.sh-wiz-dot.on { background: var(--accent, #4ea1ff); width: 22px; border-radius: 5px; }
+.sh-wiz-nav { display: flex; gap: 8px; align-items: center; justify-content: space-between; }
+.sh-wiz-nav .lp-btn { flex: 0 0 auto; }
+.sh-wiz-actions { display: flex; flex-direction: column; gap: 8px; margin: 16px auto 0; max-width: 300px; }
+.sh-wiz-actions .lp-btn { width: 100%; }
+.sh-wiz-check { display: flex; align-items: center; justify-content: center; gap: 7px; margin-top: 14px; font-size: 12.5px; color: var(--text-3, #8b97ad); cursor: pointer; }
+@media (max-width: 480px){
+  .sh-wiz-nav { flex-wrap: wrap; }
+  .sh-wiz-nav .lp-btn { flex: 1; }
+}
+
+/* ── Contextual help (?) ── */
+.sh-help {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; min-width: 18px; border-radius: 50%;
+  border: 1px solid var(--border-2, #2f3b52); background: transparent;
+  color: var(--text-3, #8b97ad); font-size: 11px; font-weight: 700; line-height: 1;
+  cursor: pointer; padding: 0; vertical-align: middle; margin-left: 5px; position: relative;
+}
+.sh-help:hover { color: var(--text, #e8edf5); border-color: var(--accent, #4ea1ff); }
+/* groter touch-target op PWA zonder de visuele grootte te veranderen */
+.sh-help::after { content: ''; position: absolute; inset: -14px; }
+.sh-help-pop {
+  position: fixed; z-index: 10050; max-width: 260px; background: var(--panel-2, #1d2533);
+  color: var(--text, #e8edf5); border: 1px solid var(--border-2, #2f3b52); border-radius: 10px;
+  padding: 10px 12px; font-size: 12.5px; line-height: 1.5; box-shadow: 0 10px 30px rgba(0,0,0,.5);
+}
+
+
+/* Onboarding B — helpende lege-states */
+.sh-empty { text-align: center; padding: 40px 20px; }
+.sh-empty-ic { font-size: 40px; line-height: 1; margin-bottom: 10px; opacity: .9; }
+.sh-empty-t { font-size: 15.5px; font-weight: 700; color: var(--text, #e8edf5); }
+.sh-empty-s { font-size: 13.5px; color: var(--text-2, #9aa8bd); margin: 6px auto 16px; max-width: 360px; line-height: 1.5; }
+
+
+/* Prompt 6 — spelerfoto + foto-menu */
+.sh-avatar-img{ width:100%; height:100%; object-fit:cover; border-radius:50%; display:block; }
+.sh-avatar-btn{ position:relative; border:none; padding:0; cursor:pointer; background:transparent; overflow:visible; }
+.sh-avatar-btn .sh-avatar-cam{
+  position:absolute; right:-2px; bottom:-2px; width:20px; height:20px; border-radius:50%;
+  background:var(--accent,#4ea1ff); color:#06223f; font-size:10px; line-height:1;
+  display:flex; align-items:center; justify-content:center; border:2px solid var(--bg,#0a1019);
+}
+.compare-slot-avatar .sh-avatar-img{ border-radius:50%; }
+.sh-photo-menu-bd{ position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:9999; display:flex; align-items:center; justify-content:center; padding:20px; }
+.sh-photo-menu{ background:var(--panel,#0b1220); border:1px solid var(--border,#1f2937); border-radius:14px; padding:18px; width:100%; max-width:320px; display:flex; flex-direction:column; gap:8px; }
+.sh-pm-title{ font-weight:700; font-size:16px; margin-bottom:4px; color:var(--text,#e8edf5); text-align:center; }
+.sh-pm-opt{ background:var(--bg-2,#0e1626); border:1px solid var(--border,#1f2937); color:var(--text,#e8edf5); border-radius:10px; padding:12px 14px; font-size:14.5px; cursor:pointer; text-align:left; }
+.sh-pm-opt:hover{ border-color:var(--accent,#4ea1ff); }
+.sh-pm-opt.danger{ color:#fca5a5; border-color:rgba(248,113,113,.4); }
+.sh-pm-opt.ghost{ text-align:center; color:var(--text-3,#8b97ad); }
+.sh-pm-preview{ width:160px; height:160px; border-radius:12px; object-fit:cover; align-self:center; margin:4px 0; }
+.sh-didyoumean{ color:var(--accent,#4ea1ff); font-weight:600; }
+
+
+/* Prompt 8 — vormtrend sparklines + obs-labeling in vergelijken */
+.sh-spark-grid{ margin-top:14px; border-top:1px solid var(--border,#1f2937); padding-top:12px; }
+.sh-spark-grid-title{ font-size:12px; color:var(--text-3,#8b97ad); text-transform:uppercase; letter-spacing:.6px; margin-bottom:8px; }
+.sh-spark-cells{ display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:10px; }
+.sh-spark-cell{ background:var(--bg-2,#0e1626); border:1px solid var(--border,#1f2937); border-radius:8px; padding:8px; }
+.sh-spark-lbl{ font-size:11.5px; color:var(--text-2,#9aa8bd); margin-bottom:2px; display:flex; justify-content:space-between; align-items:center; }
+.sh-spark{ display:block; width:100%; height:auto; }
+.sh-spark-tr.up{ color:#34d399; } .sh-spark-tr.down{ color:#f87171; } .sh-spark-tr.flat{ color:var(--text-3,#8b97ad); }
+.cmp-src{ font-size:11px; color:var(--text-3,#8b97ad); margin-left:6px; white-space:nowrap; }
+.cmp-src-est{ color:#fcd34d; }
+.cmp-trend{ font-size:11px; margin-left:6px; font-weight:600; white-space:nowrap; }
+.cmp-trend-up{ color:#34d399; } .cmp-trend-down{ color:#f87171; } .cmp-trend-flat{ color:var(--text-3,#8b97ad); }
+.cmp-legend-est .compare-legend-dot{ outline:1px dashed currentColor; outline-offset:1px; }
+.compare-bar-fill.cmp-est{ background-image:repeating-linear-gradient(45deg, rgba(255,255,255,0) 0, rgba(255,255,255,0) 4px, rgba(255,255,255,.22) 4px, rgba(255,255,255,.22) 8px); }
+.cmp-tt-est{ color:#fcd34d; cursor:help; font-style:normal; }
+
+
+/* Prompt 9 — auto-kandidaten + module-koppeling */
+.pitch-suggest{ margin-top:14px; border-top:1px solid var(--border,#1f2937); padding-top:12px; }
+.psug-bar{ margin-bottom:8px; }
+.psug-search{ width:100%; background:var(--bg-2,#0e1626); border:1px solid var(--border,#1f2937); color:var(--text,#e8edf5); border-radius:8px; padding:7px 10px; font-size:13px; outline:none; }
+.psug-search:focus{ border-color:var(--accent,#4ea1ff); }
+.psug-head{ font-size:12.5px; font-weight:700; color:var(--text-2,#9aa8bd); margin:6px 0; display:flex; align-items:center; gap:6px; }
+.psug-head.psug-fallback{ font-weight:500; color:var(--text-3,#8b97ad); }
+.psug-count{ background:var(--bg-2,#0e1626); border:1px solid var(--border,#1f2937); border-radius:999px; padding:0 7px; font-size:11px; }
+.psug-list{ display:flex; flex-direction:column; gap:6px; max-height:320px; overflow-y:auto; }
+.psug-row{ display:flex; align-items:center; gap:8px; background:var(--panel,#0b1220); border:1px solid var(--border,#1f2937); border-radius:8px; padding:7px 9px; }
+.psug-main{ flex:1; min-width:0; cursor:pointer; }
+.psug-name{ font-size:13px; font-weight:600; color:var(--text,#e8edf5); }
+.psug-meta{ font-size:11px; color:var(--text-3,#8b97ad); }
+.psug-tag{ font-size:9.5px; background:rgba(78,161,255,.18); color:#9cc4ff; border-radius:4px; padding:1px 5px; font-weight:700; vertical-align:middle; }
+.psug-tag.obs{ background:rgba(251,191,36,.18); color:#fcd34d; }
+.psug-link{ white-space:nowrap; }
+.psug-linked{ color:#34d399; font-weight:700; width:26px; text-align:center; }
+.pitch-preselect-banner{ display:flex; align-items:center; justify-content:space-between; gap:10px; background:rgba(78,161,255,.1); border:1px solid rgba(78,161,255,.3); border-radius:10px; padding:9px 14px; margin-bottom:12px; font-size:13px; color:var(--text,#e8edf5); }
+.pitch-preselect-x{ background:none; border:none; color:var(--text-2,#9aa8bd); font-size:18px; cursor:pointer; line-height:1; flex:0 0 auto; }
+.cmp-to-pitch-btn{ margin-bottom:12px; }
+.elf-analyse-btn{ white-space:nowrap; }
+
+
+/* Prompt 10 — favoriete routes */
+.rit-fav-bar{ margin-bottom:12px; }
+.rit-fav-label{ font-size:12px; color:var(--text-3,#8b97ad); margin-bottom:6px; font-weight:600; }
+.rit-fav-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+.rit-fav-chip{ background:var(--bg-2,#0e1626); border:1px solid var(--border,#1f2937); color:var(--text,#e8edf5); border-radius:999px; padding:6px 12px; font-size:12.5px; cursor:pointer; }
+.rit-fav-chip:hover{ border-color:var(--accent,#4ea1ff); }
+.rit-fav-km{ color:var(--text-3,#8b97ad); font-size:11px; }
+.favmgr-list{ display:flex; flex-direction:column; gap:8px; max-height:340px; overflow-y:auto; margin:4px 0 8px; }
+.favmgr-row{ display:flex; align-items:center; gap:8px; background:var(--bg-2,#0e1626); border:1px solid var(--border,#1f2937); border-radius:8px; padding:8px 10px; }
+.favmgr-info{ flex:1; min-width:0; }
+.favmgr-name{ font-size:13px; font-weight:600; color:var(--text,#e8edf5); }
+.favmgr-meta{ font-size:11px; color:var(--text-3,#8b97ad); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.favmgr-edit,.favmgr-del{ background:none; border:1px solid var(--border,#1f2937); border-radius:6px; padding:4px 8px; cursor:pointer; color:var(--text-2,#9aa8bd); flex:0 0 auto; }
+.favmgr-edit:hover{ border-color:var(--accent,#4ea1ff); color:var(--text,#e8edf5); }
+.favmgr-del:hover{ border-color:#f87171; color:#fca5a5; }
+
+/* Prompt 10 — compacter dashboard op mobiel (<=768px) */
+@media (max-width: 768px){
+  #kpi-grid{ grid-template-columns:repeat(2,1fr) !important; gap:8px !important; }
+  #kpi-grid .kpi-card{ padding:10px 12px !important; }
+  #kpi-grid .kpi-value{ font-size:22px !important; }
+  #kpi-grid .kpi-label{ font-size:10.5px !important; }
+  /* Snelknoppen prominenter + full-width */
+  #view-dashboard .topbar{ flex-wrap:wrap; gap:10px; }
+  #view-dashboard .topbar > div:last-child{ display:flex; width:100%; gap:8px; }
+  #view-dashboard .topbar > div:last-child .btn{ flex:1; justify-content:center; padding:12px; font-size:14px; }
+  /* Live-tegel prominent */
+  #scouting-active-wrap{ border:1.5px solid var(--accent,#4ea1ff); border-radius:12px; box-shadow:0 6px 22px rgba(78,161,255,.18); }
+  /* Agenda compacter — toon de bovenste items, rest scrollbaar */
+  .upcoming-matches-body{ max-height:190px; overflow-y:auto; }
+  /* Zware analyse-/grafiekpanelen verbergen op mobiel */
+  .panel:has(#dist-current),
+  .panel:has(#dash-gaps),
+  .panel:has(#dash-clubs),
+  .panel:has(#dash-positions),
+  .panel:has(#dash-advies2),
+  .panel:has(#dash-categories),
+  #dash-overzichtsmap-panel{ display:none !important; }
+}
+
+
+/* Prompt 11 — profielfoto netjes rond/uitgesneden */
+.scout-avatar-img, .settings-photo-preview{ object-fit:cover; }
+
+
+/* Prompt 12 — toggle-switch voor herinneringen */
+.sh-switch{ position:relative; display:inline-block; width:42px; height:24px; flex:0 0 auto; }
+.sh-switch input{ opacity:0; width:0; height:0; }
+.sh-switch-slider{ position:absolute; inset:0; background:var(--bg-2,#0e1626); border:1px solid var(--border,#1f2937); border-radius:999px; transition:.2s; cursor:pointer; }
+.sh-switch-slider::before{ content:""; position:absolute; height:16px; width:16px; left:3px; top:3px; background:var(--text-3,#8b97ad); border-radius:50%; transition:.2s; }
+.sh-switch input:checked + .sh-switch-slider{ background:var(--accent,#4ea1ff); border-color:var(--accent,#4ea1ff); }
+.sh-switch input:checked + .sh-switch-slider::before{ transform:translateX(18px); background:#06223f; }
+
+
+/* Prompt 13 — rapport chip-grid + profiel-chips */
+.report-trefwoorden{ margin:8px 0 10px; flex-basis:100%; width:100%; }
+.report-trefwoorden .rep-tw-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+.report-trefwoorden .obs-tag{ background:var(--bg-2,#0e1626); border:1px solid var(--border,#1f2937); color:var(--text-2,#9aa8bd); border-radius:999px; padding:6px 11px; font-size:12.5px; cursor:pointer; line-height:1.1; }
+.report-trefwoorden .obs-tag[data-rating="good"]{ background:rgba(52,211,153,.18); border-color:rgba(52,211,153,.5); color:#6ee7b7; }
+.report-trefwoorden .obs-tag[data-rating="average"]{ background:rgba(251,191,36,.18); border-color:rgba(251,191,36,.5); color:#fcd34d; }
+.report-trefwoorden .obs-tag[data-rating="poor"]{ background:rgba(248,113,113,.18); border-color:rgba(248,113,113,.5); color:#fca5a5; }
+.rep-tags-summary{ margin:0 0 12px; }
+.rep-tag-cats{ display:flex; flex-direction:column; gap:5px; }
+.rep-tag-cat{ font-size:12.5px; color:var(--text,#e8edf5); }
+.rep-tag-cat-lbl{ font-weight:700; text-transform:uppercase; font-size:10.5px; letter-spacing:.04em; color:var(--text-3,#8b97ad); margin-right:6px; }
+.rep-obs-link{ margin-top:8px; font-size:12px; color:var(--text-3,#8b97ad); cursor:pointer; display:inline-block; }
+.rep-obs-link:hover{ color:var(--accent,#4ea1ff); text-decoration:underline; }
+
+
+/* ===================== BUGFIX RONDE 1 ===================== */
+
+/* B8 — sluitknoppen (×) onder de statusbalk op PWA (viewport-fit=cover) */
+.modal-close, .obs-modal-close, .toern-modal-close, .smart-modal-close,
+.sh-wiz-close, .changelog-close, .cmp-add-close, .demo-tour-close,
+.install-modal-close, .live-scout-close, .settings-close-btn,
+.sa-snel-close-head, .sa-snel-wstr-close-head, .sa-tile-close, .sa-tile-obs-close,
+.wstr-verwerk-close {
+  top: max(12px, env(safe-area-inset-top, 0px)) !important;
+}
+
+/* B9 — toernooi-view altijd full-width op PWA */
+#view-toernooien, #toern-list-pane, #toern-detail-pane, #toern-list-wrap, .toern-tab-pane {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* B10 — voorkom dubbel-tap-zoom op alle tikbare chips/knoppen */
+.obs-tag, .grade-pick, .adv-chip, .hb-grade, .toern-prio-btn, .cond-chip,
+.grade-picker button, .sa-live-btn, .rit-fav-chip, .psug-link,
+.report-trefwoorden .obs-tag, [class*="-chip"] {
+  touch-action: manipulation;
+}
+
+/* B11 — wedstrijdnotitie/obs-knoppen voldoende touch-target + geen zoom */
+.sa-live-btn, .sa-wstr-toggle-row, .sa-wstrnotitie-row {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
+
+/* Screenshots ronde — landingspagina afbeeldingen */
+#landing-overlay .lp-visual:has(img){ aspect-ratio:auto; border:none; background:none; padding:0; display:block; }
+#landing-overlay .lp-visual img{
+  width:100%; max-width:100%; height:auto; border-radius:12px;
+  box-shadow:0 8px 40px rgba(0,0,0,.4); display:block;
+}
+#landing-overlay .lp-visual-step img{ border-radius:10px; box-shadow:0 6px 24px rgba(0,0,0,.32); }
+
+
+/* Lightbox voor screenshots (landingspagina) */
+.sh-lb{ display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.85); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:center; justify-content:center; cursor:zoom-out; }
+.sh-lb.open{ display:flex; }
+.sh-lb-img{ max-width:90vw; max-height:90vh; object-fit:contain; border-radius:8px; box-shadow:0 12px 60px rgba(0,0,0,.6); }
+.sh-lb-close{ position:fixed; top:max(16px, env(safe-area-inset-top, 0px)); right:16px; background:rgba(255,255,255,.15); border:none; color:#fff; font-size:28px; width:44px; height:44px; border-radius:50%; cursor:pointer; z-index:10000; display:flex; align-items:center; justify-content:center; line-height:1; }
+.sh-lb-close:hover{ background:rgba(255,255,255,.3); }
+#landing-overlay .lp-visual img{ cursor:zoom-in; transition:transform .15s ease; }
+#landing-overlay .lp-visual img:hover{ transform:scale(1.02); }
+
+
+/* Login/reset meldingen */
+.sh-login-msg{ display:none; font-size:14px; margin:10px 0; padding:10px 14px; border-radius:0 8px 8px 0; line-height:1.45; animation:shLoginMsgIn .2s ease; }
+.sh-login-msg.error{ background:rgba(248,113,113,.12); border-left:3px solid var(--bad,#f87171); color:#fca5a5; }
+.sh-login-msg.success{ background:rgba(52,211,153,.12); border-left:3px solid var(--good,#34d399); color:#6ee7b7; }
+@keyframes shLoginMsgIn{ from{ opacity:0; transform:translateY(-4px); } to{ opacity:1; transform:none; } }
+
+
+/* Fase 1 — Toegang aanvragen */
+.login-req-btn{ background:none; border:1px solid var(--border,#1f2937); color:var(--text-2,#9aa8bd); border-radius:8px; padding:9px 16px; font-size:13px; cursor:pointer; min-height:40px; }
+.login-req-btn:hover{ border-color:var(--accent,#4ea1ff); color:var(--text,#e8edf5); }
+.sh-req-card{ max-width:380px; text-align:left; position:relative; }
+.sh-req-x{ position:absolute; top:max(8px, env(safe-area-inset-top,0px)); right:8px; background:none; border:none; color:var(--text-2,#9aa8bd); font-size:22px; cursor:pointer; line-height:1; width:44px; height:44px; }
+.sh-req-sub{ font-size:13px; color:var(--text-2,#9aa8bd); margin:2px 0 12px; line-height:1.5; }
+.sh-req-l{ display:block; font-size:12px; color:var(--text-3,#8b97ad); margin:8px 0 3px; }
+.sh-req-i{ width:100%; background:var(--bg-2,#0e1626); border:1px solid var(--border,#1f2937); color:var(--text,#e8edf5); border-radius:8px; padding:10px 12px; font-size:14px; box-sizing:border-box; font-family:inherit; }
+.sh-req-i:focus{ outline:none; border-color:var(--accent,#4ea1ff); }
+.sh-req-actions{ display:flex; gap:8px; margin-top:14px; }
+.sh-req-actions .settings-btn{ flex:1; min-height:44px; }
+.sh-req-send{ background:var(--accent,#4ea1ff); color:#06223f; border-color:var(--accent,#4ea1ff); font-weight:700; }
+.sh-req-msg{ display:none; font-size:13px; margin:4px 0 8px; padding:8px 11px; border-radius:0 8px 8px 0; line-height:1.4; }
+.sh-req-msg.show{ display:block; }
+.sh-req-msg.error{ background:rgba(248,113,113,.12); border-left:3px solid var(--bad,#f87171); color:#fca5a5; }
+
+
+/* ============================================================
+   FASE 2 — Beheer-module (admin dashboard). Dark theme, mobiel/PWA.
+   ============================================================ */
+.bh-denied{ padding:24px; text-align:center; color:var(--text-2,#9aa8bd); background:#0b1220; border:1px solid #1f2937; border-radius:10px; }
+.bh-tabs{ display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+.bh-tab{ padding:9px 16px; border-radius:8px; background:#1f2937; color:#e5e7eb; cursor:pointer; border:1px solid #374151; font-size:14px; min-height:44px; }
+.bh-tab.active{ background:#4ea1ff; color:#06223f; border-color:#4ea1ff; font-weight:700; }
+.bh-section{ display:none; }
+.bh-section.active{ display:block; }
+.bh-filters{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.bh-filter{ padding:7px 14px; border-radius:999px; background:#0e1626; color:#9aa8bd; border:1px solid #1f2937; cursor:pointer; font-size:13px; min-height:40px; }
+.bh-filter.active{ background:rgba(78,161,255,.14); color:#e8edf5; border-color:#4ea1ff; }
+.bh-toolbar{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+.bh-search{ flex:1 1 200px; min-width:0; background:#0e1626; border:1px solid #1f2937; color:#e8edf5; border-radius:8px; padding:10px 12px; font-size:14px; min-height:44px; box-sizing:border-box; }
+.bh-search:focus{ outline:none; border-color:#4ea1ff; }
+.bh-select{ background:#0e1626; border:1px solid #1f2937; color:#e8edf5; border-radius:8px; padding:10px 12px; font-size:14px; min-height:44px; }
+.bh-empty{ color:#9aa8bd; padding:28px 16px; text-align:center; font-size:14px; background:#0b1220; border:1px solid #1f2937; border-radius:10px; }
+.bh-card{ background:#0b1220; border:1px solid #1f2937; border-radius:10px; padding:14px 16px; margin-bottom:12px; }
+.bh-card-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+.bh-card-name{ font-weight:700; font-size:15px; color:#e8edf5; }
+.bh-card-row{ display:flex; gap:10px; font-size:13.5px; padding:3px 0; color:#cdd6e4; }
+.bh-card-row span{ flex:0 0 110px; color:#8b97ad; }
+.bh-card-row b{ font-weight:600; word-break:break-word; }
+.bh-badge{ display:inline-block; padding:3px 10px; border-radius:999px; font-size:11.5px; font-weight:700; text-transform:capitalize; }
+.bh-b-orange{ background:rgba(251,191,36,.16); color:#fcd34d; }
+.bh-b-green{ background:rgba(52,211,153,.16); color:#6ee7b7; }
+.bh-b-red{ background:rgba(248,113,113,.16); color:#fca5a5; }
+.bh-b-blue{ background:rgba(78,161,255,.16); color:#93c5fd; }
+.bh-b-purple{ background:rgba(167,139,250,.18); color:#c4b5fd; }
+.bh-b-grey{ background:#1f2937; color:#9aa8bd; }
+.bh-actions{ display:flex; gap:8px; flex-wrap:wrap; margin-top:12px; }
+.bh-meta{ margin-top:10px; font-size:12.5px; color:#8b97ad; }
+.bh-btn{ background:#1f2937; border:1px solid #374151; color:#e8edf5; border-radius:8px; padding:9px 14px; font-size:13.5px; cursor:pointer; min-height:44px; }
+.bh-btn:hover{ border-color:#4ea1ff; }
+.bh-btn:disabled{ opacity:.5; cursor:not-allowed; }
+.bh-btn-green{ background:#34d399; color:#06251a; border-color:#34d399; font-weight:700; }
+.bh-btn-blue{ background:#4ea1ff; color:#06223f; border-color:#4ea1ff; font-weight:700; }
+.bh-btn-red{ background:#f87171; color:#2a0a0a; border-color:#f87171; font-weight:700; }
+.bh-btn-ghost{ background:none; }
+.bh-btn-active{ background:#4ea1ff; color:#06223f; border-color:#4ea1ff; font-weight:700; }
+.bh-modal-card{ max-width:420px; text-align:left; position:relative; }
+.bh-modal-body{ font-size:14px; color:#cdd6e4; line-height:1.5; }
+.bh-modal-actions{ display:flex; gap:8px; margin-top:16px; }
+.bh-modal-actions .bh-btn{ flex:1; }
+.bh-modal-note{ margin-top:12px; font-size:12px; color:#8b97ad; line-height:1.5; }
+.bh-role-pick{ display:flex; flex-direction:column; gap:8px; }
+.bh-role-pick .bh-btn{ text-transform:capitalize; width:100%; }
+.bh-detail .bh-card-row{ border-bottom:1px solid #14202f; }
+
+/* Fase 3 — eenmalige e-mailverificatie-banner (Beheer) */
+.bh-verify{ display:flex; flex-wrap:wrap; align-items:center; gap:12px; justify-content:space-between; background:rgba(251,191,36,.10); border:1px solid rgba(251,191,36,.35); border-radius:10px; padding:12px 14px; margin-bottom:14px; }
+.bh-verify-txt{ font-size:13.5px; color:#fcd34d; line-height:1.5; flex:1 1 240px; }
+.bh-verify .bh-btn{ flex:0 0 auto; }
+
+
+/* ============================================================
+   FASE 4 — Support mode (banner + read-only paneel)
+   ============================================================ */
+.bh-btn-amber{ background:#f59e0b; color:#111827; border-color:#f59e0b; font-weight:700; }
+.su-banner{ position:fixed; left:0; right:0; bottom:0; z-index:9000; display:flex; align-items:center; gap:12px; flex-wrap:wrap; justify-content:center; background:#7c2d12; color:#ffedd5; border-top:2px solid #f59e0b; padding:10px 16px; padding-bottom:calc(10px + env(safe-area-inset-bottom,0px)); font-size:13.5px; box-shadow:0 -4px 18px rgba(0,0,0,.4); }
+.su-banner-ic{ font-size:16px; }
+.su-banner-txt{ flex:1 1 auto; min-width:0; }
+.su-banner-actions{ display:flex; gap:8px; flex:0 0 auto; }
+.su-banner-btn{ background:#f59e0b; color:#111827; border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; min-height:40px; }
+.su-banner-btn.ghost{ background:transparent; color:#ffedd5; border:1px solid #f59e0b; }
+.su-ro-note{ background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.35); color:#fcd34d; border-radius:8px; padding:8px 12px; font-size:12.5px; margin-bottom:12px; }
+.su-ro-stats{ display:flex; gap:10px; margin-bottom:14px; }
+.su-ro-stat{ flex:1; background:#0e1626; border:1px solid #1f2937; border-radius:8px; padding:10px; text-align:center; }
+.su-ro-stat b{ display:block; font-size:20px; color:#e8edf5; }
+.su-ro-stat span{ font-size:11.5px; color:#8b97ad; }
+.su-ro-h{ font-weight:700; color:#9aa8bd; font-size:13px; margin:12px 0 6px; }
+.su-ro-list{ display:flex; flex-direction:column; gap:6px; }
+.su-ro-row{ display:flex; justify-content:space-between; gap:10px; background:#0b1220; border:1px solid #1f2937; border-radius:8px; padding:8px 10px; font-size:13px; }
+.su-ro-row b{ color:#e8edf5; }
+.su-ro-row span{ color:#8b97ad; }
+.su-ro-more{ color:#8b97ad; font-size:12px; padding:6px 2px; }
+
+
+/* ============================================================
+   FASE 5 — Role-based onboarding (fullscreen)
+   ============================================================ */
+.sh-onb{ position:fixed; inset:0; z-index:9500; background:radial-gradient(1000px 500px at 50% -10%, #11203a 0%, #0a1019 60%), #0a1019; display:flex; align-items:center; justify-content:center; padding:20px; padding-top:calc(20px + env(safe-area-inset-top,0px)); padding-bottom:calc(20px + env(safe-area-inset-bottom,0px)); overflow-y:auto; }
+.sh-onb-card{ width:100%; max-width:440px; background:#0b1220; border:1px solid #1f2937; border-radius:16px; padding:26px 22px 20px; box-shadow:0 16px 60px rgba(0,0,0,.5); }
+.sh-onb-prog{ font-size:12px; color:#8b97ad; font-weight:700; letter-spacing:.5px; margin-bottom:14px; text-align:center; }
+.sh-onb-body{ min-height:220px; }
+.sh-onb-body h2{ margin:0 0 8px; font-size:21px; color:#e8edf5; }
+.sh-onb-body p{ margin:0 0 12px; font-size:14.5px; line-height:1.6; color:#9aa8bd; }
+.sh-onb-ic{ font-size:44px; line-height:1; margin-bottom:10px; }
+.sh-onb-role{ margin-top:14px; font-size:14px; color:#9aa8bd; }
+.sh-onb-actions{ display:flex; flex-direction:column; gap:10px; margin:10px 0 6px; }
+.sh-onb-actions .bh-btn{ width:100%; }
+.sh-onb-skip-note{ font-size:12px; color:#8b97ad; text-align:center; margin-top:4px; }
+.sh-onb-nav{ display:flex; gap:10px; margin-top:18px; }
+.sh-onb-nav .bh-btn{ flex:1; }
+body.sh-onb-open{ overflow:hidden; }
+
+
+/* ============================================================
+   FASE 4 FINAL — user-banner, env-paneel, verplichte-reden
+   ============================================================ */
+.su-req-star{ color:#f87171; font-weight:800; }
+.su-field-err{ display:none; color:#fca5a5; font-size:12.5px; margin:4px 0 2px; }
+.su-input-err{ border-color:#f87171 !important; }
+/* Gebruiker-banner bovenaan (admin-banner blijft onderaan) */
+.su-banner-user{ top:0; bottom:auto; border-top:none; border-bottom:2px solid #f59e0b; padding-top:calc(10px + env(safe-area-inset-top,0px)); padding-bottom:10px; box-shadow:0 4px 18px rgba(0,0,0,.4); }
+/* Volledige read-only omgeving */
+.su-env{ position:fixed; inset:0; z-index:9200; background:rgba(4,8,14,.92); backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px); display:flex; align-items:center; justify-content:center; padding:16px; padding-top:calc(16px + env(safe-area-inset-top,0px)); padding-bottom:calc(60px + env(safe-area-inset-bottom,0px)); }
+.su-env-card{ width:100%; max-width:560px; max-height:100%; display:flex; flex-direction:column; background:#0b1220; border:1px solid #f59e0b; border-radius:14px; overflow:hidden; box-shadow:0 16px 60px rgba(0,0,0,.6); }
+.su-env-top{ display:flex; align-items:center; justify-content:space-between; gap:10px; padding:14px 16px; border-bottom:1px solid #1f2937; }
+.su-env-title{ font-weight:700; font-size:15px; color:#e8edf5; }
+.su-env-ro{ font-size:11px; color:#111827; background:#f59e0b; border-radius:999px; padding:2px 8px; margin-left:6px; font-weight:700; }
+.su-env-tabs{ display:flex; gap:6px; overflow-x:auto; padding:10px 14px; border-bottom:1px solid #1f2937; }
+.su-env-tab{ flex:0 0 auto; padding:8px 13px; border-radius:8px; background:#1f2937; color:#9aa8bd; border:1px solid #374151; font-size:13px; cursor:pointer; min-height:40px; }
+.su-env-tab.active{ background:#4ea1ff; color:#06223f; border-color:#4ea1ff; font-weight:700; }
+.su-env-body{ overflow-y:auto; padding:14px 16px; }
+
+
+/* Fase 4 — Supportlogboek */
+.bh-audit-head{ font-size:13px; color:#9aa8bd; margin-bottom:12px; }
+.bh-audit-card{ margin-bottom:10px; }
+
+
+/* Fase 4 — Logboek per sessie (tijdlijn) */
+.bh-sess-card{ margin-bottom:12px; }
+.bh-tl{ margin-top:10px; border-top:1px solid #14202f; padding-top:8px; display:flex; flex-direction:column; gap:4px; }
+.bh-tl-row{ display:flex; align-items:center; gap:10px; font-size:13px; color:#cdd6e4; padding:2px 0; }
+.bh-tl-t{ flex:0 0 46px; color:#8b97ad; font-variant-numeric:tabular-nums; font-size:12.5px; }
+.bh-tl-ic{ flex:0 0 18px; text-align:center; }
+.bh-tl-lbl{ flex:1 1 auto; }
+
+
+/* PWA fix: iOS auto-zoom voorkomen op obs/live-wedstrijd inputs.
+   font-size < 16px laat iOS Safari inzoomen bij focus -> viewport springt.
+   16px op touch-schermen lost de scroll-jump op; desktop blijft ongemoeid. */
+@media (max-width: 860px){
+  .obs-term-in,
+  .sa-snel-term-input,
+  .sn-edit-term-in,
+  #obs-form input,
+  #obs-form select,
+  #obs-form textarea,
+  .obs-block-note,
+  .obs-in {
+    font-size: 16px !important;
+  }
+}
+
+
+/* ============================================================
+   LIVE WEDSTRIJD — PWA stabilisatie (close-knop + action bar)
+   Autoritatief blok onderaan zodat het de eerdere obs-modal regels
+   overschrijft, ongeacht welke variant geladen is.
+   ============================================================ */
+.obs-modal-header{ position: sticky; top: 0; z-index: 6; background: var(--bg-card,#1a1e2e); }
+.obs-modal-close{
+  width:44px; height:44px; min-width:44px; display:flex; align-items:center; justify-content:center;
+  font-size:26px; line-height:1; padding:0; flex-shrink:0; position:relative; z-index:7;
+  pointer-events:auto; cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.obs-actions{
+  position: sticky; bottom: 0; background: var(--bg-card,#1a1e2e);
+  padding-top:12px; padding-bottom: calc(12px + env(safe-area-inset-bottom,0px));
+  gap:10px; z-index:6;
+}
+@media (max-width:860px){
+  .obs-actions{ flex-wrap: wrap; }
+  .obs-actions > button, .obs-actions > .btn{ flex:1 1 0; min-height:44px; }
+  .obs-actions > #obs-delete-btn{ flex:1 1 100%; margin-right:0 !important; order:3; }
+}
+
+
+/* ============================================================
+   PlayerLiveForm v2 — live gekoppelde-speler invoer
+   ============================================================ */
+#plf-form{ padding:16px 20px 20px; }
+.plf-ctx{ background:rgba(79,110,247,.07); border:1px solid rgba(79,110,247,.2); border-radius:10px; padding:10px 12px; margin-bottom:14px; }
+.plf-ctx-player{ font-size:14px; color:var(--text-1,#e5e9f5); }
+.plf-ctx-match{ font-size:12.5px; color:var(--text-2,#9aa3b7); margin-top:3px; }
+.plf-ctx-dim{ color:var(--text-3,#8b93a8); font-weight:400; }
+.plf-ctx-note{ font-size:11.5px; color:var(--text-3,#8b93a8); margin-top:6px; font-style:italic; }
+.plf-fields{ display:flex; flex-direction:column; gap:10px; }
+.plf-row{ display:flex; flex-direction:column; gap:4px; }
+.plf-label{ font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-3,#8b93a8); font-weight:600; }
+.plf-field-in{ width:100%; background:var(--bg-input,#111827); border:1px solid var(--border,#2a2f45); color:var(--text-1,#e2e8f0); border-radius:8px; padding:10px 11px; font-size:13px; font-family:inherit; outline:none; transition:border-color .15s; }
+.plf-field-in:focus{ border-color:var(--accent,#4f6ef7); }
+.plf-opvallend-btn{ background:none; border:1px solid var(--border,#2a2f45); color:var(--text-2,#9aa3b7); border-radius:8px; padding:9px 14px; font-size:13px; cursor:pointer; margin-right:auto; min-height:44px; }
+.plf-opvallend-btn.is-opvallend{ background:rgba(245,197,66,.15); border-color:rgba(245,197,66,.4); color:var(--gold,#f5c542); }
+@media (max-width:860px){ .plf-field-in{ font-size:16px !important; } }
+
+/* PlayerLiveForm v2 — chips + meta */
+.plf-ctx-meta{ font-size:12.5px; color:var(--text-2,#9aa3b7); margin-top:3px; }
+.plf-chips{ margin-bottom:14px; border-bottom:1px solid var(--border,#232838); padding-bottom:10px; }
+.plf-section-label{ font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--text-3,#8b93a8); font-weight:700; margin:2px 0 10px; }
+.plf-dim{ font-weight:400; color:var(--text-3,#8b93a8); text-transform:none; letter-spacing:0; }
+.plf-chip-block{ margin-bottom:10px; }
+.plf-chip-cat{ display:block; font-size:11px; color:var(--text-2,#9aa3b7); font-weight:600; margin-bottom:5px; text-transform:capitalize; }
+.plf-fields-label{ font-size:10px; text-transform:uppercase; letter-spacing:.8px; color:var(--text-3,#8b93a8); font-weight:700; margin-bottom:8px; }
+
+/* PlayerLiveForm v2 — aspect-blok (chips + notitie samen) */
+.plf-aspect{ margin-bottom:16px; padding-bottom:13px; border-bottom:1px solid var(--border,#232838); }
+.plf-aspect:last-child{ border-bottom:none; margin-bottom:4px; }
+.plf-aspect-label{ font-size:11px; text-transform:uppercase; letter-spacing:.6px; color:var(--accent,#4f6ef7); font-weight:700; margin-bottom:7px; }
+.plf-aspect-chips{ margin-bottom:8px; }
+
+/* DEEL 6 — report drafts */
+.rd-live-banner{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; background:rgba(79,110,247,.12); border:1px solid rgba(79,110,247,.4); border-radius:10px; padding:11px 13px; margin:0 0 14px; }
+.rd-live-banner-txt{ font-size:13px; color:var(--text-1,#e5e9f5); }
+#rdraft-body{ padding:16px 20px 20px; }
+.rd-ctx{ background:rgba(79,110,247,.07); border:1px solid rgba(79,110,247,.2); border-radius:10px; padding:10px 12px; margin-bottom:14px; }
+.rd-ctx-sub{ font-size:12.5px; color:var(--text-2,#9aa3b7); margin-top:3px; }
+.rd-ctx-note{ font-size:11.5px; color:var(--text-3,#8b93a8); margin-top:6px; font-style:italic; }
+.rd-list{ display:flex; flex-direction:column; gap:10px; }
+.rd-card{ background:var(--bg-3,#141824); border:1px solid var(--border,#232838); border-radius:11px; padding:12px 13px; }
+.rd-card-top{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.rd-card-name{ font-weight:700; font-size:14.5px; color:var(--text-1,#e5e9f5); }
+.rd-card-meta{ font-size:12px; color:var(--text-3,#8b93a8); margin-top:3px; }
+.rd-warn{ font-size:11.5px; color:#fca5a5; margin-top:6px; }
+.rd-card .rd-edit-btn{ margin-top:10px; width:100%; min-height:44px; }
+.rd-badge{ font-size:11px; border-radius:999px; padding:2px 9px; font-weight:600; }
+.rd-b-green{ background:rgba(34,197,94,.18); color:#4ade80; }
+.rd-b-grey{ background:rgba(148,163,184,.15); color:#94a3b8; }
+.rd-empty{ color:var(--text-3,#8b93a8); font-size:13px; text-align:center; padding:18px; }
+
+/* MatchLiveForm — live wedstrijdnotities */
+.mlf-modal{ max-width: 760px; }
+#mlf-form{ padding:16px 20px 20px; }
+.mlf-ctx{ background:rgba(79,110,247,.07); border:1px solid rgba(79,110,247,.2); border-radius:10px; padding:10px 12px; margin-bottom:14px; }
+.mlf-ctx-match{ font-size:15px; font-weight:700; color:var(--text-1,#e5e9f5); }
+.mlf-ctx-meta{ font-size:12.5px; color:var(--text-2,#9aa3b7); margin-top:3px; }
+.mlf-ctx-note{ font-size:11.5px; color:var(--text-3,#8b93a8); margin-top:6px; font-style:italic; }
+.mlf-tabs{ display:none; gap:8px; margin-bottom:12px; }
+.mlf-tab{ flex:1; min-height:44px; border-radius:9px; background:var(--bg-3,#141824); border:1px solid var(--border,#2a2f45); color:var(--text-2,#9aa3b7); font-size:14px; font-weight:600; cursor:pointer; }
+.mlf-tab.active{ background:#4ea1ff; color:#06223f; border-color:#4ea1ff; }
+.mlf-tab-badge{ font-size:12px; opacity:.8; }
+.mlf-cols{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+.mlf-col{ border:1px solid var(--border,#232838); border-radius:11px; padding:11px; }
+.mlf-col[data-team="thuis"]{ background:rgba(78,161,255,.05); border-color:rgba(78,161,255,.25); }
+.mlf-col[data-team="uit"]{ background:rgba(245,158,66,.05); border-color:rgba(245,158,66,.25); }
+.mlf-team-head{ font-size:13px; font-weight:800; margin-bottom:10px; padding-bottom:7px; border-bottom:1px solid var(--border,#232838); }
+.mlf-team-thuis{ color:#4ea1ff; }
+.mlf-team-uit{ color:#f59e42; }
+.mlf-cat{ margin-bottom:13px; }
+.mlf-cat:last-child{ margin-bottom:0; }
+.mlf-cat-label{ font-size:11px; text-transform:uppercase; letter-spacing:.5px; color:var(--text-3,#8b93a8); font-weight:700; margin-bottom:6px; }
+.mlf-chips{ display:flex; flex-wrap:wrap; gap:6px; margin-bottom:7px; }
+.mlf-chip{ padding:6px 11px; border-radius:999px; background:var(--bg-3,#141824); border:1px solid var(--border,#2a2f45); color:var(--text-2,#9aa3b7); font-size:12.5px; cursor:pointer; min-height:34px; }
+.mlf-chip.active{ background:rgba(78,161,255,.2); border-color:#4ea1ff; color:#cfe6ff; font-weight:600; }
+.mlf-shared{ margin-top:14px; border-top:1px solid var(--border,#232838); padding-top:12px; }
+@media (max-width:768px){
+  .mlf-tabs{ display:flex; }
+  .mlf-cols{ grid-template-columns:1fr; gap:0; }
+  .mlf-show-thuis .mlf-col[data-team="uit"]{ display:none; }
+  .mlf-show-uit .mlf-col[data-team="thuis"]{ display:none; }
+  .mlf-note{ font-size:16px !important; }
+}
+
+/* Post-match: rustig ingeklapt + groene gloed (DEEL 1 + 3) */
+.match-card:not(.open) .match-players{ display:none; }
+.match-card.locked{ background:rgba(34,197,94,.06); box-shadow:0 0 0 1px rgba(34,197,94,.22), 0 0 16px rgba(34,197,94,.10); }
+.match-dropdown-row.submitted-glow-row{ background:rgba(34,197,94,.06); box-shadow:inset 0 0 0 1px rgba(34,197,94,.16); border-radius:8px; }
+
+/* Post-match pm-card: rustig ingeklapt + groene gloed (v281) */
+.pm-card:not(.pm-open) .pm-progress{ display:none; }
+.pm-card.submitted-glow{ background:rgba(34,197,94,.07); box-shadow:0 0 0 1px rgba(34,197,94,.28), 0 0 18px rgba(34,197,94,.12); border-color:rgba(34,197,94,.3) !important; }
+.pm-item-row.submitted-glow-row{ background:rgba(34,197,94,.06); box-shadow:inset 0 0 0 1px rgba(34,197,94,.18); border-radius:8px; }
+
+/* build-stamp: sh-v283-pm-3secties */
+
+/* STAP B — persistent onboarding-vinkje (altijd zichtbaar boven knoppen) */
+.sh-wiz-check-persist{ display:flex; align-items:center; justify-content:center; gap:9px; min-height:44px; margin:4px 0 2px; font-size:13px; color:var(--text-2,#9aa3b7); cursor:pointer; user-select:none; }
+.sh-wiz-check-persist input{ width:18px; height:18px; accent-color:#4ea1ff; cursor:pointer; }
+
+/* STAP C — dashboard: gespeelde wedstrijd gedempt onderaan */
+.today-match-gespeeld{ opacity:.45; filter:saturate(.7); }
+.today-match-gespeeld .today-match-time::after{ content:' · Gespeeld'; font-size:10px; color:var(--text-3,#8b93a8); font-weight:600; }
+.today-sep-gespeeld{ font-size:10.5px; text-transform:uppercase; letter-spacing:.6px; color:var(--text-3,#8b93a8); font-weight:700; margin:10px 2px 6px; padding-top:9px; border-top:1px dashed var(--border,#232838); }
+
+/* RESET batch 2 — groene gloed als ENIGE status-indicator (geen badges) */
+.pm-section-hdr.submitted-glow-row{ background:none !important; box-shadow:none !important; color:#86efac; text-shadow:0 0 8px rgba(34,197,94,.45); }
+.pm-card.submitted-glow .match-team-home,
+.pm-card.submitted-glow .match-team-away{ color:#dcfce7; text-shadow:0 0 9px rgba(34,197,94,.5); }
+
+/* RESET batch 3 — hele rij klikbaar (DEEL 2D), losse open-knoppen weg */
+.pm-item-row .pm-item-acts{ display:none !important; }
+.pm-row-click{ cursor:pointer; min-height:44px; transition:background .15s ease; border-radius:8px; }
+.pm-row-click:hover{ background:rgba(255,255,255,.05); }
+.pm-row-chev{ margin-left:auto; color:var(--text-3,#8b93a8); font-size:18px; line-height:1; flex-shrink:0; }
+
+/* Beheer — Account verwijderen (aparte rode rij, danger-box, outline-knop) */
+.bh-actions-danger{margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:flex-end;}
+.bh-btn-danger-outline{background:transparent;border:1px solid rgba(239,68,68,.55);color:#fca5a5;}
+.bh-btn-danger-outline:hover{background:rgba(239,68,68,.12);border-color:#ef4444;color:#fecaca;}
+.bh-danger-box{background:rgba(239,68,68,.08);border:1px solid rgba(239,68,68,.30);border-radius:8px;padding:12px 14px;font-size:13px;line-height:1.5;}
+.bh-danger-box ul{margin:0;}
+
+/* ============================================================
+   LANDINGSPAGINA REDESIGN (sh-v294) — entrance + nieuwe secties.
+   Bouwt voort op de bestaande .lp-* stijl (dark theme onveranderd).
+   ============================================================ */
+
+/* Nav-acties + 44px touch targets binnen de landingspagina */
+.lp-nav-actions { display: flex; gap: 8px; align-items: center; }
+#landing-overlay .lp-btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+
+/* CSS-only entrance — vervangt de verwijderde introvideo.
+   Speelt eenmalig af zodra de landingspagina zichtbaar wordt (~1s totaal). */
+@keyframes lpNavIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: none; } }
+@keyframes lpRise  { from { opacity: 0; transform: translateY(22px); }  to { opacity: 1; transform: none; } }
+@keyframes lpFade  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes lpPop   { from { opacity: 0; transform: scale(.95); } to { opacity: 1; transform: none; } }
+#landing-overlay .lp-nav            { animation: lpNavIn .45s ease both; animation-delay: .05s; }
+#landing-overlay .lp-hero .lp-h1    { animation: lpRise .55s cubic-bezier(.22,.61,.36,1) both; animation-delay: .30s; }
+#landing-overlay .lp-hero .lp-sub   { animation: lpRise .55s cubic-bezier(.22,.61,.36,1) both; animation-delay: .48s; }
+#landing-overlay .lp-hero .lp-cta-row  { animation: lpFade .5s ease both; animation-delay: .66s; }
+#landing-overlay .lp-hero .lp-sub-link { animation: lpFade .5s ease both; animation-delay: .80s; }
+#landing-overlay .lp-hero .lp-hero-visual { animation: lpPop .6s cubic-bezier(.22,.61,.36,1) both; animation-delay: .58s; }
+@media (prefers-reduced-motion: reduce) {
+  #landing-overlay .lp-nav,
+  #landing-overlay .lp-hero .lp-h1,
+  #landing-overlay .lp-hero .lp-sub,
+  #landing-overlay .lp-hero .lp-cta-row,
+  #landing-overlay .lp-hero .lp-sub-link,
+  #landing-overlay .lp-hero .lp-hero-visual { animation: none !important; }
+}
+
+/* Hero sub-link "Toegang aanvragen" */
+.lp-sub-link { margin-top: 16px; font-size: 14px; color: var(--text-3, #8b97ad); }
+.lp-sub-link a { color: var(--accent, #4ea1ff); text-decoration: none; font-weight: 600; }
+.lp-sub-link a:hover { text-decoration: underline; }
+
+/* 3C — Kernbelofte */
+.lp-kern { text-align: center; padding: 44px 24px; max-width: 920px; margin: 0 auto; width: 100%; }
+.lp-kern-line { font-size: clamp(24px, 4.4vw, 40px); font-weight: 800; letter-spacing: -.6px; line-height: 1.12; }
+
+/* Sectie-subtitel onder een .lp-h2.has-sub */
+.lp-h2.has-sub { margin-bottom: 8px; }
+.lp-h2-sub { text-align: center; color: var(--text-2, #9aa8bd); font-size: clamp(14px, 1.9vw, 16px); margin: 0 auto 30px; max-width: 560px; }
+
+/* Carousel screenshots + placeholders */
+#landing-overlay .lp-shot { width: 100%; max-width: 760px; margin: 0 auto; }
+#landing-overlay .lp-shot.lp-shot-ph { aspect-ratio: 16 / 10; }
+
+/* 3G — Quote */
+.lp-quotebox { text-align: center; max-width: 720px; margin: 0 auto; }
+.lp-quote-big { font-size: clamp(22px, 3.4vw, 30px); font-weight: 800; letter-spacing: -.4px; line-height: 1.2; }
+.lp-quote-p { margin-top: 14px; color: var(--text-2, #9aa8bd); font-size: 15px; line-height: 1.6; }
+
+/* 3H — CTA */
+.lp-cta-sub { color: var(--text-2, #9aa8bd); font-size: clamp(14px, 2vw, 16px); max-width: 540px; margin: 0 auto 22px; line-height: 1.6; }
+.lp-cta-row-center { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+/* Mobiel: CTA-knoppen volle breedte, gestapeld */
+@media (max-width: 560px) {
+  .lp-cta-row-center { flex-direction: column; }
+  .lp-cta-row-center .lp-btn { width: 100%; }
+  .lp-nav-actions .lp-btn-sm { padding: 9px 13px; }
+}
+
+/* Aanvraagformulier — functie-dropdown, voorwaarden/nieuwsbrief, disabled-state (sh-v294) */
+.sh-req-select{ appearance:none; -webkit-appearance:none; -moz-appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%239aa8bd' d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+  background-repeat:no-repeat; background-position:right 12px center; padding-right:34px; cursor:pointer; }
+.sh-req-check{ display:flex; align-items:flex-start; gap:9px; margin-top:12px; font-size:13px; line-height:1.45; color:var(--text-2,#9aa8bd); cursor:pointer; }
+.sh-req-check input[type="checkbox"]{ flex:0 0 auto; width:18px; height:18px; min-width:18px; margin-top:1px; accent-color:var(--accent,#4ea1ff); cursor:pointer; }
+.sh-req-check a{ color:var(--accent,#4ea1ff); text-decoration:underline; }
+.sh-req-send.is-disabled{ opacity:.5; cursor:not-allowed; }
+
+/* Login — scheidingslijn boven "Toegang aanvragen" (sh-v294) */
+.login-sep{ display:flex; align-items:center; gap:10px; margin:16px 0 2px; color:var(--text-3,#8b97ad); font-size:12px; }
+.login-sep::before, .login-sep::after{ content:""; flex:1; height:1px; background:var(--border,#232d40); }
+
+/* Hero — licht 3D-perspectief op de dashboard-screenshot (alleen desktop) (sh-v295) */
+@media (min-width: 901px) {
+  #landing-overlay .lp-hero-visual .lp-visual img {
+    transform: perspective(1500px) rotateY(-5deg) rotateX(1.5deg) scale(.99);
+    transition: transform .45s cubic-bezier(.22,.61,.36,1);
+  }
+  #landing-overlay .lp-hero-visual:hover .lp-visual img {
+    transform: perspective(1500px) rotateY(0) rotateX(0) scale(1);
+  }
+}
+
+/* ============================================================
+   LANDINGSPAGINA VISUELE UPGRADE (sh-v296)
+   Video's, glow, perspectief, floating, diepte, compacter.
+   Bouwt voort op bestaande .lp-* stijl — dark theme onveranderd.
+   ============================================================ */
+
+/* ---- Achtergrond-laag: animated gradient + accent-glows + dot-texture ---- */
+#landing-overlay::before{
+  content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+  background:
+    radial-gradient(rgba(255,255,255,.045) 1px, transparent 1.6px) 0 0 / 24px 24px,
+    radial-gradient(55% 45% at 78% 10%, rgba(230,57,70,.12), transparent 62%),
+    radial-gradient(50% 42% at 18% 88%, rgba(78,161,255,.10), transparent 62%),
+    linear-gradient(180deg, #0a0c12 0%, #0f131d 48%, #0b0e16 72%, #0a0c12 100%);
+  background-size: 24px 24px, auto, auto, 100% 200%;
+  animation: lpBgShift 22s ease-in-out infinite alternate;
+}
+@keyframes lpBgShift{ from{ background-position:0 0,0 0,0 0,50% 0%; } to{ background-position:0 0,0 0,0 0,50% 100%; } }
+#landing-overlay > *{ position:relative; z-index:1; }
+
+/* ---- Video-crop: verbergt sidebar + DEMO-balk (content-only) ---- */
+#landing-overlay .lp-vidcrop{
+  position:relative; width:100%; aspect-ratio:1.75; overflow:hidden;
+  border-radius:8px; background:#0a0c12 center center / cover no-repeat;
+}
+#landing-overlay .lp-vidcrop video{
+  position:absolute; top:-7.2%; left:-17.2%; width:118.6%; height:auto;
+  display:block; border:0; background:#0a0c12;
+}
+
+/* ---- Media-wrapper: glow + perspectief + floating ---- */
+#landing-overlay .lp-media{
+  position:relative; isolation:isolate; width:100%; max-width:600px; margin:0 auto;
+  border-radius:8px;
+}
+#landing-overlay .lp-media > img,
+#landing-overlay .lp-media > .lp-vidcrop{
+  position:relative; z-index:1; display:block; width:100%; border-radius:8px;
+  box-shadow:0 20px 55px rgba(0,0,0,.55); cursor:zoom-in;
+}
+/* zachte rood/blauwe glow achter de media */
+#landing-overlay .lp-media::before{
+  content:""; position:absolute; inset:-9% -7%; z-index:0; border-radius:26px; pointer-events:none;
+  background:radial-gradient(60% 60% at 50% 42%, rgba(230,57,70,.32), rgba(78,161,255,.16) 55%, transparent 76%);
+  filter:blur(30px); opacity:.55;
+}
+#landing-overlay .lp-media-hero{ max-width:560px; }
+
+/* perspectief + zweef-animatie alleen op desktop */
+@media (min-width:901px){
+  #landing-overlay .lp-media{ transform:perspective(1600px) rotateX(2deg) rotateY(-4deg); transition:transform .5s cubic-bezier(.22,.61,.36,1); }
+  #landing-overlay .lp-media-hero{ transform:perspective(1500px) rotateX(2.5deg) rotateY(-6deg); }
+  #landing-overlay .lp-media.lp-float:hover{ transform:perspective(1600px) rotateX(0) rotateY(0) translateY(-6px); }
+  @keyframes lpFloat{ 0%,100%{ transform:translateY(0); } 50%{ transform:translateY(-7px); } }
+  #landing-overlay .lp-media.lp-float > img,
+  #landing-overlay .lp-media.lp-float > .lp-vidcrop{ animation:lpFloat 6.5s ease-in-out infinite; }
+}
+
+/* ---- Hero-media entrance: slide-in van onder + glow ---- */
+#landing-overlay .lp-hero-visual{ animation:lpHeroRise 1s cubic-bezier(.22,.61,.36,1) both; animation-delay:.5s; }
+@keyframes lpHeroRise{ from{ opacity:0; transform:translateY(54px) scale(.96); } to{ opacity:1; transform:none; } }
+
+/* ---- Accent-glow achter de CTA ---- */
+#landing-overlay .lp-cta-final{ position:relative; }
+#landing-overlay .lp-cta-final::before{
+  content:""; position:absolute; left:50%; top:40%; width:60%; height:60%; transform:translate(-50%,-50%);
+  z-index:0; pointer-events:none; border-radius:50%;
+  background:radial-gradient(closest-side, rgba(230,57,70,.18), transparent 70%); filter:blur(40px);
+}
+#landing-overlay .lp-cta-final > *{ position:relative; z-index:1; }
+
+/* ============================================================
+   COMPACTER — minder scrollen, tekst-naast-beeld in carousel
+   ============================================================ */
+#landing-overlay .lp-section{ padding:40px 24px; }
+#landing-overlay .lp-kern{ padding:30px 24px; }
+#landing-overlay .lp-hero{ padding:54px 24px 40px; }
+#landing-overlay .lp-feat{ padding:16px; }
+#landing-overlay .lp-feat-ic{ font-size:23px; margin-bottom:8px; }
+#landing-overlay .lp-feat-t{ font-size:14.5px; }
+#landing-overlay .lp-feat-s{ font-size:12.5px; }
+
+/* Carousel: beeld links, tekst rechts op desktop (compacter, max 58% beeld) */
+@media (min-width:760px){
+  #landing-overlay .lp-slide{ flex-direction:row; align-items:center; gap:30px; padding:10px 30px 4px; }
+  #landing-overlay .lp-slide .lp-media{ flex:0 0 58%; max-width:58%; margin:0; }
+  #landing-overlay .lp-slide-cap{ flex:1; text-align:left; padding:0; }
+  #landing-overlay .lp-carousel{ max-width:980px; }
+}
+
+/* ============================================================
+   SCROLL-CASCADE — feature-kaarten 1 voor 1 in beeld
+   ============================================================ */
+#landing-overlay .lp-features .lp-feat{ opacity:0; transform:translateY(16px); transition:opacity .5s ease, transform .5s ease; }
+#landing-overlay .lp-reveal.lp-in .lp-features .lp-feat{ opacity:1; transform:none; }
+#landing-overlay .lp-features .lp-feat:nth-child(1){ transition-delay:.03s; }
+#landing-overlay .lp-features .lp-feat:nth-child(2){ transition-delay:.09s; }
+#landing-overlay .lp-features .lp-feat:nth-child(3){ transition-delay:.15s; }
+#landing-overlay .lp-features .lp-feat:nth-child(4){ transition-delay:.21s; }
+#landing-overlay .lp-features .lp-feat:nth-child(5){ transition-delay:.27s; }
+#landing-overlay .lp-features .lp-feat:nth-child(6){ transition-delay:.33s; }
+#landing-overlay .lp-features .lp-feat:nth-child(7){ transition-delay:.39s; }
+#landing-overlay .lp-features .lp-feat:nth-child(8){ transition-delay:.45s; }
+
+/* ---- Reduced motion: alle landingsanimaties uit ---- */
+@media (prefers-reduced-motion: reduce){
+  #landing-overlay::before{ animation:none; }
+  #landing-overlay .lp-hero-visual,
+  #landing-overlay .lp-media.lp-float > img,
+  #landing-overlay .lp-media.lp-float > .lp-vidcrop{ animation:none !important; }
+  #landing-overlay .lp-features .lp-feat{ opacity:1; transform:none; transition:none; }
+}
+
+/* sh-v300: video-crop exact op de geverifieerde content-box (sidebar + demo-balk weg) */
+#landing-overlay .lp-vidcrop{ aspect-ratio: 1.766; }
+#landing-overlay .lp-vidcrop video{ top: -6.75%; left: -16.6%; width: 117.7%; }
+
+/* sh-v301: landingsmedia perfect — scherpe screenshots, compacte flow */
+/* Subtiele helderheid/contrast zodat dark screenshots premium ogen (niet vaal) */
+#landing-overlay .lp-media img{ filter: brightness(1.06) contrast(1.05) saturate(1.06); }
+
+/* Compacte 4-stappen-flow (vervangt grote kaarten met screenshots) */
+.lp-section-tight{ padding-top: 26px; padding-bottom: 26px; }
+.lp-flow{ display:flex; align-items:stretch; justify-content:center; gap:10px; flex-wrap:wrap; max-width:880px; margin:0 auto; }
+.lp-flow-step{ flex:1 1 180px; max-width:215px; background:var(--panel,#111722); border:1px solid var(--border,#232d40); border-radius:12px; padding:16px 14px; text-align:center; }
+.lp-flow-ic{ font-size:24px; margin-bottom:6px; line-height:1; }
+.lp-flow-t{ font-weight:700; font-size:15px; margin-bottom:4px; }
+.lp-flow-s{ font-size:12.5px; color:var(--text-2,#9aa8bd); line-height:1.45; }
+.lp-flow-arrow{ align-self:center; color:var(--text-3,#8b97ad); font-size:18px; flex:0 0 auto; }
+@media (max-width:680px){
+  .lp-flow-arrow{ display:none; }
+  .lp-flow-step{ flex-basis:100%; max-width:none; }
+}
+
+/* ============================================================
+   BUGFIXRONDE live-notities — DEEL 1 + DEEL 3
+   ============================================================ */
+
+/* DEEL 3 — meerregelige notitievelden (auto-grow textareas).
+   .sh-grow-note hangt op .plf-field-in / .mlf-note / .obs-term-in, die
+   hun kleur/rand/padding al meegeven via de class-selector. Hier alleen
+   de textarea-specifieke eigenschappen: hoogte, wrap en geen handvat. */
+textarea.sh-grow-note{
+  display:block;
+  width:100%;
+  box-sizing:border-box;
+  min-height:72px;
+  max-height:150px;
+  line-height:1.45;
+  resize:none;                 /* hoogte volgt auto-grow in JS */
+  overflow-y:auto;             /* prefilled lange tekst blijft scrollbaar vóór focus */
+  white-space:pre-wrap;        /* netjes wrappen, newlines behouden */
+  word-break:break-word;
+  font-family:inherit;
+  vertical-align:top;
+}
+/* Mobiel: 16px voorkomt iOS-zoom bij focus (consistent met inputs) */
+@media (max-width:860px){
+  textarea.sh-grow-note{ font-size:16px !important; }
+}
+
+/* DEEL 1 — clubkeuze thuisploeg / uitploeg bij "Opgevallen speler". */
+.obs-club-choice{
+  display:flex;
+  gap:8px;
+  margin-bottom:8px;
+  flex-wrap:wrap;
+}
+.obs-club-opt{
+  flex:1 1 0;
+  min-width:120px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:2px;
+  padding:8px 11px;
+  border-radius:9px;
+  border:1px solid var(--border,#232838);
+  background:var(--bg-3,#141824);
+  color:var(--text-1,#e5e9f5);
+  cursor:pointer;
+  text-align:left;
+  transition:border-color .15s, background .15s;
+}
+.obs-club-opt:hover{ border-color:#4ea1ff; }
+.obs-club-opt.active{
+  border-color:#4ea1ff;
+  background:rgba(78,161,255,0.12);
+}
+.obs-club-opt-rol{
+  font-size:10.5px;
+  text-transform:uppercase;
+  letter-spacing:.4px;
+  color:var(--text-3,#8b93a8);
+}
+.obs-club-opt.active .obs-club-opt-rol{ color:#8cc4ff; }
+.obs-club-opt-naam{
+  font-size:13px;
+  font-weight:600;
+  line-height:1.2;
+}
+
+/* ============================================================
+   MASTER BUGFIXRONDE live-flows — DEEL 2/3 + DEEL 8
+   ============================================================ */
+
+/* DEEL 2/3 — read-only "Live wedstrijdnotities" blok boven het wedstrijdrapport */
+.mlf-rapport-banner{
+  background:rgba(78,161,255,0.06);
+  border:1px solid rgba(78,161,255,0.22);
+  border-radius:10px;
+  padding:10px 12px;
+  margin-bottom:12px;
+}
+.mlf-rb-title{
+  font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px;
+  color:#8cc4ff; margin-bottom:6px;
+}
+.mlf-rb-body{
+  margin:0; white-space:pre-wrap; word-break:break-word;
+  font-family:inherit; font-size:12.5px; line-height:1.5;
+  color:var(--text-1,#e5e9f5); max-height:180px; overflow-y:auto;
+}
+.mlf-rb-hint{
+  margin-top:6px; font-size:11px; color:var(--text-3,#8b93a8); font-style:italic;
+}
+
+/* DEEL 8 — groene GLOED als statusindicator i.p.v. groen vinkje/badge. */
+.wstr-player-row:has(.wstr-status-label.ingediend){
+  box-shadow: inset 0 0 0 1px rgba(34,197,94,0.22), 0 0 14px rgba(34,197,94,0.10);
+  border-radius:8px;
+}
+.wstr-status-label.ingediend{
+  background:transparent !important;
+  border:none !important;
+  color:#34d399 !important;
+  font-weight:600;
+  padding:0 2px !important;
+  box-shadow:none !important;
+}
+
+/* ============================================================
+   VERVOLGFIX v304 — B5 melding + E2 knop/touch
+   ============================================================ */
+
+/* FIX 1 (B5) — informatieve melding "geen live wedstrijdnotities" */
+.mlf-rapport-banner.mlf-rb-empty{
+  background:rgba(148,163,184,0.06);
+  border:1px solid rgba(148,163,184,0.20);
+}
+.mlf-rb-empty-txt{
+  font-size:12.5px; color:var(--text-3,#8b93a8); line-height:1.4;
+}
+
+/* FIX 3/4 (E2) — "Rapport voor [naam]" + touch targets ≥44px in wedstrijd-bewerken */
+.wstr-edit-mini-btn,
+.wstr-edit-note-action{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  padding:0 14px;
+  font-size:13px;
+  border-radius:9px;
+}
+.wstr-edit-mini-btn.primary{
+  font-weight:600;
+}
+.wstr-mini-tap{
+  max-width:60%;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+
+/* ============================================================
+   BASISFLOW v305 — FLOW E: groene gloed breder als statusindicator
+   (geen vinkjes). Subtiel; geen badge-rommel.
+   ============================================================ */
+/* OBS-rij met inhoud → zachte groene gloed (status: observatie aanwezig) */
+.wstr-player-row:has(.wstr-type-label.observatie){
+  box-shadow: inset 0 0 0 1px rgba(34,197,94,0.16), 0 0 10px rgba(34,197,94,0.07);
+  border-radius:8px;
+}
+/* Ingediende rij heeft voorrang met iets sterkere gloed (al gedefinieerd),
+   maar borg de combinatie OBS + ingediend met de sterkere variant: */
+.wstr-player-row:has(.wstr-status-label.ingediend){
+  box-shadow: inset 0 0 0 1px rgba(34,197,94,0.22), 0 0 14px rgba(34,197,94,0.10);
+}
+
+/* ============================================================
+   BATCH A v306 — validatie, gloed, touch targets
+   ============================================================ */
+
+/* FIX 1/4 — zichtbare veld-validatie: rood veld + fouttekst eronder */
+.sh-field-error{
+  border-color:#ef4444 !important;
+  box-shadow:0 0 0 2px rgba(239,68,68,0.18) !important;
+}
+.sh-field-error-msg{
+  color:#f87171;
+  font-size:11.5px;
+  margin-top:4px;
+  line-height:1.3;
+}
+
+/* FIX 4 — groene gloed iets feller als statusindicator (niet schreeuwerig) */
+.wstr-player-row:has(.wstr-status-label.ingediend),
+.wstr-player-row.wstr-wr-done{
+  box-shadow: inset 0 0 0 1px rgba(34,197,94,0.30), 0 0 16px rgba(34,197,94,0.16);
+  border-radius:8px;
+}
+.wstr-player-row:has(.wstr-type-label.observatie){
+  box-shadow: inset 0 0 0 1px rgba(34,197,94,0.20), 0 0 12px rgba(34,197,94,0.10);
+  border-radius:8px;
+}
+
+/* FIX 5 — touch targets ≥44px voor delete/icon-only knoppen (website én PWA) */
+#report-delete-concept,
+#obs-delete-btn,
+.match-report-delete{
+  min-height:44px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+}
+#report-delete-concept{ font-size:13px !important; padding:6px 16px !important; }
+.sa-tile-close,
+.sa-tile-obs-close{
+  min-width:44px;
+  min-height:44px;
+  font-size:20px;
 }

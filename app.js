@@ -16706,10 +16706,15 @@ function renderMatches(){
             </div>`;
           }).join('');
         }
+        // BATCH 1 / 1A-ii: namen die al als rapport in _extraPlayers getoond worden,
+        // niet nóg eens als slot-rij tonen (voorkomt dubbele "Liam de Boer" ook als
+        // de programma_link bij Indienen verloren ging).
+        const _extraNamesShown = new Set(_extraPlayers.map(p => (p && p.naam || '').toLowerCase().replace(/\s+/g,' ').trim()).filter(Boolean));
         _dropRows += _spelers.map(sp => {
           const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(m.progId, sp.id) : null;
           const isVerwerkt = concept && !_shPlayerIsConcept(concept);
           const naam = sp.naam||[sp.voornaam,sp.achternaam].filter(Boolean).join(' ')||'?';
+          if(_extraNamesShown.has((naam||'').toLowerCase().replace(/\s+/g,' ').trim())) return '';
           const sn = _sns.find(s => s && s.spelerKey === sp.id);
           const prev = sn && sn.tekst ? escapeHtml(sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' \u00b7 ').trim().slice(0,60)) : '';
           const statusBadge = '';

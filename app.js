@@ -8,12 +8,11 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import {
   getAuth, onAuthStateChanged,
-  signInWithEmailAndPassword, sendPasswordResetEmail, sendEmailVerification, reload,
+  signInWithEmailAndPassword,
   signOut, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc,
+  getFirestore, collection, doc,
   onSnapshot, setDoc, deleteDoc, getDoc,
   /* s35cg: extra imports voor rollen-systeem */
   updateDoc, query, where, getDocs, orderBy, addDoc
@@ -32,15 +31,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-// Feature 6 — offline persistence (IndexedDB) met multi-tab ondersteuning.
-// Bij falen (bv. privémodus) valt het terug op de gewone in-memory client.
-let db;
-try {
-  db = initializeFirestore(app, { localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }) });
-} catch(e){
-  console.warn('Offline-persistence init faalde, fallback naar getFirestore:', e);
-  db = getFirestore(app);
-}
+const db = getFirestore(app);
 try { await setPersistence(auth, browserLocalPersistence); } catch(e) { console.warn('setPersistence failed (non-fatal):', e); }
 
 /* =============== CONFIG =============== */
@@ -2604,8 +2595,6 @@ function __shApplyDemoChrome(){
       }
     }
     if(seedRow) seedRow.style.display = isPrimary ? 'flex' : 'none';
-    const seedTRow = document.getElementById('settings-seed-tournament-row');
-    if(seedTRow) seedTRow.style.display = isPrimary ? 'flex' : 'none';
     const resetRow = document.getElementById('settings-reset-row');
     if(resetRow) resetRow.style.display = isPrimary ? 'flex' : 'none';
   } catch(_){}
@@ -3018,27 +3007,26 @@ function _shGuardClose(k, closeFn){
 // ────────────────────────────────────────────────────────────────────────────
 
 // ── Gemini AI helper ─────────────────────────────────────────────────────────
-// ── Gemini AI helper (via server-side worker-proxy) ──────────────────
-// SECURITY: de Gemini-key staat NIET meer in de frontend. De worker
-// (/api/gemini) houdt 'm server-side (Cloudflare Secret GEMINI_API_KEY) en
-// geeft alleen de gegenereerde tekst terug. Additief; geen data aangeraakt.
+const _GEMINI_KEYS = [
+  ['AIzaSyDH58cAtoWrl','bpmu0MdbyrlsPgcQ','YduRV4'].join(''),
+  ['AIzaSyBDeLaGfzM1','PN8Cl8E6nlIe8Fxx','xXLwRyY'].join('') // fallback
+];
 async function callGemini(prompt, { temperature=0.3, maxTokens=512 }={}){
-  const base = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE)
-    ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
-  try {
-    const res = await fetch(base + '/api/gemini', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt, temperature, maxTokens })
-    });
-    if(!res.ok) throw new Error('proxy ' + res.status);
-    const data = await res.json();
-    const text = (data && data.text) ? data.text : '';
-    if(text) return String(text).trim();
-    throw new Error((data && data.error) || 'leeg antwoord');
-  } catch(_){
-    throw new Error('Gemini niet beschikbaar');
+  const body = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature, maxOutputTokens: maxTokens }
+  });
+  for(const key of _GEMINI_KEYS){
+    try {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${key}`;
+      const res = await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body });
+      if(!res.ok) continue;
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if(text) return text.trim();
+    } catch(_){}
   }
+  throw new Error('Gemini niet beschikbaar');
 }
 window.callGemini = callGemini;
 
@@ -3588,9 +3576,6 @@ function renderRitten(){
   const kpiPer = document.getElementById('rit-kpi-periode');
   if(kpiAantal) kpiAantal.textContent = items.length;
   if(kpiKm) kpiKm.textContent = _ritFmtKm(totKm);
-  const _ritTarief = _kmTarief();
-  const _kpiBedrag = document.getElementById('rit-kpi-bedrag');
-  if(_kpiBedrag) _kpiBedrag.textContent = _fmtEur(totKm * _ritTarief);
   if(kpiPer){
     if(van && tot) kpiPer.textContent = _ritFmtDatum(van) + ' – ' + _ritFmtDatum(tot);
     else if(van) kpiPer.textContent = 'vanaf ' + _ritFmtDatum(van);
@@ -3605,18 +3590,7 @@ function renderRitten(){
   }
   if(empty) empty.style.display = 'none';
 
-  // M13: maand-subtotalen (inklapbaar)
-  const _byMonth = {};
-  items.forEach(r => { const mk = (r.datum||'').slice(0,7); if(!mk) return; (_byMonth[mk] = _byMonth[mk] || { n:0, km:0 }); _byMonth[mk].n++; _byMonth[mk].km += Number(r.km)||0; });
-  const _months = Object.keys(_byMonth).sort().reverse();
-  const _MND = ['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-  let _subHtml = '';
-  if(_months.length){
-    _subHtml = '<details class="ritten-subtotals"><summary>Maand-subtotalen (' + _months.length + ')</summary>' +
-      _months.map(mk => { const o=_byMonth[mk]; const pp=mk.split('-'); const lbl=(_MND[parseInt(pp[1],10)-1]||pp[1])+' '+pp[0]; return '<div class="ritten-sub-row"><span>'+lbl+'</span><span>'+o.n+' ritten \u00b7 '+_ritFmtKm(o.km)+' km \u00b7 '+_fmtEur(o.km*_ritTarief)+'</span></div>'; }).join('') +
-      '</details>';
-  }
-  list.innerHTML = _subHtml + items.map(r => {
+  list.innerHTML = items.map(r => {
     const datum = _ritFmtDatum(r.datum) + (r.tijd ? '<br><span style="font-size:11px;color:var(--text-3);">' + r.tijd + '</span>' : '');
     const _cleanAdres = (a) => {
       if(!a) return '—';
@@ -3628,7 +3602,7 @@ function renderRitten(){
     return '<div class="rit-row" data-id="' + r.id + '">' +
       '<div class="rit-datum">' + datum + '</div>' +
       '<div><div class="rit-route">' + escapeHtml(route).replace('&lt;span class=&quot;rit-arrow&quot;&gt;→&lt;/span&gt;','<span class="rit-arrow">→</span>') + '</div>' + doel + '</div>' +
-      '<div class="rit-km">' + _ritFmtKm(r.km) + ' km<br><span class="rit-bedrag">' + _fmtEur((Number(r.km)||0) * _ritTarief) + '</span></div>' +
+      '<div class="rit-km">' + _ritFmtKm(r.km) + ' km</div>' +
       '<div class="rit-actions"><button data-act="edit">Bewerken</button><button data-act="terug" title="Retourrit aanmaken">&#x21a9; Terug</button></div>' +
       '</div>';
   }).join('');
@@ -3838,7 +3812,6 @@ function openRitModal(rit){
   document.getElementById('rit-aankomst-lon').value = (rit && rit.aankomstLon) || '';
   document.getElementById('rit-delete-btn').style.display = isNew ? 'none' : '';
   modal.classList.add('active');
-  try { _shRenderRitFavBar(isNew); } catch(_){}
 
   // s36l: bij nieuwe rit → auto-GPS vertrek + programma-knop + chips
   const chips = document.getElementById('rit-prog-chips');
@@ -4278,9 +4251,8 @@ function _ritExportCsv(){
   if(van) items = items.filter(r => (r.datum||'') >= van);
   if(tot) items = items.filter(r => (r.datum||'') <= tot);
   if(!items.length){ toast('Geen ritten in deze periode'); return; }
-  const _csvTarief = _kmTarief();
-  const head = ['Datum','Tijd','Vertrek','Aankomst','Km','Doel','Bedrag (EUR)'];
-  const rows = items.map(r => [r.datum||'', r.tijd||'', r.vertrekAdres||'', r.aankomstAdres||'', String(r.km||0).replace('.', ','), r.doel||'', ((Number(r.km)||0)*_csvTarief).toFixed(2).replace('.', ',')]);
+  const head = ['Datum','Tijd','Vertrek','Aankomst','Km','Doel'];
+  const rows = items.map(r => [r.datum||'', r.tijd||'', r.vertrekAdres||'', r.aankomstAdres||'', String(r.km||0).replace('.', ','), r.doel||'']);
   const escapeCsv = (s) => {
     s = String(s);
     if(/[",;\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
@@ -4324,7 +4296,6 @@ function _ritInitListeners(){
     if(v) v.value = ''; if(t) t.value = ''; renderRitten();
   });
   bind('rit-export-csv', 'click', _ritExportCsv);
-  bind('rit-export-pdf', 'click', _ritExportPdf);
 
   const modal = $('rit-modal');
   if(modal) modal.addEventListener('click', (e) => { if(e.target === modal) closeRitModal(); });
@@ -4333,8 +4304,6 @@ function _ritInitListeners(){
   _ritSetupSuggest('rit-aankomst', 'rit-aankomst-suggest', 'aankomst');
   // s35dj: km herberekening via de ⟳ knop
   bind('rit-km-herbereken', 'click', () => _ritTryAutoKm(true));
-  bind('rit-fav-save-btn', 'click', _shSaveCurrentRouteAsFav);
-  bind('rit-fav-manage-btn', 'click', _shOpenFavManager);
 }
 if(typeof document !== 'undefined'){
   if(document.readyState === 'loading'){
@@ -4808,7 +4777,6 @@ function openMatchReportModal(id){
   if(delBtn)  delBtn.style.display = r ? '' : 'none';
 
   bd.classList.add('open');
-  try { if(typeof _rdInjectBanner==='function') _rdInjectBanner(r); } catch(_){}
   // Als rapport al ingediend: direct read-only tonen
   if(r && r.concept === false && r.status === 'verwerkt'){
     _mrShowReadOnly(r);
@@ -4883,8 +4851,6 @@ function _mrShowReadOnly(r){
 
 function closeMatchReportModal(){
   _shResetDirty('mreport'); // s91
-  // DEEL 2/3: live-notitieblok opruimen bij sluiten
-  try { const _mlfB = document.getElementById('mlf-rapport-banner'); if(_mlfB) _mlfB.remove(); } catch(_){}
   $('#mreport-backdrop').classList.remove('open');
   // Reset: zorg dat form zichtbaar is bij volgende open
   const ro = document.getElementById('mr-readonly');
@@ -5080,10 +5046,6 @@ function renderTips(){
           </div>
           <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">${elftal}${leeftijd}${positie}</div>
           <div style="margin-top:10px; display:flex; flex-direction:column; gap:6px;">${tipgever}${regio}<div class="contact-row" style="color:var(--text-3); font-size:12px;">${datum}</div></div>
-          <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
-            <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); _tipPlanWedstrijd('${esc(t.id)}')">📅 Plan wedstrijd</button>
-            <button type="button" class="btn btn-sm btn-primary" onclick="event.stopPropagation(); _tipMaakRapport('${esc(t.id)}')">📋 Maak rapport</button>
-          </div>
           ${bijz}
         </div>
       </div>`;
@@ -5263,43 +5225,34 @@ function resetInactivity(){
 async function doLogout(auto){
   if(inactivityTimer) clearTimeout(inactivityTimer);
   if(auto) toast('Sessie verlopen — log opnieuw in', true);
-  // Account-isolatie: wis lokale staat VOOR signOut, herlaad daarna naar login.
-  try { await _shPurgeLocalState(); } catch(_){}
-  try { localStorage.clear(); } catch(_){}
-  try { sessionStorage.clear(); } catch(_){}
   try { await signOut(auth); } catch(e){ console.error(e); }
-  try { location.reload(); } catch(_){}
 }
 function authErrorNL(code){
   const map = {
-    'auth/user-not-found': 'Er bestaat geen account met dit e-mailadres. Neem contact op met de beheerder om een account aan te vragen.',
-    'auth/wrong-password': "Het wachtwoord is onjuist. Probeer het opnieuw of klik op 'Wachtwoord vergeten?'",
-    'auth/invalid-credential': 'De inloggegevens zijn onjuist. Controleer je e-mailadres en wachtwoord.',
-    'auth/invalid-email': 'Dit is geen geldig e-mailadres.',
-    'auth/user-disabled': 'Dit account is gedeactiveerd. Neem contact op met de beheerder.',
-    'auth/too-many-requests': 'Te veel pogingen. Wacht even en probeer het later opnieuw.',
-    'auth/network-request-failed': 'Geen internetverbinding. Controleer je verbinding en probeer het opnieuw.',
+    'auth/invalid-email': 'Ongeldig e-mailadres.',
+    'auth/invalid-credential': 'E-mail of wachtwoord onjuist.',
+    'auth/wrong-password': 'E-mail of wachtwoord onjuist.',
+    'auth/user-not-found': 'Geen account met dit e-mailadres.',
     'auth/email-already-in-use': 'Dit e-mailadres is al in gebruik.',
     'auth/weak-password': 'Wachtwoord moet minimaal 6 tekens zijn.',
-    'auth/unauthorized-domain': 'Dit domein is niet toegestaan in Firebase. Voeg het toe aan Authorized Domains in de Firebase Console.'
+    'auth/too-many-requests': 'Te veel pogingen — probeer later opnieuw.',
+    'auth/network-request-failed': 'Geen internetverbinding.',
+    'auth/unauthorized-domain': 'Dit domein is niet toegestaan in Firebase. Voeg msteeman.github.io toe aan Authorized Domains in de Firebase Console.'
   };
-  return map[code] || 'Er ging iets mis bij het inloggen. Probeer het later opnieuw.';
+  return map[code] || `Er ging iets mis (${code}). Probeer opnieuw.`;
 }
 window.tryLogin = async function tryLogin(){
   const btn = $('#login-btn');
   const email = $('#login-email').value.trim();
   const pw = $('#login-pw').value;
-  _shLoginMsg('', null);   // wis vorige melding bij nieuwe poging
-  // Lege velden vóór de Firebase-call afvangen
-  if(!email && !pw){ _shLoginMsg('Vul je e-mailadres en wachtwoord in.', 'error'); return; }
-  if(!email){ _shLoginMsg('Vul je e-mailadres in.', 'error'); return; }
-  if(!pw){ _shLoginMsg('Vul je wachtwoord in.', 'error'); return; }
+  const err = $('#login-error');
+  err.textContent = '';
+  if(!email || !pw){ err.textContent = 'Vul e-mail en wachtwoord in.'; return; }
   btn.disabled = true; btn.textContent = 'Bezig...';
   try {
     await signInWithEmailAndPassword(auth, email, pw);
-    _shLoginMsg('', null);   // succes — geen melding laten staan
   } catch(e){
-    _shLoginMsg(authErrorNL(e && e.code), 'error');
+    err.textContent = authErrorNL(e.code);
     $('#login-pw').value = '';
   } finally {
     btn.disabled = false; btn.textContent = 'Inloggen';
@@ -5314,38 +5267,19 @@ setTimeout(() => {
   }
 }, 8000);
 
-// PWA-detectie: is de app als standalone geïnstalleerd (home-screen / app-window)?
-// Dan slaan we de landingspagina over — die is uitsluitend voor browserbezoekers.
-function _shIsStandalone(){
-  try {
-    return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches)
-      || window.navigator.standalone === true;
-  } catch(_){ return false; }
-}
-window._shIsStandalone = _shIsStandalone;
 function showLogin(){
   _loginShown = true;
   const _ld = document.getElementById('loader');
   const _lo = document.getElementById('login-overlay');
   const _ap = document.getElementById('app');
   if(_ld) _ld.style.display = 'none';
+  if(_lo) _lo.style.display = 'flex';
   if(_ap) _ap.style.display = 'none';
-  const _land = document.getElementById('landing-overlay');
-  // PWA (geïnstalleerd) → direct het login-formulier, géén landingspagina.
-  // Browser (desktop/mobiel) → eerst de landingspagina; "Inloggen" onthult login.
-  if(_shIsStandalone()){
-    if(_land) _land.style.display = 'none';
-    if(_lo) _lo.style.display = 'flex';
-  } else {
-    if(_lo) _lo.style.display = 'none';
-    if(_land) _land.style.display = 'flex';
-  }
+  setTimeout(()=>{ const e = document.getElementById('login-email'); if(e) e.focus(); }, 100);
 }
 function showApp(){
   $('#loader').style.display = 'none';
   $('#login-overlay').style.display = 'none';
-  const _landApp = document.getElementById('landing-overlay');
-  if(_landApp) _landApp.style.display = 'none';
   $('#app').style.display = 'block';
   // v70h-s30: email nu in Instellingen-modal i.p.v. sidebar
   const _se = document.getElementById('settings-email');
@@ -5497,7 +5431,7 @@ async function deleteConceptRecord(id){
       const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
       const filtered = players.filter(p => p.id !== id);
       if(typeof savePlayers === 'function') await savePlayers(filtered);
-      else { try { const _uid = (typeof auth!=='undefined' && auth.currentUser) ? auth.currentUser.uid : 'anon'; localStorage.setItem('playersCache_' + _uid, JSON.stringify(filtered)); } catch(_){} }
+      else localStorage.setItem('playersCache', JSON.stringify(filtered));
       if(Array.isArray(window.playersCache)) window.playersCache = filtered;
     }
   } catch(e){ console.warn('deleteConceptRecord faalde:', e); }
@@ -5682,7 +5616,6 @@ function go(view){
     if(!confirmDiscard()) return;
   }
   currentView = view;
-  if(view === 'programma'){ try { setTimeout(function(){ if(typeof _renderProgrammaToernooiCards === 'function') _renderProgrammaToernooiCards(); }, 60); } catch(_){} }
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-'+view));
   $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
   $$('#bottom-nav .bn-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
@@ -5771,7 +5704,6 @@ function go(view){
   if(view === 'tips')      renderTips();
   if(view === 'ritten')    renderRitten();
   if(view === 'toernooien') renderToernooien();
-  if(view === 'admin')      { if(typeof renderBeheer === 'function') renderBeheer(); }
   if(view === 'player')    renderPlayer();
   // s35cr: privacy + voorwaarden zijn statische views — geen render-functie nodig
   window.scrollTo({top:0});
@@ -6329,68 +6261,19 @@ function openObservatieForm(prog, sn){
   const _parsedTerms = _obsParseAllTerms(_obsTermTekst);
   const termsEl = document.getElementById('obs-terms');
   if(termsEl){
-    // Chip-migratie: 4-staps trefwoord-chips i.p.v. 8 losse tekstvelden, plus één vrij "Algemeen"-veld.
-    const _algVal = _parsedTerms['algemeen'] || '';
-    termsEl.innerHTML = `
-      <div class="obs-term-row obs-term-row-algemeen">
-        <span class="obs-term-label">Algemeen / toelichting</span>
-        <textarea class="obs-term-in sh-grow-note" data-term="algemeen" rows="2" placeholder="bv. interessante speler, extra context (optioneel)...">${escapeHtml(_algVal)}</textarea>
-      </div>`;
+    termsEl.innerHTML = _OBS_TERMS.map(t => `
+      <div class="obs-term-row">
+        <span class="obs-term-label">${t}</span>
+        <input class="obs-term-in" data-term="${t}" type="text" placeholder="${escapeHtml(_OBS_TERM_PH[t]||'')}" value="${escapeHtml(_parsedTerms[t]||'')}" />
+      </div>`).join('');
   }
-  // Chip-migratie: trefwoord-chips injecteren (zelfde component als toernooi-obs).
-  // De toernooi-flow injecteert hierna opnieuw met bestaande tags.
-  try { if(typeof _injectObsTrefwoorden === 'function') _injectObsTrefwoorden(sn && Array.isArray(sn.tags) ? sn.tags : [], (sn && sn.category_notes) || {}); } catch(_){}
   // Pre-fill player info from snelnotitie
   const setV = (id, v) => { const el = document.getElementById(id); if(el && v) el.value = v; else if(el) el.value = ''; };
   setV('obs-naam', sn && (sn.naam||''));
   setV('obs-rug', sn && (sn.rugnummer||''));
   setV('obs-omschrijving', '');
-  // BATCH A — FIX 2: positie is nu een dropdown. Graceful: een opgeslagen waarde
-  // die niet in de standaardlijst staat, als extra optie injecteren zodat ze
-  // zichtbaar/bewaard blijft.
-  (function _obsSetPositie(){
-    const _pEl = document.getElementById('obs-positie');
-    const _pv = (sn && sn.positie || '').trim();
-    if(!_pEl) return;
-    if(_pv && !Array.from(_pEl.options).some(o => o.value === _pv)){
-      const _o = document.createElement('option'); _o.value = _pv; _o.textContent = _pv; _pEl.appendChild(_o);
-    }
-    _pEl.value = _pv;
-  })();
-  // DEEL 1: clubkeuze thuis/uit — NIET blind één club defaulten. Bij een nieuwe
-  // draft het clubveld leeg laten (placeholder "Kies club") en de gebruiker laten
-  // kiezen uit de twee ploegen van deze wedstrijd. Bij heropenen blijft de eerder
-  // gekozen club staan en wordt de bijbehorende knop actief.
-  const _obsHomeClub = (prog && prog.thuis || '').trim();
-  const _obsAwayClub = (prog && prog.uit || '').trim();
-  const _obsExistingClub = (sn && sn.club || '').trim();
-  setV('obs-club', _obsExistingClub);
-  (function _obsRenderClubChoice(){
-    const choiceEl = document.getElementById('obs-club-choice');
-    const clubInp = document.getElementById('obs-club');
-    if(!choiceEl || !clubInp) return;
-    if(_obsHomeClub || _obsAwayClub){
-      clubInp.placeholder = 'Kies club hieronder of typ zelf';
-      const mk = (val, icon, rol) => val
-        ? '<button type="button" class="obs-club-opt'+(_obsExistingClub===val?' active':'')+'" data-club="'+escapeHtml(val)+'"><span class="obs-club-opt-rol">'+icon+' '+rol+'</span><span class="obs-club-opt-naam">'+escapeHtml(val)+'</span></button>'
-        : '';
-      choiceEl.innerHTML = mk(_obsHomeClub, '🏠', 'Thuisploeg') + mk(_obsAwayClub, '✈️', 'Uitploeg');
-      choiceEl.style.display = '';
-      choiceEl.querySelectorAll('.obs-club-opt').forEach(b => {
-        b.onclick = () => {
-          clubInp.value = b.dataset.club || '';
-          choiceEl.querySelectorAll('.obs-club-opt').forEach(x => x.classList.remove('active'));
-          b.classList.add('active');
-          // Trigger autosave + sluit clubsuggestie
-          try { clubInp.dispatchEvent(new Event('input', { bubbles: true })); } catch(_){}
-        };
-      });
-    } else {
-      clubInp.placeholder = 'Clubnaam';
-      choiceEl.style.display = 'none';
-      choiceEl.innerHTML = '';
-    }
-  })();
+  setV('obs-positie', sn && (sn.positie||''));
+  setV('obs-club', sn && (sn.club || (prog && (prog.uit||prog.thuis)||'')));
   // elftal: uit snelnotitie, anders uit programma
   const _obsElftal = (sn && sn.elftal) || (prog && ((prog.thuis_elftal||'').trim() || (prog.uit_elftal||'').trim() || (prog.leeftijd||'').trim())) || '';
   setV('obs-elftal', _obsElftal);
@@ -6399,17 +6282,8 @@ function openObservatieForm(prog, sn){
   const _obsCancelEl = document.getElementById('obs-cancel');
   if(_obsCloseEl) _obsCloseEl.onclick = _obsClose;
   if(_obsCancelEl) _obsCancelEl.onclick = _obsClose;
-  // BATCH A — FIX 3: huidig niveau + advies prefillen vanuit de opgeslagen
-  // (concept-)observatie i.p.v. altijd leeg te zetten. Zonder dit gingen
-  // niveau/advies bij heropenen verloren.
-  const _obsNiveau = (sn && (sn.huidig_niveau || sn.niveau)) || '';
-  const _obsAdvies = (sn && sn.advies) || '';
-  setV('obs-niveau', _obsNiveau);
-  setV('obs-advies', _obsAdvies);
-  // Advies-chips: markeer de actieve chip (of reset als er geen advies is)
-  try {
-    document.querySelectorAll('#obs-advies-chips .adv-chip').forEach(b => b.classList.toggle('active', !!_obsAdvies && b.dataset.v === _obsAdvies));
-  } catch(_){}
+  setV('obs-niveau', '');
+  setV('obs-advies', '');
   // Wire club autocomplete
   const clubIn = document.getElementById('obs-club');
   if(clubIn && typeof shWireClubAC === 'function' && !clubIn._obsAcWired){
@@ -6434,7 +6308,6 @@ function openObservatieForm(prog, sn){
   bd._obsContext = { prog, sn };
 
   // Auto-save naar obs-draft snelnotitie als dit een draft is (heropenbaar tijdens wedstrijd)
-  try { window.__obsTriggerAutosave=null; window.__obsCaptureChips=null; } catch(_){}
   const _isObsDraft = sn && sn.obs_draft === true && prog;
   if(_isObsDraft){
     const _obsAutoSave = () => {
@@ -6451,14 +6324,6 @@ function openObservatieForm(prog, sn){
         _d.positie= (document.getElementById('obs-positie')?.value||'').trim();
         _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
         _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
-        // BATCH A — FIX 3: huidig niveau + advies meebewaren zodat ze na heropenen terugkomen
-        _d.huidig_niveau = (document.getElementById('obs-niveau')?.value||'').trim();
-        _d.advies = (document.getElementById('obs-advies')?.value||'').trim();
-        // #4: chips + categorie-notities ook live meebewaren
-        try {
-          _d.tags = Array.from(document.querySelectorAll('#obs-trefwoorden .obs-tag[data-rating]')).map(function(el){ return { label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') }; }).filter(function(t){ return t.rating; });
-          var _cnA = {}; document.querySelectorAll('#obs-trefwoorden .obs-cat-note').forEach(function(ta){ var c=ta.dataset.catNote, v=(ta.value||'').trim(); if(c&&v) _cnA[c]=v; }); _d.category_notes = _cnA;
-        } catch(_){}
         _d.modified = Date.now();
         // VEILIGHEIDSLAAG: ook auto-save gaat via backup systeem
         if(typeof _obsBackupSaveAndSync === 'function') _obsBackupSaveAndSync(prog, _d);
@@ -6473,15 +6338,6 @@ function openObservatieForm(prog, sn){
       el._obsAutoSaveHandler = () => { clearTimeout(_obsAsTm); _obsAsTm = setTimeout(_obsAutoSave, 800); };
       el.addEventListener('input', el._obsAutoSaveHandler);
     });
-    // #4: chip-klikken direct in-memory vastleggen + debounced sync
-    window.__obsCaptureChips = function(){
-      try {
-        var _dd = (prog.snelnotities||[]).find(function(s){ return s && s.id === sn.id; }); if(!_dd) return;
-        _dd.tags = Array.from(document.querySelectorAll('#obs-trefwoorden .obs-tag[data-rating]')).map(function(el){ return { label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') }; }).filter(function(t){ return t.rating; });
-        var _cnB = {}; document.querySelectorAll('#obs-trefwoorden .obs-cat-note').forEach(function(ta){ var c=ta.dataset.catNote, v=(ta.value||'').trim(); if(c&&v) _cnB[c]=v; }); _dd.category_notes = _cnB;
-      } catch(_){}
-    };
-    window.__obsTriggerAutosave = function(){ clearTimeout(_obsAsTm); _obsAsTm = setTimeout(_obsAutoSave, 500); };
   }
 
   // Knoptekst: draft = "Opslaan & sluiten", definitief = "Opslaan als observatie"
@@ -6491,10 +6347,34 @@ function openObservatieForm(prog, sn){
     _submitBtn.textContent = _isObsDraft ? 'Opslaan & sluiten' : 'Opslaan als observatie';
   }
 
-  // LIVE STABILISATIE (#7): GEEN "Indienen" tijdens live obs. Indienen gebeurt
-  // pas in de Wedstrijden-tab. Verwijder een eventuele eerder toegevoegde knop.
+  // Bij draft-modus: voeg "Indienen" knop toe zodat observatie direct naar spelersdatabase gaat
+  const _obsActions = document.querySelector('.obs-actions');
   const _existingIndien = document.getElementById('obs-indien-btn');
   if(_existingIndien) _existingIndien.remove();
+  if(_isObsDraft && _obsActions && _submitBtn){
+    const _indienBtn = document.createElement('button');
+    _indienBtn.type = 'button';
+    _indienBtn.id = 'obs-indien-btn';
+    _indienBtn.className = 'btn btn-primary';
+    _indienBtn.textContent = 'Indienen →';
+    _indienBtn.title = 'Sla op en voeg toe aan spelersdatabase';
+    _indienBtn.style.cssText = 'background:var(--green);border-color:var(--green);margin-left:6px;';
+    // Klik: tijdelijk obs_draft op false zetten zodat _obsSubmit de echte submit doet
+    _indienBtn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const _bd2 = document.getElementById('obs-backdrop');
+      const _ctx2 = _bd2 && _bd2._obsContext ? _bd2._obsContext : {};
+      const _sn2 = _ctx2.sn;
+      if(_sn2) _sn2.obs_draft = false; // tijdelijk: forceer echte submit
+      _indienBtn.disabled = true;
+      _indienBtn.textContent = 'Bezig...';
+      if(_submitBtn) { _submitBtn.disabled = true; }
+      await _obsSubmit(null);
+    });
+    // Voeg in na de submit-knop
+    _submitBtn.insertAdjacentElement('afterend', _indienBtn);
+  }
 
   // Verwijder-knop: alleen voor obs-drafts (heropenbare opgevallen spelers)
   const _obsDelBtn = document.getElementById('obs-delete-btn');
@@ -6522,691 +6402,16 @@ function openObservatieForm(prog, sn){
     _obsSubmitBtn.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); _obsSubmit(e); });
   }
 
-  // PWA (#input-positie): bij focus het veld netjes boven het toetsenbord brengen.
-  // block:'center' -> midden van de modal-scrollport, NIET bovenin/onderin. Korte
-  // delay zodat iOS het toetsenbord eerst opent; visualViewport-bewust.
-  const _obsFormFocus = document.getElementById('obs-form');
-  if(_obsFormFocus && !_obsFormFocus._obsFocusWired){
-    _obsFormFocus._obsFocusWired = true;
-    _obsFormFocus.addEventListener('focusin', function(e){
-      const t = e.target;
-      if(!t || !/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
-      const _doScroll = function(){ try { t.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(_){} };
-      setTimeout(_doScroll, 300);
-      // Extra: zodra het toetsenbord het visuele viewport verkleint, opnieuw centreren.
-      if(window.visualViewport && !t._obsVvWired){
-        t._obsVvWired = true;
-        const _vv = function(){ if(document.activeElement === t){ _doScroll(); } };
-        window.visualViewport.addEventListener('resize', _vv, { once: true });
-      }
-    });
-  }
   bd.style.display = 'flex';
   // iOS PWA: blokkeer body-scroll (voorkomt focus-scroll weg)
   const _scrollY = window.scrollY;
   document.body.style.top = `-${_scrollY}px`;
   document.body.classList.add('modal-open');
-  // DEEL 2: GEEN auto-focus bij openen. Auto-focus opent direct het toetsenbord
-  // waardoor het scherm op mobiel/PWA naar beneden springt. De wedstrijdnotitie
-  // (MatchLiveForm) doet dit ook niet — gebruiker tikt zelf het eerste veld aan.
+  setTimeout(() => { const n = document.getElementById('obs-naam'); if(n) n.focus(); }, 80);
 }
 window.openObservatieForm = openObservatieForm;
 
-/* ============================================================
-   PlayerLiveForm v2 — stabiele live gekoppelde-speler invoer.
-   Per-veld state (playerLiveState[matchId][playerId][field]) — GEEN
-   compose/parse, dus geen cascade/overlap. Modal-chrome zoals obs
-   (sticky header/action bar, 44px close, 16px inputs, focus-center).
-   Concept-opslag in de bestaande snelnotitie (sn.fields). GEEN
-   definitief rapport. Soft sync/prefill volgen in latere fase.
-   ============================================================ */
-const PLF_FIELDS = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
-const PLF_PH = { techniek:'bv. scherp, snel', inzicht:'bv. leest spel goed', mentaliteit:'bv. werkt hard, leidt', explosiviteit:'bv. eerste 5m sterk', sprinten:'bv. topsnelheid hoog', duelleren:'bv. wint 1-op-1', wendbaarheid:'bv. soepel, lichtvoetig', algemeen:'bv. interessante speler' };
-const PLF_CHIP_CATS = {
-  techniek: ['Balbehandeling','Passing','Eerste aanname','Traptechniek','Koppen','Dribbel','Beide benen','Overzicht'],
-  inzicht: ['Scannen','Positiespel','Ruimte zien','Anticipatie','Coaching','Timing','Loopacties'],
-  mentaliteit: ['Winnaar','Leider','Communicatief','Rustig','Doorzetter','Concentratie','Gretig','Emotioneel'],
-  explosiviteit: ['Eerste 5m','Versnelling','Explosief','Sprongkracht','Krachtig'],
-  sprinten: ['Startsnelheid','Topsnelheid','Diepgang','Traag'],
-  duelleren: ['Sterk','1-op-1','Lichaamsinzet','Kopduel','Wint duels','Fel'],
-  wendbaarheid: ['Soepel','Lichtvoetig','Draaien','Balans','Wendbaar'],
-  algemeen: ['Interessant','Opvolgen','Uitblinker','Aanrader']
-};
-const playerLiveState = {};
-let _plfCtx = null;
-let _plfTm = null;
-
-function _plfFindSn(prog, sp){
-  if(!prog || !Array.isArray(prog.snelnotities)) return null;
-  return prog.snelnotities.find(s => s && s.spelerKey === sp.id) || null;
-}
-function _plfSeedState(matchId, playerId, sn){
-  if(!playerLiveState[matchId]) playerLiveState[matchId] = {};
-  const seed = {};
-  PLF_FIELDS.forEach(f => {
-    let v = '';
-    if(sn && sn.fields && typeof sn.fields[f] === 'string'){ v = sn.fields[f]; }
-    else if(sn && sn.tekst){
-      const lines = String(sn.tekst).split('\n');
-      const pref = f + ':';
-      const line = lines.find(l => l.trim().toLowerCase().indexOf(pref) === 0);
-      v = line ? line.trim().slice(pref.length).trim() : '';
-      if(PLF_FIELDS.some(tt => v.toLowerCase().indexOf(tt + ':') === 0)) v = '';
-    }
-    seed[f] = v;
-  });
-  playerLiveState[matchId][playerId] = seed;
-  return seed;
-}
-
-function _plfAge(d){ try { const b=new Date(d); if(isNaN(b.getTime())) return ''; const n=new Date(); let a=n.getFullYear()-b.getFullYear(); const m=n.getMonth()-b.getMonth(); if(m<0||(m===0&&n.getDate()<b.getDate())) a--; return (a>0&&a<120)?String(a):''; } catch(_){ return ''; } }
-function openPlayerLiveForm(prog, sp){
-  const bd = document.getElementById('plf-backdrop'); if(!bd || !prog || !sp) return;
-  const matchId = prog.id, playerId = sp.id;
-  const sn = _plfFindSn(prog, sp);
-  const st = _plfSeedState(matchId, playerId, sn);
-  _plfCtx = { matchId, playerId, progId: prog.id };
-
-  const naam = sp.naam || [sp.voornaam, sp.achternaam].filter(Boolean).join(' ') || 'Speler';
-  const titleEl = document.getElementById('plf-title'); if(titleEl) titleEl.textContent = naam;
-  const subEl = document.getElementById('plf-sub'); if(subEl) subEl.textContent = 'Live aantekening (concept)';
-  const teamCtx = (prog.thuis||'?') + (prog.thuis_elftal?' '+prog.thuis_elftal:'') + ' — ' + (prog.uit||'?') + (prog.uit_elftal?' '+prog.uit_elftal:'');
-  // Bekende gekoppelde-speler data (sp + volledig record uit playersCache).
-  const _plfFull = (typeof playersCache !== 'undefined' && Array.isArray(playersCache)) ? playersCache.find(p => p && p.id === sp.id) : null;
-  const _g = (k) => (sp[k]!=null && sp[k]!=='') ? sp[k] : ((_plfFull && _plfFull[k]!=null && _plfFull[k]!=='') ? _plfFull[k] : '');
-  const _club = _g('club') || prog.thuis || '';
-  const _team = _g('elftal') || _g('team') || prog.thuis_elftal || prog.uit_elftal || prog.leeftijd || '';
-  const _pos = _g('positie'); const _rug = _g('rugnummer'); const _geb = _g('geboorte');
-  const _leef = _g('leeftijd') || (_geb ? _plfAge(_geb) : '');
-  const _metaParts = [];
-  if(_club) _metaParts.push('Club: '+_club);
-  if(_team) _metaParts.push('Team: '+_team);
-  if(_pos) _metaParts.push('Positie: '+_pos);
-  if(_rug) _metaParts.push('Rug #'+_rug);
-  if(_leef) _metaParts.push(_leef+' jr');
-  if(_geb) _metaParts.push('geb. '+_geb);
-  const ctxEl = document.getElementById('plf-ctx');
-  if(ctxEl) ctxEl.innerHTML =
-    '<div class="plf-ctx-player">Speler: <b>'+escapeHtml(naam)+'</b></div>'+
-    (_metaParts.length ? '<div class="plf-ctx-meta">'+_metaParts.map(escapeHtml).join(' · ')+'</div>' : '')+
-    '<div class="plf-ctx-match">Live wedstrijd: '+escapeHtml(teamCtx)+'</div>'+
-    '<div class="plf-ctx-note">Concept — het definitieve rapport maak je na de wedstrijd in Wedstrijden.</div>';
-
-  const fieldsEl = document.getElementById('plf-fields');
-  if(fieldsEl){
-    const seedTags = (sn && Array.isArray(sn.tags)) ? sn.tags : [];
-    const ratingOf = (cat, label) => { const t = seedTags.find(x => x && x.label===label && String(x.category||'').toLowerCase()===cat.toLowerCase()); return t && t.rating ? t.rating : ''; };
-    fieldsEl.innerHTML = '<div class="plf-section-label">Per aspect <span class="plf-dim">(tik chip: groen \u2192 oranje \u2192 rood \u2192 uit, + eigen notitie)</span></div>' +
-      PLF_FIELDS.map(f => {
-        const chips = (PLF_CHIP_CATS[f]||[]).map(w => { const r = ratingOf(f, w); return '<button type="button" class="obs-tag" data-category="'+f+'" data-label="'+escapeHtml(w)+'"'+(r?' data-rating="'+r+'"':'')+' onclick="_plfTagCycle(this)">'+escapeHtml(w)+'</button>'; }).join('');
-        return '<div class="plf-aspect">'+
-          '<div class="plf-aspect-label">'+f+'</div>'+
-          (chips ? '<div class="obs-tags plf-aspect-chips">'+chips+'</div>' : '')+
-          '<textarea class="plf-field-in sh-grow-note" id="plf-in-'+f+'" data-field="'+f+'" rows="2" autocomplete="off" placeholder="'+escapeHtml(PLF_PH[f]||'')+'">'+escapeHtml(st[f]||'')+'</textarea>'+
-        '</div>';
-      }).join('');
-    Array.from(fieldsEl.querySelectorAll('.plf-field-in')).forEach(inp => {
-      inp.addEventListener('input', () => {
-        const f = inp.dataset.field;
-        if(playerLiveState[matchId] && playerLiveState[matchId][playerId]) playerLiveState[matchId][playerId][f] = inp.value;
-        clearTimeout(_plfTm); _plfTm = setTimeout(() => _plfSoftSave(false), 600);
-      });
-    });
-    if(!fieldsEl._plfFocusWired){
-      fieldsEl._plfFocusWired = true;
-      fieldsEl.addEventListener('focusin', (e) => {
-        const t = e.target; if(!t || (t.tagName !== 'INPUT' && t.tagName !== 'TEXTAREA')) return;
-        setTimeout(() => { try { t.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} }, 300);
-      });
-    }
-  }
-
-  const opv = document.getElementById('plf-opvallend');
-  if(opv){
-    const isOpv = !!(sn && sn.is_opvallend);
-    opv.textContent = isOpv ? '⭐ Opgevallen' : '☆ Opvallend';
-    opv.classList.toggle('is-opvallend', isOpv);
-    opv.onclick = () => _plfToggleOpvallend(opv);
-  }
-  const closeEl = document.getElementById('plf-close'); if(closeEl) closeEl.onclick = () => { _plfSoftSave(false); _plfClose(); };
-  const cancelEl = document.getElementById('plf-cancel'); if(cancelEl) cancelEl.onclick = () => { _plfClose(); };
-  const saveEl = document.getElementById('plf-save'); if(saveEl) saveEl.onclick = () => { _plfSoftSave(true); _plfClose(); };
-
-  bd.style.display = 'flex';
-  document.body.style.top = '-' + window.scrollY + 'px';
-  document.body.classList.add('modal-open');
-  // DEEL 2: GEEN auto-focus bij openen (zelfde reden als obs/wedstrijdnotitie):
-  // voorkomt dat het toetsenbord meteen opent en de viewport naar beneden springt.
-}
-window.openPlayerLiveForm = openPlayerLiveForm;
-
-function _plfTagCycle(el){
-  const order = ['', 'good', 'average', 'poor'];
-  const cur = el.getAttribute('data-rating') || '';
-  const next = order[(order.indexOf(cur) + 1) % order.length];
-  if(next) el.setAttribute('data-rating', next); else el.removeAttribute('data-rating');
-  clearTimeout(_plfTm); _plfTm = setTimeout(() => _plfSoftSave(false), 500);
-}
-window._plfTagCycle = _plfTagCycle;
-
-function _plfSoftSave(showToast){
-  try {
-    if(!_plfCtx) return;
-    const matchId = _plfCtx.matchId, playerId = _plfCtx.playerId, progId = _plfCtx.progId;
-    const prog = programmaCache.find(p => p.id === progId); if(!prog) return;
-    if(typeof _shIsMatchLocked === 'function' && _shIsMatchLocked(prog)) return;
-    const sp = (prog.spelers||[]).find(s => s && s.id === playerId); if(!sp) return;
-    const st = (playerLiveState[matchId] && playerLiveState[matchId][playerId]) || {};
-    const fields = {}; PLF_FIELDS.forEach(f => { fields[f] = (st[f]||'').trim(); });
-    const tekst = PLF_FIELDS.map(f => f + ':' + (fields[f] ? ' ' + fields[f] : '')).join('\n');
-    const hasContent = PLF_FIELDS.some(f => fields[f]);
-    let hasChips = false; try { hasChips = document.querySelectorAll('#plf-fields .obs-tag[data-rating]').length > 0; } catch(_){}
-    if(!Array.isArray(prog.snelnotities)) prog.snelnotities = [];
-    let sn = prog.snelnotities.find(s => s && s.spelerKey === sp.id);
-    if(!sn && !hasContent && !hasChips) return;
-    if(!sn){
-      sn = { id:'sn_'+(sp.id||Date.now()), naam: sp.naam||[sp.voornaam,sp.achternaam].filter(Boolean).join(' ')||'', rugnummer: sp.rugnummer||'', positie: sp.positie||'', spelerKey: sp.id, created: Date.now() };
-      prog.snelnotities.push(sn);
-    }
-    sn.fields = fields;
-    try { sn.tags = Array.from(document.querySelectorAll('#plf-fields .obs-tag[data-rating]')).map(el => ({ label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') })).filter(t => t.rating); } catch(_){}
-    sn.tekst = tekst;
-    sn.modified = Date.now();
-    prog.modified = Date.now();
-    if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
-    _plfSyncLiveNote(prog, sp, fields, (sn.tags||[]), !!sn.is_opvallend);
-    if(showToast && typeof toast === 'function') toast('Live notitie opgeslagen ✓');
-  } catch(_){}
-}
-
-function _plfToggleOpvallend(btn){
-  try {
-    if(!_plfCtx) return;
-    const prog = programmaCache.find(p => p.id === _plfCtx.progId); if(!prog) return;
-    const sp = (prog.spelers||[]).find(s => s && s.id === _plfCtx.playerId); if(!sp) return;
-    if(!Array.isArray(prog.snelnotities)) prog.snelnotities = [];
-    let sn = prog.snelnotities.find(s => s && s.spelerKey === sp.id);
-    if(!sn){ _plfSoftSave(false); sn = prog.snelnotities.find(s => s && s.spelerKey === sp.id); }
-    if(!sn) return;
-    sn.is_opvallend = !sn.is_opvallend;
-    prog.modified = Date.now();
-    btn.textContent = sn.is_opvallend ? '⭐ Opgevallen' : '☆ Opvallend';
-    btn.classList.toggle('is-opvallend', !!sn.is_opvallend);
-    if(typeof saveProgrammaItem === 'function') saveProgrammaItem(prog).catch(()=>{});
-    _plfSyncLiveNote(prog, sp, (sn.fields||{}), (sn.tags||[]), !!sn.is_opvallend);
-  } catch(_){}
-}
-
-async function _plfSyncLiveNote(prog, sp, fields, tags, isOpvallend){
-  try {
-    if(typeof currentUser === 'undefined' || !currentUser || !currentUser.uid) return;
-    const id = prog.id + '_' + sp.id;
-    const ref = doc(db, 'users', currentUser.uid, 'live_match_notes', id);
-    await setDoc(ref, {
-      matchId: prog.id,
-      playerId: sp.id,
-      playerName: sp.naam || [sp.voornaam, sp.achternaam].filter(Boolean).join(' ') || '',
-      type: 'player_live',
-      status: 'live',
-      fields: fields || {},
-      tags: tags || [],
-      is_opvallend: !!isOpvallend,
-      match_thuis: prog.thuis || '',
-      match_uit: prog.uit || '',
-      match_datum: prog.datum || '',
-      updatedAt: new Date(),
-      updatedBy: currentUser.uid
-    }, { merge: true });
-  } catch(_){}
-}
-function _plfClose(){
-  const bd = document.getElementById('plf-backdrop'); if(bd) bd.style.display = 'none';
-  const y = parseInt(document.body.style.top || '0') * -1;
-  document.body.classList.remove('modal-open');
-  document.body.style.top = '';
-  if(y) window.scrollTo(0, y);
-  _plfCtx = null;
-  try { if(typeof renderActiveScouting === 'function') renderActiveScouting(); } catch(_){}
-}
-window._plfClose = _plfClose;
-
-/* ============================================================
-   DEEL 6 — Post-match prefill -> report_drafts -> definitief.
-   Bron: live_match_notes (NIET aangepast/verwijderd). Tussenstap:
-   report_drafts (bewerkbaar concept). Indienen spiegelt de bestaande
-   obs-record en gaat via savePlayer naar de players-collectie. Additief.
-   ============================================================ */
-const RD_FIELDS = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
-let _rdState = null;
-
-function _rdDraftsCol(){ return collection(db, 'users', currentUser.uid, 'report_drafts'); }
-function _rdNorm(x){ return String(x||'').trim().toLowerCase(); }
-
-async function _rdLiveNotesForMatch(r){
-  try {
-    if(typeof currentUser==='undefined'||!currentUser||!currentUser.uid) return [];
-    const snap = await getDocs(collection(db,'users',currentUser.uid,'live_match_notes'));
-    const out=[]; snap.forEach(d=>{ const x=d.data()||{}; x._id=d.id; out.push(x); });
-    return out.filter(n => _rdNorm(n.match_thuis)===_rdNorm(r.thuis) && _rdNorm(n.match_uit)===_rdNorm(r.uit) && (!r.datum||!n.match_datum||n.match_datum===r.datum));
-  } catch(_){ return []; }
-}
-
-async function _rdInjectBanner(r){
-  try {
-    const old=document.getElementById('rd-live-banner'); if(old) old.remove();
-    if(!r||!r.thuis||!r.uit) return;
-    const notes = await _rdLiveNotesForMatch(r);
-    if(!notes.length) return;
-    const form=document.getElementById('mreport-form'); if(!form||!form.parentNode) return;
-    const b=document.createElement('div'); b.id='rd-live-banner'; b.className='rd-live-banner';
-    b.innerHTML='<div class="rd-live-banner-txt">📋 Live notities beschikbaar voor <b>'+notes.length+'</b> speler'+(notes.length===1?'':'s')+'</div><button type="button" class="btn btn-primary" id="rd-gen-btn">Rapport genereren</button>';
-    form.parentNode.insertBefore(b, form);
-    const btn=document.getElementById('rd-gen-btn'); if(btn) btn.onclick=()=>_rdGenerate(r, notes);
-  } catch(_){}
-}
-window._rdInjectBanner = _rdInjectBanner;
-
-async function _rdGenerate(r, notes){
-  try {
-    for(const n of notes){
-      const id=(n.matchId||'')+'_'+(n.playerId||'');
-      const ref=doc(_rdDraftsCol(), id);
-      let ex=null; try { const ds=await getDoc(ref); if(ds.exists()) ex=ds.data(); } catch(_){}
-      if(ex && ex.status==='submitted') continue;
-      await setDoc(ref, {
-        matchId:n.matchId||'', playerId:n.playerId||'', playerName:n.playerName||'',
-        fields:n.fields||{}, tags:n.tags||[], is_opvallend:!!n.is_opvallend,
-        matchContext:{thuis:n.match_thuis||'',uit:n.match_uit||'',datum:n.match_datum||''},
-        status:'draft', createdFrom:'live_match_notes',
-        createdAt: (ex&&ex.createdAt)?ex.createdAt:new Date(), updatedAt:new Date(), updatedBy:currentUser.uid
-      }, {merge:true});
-    }
-    _rdOpenList(r);
-  } catch(e){ if(typeof toast==='function') toast('Genereren mislukt', true); }
-}
-
-async function _rdOpenList(r){
-  const bd=document.getElementById('rdraft-backdrop'); if(!bd) return;
-  const title=document.getElementById('rdraft-title'); if(title) title.textContent='Rapporten uit live-notities';
-  const sub=document.getElementById('rdraft-sub'); if(sub) sub.textContent=(r.thuis||'')+' — '+(r.uit||'');
-  const cl=document.getElementById('rdraft-close'); if(cl) cl.onclick=_rdClose;
-  const body=document.getElementById('rdraft-body');
-  let drafts=[];
-  try { const snap=await getDocs(_rdDraftsCol()); snap.forEach(d=>{ const x=d.data()||{}; x._id=d.id; drafts.push(x); }); } catch(_){}
-  drafts=drafts.filter(d => _rdNorm(d.matchContext&&d.matchContext.thuis)===_rdNorm(r.thuis) && _rdNorm(d.matchContext&&d.matchContext.uit)===_rdNorm(r.uit));
-  if(body){
-    if(!drafts.length){ body.innerHTML='<div class="rd-empty">Geen live-notities voor deze wedstrijd.</div>'; }
-    else body.innerHTML='<div class="rd-list">'+drafts.map(d=>{
-      const existing=(Array.isArray(playersCache)?playersCache.some(p=>p&&p.concept===false&&_rdNorm(p.naam)===_rdNorm(d.playerName)&&p.id!==('rep_'+d.matchId+'_'+d.playerId)):false);
-      const badge=d.status==='submitted'?'<span class="rd-badge rd-b-green">Ingediend</span>':'<span class="rd-badge rd-b-grey">Concept</span>';
-      const warn=existing?'<div class="rd-warn">⚠️ Er bestaat al een rapport voor deze speler — indienen maakt een aparte versie</div>':'';
-      const nNotes=RD_FIELDS.filter(f=>d.fields&&d.fields[f]).length; const nChips=(d.tags||[]).length;
-      return '<div class="rd-card"><div class="rd-card-top"><div class="rd-card-name">'+escapeHtml(d.playerName||'Speler')+(d.is_opvallend?' ⭐':'')+'</div>'+badge+'</div>'+
-        '<div class="rd-card-meta">'+nNotes+' notitie(s) · '+nChips+' chip(s)</div>'+warn+
-        '<button type="button" class="btn btn-secondary rd-edit-btn" data-rd-id="'+escapeHtml(d._id)+'">Openen &amp; bewerken</button></div>';
-    }).join('')+'</div>';
-    body.querySelectorAll('.rd-edit-btn').forEach(btn=>{ btn.onclick=()=>_rdOpenEditor(btn.dataset.rdId, r); });
-  }
-  bd.style.display='flex'; document.body.classList.add('modal-open'); document.body.style.top='-'+window.scrollY+'px';
-}
-window._rdOpenList=_rdOpenList;
-
-async function _rdOpenEditor(draftId, r){
-  const ref=doc(_rdDraftsCol(), draftId);
-  let d=null; try { const ds=await getDoc(ref); if(ds.exists()){ d=ds.data(); d._id=ds.id; } } catch(_){}
-  if(!d) return;
-  _rdState={ draftId, listCtx:r||null, fields:Object.assign({}, d.fields||{}), tags:(d.tags||[]).slice(), is_opvallend:!!d.is_opvallend, playerName:d.playerName||'', matchId:d.matchId, playerId:d.playerId, matchContext:d.matchContext||{} };
-  const title=document.getElementById('rdraft-title'); if(title) title.textContent=d.playerName||'Speler';
-  const sub=document.getElementById('rdraft-sub'); if(sub) sub.textContent='Conceptrapport — bewerk en dien in';
-  const cl=document.getElementById('rdraft-close'); if(cl) cl.onclick=_rdClose;
-  const ratingOf=(cat,label)=>{ const t=_rdState.tags.find(x=>x&&x.label===label&&_rdNorm(x.category)===_rdNorm(cat)); return t&&t.rating?t.rating:''; };
-  const PH={techniek:'bv. scherp, snel',inzicht:'bv. leest spel goed',mentaliteit:'bv. werkt hard',explosiviteit:'bv. eerste 5m',sprinten:'bv. topsnelheid',duelleren:'bv. wint 1-op-1',wendbaarheid:'bv. soepel',algemeen:'bv. interessante speler'};
-  const CHIPS=(typeof PLF_CHIP_CATS!=='undefined')?PLF_CHIP_CATS:{};
-  const mc=_rdState.matchContext||{};
-  const body=document.getElementById('rdraft-body');
-  body.innerHTML='<div class="rd-ctx"><b>'+escapeHtml(_rdState.playerName||'Speler')+'</b><div class="rd-ctx-sub">'+escapeHtml((mc.thuis||'')+' — '+(mc.uit||''))+(mc.datum?' · '+escapeHtml(mc.datum):'')+'</div><div class="rd-ctx-note">Conceptrapport uit je live-notities. Pas aan en kies daarna Indienen.</div></div>'+
-    '<div class="plf-fields" id="rd-fields">'+RD_FIELDS.map(f=>{
-      const chips=(CHIPS[f]||[]).map(w=>{ const rr=ratingOf(f,w); return '<button type="button" class="obs-tag" data-category="'+f+'" data-label="'+escapeHtml(w)+'"'+(rr?' data-rating="'+rr+'"':'')+' onclick="_rdTagCycle(this)">'+escapeHtml(w)+'</button>'; }).join('');
-      return '<div class="plf-aspect"><div class="plf-aspect-label">'+f+'</div>'+(chips?'<div class="obs-tags plf-aspect-chips">'+chips+'</div>':'')+'<textarea class="plf-field-in sh-grow-note" data-field="'+f+'" rows="2" autocomplete="off" placeholder="'+escapeHtml(PH[f]||'')+'">'+escapeHtml(_rdState.fields[f]||'')+'</textarea></div>';
-    }).join('')+'</div>'+
-    '<div class="obs-actions"><button type="button" class="plf-opvallend-btn'+(_rdState.is_opvallend?' is-opvallend':'')+'" id="rd-opv">'+(_rdState.is_opvallend?'⭐ Opgevallen':'☆ Opvallend')+'</button>'+
-    '<button type="button" class="btn btn-secondary" id="rd-save">Opslaan als concept</button>'+
-    '<button type="button" class="btn btn-primary" id="rd-submit">Indienen</button></div>';
-  body.querySelectorAll('#rd-fields .plf-field-in').forEach(inp=>{ inp.addEventListener('input',()=>{ _rdState.fields[inp.dataset.field]=inp.value; }); });
-  if(!body._rdFocusWired){ body._rdFocusWired=true; body.addEventListener('focusin',e=>{ const t=e.target; if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) setTimeout(()=>{ try{ t.scrollIntoView({block:'center',behavior:'smooth'}); }catch(_){} },300); }); }
-  const opv=document.getElementById('rd-opv'); if(opv) opv.onclick=()=>{ _rdState.is_opvallend=!_rdState.is_opvallend; opv.classList.toggle('is-opvallend',_rdState.is_opvallend); opv.textContent=_rdState.is_opvallend?'⭐ Opgevallen':'☆ Opvallend'; };
-  const sv=document.getElementById('rd-save'); if(sv) sv.onclick=()=>_rdSaveDraft();
-  const su=document.getElementById('rd-submit'); if(su) su.onclick=()=>_rdSubmit();
-}
-window._rdOpenEditor=_rdOpenEditor;
-
-function _rdCollectTags(){ try { return Array.from(document.querySelectorAll('#rd-fields .obs-tag[data-rating]')).map(el=>({label:el.dataset.label,category:el.dataset.category,rating:el.getAttribute('data-rating')})).filter(t=>t.rating); } catch(_){ return _rdState?_rdState.tags:[]; } }
-function _rdTagCycle(el){ const order=['','good','average','poor']; const cur=el.getAttribute('data-rating')||''; const next=order[(order.indexOf(cur)+1)%order.length]; if(next) el.setAttribute('data-rating',next); else el.removeAttribute('data-rating'); }
-window._rdTagCycle=_rdTagCycle;
-
-async function _rdSaveDraft(){
-  if(!_rdState) return;
-  try {
-    _rdState.tags=_rdCollectTags();
-    await setDoc(doc(_rdDraftsCol(), _rdState.draftId), { fields:_rdState.fields, tags:_rdState.tags, is_opvallend:!!_rdState.is_opvallend, status:'draft', updatedAt:new Date(), updatedBy:currentUser.uid }, {merge:true});
-    if(typeof toast==='function') toast('Concept opgeslagen ✓');
-    _rdClose();
-  } catch(_){ if(typeof toast==='function') toast('Opslaan mislukt', true); }
-}
-
-async function _rdSubmit(){
-  if(!_rdState) return;
-  try {
-    _rdState.tags=_rdCollectTags();
-    const prog=(Array.isArray(programmaCache)?programmaCache.find(p=>p&&p.id===_rdState.matchId):null);
-    const sp=prog&&Array.isArray(prog.spelers)?prog.spelers.find(s=>s&&s.id===_rdState.playerId):null;
-    const rec=_rdBuildPlayerRec(_rdState, sp||{});
-    if(typeof savePlayer==='function') await savePlayer(rec);
-    await setDoc(doc(_rdDraftsCol(), _rdState.draftId), { status:'submitted', submittedAt:new Date(), updatedAt:new Date() }, {merge:true});
-    if(typeof toast==='function') toast('Rapport ingediend ✓');
-    _rdClose();
-  } catch(e){ if(typeof toast==='function') toast('Indienen mislukt', true); }
-}
-
-function _rdBuildPlayerRec(st, sp){
-  const naam=st.playerName||''; const parts=naam.split(/\s+/); const voornaam=parts[0]||''; const achternaam=parts.slice(1).join(' ');
-  const full=(Array.isArray(playersCache)?playersCache.find(p=>p&&p.id===st.playerId):null)||{};
-  const g=k=>(sp&&sp[k])||full[k]||'';
-  const fields=st.fields||{};
-  const notities=RD_FIELDS.map(f=>f+':'+(fields[f]?' '+fields[f]:'')).join('\n');
-  const mc=st.matchContext||{};
-  return {
-    id: st.playerId ? ('rep_'+st.matchId+'_'+st.playerId) : ('obs_'+Date.now()+'_'+Math.random().toString(36).slice(2,7)),
-    naam, voornaam, achternaam, naam_onbekend:false, omschrijving:'',
-    club:g('club'), positie:g('positie'), elftal:g('elftal')||g('team')||'', rugnummer:g('rugnummer'),
-    notities, huidig_niveau:'', potentieel_niveau:'', advies:'',
-    tags: st.tags||[], category_notes: fields,
-    rapport_type:'observatie', concept:false, status:'observatie',
-    is_opvallend: !!st.is_opvallend, notities_raw: notities,
-    datum: mc.datum || new Date().toISOString().slice(0,10),
-    wedstrijd: { datum:mc.datum||'', thuis:mc.thuis||'', uit:mc.uit||'', leeftijd:'', plaats:'', sportpark:'' },
-    wedstrijd_datum:mc.datum||'', wedstrijd_thuis:mc.thuis||'', wedstrijd_uit:mc.uit||'', wedstrijd_leeftijd:'',
-    programma_link: (st.matchId&&st.playerId)?{progId:st.matchId, spelerKey:st.playerId}:null,
-    created: Date.now(), modified: Date.now(),
-    scout: (typeof currentUser!=='undefined'&&currentUser)?(currentUser.displayName||currentUser.email||''):''
-  };
-}
-
-function _rdClose(){
-  const bd=document.getElementById('rdraft-backdrop'); if(bd) bd.style.display='none';
-  const y=parseInt(document.body.style.top||'0')*-1; document.body.classList.remove('modal-open'); document.body.style.top=''; if(y) window.scrollTo(0,y);
-  _rdState=null;
-}
-window._rdClose=_rdClose;
-
-/* ============================================================
-   MatchLiveForm — live wedstrijdnotities (split thuis/uit + gedeeld).
-   Per-veld state (matchLiveState[matchId]), chips per categorie,
-   modal-chrome zoals obs/plf, soft sync naar live_match_notes/{id}_match.
-   Concept — GEEN definitief rapport, GEEN Indienen in live.
-   OBS en PlayerLiveForm v2 NIET aangeraakt.
-   ============================================================ */
-const MLF_TEAM_CATS = [
-  ['tactiek','Tactiek',['Opbouw','Pressing','Omschakeling','Positiespel','Speelwijze','Veldbezetting']],
-  ['score_verloop','Score / verloop',['Voorsprong','Achterstand','Gelijkspel','Strafschoppen','Rode kaart','Blessure']],
-  ['opvallende_momenten','Opvallende momenten',['Doelpunt','Assist','Fout','Wissel','Blessure','Rode kaart','Opvallend positief','Opvallend negatief']],
-  ['teamanalyse','Teamanalyse',['Sterke 1e helft','Sterke 2e helft','Zwakke 1e helft','Zwakke 2e helft','Goede organisatie','Slechte organisatie','Hoog tempo','Laag tempo']]
-];
-const MLF_WEER = ['Droog','Nat','Wind','Kunstgras','Natuurgras','Slecht veld','Goed veld'];
-const matchLiveState = {};
-let _mlfCtx = null;
-let _mlfTm = null;
-
-function _mlfEmptyTeam(){ const o={}; MLF_TEAM_CATS.forEach(c => { o[c[0]] = { chips:[], note:'' }; }); return o; }
-function _mlfEmptyState(){ return { thuis:_mlfEmptyTeam(), uit:_mlfEmptyTeam(), gedeeld:{ weer:{chips:[],note:''}, algemeen:{note:''} } }; }
-function _mlfMigrateOld(prog, st){
-  try {
-    const wn = Array.isArray(prog.wedstrijdnotities) ? prog.wedstrijdnotities.map(w => (w&&w.tekst)||'').filter(Boolean) : [];
-    const old = (wn.join(' \u00b7 ') || (prog.notities||'')).trim();
-    if(old && !st.gedeeld.algemeen.note) st.gedeeld.algemeen.note = old;
-  } catch(_){}
-}
-function _mlfFromDoc(d){
-  const st = _mlfEmptyState();
-  ['thuis','uit'].forEach(team => {
-    if(d[team]) MLF_TEAM_CATS.forEach(c => { const x=d[team][c[0]]; if(x){ st[team][c[0]] = { chips: Array.isArray(x.chips)?x.chips:[], note: x.note||'' }; } });
-  });
-  if(d.gedeeld){ if(d.gedeeld.weer){ st.gedeeld.weer = { chips: Array.isArray(d.gedeeld.weer.chips)?d.gedeeld.weer.chips:[], note: d.gedeeld.weer.note||'' }; } if(d.gedeeld.algemeen){ st.gedeeld.algemeen = { note: d.gedeeld.algemeen.note||'' }; } }
-  return st;
-}
-
-async function openMatchLiveForm(prog){
-  const bd = document.getElementById('mlf-backdrop'); if(!bd || !prog) return;
-  const matchId = prog.id;
-  if(!matchLiveState[matchId]){
-    let seed = _mlfEmptyState();
-    try {
-      const ds = await getDoc(doc(db,'users',currentUser.uid,'live_match_notes', matchId+'_match'));
-      if(ds.exists()) seed = _mlfFromDoc(ds.data()||{}); else _mlfMigrateOld(prog, seed);
-    } catch(_){ _mlfMigrateOld(prog, seed); }
-    matchLiveState[matchId] = seed;
-  }
-  _mlfCtx = { matchId, progId: prog.id, thuis: prog.thuis||'', uit: prog.uit||'' };
-  const st = matchLiveState[matchId];
-
-  const titleEl = document.getElementById('mlf-title'); if(titleEl) titleEl.textContent = (prog.thuis||'?') + ' — ' + (prog.uit||'?');
-  const subEl = document.getElementById('mlf-sub'); if(subEl) subEl.textContent = 'Live wedstrijdnotitie (concept)';
-  const ctxParts = [];
-  if(prog.datum) ctxParts.push(prog.datum + (prog.tijd?' · '+prog.tijd:''));
-  if(prog.veld) ctxParts.push('Veld '+prog.veld); else if(prog.locatie) ctxParts.push(prog.locatie);
-  if(prog.competitie || prog.toernooi) ctxParts.push(prog.competitie||prog.toernooi);
-  if(prog.leeftijd) ctxParts.push(prog.leeftijd);
-  const ctxEl = document.getElementById('mlf-ctx');
-  if(ctxEl) ctxEl.innerHTML = '<div class="mlf-ctx-match">'+escapeHtml((prog.thuis||'?')+' — '+(prog.uit||'?'))+'</div>'+(ctxParts.length?'<div class="mlf-ctx-meta">'+ctxParts.map(escapeHtml).join(' · ')+'</div>':'')+'<div class="mlf-ctx-note">📋 Live concept — definitief rapport maak je na de wedstrijd in Wedstrijden.</div>';
-
-  const renderTeam = (team, teamName) => {
-    return '<div class="mlf-col" data-team="'+team+'"><div class="mlf-team-head mlf-team-'+team+'">'+escapeHtml(teamName||team)+'</div>'+
-      MLF_TEAM_CATS.map(function(c){
-        const cat=c[0], label=c[1], chips=c[2];
-        const cst=(st[team]&&st[team][cat])||{chips:[],note:''};
-        const chipHtml=chips.map(function(w){ const on=(cst.chips||[]).indexOf(w)>=0; return '<button type="button" class="mlf-chip'+(on?' active':'')+'" data-team="'+team+'" data-cat="'+cat+'" data-label="'+escapeHtml(w)+'">'+escapeHtml(w)+'</button>'; }).join('');
-        return '<div class="mlf-cat"><div class="mlf-cat-label">'+label+'</div><div class="mlf-chips">'+chipHtml+'</div><textarea class="mlf-note plf-field-in sh-grow-note" data-team="'+team+'" data-cat="'+cat+'" rows="2" autocomplete="off" placeholder="Notitie...">'+escapeHtml(cst.note||'')+'</textarea></div>';
-      }).join('')+'</div>';
-  };
-  const weerChips = MLF_WEER.map(function(w){ const on=(st.gedeeld.weer.chips||[]).indexOf(w)>=0; return '<button type="button" class="mlf-chip'+(on?' active':'')+'" data-team="gedeeld" data-cat="weer" data-label="'+escapeHtml(w)+'">'+escapeHtml(w)+'</button>'; }).join('');
-  const sharedHtml = '<div class="mlf-shared"><div class="mlf-cat"><div class="mlf-cat-label">Weer / omstandigheden</div><div class="mlf-chips">'+weerChips+'</div><textarea class="mlf-note plf-field-in sh-grow-note" data-team="gedeeld" data-cat="weer" rows="2" autocomplete="off" placeholder="Notitie...">'+escapeHtml(st.gedeeld.weer.note||'')+'</textarea></div>'+
-    '<div class="mlf-cat"><div class="mlf-cat-label">Algemeen</div><textarea class="mlf-note plf-field-in sh-grow-note" data-team="gedeeld" data-cat="algemeen" rows="2" autocomplete="off" placeholder="Overige opmerkingen...">'+escapeHtml(st.gedeeld.algemeen.note||'')+'</textarea></div></div>';
-
-  const tabs = '<div class="mlf-tabs"><button type="button" class="mlf-tab active" data-mlf-tab="thuis">Thuis <span class="mlf-tab-badge" data-badge="thuis"></span></button><button type="button" class="mlf-tab" data-mlf-tab="uit">Uit <span class="mlf-tab-badge" data-badge="uit"></span></button></div>';
-  const body = document.getElementById('mlf-body');
-  if(body){
-    body.className = 'mlf-show-thuis';
-    body.innerHTML = tabs + '<div class="mlf-cols">' + renderTeam('thuis', prog.thuis) + renderTeam('uit', prog.uit) + '</div>' + sharedHtml;
-    if(!body._mlfWired){
-      body._mlfWired = true;
-      body.addEventListener('click', function(e){
-        const chip = e.target.closest('.mlf-chip');
-        if(chip){ _mlfToggleChip(chip); return; }
-        const tab = e.target.closest('.mlf-tab');
-        if(tab){ _mlfSwitchTab(tab.dataset.mlfTab); return; }
-      });
-      body.addEventListener('input', function(e){
-        const n = e.target.closest('.mlf-note'); if(!n) return;
-        _mlfSetNote(n.dataset.team, n.dataset.cat, n.value);
-        clearTimeout(_mlfTm); _mlfTm = setTimeout(function(){ _mlfSync(false); }, 600);
-        _mlfUpdateBadges();
-      });
-      body.addEventListener('focusin', function(e){ const t=e.target; if(t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA')) setTimeout(function(){ try{ t.scrollIntoView({block:'center',behavior:'smooth'}); }catch(_){} },300); });
-    }
-    _mlfUpdateBadges();
-  }
-  const cl=document.getElementById('mlf-close'); if(cl) cl.onclick=function(){ _mlfSync(false); _mlfClose(); };
-  const ca=document.getElementById('mlf-cancel'); if(ca) ca.onclick=function(){ _mlfClose(); };
-  const sv=document.getElementById('mlf-save'); if(sv) sv.onclick=function(){ _mlfSync(true); _mlfClose(); };
-
-  bd.style.display='flex';
-  document.body.style.top='-'+window.scrollY+'px';
-  document.body.classList.add('modal-open');
-}
-window.openMatchLiveForm = openMatchLiveForm;
-
-function _mlfStTeam(team){ const st=matchLiveState[_mlfCtx.matchId]; return team==='gedeeld'?st.gedeeld:st[team]; }
-function _mlfToggleChip(el){
-  if(!_mlfCtx) return;
-  const team=el.dataset.team, cat=el.dataset.cat, label=el.dataset.label;
-  const slot=_mlfStTeam(team)[cat]; if(!slot) return;
-  if(!Array.isArray(slot.chips)) slot.chips=[];
-  const i=slot.chips.indexOf(label);
-  if(i>=0){ slot.chips.splice(i,1); el.classList.remove('active'); } else { slot.chips.push(label); el.classList.add('active'); }
-  clearTimeout(_mlfTm); _mlfTm=setTimeout(function(){ _mlfSync(false); }, 500);
-  _mlfUpdateBadges();
-}
-function _mlfSetNote(team, cat, val){ if(!_mlfCtx) return; const slot=_mlfStTeam(team)[cat]; if(slot) slot.note=val; }
-function _mlfSwitchTab(tab){
-  const body=document.getElementById('mlf-body'); if(!body) return;
-  body.className = (tab==='uit')?'mlf-show-uit':'mlf-show-thuis';
-  body.querySelectorAll('.mlf-tab').forEach(function(t){ t.classList.toggle('active', t.dataset.mlfTab===tab); });
-}
-function _mlfTeamCount(team){
-  const t=_mlfStTeam(team); let n=0; MLF_TEAM_CATS.forEach(function(c){ const s=t[c[0]]; if(s){ n+=(s.chips||[]).length + (s.note?1:0); } }); return n;
-}
-function _mlfUpdateBadges(){
-  try {
-    const body=document.getElementById('mlf-body'); if(!body) return;
-    [['thuis'],['uit']].forEach(function(a){ const team=a[0]; const el=body.querySelector('.mlf-tab-badge[data-badge="'+team+'"]'); if(el){ const n=_mlfTeamCount(team); el.textContent=n?('('+n+')'):''; } });
-  } catch(_){}
-}
-async function _mlfSync(showToast){
-  try {
-    if(!_mlfCtx) return;
-    const matchId=_mlfCtx.matchId;
-    const prog=programmaCache.find(function(p){ return p && p.id===_mlfCtx.progId; }); if(!prog) return;
-    if(typeof _shIsMatchLocked==='function' && _shIsMatchLocked(prog)) return;
-    const st=matchLiveState[matchId];
-    const ref=doc(db,'users',currentUser.uid,'live_match_notes', matchId+'_match');
-    await setDoc(ref, {
-      matchId: matchId, type:'match_report', status:'live',
-      thuis: st.thuis, uit: st.uit, gedeeld: st.gedeeld,
-      matchContext: { thuis: prog.thuis||'', uit: prog.uit||'', datum: prog.datum||'', veld: prog.veld||'', competitie: prog.competitie||prog.toernooi||'' },
-      updatedAt: new Date(), updatedBy: currentUser.uid
-    }, { merge:true });
-    if(showToast && typeof toast==='function') toast('Wedstrijdnotitie opgeslagen ✓');
-  } catch(_){}
-}
-function _mlfClose(){
-  const bd=document.getElementById('mlf-backdrop'); if(bd) bd.style.display='none';
-  const y=parseInt(document.body.style.top||'0')*-1; document.body.classList.remove('modal-open'); document.body.style.top=''; if(y) window.scrollTo(0,y);
-  _mlfCtx=null;
-}
-window._mlfClose=_mlfClose;
-
-/* ============================================================
-   DEEL 2/3 — Live wedstrijdnotities als bron in het wedstrijdrapport.
-   De MatchLiveForm-chips/notities staan in live_match_notes/{id}_match.
-   Bij het openen van het wedstrijdrapport (Verwerken / → Wedstrijdrapport)
-   lezen we die op, stellen er een leesbare tekst uit samen, en:
-     1) vullen het lege "Opmerking"-veld voor;
-     2) tonen een read-only blok "Live wedstrijdnotities" boven het formulier.
-   Puur additief: bestaande concept-/rapporttekst wordt NOOIT overschreven.
-   ============================================================ */
-function _mlfComposeRapportText(d){
-  if(!d) return '';
-  const mc = d.matchContext || {};
-  const cats = (typeof MLF_TEAM_CATS !== 'undefined') ? MLF_TEAM_CATS : [];
-  const lines = [];
-  const teamBlock = (teamKey, teamName) => {
-    const t = d[teamKey]; if(!t) return;
-    const parts = [];
-    cats.forEach(c => {
-      const cat = c[0], label = c[1]; const s = t[cat]; if(!s) return;
-      const chips = Array.isArray(s.chips) ? s.chips : [];
-      const note = (s.note || '').trim();
-      if(!chips.length && !note) return;
-      let line = label + ': ';
-      if(chips.length) line += chips.join(', ');
-      if(note) line += (chips.length ? ' — ' : '') + note;
-      parts.push(line);
-    });
-    if(parts.length){ lines.push('— ' + (teamName || teamKey) + ' —'); parts.forEach(p => lines.push(p)); lines.push(''); }
-  };
-  teamBlock('thuis', mc.thuis);
-  teamBlock('uit', mc.uit);
-  const g = d.gedeeld || {};
-  if(g.weer && ((g.weer.chips && g.weer.chips.length) || (g.weer.note || '').trim())){
-    let l = 'Weer / omstandigheden: ';
-    if(g.weer.chips && g.weer.chips.length) l += g.weer.chips.join(', ');
-    if((g.weer.note || '').trim()) l += ((g.weer.chips && g.weer.chips.length) ? ' — ' : '') + g.weer.note.trim();
-    lines.push(l);
-  }
-  if(g.algemeen && (g.algemeen.note || '').trim()) lines.push('Algemeen: ' + g.algemeen.note.trim());
-  return lines.join('\n').trim();
-}
-
-async function _mlfReadMatchNote(progId){
-  if(!progId || typeof currentUser === 'undefined' || !currentUser || !currentUser.uid) return null;
-  try { const ds = await getDoc(doc(db, 'users', currentUser.uid, 'live_match_notes', progId + '_match')); if(ds.exists()) return ds.data(); } catch(_){}
-  return null;
-}
-async function _mlfInjectRapportPrefill(progId, opts){
-  opts = opts || {};
-  try {
-    const d = await _mlfReadMatchNote(progId);
-    const txt = d ? _mlfComposeRapportText(d) : '';
-    const form = document.getElementById('mreport-form');
-    const opm = document.getElementById('mr-opmerking');
-    if(txt){
-      // 1) Opmerkingveld voorvullen — alleen als nog leeg (niets overschrijven)
-      if(opm && !opm.value.trim()){ opm.value = txt; try { if(typeof _shGrowNote === 'function') _shGrowNote(opm); } catch(_){} }
-      // 2) Read-only blok "Live wedstrijdnotities" boven het formulier
-      if(form && form.parentNode){
-        const old = document.getElementById('mlf-rapport-banner'); if(old) old.remove();
-        const b = document.createElement('div');
-        b.id = 'mlf-rapport-banner';
-        b.className = 'mlf-rapport-banner';
-        b.innerHTML = '<div class="mlf-rb-title">📋 Live wedstrijdnotities</div><pre class="mlf-rb-body">' + escapeHtml(txt) + '</pre><div class="mlf-rb-hint">Deze live-notities zijn als startpunt in de Opmerking gezet. Pas aan en sla op of dien in.</div>';
-        form.parentNode.insertBefore(b, form);
-      }
-      return;
-    }
-    // FIX 1 (B5): geen live-notities. Toon informatieve melding — maar NIET als er
-    // al een concept is (fromConcept) of als de Opmerking al tekst bevat
-    // (bestaand concept / wedstrijdnotitie). Geen foutmelding; puur informatief.
-    if(opts.fromConcept) return;
-    if(opm && opm.value.trim()) return;
-    if(form && form.parentNode){
-      const old = document.getElementById('mlf-rapport-banner'); if(old) old.remove();
-      const b = document.createElement('div');
-      b.id = 'mlf-rapport-banner';
-      b.className = 'mlf-rapport-banner mlf-rb-empty';
-      b.innerHTML = '<div class="mlf-rb-empty-txt">ℹ️ Geen live wedstrijdnotities gevonden voor deze wedstrijd.</div>';
-      form.parentNode.insertBefore(b, form);
-    }
-  } catch(_){}
-}
-window._mlfInjectRapportPrefill = _mlfInjectRapportPrefill;
-
-/* FIX 2 (C1/C2) — match-level live_match_notes mede-canoniek voor de status
-   in "Wedstrijd bewerken". Async upgrade van de "Nog geen rapport"-rij naar
-   "Live wedstrijdnotitie aanwezig" zodra {id}_match inhoud bevat. */
-async function _mlfMaybeUpgradeWrStatus(progId){
-  try {
-    if(!progId) return;
-    const row = document.getElementById('wstr-wr-norow');
-    if(!row) return; // alleen de "nog geen rapport"-staat upgraden
-    const d = await _mlfReadMatchNote(progId);
-    if(!d) return;
-    const txt = _mlfComposeRapportText(d);
-    if(!txt) return; // geen inhoud → "Nog geen rapport" laten staan
-    row.innerHTML = '<span style="font-size:13px;color:var(--text-2);">📋 Live wedstrijdnotitie aanwezig</span>' +
-      '<button type="button" class="wstr-edit-note-action primary" style="margin-left:auto;">→ Wedstrijdrapport</button>';
-    const btn = row.querySelector('button');
-    if(btn) btn.onclick = (e) => {
-      e.preventDefault(); e.stopPropagation();
-      if(typeof _shCloseEditModal === 'function') _shCloseEditModal();
-      if(typeof _shConvertWstrNotitieToRapport === 'function') _shConvertWstrNotitieToRapport(progId, -1);
-      setTimeout(() => { try { _mlfInjectRapportPrefill(progId); } catch(_){} }, 160);
-    };
-  } catch(_){}
-}
-window._mlfMaybeUpgradeWrStatus = _mlfMaybeUpgradeWrStatus;
-
 function _obsClose(){
-  try { window.__obsTriggerAutosave=null; window.__obsCaptureChips=null; } catch(_){}
   const bd = document.getElementById('obs-backdrop');
   if(bd) bd.style.display = 'none';
   // Herstel scroll positie na body.modal-open
@@ -7240,19 +6445,9 @@ async function _obsSubmit(e){
         _d.positie = (document.getElementById('obs-positie')?.value||'').trim();
         _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
         _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
-        // BATCH A — FIX 3: huidig niveau + advies meebewaren zodat ze na heropenen terugkomen
-        _d.huidig_niveau = (document.getElementById('obs-niveau')?.value||'').trim();
-        _d.advies = (document.getElementById('obs-advies')?.value||'').trim();
         const _obsTerCont = document.getElementById('obs-terms');
         const _ti = _obsTerCont ? Array.from(_obsTerCont.querySelectorAll('.obs-term-in')) : Array.from(document.querySelectorAll('.obs-term-in'));
         _d.tekst = (_OBS_TERMS||[]).map(t => { const el = _ti.find(x => x.dataset.term===t); return t+':'+(el&&el.value.trim()?' '+el.value.trim():''); }).join('\n');
-        // DEEL 4: chips + categorie-notities ook flushen bij snel sluiten. De
-        // debounced autosave kan nog niet gevuurd hebben; zonder deze flush gaan
-        // de trefwoord-chips verloren en is na heropenen "niets zichtbaar".
-        try {
-          _d.tags = Array.from(document.querySelectorAll('#obs-trefwoorden .obs-tag[data-rating]')).map(function(el){ return { label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') }; }).filter(function(t){ return t.rating; });
-          var _cnF = {}; document.querySelectorAll('#obs-trefwoorden .obs-cat-note').forEach(function(ta){ var c=ta.dataset.catNote, v=(ta.value||'').trim(); if(c&&v) _cnF[c]=v; }); _d.category_notes = _cnF;
-        } catch(_){}
         _d.modified = Date.now();
         // VEILIGHEIDSLAAG: localStorage backup + Firestore met retry
         if(typeof _obsBackupSaveAndSync === 'function'){
@@ -7283,12 +6478,6 @@ async function _obsSubmit(e){
     const _termsContainerSub = document.getElementById('obs-terms');
     const termIns = _termsContainerSub ? Array.from(_termsContainerSub.querySelectorAll('.obs-term-in')) : Array.from(document.querySelectorAll('.obs-term-in'));
     const tekst = _OBS_TERMS.map(t => { const el = termIns.find(x => x.dataset.term === t); return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : ''); }).join('\n');
-    // Chip-migratie: trefwoord-chips uitlezen -> tags[]
-    const _obsTagEls = document.querySelectorAll('#obs-trefwoorden .obs-tag[data-rating]');
-    const _obsTags = Array.from(_obsTagEls).map(el => ({ label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') })).filter(t => t.rating);
-    // Onderdeel 1: notitie per categorie
-    const _obsCatNotes = {};
-    document.querySelectorAll('#obs-trefwoorden .obs-cat-note').forEach(ta => { const c = ta.dataset.catNote; const v = (ta.value||'').trim(); if(c && v) _obsCatNotes[c] = v; });
     // Split naam into voornaam/achternaam
     let voornaam = '', achternaam = '';
     if(naam){
@@ -7311,8 +6500,6 @@ async function _obsSubmit(e){
       huidig_niveau: niveau,
       potentieel_niveau: '',
       advies: advies,
-      tags: _obsTags,
-      category_notes: _obsCatNotes,
       rapport_type: 'observatie',
       concept: false,
       status: 'observatie',
@@ -7368,12 +6555,13 @@ async function _obsSubmit(e){
     if(typeof toast === 'function') toast('Observatie opgeslagen ✓');
     // Direct re-render
     if(typeof renderActiveScouting === 'function') renderActiveScouting();
-    // Onderdeel 2: keuze-modal — observatie bewaren of er een rapport van maken.
-    const _obsAfterSaveNav = () => {
+    setTimeout(() => {
       _obsClose();
+      // Na submit: terug naar juiste context
       const _obsReturnMatch = window.__shWstrEditReturn || null;
       window.__shWstrEditReturn = null;
       if(_obsReturnMatch === 'pm-view'){
+        // Vanuit programma matches-dropdown → herrender matches en blijf op pagina
         if(typeof renderActiveScouting === 'function') renderActiveScouting();
         if(typeof renderMatches === 'function') setTimeout(renderMatches, 80);
       } else if(_obsReturnMatch && typeof _shOpenEditModal === 'function'){
@@ -7381,6 +6569,7 @@ async function _obsSubmit(e){
         go('wedstrijden');
         setTimeout(() => { try { _shOpenEditModal(_obsReturnMatch); } catch(_){} }, 180);
       } else {
+        // Terug naar wedstrijden + match modal heropenen
         if(typeof renderActiveScouting === 'function') renderActiveScouting();
         const _retM = window.__shCurrentEditMatch || null;
         go('wedstrijden');
@@ -7388,11 +6577,7 @@ async function _obsSubmit(e){
           setTimeout(() => { try { _shOpenEditModal(_retM); } catch(_){} }, 220);
         }
       }
-    };
-    // DEEL 7: OBS blijft OBS — GEEN keuze-modal "observatie bewaren of omzetten
-    // naar rapport". Opslaan = observatie opslaan + terug naar wedstrijdcontext.
-    // Een spelersrapport maak je bewust via de aparte rapportflow.
-    setTimeout(_obsAfterSaveNav, 400);
+    }, 600);
   } catch(err){
     console.error('obs submit error', err);
     if(typeof toast === 'function') toast('Fout bij opslaan', true);
@@ -7421,9 +6606,6 @@ async function _obsSubmit(e){
             _d.positie = (document.getElementById('obs-positie')?.value||'').trim();
             _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
             _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
-        // BATCH A — FIX 3: huidig niveau + advies meebewaren zodat ze na heropenen terugkomen
-        _d.huidig_niveau = (document.getElementById('obs-niveau')?.value||'').trim();
-        _d.advies = (document.getElementById('obs-advies')?.value||'').trim();
             const _obsTcBd = document.getElementById('obs-terms');
             const _ti = _obsTcBd ? Array.from(_obsTcBd.querySelectorAll('.obs-term-in')) : Array.from(document.querySelectorAll('.obs-term-in'));
             _d.tekst = (_OBS_TERMS||[]).map(t => { const el = _ti.find(x => x.dataset.term===t); return t+':'+(el&&el.value.trim()?' '+el.value.trim():''); }).join('\n');
@@ -7505,7 +6687,7 @@ Houd elke waarde onder 120 tekens.`;
         });
         if(hint) hint.textContent = `✓ ${filled_count} term${filled_count===1?'':'s'} aangevuld`;
       } catch(err){
-        if(hint) hint.textContent = 'ℹ AI-functie nog niet beschikbaar';
+        if(hint) hint.textContent = '⚠ AI niet beschikbaar';
         console.warn('Gemini obs error:', err);
       } finally {
         btn.disabled = false;
@@ -7583,13 +6765,13 @@ function renderActiveScouting(){
   // s35bb: skip rerender als gebruiker actief in een snel-notitie-form aan het typen is
   // (anders gooit elke autosave de open form weg en verdwijnt het keyboard)
   try {
-    const act = document.activeElement;
-    // 1) Open snel-notitie-form met focus -> niet herrenderen (keyboard/state behouden)
     const openForm = wrap.querySelector('.sa-snel-form[style*="display: block"], .sa-snel-form[style*="display:block"]');
-    if(openForm && act && openForm.contains(act)){ return; }
-    // 2) Open gekoppelde-speler tile met focus -> niet herrenderen. Voorkomt remount
-    //    (collapse) + her-compose/parse die waarden naar het verkeerde veld schuift.
-    if(act && wrap.contains(act) && act.closest && act.closest('.sa-tile')){ return; }
+    if(openForm){
+      const act = document.activeElement;
+      if(act && openForm.contains(act)){
+        return; // bewaar de form-state
+      }
+    }
   } catch(_){}
   if(typeof programmaCache === 'undefined' || !Array.isArray(programmaCache) || programmaCache.length === 0){
     wrap.style.display = 'none'; wrap.innerHTML = ''; return;
@@ -7680,20 +6862,12 @@ function renderActiveScouting(){
           const m = tekst.match(re);
           if(!m || !m[1]) return '';
           const v = m[1].trim();
-          // shift-junk: waarde begint met een ANDERE term-naam ("wendbaarheid: ..") -> leeg
-          if(_TILE_TERMS.some(function(tt){ return new RegExp('^' + tt + '\\s*:', 'i').test(v); })) return '';
           if(_TILE_TERMS.indexOf(v.toLowerCase().replace(/:\s*$/, '')) >= 0) return '';
           return v;
         };
-        // Per-veld opslag is leidend (sn.fields). Legacy notities zonder fields:
-        // val terug op de parse (met shift-junk filter) tot de eerste verse save.
-        const _tileFieldVal = (term) => {
-          if(existingSn && existingSn.fields && typeof existingSn.fields[term] === 'string') return existingSn.fields[term];
-          return _parseTileTerm(snelTekst, term);
-        };
         const panelHtml = `
           <div class="sa-tile-terms">
-            ${_TILE_TERMS.map(t => `<div class="sa-snel-term-row"><span class="sa-snel-term-label">${t}</span><input class="sa-tile-term-in" data-term="${t}" type="text" placeholder="${escapeHtml(_TILE_TERM_PH[t]||'')}" value="${escapeHtml(_tileFieldVal(t))}" /></div>`).join('')}
+            ${_TILE_TERMS.map(t => `<div class="sa-snel-term-row"><span class="sa-snel-term-label">${t}</span><input class="sa-tile-term-in" data-term="${t}" type="text" placeholder="${escapeHtml(_TILE_TERM_PH[t]||'')}" value="${escapeHtml(_parseTileTerm(snelTekst, t))}" /></div>`).join('')}
           </div>
           <div class="sa-tile-save-status"></div>
           <div class="sa-tile-acts-row">
@@ -7710,7 +6884,7 @@ function renderActiveScouting(){
           <div class="sa-tile-obs-header">
             <div class="sa-tile-obs-naam">${escapeHtml(naam)}</div>
             ${meta ? `<div class="sa-tile-obs-sub">${escapeHtml(meta)}</div>` : ''}
-            <button type="button" class="sa-tile-obs-close" data-tile-act="close" aria-label="Sluiten" title="Sluiten">×</button>
+            <button type="button" class="sa-tile-obs-close" data-tile-act="close">×</button>
           </div>
           <div class="sa-tile-panel">
             ${panelHtml}
@@ -7805,6 +6979,16 @@ function renderActiveScouting(){
                   <div class="sa-obs-draft-naam">${_nm}</div>
                   ${_sub ? `<div class="sa-obs-draft-sub">${_sub}</div>` : ''}
                 </div>
+                <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+                  <span class="sa-obs-draft-arrow">Bewerken →</span>
+                  <button class="btn btn-xs sa-obs-indien-btn"
+                    data-obs-indien-progid="${escapeHtml(prog.id)}"
+                    data-obs-indien-snid="${escapeHtml(sn.id||'')}"
+                    style="background:var(--green);border-color:var(--green);color:#fff;white-space:nowrap;"
+                    title="Direct indienen naar spelersdatabase">
+                    Indienen ✓
+                  </button>
+                </div>
               </div>`;
             }).join('')}
           </div>`;
@@ -7836,12 +7020,7 @@ function renderActiveScouting(){
           <!-- s35bg: onderaan-instructie weg (heading is nu close-trigger) -->
         </div>
         ${(()=>{
-          // DEEL 6: legacy gele "Opgeslagen notities"-sectie niet meer renderen
-          // als primaire UI. Data blijft bestaan (snelnotities) en komt via de
-          // moderne secties (Spelers / Opgevallen spelers / Wedstrijdnotitie).
-          return '';
-          // eslint-disable-next-line no-unreachable
-          // s92 (legacy): toon opgeslagen snelnotities van ongekoppelde spelers
+          // s92: toon opgeslagen snelnotities van ongekoppelde spelers
           const _linkedKeys = new Set((prog.spelers||[]).map(s => s && s.id).filter(Boolean));
           const _unsaved = (prog.snelnotities||[]).filter(sn => sn && sn.naam && !_linkedKeys.has(sn.spelerKey) && !(sn.rapport_type === 'observatie'));
           if(!_unsaved.length) return '';
@@ -8051,7 +7230,7 @@ function renderActiveScouting(){
         // Focus op eerste term-input
         const firstTerm = form.querySelector('.sa-snel-term-input');
         if(firstTerm) firstTerm.focus();
-        try { form.scrollIntoView({behavior:'smooth', block:'nearest'}); } catch(_){}
+        try { form.scrollIntoView({behavior:'smooth', block:'center'}); } catch(_){}
       } catch(_){}
     }, 60);
   }
@@ -8125,12 +7304,6 @@ function renderActiveScouting(){
       // tile zelf: toggle uitklappen — alleen via naam-balk, niet via panel-inhoud
       if(e.target.matches('input, textarea, select')) return;
       if(e.target.closest('.sa-tile-panel')) return;  // klik in content panel → niet sluiten
-      // PlayerLiveForm v2: open de nieuwe stabiele live-modal i.p.v. het oude inline paneel.
-      try {
-        const _plfProg = programmaCache.find(p => p.id === tile.dataset.progId);
-        const _plfSp = _plfProg && (_plfProg.spelers||[])[parseInt(tile.dataset.spIdx,10)];
-        if(_plfProg && _plfSp && typeof openPlayerLiveForm === 'function'){ openPlayerLiveForm(_plfProg, _plfSp); return; }
-      } catch(_){}
       const isOpen = tile.classList.contains('open');
       // sluit andere tiles in dezelfde sa-card
       const card = tile.closest('.sa-card');
@@ -8154,10 +7327,7 @@ function renderActiveScouting(){
           let saveTm;
           const saveStatus = tile.querySelector('.sa-tile-save-status');
           const _TERMS3 = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
-          // Lees ALTIJD de huidige DOM-inputs (niet de closure-refs) -> geen stale/detached nodes.
-          const _liveIns = () => Array.from(tile.querySelectorAll('.sa-tile-term-in'));
-          const composeTileTekst = () => { const ins=_liveIns(); return _TERMS3.map(t => { const el = ins.find(x => x.dataset.term === t); return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : ''); }).join('\n'); };
-          const composeTileFields = () => { const ins=_liveIns(); const o={}; _TERMS3.forEach(t => { const el = ins.find(x => x.dataset.term === t); o[t] = el ? el.value.trim() : ''; }); return o; };
+          const composeTileTekst = () => _TERMS3.map(t => { const el = tileTermIns.find(x => x.dataset.term === t); return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : ''); }).join('\n');
           const doTileSave = async () => {
             const pid3 = tile.dataset.progId;
             const spi3 = parseInt(tile.dataset.spIdx, 10);
@@ -8173,13 +7343,11 @@ function renderActiveScouting(){
             if(!Array.isArray(pr3.snelnotities)) pr3.snelnotities = [];
             let sn3 = pr3.snelnotities.find(s => s && s.spelerKey === sp3.id);
             const tekst3 = composeTileTekst();
-            const fields3 = composeTileFields();
             if(!sn3){
-              sn3 = { id: 'sn_'+(sp3.id||Date.now()), naam: sp3.naam||[sp3.voornaam,sp3.achternaam].filter(Boolean).join(' ')||'', rugnummer: sp3.rugnummer||'', positie: sp3.positie||'', tekst: tekst3, fields: fields3, spelerKey: sp3.id, created: Date.now() };
+              sn3 = { id: 'sn_'+(sp3.id||Date.now()), naam: sp3.naam||[sp3.voornaam,sp3.achternaam].filter(Boolean).join(' ')||'', rugnummer: sp3.rugnummer||'', positie: sp3.positie||'', tekst: tekst3, spelerKey: sp3.id, created: Date.now() };
               pr3.snelnotities.push(sn3);
             } else {
               sn3.tekst = tekst3;
-              sn3.fields = fields3;
             }
             pr3.modified = Date.now();
             try {
@@ -8507,7 +7675,7 @@ function renderActiveScouting(){
           if(sn && typeof form.__shFillFromSn === 'function'){
             form.__shFillFromSn(sn);
           }
-          try { form.scrollIntoView({behavior:'smooth', block:'nearest'}); } catch(_){}
+          try { form.scrollIntoView({behavior:'smooth', block:'center'}); } catch(_){}
         }
         if(naamIn) naamIn.focus();
       } else if(act === 'add-observatie'){
@@ -8524,8 +7692,6 @@ function renderActiveScouting(){
           openObservatieForm(_obsProg, _obsDraft);
         }
       } else if(act === 'add-snel-wstr'){
-        // MatchLiveForm: nieuwe wedstrijdnotitie-modal i.p.v. plat tekstvak.
-        try { const _mlfProg = programmaCache.find(p => p.id === progId); if(_mlfProg && typeof openMatchLiveForm === 'function'){ openMatchLiveForm(_mlfProg); return; } } catch(_){}
         // s35be: snel wedstrijdnotitie (vrije tekst — tactiek/score/weer).
         // s35bm: trigger-toggle verwijderd, no-op bij re-click.
         const card = btn.closest('.sa-card');
@@ -8641,7 +7807,7 @@ function renderActiveScouting(){
         const triggerBtn = card.querySelector('.sa-trigger-wstr[data-progid="' + progId + '"]');
         if(triggerBtn) triggerBtn.click();
         if(wn && typeof form.__shFillFromWn === 'function') form.__shFillFromWn(wn);
-        try { form.scrollIntoView({behavior:'smooth', block:'nearest'}); } catch(_){}
+        try { form.scrollIntoView({behavior:'smooth', block:'center'}); } catch(_){}
       } else if(act === 'del-snel-wstr'){
         const idx = parseInt(btn.dataset.wnidx, 10);
         const prog = programmaCache.find(p => p.id === progId);
@@ -8754,22 +7920,18 @@ function renderTodayMatches(){
   // s35ba: filter active wedstrijd (bezig of warmup) — die staat al boven in geel
   // s91: verberg ook wedstrijden waarvan het window al voorbij is (afgelopen)
   const __nowF = new Date();
-  // STAP C: LIVE blijft eruit (staat in de live-sectie). Splits in KOMEND + GESPEELD.
-  const _komend = [], _gespeeld = [];
-  programmaCache.forEach(p => {
-    if(!p || p.datum !== today) return;
-    if(typeof isMatchInWindow === 'function' && isMatchInWindow(p, __nowF)) return; // live -> niet hier
-    let _fin = false;
-    if(typeof getMatchWindow === 'function'){ const w = getMatchWindow(p); if(w && w.end < __nowF) _fin = true; }
-    (_fin ? _gespeeld : _komend).push(p);
+  const items = programmaCache.filter(p => {
+    if(!p || p.datum !== today) return false;
+    if(typeof isMatchInWindow === 'function' && isMatchInWindow(p, __nowF)) return false;
+    // Verberg afgelopen wedstrijden: window bestaat én is al voorbij
+    if(typeof getMatchWindow === 'function'){
+      const w = getMatchWindow(p);
+      if(w && w.end < __nowF) return false;
+    }
+    return true;
   });
-  if(_komend.length === 0 && _gespeeld.length === 0){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
-  const _byTijd = (a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99');
-  _komend.sort(_byTijd); _gespeeld.sort(_byTijd);
-  const _komendCount = _komend.length;
-  const _gespeeldIds = new Set(_gespeeld.map(p => p.id));
-  const items = _komend.concat(_gespeeld);
-  let _sepDone = false;
+  if(items.length === 0){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  items.sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
   const players = (typeof loadPlayers === 'function') ? loadPlayers() : [];
   const expandedId = wrap.dataset.expandedId || '';
 
@@ -8864,10 +8026,8 @@ function renderTodayMatches(){
         </div>
       `;
     }
-    const _isGespeeld = _gespeeldIds.has(it.id);
-    const _sep = (_isGespeeld && !_sepDone) ? (_sepDone = true, '<div class="today-sep-gespeeld">Gespeeld</div>') : '';
-    return _sep + `
-      <div class="today-match-card${isOpen ? ' open' : ''}${_isGespeeld ? ' today-match-gespeeld' : ''}" data-prog-id="${it.id}">
+    return `
+      <div class="today-match-card${isOpen ? ' open' : ''}" data-prog-id="${it.id}">
         <div class="today-match-row1">
           <div class="today-match-teams">${teams}</div>
           <div class="today-match-time">${escapeHtml(tijd)}</div>
@@ -8891,7 +8051,7 @@ function renderTodayMatches(){
       <div class="today-matches-head" data-toggle-today="1">
         <div class="today-matches-title">Wedstrijden vandaag</div>
         <div class="today-matches-right">
-          <div class="today-matches-count">${_komendCount} ingepland</div>
+          <div class="today-matches-count">${items.length} ingepland</div>
           ${chev}
         </div>
       </div>
@@ -9137,14 +8297,9 @@ function renderVandaagBanner(){
   }
   const now = new Date();
   const today = [now.getFullYear(), String(now.getMonth()+1).padStart(2,'0'), String(now.getDate()).padStart(2,'0')].join('-');
-  // STAP C/optie B: toon ALLEEN KOMENDE wedstrijden van vandaag.
-  // LIVE -> staat in de live-sectie; GESPEELD -> staat gedempt in "Wedstrijden vandaag".
-  const items = programmaCache.filter(p => {
-    if(!(p && p.datum === today && (p.thuis || p.uit))) return false;
-    if(typeof isMatchInWindow === 'function' && isMatchInWindow(p, now)) return false;      // live eruit
-    if(typeof getMatchWindow === 'function'){ const w = getMatchWindow(p); if(w && w.end < now) return false; } // gespeeld eruit
-    return true;
-  });
+  // Wedstrijden vandaag met minstens 1 speler
+  // s19: toon elk programma-item van vandaag (ook zonder spelers)
+  const items = programmaCache.filter(p => p && p.datum === today && (p.thuis || p.uit));
   if(items.length === 0){ wrap.innerHTML = ''; wrap.style.display = 'none'; return; }
 
   items.sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
@@ -9504,11 +8659,7 @@ function renderDashboard(){
 
   // Obs: gebruik wedstrijd datum als fallback voor sortering
   const _getPlayerDate = p => p.datum || p.wedstrijd_datum || (p.wedstrijd&&p.wedstrijd.datum) || '';
-  // DEEL 10: gekoppelde-speler concepten (nog geen echt rapport) niet als losse
-  // dashboardnotitie tonen. Echte observaties en ingediende rapporten blijven;
-  // alleen concept-drafts worden hier verborgen tot ze ingediend zijn.
-  const _isConceptRec = p => (typeof _shPlayerIsConcept === 'function') ? _shPlayerIsConcept(p) : !!p.concept;
-  const recent = [...players].filter(p => !_isConceptRec(p)).sort((a,b)=> new Date(_getPlayerDate(b)||0) - new Date(_getPlayerDate(a)||0)).slice(0,8);
+  const recent = [...players].sort((a,b)=> new Date(_getPlayerDate(b)||0) - new Date(_getPlayerDate(a)||0)).slice(0,8);
   const list = $('#recent-list');
   list.innerHTML = recent.map(p => {
     const isObs = p.rapport_type === 'observatie';
@@ -10620,16 +9771,12 @@ function applyFilters(){
       if(new Date(p.datum).getTime() < perCutoff) return false;
     }
     if(q){
-      const _fs = _shFuzzyPlayerScore(q, p);
-      if(_fs < 50) return false;
-      p.__fuzzy = _fs;
-    } else { p.__fuzzy = 0; }
+      const hay = `${p.naam||''} ${p.club||''} ${p.elftal||deriveElftalFromReport(p)||''} ${positionLabel(p.positie)}`.toLowerCase();
+      if(!hay.includes(q)) return false;
+    }
     return true;
   });
 
-  if(q){
-    filtered.sort((a,b)=> (b.__fuzzy||0) - (a.__fuzzy||0));
-  } else
   filtered.sort((a,b)=>{
     let av = a[sortKey], bv = b[sortKey];
     if(sortKey === 'datum'){
@@ -10749,14 +9896,7 @@ function applyFilters(){
   // s35ao: draftHtml naar eigen slot boven filters
   { const slot = document.getElementById('db-draft-slot'); if(slot) slot.innerHTML = draftHtml; }
   if(!filtered.length){
-    const _sugg = q ? _shFuzzySuggestion(q, players) : '';
-    if(q){
-      wrap.innerHTML = '<div class="empty-state sh-empty"><div class="sh-empty-ic">🔍</div><div class="sh-empty-t">Geen spelers gevonden</div><div class="sh-empty-s">voor &quot;' + escapeHtml(q) + '&quot;' + (_sugg ? ' \u2014 bedoelde je <a href="#" class="sh-didyoumean" data-q="' + escapeAttr(_sugg) + '">' + escapeHtml(_sugg) + '</a>?' : '') + '</div></div>';
-      const _dym = wrap.querySelector('.sh-didyoumean');
-      if(_dym){ _dym.addEventListener('click', function(ev){ ev.preventDefault(); const s = document.getElementById('filter-search'); if(s){ s.value = _dym.dataset.q; _dbPage = 1; applyFilters(); } }); }
-    } else {
-      wrap.innerHTML = '<div class="empty-state sh-empty"><div class="sh-empty-ic">👤</div><div class="sh-empty-t">Nog geen spelers in je database</div><div class="sh-empty-s">Spelers worden automatisch toegevoegd zodra je ze observeert of een rapport maakt.</div></div>';
-    }
+    wrap.innerHTML = '<div class="empty-state"><div class="empty-icon">○</div><div>Geen spelers gevonden.</div></div>';
     wireDraftCard();
     return;
   }
@@ -10800,7 +9940,7 @@ function applyFilters(){
             <td class="db-expand-col">${_expandCell}</td>
             <td>
               <div style="display:flex; align-items:center; gap:10px;">
-                <div class="recent-avatar ${p.rapport_type==='observatie'?'avatar-obs':''}" style="width:30px;height:30px;font-size:11px;">${_shAvatarInner(p)}</div>
+                <div class="recent-avatar ${p.rapport_type==='observatie'?'avatar-obs':''}" style="width:30px;height:30px;font-size:11px;">${initials(p.naam)}</div>
                 <div>
                   <div style="font-weight:600;">${escapeHtml(p.naam)}${p.rapport_type==='observatie'?'<span class="db-obs-badge">OBS</span>':''}${p.concept ? '<span class="db-concept-badge">● concept</span>' : ''}</div>
                   <div style="font-size:11px; color:var(--text-3);">${p.been||''}</div>
@@ -11129,7 +10269,6 @@ let cmpSearchQuery = '';
 let dbCheckedIds = [];
 // s35bs: extra filter-state (compare + edit-mode state vervallen)
 let matchStatusFilter = "";  // "", "verwerkt", "toernooi", "info"
-let _matchOpvallendOnly = false;  // M10: filter op wedstrijden met opgevallen spelers
 // s35br: wedstrijd-verwerken persistent state + helpers
 const SH_VERWERK_KEY = "sh_wedstrijd_verwerkt_v1";
 function _shLoadVerwerkt(){
@@ -11516,10 +10655,6 @@ function _shOpenEditModal(m){
 
   const _cacheSpelers = (typeof loadPlayers === 'function' ? loadPlayers() : []).filter(p => {
     if(!p || !p.id) return false;
-    // Bug C: toernooi-export-concepten WEL tonen in hun eigen entry (date+thuis matcht
-    // de wedstrijd al). Alleen blokkeren als er geen thuis is om op te scopen
-    // (voorkomt het cross-match-lek zonder de bewerk-/indien-functie te blokkeren).
-    if(p.fromTournamentId && !((p.wedstrijd && p.wedstrijd.thuis) || p.wedstrijd_thuis)) return false;
     const wd = p.wedstrijd || {};
     const pdatum = wd.datum || p.wedstrijd_datum || '';
     const pthuis = (wd.thuis || p.wedstrijd_thuis || '').toLowerCase().trim();
@@ -11535,8 +10670,7 @@ function _shOpenEditModal(m){
 
   // Merge: begin met players uit m.players, voeg cacheSpelers toe die nog niet in de lijst zitten
   const _seenIds = new Set(players.map(p => p && p.id).filter(Boolean));
-  // Toernooi-afgeleide spelers (fromTournamentId) horen niet in een reguliere wedstrijd
-  const _allSpelers = [...players.filter(p => !(p && p.fromTournamentId))];
+  const _allSpelers = [...players];
   _cacheSpelers.forEach(p => { if(!_seenIds.has(p.id)){ _allSpelers.push(p); _seenIds.add(p.id); } });
 
   // SNS (snel-notities / openstaande obs)
@@ -11586,7 +10720,7 @@ function _shOpenEditModal(m){
       <span class="wstr-type-dot obs"></span>
       <span class="wstr-player-naam">${escapeHtml(naam)}</span>
       <span class="wstr-type-label observatie">OBS</span>
-      <span class="wstr-status-label ingediend">Ingediend</span>
+      <span class="wstr-status-label ingediend">✓ Ingediend</span>
     </div>`;
   });
 
@@ -11624,14 +10758,14 @@ function _shOpenEditModal(m){
         <span class="wstr-type-dot ${isObs?'obs':'rapport'}"></span>
         <span class="wstr-player-naam">${escapeHtml(naam)}</span>
         ${typeLabel}
-        <button type="button" class="wstr-edit-mini-btn ${isObs?'obs':'primary'} wstr-mini-tap" data-edit-player="${escapeHtml(pl.id)}">${isObs?'Bewerken':('Rapport voor '+escapeHtml((naam||'').split(/\s+/)[0]||'speler'))}</button>
+        <button type="button" class="wstr-edit-mini-btn primary" data-edit-player="${escapeHtml(pl.id)}">→ Indienen</button>
       </div>`;
     } else {
       html += `<div class="wstr-player-row" data-open-player-db="${escapeHtml(pl.id)}" style="cursor:pointer;">
         <span class="wstr-type-dot ${isObs?'obs':'rapport'}"></span>
         <span class="wstr-player-naam">${escapeHtml(naam)}</span>
         ${typeLabel}
-        <span class="wstr-status-label ingediend">Ingediend</span>
+        <span class="wstr-status-label ingediend">✓ Ingediend</span>
       </div>`;
     }
   });
@@ -11647,7 +10781,7 @@ function _shOpenEditModal(m){
       <span class="wstr-type-dot obs"></span>
       <span class="wstr-player-naam">${num}${escapeHtml(naam)}</span>
       <span class="wstr-type-label observatie">OBS</span>
-      <button type="button" class="wstr-edit-mini-btn obs" data-edit-snel-obs="${escapeHtml(progId)}" data-edit-snel-obs-idx="${snIdx}">Bewerken</button>
+      <button type="button" class="wstr-edit-mini-btn obs" data-edit-snel-obs="${escapeHtml(progId)}" data-edit-snel-obs-idx="${snIdx}">→ Indienen</button>
     </div>`;
   });
 
@@ -11668,27 +10802,24 @@ function _shOpenEditModal(m){
     </div>`;
 
   if(wrIngProg){
-    html += `<div class="wstr-player-row wstr-wr-done" style="background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.28);border-radius:8px;padding:10px 12px;">
-      <span style="color:#34d399;font-size:13px;font-weight:600;">📋 Wedstrijdrapport ingediend</span>
+    html += `<div class="wstr-player-row" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:8px;padding:10px 12px;">
+      <span style="color:#3b82f6;font-size:13px;font-weight:600;">📋 Wedstrijdrapport</span>
+      <span class="wstr-status-label" style="background:rgba(59,130,246,.15);color:#3b82f6;border-color:rgba(59,130,246,.3);">✓ Ingediend</span>
       <button type="button" class="wstr-edit-note-action" data-wr-open-modal="${escapeHtml(wrIngProg.id)}" style="margin-left:auto;">Bekijk →</button>
     </div>`;
   } else if(wrConceptProg){
     html += `<div class="wstr-player-row">
-      <span style="font-size:13px;color:var(--text-2);">📝 Concept wedstrijdrapport aanwezig</span>
+      <span style="font-size:13px;color:var(--text-2);">📝 Concept aanwezig</span>
       <button type="button" class="wstr-edit-note-action primary" data-wr-open-modal="${escapeHtml(wrConceptProg.id)}" style="margin-left:auto;">→ Wedstrijdrapport</button>
     </div>`;
   } else {
-    // FIX 2 (C1/C2): id zodat _mlfMaybeUpgradeWrStatus deze rij async kan upgraden
-    // naar "Live wedstrijdnotitie aanwezig" als {id}_match inhoud bevat.
-    html += `<div class="wstr-player-row" id="wstr-wr-norow">
+    html += `<div class="wstr-player-row">
       <span style="font-size:12px;color:var(--text-3);">Nog geen rapport</span>
       ${_firstProgId2 ? `<button type="button" class="wstr-edit-note-action primary" data-edit-wstr-prog="${escapeHtml(_firstProgId2)}" data-edit-wstr-idx="-1" style="margin-left:auto;">→ Wedstrijdrapport</button>` : ''}
     </div>`;
   }
   html += `</div>`;
   bodyEl.innerHTML = html;
-  // FIX 2 (C1/C2): live_match_notes meetellen — upgrade "Nog geen rapport"-status
-  try { if(_firstProgId2 && typeof _mlfMaybeUpgradeWrStatus === 'function') _mlfMaybeUpgradeWrStatus(_firstProgId2); } catch(_){}
 
   // Footer-acties (preserveer class-namen zodat bestaande handlers werken)
   const footEl = document.getElementById("wstr-edit-foot");
@@ -11797,8 +10928,6 @@ function _shOpenEditModal(m){
       _shCloseEditModal();
       // s35bu: open Wedstrijdrapport-modal met prefill uit (snel-)wedstrijdnotitie
       _shConvertWstrNotitieToRapport(progId, wnIdx);
-      // DEEL 2/3: live wedstrijdnotities (chips/categorieën) ook meenemen
-      setTimeout(() => { try { if(typeof _mlfInjectRapportPrefill === 'function') _mlfInjectRapportPrefill(progId); } catch(_){} }, 160);
     });
   });
   // s35dg Fase F: "Open wedstrijdrapport"-knop op concept-record
@@ -11835,9 +10964,6 @@ function _shOpenEditModal(m){
               const tekst = wr.tekst || '';
               if(tekst) opm.value = tekst;
             }
-            // DEEL 2/3: live wedstrijdnotities (chips/categorieën) als bron meenemen.
-            // fromConcept: hier bestaat al een concept → geen "geen notities"-melding.
-            if(typeof _mlfInjectRapportPrefill === 'function') _mlfInjectRapportPrefill(progId, { fromConcept: true });
           } catch(_){}
         }, 60);
       } else {
@@ -12267,10 +11393,7 @@ function cmpPlayerById(id){
   if(!p) return null;
   try {
     const reports = reportsForPlayer(id);
-    if(!reports.length){
-      const est = _shObsEstimatePlayer(p);
-      return est || p;
-    }
+    if(!reports.length) return p;
     if(reports.length >= 2) return buildAvgPlayer(p);
     return buildPlayerFromReport(p, reports[0]);
   } catch(_){ return p; }
@@ -12337,7 +11460,7 @@ function _elfBuildTeamMap(players){
     // Voor obs: gebruik wedstrijd_leeftijd als elftal fallback
     const _elfFallback = p.wedstrijd_leeftijd || (p.wedstrijd && p.wedstrijd.leeftijd) || '';
     const elftal = (p.elftal || deriveElftalFromReport(p) || _elfFallback || '').trim();
-    const key = _shNormTeamKey(club) + '\x00' + _shNormTeamKey(elftal);
+    const key = club + '\x00' + elftal;
     if(!teamMap.has(key)) teamMap.set(key, { club, elftal, players: [] });
     teamMap.get(key).players.push(p);
   });
@@ -12404,9 +11527,8 @@ function _elfOpenTeam(club, elftal){
   window._elfOpenTeam = _elfOpenTeam;
   const ps = loadPlayers().filter(p => {
     const pc = (p.club||'').trim();
-    const _ef = p.wedstrijd_leeftijd || (p.wedstrijd && p.wedstrijd.leeftijd) || '';
-    const pe = (p.elftal||deriveElftalFromReport(p)||_ef||'').trim();
-    return _shNormTeamKey(pc) === _shNormTeamKey(club) && _shNormTeamKey(pe) === _shNormTeamKey(elftal);
+    const pe = (p.elftal||deriveElftalFromReport(p)||'').trim();
+    return pc === club && pe === elftal;
   });
   _elfShowPlayerTiles(club, elftal, ps);
 };
@@ -12419,7 +11541,7 @@ window._elfOpenUnassigned = function(){
 function _elfShowPlayerTiles(club, elftal, players){
   const resultsEl = document.getElementById('elf-results');
   if(!resultsEl) return;
-  const NIVEAU = { A:'Champions League', B:'Top Eredivisie', C:'Eredivisie', D:'KKD' };
+  const NIVEAU = { A:'Toptalent', B:'Belofte', C:'Gemiddeld', D:'Beperkt' };
 
   let html = `<div class="elf-back-bar">
   <button class="elf-back-btn" onclick="window._elfBackToTiles()">&#8592; Terug</button>
@@ -12428,7 +11550,6 @@ function _elfShowPlayerTiles(club, elftal, players){
     ${club ? `<div class="elf-back-club">${escapeHtml(club)}</div>` : ''}
   </div>
   <div class="elf-back-count">${players.length} speler${players.length===1?'':'s'}</div>
-  <button class="btn btn-sm elf-analyse-btn" id="elf-analyse-team">📊 Analyseer dit team</button>
 </div>`;
 
   html += '<div class="elf-player-tiles-grid">';
@@ -12460,13 +11581,6 @@ function _elfShowPlayerTiles(club, elftal, players){
       if(pid && typeof openDetail === 'function') openDetail(pid);
     });
   });
-  const _anaBtn = resultsEl.querySelector('#elf-analyse-team');
-  if(_anaBtn){
-    _anaBtn.addEventListener('click', () => {
-      window.__shPitchPreselect = { label: (elftal || club || 'team'), ids: players.map(p => p.id) };
-      if(typeof go === 'function') go('pitch');
-    });
-  }
 }
 
 window._elfBackToTiles = function(){
@@ -12476,7 +11590,7 @@ window._elfBackToTiles = function(){
   if(resultsEl) _elfShowTeamTiles(loadPlayers(), resultsEl, q);
 };
 
-/* C1: _elfDoSearch (ongebruikt) verwijderd. */
+function _elfDoSearch(query){ _elfShowTeamTiles(loadPlayers(), document.getElementById('elf-results'), query); }
 window.renderElftallen = renderElftallen;
 window.openDetail = openDetail;
 
@@ -13051,7 +12165,7 @@ function renderCompareSelected(){
           <div class="compare-slot-inner">
             <div class="compare-slot-front">
               <div class="compare-slot-num">#${i+1}</div>
-              <div class="compare-slot-avatar">${_shAvatarInner(p)}</div>
+              <div class="compare-slot-avatar">${escapeHtml(initialsStr)}</div>
               <div class="compare-slot-name">${escapeHtml(p.naam||'?')}</div>
               <div class="compare-slot-meta">${escapeHtml(meta||'\u2014')}</div>
               <div class="compare-slot-grade ${grade}">${escapeHtml(grade)}</div>
@@ -13132,16 +12246,6 @@ function renderCompareResults(){
   empty.style.display = 'none';
   results.style.display = '';
   const players = cmpSelectedIds.map(cmpPlayerById).filter(Boolean);
-  if(!document.getElementById('cmp-to-pitch')){
-    const _tp = document.createElement('button');
-    _tp.id = 'cmp-to-pitch'; _tp.type = 'button'; _tp.className = 'btn btn-sm cmp-to-pitch-btn';
-    _tp.innerHTML = '\u2795 Voeg toe aan opstelling';
-    _tp.addEventListener('click', () => {
-      window.__shPitchPreselect = { label: 'Vergelijking', ids: cmpSelectedIds.slice() };
-      if(typeof go === 'function') go('pitch');
-    });
-    results.insertBefore(_tp, results.firstChild);
-  }
   renderCompareGauges(players);
   renderCompareScatter(players);
   renderCmpHeadToHead(players);
@@ -13735,7 +12839,7 @@ function renderCompareRadar(players){
       if(!v && c.key === 'grit_huidig') v = cmpGradeNum(b.drit_huidig);
       return v;
     });
-    return { col, targets, dashed: !!p._obsEstimate };
+    return { col, targets };
   });
 
   function drawShape(progress, pData, eased){
@@ -13753,9 +12857,7 @@ function renderCompareRadar(players){
     ctx.strokeStyle = col.c;
     ctx.lineWidth = 2;
     ctx.globalAlpha = Math.min(1, eased + 0.1);
-    if(pData.dashed) ctx.setLineDash([7,5]);
     ctx.stroke();
-    ctx.setLineDash([]);
     ctx.globalAlpha = 1;
     if(eased > 0.8){
       points.forEach(pt => {
@@ -13829,7 +12931,7 @@ function renderCompareRadar(players){
   // Legend
   legend.innerHTML = players.map((p, i) => {
     const col = cmpColorFor(i);
-    return `<span class="compare-legend-item ${p._obsEstimate?'cmp-legend-est':''}"><span class="compare-legend-dot" style="background:${col.c}"></span><span class="compare-legend-name">${escapeHtml(p.naam||'?')}</span>${_shCmpSourceLabel(p)}${_shCmpTrendLabel(p)}</span>`;
+    return `<span class="compare-legend-item"><span class="compare-legend-dot" style="background:${col.c}"></span>${escapeHtml(p.naam||'?')}</span>`;
   }).join('');
 
   // Interactieve tooltip op hover
@@ -13858,7 +12960,7 @@ function renderCompareRadar(players){
         const firstName = (pl.naam||'?').split(/\s+/)[0];
         return `<div class="cmp-radar-tt-row">
           <span class="cmp-radar-tt-dot" style="background:${col.c}"></span>
-          <span class="cmp-radar-tt-name">${escapeHtml(firstName)}${pl._obsEstimate?' <span class="cmp-tt-est" title="Geschat uit observatie-chips">~</span>':''}</span>
+          <span class="cmp-radar-tt-name">${escapeHtml(firstName)}</span>
           <span class="cmp-radar-tt-grade ${g2||''}">${escapeHtml(g2||'–')}</span>
         </div>`;
       }).join('');
@@ -13910,7 +13012,7 @@ function renderCompareBars(players){
         <div class="compare-bar-row">
           <div class="compare-bar-name" title="${escapeAttr(p.naam||'')}">${escapeHtml(firstName)}</div>
           <div class="compare-bar-track">
-            <div class="compare-bar-fill bar-init${isWinner?' is-winner':''}${p._obsEstimate?' cmp-est':''}" data-target-w="${pct}" style="width:0;--player-color:${col.c};--player-color-2:${col.c2}"></div>
+            <div class="compare-bar-fill bar-init${isWinner?' is-winner':''}" data-target-w="${pct}" style="width:0;--player-color:${col.c};--player-color-2:${col.c2}"></div>
           </div>
           <div class="compare-bar-grade">${escapeHtml(display)}</div>
         </div>`;
@@ -14180,31 +13282,12 @@ function renderDetailObsOverview(p){
     } catch(_){}
   }
 
-  // Onderdeel 4 — chips + notitie per categorie tonen (indien aanwezig)
-  let _obsTagsHtml = '';
-  {
-    const _cn = (p.category_notes && typeof p.category_notes === 'object') ? p.category_notes : {};
-    const _byCat = {};
-    (Array.isArray(p.tags)?p.tags:[]).forEach(function(t){ const c=String(t.category||'').toLowerCase(); if(!c||!t.label) return; (_byCat[c]=_byCat[c]||[]).push((t.rating==='good'?'🟢':t.rating==='average'?'🟠':t.rating==='poor'?'🔴':'⚪')+' '+t.label); });
-    const _allCats = [];
-    Object.keys(_byCat).forEach(function(c){ if(_allCats.indexOf(c)<0) _allCats.push(c); });
-    Object.keys(_cn).forEach(function(c){ if(_cn[c] && _allCats.indexOf(c)<0) _allCats.push(c); });
-    if(_allCats.length){
-      _obsTagsHtml = '<div class="obs-tags-summary" style="margin-bottom:12px;">' + _allCats.map(function(c){
-        const chips = (_byCat[c]||[]).join('  ');
-        const note = (_cn[c]||'').trim();
-        return '<div class="bnd-cat" style="margin-bottom:6px;"><span class="bnd-cat-label" style="font-weight:600;text-transform:uppercase;font-size:11px;opacity:.7;margin-right:6px;">'+escapeHtml(c)+'</span>'+escapeHtml(chips)+(note?'<div style="font-size:12px;color:var(--text-2,#9aa8bd);margin-top:2px;">'+escapeHtml(note)+'</div>':'')+'</div>';
-      }).join('') + '</div>';
-    }
-  }
-  // Bij chip-observaties alleen de ingevulde criteria-rijen tonen (geen lege rijen)
-  const _critRows = rows.filter(function(r){ return _obsTagsHtml ? !!r.val : true; }).map(function(r){
+  const rowsHtml=rows.map(function(r){
     return '<div class="obs-crit-row'+(r.val?'':' obs-crit-row-empty')+'">'
       +'<div class="obs-crit-label">'+escapeHtml(r.label)+'</div>'
       +'<div class="obs-crit-val">'+(r.val?escapeHtml(r.val):'<span class="obs-crit-empty">—</span>')+'</div>'
       +'</div>';
   }).join('');
-  const rowsHtml = _obsTagsHtml ? _obsTagsHtml : _critRows;
 
   const overigHtml=overig.length
     ?`<div class="obs-overig">${escapeHtml(overig.join(' '))}</div>`:'';
@@ -14220,8 +13303,6 @@ function renderDetailObsOverview(p){
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><polyline points="15 18 9 12 15 6"/></svg>
         Terug naar spelers
       </button>
-      <button class="btn btn-sm" onclick="_nieuweObsVoorSpeler('${p.id}')" title="Nieuwe observatie van deze speler">+ Nieuwe observatie</button>
-      <button class="btn btn-sm btn-primary" onclick="_obsToRapport('${p.id}')" title="Maak een rapport op basis van deze observatie">📝 Promoot naar rapport</button>
       ${cmpBtn}
       <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
         <button class="btn btn-sm" id="dtl-obs-to-rapport-top" style="background:rgba(168,85,247,.15);color:#c084fc;border-color:rgba(168,85,247,.4);font-weight:600;">
@@ -14510,7 +13591,7 @@ function renderDetailOverview(p){
       ${mode === 'single-report' ? `<span class="dtl-avg-pill">Eén rapport</span>` : ''}
     </div>
     <div class="detail-header">
-      <button type="button" class="detail-avatar sh-avatar-btn" data-pid="${escapeAttr(p.id)}" title="Foto toevoegen of wijzigen" aria-label="Spelerfoto">${_shAvatarInner(p)}<span class="sh-avatar-cam" aria-hidden="true">📷</span></button>
+      <div class="detail-avatar">${initials(p.naam)}</div>
       <div style="flex:1;">
         <div class="detail-name">
           ${escapeHtml(p.naam)}
@@ -14698,14 +13779,7 @@ function renderDetailOverview(p){
   const _dtlDelTop = document.getElementById('dtl-del-top');
   if(_dtlDelTop) _dtlDelTop.addEventListener('click', async () => {
     const naam = (p.naam || '').trim() || 'onbekende speler';
-    // K4: zelfde typed-confirm-drempel als de onderste verwijderknop
-    const _ok = await showTypedDeleteConfirm({
-      title: 'Rapport verwijderen?',
-      body: `Het rapport van <b>${naam.replace(/</g,'&lt;')}</b> wordt permanent verwijderd. Deze actie kan niet ongedaan worden gemaakt.`,
-      label: 'Type de naam van de speler om te bevestigen:',
-      confirmWord: naam
-    });
-    if(!_ok) return;
+    if(!confirm('Rapport van ' + naam + ' verwijderen? Dit kan niet ongedaan worden gemaakt.')) return;
     try { await deletePlayer(p.id); go(previousViewBeforePlayer || 'database'); if(typeof toast==='function') toast('Rapport verwijderd'); }
     catch(err){ if(typeof toast==='function') toast('Verwijderen mislukt', true); }
   });
@@ -15288,14 +14362,14 @@ function renderDetailTrend(p){
   const wrap = document.getElementById('dtl-trend-card');
   if(!wrap) return;
   const allReports = reportsForPlayer(p.id || p._id || '');
-  if(allReports.length < 2){ wrap.innerHTML = '<div class="card compare-card dtl-trend-card" style="margin-top:16px;"><div class="compare-card-title"><span>📈 Vormtrend</span></div><div style="padding:14px 4px;color:var(--text-3);font-size:13px;">Onvoldoende data voor trend \u2014 minimaal 2 rapporten nodig.</div></div>'; return; }
+  if(allReports.length < 2){ wrap.innerHTML = ''; return; }
 
   // Sort oldest → newest
   const sorted = [...allReports].sort((a,b) => {
     const da = a.datum || a.wedstrijd?.datum || '';
     const db = b.datum || b.wedstrijd?.datum || '';
     return da < db ? -1 : da > db ? 1 : 0;
-  }).slice(-10);
+  });
 
   const gradeColor = { A:'var(--grade-a)', B:'var(--grade-b)', C:'var(--grade-c)', D:'var(--grade-d)' };
   const gradeScore = { A:4, B:3, C:2, D:1 };
@@ -15375,7 +14449,7 @@ function renderDetailTrend(p){
   wrap.innerHTML = `
     <div class="card compare-card dtl-trend-card" style="margin-top:16px;">
       <div class="compare-card-title">
-        <span>📈 Vormtrend</span>
+        <span>Ontwikkeltrend</span>
         <span class="compare-card-sub">${n} rapporten · huidig- en potentieelniveau over tijd</span>
       </div>
       <div class="dtl-trend-legend">
@@ -15394,7 +14468,6 @@ function renderDetailTrend(p){
           ${xLabels}
         </svg>
       </div>
-      ${_shCriteriaSparklines(sorted)}
     </div>`;
 }
 
@@ -15463,7 +14536,7 @@ function renderDetailBars(p){
     D:'linear-gradient(135deg,#dc2626,#ef4444)',
   };
   const GCOL = {A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#ef4444'};
-  wrap.innerHTML = _shReportTagsSummary(p) + `<div class="dtl-crit-grid">${CMP_CRITERIA.map((crit,i) => {
+  wrap.innerHTML = `<div class="dtl-crit-grid">${CMP_CRITERIA.map((crit,i) => {
     let g=b[crit.key]; if(!g&&crit.key==='grit_huidig')g=b.drit_huidig;
     const tekst=b[crit.key.replace('_huidig','_tekst')]||'';
     const fg=GRAD[g]||'linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.03))';
@@ -15563,7 +14636,7 @@ function renderDetailFullReport(p){
   $('#player-view-body').innerHTML = `
     ${backBtnHtml}
     <div class="detail-header">
-      <button type="button" class="detail-avatar sh-avatar-btn" data-pid="${escapeAttr(p.id)}" title="Foto toevoegen of wijzigen" aria-label="Spelerfoto">${_shAvatarInner(p)}<span class="sh-avatar-cam" aria-hidden="true">📷</span></button>
+      <div class="detail-avatar">${initials(p.naam)}</div>
       <div style="flex:1;">
         <div class="detail-name">${escapeHtml(p.naam)}</div>
         <div class="detail-meta">
@@ -15960,14 +15033,11 @@ function resetReportForm(){
   refreshPositionDropdowns();
   $$('.grade-pick').forEach(b=>b.classList.remove('selected'));
   $$('.grade-picker').forEach(p=>p.dataset.value='');
-  try { document.querySelectorAll('#f-advies-chips .adv-chip').forEach(b => b.classList.remove('active')); } catch(_){}
-  try { if(!window.__shObsPrefilling) window.__shObsLink = null; } catch(_){}
   // s35x: scouting-context loslaten zodat autosave terugvalt op localStorage
   window.__shScoutingCtx = null;
   setDirty(false);
   // s35ca-3: nieuw rapport is per definitie unlocked
   if(typeof __shSetReportLocked === 'function') __shSetReportLocked(false);
-  try { _injectReportTrefwoorden([]); } catch(_){}
 }
 
 // s35ca-3: read-only modus voor ingediende rapporten. Zet alle inputs/
@@ -16110,7 +15180,6 @@ function loadIntoForm(p){
   if($('#f-leeftijd-opm')) $('#f-leeftijd-opm').value = p.leeftijd_opmerking || '';
   $('#f-methode').value = p.methode || 'Live';
   $('#f-advies').value = p.advies || '';
-  if(typeof _repSyncAdviesChips === 'function') _repSyncAdviesChips();
   $('#f-wapen').value = p.wapen || '';
   $('#f-notities').value = p.notities || p.opmerkingen || ''; // s35dh fix: concept-spelers gebruiken opmerkingen
   if($('#f-niet-gerapporteerd')) $('#f-niet-gerapporteerd').checked = !!p.niet_gerapporteerd;
@@ -16167,7 +15236,6 @@ function loadIntoForm(p){
   if(typeof __shSetReportLocked === 'function'){
     __shSetReportLocked(p && p.concept === false);
   }
-  try { _injectReportTrefwoorden((p && p.rapport_tags) || []); } catch(_){}
 }
 function updateSliderDisplay(inputId, valId, val){
   const el = document.getElementById(valId);
@@ -16201,13 +15269,7 @@ async function submitReport(e){
     toast('Geef huidig én potentieel niveau op', true);
     return;
   }
-  // H5: advies verplicht bij Indienen (chips vervangen de HTML5 required)
-  if(__mode === 'submit' && !$('#f-advies').value){
-    toast('Kies een advies', true);
-    return;
-  }
   const isEdit = !!$('#f-id').value;
-  const _existRep = (isEdit && typeof loadPlayers === 'function') ? (loadPlayers().find(x => x && x.id === id) || {}) : {};
   const player = {
     id,
     naam,
@@ -16236,8 +15298,6 @@ async function submitReport(e){
     advies: $('#f-advies').value,
     wapen: $('#f-wapen').value.trim(),
     notities: $('#f-notities').value.trim(),
-    rapport_tags: (function(){ var g = document.querySelector('#view-report .report-trefwoorden'); if(g) return _shReadReportChips(); return (window.__shObsLink && window.__shObsLink.tags) || _existRep.rapport_tags || []; })(),
-    ...((window.__shObsLink && window.__shObsLink.id) ? { fromObservationId: window.__shObsLink.id } : (_existRep.fromObservationId ? { fromObservationId: _existRep.fromObservationId } : {})),
     wedstrijd: {
       datum: $('#f-w-datum').value,
       thuis: $('#f-w-thuis').value.trim(),
@@ -16355,14 +15415,11 @@ function aggregateMatches(players){
     if(!datum || (!thuis && !uit)) return;
     const ageHome = extractAge(thuis);
     const ageAway = extractAge(uit);
-    const lftFlat = (w.leeftijd || p.wedstrijd_leeftijd || '').trim();
-    const age = ageHome || ageAway || lftFlat || '';
-    const isToern = !!(w.toernooi || p.fromTournamentId);
+    const age = ageHome || ageAway || '';
     const key = [datum, thuis.toLowerCase(), uit.toLowerCase()].join('|');
     if(!map.has(key)){
       map.set(key, {
         datum, thuis, uit, age,
-        toernooi: isToern, toernooi_naam: (w.toernooi_naam || p.bron || ''),
         uitslag: (w.uitslag || '').trim(),
         opstelling: (w.opstelling || ''),
         players: []
@@ -16371,12 +15428,10 @@ function aggregateMatches(players){
     const entry = map.get(key);
     if(!entry.uitslag && (w.uitslag||'').trim()) entry.uitslag = w.uitslag.trim();
     if(!entry.age && age) entry.age = age;
-    if(isToern){ entry.toernooi = true; if(!entry.toernooi_naam) entry.toernooi_naam = (w.toernooi_naam || p.bron || ''); }
     // Dedupliceer op id
     if(!entry.players.some(x => x.id === p.id)){
       entry.players.push({
         id: p.id,
-        is_opvallend: !!p.is_opvallend,
         naam: p.naam || '—',
         club: p.club || '',
         positie: p.positie || '',
@@ -16498,7 +15553,6 @@ function renderMatches(){
   const _setText = (id, n) => { const el = document.getElementById(id); if(el) el.textContent = n; };
   _setText('m-stat-total', _statTotal);
   _setText('m-stat-verwerkt', _statVerwerkt);
-  _setText('m-stat-nog', _statNogVerwerken);
 
   // Filters
   const search = ($('#match-search').value || '').toLowerCase().trim();
@@ -16534,11 +15588,9 @@ function renderMatches(){
       { id: 'nog-verwerken', label: 'Nog te verwerken',count: _statNogVerwerken },
       { id: 'verwerkt',      label: 'Verwerkt',        count: _statVerwerkt }
     ];
-    const _statOpvallend = matches.filter(m => Array.isArray(m.players) && m.players.some(pl => pl && pl.is_opvallend)).length;
     statusChipsHost.innerHTML = statuses.map(s =>
       `<button type="button" class="m-chip${matchStatusFilter===s.id?' active':''}" data-status-chip="${s.id}">${escapeHtml(s.label)} <span class="m-chip-count">${s.count}</span></button>`
-    ).join('') +
-      `<button type="button" class="m-chip${_matchOpvallendOnly?' active':''}" data-star-chip="1" title="Alleen wedstrijden met opgevallen spelers">⭐ Opgevallen <span class="m-chip-count">${_statOpvallend}</span></button>`;
+    ).join('');
   }
 
   // Apply filters
@@ -16546,7 +15598,8 @@ function renderMatches(){
     matches = matches.filter(m =>
       m.thuis.toLowerCase().includes(search) ||
       m.uit.toLowerCase().includes(search) ||
-      (m.age || '').toLowerCase().includes(search)
+      (m.age || '').toLowerCase().includes(search) ||
+      (m.opmerking || '').toLowerCase().includes(search)
     );
   }
   if(ageFilter){
@@ -16557,10 +15610,6 @@ function renderMatches(){
     matches = matches.filter(m => m.kind === 'aggregated');
   } else if(matchStatusFilter === 'nog-verwerken'){
     matches = matches.filter(m => (m.kind === 'aggregated' || m.kind === 'programma') && !shIsWedstrijdVerwerkt(_shMatchKey(m)));
-  }
-  // M10: alleen wedstrijden met minstens één opgevallen speler
-  if(_matchOpvallendOnly){
-    matches = matches.filter(m => Array.isArray(m.players) && m.players.some(pl => pl && pl.is_opvallend));
   }
 
   // Sort
@@ -16645,14 +15694,16 @@ function renderMatches(){
       let _dropRows = '';
       // Spelersrapporten
       if(_spelers.length > 0 || _unlinkedSns.length > 0 || _extraPlayers.length > 0){
-        _dropRows += `<div class="pm-section-hdr">GEKOPPELDE SPELERS (${_spelers.length})</div>`;
+        _dropRows += `<div class="pm-section-hdr">Spelersrapporten</div>`;
         // Ingediende observaties/rapporten uit playersCache
         if(_extraPlayers.length > 0){
           _dropRows += _extraPlayers.map(p => {
             const isConcept = typeof _shPlayerIsConcept === 'function' ? _shPlayerIsConcept(p) : false;
-            const statusBadge = '';
+            const statusBadge = isConcept
+              ? `<span style="font-size:10px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3);border-radius:4px;padding:1px 7px;font-weight:600;">Concept</span>`
+              : `<span style="font-size:10px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:1px 7px;font-weight:600;">✓ Ingediend</span>`;
             const posLabel = typeof positionLabel === 'function' ? (positionLabel(p.positie)||p.positie||'') : (p.positie||'');
-            return `<div class="pm-item-row pm-row-click${isConcept?'':' submitted-glow-row'}" data-player-id="${escapeHtml(p.id)}">
+            return `<div class="pm-item-row">
               <div class="pm-item-info" style="flex:1;">
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <span class="pm-item-name" style="cursor:pointer;" data-player-id="${escapeHtml(p.id)}">${escapeHtml(p.naam||'?')}</span>
@@ -16673,8 +15724,12 @@ function renderMatches(){
           const naam = sp.naam||[sp.voornaam,sp.achternaam].filter(Boolean).join(' ')||'?';
           const sn = _sns.find(s => s && s.spelerKey === sp.id);
           const prev = sn && sn.tekst ? escapeHtml(sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' \u00b7 ').trim().slice(0,60)) : '';
-          const statusBadge = '';
-          return `<div class="pm-item-row pm-row-click${isVerwerkt?' submitted-glow-row':''}" data-pm-rapport="${escapeHtml(m.progId)}" data-pm-sp-id="${escapeHtml(sp.id)}">
+          const statusBadge = isVerwerkt
+            ? `<span style="font-size:10px;background:rgba(34,197,94,.15);color:#22c55e;border:1px solid rgba(34,197,94,.3);border-radius:4px;padding:1px 7px;font-weight:600;">✓ Ingediend</span>`
+            : concept
+              ? `<span style="font-size:10px;background:rgba(245,158,11,.15);color:#f59e0b;border:1px solid rgba(245,158,11,.3);border-radius:4px;padding:1px 7px;font-weight:600;">Concept</span>`
+              : '';
+          return `<div class="pm-item-row">
             <div class="pm-item-info" style="flex:1;">
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 <span class="pm-item-name" style="cursor:pointer;" data-player-id="${concept ? escapeHtml(concept.id) : ''}">${escapeHtml(naam)}${sn&&sn.is_opvallend?' \u2b50':''}</span>
@@ -16692,10 +15747,10 @@ function renderMatches(){
           </div>`;
         }).join('');
         if(_unlinkedSns.length > 0){
-          _dropRows += `<div class="pm-section-hdr">OPGEVALLEN SPELERS (${_unlinkedSns.length})</div>`;
+          _dropRows += `<div class="pm-section-hdr pm-section-sub">Opgevallen spelers (${_unlinkedSns.length})</div>`;
           _dropRows += _unlinkedSns.map(sn => {
             const prev = sn.tekst ? escapeHtml(sn.tekst.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' \u00b7 ').trim().slice(0,60)) : '';
-            return `<div class="pm-item-row pm-row-click" data-pm-sn-obs="${escapeHtml(m.progId)}" data-pm-sn-id="${escapeHtml(sn.id||'')}">
+            return `<div class="pm-item-row">
               <div class="pm-item-info">
                 <span class="pm-item-name">${escapeHtml(sn.naam||'?')}${sn.is_opvallend?' \u2b50':''}</span>
                 ${prev ? `<div class="pm-item-preview">${prev}</div>` : ''}
@@ -16707,35 +15762,25 @@ function renderMatches(){
           }).join('');
         }
       }
-      // SECTIE 1: WEDSTRIJDNOTITIE (bovenaan)
+      // Wedstrijdrapport — compacte weergave (geen textarea)
       const _wstrOpmerking = (_wstr && _wstr.opmerking) ? _wstr.opmerking : ((_wstr && _wstr.tekst) ? _wstr.tekst : '');
-      let _wstrSec = '';
       if(_wstrVerwerkt){
-        _wstrSec = `<div class="pm-section-hdr submitted-glow-row">WEDSTRIJDNOTITIE</div>
-        <div class="pm-wstr-inline pm-row-click" data-pm-wstr-readonly="${escapeHtml(m.progId)}" style="border-radius:7px;padding:10px 12px;display:flex;align-items:center;">
-          <span style="font-size:12.5px;color:var(--text-2,#9aa3b7);">Wedstrijdnotitie bekijken</span><span class="pm-row-chev">›</span>
+        _dropRows += `<div class="pm-section-hdr" style="color:#3b82f6;">Wedstrijdrapport</div>
+        <div class="pm-wstr-inline" style="background:rgba(59,130,246,.08);border:1px solid rgba(59,130,246,.2);border-radius:7px;padding:8px 12px;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:11px;font-weight:700;color:#3b82f6;">✓ Ingediend</span>
+            <button type="button" class="pm-item-link" data-pm-wstr-readonly="${escapeHtml(m.progId)}" style="font-size:12px;margin-left:auto;">Bekijk →</button>
+          </div>
         </div>`;
       } else {
-        _wstrSec = `<div class="pm-section-hdr">WEDSTRIJDNOTITIE</div>
-        <div class="pm-wstr-inline pm-row-click" data-pm-wstr-rapport="${escapeHtml(m.progId)}" style="border-radius:7px;padding:10px 12px;display:flex;align-items:center;">
-          <span style="font-size:12.5px;color:var(--text-2,#9aa3b7);">Concept openen</span><span class="pm-row-chev">›</span>
+        _dropRows += `<div class="pm-section-hdr">Wedstrijdrapport</div>
+        <div class="pm-wstr-inline">
+          <button type="button" class="wstr-edit-note-action primary" data-pm-wstr-rapport="${escapeHtml(m.progId)}" style="margin:0;">→ Wedstrijdrapport</button>
         </div>`;
       }
-      _dropRows = _wstrSec + _dropRows;
       const _chevP = `<span class="match-chevron pm-chev"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;
-      // M12: compacte post-wedstrijd progress-regel
-      const _spDoneM12 = _spelers.filter(sp => { const c = (typeof findSlotConcept==='function')?findSlotConcept(m.progId, sp.id):null; return c && !_shPlayerIsConcept(c); }).length;
-      const _openNamesM12 = _spelers.filter(sp => { const c = (typeof findSlotConcept==='function')?findSlotConcept(m.progId, sp.id):null; return !(c && !_shPlayerIsConcept(c)); }).map(sp => sp.naam || [sp.voornaam,sp.achternaam].filter(Boolean).join(' ') || '?');
-      const _hasItemsM12 = _spelers.length > 0 || _wstrVerwerkt || _sns.some(sn => sn && sn.naam);
-      const _mProg = _hasItemsM12
-        ? `<div class="pm-progress" title="${_openNamesM12.length ? 'Nog open: ' + escapeHtml(_openNamesM12.join(', ')) : 'Alles afgerond'}">`
-          + (_spelers.length ? `${_spDoneM12}/${_spelers.length} spelers ${_spDoneM12===_spelers.length?'\u2705':'\u2b1c'}` : 'Geen spelers')
-          + ` \u00b7 Wedstrijdrapport ${_wstrVerwerkt?'\u2705':'\u2b1c'}`
-          + (_allVerwerkt ? ' \u00b7 Verwerkt \u2705' : '')
-          + `</div>`
-        : '';
       html += `
-        <div class="match-card pm-card${_allVerwerkt?' submitted-glow':''}" data-prog-match-id="${escapeHtml(m.progId)}" data-match-key="${escapeHtml(_shKeyP)}">
+        <div class="match-card pm-card" data-prog-match-id="${escapeHtml(m.progId)}" data-match-key="${escapeHtml(_shKeyP)}">
           <div class="match-date pm-toggle">
             <div class="match-date-day">${d.day}</div>
             <div class="match-date-month">${d.month}</div>
@@ -16747,7 +15792,7 @@ function renderMatches(){
               <span class="match-vs">\u2014</span>
               <span class="match-team-away">${escapeHtml(_uitF)}</span>
               ${_progP && _progP.leeftijd ? `<span class="match-age-badge" style="margin-left:6px;">${escapeHtml(_progP.leeftijd)}</span>` : ''}
-              ${_chevP}
+              ${_allVerwerkt ? '<span class="pm-done-badge pm-done-full">✓ Ingediend</span>' : _chevP}
             </div>
             ${_progP && _progP.tijd ? `<div class="match-meta"><span class="match-players-count">${escapeHtml(_progP.tijd)}</span></div>` : ''}
           </div>
@@ -16789,7 +15834,7 @@ function renderMatches(){
       const _plNotities = (pl.notities_raw || pl.notities || pl.opmerkingen || '').trim();
       const _plNoteSnippet = _plNotities ? escapeHtml(_plNotities.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' · ').trim().slice(0,80)) + (_plNotities.length > 80 ? '…' : '') : '';
       return `
-        <button type="button" class="match-dropdown-row${isConcept?'':' submitted-glow-row'}" data-player-id="${escapeHtml(pl.id)}">
+        <button type="button" class="match-dropdown-row" data-player-id="${escapeHtml(pl.id)}">
           <span class="match-dropdown-avatar">${escapeHtml(initials || '?')}</span>
           <span class="match-dropdown-info">
             <span class="match-dropdown-name">${escapeHtml(pl.naam || '—')}${conceptBadge}</span>
@@ -16818,12 +15863,10 @@ function renderMatches(){
           </div>
           <div class="match-teams match-toggle">
             <div class="match-teams-row">
-              ${m.toernooi
-                ? `<span class="match-team-home">🏆 ${escapeHtml(m.toernooi_naam||'Toernooi')} — ${thuisClean}${m.age?` · ${escapeHtml(m.age)}`:''}</span>`
-                : `<span class="match-team-home">${thuisClean}</span>
+              <span class="match-team-home">${thuisClean}</span>
               ${scoreHtml}
               <span class="match-team-away">${uitClean}</span>
-              ${ageBadge}`}
+              ${ageBadge}
               ${chevron}
             </div>
             <div class="match-meta">
@@ -16942,20 +15985,15 @@ function renderMatches(){
       const r = matchReportsCache.find(x => x.id === btn.dataset.reportId);
       if(!r) return;
       go('report');
-      // C2: geen hardcoded timeout meer — vul via requestAnimationFrame en herhaal
-      // enkele frames zodat een (late) form-reset onze prefill niet wist.
-      const _apply = () => {
+      setTimeout(()=>{
         try {
           $('#f-w-datum').value = r.datum || '';
           $('#f-w-thuis').value = r.thuis || '';
           $('#f-w-uit').value = r.uit || '';
-          if($('#f-w-context')) $('#f-w-context').value = r.opmerking || '';
+          $('#f-w-context').value = r.opmerking || '';
           if(r.leeftijd) $('#f-leeftijd').value = r.leeftijd;
         } catch(_){}
-      };
-      let _tries = 0;
-      const _tick = () => { _apply(); if(++_tries < 6) requestAnimationFrame(_tick); };
-      requestAnimationFrame(_tick);
+      }, 80);
     });
   });
   list.querySelectorAll('.match-report-delete').forEach(btn => {
@@ -17076,14 +16114,11 @@ function renderMatches(){
         const { player } = (typeof findPlayerMatch === 'function') ? findPlayerMatch(sp) : { player: null };
         const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(prog.id, sp.id) : null;
         const isVerwerkt = concept && !_shPlayerIsConcept(concept);
-        if(isVerwerkt && concept){
-          // A4: bewerken na indienen -> expliciete waarschuwing, daarna bewerkbaar openen
-          if(confirm('\u26a0\ufe0f Let op\n\nJe gaat een ingediend rapport bewerken. Weet je dit zeker?')){
-            if(typeof openScoutingPlayerForm === 'function') openScoutingPlayerForm(prog, sp, player, concept);
-          }
+        if(isVerwerkt && concept && typeof openDetail === 'function'){
+          // Ingediend → profiel openen (alleen lezen)
+          openDetail(concept.id);
         } else if(typeof openScoutingPlayerForm === 'function'){
           openScoutingPlayerForm(prog, sp, player, concept);
-          try { if(typeof _liveToReport==='function') _liveToReport(prog.id, sp.id); } catch(_){}
         }
         return;
       }
@@ -17122,20 +16157,6 @@ function renderMatches(){
         }
         return;
       }
-      // A3: opgevallen speler -> omzetten naar spelersrapport (chips geprefilld)
-      const btnConvert = e.target.closest('[data-pm-convert]');
-      if(btnConvert){
-        e.stopPropagation();
-        const _cpid = btnConvert.dataset.pmConvert, _csn = btnConvert.dataset.pmConvertSn;
-        const _cprog = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === _cpid) : null;
-        const _csnObj = _cprog && (_cprog.snelnotities||[]).find(s => s && s.id === _csn);
-        if(!_csnObj){ if(typeof toast==='function') toast('Observatie niet gevonden', true); return; }
-        const _cdup = (typeof playersCache!=='undefined' && Array.isArray(playersCache)) ? playersCache.some(p => p && p.concept===false && (p.naam||'').toLowerCase()===String(_csnObj.naam||'').toLowerCase()) : false;
-        if(_cdup && !confirm('Er bestaat al een rapport voor deze speler.\n\nToch doorgaan en een nieuw rapport maken?')) return;
-        const _cobs = { id:null, naam:_csnObj.naam||'', club:_csnObj.club||'', positie:_csnObj.positie||'', elftal:_csnObj.elftal||'', tags: Array.isArray(_csnObj.tags)?_csnObj.tags:[], category_notes: _csnObj.fields||{}, wedstrijd:{ datum:_cprog.datum||'', thuis:_cprog.thuis||'', uit:_cprog.uit||'' } };
-        if(typeof _obsToRapport==='function') _obsToRapport(_cobs);
-        return;
-      }
       // s93: wedstrijdrapport knop
       const btnWstr = e.target.closest('[data-pm-wstr]');
       if(btnWstr){
@@ -17163,7 +16184,7 @@ function renderMatches(){
         return;
       }
       // s93: profiel-knop (verwerkte spelers) + klikbare spelernaam
-      const btnLink = e.target.closest('.pm-item-link[data-player-id], .pm-item-name[data-player-id], .pm-row-click[data-player-id]');
+      const btnLink = e.target.closest('.pm-item-link[data-player-id], .pm-item-name[data-player-id]');
       if(btnLink){
         e.stopPropagation();
         const pid = btnLink.dataset.playerId;
@@ -17243,8 +16264,6 @@ function renderMatches(){
   if(statusHost && !statusHost.dataset.wired){
     statusHost.dataset.wired = '1';
     statusHost.addEventListener('click', (e) => {
-      const star = e.target.closest('[data-star-chip]');
-      if(star){ _matchOpvallendOnly = !_matchOpvallendOnly; renderMatches(); return; }
       const b = e.target.closest('[data-status-chip]');
       if(!b) return;
       matchStatusFilter = b.dataset.statusChip || '';
@@ -17271,7 +16290,6 @@ function renderPitch(){
     currentAnalysisId = null;
     renderAnalysesList();
   }
-  try { _shRenderPitchPreselectBanner(); } catch(_){}
 }
 
 function renderAnalysesList(){
@@ -17523,8 +16541,6 @@ function renderPitchInfo(){
         ? linkedKandidaatPlayers.map(p => renderLinkedItem(p, 'kandidaat')).join('')
         : '<div class="linked-reports-empty">Nog geen kandidaten gekoppeld. Koppel rapporten van spelers die deze open positie zouden kunnen invullen.</div>'}
     </div>
-
-    <div id="pitch-suggest" class="pitch-suggest"></div>
   `;
 
   // Grade pickers
@@ -17591,8 +16607,6 @@ function renderPitchInfo(){
   $$('.linked-report-info', panel).forEach(el=>{
     el.addEventListener('click', ()=> openDetail(el.dataset.id));
   });
-
-  try { _shRenderSlotSuggest(slot); } catch(_){}
 }
 
 /* =============== PLAYER PICKER MODAL =============== */
@@ -18484,15 +17498,6 @@ async function generatePlayerPDF(p){
   doc.rect(MARGIN_L + CONTENT_W * 0.67, y, CONTENT_W * 0.10, 1.3, 'F');
   y += 8;
 
-  // Spelerfoto (indien aanwezig) rechtsboven naast de naam
-  try {
-    var _phPdf = (typeof _shPlayerPhotoFor === 'function') ? _shPlayerPhotoFor(p) : (p.photoBase64 || '');
-    if(_phPdf){
-      var _ps = 22;
-      doc.addImage(_phPdf, 'JPEG', PAGE_W - MARGIN_R - _ps, y - 1, _ps, _ps, undefined, 'FAST');
-    }
-  } catch(e){}
-
   // ===== NAAM + META =====
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(24);
@@ -18866,7 +17871,7 @@ async function generatePlayerPDF(p){
 }
 
 function gradeLabel(g){
-  return ({A:'A — Champions League',B:'B — Top Eredivisie',C:'C — Eredivisie',D:'D — KKD'})[(g||'').toUpperCase()] || '';
+  return ({A:'A — uitstekend',B:'B — bovengemiddeld',C:'C — gemiddeld',D:'D — onder gemiddeld'})[(g||'').toUpperCase()] || '';
 }
 
 
@@ -20076,18 +19081,6 @@ async function saveProgMatchFromForm(e){
   });
   const _pmType = ($('#pm-type')?.value || 'wedstrijd');
   const _pmNaam = ($('#pm-naam')?.value || '').trim();
-  // BATCH A — FIX 1: tijd verplicht bij een wedstrijd. Rood markeren + fouttekst +
-  // scroll/focus naar het tijdveld; formulier niet opslaan zonder tijd.
-  const _pmTijd = ($('#pm-tijd')?.value || '').trim();
-  if(_pmType === 'wedstrijd' && !_pmTijd){
-    if(typeof _shFieldError === 'function') _shFieldError('pm-tijd', 'Vul een aftraptijd in.');
-    const _tEl = document.getElementById('pm-tijd');
-    if(_tEl){ try { _tEl.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} setTimeout(() => { try { _tEl.focus(); } catch(_){} }, 200); }
-    if(typeof toast === 'function') toast('Tijd is verplicht — vul het rood gemarkeerde veld in', true);
-    __savingProgMatch = false;
-    if(_submitBtn){ _submitBtn.disabled = false; if(_submitBtn.dataset._origText){ _submitBtn.textContent = _submitBtn.dataset._origText; delete _submitBtn.dataset._origText; } }
-    return;
-  }
   const item = {
     id,
     datum,
@@ -20220,7 +19213,7 @@ function renderPpSuggestions(){
         <div class="pp-sug-name">${escapeHtml(naam)}</div>
         ${metaParts.length ? `<div class="pp-sug-meta">${escapeHtml(metaParts.join(' · '))}</div>` : ''}
       </div>
-      <span class="pp-sug-apply">Koppelen</span>
+      <span class="pp-sug-apply">VUL IN</span>
     </div>`;
   }).join('');
   wrap.innerHTML = `<div class="pp-sug-title">Uit spelersdatabase (${suggestions.length})</div>${rows}`;
@@ -20396,7 +19389,7 @@ function pmppRenderSuggestions(){
         <div class="pp-sug-name">${escapeHtml(naam)}</div>
         ${metaParts.length ? `<div class="pp-sug-meta">${escapeHtml(metaParts.join(' · '))}</div>` : ''}
       </div>
-      <span class="pp-sug-apply">Koppelen</span>
+      <span class="pp-sug-apply">VUL IN</span>
     </div>`;
   }).join('');
   wrap.innerHTML = `<div class="pp-sug-title">Uit spelersdatabase (${suggestions.length})</div>${rows}`;
@@ -22228,17 +21221,10 @@ function initApp(){
     go('dashboard');
   });
 
-  let _dbSearchDeb = null;
   ['filter-search','filter-position','filter-current','filter-potential','filter-advies','filter-period'].forEach(id=>{
     const handler = () => { _dbPage = 1; applyFilters(); }; // v70h-s25: reset bij filter-change
-    if(id === 'filter-search'){
-      const deb = () => { if(_dbSearchDeb) clearTimeout(_dbSearchDeb); _dbSearchDeb = setTimeout(handler, 150); };
-      $('#'+id).addEventListener('input', deb);
-      $('#'+id).addEventListener('change', handler);
-    } else {
-      $('#'+id).addEventListener('input', handler);
-      $('#'+id).addEventListener('change', handler);
-    }
+    $('#'+id).addEventListener('input', handler);
+    $('#'+id).addEventListener('change', handler);
   });
   // v70h-s27: linker Vergelijken-knop
   const _cmpFilterBtn = document.getElementById('db-compare-filter-btn');
@@ -22621,17 +21607,6 @@ function tuid(prefix='t'){
   return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2,8);
 }
 
-// Placeholder-speler herkennen: de import maakt per team één markeerspeler
-// "Speler — <Teamnaam>" (geen playerId) zodat de scout direct kan toevoegen.
-// Deze placeholders mogen NIET als echte spelers worden getoond.
-function isPlaceholderTournamentPlayer(tp){
-  if(!tp || typeof tp !== 'object') return false;
-  if(tp.playerId) return false;                 // gekoppeld aan DB-profiel = echt
-  const nm = String(tp.quickName == null ? '' : tp.quickName).trim();
-  return /^Speler\s*[—–-]\s*\S/.test(nm);        // "Speler — Teamnaam"
-}
-window.isPlaceholderTournamentPlayer = isPlaceholderTournamentPlayer;
-
 // ── Subscribe tournaments (top-level lijst) ─────────────────────
 function subscribeTournaments(){
   if(unsubTournaments) return;
@@ -22641,8 +21616,6 @@ function subscribeTournaments(){
       .sort((a,b) => (b.startDate||'').localeCompare(a.startDate||''));
     if(typeof __shTrace === 'function') __shTrace('tournaments-subscribe-ok', { count: tourmCache.length });
     if(currentView === 'toernooien' && !_currentTournamentId) renderToernooienList();
-    // Feature 15: programma-kaarten verversen zodra tourmCache binnen is
-    if(currentView === 'programma' && typeof _renderProgrammaToernooiCards === 'function') _renderProgrammaToernooiCards();
     setSync('ok');
   }, err => {
     console.error('Tournaments sync error:', err);
@@ -22700,63 +21673,6 @@ async function deleteTournament(id){
   try { await deleteDoc(tournDoc(id)); }
   catch(e){ toast('Verwijderen mislukt', true); setSync('offline'); throw e; }
 }
-
-// Recursief verwijderen: alle subcollecties van DIT toernooi + het doc zelf.
-// Raakt uitsluitend het geselecteerde toernooi (users/{uid}/tournaments/{id}/...).
-async function deleteTournamentDeep(id){
-  setSync('syncing');
-  const subs = ['matchPlayers', 'observations', 'summaries', 'players', 'matches', 'days', 'teams'];
-  try {
-    for(const sub of subs){
-      const snap = await getDocs(tournSubCol(id, sub));
-      const ids = snap.docs.map(d => d.id);
-      // In brokjes verwijderen zodat grote toernooien niet vastlopen
-      for(let i = 0; i < ids.length; i += 20){
-        await Promise.all(ids.slice(i, i + 20).map(docId => deleteDoc(tournSubDoc(id, sub, docId))));
-      }
-    }
-    await deleteDoc(tournDoc(id));
-    setSync('ok');
-  } catch(e){
-    console.error('deleteTournamentDeep error:', e);
-    toast('Verwijderen mislukt: ' + (e.message || e), true);
-    setSync('offline');
-    throw e;
-  }
-}
-window.deleteTournamentDeep = deleteTournamentDeep;
-
-// Bevestig + verwijder het huidige toernooi vanuit het detailscherm.
-async function confirmDeleteTournament(id){
-  id = id || _currentTournamentId || (typeof window !== 'undefined' ? window._currentTournamentId : null);
-  if(!id){ toast('Geen toernooi geselecteerd', true); return; }
-  const t = tourmCache.find(x => x.id === id);
-  const naam = t ? (t.name || 'dit toernooi') : 'dit toernooi';
-  // K1: tel onderliggende data (read-only) voor de waarschuwing
-  let _nM = 0, _nP = 0, _nO = 0;
-  try {
-    const [_ms, _ps, _os] = await Promise.all([
-      getDocs(tournSubCol(id, 'matches')),
-      getDocs(tournSubCol(id, 'players')),
-      getDocs(tournSubCol(id, 'observations'))
-    ]);
-    _nM = _ms.size; _nP = _ps.size; _nO = _os.size;
-  } catch(_){}
-  // K1: typed-confirm — toernooinaam exact typen (zelfde drempel als spelersrapport-delete)
-  const _ok = await showTypedDeleteConfirm({
-    title: 'Toernooi verwijderen?',
-    body: `Je staat op het punt <b>${String(naam).replace(/</g,'&lt;')}</b> permanent te verwijderen.<br><br>Hiermee verdwijnen <b>${_nM}</b> wedstrijd${_nM===1?'':'en'}, <b>${_nP}</b> speler${_nP===1?'':'s'} en <b>${_nO}</b> observatie${_nO===1?'':'s'} — onomkeerbaar.`,
-    label: 'Type de toernooinaam om te bevestigen:',
-    confirmWord: naam
-  });
-  if(!_ok) return;
-  try {
-    await deleteTournamentDeep(id);
-    toast('Toernooi verwijderd');
-    backToTournamentList();
-  } catch(_){ /* fout al getoast */ }
-}
-window.confirmDeleteTournament = confirmDeleteTournament;
 
 // ── Days ─────────────────────────────────────────────────────────
 async function saveDay(tid, day){
@@ -22860,35 +21776,6 @@ async function addMatch(tid, { dayId, startTime='', durationMinutes=25, field=''
 async function updateMatchStatus(tid, matchId, status){
   await setDoc(tournSubDoc(tid, 'matches', matchId), { status }, { merge: true });
 }
-window.updateMatchStatus = updateMatchStatus;
-
-// Scout-keuze "Bekijken / Optioneel / Niet haalbaar" → watchStatus op de match.
-// Additief veld; raakt geen scout-data. Schrijft, wacht, en ververst daarna de
-// modal-knoppen én de indicator in het programma (geen race meer).
-async function setMatchWatchStatus(tid, matchId, status){
-  tid = tid || _currentTournamentId;
-  if(!['watch','optional','skip'].includes(status)) return;
-  // Toggle: opnieuw op de actieve knop klikken → terug naar geen keuze (null)
-  let next = status;
-  try {
-    const snap = await getDoc(tournSubDoc(tid, 'matches', matchId));
-    if(snap.exists() && snap.data().watchStatus === status) next = null;
-  } catch(_){}
-  if(next === 'watch'){ try { if(typeof _shMaybeAskPermission === 'function') _shMaybeAskPermission(); } catch(_){} }
-  try {
-    await setDoc(tournSubDoc(tid, 'matches', matchId), { watchStatus: next }, { merge: true });
-  } catch(e){
-    console.error('setMatchWatchStatus error:', e);
-    toast('Status opslaan mislukt', true);
-    return;
-  }
-  if(typeof openMatchDetail === 'function') await openMatchDetail(tid, matchId);
-  if(_currentTournamentId === tid){
-    if(_toernTab === 'tijdlijn') renderTijdlijnTab(tid);
-    if(_toernTab === 'mijn-programma') renderMijnProgrammaTab(tid);
-  }
-}
-window.setMatchWatchStatus = setMatchWatchStatus;
 
 // ── TournamentPlayer ──────────────────────────────────────────────
 async function saveTournamentPlayer(tid, tp){
@@ -22900,11 +21787,11 @@ async function saveTournamentPlayer(tid, tp){
   } catch(e){ toast('Speler opslaan mislukt', true); setSync('offline'); throw e; }
 }
 
-async function addTournamentPlayer(tid, { playerId=null, teamId='', quickName=null, quickNumber=null, type='linked', position=null }){
+async function addTournamentPlayer(tid, { playerId=null, teamId='', quickName=null, quickNumber=null, type='linked' }){
   const id = tuid('tp');
   const tp = {
     id, tournamentId: tid, teamId,
-    playerId, quickName, quickNumber, position,
+    playerId, quickName, quickNumber,
     type,
     addedAt: new Date().toISOString(),
     addedByUserId: currentUser.uid,
@@ -22947,9 +21834,7 @@ async function unlinkPlayerFromMatch(tid, matchPlayerId){
 
 // Auto-link: wanneer speler wordt toegevoegd, koppel aan alle bestaande matches van zijn team
 async function autoLinkPlayerToExistingMatches(tid, tournamentPlayerId, teamId){
-  // SCOPE: koppelt UITSLUITEND binnen dit toernooi (tournSubCol(tid,'matches')).
-  // Raakt nooit reguliere wedstrijden. Zonder tid/teamId niets doen.
-  if(!tid || !teamId) return;
+  if(!teamId) return;
   const matchSnap = await getDocs(query(
     tournSubCol(tid, 'matches'),
     where('teamAId','==',teamId)
@@ -22967,8 +21852,7 @@ async function autoLinkPlayerToExistingMatches(tid, tournamentPlayerId, teamId){
 
 // Auto-link: wanneer match wordt toegevoegd, koppel alle bestaande spelers van die teams
 async function autoLinkPlayersToMatch(tid, matchId, teamIds){
-  // SCOPE: alleen binnen dit toernooi (tournSubCol). Nooit reguliere wedstrijden.
-  if(!tid || !teamIds || !teamIds.length) return;
+  if(!teamIds || !teamIds.length) return;
   for(const teamId of teamIds){
     if(!teamId) continue;
     const snap = await getDocs(query(tournSubCol(tid, 'players'), where('teamId','==',teamId)));
@@ -22986,7 +21870,7 @@ async function saveObservation(tid, obs){
   } catch(e){ toast('Observatie opslaan mislukt', true); setSync('offline'); throw e; }
 }
 
-async function createOrUpdateObservation(tid, { matchId, dayId, tournamentPlayerId, text, tags=[], position=null, grade=null, category_notes={} }){
+async function createOrUpdateObservation(tid, { matchId, dayId, tournamentPlayerId, text, tags=[], position=null, grade=null }){
   // Check of er al een observatie is voor deze speler+wedstrijd
   const existing = await getDocs(query(
     tournSubCol(tid, 'observations'),
@@ -22998,7 +21882,7 @@ async function createOrUpdateObservation(tid, { matchId, dayId, tournamentPlayer
     const existingDoc = existing.docs[0];
     const existingData = existingDoc.data();
     // Als al gesloten: sla edit op in history
-    const patch = { text, tags, position, grade, overallRating: grade, category_notes, updatedAt: now };
+    const patch = { text, tags, position, grade, updatedAt: now };
     if(existingData.closedAt){
       patch.editHistory = [...(existingData.editHistory||[]), {
         editedAt: now,
@@ -23013,7 +21897,7 @@ async function createOrUpdateObservation(tid, { matchId, dayId, tournamentPlayer
   const id = tuid('obs');
   const obs = {
     id, tournamentId: tid, matchId, dayId: dayId||'', tournamentPlayerId,
-    text, tags, position, grade, overallRating: grade, category_notes,
+    text, tags, position, grade,
     createdAt: now, updatedAt: now,
     closedAt: null, editHistory: []
   };
@@ -23256,9 +22140,6 @@ async function openTournamentObs(tid, matchId, dayId, tournamentPlayerId, tpName
       await _tournObsSubmit();
     });
   }
-  _injectObsTrefwoorden(existingObs && Array.isArray(existingObs.tags) ? existingObs.tags : [], (existingObs && existingObs.category_notes) || {});
-  _injectOverallRating(existingObs ? (existingObs.grade || existingObs.overallRating || '') : '');
-  _injectEarlierObs(tid, tournamentPlayerId, matchId);
 }
 
 async function _tournObsSubmit(){
@@ -23278,17 +22159,11 @@ async function _tournObsSubmit(){
       return t + ':' + (el && el.value.trim() ? ' ' + el.value.trim() : '');
     }).join('\n');
 
-    const tagEls = document.querySelectorAll('#obs-trefwoorden .obs-tag[data-rating]');
-    const tags = Array.from(tagEls)
-      .map(el => ({ label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') }))
-      .filter(t => t.rating);
-    const category_notes = {};
-    document.querySelectorAll('#obs-trefwoorden .obs-cat-note').forEach(ta => { const c = ta.dataset.catNote; const v = (ta.value||'').trim(); if(c && v) category_notes[c] = v; });
     await createOrUpdateObservation(ctx.tid, {
       matchId: ctx.matchId,
       dayId: ctx.dayId,
       tournamentPlayerId: ctx.tournamentPlayerId,
-      text, tags, position: positie, grade, category_notes
+      text, tags: [], position: positie, grade
     });
 
     // Update speler naam bij quick add als naam ingevuld
@@ -23320,47 +22195,28 @@ async function _tournObsSubmit(){
 
 // ── Quick add speler (spotted) ────────────────────────────────────
 async function quickAddAndObserve(tid, matchId, dayId){
-  const snap = await getDoc(tournSubDoc(tid, 'matches', matchId));
-  const match = snap.exists() ? snap.data() : {};
-  const aName = match.teamAName || 'Team A', bName = match.teamBName || 'Team B';
-  _toernOpenOverlay(`
-    <h3 style="margin:0 0 4px;">Opgevallen speler toevoegen</h3>
-    <p style="margin:0 0 12px;font-size:12px;color:var(--muted,#888);">Kies het team van deze wedstrijd, vul de gegevens in en koppel direct.</p>
-    <div style="margin-bottom:10px;">
-      <label style="font-size:12px;display:block;margin-bottom:6px;">Team</label>
-      <div class="qa-team-row" style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" class="btn qa-team-btn active" data-team="A" onclick="_qaPickTeam(this)">${escapeHtml(aName)}</button>
-        <button type="button" class="btn qa-team-btn" data-team="B" onclick="_qaPickTeam(this)">${escapeHtml(bName)}</button>
-      </div>
-    </div>
-    <div class="toern-form-row"><label>Naam</label><input id="qa-naam" type="text" placeholder="Voornaam Achternaam" /></div>
-    <div class="toern-form-row"><label>Rugnummer</label><input id="qa-rug" type="number" min="1" max="99" /></div>
-    <div class="toern-form-row"><label>Positie</label><select id="qa-positie"><option value="">— Kies —</option>${_toernPositieOpts()}</select></div>
-    <input type="hidden" id="qa-team" value="A" />
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
-      <button class="btn btn-sm btn-primary" onclick="_qaSubmit('${tid}','${matchId}','${dayId||''}')">Toevoegen & observeren</button>
-    </div>`);
-}
-function _qaPickTeam(btn){
-  document.querySelectorAll('.qa-team-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  const h = document.getElementById('qa-team'); if(h) h.value = btn.dataset.team;
-}
-window._qaPickTeam = _qaPickTeam;
-async function _qaSubmit(tid, matchId, dayId){
-  const naam = (document.getElementById('qa-naam')||{}).value || '';
-  const rug = parseInt((document.getElementById('qa-rug')||{}).value) || null;
-  const positie = (document.getElementById('qa-positie')||{}).value || null;
-  const pick = (document.getElementById('qa-team')||{}).value || 'A';
-  const snap = await getDoc(tournSubDoc(tid, 'matches', matchId));
-  const match = snap.exists() ? snap.data() : {};
-  const teamId = pick === 'B' ? (match.teamBId || '') : (match.teamAId || '');
-  const tp = await addTournamentPlayer(tid, { playerId: null, teamId, quickName: (naam.trim() || null), quickNumber: rug, type: 'spotted', position: positie });
+  const naam = window.prompt('Naam speler (optioneel):') || '';
+  const rugStr = window.prompt('Rugnummer (optioneel):') || '';
+  // Zoek team van de wedstrijd
+  const matchSnap = await getDoc(tournSubDoc(tid, 'matches', matchId));
+  const match = matchSnap.exists() ? matchSnap.data() : null;
+  // Kies team via simpele prompt
+  let teamId = '';
+  if(match && match.teamAName && match.teamBName){
+    const keuze = window.prompt(`Team:\n1 = ${match.teamAName}\n2 = ${match.teamBName}\n\nGeef 1 of 2:`) || '1';
+    teamId = keuze.trim() === '2' ? (match.teamBId||'') : (match.teamAId||'');
+  }
+  const tp = await addTournamentPlayer(tid, {
+    playerId: null, teamId,
+    quickName: naam || null,
+    quickNumber: rugStr ? parseInt(rugStr)||null : null,
+    type: 'spotted'
+  });
+  // Direct koppelen aan deze wedstrijd (auto link doet rest)
   await linkPlayerToMatch(tid, tp.id, matchId, 'manual');
-  _toernCloseOverlay();
-  await openTournamentObs(tid, matchId, dayId, tp.id, naam.trim() || 'Nieuwe speler');
+  // Open obs form
+  await openTournamentObs(tid, matchId, dayId, tp.id, naam || 'Nieuwe speler');
 }
-window._qaSubmit = _qaSubmit;
 
 // ── Match detail overlay ──────────────────────────────────────────
 window.__shOpenMatchDetailTid = null;
@@ -23374,35 +22230,20 @@ async function openMatchDetail(tid, matchId){
   if(!bd) return;
 
   // Laad data
-  const [matchSnap, mpList, obsSnap, teamsSnap] = await Promise.all([
+  const [matchSnap, mpList, obsSnap] = await Promise.all([
     getDoc(tournSubDoc(tid, 'matches', matchId)),
     getMatchPlayers(tid, matchId),
-    getObservationsForMatch(tid, matchId),
-    getDocs(tournSubCol(tid, 'teams'))
+    getObservationsForMatch(tid, matchId)
   ]);
   if(!matchSnap.exists()){ toast('Wedstrijd niet gevonden', true); return; }
   const match = {...matchSnap.data(), id: matchSnap.id};
-  const _teamsById = {}; teamsSnap.docs.forEach(d => { _teamsById[d.id] = d.data(); });
-  // Feature 4: wedstrijden in hetzelfde tijdsblok (zelfde dag + starttijd) voor navigatie
-  let _navIds = [matchId];
-  try {
-    const _dm = await getDocs(query(tournSubCol(tid, 'matches'), where('dayId','==', match.dayId||'')));
-    const _cur = _toernMatchClock(match);
-    const _sibs = _dm.docs.map(d => ({...d.data(), id: d.id})).filter(m => _toernMatchClock(m) === _cur)
-      .sort((a,b) => String(a.field||'').localeCompare(String(b.field||'')) || String(a.id).localeCompare(String(b.id)));
-    if(_sibs.length) _navIds = _sibs.map(m => m.id);
-  } catch(_){}
-  window._matchNav = { tid, ids: _navIds, idx: Math.max(0, _navIds.indexOf(matchId)) };
 
   // Haal TournamentPlayer info op
   const tpIds = mpList.map(mp => mp.tournamentPlayerId);
   const tpCache = {};
   if(tpIds.length){
-    for(let _i = 0; _i < tpIds.length; _i += 30){
-      const _chunk = tpIds.slice(_i, _i + 30);
-      const tpSnap = await getDocs(query(tournSubCol(tid, 'players'), where('__name__','in', _chunk)));
-      tpSnap.docs.forEach(d => { tpCache[d.id] = {...d.data(), id: d.id}; });
-    }
+    const tpSnap = await getDocs(query(tournSubCol(tid, 'players'), where('__name__','in', tpIds.slice(0,30))));
+    tpSnap.docs.forEach(d => { tpCache[d.id] = {...d.data(), id: d.id}; });
   }
 
   // Bouw obs lookup
@@ -23418,19 +22259,17 @@ async function openMatchDetail(tid, matchId){
   if(header) header.textContent = `${match.teamAName||'?'} – ${match.teamBName||'?'}`;
   const sub = document.getElementById('toern-match-sub');
   if(sub) sub.textContent = [
-    _toernMatchClock(match),
-    _toernFieldLabel(match.field),
+    match.startTime ? match.startTime.slice(11,16) : '',
+    match.field ? 'Veld ' + match.field : '',
     match.categoryId || ''
   ].filter(Boolean).join(' · ');
 
-  // Status knoppen — scout-keuze (watchStatus). Standaard géén selectie.
+  // Status knoppen
   const statusWrap = document.getElementById('toern-match-status');
   if(statusWrap){
-    const cur = match.watchStatus;
-    const labels = { watch:'✅ Bekijken', optional:'🔶 Optioneel', skip:'❌ Niet haalbaar' };
     statusWrap.innerHTML = ['watch','optional','skip'].map(s => `
-      <button class="toern-status-btn toern-status-${s} ${cur===s?'active':''}" data-st="${s}" onclick="setMatchWatchStatus('${tid}','${matchId}','${s}')">
-        ${labels[s]}
+      <button class="toern-status-btn ${match.status===s?'active':''}" onclick="updateMatchStatus('${tid}','${matchId}','${s}'); openMatchDetail('${tid}','${matchId}')">
+        ${s==='watch'?'✅ Bekijken':s==='optional'?'🔶 Optioneel':'❌ Niet haalbaar'}
       </button>`).join('');
   }
 
@@ -23442,18 +22281,13 @@ async function openMatchDetail(tid, matchId){
       : `<span class="toern-badge toern-badge-open">Dag open</span>`;
   }
 
-  // Spelers lijst — toon ALLEEN echte, door de scout gekoppelde spelers.
-  // Placeholder-spelers ("Speler — Teamnaam") uit de import worden uitgefilterd.
+  // Spelers lijst
   const lijst = document.getElementById('toern-match-players');
   if(lijst){
-    const realMp = mpList.filter(mp => {
-      const tp = tpCache[mp.tournamentPlayerId];
-      return tp && !isPlaceholderTournamentPlayer(tp);
-    });
-    if(realMp.length === 0){
-      lijst.innerHTML = '<div class="toern-empty">Nog geen spelers gekoppeld aan deze wedstrijd</div>';
+    if(mpList.length === 0){
+      lijst.innerHTML = '<div class="toern-empty">Geen spelers gekoppeld</div>';
     } else {
-      lijst.innerHTML = realMp.map(mp => {
+      lijst.innerHTML = mpList.map(mp => {
         const tp = tpCache[mp.tournamentPlayerId];
         if(!tp) return '';
         const naam = tp.quickName || (tp.playerId ? '(speler uit database)' : 'Onbekend');
@@ -23465,14 +22299,12 @@ async function openMatchDetail(tid, matchId){
             <div class="toern-player-avatar">${initials(naam)}</div>
             <div>
               <div class="toern-player-name">${escapeHtml(naam)}</div>
-              <div class="toern-player-meta">${(() => { const c = _teamsById[tp.teamId] && _teamsById[tp.teamId].name; return c ? escapeHtml(c) + ' · ' : ''; })()}${tp.type==='spotted'?'Opgevallen':'Gekoppeld'}${mp.addedBy==='manual'?' · live':''}</div>
+              <div class="toern-player-meta">${tp.type==='spotted'?'Opgevallen':'Gekoppeld'}${mp.addedBy==='manual'?' · live':''}</div>
             </div>
           </div>
           <div class="toern-player-card-right">
             ${hasObs ? `<span class="toern-obs-badge">${gradeLabel||'✓'}</span>` : '<span class="toern-obs-empty">Geen obs</span>'}
-            ${hasObs ? `<button class="toern-share-btn" title="Deel observatie" aria-label="Deel observatie" onclick="event.stopPropagation();shareObservation('${tid}','${matchId}','${tp.id}')">↗</button>` : ''}
-            <button class="toern-must-btn ${tp.mustScout?'on':''}" title="Must scout" aria-label="Must-scout aan- of uitzetten" onclick="event.stopPropagation();toggleMustScout('${tid}','${tp.id}',${tp.mustScout?'false':'true'})">${tp.mustScout?'⭐':'☆'}</button>
-            <button class="toern-rapport-btn" title="Rapport starten" aria-label="Rapport starten"
+            <button class="toern-rapport-btn" title="Rapport starten"
               onclick="event.stopPropagation();startRapportVanuitMatch('${tid}','${matchId}','${mp.id}','${tp.id}')">
               📋
             </button>
@@ -23486,32 +22318,6 @@ async function openMatchDetail(tid, matchId){
   const addBtn = document.getElementById('toern-match-add-player');
   if(addBtn){
     addBtn.onclick = () => quickAddAndObserve(tid, matchId, match.dayId||'');
-  }
-
-  // TIP 3: snelle wedstrijdnotitie (matchNote)
-  const noteEl = document.getElementById('toern-match-note');
-  if(noteEl){
-    noteEl.value = match.matchNote || '';
-    noteEl.onblur = () => saveMatchNote(tid, matchId, noteEl.value);
-  }
-  // H4: inline uitslag-invoer in de detail-modal
-  const _scA = document.getElementById('toern-match-score-a');
-  const _scB = document.getElementById('toern-match-score-b');
-  if(_scA) _scA.value = (match.scoreHome != null ? match.scoreHome : '');
-  if(_scB) _scB.value = (match.scoreAway != null ? match.scoreAway : '');
-  const _scBtn = document.getElementById('toern-match-score-save');
-  if(_scBtn) _scBtn.onclick = () => _saveMatchScoreInline(tid, matchId);
-
-  // TIP 4: lokale wedstrijd-timer (verdwijnt bij sluiten; niets opgeslagen)
-  _initMatchTimer(tid, match);
-
-  // Feature 4: navigatiebalk vorige/volgende binnen het tijdsblok
-  const _navEl = document.getElementById('toern-match-nav');
-  if(_navEl){
-    const nv = window._matchNav;
-    _navEl.innerHTML = (nv && nv.ids && nv.ids.length > 1)
-      ? `<button type="button" class="toern-nav-arrow" ${nv.idx<=0?'disabled':''} onclick="navMatch(-1)" aria-label="Vorige">‹</button><span class="toern-nav-count">${nv.idx+1}/${nv.ids.length}</span><button type="button" class="toern-nav-arrow" ${nv.idx>=nv.ids.length-1?'disabled':''} onclick="navMatch(1)" aria-label="Volgende">›</button>`
-      : '';
   }
 
   bd.style.display = 'flex';
@@ -23622,7 +22428,6 @@ window.startRapportVanuitMatch = startRapportVanuitMatch;
    ================================================================ */
 
 function closeMatchDetail(){
-  _wstrTimerStop();
   const bd = document.getElementById('toern-match-backdrop');
   if(bd) bd.style.display = 'none';
   document.body.classList.remove('modal-open');
@@ -23687,16 +22492,7 @@ async function openBundelingDetail(tid, summaryId){
 
   // Eindoordeel
   const gradeEl = document.getElementById('toern-summ-grade');
-  if(gradeEl){
-    gradeEl.value = summ.overallGrade || '';
-    gradeEl.style.display = 'none';
-    const gw = gradeEl.parentElement;
-    if(gw){
-      let chips = document.getElementById('toern-summ-grade-chips');
-      if(!chips){ chips = document.createElement('div'); chips.id = 'toern-summ-grade-chips'; chips.className = 'bnd-grade-chips'; gw.appendChild(chips); }
-      chips.innerHTML = ['A','B+','B','C+','C','D'].map(g => `<button type="button" class="bnd-grade-btn grade-${g.replace('+','')} ${gradeEl.value===g?'active':''}" data-g="${g}" onclick="_bndSetGrade('${g}')">${g}</button>`).join('');
-    }
-  }
+  if(gradeEl) gradeEl.value = summ.overallGrade || '';
 
   // Observaties per dag
   const obsWrap = document.getElementById('toern-summ-obs');
@@ -23705,7 +22501,6 @@ async function openBundelingDetail(tid, summaryId){
     const allObs = await getObservationsForPlayer(tid, summ.tournamentPlayerId);
     const obsById = {};
     allObs.forEach(o => { obsById[o.id] = o; });
-    const _matchCache = {}; // C4: memoize match-reads (voorkom N+1)
     const daysSnap = await getDocs(tournSubCol(tid, 'days'));
     const daysById = {};
     daysSnap.docs.forEach(d => { daysById[d.id] = d.data(); });
@@ -23717,43 +22512,20 @@ async function openBundelingDetail(tid, summaryId){
       for(const obsId of (block.observationIds||[])){
         const obs = obsById[obsId];
         if(!obs){ continue; }
-        let match = _matchCache[obs.matchId];
-        if(match === undefined){
-          try { const _ms = await getDoc(tournSubDoc(tid, 'matches', obs.matchId)); match = _ms.exists() ? _ms.data() : null; }
-          catch(_){ match = null; }
-          _matchCache[obs.matchId] = match;
-        }
+        const matchSnap = await getDoc(tournSubDoc(tid, 'matches', obs.matchId));
+        const match = matchSnap.exists() ? matchSnap.data() : null;
         const matchLabel = match ? `${match.teamAName||'?'} – ${match.teamBName||'?'}` : 'Wedstrijd';
         const editedMark = obs.editHistory && obs.editHistory.length ? ' <span class="toern-edited-mark" title="Bewerkt na afsluiting">✏️</span>' : '';
-        const _meta = match ? [ _toernMatchClock(match), _toernFieldLabel(match.field), match.categoryId||'' ].filter(Boolean).join(' · ') : '';
-        const _ctx = match ? `🏟️ ${match.teamAName||'?'} – ${match.teamBName||'?'}${_meta ? ' · ' + _meta : ''}` : matchLabel;
-        const _tbc = {};
-        (obs.tags||[]).forEach(t => { const c = String(t.category||'').toLowerCase(); if(!c || !t.label) return; (_tbc[c] = _tbc[c] || []).push(`${t.rating==='good'?'🟢':t.rating==='average'?'🟠':'🔴'} ${t.label}`); });
-        const _tagsHtml = Object.keys(_tbc).map(c => `<div class="bnd-cat"><span class="bnd-cat-label">${escapeHtml(c.toUpperCase())}</span> ${escapeHtml(_tbc[c].join('  '))}</div>`).join('');
         html += `<div class="toern-summ-obs-block">
-          <div class="toern-summ-obs-match">${escapeHtml(_ctx)}${editedMark}</div>
-          ${_tagsHtml}
-          <textarea class="toern-summ-obs-text" data-obs-id="${obsId}" rows="3" placeholder="Notitie bij deze wedstrijd...">${escapeHtml(obs.text||'')}</textarea>
+          <div class="toern-summ-obs-match">${escapeHtml(matchLabel)}${editedMark}</div>
+          <textarea class="toern-summ-obs-text" data-obs-id="${obsId}" rows="3">${escapeHtml(obs.text||'')}</textarea>
+          <div class="toern-summ-obs-grade">Oordeel: <select data-obs-grade="${obsId}">
+            <option value="">—</option>
+            ${['A','B+','B','C+','C','D'].map(g=>`<option ${obs.grade===g?'selected':''} value="${g}">${g}</option>`).join('')}
+          </select></div>
         </div>`;
       }
       html += '</div>';
-    }
-    // Samenvatting: alle tags gecombineerd met verdeling
-    const _agg = {};
-    allObs.forEach(o => (o.tags||[]).forEach(t => {
-      const c = String(t.category||'').toLowerCase(); if(!c || !t.label) return;
-      _agg[c] = _agg[c] || {}; _agg[c][t.label] = _agg[c][t.label] || { good:0, average:0, poor:0 };
-      if(t.rating==='good') _agg[c][t.label].good++; else if(t.rating==='average') _agg[c][t.label].average++; else if(t.rating==='poor') _agg[c][t.label].poor++;
-    }));
-    const _sumCats = Object.keys(_agg);
-    if(_sumCats.length){
-      let _sum = '<div class="toern-summ-day"><div class="toern-summ-day-label">Samenvatting tags</div>';
-      _sumCats.forEach(c => {
-        const parts = Object.keys(_agg[c]).map(lab => { const a=_agg[c][lab]; const tot=a.good+a.average+a.poor; const dom=(a.good>=a.average&&a.good>=a.poor)?'🟢':(a.average>=a.poor?'🟠':'🔴'); return `${dom} ${lab} (${tot})`; });
-        _sum += `<div class="bnd-cat"><span class="bnd-cat-label">${escapeHtml(c.toUpperCase())}</span> ${escapeHtml(parts.join('  '))}</div>`;
-      });
-      _sum += '</div>';
-      html += _sum;
     }
     obsWrap.innerHTML = html || '<div class="toern-empty">Geen observaties</div>';
   }
@@ -23809,16 +22581,10 @@ async function saveBundelingEdits(tid, summaryId){
 }
 window.saveBundelingEdits = saveBundelingEdits;
 
-// ── Spelers tab — toont CLUBS (teams), niet de placeholder-spelers ──
-// Klik op een club → detailweergave met de echte, gekoppelde spelers van dat
-// team + de "+ Speler koppelen"-knop voor dat team.
-let _toernSpelersTeamId = null; // null = clublijst; anders team-detail
-
+// ── Spelers tab ────────────────────────────────────────────────────
 async function renderSpelersTab(tid){
   const wrap = document.getElementById('toern-spelers-wrap');
   if(!wrap) return;
-  if(_toernSpelersTeamId){ return renderTournamentTeamDetail(tid, _toernSpelersTeamId); }
-  const _spAdd = document.getElementById('toern-spelers-addrow'); if(_spAdd) _spAdd.style.display = '';
   wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
 
   const [playersSnap, teamsSnap] = await Promise.all([
@@ -23826,134 +22592,36 @@ async function renderSpelersTab(tid){
     getDocs(tournSubCol(tid, 'teams'))
   ]);
   const players = playersSnap.docs.map(d => ({...d.data(), id: d.id}));
-  const teams = teamsSnap.docs.map(d => ({...d.data(), id: d.id}))
-    .sort((a,b) => String(a.name||'').localeCompare(String(b.name||'')));
+  const teams = teamsSnap.docs.map(d => ({...d.data(), id: d.id}));
+  const teamsById = {};
+  teams.forEach(t => { teamsById[t.id] = t; });
 
-  // Echte (niet-placeholder) spelers per team tellen
-  const realByTeam = {};
-  players.forEach(tp => {
-    if(isPlaceholderTournamentPlayer(tp)) return;
-    const k = tp.teamId || '';
-    (realByTeam[k] = realByTeam[k] || []).push(tp);
-  });
-
-  if(teams.length === 0){
-    wrap.innerHTML = '<div class="toern-empty">Nog geen clubs in dit toernooi.</div>';
-    return;
-  }
-
-  wrap.innerHTML = `<div class="toern-club-grid">` + teams.map(t => {
-    const n = (realByTeam[t.id] || []).length;
-    const sub = n ? `${n} speler${n!==1?'s':''} gekoppeld` : 'Nog geen spelers gekoppeld';
-    const following = t.priority === true;
-    // Ster-toggle "Volgen": alle wedstrijden van een gevolgde club verschijnen
-    // automatisch in Mijn Programma.
-    const star = `<button class="toern-club-follow ${following?'on':''}" title="${following?'Club gevolgd — klik om te ontvolgen':'Volg deze club'}"
-        onclick="event.stopPropagation();toggleClubPriority('${tid}','${t.id}',${!following})">${following?'★':'☆'}</button>`;
-    return `<div class="toern-club-card ${following?'is-followed':''}" onclick="openTournamentTeamDetail('${tid}','${t.id}')">
-      <div class="toern-club-avatar">${initials(t.name||'?')}</div>
-      <div class="toern-club-info">
-        <div class="toern-club-name">${escapeHtml(t.name||'?')}</div>
-        <div class="toern-club-meta">${sub}${following?' · <span class="toern-club-followed">gevolgd</span>':''}</div>
-      </div>
-      ${star}
-      <span class="toern-club-arrow" aria-hidden="true">›</span>
-    </div>`;
-  }).join('') + `</div>`;
-}
-
-// Club volgen/ontvolgen → team.priority (additief veld, merge).
-async function toggleClubPriority(tid, teamId, val){
-  tid = tid || _currentTournamentId;
-  try {
-    await setDoc(tournSubDoc(tid, 'teams', teamId), { priority: !!val }, { merge: true });
-  } catch(e){
-    console.error('toggleClubPriority error:', e);
-    toast('Opslaan mislukt', true);
-    return;
-  }
-  toast(val ? 'Club gevolgd ✓' : 'Club ontvolgd');
-  // Spelers-tab hertekenen (sterstatus) en Mijn Programma actueel houden
-  if(_currentTournamentId === tid){
-    if(_toernTab === 'spelers') renderSpelersTab(tid);
-    if(_toernTab === 'mijn-programma') renderMijnProgrammaTab(tid);
-  }
-}
-window.toggleClubPriority = toggleClubPriority;
-
-// Detailweergave van één club: echte gekoppelde spelers + koppel-knop.
-async function openTournamentTeamDetail(tid, teamId){
-  _toernSpelersTeamId = teamId;
-  await renderTournamentTeamDetail(tid, teamId);
-}
-window.openTournamentTeamDetail = openTournamentTeamDetail;
-
-async function renderTournamentTeamDetail(tid, teamId){
-  const wrap = document.getElementById('toern-spelers-wrap');
-  if(!wrap) return;
-  const _spAdd = document.getElementById('toern-spelers-addrow'); if(_spAdd) _spAdd.style.display = 'none';
-  wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
-  const [teamSnap, playersSnap] = await Promise.all([
-    getDoc(tournSubDoc(tid, 'teams', teamId)),
-    getDocs(query(tournSubCol(tid, 'players'), where('teamId','==',teamId)))
-  ]);
-  const team = teamSnap.exists() ? { ...teamSnap.data(), id: teamSnap.id } : { name: '?' };
-  const roster = playersSnap.docs.map(d => ({...d.data(), id: d.id}))
-    .filter(tp => !isPlaceholderTournamentPlayer(tp))
-    .sort((a,b) => (b.mustScout?1:0) - (a.mustScout?1:0));
-
-  let listHtml;
-  if(roster.length === 0){
-    listHtml = '<div class="toern-empty toern-empty-sm">Nog geen spelers gekoppeld aan deze club</div>';
+  if(players.length === 0){
+    wrap.innerHTML = '<div class="toern-empty">Nog geen spelers gekoppeld</div>';
   } else {
-    listHtml = roster.map(tp => {
+    wrap.innerHTML = players.map(tp => {
       const naam = tp.quickName || (tp.playerId ? 'Speler uit database' : '?');
+      const team = teamsById[tp.teamId];
+      const teamLabel = team ? team.name : (tp.teamId || 'Geen team');
       const badge = tp.type === 'spotted' ? '<span class="toern-badge toern-badge-spotted">Opgevallen</span>' : '<span class="toern-badge toern-badge-linked">Gekoppeld</span>';
       const mergeWarn = tp.mergeStatus === 'unlinked' ? '<div class="toern-merge-warn">⚠️ Niet gekoppeld aan spelersprofiel</div>' : '';
-      const _exp = tp.exportedAs
-        ? `<span class="toern-badge toern-badge-linked">✅ ${tp.exportedAs==='rapport'?'Rapport':'Verwerkt'}</span>`
-        : `<button class="btn btn-xs toern-exp-btn" onclick="event.stopPropagation();exportSingleTournamentPlayer('${tid}','${tp.id}')">→ ${tp.type==='spotted'?'Observatie':'Rapport'}</button>`;
       return `<div class="toern-speler-row">
         <div class="toern-player-avatar">${initials(naam)}</div>
         <div class="toern-speler-info">
           <div class="toern-player-name">${escapeHtml(naam)}${tp.quickNumber?' #'+tp.quickNumber:''}</div>
-          <div class="toern-player-meta">${tp.position ? '<span style="opacity:.8;">'+escapeHtml((typeof positionLabel==='function'?(positionLabel(tp.position)||tp.position):tp.position))+'</span> \u00b7 ' : ''}${badge}</div>
+          <div class="toern-player-meta">${escapeHtml(teamLabel)} · ${badge}</div>
           ${mergeWarn}
         </div>
-        <button class="toern-must-btn ${tp.mustScout?'on':''}" title="Must scout" aria-label="Must-scout aan- of uitzetten" onclick="event.stopPropagation();toggleMustScout('${tid}','${tp.id}',${tp.mustScout?'false':'true'})">${tp.mustScout?'⭐':'☆'}</button>
-        ${_exp}
       </div>`;
     }).join('');
   }
-
-  wrap.innerHTML = `
-    <div class="toern-team-detail-head">
-      <button class="btn btn-ghost btn-sm" onclick="backToTournamentClubs('${tid}')">← Clubs</button>
-      <div class="toern-team-detail-title">${escapeHtml(team.name||'?')}</div>
-      <button class="btn btn-primary btn-sm" onclick="showAddPlayerForm('${tid}','${teamId}')">+ Speler koppelen</button>
-    </div>
-    <div class="toern-team-detail-list">${listHtml}</div>`;
 }
-window.renderTournamentTeamDetail = renderTournamentTeamDetail;
-
-function backToTournamentClubs(tid){
-  _toernSpelersTeamId = null;
-  renderSpelersTab(tid || _currentTournamentId);
-}
-window.backToTournamentClubs = backToTournamentClubs;
 
 // ── Toernooi-overzicht scherm ─────────────────────────────────────
 let _toernTab = 'tijdlijn';
-let _progWatchFilter = 'all'; // programma prio-filter: all | watch | optional | skip
 
 async function renderToernooiDetail(tid){
   _currentTournamentId = tid;
-  // Houd de globale spiegel in sync zodat inline onclick-handlers in de actiebalk
-  // (Toernooiregels / Reglement / Sync / Verwijder) altijd een geldig id hebben.
-  if(typeof window !== 'undefined') window._currentTournamentId = tid;
-  // Reset view-state zodat keuzes van een ánder toernooi niet doorlekken
-  _toernSpelersTeamId = null;
-  _progWatchFilter = 'all';
   const tournament = tourmCache.find(t => t.id === tid);
   if(!tournament){ toast('Toernooi niet gevonden', true); return; }
 
@@ -23972,11 +22640,7 @@ async function renderToernooiDetail(tid){
   // Status badge
   const statusEl = document.getElementById('toern-detail-status');
   const statusLabels = { prep:'Voorbereiding', active:'Actief', closing:'Afsluiting', done:'Afgerond' };
-  if(statusEl) statusEl.textContent = statusLabels[_toernEffectiveStatus(tournament)] || tournament.status;
-  // BUG 8: bij toekomstige startdatum tonen wanneer het toernooi begint
-  if(subEl && _toernEffectiveStatus(tournament) === 'prep' && tournament.startDate){
-    subEl.textContent = (subEl.textContent ? subEl.textContent + ' · ' : '') + 'Begint op ' + formatDate(tournament.startDate);
-  }
+  if(statusEl) statusEl.textContent = statusLabels[tournament.status] || tournament.status;
 
   // Render actieve tab
   renderToernooiTab(_toernTab, tid);
@@ -23995,7 +22659,6 @@ function renderToernooiTab(tab, tid){
     pane.style.display = pane.dataset.tab === tab ? '' : 'none';
   });
   if(tab === 'tijdlijn') renderTijdlijnTab(tid);
-  if(tab === 'mijn-programma') renderMijnProgrammaTab(tid);
   if(tab === 'spelers')  renderSpelersTab(tid);
   if(tab === 'bundeling') renderBundelingTab(tid);
   if(tab === 'standen' && typeof renderStandenTab === 'function') renderStandenTab(tid);
@@ -24007,149 +22670,58 @@ async function renderTijdlijnTab(tid){
   if(!wrap){ return; }
   wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
 
-  const [daysSnap, matchesSnap, playersSnap] = await Promise.all([
+  const [daysSnap, matchesSnap] = await Promise.all([
     getDocs(tournSubCol(tid, 'days')),
-    getDocs(query(tournSubCol(tid, 'matches'), orderBy('startTime'))),
-    getDocs(tournSubCol(tid, 'players'))
+    getDocs(query(tournSubCol(tid, 'matches'), orderBy('startTime')))
   ]);
   const days = daysSnap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
   const matches = matchesSnap.docs.map(d => ({...d.data(), id: d.id}));
-  const playersByTeam = _buildPlayersByTeam(playersSnap.docs.map(d => ({...d.data(), id: d.id})));
-  window._toernMustScoutTeams = new Set();
-  playersSnap.docs.forEach(d => { const _tp = d.data(); if(_tp.mustScout && _tp.teamId) window._toernMustScoutTeams.add(_tp.teamId); });
 
   if(days.length === 0){
     wrap.innerHTML = '<div class="toern-empty">Nog geen wedstrijddagen. <button class="btn btn-sm" onclick="showAddDayForm()">+ Dag toevoegen</button></div>';
     return;
   }
 
-  // Normaliseer watchStatus → 'watch' | 'optional' | 'skip' | 'none'
-  const wsOf = m => (m.watchStatus === 'watch' || m.watchStatus === 'optional' || m.watchStatus === 'skip') ? m.watchStatus : 'none';
-  // Sorteervolgorde binnen een tijdslot (DEEL D): watch → optional → none → skip
-  const wsRank = { watch: 0, optional: 1, none: 2, skip: 3 };
-
-  // DEEL C: tellers over ALLE wedstrijden (ongeacht actief filter)
-  const counts = { watch: 0, optional: 0, skip: 0, none: 0 };
-  matches.forEach(m => { counts[wsOf(m)]++; });
-
-  // Feature 8/9: watch-wedstrijden van vandaag (notificatie) + live-wedstrijd (FAB)
-  try {
-    const _today = (typeof todayISO === 'function') ? todayISO() : new Date().toISOString().slice(0,10);
-    const _dayDate = {}; days.forEach(d => { _dayDate[d.id] = d.date; });
-    const _now = new Date(); const _nowMin = _now.getHours()*60 + _now.getMinutes();
-    window._notifMatches = []; window._liveMatch = null;
-    matches.forEach(m => {
-      const tijd = _toernMatchClock(m); if(!tijd) return;
-      if(_dayDate[m.dayId] !== _today) return;
-      const mm = tijd.match(/^(\d{2}):(\d{2})$/); if(!mm) return;
-      const start = (+mm[1])*60 + (+mm[2]);
-      const teams = `${m.teamAName||''} – ${m.teamBName||''}`.trim();
-      if(m.watchStatus === 'watch') window._notifMatches.push({ id: m.id, tid: tid, time: tijd, teams, field: _toernFieldLabel(m.field) });
-      const endT = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
-      const em = String(endT||'').match(/^(\d{2}):(\d{2})$/);
-      const end = em ? (+em[1])*60 + (+em[2]) : start + 90;
-      if(_nowMin >= start && _nowMin <= end && !window._liveMatch) window._liveMatch = { tid, id: m.id, teams };
-    });
-  } catch(_){}
-
-  const f = _progWatchFilter;
-  const filterBtn = (val, label, cls) =>
-    `<button class="toern-prio-btn ${cls||''} ${f===val?'active':''}" onclick="setProgWatchFilter('${tid}','${val}')">${label}</button>`;
-  let html = `<div class="toern-prog-filterbar">
-      <div class="toern-prog-filters">
-        ${filterBtn('all','Alle','')}
-        ${filterBtn('watch','🟢 Bekijken','prio-watch')}
-        ${filterBtn('optional','🟠 Optioneel','prio-optional')}
-        ${filterBtn('skip','🔴 Niet haalbaar','prio-skip')}
-      </div>
-      <div class="toern-prog-counts">🟢 ${counts.watch} bekijken &nbsp;·&nbsp; 🟠 ${counts.optional} optioneel &nbsp;·&nbsp; 🔴 ${counts.skip} overslaan &nbsp;·&nbsp; ⚪ ${counts.none} geen keuze</div>
-    </div>`;
-
+  const statusIcon = { watch:'🟢', optional:'🟠', skip:'⚫' };
+  let html = '';
   for(const day of days){
-    // Filter (DEEL C) + sorteer op tijd, daarna op prio binnen het tijdslot (DEEL D)
-    let dayMatches = matches.filter(m => m.dayId === day.id);
-    if(f !== 'all') dayMatches = dayMatches.filter(m => wsOf(m) === f);
-    dayMatches.sort((a,b) => {
-      const ta = String(a.startTime||''), tb = String(b.startTime||'');
-      if(ta !== tb) return ta.localeCompare(tb);
-      return (wsRank[wsOf(a)] - wsRank[wsOf(b)]);
-    });
-    // Onder een actief filter lege dagen overslaan (rust in de lijst)
-    if(f !== 'all' && dayMatches.length === 0) continue;
-
+    const dayMatches = matches.filter(m => m.dayId === day.id);
     const closedBadge = day.closedAt
       ? `<span class="toern-badge toern-badge-closed">Afgesloten</span>
          <button class="btn btn-xs" onclick="confirmReopenDay('${tid}','${day.id}')">Heropenen</button>`
-      : ((day.date && typeof todayISO === 'function' && day.date > todayISO())
-          ? `<span class="toern-badge">Begint ${formatDate(day.date)}</span>`
-          : `<button class="btn btn-xs" onclick="confirmCloseDay('${tid}','${day.id}')">Dag afsluiten</button>`);
+      : `<button class="btn btn-xs" onclick="confirmCloseDay('${tid}','${day.id}')">Dag afsluiten</button>`;
     html += `<div class="toern-day-block">
       <div class="toern-day-header">
         <span class="toern-day-label">${escapeHtml(day.label)} — ${formatDate(day.date)}</span>
         <div class="toern-day-actions">${closedBadge}</div>
-      </div>`;
+      </div>
+      <div class="toern-match-list">`;
     if(dayMatches.length === 0){
-      html += '<div class="toern-prog-list"><div class="toern-empty toern-empty-sm">Geen wedstrijden voor deze dag</div></div>';
+      html += '<div class="toern-empty toern-empty-sm">Geen wedstrijden voor deze dag</div>';
     } else {
-      // BUG 4: groepeer per starttijd in inklapbare tijdsblokken
-      const groups = []; const gi = {};
-      for(const m of dayMatches){
-        const k = _toernMatchClock(m) || '—';
-        if(gi[k] == null){ gi[k] = groups.length; groups.push({ time: k, matches: [] }); }
-        groups[gi[k]].matches.push(m);
-      }
-      groups.forEach(g => {
-        let me = '';
-        g.matches.forEach(m => { const e = tournamentMatchEndTime(tid, m); if(e && e > me) me = e; });
-        g.maxEnd = me || g.time;
-      });
-      // TIP 6: markeer het tijdsblok dat NU speelt (of het eerstvolgende), alleen vandaag
-      const today = (typeof todayISO === 'function') ? todayISO() : '';
-      const now = new Date();
-      const nowHHMM = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
-      const isToday = day.date && today && day.date === today;
-      let nowIdx = -1, nextIdx = -1;
-      if(isToday){
-        for(let i = 0; i < groups.length; i++){
-          const g = groups[i];
-          if(!/^\d{2}:\d{2}$/.test(g.time)) continue;
-          if(nowIdx === -1 && g.time <= nowHHMM && nowHHMM <= g.maxEnd) nowIdx = i;
-          if(nextIdx === -1 && g.time > nowHHMM) nextIdx = i;
-        }
-      }
-      html += groups.map((g, gIdx) => {
-        const rows = g.matches.map(m => _progRowHtml(tid, m, playersByTeam)).join('');
-        const isNow = gIdx === nowIdx;
-        const isNext = nowIdx === -1 && gIdx === nextIdx;
-        const nowTag = isNow ? '<span class="tb-now">▶ NU BEZIG</span>'
-          : (isNext ? '<span class="tb-now tb-next">▶ STRAKS</span>' : '');
-        return `<div class="toern-timeblock ${gIdx % 2 ? 'tb-alt' : ''} ${isNow ? 'is-now' : ''} ${isNext ? 'is-next' : ''}">
-          <button type="button" class="toern-tb-head" onclick="toggleTimeBlock(this)">
-            <span class="tb-arrow" aria-hidden="true">▼</span>
-            <span class="tb-time">${escapeHtml(g.time)}</span>
-            ${nowTag}
-            <span class="tb-count">${g.matches.length} wed</span>
-          </button>
-          <div class="toern-tb-body"><div class="toern-prog-table">${rows}</div></div>
+      html += dayMatches.map(m => {
+        const time = m.startTime ? m.startTime.slice(11,16) : '—';
+        const endTime = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
+        const timeLabel = endTime ? `${time}–${endTime}` : time;
+        const field = m.field ? 'Veld ' + m.field : '';
+        const scoreBadge = (typeof tournamentScoreBadge === 'function') ? tournamentScoreBadge(m) : '';
+        return `<div class="toern-match-row toern-match-status-${m.status}" onclick="openMatchDetail('${tid}','${m.id}')">
+          <span class="toern-match-icon">${statusIcon[m.status]||'⚪'}</span>
+          <span class="toern-match-time">${timeLabel}</span>
+          <span class="toern-match-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>
+          <span class="toern-match-score" onclick="event.stopPropagation();promptManualScore('${tid}','${m.id}')" title="Uitslag invoeren/bewerken" style="cursor:pointer;">${scoreBadge}</span>
+          <span class="toern-match-field">${escapeHtml(field)}</span>
+          <span class="toern-match-cat">${escapeHtml(m.categoryId||'')}</span>
         </div>`;
       }).join('');
     }
-    html += `<button class="btn btn-xs toern-add-match-btn" onclick="showAddMatchForm('${tid}','${day.id}')">+ Wedstrijd toevoegen</button>
+    html += `</div>
+      <button class="btn btn-xs toern-add-match-btn" onclick="showAddMatchForm('${tid}','${day.id}')">+ Wedstrijd toevoegen</button>
     </div>`;
   }
   html += `<button class="btn btn-sm toern-add-day-btn" onclick="showAddDayForm('${tid}')">+ Dag toevoegen</button>`;
   wrap.innerHTML = html;
-  const nowEl = wrap.querySelector('.is-now') || wrap.querySelector('.is-next');
-  if(nowEl){ try { nowEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch(_){} }
 }
-
-// DEEL C: client-side prio-filter voor het programma. Bewaart de keuze en
-// hertekent de lijst — geen extra Firestore-queries.
-function setProgWatchFilter(tid, f){
-  _progWatchFilter = ['all','watch','optional','skip'].includes(f) ? f : 'all';
-  renderTijdlijnTab(tid || _currentTournamentId);
-}
-window.setProgWatchFilter = setProgWatchFilter;
 
 // ── Formulieren (inlijn, geen popup) ──────────────────────────────
 function showAddDayForm(tid){
@@ -24269,11 +22841,10 @@ async function submitAddMatch(tid, dayId, hasTeamDropdowns){
 }
 window.submitAddMatch = submitAddMatch;
 
-async function showAddPlayerForm(tid, preselectTeamId){
-  tid = tid || _currentTournamentId;
+async function showAddPlayerForm(tid){
   const teamsSnap = await getDocs(tournSubCol(tid, 'teams'));
   const teams = teamsSnap.docs.map(d => ({...d.data(), id: d.id}));
-  const teamOpts = teams.map(t => `<option value="${t.id}" ${preselectTeamId===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('') || '<option value="">Geen teams aangemaakt</option>';
+  const teamOpts = teams.map(t => `<option value="${t.id}">${escapeHtml(t.name)}</option>`).join('') || '<option value="">Geen teams aangemaakt</option>';
   const wrap = document.getElementById('toern-spelers-wrap');
   if(!wrap) return;
   document.querySelectorAll('.toern-inline-form').forEach(f => f.remove());
@@ -24289,9 +22860,6 @@ async function showAddPlayerForm(tid, preselectTeamId){
     </div>
     <div class="toern-form-row">
       <label>Team</label><select id="tf-p-team">${teamOpts}</select>
-    </div>
-    <div class="toern-form-row">
-      <label>Positie</label><select id="tf-p-positie"><option value="">— Kies —</option>${_toernPositieOpts()}</select>
     </div>
     <div class="toern-form-row">
       <label>Type</label>
@@ -24312,9 +22880,8 @@ async function submitAddPlayer(tid){
   const naam = document.getElementById('tf-p-naam')?.value.trim() || null;
   const rug  = parseInt(document.getElementById('tf-p-rug')?.value)||null;
   const teamId = document.getElementById('tf-p-team')?.value || '';
-  const positie = document.getElementById('tf-p-positie')?.value || null;
   const type   = document.getElementById('tf-p-type')?.value || 'linked';
-  await addTournamentPlayer(tid, { playerId: null, teamId, quickName: naam, quickNumber: rug, type, position: positie });
+  await addTournamentPlayer(tid, { playerId: null, teamId, quickName: naam, quickNumber: rug, type });
   document.querySelectorAll('.toern-inline-form').forEach(f => f.remove());
   toast('Speler gekoppeld ✓');
   renderSpelersTab(tid);
@@ -24343,7 +22910,7 @@ function renderToernooienList(){
   if(!wrap) return;
 
   if(tourmCache.length === 0){
-    wrap.innerHTML = '<div class="toern-empty sh-empty"><div class="sh-empty-ic">🏆</div><div class="sh-empty-t">Nog geen toernooien</div><div class="sh-empty-s">Importeer er een via Tournify!</div><button type="button" class="btn btn-primary" onclick="showNewTournamentForm()">🏆 Importeer toernooi</button></div>';
+    wrap.innerHTML = '<div class="toern-empty">Nog geen toernooien. Maak er een aan met de knop hierboven.</div>';
     return;
   }
 
@@ -24354,7 +22921,7 @@ function renderToernooienList(){
         <div class="toern-list-card-name">${escapeHtml(t.name)}</div>
         <div class="toern-list-card-meta">${[t.location, formatDate(t.startDate)].filter(Boolean).join(' · ')}</div>
       </div>
-      <div class="toern-list-card-status toern-status-${_toernEffectiveStatus(t)}">${statusLabel[_toernEffectiveStatus(t)]||t.status}</div>
+      <div class="toern-list-card-status toern-status-${t.status}">${statusLabel[t.status]||t.status}</div>
     </div>`).join('');
 }
 
@@ -24878,7 +23445,7 @@ function _addMinutesToClock(hhmm, mins){
 /* Eindtijd van een wedstrijd op basis van de effectieve regel */
 function tournamentMatchEndTime(tid, m){
   if(!m || !m.startTime) return '';
-  const start = _toernMatchClock(m);
+  const start = m.startTime.slice(11, 16);
   if(!/^\d{2}:\d{2}$/.test(start)) return '';
   const t = tourmCache.find(x => x.id === tid);
   const rule = getEffectiveTournamentRule(t, m.categoryId, m.stage || null);
@@ -24910,11 +23477,10 @@ function tournamentScoreBadge(m){
   if(!m) return '';
   const has = (m.scoreHome != null && m.scoreAway != null);
   const rs = String(m.resultStatus || '').toLowerCase();
-  const isZero = has && Number(m.scoreHome) === 0 && Number(m.scoreAway) === 0;
+  if(has && (rs === 'finished' || rs === '' )) return `✅ ${m.scoreHome}–${m.scoreAway}`;
   if(rs === 'live') return has ? `🔴 ${m.scoreHome}–${m.scoreAway}` : '🔴';
-  // Echt gespeeld = finished, OF een score die niet 0-0 is
-  if(has && (rs === 'finished' || !isZero)) return `✅ ${m.scoreHome}–${m.scoreAway}`;
-  return '';   // nog niet gespeeld → niets tonen (geen 0-0)
+  if(has) return `✅ ${m.scoreHome}–${m.scoreAway}`;
+  return '⏱️';
 }
 window.tournamentScoreBadge = tournamentScoreBadge;
 
@@ -24923,8 +23489,8 @@ function _toernOpenOverlay(innerHtml){
   _toernCloseOverlay();
   const ov = document.createElement('div');
   ov.id = 'toern-dyn-overlay';
-  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:max(24px, calc(env(safe-area-inset-top) + 16px)) 12px 24px;';
-  ov.innerHTML = `<div class="toern-dyn-card" style="position:relative;background:var(--panel,#111722);color:var(--text,#e5e9f5);border:1px solid var(--border,#2a2f3a);max-width:680px;width:100%;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.45);padding:20px;"><button type="button" aria-label="Sluiten" onclick="_toernCloseOverlay()" style="position:absolute;top:10px;right:10px;background:none;border:0;color:var(--text-3,#9aa3b7);font-size:22px;line-height:1;cursor:pointer;padding:4px;">\u00d7</button>${innerHtml}<div class="toern-dyn-foot"><button type="button" class="btn btn-sm" onclick="_toernCloseOverlay()">Sluiten</button></div></div>`;
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:24px 12px;';
+  ov.innerHTML = `<div class="toern-dyn-card" style="background:var(--card,#fff);color:var(--text,#111);max-width:680px;width:100%;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.3);padding:20px;">${innerHtml}</div>`;
   ov.addEventListener('click', e => { if(e.target === ov) _toernCloseOverlay(); });
   document.body.appendChild(ov);
   return ov;
@@ -25010,7 +23576,7 @@ async function openTournamentRulesModal(tid){
 
   _toernOpenOverlay(`
     <h3 style="margin:0 0 4px;">Toernooiregels — ${escapeHtml(t.name || '')}</h3>
-    <p style="margin:0 0 14px;font-size:12px;color:var(--muted,#888);">Speeltijd per categorie. Eindtijden in het programma en de observatie-timer gebruiken deze waarden.</p>
+    <p style="margin:0 0 14px;font-size:12px;color:var(--muted,#888);">Speeltijd per categorie. Eindtijden in de tijdlijn en de observatie-timer gebruiken deze waarden.</p>
     <div id="toern-rules-form">${rowHtml}</div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
       <button class="btn btn-sm" onclick="_toernCloseOverlay()">Annuleren</button>
@@ -25219,7 +23785,7 @@ async function syncTournamentScores(tid){
   if(!t){ toast('Toernooi niet gevonden', true); return; }
   const tournifyUrl = t.tournifyUrl || (t.tournifyId ? `https://tournifyapp.com/live/${encodeURIComponent(t.tournifyId)}` : '');
   if(!tournifyUrl){
-    if(statusEl) statusEl.textContent = 'Handmatig toernooi — voer uitslagen in via het programma (tik op de score).';
+    if(statusEl) statusEl.textContent = 'Handmatig toernooi — voer uitslagen in via de tijdlijn (tik op de score).';
     toast('Geen Tournify-bron — gebruik handmatige uitslagen', true);
     return;
   }
@@ -25244,12 +23810,6 @@ async function syncTournamentScores(tid){
   let written = 0, unmatched = 0;
   for(const rm of remoteMatches){
     if(rm.scoreHome == null || rm.scoreAway == null) continue;   // alleen wedstrijden mét uitslag
-    // Niet-gespeelde wedstrijden (0-0 zonder 'finished') NIET importeren — anders
-    // tellen ze als gelijkspel in de standen.
-    const rsRemote = String(rm.resultStatus || '').toLowerCase();
-    const isZero = Number(rm.scoreHome) === 0 && Number(rm.scoreAway) === 0;
-    const played = rsRemote === 'finished' || rsRemote === 'live' || !isZero;
-    if(!played) continue;
     const rh = _normTeamName(rm.homeTeam), ra = _normTeamName(rm.awayTeam);
     let local = localMatches.find(lm => _normTeamName(lm.teamAName) === rh && _normTeamName(lm.teamBName) === ra);
     let swapped = false;
@@ -25262,7 +23822,7 @@ async function syncTournamentScores(tid){
     const sa = swapped ? rm.scoreHome : rm.scoreAway;
     try {
       await setDoc(tournSubDoc(tid, 'matches', local.id),
-        { scoreHome: sh, scoreAway: sa, resultStatus: rsRemote === 'live' ? 'live' : 'finished', lastSyncedAt: new Date().toISOString() },
+        { scoreHome: sh, scoreAway: sa, resultStatus: rm.resultStatus || 'finished', lastSyncedAt: new Date().toISOString() },
         { merge: true });
       written++;
     } catch(e){ console.error('sync match write error:', e); }
@@ -25385,38 +23945,23 @@ async function renderStandenTab(tid){
   wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
   const t = tourmCache.find(x => x.id === tid) || {};
 
-  // Wedstrijden altijd laden om te bepalen of er écht iets gespeeld is.
-  let matches = [];
-  try {
-    const snap = await getDocs(tournSubCol(tid, 'matches'));
-    matches = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-  } catch(_){}
-
-  // "Gespeeld" = afgefloten (resultStatus finished) OF een score die niet 0-0 is.
-  // Een 0-0 met resultStatus 'finished' is een echt resultaat en telt dus WEL mee.
-  const isPlayed = m => {
-    const rs = String(m.resultStatus || '').toLowerCase();
-    if(rs === 'finished') return true;
-    const sh = m.scoreHome, sa = m.scoreAway;
-    return sh != null && sa != null && (Number(sh) !== 0 || Number(sa) !== 0);
-  };
-  if(!matches.some(isPlayed)){
-    wrap.innerHTML = '<div class="toern-empty">Nog geen uitslagen beschikbaar.</div>';
-    return;
-  }
-
   let standings = (t.standings && Object.keys(t.standings).length) ? t.standings : null;
   let sourceNote;
   if(standings){
     sourceNote = t.lastSyncedAt ? `Gesynchroniseerd vanaf Tournify` : `Gesynchroniseerd`;
   } else {
+    let matches = [];
+    try {
+      const snap = await getDocs(tournSubCol(tid, 'matches'));
+      matches = snap.docs.map(d => ({ ...d.data(), id: d.id }));
+    } catch(_){}
     standings = computeStandingsFromMatches(matches);
     sourceNote = 'Berekend op basis van ingevoerde uitslagen';
   }
 
   const groupNames = Object.keys(standings);
   if(!groupNames.length){
-    wrap.innerHTML = `<div class="toern-empty">Nog geen standen. Voer uitslagen in via het programma of gebruik <button class="btn btn-xs" onclick="syncTournamentScores('${tid}')">Synchroniseren</button>.</div>`;
+    wrap.innerHTML = `<div class="toern-empty">Nog geen standen. Voer uitslagen in via de tijdlijn of gebruik <button class="btn btn-xs" onclick="syncTournamentScores('${tid}')">Synchroniseren</button>.</div>`;
     return;
   }
 
@@ -25435,8 +23980,7 @@ async function renderStandenTab(tid){
     </tr>`).join('');
     html += `<div class="toern-stand-group" style="margin-bottom:16px;">
       <div class="toern-stand-title" style="font-weight:600;margin-bottom:4px;">${escapeHtml(g)}</div>
-      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-      <table style="width:100%;min-width:480px;font-size:12px;border-collapse:collapse;">
+      <table style="width:100%;font-size:12px;border-collapse:collapse;">
         <thead><tr style="text-align:left;border-bottom:1px solid var(--border,#ddd);">
           <th style="text-align:center;">#</th><th>Team</th><th style="text-align:center;">G</th>
           <th style="text-align:center;">W</th><th style="text-align:center;">GL</th><th style="text-align:center;">V</th>
@@ -25444,7 +23988,6 @@ async function renderStandenTab(tid){
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
-      </div>
     </div>`;
   }
   wrap.innerHTML = html;
@@ -25481,7 +24024,7 @@ function showNewTournamentForm(){
     <!-- Tournify URL sectie (standaard verborgen) -->
     <div id="tf-url-section" style="display:none;">
       <div class="toern-form-row">
-        <label>Tournify URL <button type="button" class="sh-help" aria-label="Help" data-help="Plak de URL van het toernooi op Tournify.com.">?</button></label>
+        <label>Tournify URL</label>
         <input id="tf-tournify-url" type="url" placeholder="https://www.tournify.nl/live/abc123/..." autocomplete="off" />
       </div>
       <div id="tf-import-status" class="toern-import-status" style="display:none;"></div>
@@ -25540,17 +24083,6 @@ async function submitNewTournament(){
     // ── Tournify URL-import flow ──────────────────────────────────
     const url = (document.getElementById('tf-tournify-url')?.value || '').trim();
     if(!url){ toast('Plak eerst een Tournify URL', true); return; }
-    // M17: dubbel-detectie — bestaat er al een toernooi met deze Tournify-ID?
-    try {
-      const _tid = (typeof extractTournifyId === 'function') ? extractTournifyId(url) : null;
-      if(_tid && Array.isArray(tourmCache)){
-        const _existing = tourmCache.find(t => t && (t.tournifyId === _tid || (t.tournifyUrl && String(t.tournifyUrl).indexOf(_tid) >= 0)));
-        if(_existing){
-          const _go = confirm('\u26a0\ufe0f Dit toernooi lijkt al ge\u00efmporteerd:\n\n"' + (_existing.name || 'Toernooi') + '"\n\nToch opnieuw importeren? Bestaande observaties, spelers en bundeling blijven behouden \u2014 alleen wedstrijden/uitslagen worden vernieuwd.\n\nOK = toch importeren \u00b7 Annuleren = open het bestaande toernooi');
-          if(!_go){ const _f = document.getElementById('toern-new-form'); if(_f) _f.remove(); renderToernooiDetail(_existing.id); return; }
-        }
-      }
-    } catch(_){}
 
     const statusEl = document.getElementById('tf-import-status');
     const setStatus = msg => {
@@ -25715,11 +24247,41 @@ function switchMatchesSubview(sub){
   if(sub === 'wedstrijden' && typeof renderMatchReports === 'function') renderMatchReports();
 }
 window.switchMatchesSubview = switchMatchesSubview;
-/* K3: __shDebugSpeler debug-helper verwijderd (lekte spelersdata naar console). */
+window.__shDebugSpeler = function(naam){
+  const p = (typeof playersCache !== 'undefined' ? playersCache : []).find(x => x && x.naam === naam);
+  if(!p){ console.log('NIET GEVONDEN in playersCache'); return; }
+  console.log('Fields:', Object.keys(p).join(', '));
+  console.log('notities:', JSON.stringify(p.notities||''));
+  console.log('notities_raw:', JSON.stringify(p.notities_raw||''));
+  console.log('tekst:', JSON.stringify(p.tekst||''));
+  console.log('opmerkingen:', JSON.stringify(p.opmerkingen||''));
+  console.log('id:', p.id);
+  console.log('rapport_type:', p.rapport_type);
+};
 
-// ── Cinematic intro verwijderd ───────────────────────────────────────────────
-// De vroegere intro-overlay is weg; de landingspagina verschijnt nu zelf met een
-// CSS-only entrance-animatie. Geen JS-timers of overlay-dismiss meer nodig.
+// ── Intro overlay dismiss ────────────────────────────────────────────────────
+(function setupIntro(){
+  var _dismissed = false;
+  function dismiss(){
+    if(_dismissed) return;
+    _dismissed = true;
+    var overlay = document.getElementById('intro-overlay');
+    if(!overlay) return;
+    overlay.classList.add('intro-gone');
+  }
+  function wire(){
+    var overlay = document.getElementById('intro-overlay');
+    if(!overlay){ setTimeout(dismiss, 100); return; }
+    // Dismiss op elke interactie: click, touch, keydown
+    overlay.addEventListener('click', dismiss);
+    document.addEventListener('keydown', dismiss, {once: true});
+    document.addEventListener('touchstart', dismiss, {once: true, passive: true});
+    // Auto-dismiss na 3 seconden
+    setTimeout(dismiss, 3000);
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', wire);
+  else wire();
+})();
 
 // s35cg: laad gebruikersrol vanuit Firestore (coordinator/admin check)
 async function loadUserRole(){
@@ -25730,8 +24292,6 @@ async function loadUserRole(){
     const snap = await getDoc(doc(db, 'users', currentUser.uid));
     const role = snap.exists() ? (snap.data().role || 'scout') : 'scout';
     window._shUserRole = role;
-    try { document.body.classList.toggle('role-admin', (role==='admin') || (currentUser && currentUser.email && ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1)); } catch(_){}
-    try { if(snap.exists() && snap.data().onboardingCompleted === false && typeof _obStart==='function'){ _obStart(role, snap.data()); } } catch(_){}
     // Coordinator-features tonen/verbergen
     document.querySelectorAll('[data-role-min="coordinator"]').forEach(el => {
       el.style.display = (role === 'coordinator' || role === 'admin') ? '' : 'none';
@@ -25739,73 +24299,19 @@ async function loadUserRole(){
   } catch(_){
     // Geen rol-data beschikbaar — geen probleem, app werkt als standaard scout
     window._shUserRole = 'scout';
-    try { document.body.classList.toggle('role-admin', currentUser && currentUser.email && ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1); } catch(_){}
   }
 }
 window.loadUserRole = loadUserRole;
 
-// LOGIN-GATE: gedeactiveerde (isActive:false) of verwijderde (status:'deleted')
-// accounts mogen na login NIET verder de app in. Admins blijven altijd toegelaten.
-let _shGatedMsg = null;
-async function _shAccountGate(uid, email){
-  try {
-    const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
-    const _db = getFirestore();
-    const snap = await getDoc(doc(_db, 'users', uid));
-    if(!snap.exists()) return { blocked: false, reason: null };   // geen user-doc → bestaand gedrag behouden
-    const d = snap.data() || {};
-    const adminEmails = ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'];
-    const isAdminAcc = (d.role === 'admin') || (email && adminEmails.indexOf(String(email).toLowerCase()) !== -1);
-    if(isAdminAcc) return { blocked: false, reason: null };        // admin-accounts nooit blokkeren
-    // 'deleted' gaat vóór 'inactive' (een verwijderd account heeft ook isActive:false).
-    if(d.status === 'deleted') return { blocked: true, reason: 'deleted' };
-    if(d.isActive === false)   return { blocked: true, reason: 'inactive' };
-    return { blocked: false, reason: null };
-  } catch(_){ return { blocked: false, reason: null }; }           // bij twijfel niet blokkeren
-}
-
 onAuthStateChanged(auth, async (user) => {
-  // === ACCOUNT-ISOLATIE ===
-  // Wisselt de ingelogde UID t.o.v. de vorige sessie? Dan kan in-memory data,
-  // localStorage en SW-cache van het vorige account nog rondzweven. Wis alles
-  // en herlaad met een schone lei. Voorkomt dat data van UID-A bij UID-B komt.
-  try {
-    const cachedUid = localStorage.getItem('sh_active_uid');
-    if(user && cachedUid && user.uid !== cachedUid){
-      console.warn('[ScoutingHub] account gewisseld (' + cachedUid + ' → ' + user.uid + ') — lokale staat wissen');
-      await _shPurgeLocalState();
-      try { localStorage.clear(); } catch(_){}
-      try { sessionStorage.clear(); } catch(_){}
-      location.reload();
-      return;
-    }
-    if(user) localStorage.setItem('sh_active_uid', user.uid);
-    else localStorage.removeItem('sh_active_uid');
-  } catch(_){}
-
   if(user){
     currentUser = user;
-    // LOGIN-GATE: blokkeer gedeactiveerde/verwijderde accounts VÓÓR er data laadt.
-    try {
-      const _gate = await _shAccountGate(user.uid, user.email);
-      if(_gate && _gate.blocked){
-        _shGatedMsg = (_gate.reason === 'deleted')
-          ? 'Dit account is verwijderd. Je kunt niet meer inloggen op ScoutingHub. Aan dit account gekoppelde persoonsgegevens en gebruikersdata worden verwijderd of geanonimiseerd volgens het verwijderbeleid van ScoutingHub. Neem contact op via contact@scoutinghub.nl voor vragen.'
-          : 'Dit account is gedeactiveerd. Je kunt op dit moment geen gebruik maken van ScoutingHub. Je gegevens blijven bewaard zodat je account later eventueel opnieuw geactiveerd kan worden. Neem contact op via contact@scoutinghub.nl als je denkt dat dit niet klopt.';
-        currentUser = null;
-        try { await signOut(auth); } catch(_){}
-        return;   // de null-branch toont het loginscherm met de melding
-      }
-    } catch(_){}
     try {
       await initApp();
       subscribeData();
-      try { subscribeTournaments(); } catch(_){}   // Feature 15: tourmCache vroeg vullen
       showApp();
       go('dashboard');
       loadUserRole();
-      try { _suInit(); } catch(_){}
-      _shApplyAccountIdentity(user);   // PROBLEEM 2: naam/e-mail per account tonen
     } catch(err){
       console.error('Bootstrap fout:', err);
       const errEl = document.getElementById('login-error');
@@ -25814,3787 +24320,6 @@ onAuthStateChanged(auth, async (user) => {
     }
   } else {
     currentUser = null;
-    if(_shGatedMsg){
-      // Geweigerd account: toon het loginformulier (niet de landingspagina) + melding.
-      var _g = _shGatedMsg; _shGatedMsg = null;
-      try { var _l = document.getElementById('loader'); if(_l) _l.style.display='none'; } catch(_){}
-      try { var _a = document.getElementById('app'); if(_a) _a.style.display='none'; } catch(_){}
-      try { var _ldo = document.getElementById('landing-overlay'); if(_ldo) _ldo.style.display='none'; } catch(_){}
-      try { var _lo = document.getElementById('login-overlay'); if(_lo) _lo.style.display='flex'; } catch(_){}
-      try { if(typeof _shLoginMsg==='function') _shLoginMsg(_g, 'error'); } catch(_){}
-    } else {
-      showLogin();
-    }
+    showLogin();
   }
 });
-
-
-/* ================================================================
-   MIJN PROGRAMMA — persoonlijk schema (club-volgen + handmatig)
-   + gedeelde helpers voor tijd-extractie en gekoppelde-spelers-subtekst.
-   Additief; raakt het standaard Programma-tab of scout-data nooit aan.
-   ================================================================ */
-
-// Robuuste tijd-extractie: werkt met ISO ("2026-06-07T10:30") én bare
-// "10:30" / "9:05", en valt terug op start/time/st. Lege string als niets.
-function _toernFieldLabel(field){
-  const f = (field == null) ? '' : String(field).trim();
-  if(!f) return '';
-  if(f === '0') return 'Hoofdveld';   // 'Veld 0' bestaat niet
-  return 'Veld ' + f;
-}
-function _toernMatchClock(m){
-  for(const v of [m && m.startTime, m && m.start, m && m.time, m && m.st, m && m.kickoff, m && m.datetime, m && m.tijd]){
-    if(v == null || v === '') continue;
-    const s = String(v);
-    // ISO of "YYYY-MM-DD HH:MM" (met T of spatie)
-    let mm = s.match(/\d{4}-\d{2}-\d{2}[T ](\d{2}:\d{2})/);
-    if(mm) return mm[1];
-    // kale "HH:MM" / "H:MM" / "HH:MM:SS"
-    mm = s.match(/(?:^|[^\d])(\d{1,2}):(\d{2})/);
-    if(mm) return String(mm[1]).padStart(2,'0') + ':' + mm[2];
-    // epoch (seconden of milliseconden)
-    if(/^\d{10,13}$/.test(s)){
-      const ms = s.length <= 11 ? Number(s) * 1000 : Number(s);
-      const d = new Date(ms);
-      if(!isNaN(d.getTime())) return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
-    }
-  }
-  return '';
-}
-
-// id→namen-map van ECHTE (niet-placeholder) gekoppelde spelers per team.
-function _buildPlayersByTeam(players){
-  const map = {};
-  (players||[]).forEach(tp => {
-    if(isPlaceholderTournamentPlayer(tp)) return;
-    const nm = tp.quickName || (tp.playerId ? 'Speler' : '');
-    if(!nm) return;
-    (map[tp.teamId] = map[tp.teamId] || []).push(nm);
-  });
-  return map;
-}
-
-// Subtekst-regel met gekoppelde spelers van beide teams; leeg als geen.
-function _toernLinkedPlayersSub(m, playersByTeam){
-  if(!playersByTeam) return '';
-  const names = [].concat(playersByTeam[m && m.teamAId] || [], playersByTeam[m && m.teamBId] || []);
-  if(!names.length) return '';
-  return `<span class="tp-players">👤 ${escapeHtml(names.join(', '))}</span>`;
-}
-
-function _mpWsOf(m){ return ['watch','optional','skip'].includes(m.watchStatus) ? m.watchStatus : 'none'; }
-function _mpDot(ws){
-  return ws === 'optional'
-    ? '<span class="tp-dot tp-dot-optional" aria-hidden="true">?</span>'
-    : `<span class="tp-dot tp-dot-${ws}" aria-hidden="true"></span>`;
-}
-function _minutesBetweenClock(a, b){
-  const pa = String(a).match(/^(\d{2}):(\d{2})$/), pb = String(b).match(/^(\d{2}):(\d{2})$/);
-  if(!pa || !pb) return 0;
-  return (Number(pb[1])*60 + Number(pb[2])) - (Number(pa[1])*60 + Number(pa[2]));
-}
-
-function _mpRowHtml(tid, m, conflict, playersByTeam){
-  const time = _toernMatchClock(m) || '—';
-  const endTime = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
-  const timeLabel = endTime ? `${time}–${endTime}` : time;
-  const field = _toernFieldLabel(m.field);
-  const poule = m.categoryId || '';
-  const ws = _mpWsOf(m);
-  const flag = conflict ? '<span class="mp-conflict-flag">⚠️ tegelijk!</span>' : '';
-  const sub = _toernLinkedPlayersSub(m, playersByTeam);
-  const note = m.matchNote ? `<span class="tp-note">📝 ${escapeHtml(m.matchNote)}</span>` : '';
-  return `<div class="toern-prog-row toern-watch-${ws} ${conflict?'mp-conflict':''}" onclick="openMatchDetail('${tid}','${m.id}')">
-    <span class="tp-ind">${_mpDot(ws)}</span>
-    <span class="tp-time" data-col="Tijd">${escapeHtml(timeLabel)}</span>
-    <span class="tp-match" data-col="Wedstrijd"><span class="tp-teams">${_toernMustStar(m)}${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>${flag}${sub}${note}</span>
-    <span class="tp-field" data-col="Veld">${escapeHtml(field)}</span>
-    <span class="tp-poule" data-col="Poule">${escapeHtml(poule)}</span>
-    <button class="mp-remove" title="Verwijder uit mijn programma" onclick="event.stopPropagation();removeFromMyProgram('${tid}','${m.id}')">×</button>
-  </div>`;
-}
-
-async function renderMijnProgrammaTab(tid){
-  tid = tid || _currentTournamentId;
-  const wrap = document.getElementById('toern-mijn-wrap');
-  if(!wrap) return;
-  wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
-
-  const [teamsSnap, matchesSnap, playersSnap] = await Promise.all([
-    getDocs(tournSubCol(tid, 'teams')),
-    getDocs(query(tournSubCol(tid, 'matches'), orderBy('startTime'))),
-    getDocs(tournSubCol(tid, 'players'))
-  ]);
-  const teams = teamsSnap.docs.map(d => ({...d.data(), id: d.id}));
-  const teamsById = {}; teams.forEach(t => { teamsById[t.id] = t; });
-  const followedCount = teams.filter(t => t.priority === true).length;
-  const allMatches = matchesSnap.docs.map(d => ({...d.data(), id: d.id}));
-  const playersByTeam = _buildPlayersByTeam(playersSnap.docs.map(d => ({...d.data(), id: d.id})));
-  window._toernMustScoutTeams = new Set();
-  playersSnap.docs.forEach(d => { const _tp = d.data(); if(_tp.mustScout && _tp.teamId) window._toernMustScoutTeams.add(_tp.teamId); });
-
-  const inMine = m => m.inMyProgram === true
-    || (teamsById[m.teamAId] && teamsById[m.teamAId].priority === true)
-    || (teamsById[m.teamBId] && teamsById[m.teamBId].priority === true);
-  let mine = allMatches.filter(inMine);
-
-  const header = `<div class="toern-mp-head">
-      <div class="toern-mp-title">Mijn programma — ${mine.length} wedstrijd${mine.length!==1?'en':''} | ${followedCount} club${followedCount!==1?'s':''} gevolgd</div>
-      <button class="btn btn-primary btn-sm" onclick="openMyProgramAddModal('${tid}')">+ Wedstrijd toevoegen</button>
-    </div>`;
-
-  if(mine.length === 0){
-    wrap.innerHTML = header + `<div class="toern-mp-empty">
-        <div class="toern-mp-empty-title">Je hebt nog geen persoonlijk programma.</div>
-        <ul class="toern-mp-empty-list">
-          <li>Volg clubs in de <strong>Spelers</strong>-tab om automatisch wedstrijden toe te voegen</li>
-          <li>Of klik op <strong>"+ Wedstrijd toevoegen"</strong> om handmatig te kiezen</li>
-        </ul>
-      </div>`;
-    return;
-  }
-
-  const wsRank = { watch: 0, optional: 1, none: 2, skip: 3 };
-  mine.sort((a,b) => {
-    const ta = _toernMatchClock(a), tb = _toernMatchClock(b);
-    if(ta !== tb) return ta.localeCompare(tb);
-    return wsRank[_mpWsOf(a)] - wsRank[_mpWsOf(b)];
-  });
-
-  // Tijdsloten groeperen (conflicten + pauzes), op basis van HH:MM
-  const slots = []; const idx = {};
-  for(const m of mine){
-    const k = _toernMatchClock(m) || '?';
-    if(idx[k] == null){ idx[k] = slots.length; slots.push({ key: k, start: _toernMatchClock(m) || '—', matches: [] }); }
-    slots[idx[k]].matches.push(m);
-  }
-  slots.forEach(s => {
-    let me = '';
-    s.matches.forEach(m => { const e = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : ''; if(e && e > me) me = e; });
-    s.maxEnd = me || s.start;
-    s.conflict = s.matches.length > 1 && /^\d{2}:\d{2}$/.test(s.start);
-  });
-  const conflictCount = slots.filter(s => s.conflict).length;
-
-  let rows = '';
-  slots.forEach((s, i) => {
-    if(i > 0){
-      const prev = slots[i-1];
-      if(/^\d{2}:\d{2}$/.test(prev.maxEnd) && /^\d{2}:\d{2}$/.test(s.start)){
-        const gap = _minutesBetweenClock(prev.maxEnd, s.start);
-        if(gap > 0) rows += `<div class="mp-pause">── ${gap} min pauze ──</div>`;
-      }
-    }
-    s.matches.forEach(m => { rows += _mpRowHtml(tid, m, s.conflict, playersByTeam); });
-  });
-
-  const firstT = slots[0].start;
-  const lastT = slots[slots.length - 1].start;
-  const footer = `<div class="toern-mp-footer">Eerste wedstrijd: ${escapeHtml(firstT)} | Laatste: ${escapeHtml(lastT)} | ${conflictCount} tijdsconflict${conflictCount!==1?'en':''}</div>`;
-
-  wrap.innerHTML = header + `<div class="toern-prog-table toern-mp-table">${rows}</div>` + footer;
-}
-window.renderMijnProgrammaTab = renderMijnProgrammaTab;
-
-async function toggleMatchInMyProgram(tid, matchId, val){
-  tid = tid || _currentTournamentId;
-  try {
-    await setDoc(tournSubDoc(tid, 'matches', matchId), { inMyProgram: !!val }, { merge: true });
-  } catch(e){
-    console.error('toggleMatchInMyProgram error:', e);
-    toast('Opslaan mislukt', true);
-  }
-}
-window.toggleMatchInMyProgram = toggleMatchInMyProgram;
-
-async function openMyProgramAddModal(tid){
-  tid = tid || _currentTournamentId;
-  const [teamsSnap, daysSnap, matchesSnap] = await Promise.all([
-    getDocs(tournSubCol(tid, 'teams')),
-    getDocs(tournSubCol(tid, 'days')),
-    getDocs(query(tournSubCol(tid, 'matches'), orderBy('startTime')))
-  ]);
-  const teamsById = {}; teamsSnap.docs.forEach(d => { teamsById[d.id] = d.data(); });
-  const days = daysSnap.docs.map(d => ({...d.data(), id: d.id})).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  const matches = matchesSnap.docs.map(d => ({...d.data(), id: d.id}));
-  const clubDriven = m => (teamsById[m.teamAId] && teamsById[m.teamAId].priority === true) || (teamsById[m.teamBId] && teamsById[m.teamBId].priority === true);
-
-  let body = '';
-  if(!days.length){
-    body = '<div class="toern-empty toern-empty-sm">Nog geen wedstrijden in dit toernooi.</div>';
-  } else {
-    for(const day of days){
-      const dm = matches.filter(m => m.dayId === day.id).sort((a,b)=>String(a.startTime||'').localeCompare(String(b.startTime||'')));
-      if(!dm.length) continue;
-      body += `<div class="mp-add-day">${escapeHtml(day.label)} — ${escapeHtml(formatDate(day.date))}</div>`;
-      body += dm.map(m => {
-        const time = _toernMatchClock(m) || '—';
-        const field = _toernFieldLabel(m.field);
-        const checked = (m.inMyProgram === true) ? 'checked' : '';
-        const via = clubDriven(m) ? '<span class="mp-add-via">volgt via club</span>' : '';
-        return `<label class="mp-add-row">
-          <input type="checkbox" ${checked} onchange="toggleMatchInMyProgram('${tid}','${m.id}',this.checked)" />
-          <span class="mp-add-time">${escapeHtml(time)}</span>
-          <span class="mp-add-teams">${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>
-          <span class="mp-add-field">${escapeHtml([field, m.categoryId||''].filter(Boolean).join(' · '))}</span>
-          ${via}
-        </label>`;
-      }).join('');
-    }
-  }
-  _toernOpenOverlay(`
-    <h3 style="margin:0 0 4px;">Wedstrijden toevoegen aan Mijn programma</h3>
-    <p style="margin:0 0 12px;font-size:12px;color:var(--muted,#888);">Vink de wedstrijden aan die je wilt volgen. Wedstrijden via een gevolgde club staan al automatisch in je programma.</p>
-    <div class="mp-add-list">${body}</div>
-    <div style="display:flex;justify-content:flex-end;margin-top:14px;">
-      <button class="btn btn-sm btn-primary" onclick="closeMyProgramAddModal('${tid}')">Klaar</button>
-    </div>`);
-}
-window.openMyProgramAddModal = openMyProgramAddModal;
-
-function closeMyProgramAddModal(tid){
-  _toernCloseOverlay();
-  if(_currentTournamentId === tid) renderMijnProgrammaTab(tid);
-}
-window.closeMyProgramAddModal = closeMyProgramAddModal;
-
-async function removeFromMyProgram(tid, matchId){
-  tid = tid || _currentTournamentId;
-  const [mSnap, teamsSnap] = await Promise.all([
-    getDoc(tournSubDoc(tid, 'matches', matchId)),
-    getDocs(tournSubCol(tid, 'teams'))
-  ]);
-  if(!mSnap.exists()){ toast('Wedstrijd niet gevonden', true); return; }
-  const m = { ...mSnap.data(), id: matchId };
-  const teamsById = {}; teamsSnap.docs.forEach(d => { teamsById[d.id] = d.data(); });
-  const ta = teamsById[m.teamAId] || {}, tb = teamsById[m.teamBId] || {};
-  const drivers = [];
-  if(ta.priority === true) drivers.push({ id: m.teamAId, name: m.teamAName || ta.name || 'club' });
-  if(tb.priority === true) drivers.push({ id: m.teamBId, name: m.teamBName || tb.name || 'club' });
-
-  if(drivers.length){
-    if(m.inMyProgram === true){ try { await setDoc(tournSubDoc(tid, 'matches', matchId), { inMyProgram: false }, { merge: true }); } catch(_){} }
-    const buttons = drivers.map(d => `<button class="btn btn-sm" onclick="unfollowAndRefresh('${tid}','${d.id}')">Ontvolg ${escapeHtml(d.name)}</button>`).join('');
-    _toernOpenOverlay(`
-      <h3 style="margin:0 0 8px;">Wedstrijd staat er via een gevolgde club</h3>
-      <p style="margin:0 0 14px;font-size:13px;line-height:1.5;">Deze wedstrijd staat in je programma omdat je <strong>${escapeHtml(drivers.map(d=>d.name).join(' en '))}</strong> volgt. Wil je de hele club ontvolgen (dan verdwijnen álle wedstrijden van die club), of de wedstrijd in je programma houden?</p>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;">
-        <button class="btn btn-sm" onclick="_toernCloseOverlay()">Behouden</button>
-        ${buttons}
-      </div>`);
-    return;
-  }
-
-  try {
-    await setDoc(tournSubDoc(tid, 'matches', matchId), { inMyProgram: false }, { merge: true });
-  } catch(e){
-    console.error('removeFromMyProgram error:', e);
-    toast('Verwijderen mislukt', true);
-    return;
-  }
-  toast('Verwijderd uit Mijn programma');
-  if(_currentTournamentId === tid) renderMijnProgrammaTab(tid);
-}
-window.removeFromMyProgram = removeFromMyProgram;
-
-async function unfollowAndRefresh(tid, teamId){
-  await toggleClubPriority(tid, teamId, false);
-  _toernCloseOverlay();
-  if(_currentTournamentId === tid) renderMijnProgrammaTab(tid);
-}
-window.unfollowAndRefresh = unfollowAndRefresh;
-
-// Build-marker zodat je in de console kunt verifiëren welke app.js live is.
-window.__SH_TOERNOOI_BUILD = 'tijden-fix-v201';
-/* K3: build-marker console.info verwijderd; window.__SH_TOERNOOI_BUILD blijft beschikbaar. */
-
-
-/* BUG 4/TIP3/TIP6 — gedeelde rij-render voor het standaard Programma, met
-   matchNote-label. + inklap-toggle voor tijdsblokken. */
-function _progRowHtml(tid, m, playersByTeam){
-  const time = _toernMatchClock(m) || '—';
-  const endTime = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
-  const timeLabel = endTime ? `${time}–${endTime}` : time;
-  const field = _toernFieldLabel(m.field);
-  const poule = m.categoryId || '';
-  const scoreBadge = (typeof tournamentScoreBadge === 'function') ? tournamentScoreBadge(m) : '';
-  const ws = _mpWsOf(m);
-  const dot = _mpDot(ws);
-  const sub = _toernLinkedPlayersSub(m, playersByTeam);
-  const note = m.matchNote ? `<span class="tp-note">📝 ${escapeHtml(m.matchNote)}</span>` : '';
-  return `<div class="toern-prog-row toern-watch-${ws}" onclick="openMatchDetail('${tid}','${m.id}')">
-    <span class="tp-ind">${dot}</span>
-    <span class="tp-time" data-col="Tijd">${escapeHtml(timeLabel)}</span>
-    <span class="tp-match" data-col="Wedstrijd">
-      <span class="tp-teams">${_toernMustStar(m)}${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>
-      <span class="tp-score" onclick="event.stopPropagation();promptManualScore('${tid}','${m.id}')" title="Uitslag invoeren/bewerken">${scoreBadge}</span>
-      ${sub}${note}
-    </span>
-    <span class="tp-field" data-col="Veld">${escapeHtml(field)}</span>
-    <span class="tp-poule" data-col="Poule">${escapeHtml(poule)}</span>
-  </div>`;
-}
-function toggleTimeBlock(btn){
-  const block = btn && btn.closest('.toern-timeblock');
-  if(block) block.classList.toggle('collapsed');
-}
-window.toggleTimeBlock = toggleTimeBlock;
-
-
-/* BUG 2 — standaard veldposities voor de toernooi-dropdowns */
-function _toernPositieOpts(){
-  const list = [
-    ['K','Keeper'], ['RB','Rechtsback'], ['CV','Centraal verdediger'], ['LB','Linksback'],
-    ['VDM','Verdedigende middenvelder'], ['CM','Centrale middenvelder'], ['AM','Aanvallende middenvelder'],
-    ['RW','Rechtsbuiten'], ['LW','Linksbuiten'], ['ST','Spits'], ['HS','Hangende spits']
-  ];
-  return list.map(([k,label]) => `<option value="${k}">${label} (${k})</option>`).join('');
-}
-
-/* TIP 3 — snelle wedstrijdnotitie opslaan op het match-document (merge) */
-async function saveMatchNote(tid, matchId, text){
-  tid = tid || _currentTournamentId;
-  const val = String(text == null ? '' : text).trim();
-  try {
-    await setDoc(tournSubDoc(tid, 'matches', matchId), { matchNote: val || null }, { merge: true });
-  } catch(e){
-    console.error('saveMatchNote error:', e);
-    toast('Notitie opslaan mislukt', true);
-    return;
-  }
-  if(_currentTournamentId === tid){
-    if(_toernTab === 'tijdlijn') renderTijdlijnTab(tid);
-    if(_toernTab === 'mijn-programma') renderMijnProgrammaTab(tid);
-  }
-}
-window.saveMatchNote = saveMatchNote;
-
-
-/* BUG 7 — observatie-trefwoorden met 4-staps toggle (goed/gemiddeld/ondermaats/uit).
-   Wordt alleen in de toernooi-obs-flow geïnjecteerd; tags worden additief op het
-   observatie-document opgeslagen. Bestaande observaties zonder tags blijven werken. */
-function _obsTagCycle(el){
-  const order = ['', 'good', 'average', 'poor'];
-  const cur = el.getAttribute('data-rating') || '';
-  const next = order[(order.indexOf(cur) + 1) % order.length];
-  if(next) el.setAttribute('data-rating', next); else el.removeAttribute('data-rating');
-  try { if(typeof window.__obsCaptureChips === 'function') window.__obsCaptureChips(); if(typeof window.__obsTriggerAutosave === 'function') window.__obsTriggerAutosave(); } catch(_){}
-}
-window._obsTagCycle = _obsTagCycle;
-
-function _injectObsTrefwoorden(existingTags, existingNotes){
-  existingNotes = existingNotes || {};
-  const host = document.getElementById('obs-terms');
-  if(!host) return;
-  const prev = document.getElementById('obs-trefwoorden');
-  if(prev) prev.remove();
-  const cats = {
-    'Mentaliteit': ['Winnaar','Leider','Communicatief','Rustig','Nerveus','Emotioneel','Doorzetter','Opgeven','Concentratie','Gretig'],
-    'Techniek': ['Balbehandeling','Passing','Eerste aanname','Traptechniek','Koppen','Dribbel','Overzicht','Beide benen'],
-    'Snelheid': ['Startsnelheid','Topsnelheid','Wendbaarheid','Versnelling','Traag','Explosief'],
-    'Fysiek': ['Sterk','Licht','Lenig','Groot','Klein','Dualkracht','Uithoudingsvermogen'],
-    'Inzicht': ['Scannen','Positiespel','Ruimte zien','Anticipatie','Coaching','Rust aan de bal','Loopacties','Timing']
-  };
-  const ratingOf = (cat, label) => {
-    const t = (existingTags || []).find(x => x && x.label === label && String(x.category||'').toLowerCase() === cat.toLowerCase());
-    return t && t.rating ? t.rating : '';
-  };
-  const wrap = document.createElement('div');
-  wrap.id = 'obs-trefwoorden';
-  wrap.innerHTML = '<div class="obs-section-label" style="margin-top:6px;">Trefwoorden <span style="font-weight:400;color:var(--text-3);">(klik: 🟢 goed → 🟠 gemiddeld → 🔴 ondermaats → uit)</span> <button type="button" class="sh-help" aria-label="Help" data-help="Tik op een chip: 🟢 goed, 🟠 normaal, 🔴 matig. Tik nogmaals om te resetten.">?</button></div>' +
-    Object.entries(cats).map(([cat, words]) => {
-      const chips = words.map(w => {
-        const r = ratingOf(cat, w);
-        return `<button type="button" class="obs-tag" data-category="${cat.toLowerCase()}" data-label="${escapeHtml(w)}"${r ? ` data-rating="${r}"` : ''} onclick="_obsTagCycle(this)">${escapeHtml(w)}</button>`;
-      }).join('');
-      return `<div class="obs-field-block"><span class="obs-field-label">${cat}</span><div class="obs-tags">${chips}</div><textarea class="obs-cat-note" data-cat-note="${cat.toLowerCase()}" rows="1" placeholder="Notitie (optioneel)...">${escapeHtml((existingNotes[cat.toLowerCase()]||''))}</textarea></div>`;
-    }).join('');
-  host.parentNode.insertBefore(wrap, host);
-  try { wrap.querySelectorAll('.obs-cat-note').forEach(ta => { const grow = () => { ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,120)+'px'; }; ta.addEventListener('input', grow); grow(); }); } catch(_){}
-}
-window._injectObsTrefwoorden = _injectObsTrefwoorden;
-
-
-/* ================================================================
-   ACCOUNT-ISOLATIE — beveiligingshelpers (additief)
-   Voorkomen dat data of identiteit van het ene account bij een
-   ander account zichtbaar wordt. Wissen geen Firestore-data; alleen
-   lokale caches/subscriptions/identiteit.
-   ================================================================ */
-
-// Wis alle lokale staat: SW-caches, Firestore offline-persistence (indien aan),
-// lopende onSnapshot-subscriptions en in-memory caches.
-async function _shPurgeLocalState(){
-  try { if(typeof unsubscribeData === 'function') unsubscribeData(); } catch(_){}
-  try { if(typeof unsubTournaments !== 'undefined' && unsubTournaments){ unsubTournaments(); unsubTournaments = null; } } catch(_){}
-  // K2: lokale spelers-cache (write-only fallback) per-account opruimen tegen data-at-rest-lek
-  try { Object.keys(localStorage).filter(k => k.indexOf('playersCache') === 0).forEach(k => localStorage.removeItem(k)); } catch(_){}
-  try {
-    if(typeof window !== 'undefined' && 'caches' in window){
-      const keys = await caches.keys();
-      await Promise.all(keys.map(k => caches.delete(k)));
-    }
-  } catch(_){}
-  try {
-    const { clearIndexedDbPersistence } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js');
-    if(clearIndexedDbPersistence) await clearIndexedDbPersistence(db);
-  } catch(_){}
-}
-window._shPurgeLocalState = _shPurgeLocalState;
-
-// Centrale schrijf-guard: weiger writes buiten users/{huidige uid}/.
-// Additief — bestaande writes gebruiken al currentUser.uid-paden; deze helper is
-// een vangnet voor nieuwe/edge-writes.
-function guardedWrite(path, data, opts){
-  const uid = auth.currentUser && auth.currentUser.uid;
-  if(!uid) throw new Error('Niet ingelogd');
-  if(typeof path !== 'string' || !path.startsWith('users/' + uid + '/')){
-    console.error('[ScoutingHub] write geblokkeerd — verkeerde/ontbrekende UID in pad:', path);
-    throw new Error('Write naar verkeerde UID geblokkeerd');
-  }
-  return setDoc(doc(db, ...path.split('/')), data, opts || { merge: true });
-}
-window.guardedWrite = guardedWrite;
-
-// Lees-guard: waarschuw als een opgehaald document niet bij de huidige UID hoort.
-function guardedOwn(docPath){
-  const uid = auth.currentUser && auth.currentUser.uid;
-  if(!uid) return false;
-  const ok = typeof docPath === 'string' && docPath.startsWith('users/' + uid + '/');
-  if(!ok) console.warn('[ScoutingHub] document hoort niet bij huidige UID:', docPath);
-  return ok;
-}
-window.guardedOwn = guardedOwn;
-
-// PROBLEEM 2: toon naam/e-mail van het ACTUELE account (niet de hardcoded
-// sidebar-default). Overschrijft nooit het user-document.
-async function _shApplyAccountIdentity(user){
-  // E-mail meteen tonen
-  try { const emailEl = document.getElementById('settings-email'); if(emailEl) emailEl.textContent = user.email || '—'; } catch(_){}
-  // Naam-volgorde (PROBLEEM 2): 1) Firestore user-doc, 2) Auth displayName, 3) e-mail-prefix.
-  // De Auth displayName van het demo-account staat fout ("Marcel Steeman") en kan niet
-  // via de Console worden gewijzigd; het Firestore-doc is leidend.
-  let name = '';
-  try {
-    const snap = await getDoc(doc(db, 'users', user.uid));
-    if(snap.exists()){ const d = snap.data() || {}; name = (d.displayName || d.name || d.naam || '').trim(); }
-  } catch(_){}
-  if(!name) name = (user.displayName && user.displayName.trim()) || '';
-  if(!name) name = user.email ? user.email.split('@')[0] : 'Scout';
-  try { const el = document.getElementById('scout-name'); if(el) el.textContent = name; } catch(_){}
-  // Initialen in de avatars meelopen met de naam (geen Marcel-initialen meer bij Demo)
-  try {
-    const ini = (name.split(/\s+/).filter(Boolean).slice(0,2).map(w => w[0]).join('') || 'SH').toUpperCase();
-    ['scout-avatar-initials','settings-photo-initials'].forEach(id => { const e = document.getElementById(id); if(e) e.textContent = ini; });
-  } catch(_){}
-  try { _shLoadProfilePhoto(user.uid); } catch(_){}
-}
-window._shApplyAccountIdentity = _shApplyAccountIdentity;
-
-// Lees (alleen-lezen) een naamveld uit het user-document en toon het. Schrijft
-// NOOIT displayName terug, zodat een bestaande naam niet wordt overschreven.
-async function _shLoadUserName(user){
-  try {
-    const snap = await getDoc(doc(db, 'users', user.uid));
-    if(snap.exists()){
-      const d = snap.data() || {};
-      const nm = d.displayName || d.name || d.naam;
-      if(nm){ const el = document.getElementById('scout-name'); if(el) el.textContent = nm; }
-    }
-  } catch(_){}
-}
-window._shLoadUserName = _shLoadUserName;
-
-
-/* ================================================================
-   TIP 4 — lokale wedstrijd-timer in het wedstrijd-detail.
-   Toont per helft een meelopende klok op basis van de ingestelde
-   toernooiregels (halfDuration). Puur lokaal: niets wordt opgeslagen,
-   en de timer verdwijnt zodra de modal sluit.
-   ================================================================ */
-let _wstrTimerState = null;
-function _wstrTimerFmt(sec){
-  sec = Math.max(0, sec | 0);
-  const m = Math.floor(sec / 60), s = sec % 60;
-  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-}
-function _wstrTimerRender(){
-  const st = _wstrTimerState;
-  const el = document.getElementById('toern-match-timer-display');
-  if(!el || !st) return;
-  el.textContent = `${st.half}e helft: ${_wstrTimerFmt(st.sec)} / ${_wstrTimerFmt(st.halfLenSec)}`;
-  el.classList.toggle('over', st.sec >= st.halfLenSec);
-  const startBtn = document.getElementById('toern-timer-start');
-  if(startBtn) startBtn.textContent = st.running ? '⏸ Pauze' : '▶ Start';
-  const nextBtn = document.getElementById('toern-timer-next');
-  if(nextBtn) nextBtn.style.display = (st.half < st.halves) ? '' : 'none';
-}
-function _wstrTimerTick(){ if(!_wstrTimerState) return; _wstrTimerState.sec++; _wstrTimerRender(); }
-function toggleMatchTimer(){
-  const st = _wstrTimerState; if(!st) return;
-  if(st.running){ st.running = false; if(st.iv){ clearInterval(st.iv); st.iv = null; } }
-  else { st.running = true; st.iv = setInterval(_wstrTimerTick, 1000); }
-  _wstrTimerRender();
-}
-window.toggleMatchTimer = toggleMatchTimer;
-function resetMatchTimer(){
-  const st = _wstrTimerState; if(!st) return;
-  if(st.iv){ clearInterval(st.iv); st.iv = null; }
-  st.sec = 0; st.half = 1; st.running = false;
-  _wstrTimerRender();
-}
-window.resetMatchTimer = resetMatchTimer;
-function nextHalfTimer(){
-  const st = _wstrTimerState; if(!st) return;
-  if(st.half < st.halves){ st.half++; st.sec = 0; _wstrTimerRender(); }
-}
-window.nextHalfTimer = nextHalfTimer;
-function _wstrTimerStop(){
-  if(_wstrTimerState && _wstrTimerState.iv) clearInterval(_wstrTimerState.iv);
-  _wstrTimerState = null;
-}
-window._wstrTimerStop = _wstrTimerStop;
-function _initMatchTimer(tid, match){
-  _wstrTimerStop();
-  const host = document.getElementById('toern-match-timer');
-  if(!host) return;
-  const t = tourmCache.find(x => x.id === tid);
-  const rule = (typeof getEffectiveTournamentRule === 'function')
-    ? getEffectiveTournamentRule(t, match.categoryId, match.stage || null) : null;
-  const halfMin = rule && rule.halfDuration ? rule.halfDuration : null;
-  if(!halfMin){ host.innerHTML = ''; return; }   // geen regels → geen timer
-  const halves = rule && rule.numberOfHalves ? rule.numberOfHalves : 2;
-  _wstrTimerState = { sec: 0, running: false, half: 1, halfLenSec: halfMin * 60, halves, iv: null };
-  host.innerHTML = `
-    <div class="toern-timer">
-      <div class="toern-timer-display" id="toern-match-timer-display">1e helft: 00:00 / ${_wstrTimerFmt(halfMin * 60)}</div>
-      <div class="toern-timer-btns">
-        <button type="button" class="btn btn-xs" id="toern-timer-start" onclick="toggleMatchTimer()">▶ Start</button>
-        <button type="button" class="btn btn-xs" id="toern-timer-next" onclick="nextHalfTimer()" style="display:none;">Volgende helft</button>
-        <button type="button" class="btn btn-xs" onclick="resetMatchTimer()">↺ Reset</button>
-      </div>
-    </div>`;
-  _wstrTimerRender();
-}
-window._initMatchTimer = _initMatchTimer;
-
-
-/* ================================================================
-   PRIO 1 — BUG 8 (effectieve status), Feature 2 (overall A/B/C/D),
-   Feature 3 (eerdere observaties). Allemaal additief / read-only.
-   ================================================================ */
-
-// BUG 8: bepaal status op basis van start-/einddatum (niet de opgeslagen 'active').
-function _toernEffectiveStatus(t){
-  if(!t) return 'active';
-  if(t.status === 'done' || t.finishedAt) return 'done';   // expliciet afgerond
-  const today = (typeof todayISO === 'function') ? todayISO() : new Date().toISOString().slice(0,10);
-  const sd = t.startDate || '';
-  const ed = t.endDate || t.startDate || '';
-  if(sd && sd > today) return 'prep';
-  if(ed && ed < today) return 'done';
-  return 'active';
-}
-window._toernEffectiveStatus = _toernEffectiveStatus;
-
-// Feature 2: prominente overall-rating (A/B/C/D) bovenaan het obs-formulier.
-// Synct met het bestaande #obs-niveau-veld zodat opslaan ongewijzigd blijft.
-function _injectOverallRating(current){
-  const form = document.getElementById('obs-form');
-  if(!form) return;
-  const prev = document.getElementById('obs-overall'); if(prev) prev.remove();
-  const grades = [['A','Uitzonderlijk'],['B','Goed'],['C','Gemiddeld'],['D','Onder niveau']];
-  const wrap = document.createElement('div');
-  wrap.id = 'obs-overall';
-  wrap.innerHTML = '<div class="obs-section-label" style="margin-top:0;">⭐ Overall beoordeling</div>' +
-    '<div class="obs-overall-row">' +
-    grades.map(([g,lbl]) => `<button type="button" class="obs-overall-btn grade-${g} ${current===g?'active':''}" data-g="${g}" title="${lbl}" onclick="_setOverall('${g}')">${g}</button>`).join('') +
-    '</div>';
-  form.insertBefore(wrap, form.firstChild);
-}
-window._injectOverallRating = _injectOverallRating;
-function _setOverall(g){
-  const sel = document.getElementById('obs-niveau');
-  if(sel) sel.value = g;
-  document.querySelectorAll('#obs-overall .obs-overall-btn').forEach(b => b.classList.toggle('active', b.dataset.g === g));
-}
-window._setOverall = _setOverall;
-
-// Feature 3: toon eerdere observaties van DEZELFDE speler in DIT toernooi.
-async function _injectEarlierObs(tid, tournamentPlayerId, currentMatchId){
-  const form = document.getElementById('obs-form');
-  if(!form) return;
-  const prev = document.getElementById('obs-earlier'); if(prev) prev.remove();
-  let earlier = [];
-  try {
-    const snap = await getDocs(query(tournSubCol(tid, 'observations'), where('tournamentPlayerId','==',tournamentPlayerId)));
-    earlier = snap.docs.map(d => ({...d.data(), id: d.id}))
-      .filter(o => o.matchId !== currentMatchId && (o.text || (o.tags && o.tags.length)));
-  } catch(_){}
-  if(!earlier.length) return;
-  const items = [];
-  for(const o of earlier.slice(0,5)){
-    let ctx = '';
-    try {
-      const ms = await getDoc(tournSubDoc(tid, 'matches', o.matchId));
-      if(ms.exists()){ const m = ms.data(); ctx = `${_toernMatchClock(m)||''} ${m.teamAName||''} – ${m.teamBName||''}`.trim(); }
-    } catch(_){}
-    const tags = (o.tags||[]).map(t => `${t.rating==='good'?'🟢':t.rating==='average'?'🟠':'🔴'} ${t.label}`).join('  ');
-    items.push(`<div class="obs-earlier-item">
-      <div class="obs-earlier-ctx">${escapeHtml(ctx || 'Eerder')}${o.grade ? ' · ⭐' + escapeHtml(o.grade) : ''}</div>
-      ${tags ? `<div class="obs-earlier-tags">${escapeHtml(tags)}</div>` : ''}
-      ${o.text ? `<div class="obs-earlier-text">${escapeHtml(o.text)}</div>` : ''}
-    </div>`);
-  }
-  const wrap = document.createElement('div');
-  wrap.id = 'obs-earlier';
-  wrap.innerHTML = `<details class="obs-earlier-box"><summary>📋 ${earlier.length} eerdere observatie${earlier.length!==1?'s':''} in dit toernooi</summary>${items.join('')}</details>`;
-  form.insertBefore(wrap, form.firstChild);
-}
-window._injectEarlierObs = _injectEarlierObs;
-
-
-/* ================================================================
-   FEATURE 1 — EINDE-TOERNOOI FLOW (bundeling → regulier rapport/observatie)
-   --------------------------------------------------------------------
-   Maakt NIEUWE documenten aan in de reguliere players-collectie via de
-   bestaande savePlayer(). Wijzigt de reguliere flow NIET. Alle toernooi-
-   schrijfacties zijn additief (merge). Exporteert als bewerkbaar concept.
-   ================================================================ */
-
-function _bestGrade(obs){
-  const order = { A:0, B:1, C:2, D:3 }; let best = null;
-  (obs||[]).forEach(o => { const g = o.grade || o.overallRating; if(g && order[g] != null && (best === null || order[g] < order[best])) best = g; });
-  return best;
-}
-
-// Stelt een leesbare analyse-tekst samen uit alle observaties van één speler.
-function _composeBundelText(entry, matchById, tournament){
-  const CATS = [['mentaliteit','MENTALITEIT'],['techniek','TECHNIEK'],['snelheid','SNELHEID'],['fysiek','FYSIEK'],['inzicht','INZICHT']];
-  const agg = {};
-  (entry.obs||[]).forEach(o => (o.tags||[]).forEach(t => {
-    const c = String(t.category||'').toLowerCase(); if(!c || !t.label) return;
-    agg[c] = agg[c] || {}; agg[c][t.label] = agg[c][t.label] || { good:0, average:0, poor:0 };
-    if(t.rating === 'good') agg[c][t.label].good++;
-    else if(t.rating === 'average') agg[c][t.label].average++;
-    else if(t.rating === 'poor') agg[c][t.label].poor++;
-  }));
-  let out = '';
-  CATS.forEach(([c,label]) => {
-    const labels = agg[c] ? Object.keys(agg[c]) : [];
-    if(!labels.length) return;
-    const parts = labels.map(lab => {
-      const a = agg[c][lab]; const tot = a.good + a.average + a.poor;
-      const dom = (a.good >= a.average && a.good >= a.poor) ? '🟢' : (a.average >= a.poor ? '🟠' : '🔴');
-      return `${dom} ${lab}${tot > 1 ? ` (${a.good}G/${a.average}O/${a.poor}R)` : ''}`;
-    });
-    out += `${label}: ${parts.join(', ')}\n`;
-  });
-  const notes = [];
-  (entry.obs||[]).forEach(o => {
-    if(!o.text || !o.text.trim()) return;
-    const m = matchById[o.matchId];
-    const ctx = m ? `${_toernMatchClock(m)||''} ${m.teamAName||''}–${m.teamBName||''}`.trim() : '';
-    notes.push(`${ctx ? `vs ${ctx}: ` : ''}${o.text.trim()}`);
-  });
-  if(notes.length) out += `\nNOTITIES:\n${notes.join('\n')}\n`;
-  const ctxList = (entry.obs||[]).map(o => {
-    const m = matchById[o.matchId]; if(!m) return null;
-    const sc = (m.scoreHome != null && m.scoreAway != null) ? ` (${m.scoreHome}-${m.scoreAway})` : '';
-    return `${_toernMatchClock(m)||''} ${m.teamAName||''} – ${m.teamBName||''}${sc} — ${_toernFieldLabel(m.field)||''} ${m.categoryId||''}`.replace(/\s+/g,' ').trim();
-  }).filter(Boolean);
-  if(ctxList.length) out += `\nWEDSTRIJD-CONTEXT:\n${[...new Set(ctxList)].join('\n')}\n`;
-  out += `\nBron: ${tournament.name || 'Toernooi'}${tournament.startDate ? ' · ' + formatDate(tournament.startDate) : ''}`;
-  return out.trim();
-}
-
-// Verzamel alle exporteerbare spelers (met observaties) + context.
-async function _collectTournamentExportData(tid){
-  const [teamsSnap, playersSnap, obsSnap, matchesSnap] = await Promise.all([
-    getDocs(tournSubCol(tid, 'teams')),
-    getDocs(tournSubCol(tid, 'players')),
-    getDocs(tournSubCol(tid, 'observations')),
-    getDocs(tournSubCol(tid, 'matches'))
-  ]);
-  const teamsById = {}; teamsSnap.docs.forEach(d => { teamsById[d.id] = d.data(); });
-  const matchById = {}; matchesSnap.docs.forEach(d => { matchById[d.id] = { ...d.data(), id: d.id }; });
-  const obsByTp = {}; obsSnap.docs.forEach(d => { const o = { ...d.data(), id: d.id }; (obsByTp[o.tournamentPlayerId] = obsByTp[o.tournamentPlayerId] || []).push(o); });
-  const entries = [];
-  playersSnap.docs.forEach(d => {
-    const tp = { ...d.data(), id: d.id };
-    if(isPlaceholderTournamentPlayer(tp)) return;
-    const obs = obsByTp[tp.id] || [];
-    if(!obs.length) return;   // alleen spelers met observaties
-    const club = teamsById[tp.teamId] ? teamsById[tp.teamId].name : '';
-    const categoryId = (matchById[(obs[0]||{}).matchId] || {}).categoryId || '';
-    entries.push({ tpId: tp.id, naam: tp.quickName || 'Onbekend', club, position: tp.position || '', categoryId, isLinked: tp.type !== 'spotted', obs, matchById, exported: tp.exportedAs || null });
-  });
-  return { entries, tournament: tourmCache.find(x => x.id === tid) || {} };
-}
-
-// Maak één regulier document (rapport of observatie) uit een speler-bundeling.
-async function _exportTournamentPlayer(tid, entry, tournament){
-  const mode = entry.isLinked ? 'rapport' : 'observatie';
-  const grade = _bestGrade(entry.obs) || '';
-  const fullText = _composeBundelText(entry, entry.matchById, tournament);
-  const notesOnly = _composeNotesOnly(entry, entry.matchById, tournament);
-  const catText = _aggTagsByCat(entry.obs);
-  const id = tuid('p');
-  const now = Date.now();
-  const tdatum = tournament.startDate || todayISO();
-  const club = entry.club || '';
-  const age = _toernAgeLabel(tournament) || entry.categoryId || '';
-  const base = {
-    id, naam: entry.naam || 'Onbekend', club, positie: entry.position || '', elftal: age,
-    huidig_niveau: grade, potentieel_niveau: '', advies: '',
-    wedstrijd: { datum: tdatum, thuis: club, uit: '', leeftijd: age, plaats: tournament.location || '', sportpark: '', toernooi: true, toernooi_naam: tournament.name || '' },
-    wedstrijd_datum: tdatum, wedstrijd_thuis: club, wedstrijd_uit: '', wedstrijd_leeftijd: age,
-    fromTournamentId: tid, bron: tournament.name || '',
-    created: now, modified: now,
-    scout: (typeof currentUser !== 'undefined' && currentUser) ? (currentUser.displayName || currentUser.email || '') : ''
-  };
-  let rec;
-  if(mode === 'rapport'){
-    // Tags → criterium-TEKSTvelden. De score-velden (*_huidig) blijven LEEG;
-    // die vult de scout zelf in bij het concept.
-    rec = { ...base, concept: true,
-      notities: notesOnly, notities_raw: notesOnly,
-      beoordelingen: {
-        techniek_huidig: '',      techniek_tekst:      catText.techniek    || '',
-        inzicht_huidig: '',       inzicht_tekst:       catText.inzicht     || '',
-        grit_huidig: '',          grit_tekst:          catText.mentaliteit || '',
-        explosiviteit_huidig: '', explosiviteit_tekst: catText.snelheid    || '',
-        sprinten_huidig: '',      sprinten_tekst:      catText.snelheid    || '',
-        duelleren_huidig: '',     duelleren_tekst:     catText.fysiek      || '',
-        wendbaarheid_huidig: '',  wendbaarheid_tekst:  catText.fysiek      || ''
-      }
-    };
-  } else {
-    rec = { ...base, notities: fullText, notities_raw: fullText, rapport_type: 'observatie', status: 'observatie', concept: false, is_opvallend: true };
-  }
-  await savePlayer(rec);
-  // Markeer de toernooi-speler additief (geen overschrijven van bestaande velden)
-  try { await setDoc(tournSubDoc(tid, 'players', entry.tpId), { exportedAs: mode, exportedPlayerId: id, exportedAt: new Date().toISOString() }, { merge: true }); } catch(_){}
-  return { mode, id };
-}
-
-// STAP 1B/1C — één speler exporteren (vanuit Spelers-/Bundeling-tab).
-async function exportSingleTournamentPlayer(tid, tpId){
-  tid = tid || _currentTournamentId;
-  const { entries, tournament } = await _collectTournamentExportData(tid);
-  const e = entries.find(x => x.tpId === tpId);
-  if(!e){ toast('Nog geen observaties voor deze speler', true); return; }
-  if(e.exported){ toast('Al aangemaakt', true); return; }
-  try {
-    const r = await _exportTournamentPlayer(tid, e, tournament);
-    toast((r.mode === 'rapport' ? 'Rapport' : 'Observatie') + ' aangemaakt (concept) ✓');
-  } catch(err){ console.error('export error', err); toast('Aanmaken mislukt', true); return; }
-  if(_currentTournamentId === tid){
-    if(_toernTab === 'spelers') renderSpelersTab(tid);
-    if(_toernTab === 'bundeling') renderBundelingTab(tid);
-  }
-}
-window.exportSingleTournamentPlayer = exportSingleTournamentPlayer;
-
-// STAP 1D — bulk afronden.
-async function openTournamentAfrondenModal(tid){
-  tid = tid || _currentTournamentId;
-  const { entries, tournament } = await _collectTournamentExportData(tid);
-  if(!entries.length){ toast('Nog geen geobserveerde spelers om af te ronden', true); return; }
-  const linked = entries.filter(e => e.isLinked);
-  const spotted = entries.filter(e => !e.isLinked);
-  const row = e => {
-    const g = _bestGrade(e.obs) || '';
-    return `<label class="afr-row">
-      <input type="checkbox" class="afr-cb" data-tp="${e.tpId}" data-grade="${g}" ${e.exported ? 'disabled' : 'checked'} />
-      <span class="afr-grade grade-${g || 'none'}">${g || '—'}</span>
-      <span class="afr-name">${escapeHtml(e.naam)}</span>
-      <span class="afr-club">${escapeHtml(e.club || '')}</span>
-      <span class="afr-meta">${e.obs.length} obs${e.exported ? ` · ✅ ${e.exported === 'rapport' ? 'rapport' : 'verwerkt'}` : ''}</span>
-    </label>`;
-  };
-  _toernOpenOverlay(`
-    <h3 style="margin:0 0 4px;">Toernooi afronden — ${escapeHtml(tournament.name || '')}</h3>
-    <p style="margin:0 0 10px;font-size:12px;color:var(--muted,#888);">Geselecteerde spelers worden omgezet naar reguliere <strong>rapporten</strong> (gekoppelde spelers) en <strong>observaties</strong> (opgevallen spelers) — als bewerkbaar concept in je spelersdatabase.</p>
-    <div class="afr-quick">
-      <button type="button" class="btn btn-xs" onclick="_afrSelect('ab')">Selecteer A+B</button>
-      <button type="button" class="btn btn-xs" onclick="_afrSelect('all')">Alles</button>
-      <button type="button" class="btn btn-xs" onclick="_afrSelect('none')">Niets</button>
-    </div>
-    ${linked.length ? `<div class="afr-group-title">Gekoppelde spelers → rapport</div>${linked.map(row).join('')}` : ''}
-    ${spotted.length ? `<div class="afr-group-title">Opgevallen spelers → observatie</div>${spotted.map(row).join('')}` : ''}
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
-      <button type="button" class="btn btn-sm btn-primary" onclick="_afrondTournament('${tid}')">Afronden</button>
-    </div>`);
-}
-window.openTournamentAfrondenModal = openTournamentAfrondenModal;
-
-function _afrSelect(mode){
-  document.querySelectorAll('.afr-cb:not([disabled])').forEach(cb => {
-    if(mode === 'all') cb.checked = true;
-    else if(mode === 'none') cb.checked = false;
-    else if(mode === 'ab') cb.checked = (cb.dataset.grade === 'A' || cb.dataset.grade === 'B');
-  });
-}
-window._afrSelect = _afrSelect;
-
-async function _afrondTournament(tid){
-  const cbs = Array.from(document.querySelectorAll('.afr-cb:checked:not([disabled])'));
-  if(!cbs.length){ toast('Selecteer minstens één speler', true); return; }
-  const tpIds = cbs.map(cb => cb.dataset.tp);
-  const { entries, tournament } = await _collectTournamentExportData(tid);
-  const byId = {}; entries.forEach(e => { byId[e.tpId] = e; });
-  let nRap = 0, nObs = 0;
-  for(const id of tpIds){
-    const e = byId[id]; if(!e) continue;
-    try { const r = await _exportTournamentPlayer(tid, e, tournament); if(r.mode === 'rapport') nRap++; else nObs++; }
-    catch(err){ console.error('afrond export error', err); }
-  }
-  try { await setDoc(tournDoc(tid), { status: 'done', finishedAt: new Date().toISOString() }, { merge: true }); } catch(_){}
-  _toernOpenOverlay(`
-    <h3 style="margin:0 0 8px;">Toernooi afgerond ✓</h3>
-    <p style="font-size:14px;line-height:1.5;">${nRap} rapport${nRap !== 1 ? 'en' : ''} en ${nObs} observatie${nObs !== 1 ? 's' : ''} aangemaakt (concept). Je vindt ze in de spelersdatabase — bewerkbaar voordat je ze indient.</p>
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
-      <button type="button" class="btn btn-sm" onclick="_toernCloseOverlay()">Terug naar toernooi</button>
-      <button type="button" class="btn btn-sm btn-primary" onclick="_toernCloseOverlay(); if(typeof go==='function') go('database');">Bekijk database</button>
-    </div>`);
-  if(_currentTournamentId === tid) renderToernooiDetail(tid);
-}
-window._afrondTournament = _afrondTournament;
-
-
-/* Mini-fix — tags per categorie als TEKST (geen scores) + losse notities. */
-function _aggTagsByCat(obs){
-  const agg = {};
-  (obs||[]).forEach(o => (o.tags||[]).forEach(t => {
-    const c = String(t.category||'').toLowerCase(); if(!c || !t.label) return;
-    agg[c] = agg[c] || {}; agg[c][t.label] = agg[c][t.label] || { good:0, average:0, poor:0 };
-    if(t.rating === 'good') agg[c][t.label].good++;
-    else if(t.rating === 'average') agg[c][t.label].average++;
-    else if(t.rating === 'poor') agg[c][t.label].poor++;
-  }));
-  const out = {};
-  Object.keys(agg).forEach(c => {
-    out[c] = Object.keys(agg[c]).map(lab => {
-      const a = agg[c][lab]; const tot = a.good + a.average + a.poor;
-      const dom = (a.good >= a.average && a.good >= a.poor) ? '🟢' : (a.average >= a.poor ? '🟠' : '🔴');
-      return `${dom} ${lab}${tot > 1 ? ` (${a.good}G/${a.average}O/${a.poor}R)` : ''}`;
-    }).join(', ');
-  });
-  return out;
-}
-function _composeNotesOnly(entry, matchById, tournament){
-  let out = '';
-  const notes = [];
-  (entry.obs||[]).forEach(o => {
-    if(!o.text || !o.text.trim()) return;
-    const m = matchById[o.matchId];
-    const ctx = m ? `${_toernMatchClock(m)||''} ${m.teamAName||''}–${m.teamBName||''}`.trim() : '';
-    notes.push(`${ctx ? `vs ${ctx}: ` : ''}${o.text.trim()}`);
-  });
-  if(notes.length) out += `${notes.join('\n')}\n`;
-  const ctxList = (entry.obs||[]).map(o => {
-    const m = matchById[o.matchId]; if(!m) return null;
-    const sc = (m.scoreHome != null && m.scoreAway != null) ? ` (${m.scoreHome}-${m.scoreAway})` : '';
-    return `${_toernMatchClock(m)||''} ${m.teamAName||''} – ${m.teamBName||''}${sc} — ${_toernFieldLabel(m.field)||''} ${m.categoryId||''}`.replace(/\s+/g,' ').trim();
-  }).filter(Boolean);
-  if(ctxList.length) out += `\nWEDSTRIJD-CONTEXT:\n${[...new Set(ctxList)].join('\n')}\n`;
-  out += `\nBron: ${tournament.name || 'Toernooi'}${tournament.startDate ? ' · ' + formatDate(tournament.startDate) : ''}`;
-  return out.trim();
-}
-
-/* ================================================================
-   FEATURE 6 — OFFLINE: connectiviteits-indicator + auto-sync.
-   (Firestore offline-persistence wordt bij de db-init geactiveerd;
-   writes worden offline gequeued en automatisch gesynct.)
-   ================================================================ */
-function _shUpdateConnBadge(){
-  const online = (typeof navigator !== 'undefined') ? navigator.onLine : true;
-  try { document.body.classList.toggle('sh-offline', !online); } catch(_){}
-  const txt = document.getElementById('sync-text');
-  if(txt) txt.textContent = online ? 'Cloud gesynchroniseerd' : 'Offline — wordt gesynchroniseerd bij verbinding';
-  const dot = document.getElementById('sync-dot');
-  if(dot) dot.style.background = online ? '' : 'var(--red, #ef4444)';
-}
-window._shUpdateConnBadge = _shUpdateConnBadge;
-try {
-  window.addEventListener('online', () => { _shUpdateConnBadge(); try { toast('Weer online — wijzigingen worden gesynchroniseerd'); } catch(_){} });
-  window.addEventListener('offline', () => { _shUpdateConnBadge(); try { toast('Offline — observaties worden lokaal bewaard', true); } catch(_){} });
-  _shUpdateConnBadge();
-} catch(_){}
-
-
-/* ================================================================
-   PRIO 2 — Feature 4 (navigatie), 5 (must-scout), 7 (stats), 15 (programma-kaart)
-   Alles additief; reguliere flows ongewijzigd.
-   ================================================================ */
-
-// Feature 4 — naar vorige/volgende wedstrijd binnen het tijdsblok.
-function navMatch(dir){
-  const nv = window._matchNav; if(!nv || !nv.ids) return;
-  const ni = nv.idx + dir;
-  if(ni < 0 || ni >= nv.ids.length) return;
-  openMatchDetail(nv.tid, nv.ids[ni]);
-}
-window.navMatch = navMatch;
-
-// Feature 5 — must-scout togglen (additief op het toernooi-speler-doc).
-async function toggleMustScout(tid, tpId, val){
-  tid = tid || _currentTournamentId;
-  const on = (val === true || val === 'true');
-  try { await setDoc(tournSubDoc(tid, 'players', tpId), { mustScout: on }, { merge: true }); }
-  catch(e){ console.error('toggleMustScout error:', e); toast('Opslaan mislukt', true); return; }
-  toast(on ? '⭐ Must-scout' : 'Must-scout verwijderd');
-  if(_currentTournamentId === tid){
-    if(window.__shOpenMatchDetailId) openMatchDetail(window.__shOpenMatchDetailTid, window.__shOpenMatchDetailId);
-    if(_toernTab === 'spelers') renderSpelersTab(tid);
-    if(_toernTab === 'tijdlijn') renderTijdlijnTab(tid);
-    if(_toernTab === 'mijn-programma') renderMijnProgrammaTab(tid);
-  }
-}
-window.toggleMustScout = toggleMustScout;
-
-// Feature 5 — ⭐ in programma-rij als een team een must-scout speler heeft.
-function _toernMustStar(m){
-  const set = window._toernMustScoutTeams;
-  if(set && (set.has(m.teamAId) || set.has(m.teamBId))) return '<span class="tp-must" title="Must-scout speler">⭐</span> ';
-  return '';
-}
-
-// Feature 7 — statistieken-samenvatting (automatisch berekend, geen opslag).
-async function openTournamentStats(tid){
-  tid = tid || _currentTournamentId;
-  const [teamsSnap, playersSnap, obsSnap, matchesSnap] = await Promise.all([
-    getDocs(tournSubCol(tid, 'teams')),
-    getDocs(tournSubCol(tid, 'players')),
-    getDocs(tournSubCol(tid, 'observations')),
-    getDocs(tournSubCol(tid, 'matches'))
-  ]);
-  const teamsById = {}; teamsSnap.docs.forEach(d => { teamsById[d.id] = d.data(); });
-  const teams = teamsSnap.docs.map(d => d.data());
-  const playersById = {}; playersSnap.docs.forEach(d => { const tp = { ...d.data(), id: d.id }; if(!isPlaceholderTournamentPlayer(tp)) playersById[tp.id] = tp; });
-  const obs = obsSnap.docs.map(d => d.data());
-  const obsByTp = {}; const matchSet = new Set(); const obsByTeam = {};
-  obs.forEach(o => {
-    if(!playersById[o.tournamentPlayerId]) return;
-    (obsByTp[o.tournamentPlayerId] = obsByTp[o.tournamentPlayerId] || []).push(o);
-    if(o.matchId) matchSet.add(o.matchId);
-    const tp = playersById[o.tournamentPlayerId];
-    if(tp && tp.teamId) obsByTeam[tp.teamId] = (obsByTeam[tp.teamId] || 0) + 1;
-  });
-  const observedTps = Object.keys(obsByTp);
-  let nA = 0, nB = 0;
-  observedTps.forEach(id => { const g = _bestGrade(obsByTp[id]); if(g === 'A') nA++; else if(g === 'B') nB++; });
-  const clubsGevolgd = teams.filter(t => t.priority).length;
-  let topClub = '—', topClubN = 0;
-  Object.keys(obsByTeam).forEach(k => { if(obsByTeam[k] > topClubN){ topClubN = obsByTeam[k]; topClub = (teamsById[k] ? teamsById[k].name : k); } });
-  let topPl = '—', topPlN = 0;
-  observedTps.forEach(id => { const n = obsByTp[id].length; if(n > topPlN){ topPlN = n; topPl = playersById[id].quickName || '?'; } });
-  const row = (label, val) => `<div class="afr-row" style="cursor:default;"><span class="afr-name">${escapeHtml(label)}</span><span class="afr-meta">${escapeHtml(String(val))}</span></div>`;
-  _toernOpenOverlay(`
-    <h3 style="margin:0 0 10px;">📊 Jouw toernooi in cijfers</h3>
-    ${row('Wedstrijden bekeken', `${matchSet.size} / ${matchesSnap.size}`)}
-    ${row('Spelers geobserveerd', observedTps.length)}
-    ${row('Observaties gemaakt', obs.length)}
-    ${row('A-spelers', nA)}
-    ${row('B-spelers', nB)}
-    ${row('Clubs gevolgd', clubsGevolgd)}
-    ${row('Meest bekeken club', topClubN ? `${topClub} (${topClubN})` : '—')}
-    ${row('Meest genoteerd speler', topPlN ? `${topPl} (${topPlN}×)` : '—')}
-  `);
-}
-window.openTournamentStats = openTournamentStats;
-
-// Feature 15 — toernooi-kaarten in het reguliere Programma-scherm (read-only).
-function _renderProgrammaToernooiCards(){
-  const host = document.getElementById('prog-toernooi-cards');
-  if(!host) return;
-  if(typeof getCurrentDisplayMonday !== 'function' || !Array.isArray(tourmCache)){ host.innerHTML = ''; return; }
-  let ms, ss;
-  try {
-    const monday = getCurrentDisplayMonday();
-    const sunday = new Date(monday); sunday.setDate(sunday.getDate() + 6);
-    const iso = d => { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
-    ms = iso(monday); ss = iso(sunday);
-  } catch(_){ host.innerHTML = ''; return; }
-  const _matched = tourmCache.filter(t => { const sd = t.startDate || '', ed = t.endDate || t.startDate || ''; return sd && sd <= ss && ed >= ms; });
-  if(!_matched.length){ host.innerHTML = ''; return; }
-  const labels = { prep:'Voorbereiding', active:'Actief', closing:'Afsluiting', done:'Afgerond' };
-  // M18: een kaart per toernooi-DAG die binnen de getoonde week valt (meerdaags = meerdere kaarten)
-  const _isoOf = d => { const z = new Date(d.getTime() - d.getTimezoneOffset()*60000); return z.toISOString().slice(0,10); };
-  const _entries = [];
-  _matched.forEach(t => {
-    const sd = t.startDate || '', ed = t.endDate || t.startDate || '';
-    const from = sd > ms ? sd : ms;
-    const to   = ed < ss ? ed : ss;
-    let d = new Date(from + 'T00:00:00'); const end = new Date(to + 'T00:00:00');
-    let guard = 0;
-    while(d <= end && guard < 14){ _entries.push({ t, date: _isoOf(d) }); d.setDate(d.getDate() + 1); guard++; }
-  });
-  _entries.sort((a,b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : String(a.t.name||'').localeCompare(String(b.t.name||''))));
-  const _multi = {}; _matched.forEach(t => { const sd=t.startDate||'', ed=t.endDate||t.startDate||''; _multi[t.id] = !!(sd && ed && sd !== ed); });
-  host.innerHTML = _entries.map(function(e){
-    const t = e.t, date = e.date;
-    const st = _toernEffectiveStatus(t);
-    const _dayNo = _multi[t.id] ? (Math.round((new Date(date + 'T00:00:00') - new Date((t.startDate||date) + 'T00:00:00')) / 86400000) + 1) : 0;
-    const _dayLabel = formatDate(date) + (_dayNo ? ' · dag ' + _dayNo : '');
-    return `<div class="prog-toern-card toern-status-${st}" onclick="go('toernooien'); setTimeout(function(){ renderToernooiDetail('${t.id}'); }, 0);">
-      <div class="ptc-main">
-        <div class="ptc-title">🏆 ${escapeHtml(t.name || 'Toernooi')}</div>
-        <div class="ptc-meta">📍 ${escapeHtml(t.location || '')}${t.location ? ' · ' : ''}${escapeHtml(_dayLabel)}</div>
-      </div>
-      <span class="ptc-status">${labels[st] || st}</span>
-      <span class="ptc-go">Bekijken →</span>
-    </div>`;
-  }).join('');
-}
-window._renderProgrammaToernooiCards = _renderProgrammaToernooiCards;
-
-// Hooks (additief): toernooi-kaarten verversen bij navigeren naar/binnen Programma.
-try {
-  ['prog-prev-week','prog-next-week','programma-today-btn'].forEach(id => {
-    const b = document.getElementById(id); if(b) b.addEventListener('click', () => setTimeout(_renderProgrammaToernooiCards, 60));
-  });
-  document.querySelectorAll('[data-view="programma"]').forEach(el => el.addEventListener('click', () => setTimeout(_renderProgrammaToernooiCards, 90)));
-} catch(_){}
-
-// Feature 4 — toetsenbord (← →) en swipe binnen de wedstrijd-modal.
-try {
-  document.addEventListener('keydown', e => {
-    const bd = document.getElementById('toern-match-backdrop');
-    if(!bd || bd.style.display !== 'flex') return;
-    if(e.key === 'ArrowLeft') navMatch(-1);
-    else if(e.key === 'ArrowRight') navMatch(1);
-  });
-  const _mbd = document.getElementById('toern-match-backdrop');
-  if(_mbd){
-    let _x0 = null;
-    _mbd.addEventListener('touchstart', e => { _x0 = e.touches && e.touches[0] ? e.touches[0].clientX : null; }, { passive: true });
-    _mbd.addEventListener('touchend', e => {
-      if(_x0 == null) return;
-      const x1 = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : _x0;
-      const dx = x1 - _x0; _x0 = null;
-      if(Math.abs(dx) > 60) navMatch(dx < 0 ? 1 : -1);
-    }, { passive: true });
-  }
-} catch(_){}
-
-
-/* ================================================================
-   PRIO 3 — Feature 8 (notificatie), 9 (FAB), 10 (omstandigheden), 11 (delen)
-   Alles additief; reguliere flows ongewijzigd.
-   ================================================================ */
-
-// Feature 8 — notificatie (UPGRADE Prompt 12): echte service-worker-melding
-// (systeemlade + klik-naar-wedstrijd), toggle + minuten in Instellingen,
-// persistente dedup en best-effort periodic background sync. Plus in-app toast.
-const SH_REM_KEY = 'sh_reminders_enabled';
-const SH_REM_MIN_KEY = 'sh_reminder_minutes';
-const SH_REM_PROMPT_KEY = 'sh_reminders_prompt_dismissed';
-function _shRemindersOn(){ try { return localStorage.getItem(SH_REM_KEY) !== '0'; } catch(_){ return true; } }
-function _shReminderMinutes(){ try { var m = parseInt(localStorage.getItem(SH_REM_MIN_KEY)||'5',10); return [5,10,15].indexOf(m) >= 0 ? m : 5; } catch(_){ return 5; } }
-function _shTodayKey(){ return new Date().toISOString().slice(0,10); }
-function _shNotifiedToday(){ try { return JSON.parse(localStorage.getItem('sh_notified_'+_shTodayKey())||'[]') || []; } catch(_){ return []; } }
-function _shIsNotified(id){ return _shNotifiedToday().indexOf(id) >= 0; }
-function _shMarkNotified(id){ try { var arr = _shNotifiedToday(); if(arr.indexOf(id) < 0){ arr.push(id); localStorage.setItem('sh_notified_'+_shTodayKey(), JSON.stringify(arr)); } } catch(_){} }
-function _shNotify(title, body, data){
-  try { toast(body || title); } catch(_){}
-  try {
-    if(!('Notification' in window) || Notification.permission !== 'granted') return;
-    if(navigator.serviceWorker && navigator.serviceWorker.controller){
-      navigator.serviceWorker.controller.postMessage({ type:'SH_SHOW_NOTIFICATION', title:title, body:body, data:data||{} });
-    } else if(navigator.serviceWorker && navigator.serviceWorker.ready){
-      navigator.serviceWorker.ready.then(function(reg){ reg.showNotification(title, { body:body, icon:'./icon-192.png', badge:'./icon-192.png', tag:(data&&data.tag)||'sh-match', data:data||{} }); }).catch(function(){ try { new Notification(title, { body:body }); } catch(_){} });
-    } else {
-      new Notification(title, { body:body });
-    }
-  } catch(_){}
-}
-window._shNotify = _shNotify;
-function _shPushScheduleToSW(){
-  try {
-    if(!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
-    navigator.serviceWorker.controller.postMessage({
-      type:'SH_SET_SCHEDULE', enabled:_shRemindersOn(), minutes:_shReminderMinutes(), day:_shTodayKey(),
-      matches: (window._notifMatches||[]).map(function(m){ return { id:m.id, tid:m.tid, time:m.time, teams:m.teams, field:m.field }; })
-    });
-  } catch(_){}
-}
-window._shPushScheduleToSW = _shPushScheduleToSW;
-try {
-  setInterval(function(){
-    if(!_shRemindersOn()) return;
-    var list = window._notifMatches;
-    if(!Array.isArray(list) || !list.length) return;
-    try { _shMaybeAskPermission(); } catch(_){}
-    _shPushScheduleToSW();
-    var mins = _shReminderMinutes();
-    var now = new Date(); var nowMin = now.getHours()*60 + now.getMinutes();
-    list.forEach(function(m){
-      var mm = String(m.time||'').match(/^(\d{2}):(\d{2})$/); if(!mm) return;
-      var start = (+mm[1])*60 + (+mm[2]); var diff = start - nowMin;
-      if(diff >= 0 && diff <= mins && !_shIsNotified(m.id)){
-        _shMarkNotified(m.id);
-        _shNotify('⚽ Wedstrijd begint zo!', m.teams + (m.field ? ' op ' + m.field : '') + ' — over ' + diff + ' min', { tid:m.tid, matchId:m.id, tag:'sh-match-'+m.id });
-      }
-    });
-  }, 30000);
-} catch(_){}
-
-// Feature 9 — FAB: snel wisselen tussen programma en live wedstrijd.
-function _updateToernFab(){
-  const fab = document.getElementById('toern-fab');
-  if(!fab) return;
-  if((typeof currentView === 'undefined' || currentView !== 'toernooien') || !_currentTournamentId){ fab.style.display = 'none'; return; }
-  const bd = document.getElementById('toern-match-backdrop');
-  const matchOpen = bd && bd.style.display === 'flex';
-  if(matchOpen){
-    fab.style.display = ''; fab.textContent = '📋 Programma';
-    fab.onclick = () => { closeMatchDetail(); renderToernooiTab('tijdlijn'); _updateToernFab(); };
-    return;
-  }
-  const live = window._liveMatch;
-  if(live && live.tid === _currentTournamentId){
-    fab.style.display = ''; fab.textContent = '▶ ' + live.teams;
-    fab.onclick = () => { openMatchDetail(live.tid, live.id); };
-    return;
-  }
-  fab.style.display = 'none';
-}
-window._updateToernFab = _updateToernFab;
-try { setInterval(_updateToernFab, 4000); } catch(_){}
-
-// Feature 10 — weer & veldomstandigheden (per dag, op het toernooi-doc onder conditions[datum]).
-async function openConditionsModal(tid){
-  tid = tid || _currentTournamentId;
-  const t = tourmCache.find(x => x.id === tid) || {};
-  const today = (typeof todayISO === 'function') ? todayISO() : new Date().toISOString().slice(0,10);
-  const cur = (t.conditions && t.conditions[today]) || {};
-  const weathers = [['zon','☀️ Zon'],['bewolkt','🌤️ Bewolkt'],['regen','🌧️ Regen'],['wind','💨 Wind'],['koud','❄️ Koud']];
-  const fields = [['goed','✅ Goed'],['matig','🟡 Matig'],['slecht','🔴 Slecht']];
-  const wbtns = weathers.map(([k,l]) => `<button type="button" class="cond-chip ${cur.weather===k?'active':''}" data-w="${k}" onclick="_condPick('w','${k}')">${l}</button>`).join('');
-  const fbtns = fields.map(([k,l]) => `<button type="button" class="cond-chip ${cur.field===k?'active':''}" data-f="${k}" onclick="_condPick('f','${k}')">${l}</button>`).join('');
-  _toernOpenOverlay(`
-    <h3 style="margin:0 0 4px;">Omstandigheden — ${escapeHtml(formatDate(today))}</h3>
-    <p style="margin:0 0 12px;font-size:12px;color:var(--muted,#888);">Eenmalig per dag instellen; wordt meegenomen in de export.</p>
-    <input type="hidden" id="cond-weather" value="${cur.weather||''}" />
-    <input type="hidden" id="cond-field" value="${cur.field||''}" />
-    <div style="font-size:12px;margin-bottom:6px;">Weer</div>
-    <div class="cond-row" id="cond-weather-row">${wbtns}</div>
-    <div style="font-size:12px;margin:12px 0 6px;">Veld</div>
-    <div class="cond-row" id="cond-field-row">${fbtns}</div>
-    <div style="font-size:12px;margin:12px 0 6px;">Notitie</div>
-    <textarea id="cond-note" class="toern-match-note" rows="2" placeholder="Bijv. veld drassig na regen, harde wind tweede helft...">${escapeHtml(cur.note||'')}</textarea>
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
-      <button type="button" class="btn btn-sm btn-primary" onclick="saveConditions('${tid}','${today}')">Opslaan</button>
-    </div>`);
-}
-window.openConditionsModal = openConditionsModal;
-function _condPick(kind, val){
-  const rowId = kind === 'w' ? 'cond-weather-row' : 'cond-field-row';
-  const attr = kind === 'w' ? 'w' : 'f';
-  document.querySelectorAll('#' + rowId + ' .cond-chip').forEach(b => b.classList.toggle('active', b.dataset[attr] === val));
-  const hid = document.getElementById(kind === 'w' ? 'cond-weather' : 'cond-field');
-  if(hid) hid.value = val;
-}
-window._condPick = _condPick;
-async function saveConditions(tid, date){
-  const weather = (document.getElementById('cond-weather')||{}).value || '';
-  const field = (document.getElementById('cond-field')||{}).value || '';
-  const note = (document.getElementById('cond-note')||{}).value || '';
-  try { await setDoc(tournDoc(tid), { conditions: { [date]: { weather, field, note, updatedAt: new Date().toISOString() } } }, { merge: true }); }
-  catch(e){ console.error('saveConditions error:', e); toast('Opslaan mislukt', true); return; }
-  toast('Omstandigheden opgeslagen ✓');
-  _toernCloseOverlay();
-}
-window.saveConditions = saveConditions;
-
-// Feature 11 — deel een observatie (native share of klembord).
-async function shareObservation(tid, matchId, tpId){
-  try {
-    const [obsSnap, mSnap, pSnap, tSnap] = await Promise.all([
-      getDocs(query(tournSubCol(tid, 'observations'), where('matchId','==',matchId), where('tournamentPlayerId','==',tpId))),
-      getDoc(tournSubDoc(tid, 'matches', matchId)),
-      getDoc(tournSubDoc(tid, 'players', tpId)),
-      getDoc(tournDoc(tid))
-    ]);
-    const o = obsSnap.empty ? {} : obsSnap.docs[0].data();
-    const m = mSnap.exists() ? mSnap.data() : {};
-    const tp = pSnap.exists() ? pSnap.data() : {};
-    const t = tSnap.exists() ? tSnap.data() : {};
-    let club = '';
-    if(tp.teamId){ try { const ts = await getDoc(tournSubDoc(tid, 'teams', tp.teamId)); if(ts.exists()) club = ts.data().name || ''; } catch(_){} }
-    const tags = (o.tags||[]).map(x => `${x.rating==='good'?'🟢':x.rating==='average'?'🟠':'🔴'} ${x.label}`).join(' ');
-    const lines = [
-      `🏆 ${t.name||'Toernooi'} | ${m.teamAName||''} – ${m.teamBName||''} (${_toernMatchClock(m)||''})`,
-      `👤 ${tp.quickName||'?'}${club?` (${club})`:''}${o.grade?` — ⭐${o.grade}`:''}`
-    ];
-    if(tags) lines.push(tags);
-    if(o.text) lines.push(`Notitie: ${o.text}`);
-    const text = lines.join('\n');
-    if(navigator.share){ try { await navigator.share({ text }); return; } catch(_){} }
-    await navigator.clipboard.writeText(text);
-    toast('Observatie gekopieerd naar klembord ✓');
-  } catch(e){ console.error('shareObservation error:', e); toast('Delen niet beschikbaar', true); }
-}
-window.shareObservation = shareObservation;
-
-
-/* Bug A — leeftijdscategorie afleiden uit het toernooi (categories[] of naam). */
-function _toernAgeLabel(t){
-  if(!t) return '';
-  const src = ((Array.isArray(t.categories) ? t.categories.join(' ') : '') + ' ' + (t.name || ''));
-  const m = src.match(/[UO]\s?\.?\s?-?\s?(\d{1,2})/i);
-  return m ? ('O' + m[1]) : '';
-}
-
-
-/* Bug D — eindoordeel-chips in de bundeling (synct met #toern-summ-grade). */
-function _bndSetGrade(g){
-  const sel = document.getElementById('toern-summ-grade');
-  if(sel) sel.value = g;
-  document.querySelectorAll('#toern-summ-grade-chips .bnd-grade-btn').forEach(b => b.classList.toggle('active', b.dataset.g === g));
-}
-window._bndSetGrade = _bndSetGrade;
-
-
-/* H7 — wachtwoord-vergeten: stuurt een Firebase herstel-link naar het ingevulde e-mailadres. */
-async function _shForgotPassword(){
-  const email = (document.getElementById('login-email') && document.getElementById('login-email').value || '').trim();
-  _shLoginMsg('', null);
-  if(!email){ _shLoginMsg('Vul eerst je e-mailadres in voordat je een herstel-link aanvraagt.', 'error'); return; }
-  /* BEVEILIGINGSNOOT: staat Firebase 'Email enumeration protection' AAN, dan geeft
-     sendPasswordResetEmail ALTIJD success terug (ook bij een onbekend e-mailadres),
-     zodat aanvallers geen accounts kunnen raden — auth/user-not-found komt dan niet
-     voor en we tonen gewoon de succes-melding (veiliger). Staat de bescherming UIT,
-     dan vangt de catch hieronder auth/user-not-found af met de beheerder-melding. */
-  try {
-    await sendPasswordResetEmail(auth, email);
-    _shLoginMsg('Als er een account bestaat met dit e-mailadres, ontvang je een herstel-link. Check ook je spam-map.', 'success');
-  } catch(e){
-    const code = e && e.code;
-    const map = {
-      'auth/user-not-found': 'Er bestaat geen account met dit e-mailadres. Neem contact op met de beheerder om een account aan te vragen.',
-      'auth/invalid-email': 'Dit is geen geldig e-mailadres.',
-      'auth/too-many-requests': 'Te veel pogingen. Wacht even en probeer het later opnieuw.'
-    };
-    _shLoginMsg(map[code] || 'Er ging iets mis. Probeer het later opnieuw.', 'error');
-  }
-}
-window._shForgotPassword = _shForgotPassword;
-
-
-/* H4 — uitslag opslaan vanuit de wedstrijd-detail-modal (inline; beide leeg = wissen). */
-async function _saveMatchScoreInline(tid, matchId){
-  const ha = document.getElementById('toern-match-score-a');
-  const hb = document.getElementById('toern-match-score-b');
-  const va = (ha && ha.value !== '') ? Number(ha.value) : null;
-  const vb = (hb && hb.value !== '') ? Number(hb.value) : null;
-  let patch;
-  if(va == null && vb == null){
-    patch = { scoreHome: null, scoreAway: null, resultStatus: 'scheduled', lastSyncedAt: new Date().toISOString() };
-  } else if(!Number.isFinite(va) || !Number.isFinite(vb)){
-    toast('Vul beide scores in (of laat beide leeg om te wissen)', true); return;
-  } else {
-    patch = { scoreHome: va, scoreAway: vb, resultStatus: 'finished', lastSyncedAt: new Date().toISOString() };
-  }
-  try {
-    await setDoc(tournSubDoc(tid, 'matches', matchId), patch, { merge: true });
-    toast(patch.scoreHome == null ? 'Uitslag gewist' : 'Uitslag opgeslagen');
-    if(_currentTournamentId === tid){
-      if(_toernTab === 'tijdlijn') renderTijdlijnTab(tid);
-      if(_toernTab === 'standen' && typeof renderStandenTab === 'function') renderStandenTab(tid);
-    }
-  } catch(e){
-    console.error('_saveMatchScoreInline error:', e);
-    toast('Opslaan mislukt: ' + (e.message || e), true);
-  }
-}
-window._saveMatchScoreInline = _saveMatchScoreInline;
-
-
-/* H5 — advies-chips in de observatie (stuurt de verborgen #obs-advies select aan). */
-function _obsPickAdvies(btn, v){
-  const sel = document.getElementById('obs-advies');
-  if(sel) sel.value = v;
-  try { document.querySelectorAll('#obs-advies-chips .adv-chip').forEach(b => b.classList.toggle('active', b === btn)); } catch(_){}
-}
-window._obsPickAdvies = _obsPickAdvies;
-
-
-/* H5 — advies-chips in het rapport (stuurt de verborgen #f-advies select aan; lock-aware). */
-function _repPickAdvies(btn, v){
-  const form = document.getElementById('report-form');
-  if(form && form.classList.contains('sh-form-locked')) return; // read-only ingediend rapport
-  const sel = document.getElementById('f-advies');
-  if(sel) sel.value = v;
-  _repSyncAdviesChips();
-}
-function _repSyncAdviesChips(){
-  const sel = document.getElementById('f-advies');
-  const v = sel ? sel.value : '';
-  try { document.querySelectorAll('#f-advies-chips .adv-chip').forEach(b => b.classList.toggle('active', b.dataset.v === v)); } catch(_){}
-}
-window._repPickAdvies = _repPickAdvies;
-window._repSyncAdviesChips = _repSyncAdviesChips;
-
-
-/* M16 — getipte speler doorzetten naar een rapport of naar het programma. */
-function _tipMaakRapport(id){
-  const t = (typeof tipsCache !== 'undefined' ? tipsCache : []).find(x => x && x.id === id);
-  if(!t){ if(typeof toast==='function') toast('Tip niet gevonden', true); return; }
-  if(typeof go === 'function') go('report');
-  setTimeout(function(){
-    try {
-      const nm = (t.speler || '').trim().split(/\s+/);
-      const vn = document.getElementById('f-voornaam'), an = document.getElementById('f-achternaam');
-      if(vn) vn.value = nm[0] || '';
-      if(an) an.value = nm.slice(1).join(' ') || '';
-      const setIf = (fid, v) => { const el = document.getElementById(fid); if(el && v) el.value = v; };
-      setIf('f-elftal', t.elftal || '');
-      setIf('f-positie', t.positie || '');
-      setIf('f-leeftijd', t.leeftijd || '');
-      if(typeof syncNaamHidden === 'function') syncNaamHidden('f');
-      if(typeof toast === 'function') toast('Rapport gestart vanuit tip');
-    } catch(_){}
-  }, 140);
-}
-function _tipPlanWedstrijd(id){
-  if(typeof go === 'function') go('programma');
-  if(typeof toast === 'function') toast('Plan de wedstrijd in het programma');
-}
-window._tipMaakRapport = _tipMaakRapport;
-window._tipPlanWedstrijd = _tipPlanWedstrijd;
-
-
-/* M9 — nieuwe observatie starten vanaf een bestaand spelersprofiel (prefill naam/club/positie/elftal). */
-function _nieuweObsVoorSpeler(id){
-  const pl = (typeof loadPlayers === 'function' ? loadPlayers() : []).find(x => x && x.id === id);
-  const sn = pl
-    ? { naam: pl.naam || '', club: pl.club || '', positie: pl.positie || '', elftal: pl.elftal || '' }
-    : { naam: '', club: '' };
-  if(typeof openObservatieForm === 'function') openObservatieForm(null, sn);
-}
-window._nieuweObsVoorSpeler = _nieuweObsVoorSpeler;
-
-
-/* A2 — focus-trap voor modals/overlays. Houdt Tab binnen de bovenste zichtbare
-   modal (cyclet eerste<->laatste). Volledig additief; raakt bestaande open/close
-   logica niet. ESC-sluiten blijft bij de bestaande per-modal handlers. */
-(function(){
-  const OVERLAYS = ['#sh-wiz-backdrop','#obs-backdrop','#toern-match-backdrop','#toern-summ-backdrop','#prog-match-backdrop','#mreport-backdrop','#tip-backdrop','#contact-backdrop','#rit-modal','#settings-modal-backdrop','#toern-dyn-overlay','#changelog-backdrop','#debug-modal'];
-  function _isOpen(el){
-    if(!el) return false;
-    const cs = getComputedStyle(el);
-    if(cs.display === 'none' || cs.visibility === 'hidden') return false;
-    if(el.id === 'toern-dyn-overlay') return true;             // bestaat alleen als open
-    if(el.classList.contains('open')) return true;             // .open-patroon
-    if(el.style.display === 'flex' || el.style.display === 'block') return true; // inline display
-    return false;
-  }
-  function _topModal(){
-    let found = null;
-    OVERLAYS.forEach(sel => { const el = document.querySelector(sel); if(_isOpen(el)) found = el; });
-    return found;
-  }
-  document.addEventListener('keydown', function(e){
-    if(e.key !== 'Tab') return;
-    const m = _topModal(); if(!m) return;
-    const nodes = m.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])');
-    const list = Array.from(nodes).filter(el => el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden');
-    if(!list.length) return;
-    const first = list[0], last = list[list.length - 1];
-    const active = document.activeElement;
-    if(e.shiftKey){
-      if(active === first || !m.contains(active)){ e.preventDefault(); last.focus(); }
-    } else {
-      if(active === last || !m.contains(active)){ e.preventDefault(); first.focus(); }
-    }
-  }, true);
-})();
-
-
-/* M13 — km-vergoeding helpers, PDF-declaratie, en tarief-instelling. */
-function _kmTarief(){ try { var uid=(typeof auth!=='undefined'&&auth.currentUser)?auth.currentUser.uid:''; var v=parseFloat(localStorage.getItem('sh_km_tarief_'+uid)); if(!Number.isFinite(v)) v=parseFloat(localStorage.getItem('sh_km_tarief')); return (Number.isFinite(v) && v >= 0) ? v : 0.23; } catch(_){ return 0.23; } }
-function _fmtEur(n){ return '\u20ac ' + (Number(n)||0).toFixed(2).replace('.', ','); }
-function _ritExportPdf(){
-  const van=(document.getElementById('rit-filter-van')||{}).value||'';
-  const tot=(document.getElementById('rit-filter-tot')||{}).value||'';
-  let items=(typeof rittenCache!=='undefined'?rittenCache:[]).slice().sort((x,y)=>(((x.datum||'')+'T'+(x.tijd||'')).localeCompare((y.datum||'')+'T'+(y.tijd||''))));
-  if(van) items=items.filter(r=>(r.datum||'')>=van);
-  if(tot) items=items.filter(r=>(r.datum||'')<=tot);
-  if(!items.length){ if(typeof toast==='function') toast('Geen ritten in deze periode'); return; }
-  const tarief=_kmTarief();
-  const naam=((document.getElementById('scout-name')||{}).textContent||'').trim();
-  const esc=s=>String(s==null?'':s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-  let totKm=0;
-  const rowHtml=items.map(r=>{ const km=Number(r.km)||0; totKm+=km; return '<tr><td>'+esc(_ritFmtDatum(r.datum))+'</td><td>'+esc(r.vertrekAdres||'')+'</td><td>'+esc(r.aankomstAdres||'')+'</td><td style="text-align:right">'+esc(_ritFmtKm(km))+'</td><td>'+esc(r.doel||'')+'</td><td style="text-align:right">'+_fmtEur(km*tarief)+'</td></tr>'; }).join('');
-  const byMonth={}; items.forEach(r=>{ const mk=(r.datum||'').slice(0,7); if(!mk)return; (byMonth[mk]=byMonth[mk]||{n:0,km:0}); byMonth[mk].n++; byMonth[mk].km+=Number(r.km)||0; });
-  const MND=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
-  const subHtml=Object.keys(byMonth).sort().map(mk=>{ const o=byMonth[mk]; const p=mk.split('-'); const lbl=(MND[parseInt(p[1],10)-1]||p[1])+' '+p[0]; return '<tr class="sub"><td colspan="3">Subtotaal '+lbl+'</td><td style="text-align:right">'+esc(_ritFmtKm(o.km))+'</td><td>'+o.n+' ritten</td><td style="text-align:right">'+_fmtEur(o.km*tarief)+'</td></tr>'; }).join('');
-  const periode=(van||tot)?((van?_ritFmtDatum(van):'begin')+' t/m '+(tot?_ritFmtDatum(tot):'nu')):'alle ritten';
-  const html='<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>Rittenregistratie</title>'+
-    '<style>body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px;}h1{font-size:18px;margin:0 0 2px;}h2{font-size:12px;font-weight:normal;color:#555;margin:0 0 16px;}table{width:100%;border-collapse:collapse;font-size:12px;}th,td{border-bottom:1px solid #ddd;padding:6px 8px;text-align:left;}th{background:#f3f3f3;}tr.sub td{background:#fafafa;font-weight:bold;}tfoot td{font-weight:bold;border-top:2px solid #333;}@media print{body{margin:0;}}</style></head><body>'+
-    '<h1>Rittenregistratie'+(naam?' \u2014 '+esc(naam):'')+'</h1><h2>Periode: '+esc(periode)+' \u00b7 Tarief: '+_fmtEur(tarief)+'/km</h2>'+
-    '<table><thead><tr><th>Datum</th><th>Van</th><th>Naar</th><th style="text-align:right">Km</th><th>Doel</th><th style="text-align:right">Bedrag</th></tr></thead>'+
-    '<tbody>'+rowHtml+'</tbody>'+(subHtml?'<tbody>'+subHtml+'</tbody>':'')+
-    '<tfoot><tr><td colspan="3">Totaal</td><td style="text-align:right">'+esc(_ritFmtKm(totKm))+'</td><td></td><td style="text-align:right">'+_fmtEur(totKm*tarief)+'</td></tr></tfoot>'+
-    '</table></body></html>';
-  const w=window.open('','_blank');
-  if(!w){ if(typeof toast==='function') toast('Pop-up geblokkeerd \u2014 sta pop-ups toe',true); return; }
-  w.document.open(); w.document.write(html); w.document.close(); w.focus();
-  setTimeout(function(){ try{ w.print(); }catch(_){} }, 350);
-}
-window._ritExportPdf=_ritExportPdf;
-// M13 — km-tarief-instelling laden in de Instellingen-modal
-function _initKmTariefField(){ const el=document.getElementById('settings-km-tarief'); if(el){ try{ var uid=(typeof auth!=='undefined'&&auth.currentUser)?auth.currentUser.uid:''; var v=localStorage.getItem('sh_km_tarief_'+uid); if(v==null||v==='') v=localStorage.getItem('sh_km_tarief'); if(v!=null && v!=='') el.value=v; }catch(_){} } }
-try { if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', _initKmTariefField); else _initKmTariefField(); } catch(_){}
-
-
-/* M15 — Vergelijking exporteren als PDF (print) + delen (native share / klembord). */
-function _cmpSelectedPlayers(){
-  const ids = (typeof cmpSelectedIds !== 'undefined' ? cmpSelectedIds : []);
-  const all = (typeof loadPlayers === 'function' ? loadPlayers() : []);
-  return (ids || []).map(id => all.find(p => p && p.id === id)).filter(Boolean);
-}
-function _cmpAdvLabel(p){ try { return (typeof adviesLabel === 'function' ? (adviesLabel(p.advies) || '') : ''); } catch(_){ return ''; } }
-function _cmpExportPdf(){
-  const players = _cmpSelectedPlayers();
-  if(players.length < 2){ if(typeof toast === 'function') toast('Selecteer minstens 2 spelers', true); return; }
-  const esc = s => String(s==null?'':s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
-  let radarImg = '';
-  try { const c = document.getElementById('cmp-radar'); if(c && c.toDataURL) radarImg = '<img src="' + c.toDataURL('image/png') + '" style="max-width:520px;width:100%;height:auto;display:block;margin:8px auto 18px;">'; } catch(_){}
-  const crits = (typeof CMP_CRITERIA !== 'undefined') ? CMP_CRITERIA : [];
-  const gv = { A:4, B:3, C:2, D:1 };
-  function trendOf(p){
-    try {
-      var r = (typeof reportsForPlayer==='function') ? reportsForPlayer(p.id) : [];
-      if(!r || r.length < 2) return '';
-      var s = r.slice().sort(function(a,b){ var da=a.datum||'', db=b.datum||''; return da<db?-1:da>db?1:0; });
-      var f = gv[(s[0].huidig_niveau||'').toUpperCase()]||0, l = gv[(s[s.length-1].huidig_niveau||'').toUpperCase()]||0;
-      if(!f||!l) return '';
-      return l>f ? '\u2197 stijgend' : l<f ? '\u2198 dalend' : '\u2192 stabiel';
-    } catch(_){ return ''; }
-  }
-  const cards = players.map(function(p){
-    var b = p.beoordelingen || {};
-    var rows = crits.map(function(c){ var g = b[c.key] || (c.key==='grit_huidig'?b.drit_huidig:'') || '-'; return '<tr><td>'+esc(c.label)+'</td><td class="g g'+esc(g)+'">'+esc(g)+'</td></tr>'; }).join('');
-    var sterk = crits.filter(function(c){ var g=b[c.key]||(c.key==='grit_huidig'?b.drit_huidig:''); return g==='A'||g==='B'; }).map(function(c){ return esc(c.label); });
-    var tr = trendOf(p);
-    return '<div class="pcard">'+
-      '<div class="pn">'+esc(p.naam||'?')+'</div>'+
-      '<div class="pc">'+esc(p.club||'')+(p.positie?(' \u00b7 '+esc((typeof positionLabel==='function'?positionLabel(p.positie):p.positie)||'')):'')+'</div>'+
-      '<div class="pl">Huidig <b>'+esc(p.huidig_niveau||'-')+'</b> \u2192 Potentieel <b>'+esc(p.potentieel_niveau||'-')+'</b>'+(tr?(' \u00b7 '+tr):'')+'</div>'+
-      '<div class="pa">Advies: '+esc(_cmpAdvLabel(p)||'\u2014')+'</div>'+
-      (sterk.length?('<div class="pa">Sterktes: '+sterk.join(', ')+'</div>'):'')+
-      (p.wapen?('<div class="pa">Wapen: '+esc(p.wapen)+'</div>'):'')+
-      '<table class="ct"><thead><tr><th>Criterium</th><th>Niveau</th></tr></thead><tbody>'+rows+'</tbody></table>'+
-    '</div>';
-  }).join('');
-  const html = '<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>ScoutingHub \u2014 Spelersvergelijking</title>'+
-    '<style>body{font-family:Arial,Helvetica,sans-serif;color:#111;background:#fff;margin:24px;}h1{font-size:18px;margin:0 0 2px;}.sub{font-size:12px;color:#666;margin:0 0 14px;}'+
-    '.pcard{border:1px solid #ddd;border-radius:8px;padding:12px 14px;margin:0 0 10px;page-break-inside:avoid;}'+
-    '.pn{font-size:15px;font-weight:bold;}.pc{font-size:12px;color:#555;margin:2px 0 6px;}.pl,.pa{font-size:12px;margin:2px 0;}'+
-    '.ct{width:100%;border-collapse:collapse;margin-top:8px;}.ct th,.ct td{border:1px solid #e3e3e3;padding:4px 8px;font-size:11.5px;text-align:left;}.ct th{background:#f4f4f4;}'+
-    '.g{font-weight:bold;text-align:center;width:54px;}.gA{color:#16a34a;}.gB{color:#2563eb;}.gC{color:#b45309;}.gD{color:#dc2626;}'+
-    '.foot{margin-top:16px;font-size:10.5px;color:#888;border-top:1px solid #eee;padding-top:8px;}@media print{body{margin:0;}}</style></head><body>'+
-    '<h1>ScoutingHub \u2014 Spelersvergelijking</h1>'+
-    '<div class="sub">'+esc(new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'}))+' \u00b7 '+players.length+' spelers</div>'+
-    radarImg + cards +
-    '<div class="foot">Gegenereerd met ScoutingHub</div>'+
-    '</body></html>';
-  const w = window.open('', '_blank');
-  if(!w){ if(typeof toast === 'function') toast('Pop-up geblokkeerd \u2014 sta pop-ups toe', true); return; }
-  w.document.open(); w.document.write(html); w.document.close(); w.focus();
-  setTimeout(function(){ try { w.print(); } catch(_){} }, 400);
-}
-function _cmpDelen(){
-  const players = _cmpSelectedPlayers();
-  if(players.length < 2){ if(typeof toast === 'function') toast('Selecteer minstens 2 spelers', true); return; }
-  const lines = ['\ud83d\udcca Spelersvergelijking'].concat(players.map(p => '\u2022 ' + (p.naam||'?') + (p.club ? ' (' + p.club + ')' : '') + ' \u2014 ' + (p.huidig_niveau||'?') + '\u2192' + (p.potentieel_niveau||'?') + (_cmpAdvLabel(p) ? ' \u00b7 ' + _cmpAdvLabel(p) : '')));
-  const text = lines.join('\n');
-  if(navigator.share){ navigator.share({ text: text }).catch(function(){}); return; }
-  if(navigator.clipboard){ navigator.clipboard.writeText(text).then(function(){ if(typeof toast === 'function') toast('Gekopieerd \u2713'); }).catch(function(){ if(typeof toast === 'function') toast('Delen niet beschikbaar', true); }); }
-  else if(typeof toast === 'function') toast('Delen niet beschikbaar', true);
-}
-window._cmpExportPdf = _cmpExportPdf;
-window._cmpDelen = _cmpDelen;
-
-
-/* Onderdeel 3 — observatie promoveren naar concept-rapport (additief; prefilt
-   bestaande rapportvelden + bewaart obs-link en rapport_tags). */
-function _obsToRapport(obs){
-  if(typeof obs === 'string'){ obs = (typeof loadPlayers==='function'?loadPlayers():[]).find(p => p && p.id === obs) || null; }
-  if(!obs){ if(typeof toast==='function') toast('Observatie niet gevonden', true); return; }
-  const SEC = { techniek:'techniek_huidig', inzicht:'inzicht_huidig', mentaliteit:'grit_huidig', snelheid:'sprinten_huidig', fysiek:'duelleren_huidig' };
-  const _tags = Array.isArray(obs.tags) ? obs.tags : [];
-  const _linkObj = { id: obs.id || null, tags: _tags.map(t => ({ label: t.label, category: t.category, rating: t.rating, rapport_section: SEC[String(t.category||'').toLowerCase()] || '' })) };
-  const _cn = (obs.category_notes && typeof obs.category_notes === 'object') ? obs.category_notes : {};
-  const _byCat = {};
-  _tags.forEach(t => { const c=String(t.category||'').toLowerCase(); if(!c||!t.label) return; (_byCat[c]=_byCat[c]||[]).push((t.rating==='good'?'\ud83d\udfe2':t.rating==='average'?'\ud83d\udfe0':'\ud83d\udd34')+' '+t.label); });
-  const _compose = (cat) => { const chips=(_byCat[cat]||[]).join('  '); const note=(_cn[cat]||'').trim(); return [chips, note].filter(Boolean).join(chips&&note?' \u2014 ':''); };
-  window.__shObsPrefilling = true;
-  window.__shObsLink = _linkObj;
-  if(typeof go === 'function') go('report');
-  const _fill = () => {
-    try {
-      window.__shObsLink = _linkObj; // na (a)synchrone reset opnieuw zetten
-      const setIf=(fid,v)=>{ const el=document.getElementById(fid); if(el!=null && v!=null && v!=='') el.value=v; };
-      const nm=(obs.naam||'').trim().split(/\s+/);
-      const vn=document.getElementById('f-voornaam'), an=document.getElementById('f-achternaam');
-      if(vn) vn.value=nm[0]||''; if(an) an.value=nm.slice(1).join(' ')||'';
-      setIf('f-club', obs.club||''); setIf('f-positie', obs.positie||''); setIf('f-elftal', obs.elftal||'');
-      const wd=obs.wedstrijd||{};
-      setIf('f-w-datum', wd.datum||obs.wedstrijd_datum||obs.datum||'');
-      setIf('f-w-thuis', wd.thuis||obs.wedstrijd_thuis||'');
-      setIf('f-w-uit', wd.uit||obs.wedstrijd_uit||'');
-      setIf('f-leeftijd', wd.leeftijd||obs.wedstrijd_leeftijd||'');
-      setIf('f-tekst-techniek', _compose('techniek'));
-      setIf('f-tekst-inzicht', _compose('inzicht'));
-      setIf('f-tekst-grit', _compose('mentaliteit'));
-      setIf('f-tekst-sprinten', _compose('snelheid'));
-      setIf('f-tekst-duelleren', _compose('fysiek'));
-      if(typeof syncNaamHidden==='function') syncNaamHidden('f');
-      try { _injectReportTrefwoorden((window.__shObsLink && window.__shObsLink.tags) || []); } catch(_){}
-    } catch(_){}
-  };
-  let _tr=0; const _tick=()=>{ _fill(); if(++_tr<6) requestAnimationFrame(_tick); };
-  requestAnimationFrame(_tick);
-  // B3/B4: her-assert na async re-renders (renderActiveScouting@80ms e.d.) zodat de prefill blijft staan
-  [120, 250, 420].forEach(function(ms){ setTimeout(function(){ try { _fill(); } catch(_){} }, ms); });
-  setTimeout(function(){ window.__shObsPrefilling = false; }, 520);
-  if(typeof toast==='function') toast('Rapport gestart vanuit observatie');
-}
-window._obsToRapport = _obsToRapport;
-
-/* A2 — prefill de bestaande rapport-chips uit live_match_notes (gekoppelde speler).
-   Zet GEEN obs-id -> verandert niets aan live data, verwijdert niets. */
-function _liveToReport(matchId, playerId){
-  try {
-    if(typeof currentUser==='undefined'||!currentUser||!currentUser.uid) return;
-    getDoc(doc(db,'users',currentUser.uid,'live_match_notes', matchId+'_'+playerId)).then(function(ds){
-      if(!ds || !ds.exists()) return;
-      var note = ds.data()||{};
-      var tags = Array.isArray(note.tags) ? note.tags.map(function(t){ return { label:t.label, category:t.category, rating:t.rating }; }).filter(function(t){ return t.rating; }) : [];
-      if(!tags.length) return;
-      window.__shObsPrefilling = true;
-      var apply = function(){ try { window.__shObsLink = { id:null, tags:tags }; if(typeof _injectReportTrefwoorden==='function') _injectReportTrefwoorden(tags); } catch(_){} };
-      requestAnimationFrame(apply);
-      [150,300,500].forEach(function(ms){ setTimeout(apply, ms); });
-    }).catch(function(){});
-  } catch(_){}
-}
-window._liveToReport = _liveToReport;
-
-
-/* Onderdeel 2 — keuze-modal na het opslaan van een observatie. */
-function _showObsKeuze(rec, onStay){
-  try {
-    const _nChips = (rec && Array.isArray(rec.tags)) ? rec.tags.length : 0;
-    const _nNotes = (rec && rec.category_notes) ? Object.keys(rec.category_notes).filter(k => rec.category_notes[k]).length : 0;
-    const meta = [rec && rec.naam, rec && rec.club, (rec && (rec.elftal || (rec.wedstrijd && rec.wedstrijd.leeftijd)))].filter(Boolean).join(' \u2014 ');
-    const ov = document.createElement('div');
-    ov.className = 'obs-keuze-backdrop';
-    ov.innerHTML = '<div class="obs-keuze-card" role="dialog" aria-modal="true" aria-label="Observatie opgeslagen">' +
-      '<div class="obs-keuze-title">\u2705 Observatie opgeslagen!</div>' +
-      '<div class="obs-keuze-meta">' + escapeHtml(meta || 'Speler') + '</div>' +
-      '<div class="obs-keuze-sub">' + _nChips + ' chip' + (_nChips===1?'':'s') + ' \u00b7 ' + _nNotes + ' notitie' + (_nNotes===1?'':'s') + '</div>' +
-      '<div class="obs-keuze-q">Wat wil je doen?</div>' +
-      '<button type="button" class="obs-keuze-btn" data-act="stay"><span class="okb-t">\ud83d\udccb Bewaar als observatie</span><span class="okb-s">Klaar \u2014 chips en notities zijn opgeslagen</span></button>' +
-      '<button type="button" class="obs-keuze-btn primary" data-act="rapport"><span class="okb-t">\ud83d\udcdd Maak er een rapport van</span><span class="okb-s">Chips en notities als startpunt, vul A/B/C/D en details aan</span></button>' +
-      '</div>';
-    const _close = () => { try { ov.remove(); } catch(_){} };
-    ov.addEventListener('click', (e) => { if(e.target === ov){ _close(); if(typeof onStay==='function') onStay(); } });
-    ov.querySelector('[data-act="stay"]').addEventListener('click', () => { _close(); if(typeof onStay==='function') onStay(); });
-    ov.querySelector('[data-act="rapport"]').addEventListener('click', () => { _close(); try { _obsClose(); } catch(_){} if(typeof _obsToRapport==='function') _obsToRapport(rec); });
-    document.body.appendChild(ov);
-  } catch(_){ if(typeof onStay==='function') onStay(); }
-}
-window._showObsKeuze = _showObsKeuze;
-
-
-/* Landingspagina (pre-login) — onthul het bestaande loginformulier + subtiele fade-in. */
-function _lpLogin(){
-  const land = document.getElementById('landing-overlay'); if(land) land.style.display = 'none';
-  const lo = document.getElementById('login-overlay'); if(lo) lo.style.display = 'flex';
-  const e = document.getElementById('login-email'); if(e) setTimeout(function(){ try { e.focus(); } catch(_){} }, 60);
-}
-window._lpLogin = _lpLogin;
-try {
-  if('IntersectionObserver' in window){
-    const _lpIo = new IntersectionObserver(function(entries){
-      entries.forEach(function(en){ if(en.isIntersecting){ en.target.classList.add('lp-in'); _lpIo.unobserve(en.target); } });
-    }, { threshold: 0.12 });
-    const _lpWire = function(){ document.querySelectorAll('.lp-reveal:not(.lp-in)').forEach(function(el){ _lpIo.observe(el); }); };
-    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _lpWire); else _lpWire();
-
-    // Lazy autoplay: landingsvideo's spelen alleen als ze in beeld zijn (CPU-zuinig,
-    // en in de carousel speelt zo enkel de zichtbare slide). Respecteert reduced-motion.
-    var _lpReduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    var _lpVidIo = new IntersectionObserver(function(entries){
-      entries.forEach(function(en){
-        var v = en.target;
-        if(en.isIntersecting && !_lpReduce){ var pr = v.play(); if(pr && pr.catch) pr.catch(function(){}); }
-        else { try { v.pause(); } catch(_){} }
-      });
-    }, { threshold: 0.4 });
-    var _lpVidWire = function(){ document.querySelectorAll('#landing-overlay video.lp-autovid').forEach(function(v){ try { _lpVidIo.observe(v); } catch(_){} }); };
-    if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _lpVidWire); else _lpVidWire();
-  }
-} catch(_){}
-
-
-/* ============================================================
-   DEMO-SEED — Demo Cup U12 2026.
-   Draait UITSLUITEND in het primaire demo-account (demo@scoutinghub.nl),
-   is idempotent (vast tournament-id, slaat over als het al bestaat) en
-   voegt alleen toe. Raakt het Gmail-account NOOIT.
-   ============================================================ */
-async function _seedDemoData(){
-  if(typeof __shIsPrimaryDemoUser !== 'function' || !__shIsPrimaryDemoUser()){
-    if(typeof toast === 'function') toast('Alleen beschikbaar in het demo-account', true);
-    return;
-  }
-  const tid = 'demo_cup_u12_2026';
-  try {
-    const existing = await getDoc(tournDoc(tid));
-    if(existing.exists()){ if(typeof toast === 'function') toast('Demo-toernooi bestaat al \u2713'); return; }
-  } catch(_){}
-  if(typeof toast === 'function') toast('Demo-toernooi aanmaken\u2026');
-  const start = '2026-05-31';
-  const now = new Date().toISOString();
-  try {
-    await setDoc(tournDoc(tid), {
-      name: 'Demo Cup U12 2026', location: 'Sportpark De Toekomst, Amsterdam',
-      startDate: start, endDate: start, categories: ['O12'],
-      info: 'Demo-toernooi voor presentatie en screenshots.',
-      status: 'active', createdBy: currentUser.uid, createdAt: now, tournifyData: null
-    });
-    const dayId = 'day1';
-    await setDoc(tournSubDoc(tid,'days',dayId), { id: dayId, tournamentId: tid, date: start, label: 'Toernooidag', closedAt: null, editHistory: [] });
-
-    const teams = [
-      {id:'t_utr', name:'FC Utrecht O12'}, {id:'t_ajx', name:'Ajax O12'},
-      {id:'t_psv', name:'PSV O12'}, {id:'t_az', name:'AZ O12'},
-      {id:'t_fey', name:'Feyenoord O12'}, {id:'t_twe', name:'FC Twente O12'}
-    ];
-    for(const tm of teams){ await setDoc(tournSubDoc(tid,'teams',tm.id), { name: tm.name, priority: false }); }
-    const tn = id => (teams.find(t => t.id === id) || {}).name || '?';
-    const mk = (id,a2,b,time,field,score,ws) => ({
-      id, dayId, categoryId:'O12', field, startTime: start+'T'+time,
-      teamAId:a2, teamBId:b, teamAName:tn(a2), teamBName:tn(b),
-      scoreHome: score?score[0]:null, scoreAway: score?score[1]:null,
-      resultStatus: score?'finished':'scheduled', watchStatus: ws||null
-    });
-    const matches = [
-      mk('m1','t_utr','t_ajx','09:00','1',[2,1],'watch'),
-      mk('m2','t_psv','t_az','09:00','2',[0,0],null),
-      mk('m3','t_fey','t_twe','09:30','1',[3,2],'optional'),
-      mk('m4','t_utr','t_psv','10:00','1',[1,1],'watch'),
-      mk('m5','t_ajx','t_fey','10:00','2',[4,0],null),
-      mk('m6','t_az','t_twe','10:30','1',null,'optional'),
-      mk('m7','t_utr','t_fey','11:00','1',null,'watch'),
-      mk('m8','t_psv','t_ajx','11:00','2',null,null),
-      mk('m9','t_az','t_fey','11:30','1',null,'skip')
-    ];
-    for(const m of matches){ await setDoc(tournSubDoc(tid,'matches',m.id), m); }
-
-    const players = [
-      {id:'p1', teamId:'t_utr', quickName:'Daan Jansen', quickNumber:10, type:'linked', position:'AM', mustScout:true},
-      {id:'p2', teamId:'t_ajx', quickName:'Sem de Vries', quickNumber:7, type:'linked', position:'RW', mustScout:false},
-      {id:'p3', teamId:'t_psv', quickName:'Luca Bakker', quickNumber:9, type:'spotted', position:'ST', mustScout:false},
-      {id:'p4', teamId:'t_fey', quickName:'Noah van Dijk', quickNumber:4, type:'linked', position:'CV', mustScout:false}
-    ];
-    for(const p of players){ await setDoc(tournSubDoc(tid,'players',p.id), { ...p, playerId: null }); }
-
-    const obs = [
-      {id:'o1', matchId:'m1', pid:'p1', grade:'A',
-        tags:[{label:'Passing',category:'techniek',rating:'good'},{label:'Overzicht',category:'inzicht',rating:'good'},{label:'Leider',category:'mentaliteit',rating:'average'}],
-        category_notes:{techniek:'Scherpe passing, beide benen', inzicht:'Leest het spel goed', mentaliteit:'Coacht zijn team'},
-        text:'techniek: Scherpe passing\ninzicht: Leest spel\nalgemeen: Uitblinker'},
-      {id:'o2', matchId:'m1', pid:'p2', grade:'B',
-        tags:[{label:'Startsnelheid',category:'snelheid',rating:'good'},{label:'Dribbel',category:'techniek',rating:'average'}],
-        category_notes:{snelheid:'Eerste meters explosief', techniek:'Dribbel kan beter'}, text:''},
-      {id:'o3', matchId:'m3', pid:'p4', grade:'B',
-        tags:[{label:'Sterk',category:'fysiek',rating:'good'},{label:'Positiespel',category:'inzicht',rating:'good'}],
-        category_notes:{fysiek:'Wint zijn duels', inzicht:'Goede positionering'}, text:''}
-    ];
-    for(const o of obs){
-      await setDoc(tournSubDoc(tid,'observations',o.id), {
-        id:o.id, tournamentId:tid, matchId:o.matchId, dayId, tournamentPlayerId:o.pid,
-        text:o.text||'', tags:o.tags, category_notes:o.category_notes, grade:o.grade, overallRating:o.grade,
-        position:null, createdAt:now, updatedAt:now, closedAt:null, editHistory:[]
-      });
-    }
-    await setDoc(tournSubDoc(tid,'summaries','s1'), {
-      id:'s1', tournamentPlayerId:'p1', status:'draft', overallGrade:'A',
-      aiSummary:'', editedSummary:'Sterke spelmaker, neemt initiatief en speelt het spel slim.',
-      dayBlocks:[{dayId, observationIds:['o1']}], createdAt:now, updatedAt:now
-    });
-
-    if(typeof toast === 'function') toast('Demo-toernooi "Demo Cup U12 2026" aangemaakt \u2713');
-  } catch(err){
-    console.error('seed demo error', err);
-    if(typeof toast === 'function') toast('Seed mislukt: ' + (err.message || err), true);
-  }
-}
-window._seedDemoData = _seedDemoData;
-
-
-/* Landing — interactieve demo-carousel (auto 4s, pijlen, dots, pauze bij hover/touch). */
-(function(){
-  var idx = 0, timer = null, n = 0;
-  function _track(){ return document.getElementById('lp-carousel-track'); }
-  function _go(i){
-    var tr = _track(); if(!tr) return;
-    n = tr.children.length; if(!n) return;
-    idx = (i + n) % n;
-    tr.style.transform = 'translateX(-' + (idx * 100) + '%)';
-    document.querySelectorAll('#lp-car-dots .lp-dot-nav').forEach(function(d, k){ d.classList.toggle('on', k === idx); });
-  }
-  function _restart(){ if(timer) clearInterval(timer); timer = setInterval(function(){ _go(idx + 1); }, 4000); }
-  window._lpCarMove = function(d){ _go(idx + d); _restart(); };
-  window._lpCarGo = function(i){ _go(i); _restart(); };
-  function _init(){
-    var tr = _track(); if(!tr) return;
-    n = tr.children.length;
-    var dh = document.getElementById('lp-car-dots');
-    if(dh){ var html = ''; for(var k = 0; k < n; k++){ html += '<button type="button" class="lp-dot-nav' + (k===0?' on':'') + '" aria-label="Slide ' + (k+1) + '" onclick="_lpCarGo(' + k + ')"></button>'; } dh.innerHTML = html; }
-    _go(0); _restart();
-    var car = document.getElementById('lp-carousel');
-    if(car){
-      car.addEventListener('mouseenter', function(){ if(timer) clearInterval(timer); });
-      car.addEventListener('mouseleave', _restart);
-      car.addEventListener('touchstart', function(){ if(timer) clearInterval(timer); }, { passive: true });
-    }
-  }
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _init); else _init();
-})();
-
-
-/* ============================================================
-   ONBOARDING A — Welkomst-wizard (4 slides). Eerste-login-detectie
-   via localStorage 'sh_onboarding_done_<uid>' (GEEN Firestore-write).
-   ============================================================ */
-function _shOnbDone(uid){ try { return localStorage.getItem('sh_onboarding_done_' + uid) === '1'; } catch(_){ return false; } }
-function _shSetOnbDone(uid){ try { localStorage.setItem('sh_onboarding_done_' + uid, '1'); } catch(_){} }
-function _shShowOnboarding(force){
-  var uid = (typeof auth!=='undefined' && auth.currentUser) ? auth.currentUser.uid : '';
-  if(!force){ if(!uid || _shOnbDone(uid)) return; }
-  if(document.getElementById('sh-wiz-backdrop')) return;
-  var naam = ((document.getElementById('scout-name')||{}).textContent||'').trim();
-  var first = (naam.split(/\s+/)[0]) || 'scout';
-  var slides = [
-    '<div class="sh-wiz-ic">👋</div><h3>Welkom bij ScoutingHub, ' + escapeHtml(first) + '!</h3><p>In 4 stappen leggen we uit hoe je scout als een pro.</p><div class="lp-mock sh-wiz-mock"><div class="lp-mock-bar">Dashboard</div><div class="lp-mock-kpis"><div class="lp-kpi"><b>24</b><span>Spelers</span></div><div class="lp-kpi"><b>8</b><span>Wedstrijden</span></div><div class="lp-kpi"><b>3</b><span>Toernooien</span></div></div></div>',
-    '<h3>Scout met één tik</h3><p>Gebruik chips om spelers snel te beoordelen langs de lijn. 🟢 goed · 🟠 normaal · 🔴 matig — tik nogmaals om te resetten.</p><div class="lp-mock sh-wiz-mock"><div class="lp-mock-cat">Techniek</div><div class="lp-chips"><span class="lp-chip g">Passing</span><span class="lp-chip r">Dribbel</span><span class="lp-chip o">Overzicht</span></div><div class="lp-mock-cat">Mentaliteit</div><div class="lp-chips"><span class="lp-chip g">Leider</span><span class="lp-chip">Rustig</span></div></div>',
-    '<h3>Van observatie naar rapport</h3><p>Promoot je live-notities naar een volledig rapport met A/B/C/D beoordeling.</p><div class="lp-mock sh-wiz-mock"><div class="lp-mock-bar">Rapport</div><div class="lp-mock-cat">Functionele techniek</div><div class="lp-chips"><span class="lp-chip g">Passing</span></div><div class="lp-grades"><span class="lp-grade on">A</span><span class="lp-grade">B</span><span class="lp-grade">C</span><span class="lp-grade">D</span></div></div>',
-    '<div class="sh-wiz-ic">🎉</div><h3>Je bent klaar!</h3><p>Maak je eerste wedstrijd aan of importeer een toernooi.</p><div class="sh-wiz-actions"><button type="button" class="lp-btn lp-btn-primary lp-btn-sm" data-wiz-go="programma">+ Nieuwe wedstrijd</button><button type="button" class="lp-btn lp-btn-ghost lp-btn-sm" data-wiz-go="toernooien">🏆 Importeer toernooi</button></div>'
-  ];
-  var i = 0;
-  var bd = document.createElement('div');
-  bd.id = 'sh-wiz-backdrop'; bd.className = 'sh-wiz-backdrop';
-  bd.innerHTML = '<div class="sh-wiz-card" role="dialog" aria-modal="true" aria-label="Welkom bij ScoutingHub">' +
-    '<button type="button" class="sh-wiz-close" aria-label="Sluiten" data-wiz-skip>×</button>' +
-    '<div class="sh-wiz-body" id="sh-wiz-body"></div>' +
-    '<div class="sh-wiz-dots" id="sh-wiz-dots"></div>' +
-    '<label class="sh-wiz-check sh-wiz-check-persist"><input type="checkbox" id="sh-wiz-nomore"> Niet meer tonen bij inloggen</label>' +
-    '<div class="sh-wiz-nav"><button type="button" class="lp-btn lp-btn-ghost lp-btn-sm" id="sh-wiz-prev">← Vorige</button><button type="button" class="lp-btn lp-btn-ghost lp-btn-sm" data-wiz-skip>Overslaan</button><button type="button" class="lp-btn lp-btn-primary lp-btn-sm" id="sh-wiz-next">Volgende →</button></div>' +
-    '</div>';
-  document.body.appendChild(bd);
-  bd.style.display = 'flex'; // inline zodat de A2 focus-trap 'm detecteert
-  var body = bd.querySelector('#sh-wiz-body'), dotsH = bd.querySelector('#sh-wiz-dots');
-  var prev = bd.querySelector('#sh-wiz-prev'), next = bd.querySelector('#sh-wiz-next');
-  function _close(done){
-    if(done){
-      var nm = document.getElementById('sh-wiz-nomore');
-      if(nm && nm.checked){
-        _shSetOnbDone(uid); // lokaal (offline/snel)
-        try { if(uid && typeof setDoc==='function' && typeof db!=='undefined'){ setDoc(doc(db,'users',uid), { onboardingDismissed: true }, { merge:true }).catch(function(){}); } } catch(_){}
-      }
-    }
-    try { bd.remove(); } catch(_){}
-    document.removeEventListener('keydown', _onKey);
-  }
-  function _render(){
-    body.innerHTML = slides[i];
-    dotsH.innerHTML = slides.map(function(_, k){ return '<span class="sh-wiz-dot' + (k===i?' on':'') + '"></span>'; }).join('');
-    prev.style.visibility = i === 0 ? 'hidden' : '';
-    next.textContent = i === slides.length - 1 ? 'Klaar' : 'Volgende →';
-    body.querySelectorAll('[data-wiz-go]').forEach(function(b){ b.addEventListener('click', function(){ var v = b.dataset.wizGo; _close(true); if(typeof go === 'function') go(v); }); });
-  }
-  prev.addEventListener('click', function(){ if(i>0){ i--; _render(); } });
-  next.addEventListener('click', function(){ if(i < slides.length-1){ i++; _render(); } else { _close(true); } });
-  bd.querySelectorAll('[data-wiz-skip]').forEach(function(b){ b.addEventListener('click', function(){ _close(true); }); });
-  bd.addEventListener('click', function(e){ if(e.target === bd) _close(true); });
-  function _onKey(e){ if(e.key==='Escape'){ _close(true); } else if(e.key==='ArrowRight' && i<slides.length-1){ i++; _render(); } else if(e.key==='ArrowLeft' && i>0){ i--; _render(); } }
-  document.addEventListener('keydown', _onKey);
-  var x0 = null;
-  bd.addEventListener('touchstart', function(e){ x0 = e.touches && e.touches[0] ? e.touches[0].clientX : null; }, { passive: true });
-  bd.addEventListener('touchend', function(e){ if(x0==null) return; var x1 = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0].clientX : x0; var dx = x1 - x0; x0 = null; if(Math.abs(dx) > 50){ if(dx < 0 && i < slides.length-1){ i++; _render(); } else if(dx > 0 && i > 0){ i--; _render(); } } }, { passive: true });
-  _render();
-}
-window._shShowOnboarding = _shShowOnboarding;
-/* Auto-trigger bij eerste login (localStorage-gated). */
-try {
-  if(typeof auth!=='undefined' && typeof onAuthStateChanged==='function'){
-    onAuthStateChanged(auth, function(u){ if(u){ setTimeout(function(){
-      try {
-        if(typeof _shOnbDone==='function' && _shOnbDone(u.uid)) return; // al lokaal gedismissed
-        if(typeof getDoc==='function' && typeof db!=='undefined'){
-          getDoc(doc(db,'users',u.uid)).then(function(snap){
-            if(snap && snap.exists() && snap.data().onboardingDismissed === true){ try{ _shSetOnbDone(u.uid); }catch(_){} return; }
-            try { _shShowOnboarding(false); } catch(_){}
-          }).catch(function(){ try { _shShowOnboarding(false); } catch(_){} });
-        } else { try { _shShowOnboarding(false); } catch(_){} }
-      } catch(_){ try { _shShowOnboarding(false); } catch(_){} }
-    }, 1200); } });
-  }
-} catch(_){}
-
-
-/* Onboarding C — contextual help (?). Toont een popover bij klik; sluit bij klik erbuiten. */
-function _shHelpToggle(btn, text){
-  var ex = document.getElementById('sh-help-pop');
-  var sameAsOpen = ex && ex._for === btn;
-  if(ex){ try { ex.remove(); } catch(_){} }
-  if(sameAsOpen) return;
-  var pop = document.createElement('div');
-  pop.id = 'sh-help-pop'; pop.className = 'sh-help-pop'; pop.textContent = text || ''; pop._for = btn;
-  document.body.appendChild(pop);
-  var r = btn.getBoundingClientRect();
-  var pw = pop.offsetWidth, ph = pop.offsetHeight;
-  var left = Math.min(Math.max(8, r.left - 8), window.innerWidth - pw - 8);
-  var top = r.bottom + 8;
-  if(top + ph > window.innerHeight - 8) top = Math.max(8, r.top - ph - 8);
-  pop.style.left = left + 'px'; pop.style.top = top + 'px';
-}
-window._shHelpToggle = _shHelpToggle;
-document.addEventListener('click', function(e){
-  var btn = e.target.closest ? e.target.closest('.sh-help') : null;
-  if(btn){ e.preventDefault(); e.stopPropagation(); _shHelpToggle(btn, btn.getAttribute('data-help') || ''); return; }
-  var pop = document.getElementById('sh-help-pop');
-  if(pop && e.target !== pop){ try { pop.remove(); } catch(_){} }
-}, true);
-
-
-/* ============================================================
-   PROMPT 6 — Spelerfoto (camera/upload) + fuzzy zoek.
-   Foto wordt client-side geresized naar 400x400 JPEG q0.7 en als
-   base64 in het speler-doc bewaard (photoBase64). GEEN bestaande
-   data wordt aangeraakt; opslaan gebeurt alleen op gebruikersactie.
-   ============================================================ */
-
-/* --- Avatar: foto of initialen --- */
-function _shPlayerPhotoFor(p){
-  if(!p) return '';
-  if(p.photoBase64) return p.photoBase64;
-  try {
-    if(typeof playersCache !== 'undefined' && p.naam){
-      var nm = (p.naam||'').toLowerCase().trim();
-      var hit = playersCache.find(function(x){ return x && x.photoBase64 && (x.naam||'').toLowerCase().trim() === nm; });
-      if(hit) return hit.photoBase64;
-    }
-  } catch(_){}
-  return '';
-}
-function _shAvatarInner(p){
-  var ph = _shPlayerPhotoFor(p);
-  if(ph) return '<img class="sh-avatar-img" src="' + ph + '" alt="">';
-  return initials(p && p.naam);
-}
-window._shAvatarInner = _shAvatarInner;
-window._shPlayerPhotoFor = _shPlayerPhotoFor;
-
-/* --- Foto kiezen --- */
-var _shPhotoTargetPid = null;
-function _shEnsurePhotoInputs(){
-  if(document.getElementById('sh-photo-cam')) return;
-  function mk(id, capture){
-    var inp = document.createElement('input');
-    inp.type = 'file'; inp.accept = 'image/*'; inp.id = id; inp.style.display = 'none';
-    if(capture) inp.setAttribute('capture','environment');
-    inp.addEventListener('change', function(){
-      var f = inp.files && inp.files[0];
-      inp.value = '';
-      if(f) _shProcessPhotoFile(f, _shPhotoTargetPid);
-    });
-    document.body.appendChild(inp);
-  }
-  mk('sh-photo-cam', true);
-  mk('sh-photo-file', false);
-}
-function _shPhotoMenu(pid){
-  _shPhotoTargetPid = pid;
-  _shEnsurePhotoInputs();
-  var rec = (typeof playersCache !== 'undefined') ? playersCache.find(function(x){ return x && x.id === pid; }) : null;
-  var hasPhoto = rec && rec.photoBase64;
-  var ex = document.getElementById('sh-photo-menu'); if(ex) ex.remove();
-  var bd = document.createElement('div');
-  bd.id = 'sh-photo-menu'; bd.className = 'sh-photo-menu-bd';
-  bd.innerHTML =
-    '<div class="sh-photo-menu" role="dialog" aria-modal="true" aria-label="Spelerfoto">' +
-      '<div class="sh-pm-title">Spelerfoto</div>' +
-      '<button type="button" class="sh-pm-opt" data-act="cam">📷 Maak foto</button>' +
-      '<button type="button" class="sh-pm-opt" data-act="file">📁 Upload foto</button>' +
-      (hasPhoto ? '<button type="button" class="sh-pm-opt danger" data-act="del">🗑️ Verwijder foto</button>' : '') +
-      '<button type="button" class="sh-pm-opt ghost" data-act="cancel">Annuleren</button>' +
-    '</div>';
-  document.body.appendChild(bd);
-  bd.addEventListener('click', function(e){
-    if(e.target === bd){ bd.remove(); return; }
-    var btn = e.target.closest('[data-act]');
-    if(!btn) return;
-    var act = btn.dataset.act;
-    bd.remove();
-    if(act === 'cam') document.getElementById('sh-photo-cam').click();
-    else if(act === 'file') document.getElementById('sh-photo-file').click();
-    else if(act === 'del') _shDeletePhoto(pid);
-  });
-}
-window._shPhotoMenu = _shPhotoMenu;
-
-function _shProcessPhotoFile(file, pid){
-  if(!file || !pid) return;
-  if(!/^image\//.test(file.type)){ if(typeof toast === 'function') toast('Kies een afbeelding', true); return; }
-  var reader = new FileReader();
-  reader.onload = function(ev){
-    var img = new Image();
-    img.onload = function(){
-      try {
-        var SIZE = 400;
-        var canvas = document.createElement('canvas');
-        canvas.width = SIZE; canvas.height = SIZE;
-        var ctx = canvas.getContext('2d');
-        var s = Math.min(img.width, img.height);
-        var sx = (img.width - s) / 2, sy = (img.height - s) / 2;
-        ctx.drawImage(img, sx, sy, s, s, 0, 0, SIZE, SIZE);
-        var dataUrl = canvas.toDataURL('image/jpeg', 0.7);
-        if(dataUrl.length > 700000) dataUrl = canvas.toDataURL('image/jpeg', 0.5);
-        _shPhotoPreview(dataUrl, pid);
-      } catch(e){ if(typeof toast === 'function') toast('Verwerken mislukt', true); }
-    };
-    img.onerror = function(){ if(typeof toast === 'function') toast('Kan afbeelding niet laden', true); };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-function _shPhotoPreview(dataUrl, pid){
-  var ex = document.getElementById('sh-photo-preview'); if(ex) ex.remove();
-  var bd = document.createElement('div');
-  bd.id = 'sh-photo-preview'; bd.className = 'sh-photo-menu-bd';
-  bd.innerHTML =
-    '<div class="sh-photo-menu" role="dialog" aria-modal="true" aria-label="Foto bevestigen">' +
-      '<div class="sh-pm-title">Voorbeeld</div>' +
-      '<img class="sh-pm-preview" src="' + dataUrl + '" alt="Voorbeeld">' +
-      '<button type="button" class="sh-pm-opt" data-act="save">✓ Opslaan</button>' +
-      '<button type="button" class="sh-pm-opt ghost" data-act="retry">↺ Opnieuw</button>' +
-    '</div>';
-  document.body.appendChild(bd);
-  bd.addEventListener('click', function(e){
-    if(e.target === bd){ bd.remove(); return; }
-    var btn = e.target.closest('[data-act]');
-    if(!btn) return;
-    if(btn.dataset.act === 'save'){ bd.remove(); _shSavePhoto(pid, dataUrl); }
-    else if(btn.dataset.act === 'retry'){ bd.remove(); _shPhotoMenu(pid); }
-  });
-}
-async function _shSavePhoto(pid, dataUrl){
-  try {
-    var rec = (typeof playersCache !== 'undefined') ? playersCache.find(function(x){ return x && x.id === pid; }) : null;
-    if(!rec){ if(typeof toast === 'function') toast('Speler niet gevonden', true); return; }
-    rec.photoBase64 = dataUrl;
-    if(typeof toast === 'function') toast('Foto opslaan\u2026');
-    await savePlayer(rec);
-    if(typeof toast === 'function') toast('Foto opgeslagen ✓');
-    _shRefreshAfterPhoto();
-  } catch(e){ if(typeof toast === 'function') toast('Opslaan mislukt', true); }
-}
-function _shDeletePhoto(pid){
-  if(!confirm('Foto van deze speler verwijderen?')) return;
-  (async function(){
-    try {
-      var rec = (typeof playersCache !== 'undefined') ? playersCache.find(function(x){ return x && x.id === pid; }) : null;
-      if(!rec) return;
-      delete rec.photoBase64;
-      await savePlayer(rec);
-      if(typeof toast === 'function') toast('Foto verwijderd');
-      _shRefreshAfterPhoto();
-    } catch(e){ if(typeof toast === 'function') toast('Verwijderen mislukt', true); }
-  })();
-}
-function _shRefreshAfterPhoto(){
-  try {
-    if(typeof currentView !== 'undefined'){
-      if(currentView === 'player' && typeof renderPlayer === 'function') renderPlayer();
-      else if(currentView === 'database' && typeof applyFilters === 'function') applyFilters();
-      else if(currentView === 'compare' && typeof renderCompareSelected === 'function') renderCompareSelected();
-    }
-  } catch(_){}
-}
-
-/* Gedelegeerde klik op de avatar-knop in het spelersprofiel */
-document.addEventListener('click', function(e){
-  var btn = e.target.closest ? e.target.closest('.sh-avatar-btn') : null;
-  if(btn && btn.dataset.pid){ e.preventDefault(); e.stopPropagation(); _shPhotoMenu(btn.dataset.pid); }
-}, false);
-
-/* --- Fuzzy zoek (geen externe lib) --- */
-function _shLeven(a, b){
-  a = a || ''; b = b || '';
-  if(a === b) return 0;
-  if(!a.length) return b.length;
-  if(!b.length) return a.length;
-  var n = b.length, prev = new Array(n + 1), cur = new Array(n + 1), i, j;
-  for(j = 0; j <= n; j++) prev[j] = j;
-  for(i = 1; i <= a.length; i++){
-    cur[0] = i;
-    for(j = 1; j <= n; j++){
-      var cost = a.charCodeAt(i-1) === b.charCodeAt(j-1) ? 0 : 1;
-      cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + cost);
-    }
-    var tmp = prev; prev = cur; cur = tmp;
-  }
-  return prev[n];
-}
-function _shFuzzyField(query, text){
-  query = (query||'').toLowerCase().trim();
-  text = (text||'').toLowerCase().trim();
-  if(!query || !text) return 0;
-  if(text.indexOf(query) !== -1) return 100;
-  var qWords = query.split(/\s+/).filter(Boolean);
-  var tWords = text.split(/\s+/).filter(Boolean);
-  if(qWords.length && qWords.every(function(qw){ return tWords.some(function(tw){ return tw.indexOf(qw) !== -1; }); })) return 90;
-  var best = 0;
-  qWords.forEach(function(qw){
-    tWords.forEach(function(tw){
-      var d = _shLeven(qw, tw);
-      if(d <= 2){ var sc = 80 - d * 10; if(sc > best) best = sc; }
-      if(qw.length >= 2 && tw.indexOf(qw.slice(0, Math.min(3, qw.length))) === 0){ if(50 > best) best = 50; }
-    });
-  });
-  return best;
-}
-function _shFuzzyPlayerScore(query, p){
-  if(!p) return 0;
-  var fields = [
-    p.naam || '',
-    p.club || '',
-    (typeof positionLabel === 'function' ? positionLabel(p.positie) : (p.positie||'')) || '',
-    (p.elftal || (typeof deriveElftalFromReport === 'function' ? deriveElftalFromReport(p) : '') || '')
-  ];
-  var best = 0;
-  for(var i = 0; i < fields.length; i++){ var s = _shFuzzyField(query, fields[i]); if(s > best) best = s; if(best >= 100) break; }
-  return best;
-}
-window._shFuzzyPlayerScore = _shFuzzyPlayerScore;
-function _shFuzzySuggestion(query, players){
-  var best = '', bestScore = 0;
-  (players||[]).forEach(function(p){
-    var nm = p && p.naam;
-    if(!nm) return;
-    var s = _shFuzzyField(query, nm);
-    if(s > bestScore){ bestScore = s; best = nm; }
-  });
-  return bestScore >= 50 ? best : '';
-}
-window._shFuzzySuggestion = _shFuzzySuggestion;
-
-
-/* ============================================================
-   PROMPT 8 — Vormtrend (sparklines) + observatie-labeling in Vergelijken.
-   Leidt geschatte scores af uit observatie-chips (geen formeel rapport)
-   en toont trend-indicatoren. Read-only: raakt geen data aan.
-   ============================================================ */
-
-/* Mini-sparkline (SVG) uit een reeks scores (1..4). */
-function _shMiniSparkline(values, color){
-  var vals = (values||[]).map(function(v){ return v||0; });
-  var W=120, H=34, pad=4, n=vals.length;
-  var xPos=function(i){ return n<=1 ? W/2 : pad + (i/(n-1))*(W-2*pad); };
-  var yPos=function(v){ return H-pad - ((v-1)/3)*(H-2*pad); };
-  var pts=[]; vals.forEach(function(v,i){ if(v) pts.push({i:i,v:v}); });
-  if(pts.length < 2){
-    return '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" class="sh-spark"><text x="'+(W/2)+'" y="'+(H/2+3)+'" text-anchor="middle" font-size="9" fill="rgba(232,237,245,.4)">\u2014</text></svg>';
-  }
-  var poly=pts.map(function(p){ return xPos(p.i).toFixed(1)+','+yPos(p.v).toFixed(1); }).join(' ');
-  var last=pts[pts.length-1];
-  var dot='<circle cx="'+xPos(last.i).toFixed(1)+'" cy="'+yPos(last.v).toFixed(1)+'" r="2.6" fill="'+color+'"/>';
-  return '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" class="sh-spark"><polyline points="'+poly+'" fill="none" stroke="'+color+'" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>'+dot+'</svg>';
-}
-
-/* Per-categorie sparklines voor het spelersprofiel (gesorteerde rapporten). */
-function _shCriteriaSparklines(sortedReports){
-  if(!Array.isArray(sortedReports) || sortedReports.length < 2) return '';
-  var gs = CMP_GRADE_VAL;
-  var cells = CMP_CRITERIA.map(function(c){
-    var series = sortedReports.map(function(r){
-      var g = (r.beoordelingen && r.beoordelingen[c.key]) || '';
-      if(!g && c.key === 'grit_huidig' && r.beoordelingen) g = r.beoordelingen.drit_huidig || '';
-      return gs[(g||'').toUpperCase()] || 0;
-    });
-    var nz = series.filter(function(v){ return v; });
-    var first = nz[0], last = nz[nz.length-1];
-    var d = (first && last) ? last - first : 0;
-    var icon = (!first || !last) ? '' : (d>0?'\u2197':d<0?'\u2198':'\u2192');
-    var cls = d>0?'up':d<0?'down':'flat';
-    return '<div class="sh-spark-cell"><div class="sh-spark-lbl"><span>'+escapeHtml(c.label)+'</span><span class="sh-spark-tr '+cls+'">'+icon+'</span></div>'+_shMiniSparkline(series, '#60a5fa')+'</div>';
-  }).join('');
-  return '<div class="sh-spark-grid"><div class="sh-spark-grid-title">Per categorie</div><div class="sh-spark-cells">'+cells+'</div></div>';
-}
-window._shCriteriaSparklines = _shCriteriaSparklines;
-
-/* Leidt een synthetische speler met geschatte scores af uit observatie-chips. */
-function _shObsEstimatePlayer(p){
-  if(!p) return null;
-  var tags = Array.isArray(p.tags) ? p.tags.slice() : [];
-  try {
-    if(typeof playersCache !== 'undefined' && p.naam){
-      var nm = (p.naam||'').toLowerCase().trim();
-      playersCache.forEach(function(o){
-        if(!o || o.id === p.id) return;
-        if((o.naam||'').toLowerCase().trim() !== nm) return;
-        if(Array.isArray(o.tags)) tags = tags.concat(o.tags);
-      });
-    }
-  } catch(_){}
-  if(!tags.length) return null;
-  var catMap = { techniek:'techniek_huidig', inzicht:'inzicht_huidig', mentaliteit:'grit_huidig', snelheid:'sprinten_huidig', fysiek:'duelleren_huidig' };
-  var ratingVal = { good:3, average:2, poor:1 };
-  var acc = {};
-  tags.forEach(function(t){
-    if(!t) return;
-    var cat = String(t.category||'').toLowerCase();
-    var key = catMap[cat];
-    var rv = ratingVal[t.rating];
-    if(!key || !rv) return;
-    (acc[key] = acc[key] || []).push(rv);
-    if(cat === 'snelheid'){ (acc['explosiviteit_huidig'] = acc['explosiviteit_huidig'] || []).push(rv); }
-  });
-  var beoordelingen = {}, allVals = [];
-  Object.keys(acc).forEach(function(key){
-    var arr = acc[key];
-    var avg3 = arr.reduce(function(a,b){ return a+b; },0) / arr.length;   // 1..3
-    var score4 = 1 + (avg3 - 1) * 1.5;                                     // 1..4
-    beoordelingen[key] = _avgScoreToLetter(score4);
-    allVals.push(score4);
-  });
-  if(!Object.keys(beoordelingen).length) return null;
-  var overall = allVals.reduce(function(a,b){ return a+b; },0) / allVals.length;
-  var overallLetter = _avgScoreToLetter(overall);
-  return Object.assign({}, p, {
-    beoordelingen: beoordelingen,
-    huidig_niveau: overallLetter,
-    _obsEstimate: true,
-    _estimateLetter: overallLetter
-  });
-}
-window._shObsEstimatePlayer = _shObsEstimatePlayer;
-
-/* Bron-label voor de vergelijk-legenda: rapport vs geschatte observatie. */
-function _shCmpSourceLabel(p){
-  if(!p) return '';
-  if(p._obsEstimate){
-    var l = p._estimateLetter || p.huidig_niveau || '?';
-    return ' <span class="cmp-src cmp-src-est" title="Score afgeleid uit observatie-chips, niet uit een formeel rapport.">📋 Observatie (geschat: ' + escapeHtml(l) + ')</span>';
-  }
-  var hn = p.huidig_niveau || '?';
-  return ' <span class="cmp-src" title="Op basis van formele rapporten.">📝 Rapport (' + escapeHtml(hn) + ')</span>';
-}
-window._shCmpSourceLabel = _shCmpSourceLabel;
-
-/* Trend-indicator per speler voor de vergelijk-legenda. */
-function _shCmpTrendLabel(p){
-  try {
-    if(!p || p._obsEstimate) return '';
-    var reports = reportsForPlayer(p.id);
-    if(!reports || reports.length < 2) return '';
-    var sorted = reports.slice().sort(function(a,b){ var da=a.datum||'', db=b.datum||''; return da<db?-1:da>db?1:0; }).slice(-10);
-    var gs = CMP_GRADE_VAL;
-    var firstV = gs[(sorted[0].huidig_niveau||'').toUpperCase()] || 0;
-    var lastV = gs[(sorted[sorted.length-1].huidig_niveau||'').toUpperCase()] || 0;
-    if(!firstV || !lastV) return '';
-    var d = lastV - firstV;
-    var icon = d>0?'↗':d<0?'↘':'→';
-    var word = d>0?'stijgend':d<0?'dalend':'stabiel';
-    var cls = d>0?'up':d<0?'down':'flat';
-    var fL = (sorted[0].huidig_niveau||'?').toUpperCase();
-    var lL = (sorted[sorted.length-1].huidig_niveau||'?').toUpperCase();
-    var span = fL === lL ? fL : (fL + '→' + lL);
-    return ' <span class="cmp-trend cmp-trend-' + cls + '">' + icon + ' ' + word + ' (' + escapeHtml(span) + ' · ' + reports.length + ' rpt)</span>';
-  } catch(_){ return ''; }
-}
-window._shCmpTrendLabel = _shCmpTrendLabel;
-
-
-/* ============================================================
-   PROMPT 9 — Elftal Analyse: auto-kandidaten per positie +
-   koppeling met Gescoute teams en Vergelijken. Read-only voor
-   spelersdata; koppelen schrijft alleen naar de eigen analyse
-   (zelfde pad als de bestaande "+ Koppel rapport"-knop).
-   ============================================================ */
-
-/* Kandidaten voor een positie-slot: matcht positie/beoogd (multi-positie),
-   sorteert preselectie eerst, dan meest recent, dan hoogste score. */
-function _shSlotCandidates(slot){
-  var matches = (slotMeta(slot).matches || []);
-  var pre = (window.__shPitchPreselect && Array.isArray(window.__shPitchPreselect.ids)) ? window.__shPitchPreselect.ids : [];
-  var preSet = {}; pre.forEach(function(id){ preSet[id] = 1; });
-  function tokens(p){
-    return String((p.positie||'') + '/' + (p.beoogd||'')).toUpperCase().split(/[\/,;|\s]+/).filter(Boolean);
-  }
-  var all = loadPlayers().filter(function(p){ return p && !p.concept; });
-  var matched = all.filter(function(p){
-    var tk = tokens(p);
-    return tk.some(function(t){ return matches.indexOf(t) !== -1; });
-  });
-  var GV = { A:4, B:3, C:2, D:1 };
-  function scoreVal(p){ return GV[p.huidig_niveau] || 0; }
-  function dateVal(p){ var d = p.datum || p.wedstrijd_datum || (p.wedstrijd && p.wedstrijd.datum) || ''; return d ? new Date(d).getTime() : 0; }
-  function sortFn(x,y){
-    var px = preSet[x.id]?1:0, py = preSet[y.id]?1:0;
-    if(px !== py) return py - px;
-    var dx = dateVal(x), dy = dateVal(y);
-    if(dx !== dy) return dy - dx;
-    return scoreVal(y) - scoreVal(x);
-  }
-  if(matched.length){ matched.sort(sortFn); return { players: matched, fallback: false }; }
-  return { players: all.slice().sort(sortFn), fallback: true };
-}
-
-/* Render de kandidaten-suggesties in het positie-paneel. */
-function _shRenderSlotSuggest(slot){
-  var host = document.getElementById('pitch-suggest');
-  if(!host || !slot) return;
-  var res = _shSlotCandidates(slot);
-  var meta = slotMeta(slot);
-  var a = currentAnalysis();
-  var s = a ? normalizeSlot((a.slots || {})[selectedPitchPos]) : {};
-  var linked = {}; [].concat(s.linked_huidig || [], s.linked_kandidaat || []).forEach(function(id){ linked[id] = 1; });
-  var pre = {}; if(window.__shPitchPreselect && Array.isArray(window.__shPitchPreselect.ids)){ window.__shPitchPreselect.ids.forEach(function(id){ pre[id] = 1; }); }
-  function rowHtml(p){
-    var sc = p.huidig_niveau || '-';
-    var isObs = p.rapport_type === 'observatie';
-    return '<div class="psug-row" data-pid="'+escapeAttr(p.id)+'">'+
-      '<div class="psug-main" data-open="'+escapeAttr(p.id)+'">'+
-        '<div class="psug-name">'+escapeHtml(p.naam||'?')+(pre[p.id]?' <span class="psug-tag">uit selectie</span>':'')+(isObs?' <span class="psug-tag obs">OBS</span>':'')+'</div>'+
-        '<div class="psug-meta">'+escapeHtml(positionLabel(p.positie)||(p.positie||'?'))+(p.club?(' \u00b7 '+escapeHtml(p.club)):'')+(p.datum?(' \u00b7 '+formatDate(p.datum)):'')+'</div>'+
-      '</div>'+
-      '<span class="grade '+(p.huidig_niveau||'D')+'" style="padding:0 6px;height:18px;font-size:10px;">'+escapeHtml(sc)+'</span>'+
-      (linked[p.id] ? '<span class="psug-linked" title="Al gekoppeld">\u2713</span>' : '<button type="button" class="btn btn-sm psug-link" data-link="'+escapeAttr(p.id)+'">+ Koppel</button>')+
-    '</div>';
-  }
-  var list = res.players.slice(0, 30).map(rowHtml).join('');
-  var head = res.fallback
-    ? '<div class="psug-head psug-fallback">Geen spelers met positie <strong>'+escapeHtml(meta.short)+'</strong> gevonden \u2014 alle spelers:</div>'
-    : '<div class="psug-head">🎯 Voorgestelde kandidaten <span class="psug-count">'+res.players.length+'</span></div>';
-  host.innerHTML =
-    '<div class="psug-bar"><input type="search" id="pitch-suggest-search" class="psug-search" placeholder="Filter op naam\u2026"></div>'+
-    head +
-    '<div class="psug-list" id="pitch-suggest-list">'+ (list || '<div class="linked-reports-empty">Geen spelers in je database.</div>') +'</div>';
-  var srch = document.getElementById('pitch-suggest-search');
-  if(srch){
-    srch.addEventListener('input', function(){
-      var q = srch.value.trim().toLowerCase();
-      host.querySelectorAll('.psug-row').forEach(function(row){
-        var nmEl = row.querySelector('.psug-name');
-        var nm = nmEl ? nmEl.textContent : '';
-        row.style.display = (!q || nm.toLowerCase().indexOf(q) !== -1) ? '' : 'none';
-      });
-    });
-  }
-  host.querySelectorAll('[data-open]').forEach(function(el){
-    el.addEventListener('click', function(){ if(typeof openDetail === 'function') openDetail(el.dataset.open); });
-  });
-  host.querySelectorAll('[data-link]').forEach(function(btn){
-    btn.addEventListener('click', function(e){ e.stopPropagation(); _shLinkCandidateToSlot(btn.dataset.link); });
-  });
-}
-window._shRenderSlotSuggest = _shRenderSlotSuggest;
-
-/* Koppel een voorgestelde kandidaat aan het geselecteerde slot. */
-async function _shLinkCandidateToSlot(id){
-  if(!selectedPitchPos || !id) return;
-  var a = currentAnalysis(); if(!a) return;
-  var slot = normalizeSlot((a.slots || {})[selectedPitchPos]);
-  var cur = slot.linked_kandidaat || [];
-  if(cur.indexOf(id) !== -1) return;
-  try {
-    await patchSlot(selectedPitchPos, { linked_kandidaat: cur.concat([id]) });
-    renderPitchInfo();
-    renderPitchPositions();
-    if(typeof toast === 'function') toast('Kandidaat gekoppeld \u2713');
-  } catch(e){ if(typeof toast === 'function') toast('Koppelen mislukt', true); }
-}
-window._shLinkCandidateToSlot = _shLinkCandidateToSlot;
-
-/* Banner bovenin Elftal Analyse wanneer er een team/vergelijking is voorgeladen. */
-function _shRenderPitchPreselectBanner(){
-  var view = document.getElementById('view-pitch');
-  if(!view) return;
-  var ban = document.getElementById('pitch-preselect-banner');
-  var pre = window.__shPitchPreselect;
-  if(!pre || !pre.ids || !pre.ids.length){ if(ban) ban.remove(); return; }
-  if(!ban){
-    ban = document.createElement('div');
-    ban.id = 'pitch-preselect-banner';
-    ban.className = 'pitch-preselect-banner';
-    view.insertBefore(ban, view.firstChild);
-  }
-  ban.innerHTML = '<span>📋 Voorgesteld vanuit <strong>'+escapeHtml(pre.label||'selectie')+'</strong>: '+pre.ids.length+' speler'+(pre.ids.length===1?'':'s')+'. Open een analyse en kies een positie om ze te koppelen.</span>'+
-    '<button type="button" class="pitch-preselect-x" id="pitch-preselect-x" aria-label="Sluiten">\u00d7</button>';
-  var x = document.getElementById('pitch-preselect-x');
-  if(x) x.addEventListener('click', function(){ window.__shPitchPreselect = null; if(ban) ban.remove(); try { if(typeof selectedPitchPos !== 'undefined' && selectedPitchPos) renderPitchInfo(); } catch(_){} });
-}
-window._shRenderPitchPreselectBanner = _shRenderPitchPreselectBanner;
-
-
-/* ============================================================
-   PROMPT 10 — Favoriete routes (Ritten). Opslag in localStorage
-   per gebruiker (sh_fav_routes_<uid>); raakt geen Firestore-data aan.
-   ============================================================ */
-function _shFavKey(){
-  var uid = '';
-  try { uid = (typeof auth !== 'undefined' && auth.currentUser) ? auth.currentUser.uid : ''; } catch(_){}
-  return 'sh_fav_routes_' + (uid || 'anon');
-}
-function _shLoadFavRoutes(){
-  try { return JSON.parse(localStorage.getItem(_shFavKey()) || '[]') || []; } catch(_){ return []; }
-}
-function _shSaveFavRoutes(arr){
-  try { localStorage.setItem(_shFavKey(), JSON.stringify(arr || [])); } catch(_){}
-}
-function _shRenderRitFavBar(isNew){
-  var bar = document.getElementById('rit-fav-bar');
-  if(!bar) return;
-  if(!isNew){ bar.style.display = 'none'; bar.innerHTML = ''; return; }
-  var routes = _shLoadFavRoutes();
-  if(!routes.length){ bar.style.display = 'none'; bar.innerHTML = ''; return; }
-  bar.style.display = '';
-  bar.innerHTML = '<div class="rit-fav-label">Favoriete routes:</div><div class="rit-fav-chips">' +
-    routes.map(function(r){
-      var km = r.km ? (' <span class="rit-fav-km">('+_ritFmtKm(r.km)+'km)</span>') : '';
-      return '<button type="button" class="rit-fav-chip" data-fav="'+escapeAttr(r.id)+'">'+escapeHtml(r.name || ((r.from||'?')+' \u2192 '+(r.to||'?')))+km+'</button>';
-    }).join('') + '</div>';
-  bar.querySelectorAll('[data-fav]').forEach(function(btn){
-    btn.addEventListener('click', function(){ _shApplyFavRoute(btn.dataset.fav); });
-  });
-}
-window._shRenderRitFavBar = _shRenderRitFavBar;
-function _shApplyFavRoute(id){
-  var r = _shLoadFavRoutes().find(function(x){ return x && x.id === id; });
-  if(!r) return;
-  var set = function(eid, v){ var el = document.getElementById(eid); if(el) el.value = (v == null ? '' : v); };
-  set('rit-vertrek', r.from);
-  set('rit-aankomst', r.to);
-  set('rit-km', (r.km != null ? r.km : ''));
-  set('rit-doel', r.purpose || '');
-  set('rit-vertrek-lat', r.fromLat || ''); set('rit-vertrek-lon', r.fromLon || '');
-  set('rit-aankomst-lat', r.toLat || ''); set('rit-aankomst-lon', r.toLon || '');
-  if(typeof toast === 'function') toast('Route ingevuld \u2014 pas de datum aan');
-}
-function _shSaveCurrentRouteAsFav(){
-  var from = ((document.getElementById('rit-vertrek')||{}).value || '').trim();
-  var to = ((document.getElementById('rit-aankomst')||{}).value || '').trim();
-  var km = (document.getElementById('rit-km')||{}).value || '';
-  var doel = ((document.getElementById('rit-doel')||{}).value || '').trim();
-  if(!from || !to){ if(typeof toast === 'function') toast('Vul eerst vertrek en aankomst in', true); return; }
-  var routes = _shLoadFavRoutes();
-  var dup = routes.some(function(r){ return (r.from||'').toLowerCase() === from.toLowerCase() && (r.to||'').toLowerCase() === to.toLowerCase(); });
-  if(dup){ if(typeof toast === 'function') toast('Deze route staat al bij je favorieten'); return; }
-  var pf = function(eid){ var v = parseFloat((document.getElementById(eid)||{}).value); return isFinite(v) ? v : ''; };
-  routes.push({
-    id: 'fav_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-    name: from.split(',')[0] + ' \u2192 ' + to.split(',')[0],
-    from: from, to: to, km: Number(km) || 0, purpose: doel,
-    fromLat: pf('rit-vertrek-lat'), fromLon: pf('rit-vertrek-lon'),
-    toLat: pf('rit-aankomst-lat'), toLon: pf('rit-aankomst-lon')
-  });
-  _shSaveFavRoutes(routes);
-  if(typeof toast === 'function') toast('Route bewaard als favoriet \u2b50');
-  _shRenderRitFavBar(true);
-}
-window._shSaveCurrentRouteAsFav = _shSaveCurrentRouteAsFav;
-function _shOpenFavManager(){
-  var ex = document.getElementById('sh-fav-mgr'); if(ex) ex.remove();
-  var routes = _shLoadFavRoutes();
-  var bd = document.createElement('div');
-  bd.id = 'sh-fav-mgr'; bd.className = 'sh-photo-menu-bd';
-  var rows = routes.length ? routes.map(function(r){
-    var meta = escapeHtml(r.from||'') + ' \u2192 ' + escapeHtml(r.to||'') + (r.km ? (' \u00b7 '+_ritFmtKm(r.km)+' km') : '') + (r.purpose ? (' \u00b7 '+escapeHtml(r.purpose)) : '');
-    return '<div class="favmgr-row" data-id="'+escapeAttr(r.id)+'">'+
-      '<div class="favmgr-info"><div class="favmgr-name">'+escapeHtml(r.name||'')+'</div><div class="favmgr-meta">'+meta+'</div></div>'+
-      '<button type="button" class="favmgr-edit" data-edit="'+escapeAttr(r.id)+'" title="Bewerken">✎</button>'+
-      '<button type="button" class="favmgr-del" data-del="'+escapeAttr(r.id)+'" title="Verwijderen">🗑️</button>'+
-    '</div>';
-  }).join('') : '<div class="linked-reports-empty">Nog geen favoriete routes. Bewaar er een vanuit het rit-formulier met ⭐ Bewaar route.</div>';
-  bd.innerHTML = '<div class="sh-photo-menu" style="max-width:460px;" role="dialog" aria-modal="true" aria-label="Favoriete routes">'+
-    '<div class="sh-pm-title">⭐ Favoriete routes</div>'+
-    '<div class="favmgr-list">'+rows+'</div>'+
-    '<button type="button" class="sh-pm-opt ghost" data-close="1">Sluiten</button>'+
-  '</div>';
-  document.body.appendChild(bd);
-  bd.addEventListener('click', function(e){
-    if(e.target === bd || e.target.closest('[data-close]')){ bd.remove(); return; }
-    var del = e.target.closest('[data-del]');
-    if(del){
-      if(!confirm('Deze favoriete route verwijderen?')) return;
-      _shSaveFavRoutes(_shLoadFavRoutes().filter(function(x){ return x.id !== del.dataset.del; }));
-      bd.remove(); _shOpenFavManager();
-      return;
-    }
-    var edit = e.target.closest('[data-edit]');
-    if(edit){
-      var arr = _shLoadFavRoutes();
-      var r = arr.find(function(x){ return x.id === edit.dataset.edit; });
-      if(!r) return;
-      var nn = prompt('Naam van de route:', r.name || ''); if(nn === null) return;
-      var nk = prompt('Kilometers:', r.km != null ? String(r.km) : ''); if(nk === null) return;
-      if(nn.trim()) r.name = nn.trim();
-      var kmv = Number(nk); if(!isNaN(kmv)) r.km = kmv;
-      _shSaveFavRoutes(arr); bd.remove(); _shOpenFavManager();
-      return;
-    }
-  });
-}
-window._shOpenFavManager = _shOpenFavManager;
-
-
-/* ============================================================
-   PROMPT 11 — Profielfoto-sync (user-doc) + fuzzy team-key.
-   Profielfoto wordt op gebruikersactie geresized (200x200, JPEG 0.7)
-   en in het eigen user-doc bewaard, zodat hij op elk apparaat verschijnt.
-   Geen bestaande data wordt aangeraakt.
-   ============================================================ */
-
-/* Genormaliseerde team-key: trim, lowercase, dubbele spaties weg, curly quotes -> '. */
-function _shNormTeamKey(name){
-  return String(name||'').trim().toLowerCase().replace(/\s+/g,' ').replace(/[\u2018\u2019\u02BC']/g, "'");
-}
-window._shNormTeamKey = _shNormTeamKey;
-
-/* Toon profielfoto (of initialen) in sidebar + instellingen. */
-function _shApplyProfilePhoto(dataUrl){
-  ['scout-avatar-img','settings-photo-preview'].forEach(function(id){
-    var el = document.getElementById(id);
-    if(!el) return;
-    if(dataUrl){ el.src = dataUrl; el.style.display = ''; }
-    else { el.removeAttribute('src'); el.style.display = 'none'; }
-  });
-  ['scout-avatar-initials','settings-photo-initials'].forEach(function(id){
-    var el = document.getElementById(id);
-    if(el) el.style.display = dataUrl ? 'none' : '';
-  });
-}
-window._shApplyProfilePhoto = _shApplyProfilePhoto;
-
-async function _shLoadProfilePhoto(uid){
-  try {
-    if(!uid && typeof auth !== 'undefined' && auth.currentUser) uid = auth.currentUser.uid;
-    if(!uid) return;
-    var snap = await getDoc(doc(db, 'users', uid));
-    var d = snap.exists() ? (snap.data() || {}) : {};
-    _shApplyProfilePhoto(d.photoBase64 || '');
-  } catch(_){}
-}
-window._shLoadProfilePhoto = _shLoadProfilePhoto;
-
-function _shProcessProfilePhoto(file){
-  if(!file || !/^image\//.test(file.type)){ if(typeof toast === 'function') toast('Kies een afbeelding', true); return; }
-  var reader = new FileReader();
-  reader.onload = function(ev){
-    var img = new Image();
-    img.onload = function(){
-      try {
-        var SIZE = 200, c = document.createElement('canvas');
-        c.width = SIZE; c.height = SIZE;
-        var ctx = c.getContext('2d');
-        var s = Math.min(img.width, img.height), sx = (img.width - s)/2, sy = (img.height - s)/2;
-        ctx.drawImage(img, sx, sy, s, s, 0, 0, SIZE, SIZE);
-        var dataUrl = c.toDataURL('image/jpeg', 0.7);
-        if(dataUrl.length > 250000) dataUrl = c.toDataURL('image/jpeg', 0.5);
-        _shSaveProfilePhoto(dataUrl);
-      } catch(e){ if(typeof toast === 'function') toast('Verwerken mislukt', true); }
-    };
-    img.onerror = function(){ if(typeof toast === 'function') toast('Kan afbeelding niet laden', true); };
-    img.src = ev.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-async function _shSaveProfilePhoto(dataUrl){
-  try {
-    var uid = (typeof auth !== 'undefined' && auth.currentUser) ? auth.currentUser.uid : '';
-    if(!uid){ if(typeof toast === 'function') toast('Niet ingelogd', true); return; }
-    _shApplyProfilePhoto(dataUrl);
-    if(typeof toast === 'function') toast('Profielfoto opslaan\u2026');
-    await setDoc(doc(db, 'users', uid), { photoBase64: dataUrl }, { merge: true });
-    if(typeof toast === 'function') toast('Profielfoto opgeslagen \u2713 (op al je apparaten zichtbaar)');
-  } catch(e){ if(typeof toast === 'function') toast('Opslaan mislukt', true); }
-}
-async function _shResetProfilePhoto(){
-  try {
-    var uid = (typeof auth !== 'undefined' && auth.currentUser) ? auth.currentUser.uid : '';
-    if(!uid) return;
-    _shApplyProfilePhoto('');
-    await setDoc(doc(db, 'users', uid), { photoBase64: '' }, { merge: true });
-    if(typeof toast === 'function') toast('Profielfoto teruggezet op standaard');
-  } catch(_){}
-}
-function _shInitProfilePhoto(){
-  var pick = document.getElementById('settings-photo-pick');
-  var input = document.getElementById('settings-photo-input');
-  var reset = document.getElementById('settings-photo-reset');
-  if(pick && input && !pick._shWired){ pick._shWired = true; pick.addEventListener('click', function(){ input.click(); }); }
-  if(input && !input._shWired){ input._shWired = true; input.addEventListener('change', function(){ var f = input.files && input.files[0]; input.value = ''; if(f) _shProcessProfilePhoto(f); }); }
-  if(reset && !reset._shWired){ reset._shWired = true; reset.addEventListener('click', _shResetProfilePhoto); }
-}
-window._shInitProfilePhoto = _shInitProfilePhoto;
-if(typeof document !== 'undefined'){
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', _shInitProfilePhoto);
-  else _shInitProfilePhoto();
-}
-
-
-/* ============================================================
-   PROMPT 12 — herinneringen: nette permissie-modal, instellingen
-   (toggle + minuten), best-effort periodic background sync, en
-   klik-op-notificatie opent de wedstrijd. Geen data aangeraakt.
-   ============================================================ */
-function _shAskNotifPermission(){
-  if(!('Notification' in window)) return;
-  if(Notification.permission === 'granted' || Notification.permission === 'denied') return;
-  if(document.getElementById('sh-notif-ask')) return;
-  var bd = document.createElement('div');
-  bd.id = 'sh-notif-ask'; bd.className = 'sh-photo-menu-bd';
-  bd.innerHTML = '<div class="sh-photo-menu" style="max-width:360px;text-align:center;">'+
-    '<div style="font-size:34px;line-height:1;margin-bottom:6px;">⚽</div>'+
-    '<div class="sh-pm-title">Herinnering vóór je wedstrijd</div>'+
-    '<div style="font-size:13.5px;color:var(--text-2,#9aa8bd);margin:4px 0 12px;line-height:1.5;">ScoutingHub kan je een paar minuten vóór een prio-wedstrijd een melding sturen, zodat je niets mist langs de lijn.</div>'+
-    '<button type="button" class="sh-pm-opt" data-allow="1" style="text-align:center;background:var(--accent,#4ea1ff);color:#06223f;border-color:var(--accent,#4ea1ff);font-weight:700;">Toestaan</button>'+
-    '<button type="button" class="sh-pm-opt ghost" data-later="1">Niet nu</button>'+
-  '</div>';
-  document.body.appendChild(bd);
-  bd.addEventListener('click', function(e){
-    if(e.target === bd){ bd.remove(); return; }
-    if(e.target.closest('[data-allow]')){
-      bd.remove();
-      try { Notification.requestPermission().then(function(){ try { _shRegisterPeriodicSync(); _shPushScheduleToSW(); } catch(_){} }); } catch(_){}
-    } else if(e.target.closest('[data-later]')){
-      bd.remove();
-      try { localStorage.setItem(SH_REM_PROMPT_KEY, _shTodayKey()); } catch(_){}
-    }
-  });
-}
-window._shAskNotifPermission = _shAskNotifPermission;
-function _shMaybeAskPermission(){
-  if(!_shRemindersOn()) return;
-  if(!('Notification' in window) || Notification.permission !== 'default') return;
-  var dismissed = ''; try { dismissed = localStorage.getItem(SH_REM_PROMPT_KEY) || ''; } catch(_){}
-  if(dismissed === _shTodayKey()) return;
-  _shAskNotifPermission();
-}
-window._shMaybeAskPermission = _shMaybeAskPermission;
-async function _shRegisterPeriodicSync(){
-  try {
-    if(!('serviceWorker' in navigator) || !_shRemindersOn()) return;
-    var reg = await navigator.serviceWorker.ready;
-    if(!reg || !reg.periodicSync) return;
-    var ok = true;
-    try { var st = await navigator.permissions.query({ name:'periodic-background-sync' }); ok = (st.state === 'granted'); } catch(_){ ok = true; }
-    if(ok){ try { await reg.periodicSync.register('sh-match-reminders', { minInterval: 15*60*1000 }); } catch(_){} }
-  } catch(_){}
-}
-window._shRegisterPeriodicSync = _shRegisterPeriodicSync;
-function _shInitReminderSettings(){
-  var tgl = document.getElementById('settings-reminders-toggle');
-  var sel = document.getElementById('settings-reminder-minutes');
-  if(tgl && !tgl._shWired){
-    tgl._shWired = true;
-    tgl.checked = _shRemindersOn();
-    tgl.addEventListener('change', function(){
-      try { localStorage.setItem(SH_REM_KEY, tgl.checked ? '1' : '0'); } catch(_){}
-      if(tgl.checked){ _shAskNotifPermission(); _shRegisterPeriodicSync(); }
-      _shPushScheduleToSW();
-    });
-  }
-  if(sel && !sel._shWired){
-    sel._shWired = true;
-    sel.value = String(_shReminderMinutes());
-    sel.addEventListener('change', function(){ try { localStorage.setItem(SH_REM_MIN_KEY, sel.value); } catch(_){} _shPushScheduleToSW(); });
-  }
-}
-window._shInitReminderSettings = _shInitReminderSettings;
-/* SW -> pagina: open de wedstrijd na klik op de notificatie. */
-try {
-  if('serviceWorker' in navigator){
-    navigator.serviceWorker.addEventListener('message', function(ev){
-      var d = ev.data || {};
-      if(d.type === 'SH_OPEN_MATCH' && d.data){
-        try { if(typeof go === 'function') go('toernooien'); } catch(_){}
-        try { if(d.data.tid && d.data.matchId && typeof openMatchDetail === 'function') setTimeout(function(){ openMatchDetail(d.data.tid, d.data.matchId); }, 350); } catch(_){}
-      }
-    });
-  }
-} catch(_){}
-if(typeof document !== 'undefined'){
-  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function(){ _shInitReminderSettings(); _shRegisterPeriodicSync(); });
-  else { _shInitReminderSettings(); _shRegisterPeriodicSync(); }
-}
-
-
-/* ============================================================
-   PROMPT 13 (bonus) — rapport-profiel chips + editbare chip-grid.
-   rapport_tags[] en fromObservationId bestaan al (sh-v225); dit voegt
-   alleen weergave + edit-UI toe. Oude rapporten zonder tags blijven werken.
-   ============================================================ */
-
-/* Chip-grid per rapport-categorie in het bewerkformulier. */
-function _injectReportTrefwoorden(existingTags){
-  var MAP = {
-    'techniek_huidig':     { section:'techniek_huidig',     chips:['Balbehandeling','Passing','Eerste aanname','Traptechniek','Koppen','Dribbel','Overzicht','Beide benen'] },
-    'inzicht_huidig':      { section:'inzicht_huidig',      chips:['Scannen','Positiespel','Ruimte zien','Anticipatie','Coaching','Rust aan de bal','Loopacties','Timing'] },
-    'grit_huidig':         { section:'mentaliteit_huidig',  chips:['Winnaar','Leider','Communicatief','Rustig','Nerveus','Emotioneel','Doorzetter','Opgeven','Concentratie','Gretig'] },
-    'explosiviteit_huidig':{ section:'explosiviteit_huidig',chips:['Startsnelheid','Versnelling','Explosief'] },
-    'sprinten_huidig':     { section:'sprinten_huidig',     chips:['Topsnelheid','Traag'] },
-    'duelleren_huidig':    { section:'duelleren_huidig',    chips:['Sterk','Dualkracht','Licht'] },
-    'wendbaarheid_huidig': { section:'wendbaarheid_huidig', chips:['Wendbaarheid','Lenig'] }
-  };
-  var tags = Array.isArray(existingTags) ? existingTags : [];
-  function ratingOf(section, label){
-    var t = tags.find(function(x){ return x && x.label === label && x.rapport_section === section; });
-    return t && t.rating ? t.rating : '';
-  }
-  Object.keys(MAP).forEach(function(dk){
-    var gp = document.querySelector('#view-report .grade-picker[data-key="'+dk+'"]');
-    if(!gp || !gp.parentNode) return;
-    var prev = gp.parentNode.querySelector('.report-trefwoorden[data-for="'+dk+'"]');
-    if(prev) prev.remove();
-    var conf = MAP[dk];
-    var box = document.createElement('div');
-    box.className = 'report-trefwoorden';
-    box.setAttribute('data-for', dk);
-    box.innerHTML = '<div class="rep-tw-chips">' + conf.chips.map(function(w){
-      var r = ratingOf(conf.section, w);
-      return '<button type="button" class="obs-tag" data-rapport-section="'+conf.section+'" data-category="'+conf.section.replace('_huidig','')+'" data-label="'+escapeHtml(w)+'"'+(r?(' data-rating="'+r+'"'):'')+' onclick="_obsTagCycle(this)">'+escapeHtml(w)+'</button>';
-    }).join('') + '</div>';
-    gp.parentNode.insertBefore(box, gp);
-  });
-}
-window._injectReportTrefwoorden = _injectReportTrefwoorden;
-
-/* Lees de huidige chip-ratings uit het rapportformulier als rapport_tags[]. */
-function _shReadReportChips(){
-  var out = [];
-  document.querySelectorAll('#view-report .report-trefwoorden .obs-tag[data-rating]').forEach(function(el){
-    var r = el.getAttribute('data-rating'); if(!r) return;
-    out.push({ label: el.getAttribute('data-label'), rating: r, rapport_section: el.getAttribute('data-rapport-section'), category: el.getAttribute('data-category') });
-  });
-  return out;
-}
-window._shReadReportChips = _shReadReportChips;
-
-/* Chips-samenvatting + obs-link voor de rapport-profielweergave. */
-function _shReportTagsSummary(p){
-  if(!p || p.rapport_type === 'observatie') return '';
-  var base = p;
-  try {
-    if((!p.rapport_tags || !p.fromObservationId) && typeof currentPlayerId !== 'undefined'){
-      var bx = loadPlayers().find(function(x){ return x && x.id === currentPlayerId; });
-      if(bx) base = bx;
-    }
-  } catch(_){}
-  var rtags = Array.isArray(p.rapport_tags) ? p.rapport_tags : (Array.isArray(base.rapport_tags) ? base.rapport_tags : []);
-  var fromObs = p.fromObservationId || base.fromObservationId || '';
-  var SECLBL = { techniek_huidig:'Functionele techniek', inzicht_huidig:'Spelintelligentie', mentaliteit_huidig:'Mentaliteit & Drive', grit_huidig:'Mentaliteit & Drive', explosiviteit_huidig:'Explosiviteit', sprinten_huidig:'Sprinten', duelleren_huidig:'Duelleren', wendbaarheid_huidig:'Wendbaarheid' };
-  var byCat = {};
-  rtags.forEach(function(t){
-    if(!t || !t.label) return;
-    var s = t.rapport_section || '';
-    var chip = (t.rating==='good'?'🟢':t.rating==='average'?'🟠':t.rating==='poor'?'🔴':'⚪') + ' ' + t.label;
-    (byCat[s] = byCat[s] || []).push(chip);
-  });
-  var order = ['techniek_huidig','inzicht_huidig','mentaliteit_huidig','grit_huidig','explosiviteit_huidig','sprinten_huidig','duelleren_huidig','wendbaarheid_huidig'];
-  var seen = {};
-  var cats = order.filter(function(s){ if(!byCat[s]) return false; var lbl = SECLBL[s]||s; if(seen[lbl]) return false; seen[lbl]=1; return true; }).map(function(s){
-    return '<div class="rep-tag-cat"><span class="rep-tag-cat-lbl">'+escapeHtml(SECLBL[s]||s)+'</span> '+escapeHtml(byCat[s].join('  '))+'</div>';
-  }).join('');
-  var obsLink = '';
-  if(fromObs){
-    var obs = null; try { obs = loadPlayers().find(function(x){ return x && x.id === fromObs; }); } catch(_){}
-    var d = obs && (obs.datum || obs.wedstrijd_datum || (obs.wedstrijd && obs.wedstrijd.datum));
-    obsLink = '<div class="rep-obs-link" data-obs="'+escapeAttr(fromObs)+'" role="button" tabindex="0">📋 Gebaseerd op observatie'+(d?(' van '+escapeHtml(formatDate(d))):'')+'</div>';
-  }
-  if(!cats && !obsLink) return '';
-  return '<div class="rep-tags-summary">'+(cats?('<div class="rep-tag-cats">'+cats+'</div>'):'')+obsLink+'</div>';
-}
-window._shReportTagsSummary = _shReportTagsSummary;
-
-/* Klik op de obs-link in het rapportprofiel -> open de bron-observatie. */
-document.addEventListener('click', function(e){
-  var el = e.target.closest ? e.target.closest('.rep-obs-link[data-obs]') : null;
-  if(el && el.dataset.obs){ e.preventDefault(); if(typeof openDetail === 'function') openDetail(el.dataset.obs); }
-}, false);
-
-
-/* Bugfix ronde 1 — B6: km-tarief uid-scoped opslaan + ritten herberekenen. */
-function _shSetKmTarief(val){
-  try {
-    var uid = (typeof auth !== 'undefined' && auth.currentUser) ? auth.currentUser.uid : '';
-    localStorage.setItem('sh_km_tarief_' + uid, String(val == null ? '' : val).trim());
-    if(typeof renderRitten === 'function' && typeof currentView !== 'undefined' && currentView === 'ritten') renderRitten();
-  } catch(_){}
-}
-window._shSetKmTarief = _shSetKmTarief;
-
-
-/* Login/reset — gestylede melding (rood = fout, groen = succes), auto-hide na 8s. */
-var _shLoginMsgTimer = null;
-function _shLoginMsg(text, type){
-  var el = document.getElementById('sh-login-msg');
-  if(!el) return;
-  if(_shLoginMsgTimer){ clearTimeout(_shLoginMsgTimer); _shLoginMsgTimer = null; }
-  if(!text){ el.style.display = 'none'; el.textContent = ''; el.className = 'sh-login-msg'; return; }
-  el.textContent = text;
-  el.className = 'sh-login-msg ' + (type === 'success' ? 'success' : 'error');
-  el.style.display = 'block';
-  el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
-  _shLoginMsgTimer = setTimeout(function(){ el.style.display = 'none'; el.textContent = ''; el.className = 'sh-login-msg'; }, 8000);
-}
-window._shLoginMsg = _shLoginMsg;
-
-
-/* ============================================================
-   FASE 1 — Invite-only: "Toegang aanvragen" flow.
-   Stuurt naar de worker (POST /api/request-access). Geen account
-   nodig; raakt geen bestaande data aan. Mailbox-logica zit in de worker
-   (admin@scoutinghub.nl voor auth/aanvragen).
-   ============================================================ */
-function _shReqMsg(text, type){
-  var el = document.getElementById('sh-req-msg'); if(!el) return;
-  el.textContent = text || '';
-  el.className = 'sh-req-msg' + (text ? (' show ' + (type || 'error')) : '');
-}
-function _shRequestAccess(){
-  if(document.getElementById('sh-req-access')) return;
-  var bd = document.createElement('div');
-  bd.id = 'sh-req-access'; bd.className = 'sh-photo-menu-bd';
-  bd.innerHTML =
-    '<div class="sh-photo-menu sh-req-card" role="dialog" aria-modal="true" aria-label="Toegang aanvragen">' +
-      '<button type="button" class="sh-req-x" data-close="1" aria-label="Sluiten">\u00d7</button>' +
-      '<div class="sh-pm-title">Toegang aanvragen</div>' +
-      '<div class="sh-req-sub">Vul je gegevens in en we nemen zo snel mogelijk contact met je op.</div>' +
-      '<div class="sh-req-msg" id="sh-req-msg" role="alert" aria-live="polite"></div>' +
-      '<label class="sh-req-l" for="sh-req-name">Naam *</label>' +
-      '<input type="text" id="sh-req-name" class="sh-req-i" placeholder="Je volledige naam" autocomplete="name">' +
-      '<label class="sh-req-l" for="sh-req-email">E-mailadres *</label>' +
-      '<input type="email" id="sh-req-email" class="sh-req-i" placeholder="je@email.com" autocomplete="email">' +
-      '<label class="sh-req-l" for="sh-req-club">Club / organisatie *</label>' +
-      '<input type="text" id="sh-req-club" class="sh-req-i" placeholder="Naam van je club of organisatie">' +
-      '<label class="sh-req-l" for="sh-req-func">Functie *</label>' +
-      '<select id="sh-req-func" class="sh-req-i sh-req-select">' +
-        '<option value="">Kies je functie\u2026</option>' +
-        '<option value="scout">Scout</option>' +
-        '<option value="coordinator">Co\u00f6rdinator</option>' +
-        '<option value="td">Technisch directeur</option>' +
-        '<option value="anders">Anders</option>' +
-      '</select>' +
-      '<label class="sh-req-l" for="sh-req-message">Reden / motivatie</label>' +
-      '<textarea id="sh-req-message" class="sh-req-i" rows="3" placeholder="Waarom wil je ScoutingHub gebruiken?"></textarea>' +
-      '<label class="sh-req-check"><input type="checkbox" id="sh-req-terms"><span>Ik ga akkoord met de <a href="voorwaarden.html" target="_blank" rel="noopener">Algemene Voorwaarden</a> en het <a href="privacy.html" target="_blank" rel="noopener">Privacybeleid</a> van ScoutingHub.</span></label>' +
-      '<label class="sh-req-check"><input type="checkbox" id="sh-req-news" checked><span>Ik ontvang graag de ScoutingHub nieuwsbrief (max. 1x per maand).</span></label>' +
-      '<div class="sh-req-actions">' +
-        '<button type="button" class="settings-btn ghost" data-close="1">Annuleren</button>' +
-        '<button type="button" class="settings-btn sh-req-send is-disabled" id="sh-req-send">Aanvraag versturen</button>' +
-      '</div>' +
-    '</div>';
-  document.body.appendChild(bd);
-  var onKey = function(e){ if(e.key === 'Escape') closeReq(); };
-  function closeReq(){ try { bd.remove(); } catch(_){} document.removeEventListener('keydown', onKey); }
-  document.addEventListener('keydown', onKey);
-  bd.addEventListener('click', function(e){
-    if(e.target === bd || (e.target.closest && e.target.closest('[data-close]'))) closeReq();
-  });
-  var sendBtn = document.getElementById('sh-req-send');
-  var termsEl = document.getElementById('sh-req-terms');
-  function _syncTerms(){ if(sendBtn) sendBtn.classList.toggle('is-disabled', !(termsEl && termsEl.checked)); }
-  if(termsEl) termsEl.addEventListener('change', _syncTerms);
-  _syncTerms();
-  if(sendBtn) sendBtn.addEventListener('click', function(){ _shSubmitAccessRequest(closeReq); });
-  setTimeout(function(){ try { document.getElementById('sh-req-name').focus(); } catch(_){} }, 60);
-}
-window._shRequestAccess = _shRequestAccess;
-async function _shSubmitAccessRequest(closeFn){
-  var gv = function(id){ var el = document.getElementById(id); return el ? (el.value || '') : ''; };
-  var email = gv('sh-req-email').trim();
-  var name = gv('sh-req-name').trim();
-  var club = gv('sh-req-club').trim();
-  var functie = gv('sh-req-func').trim();
-  var message = gv('sh-req-message').trim();
-  var termsEl = document.getElementById('sh-req-terms');
-  var newsEl = document.getElementById('sh-req-news');
-  var acceptedTerms = !!(termsEl && termsEl.checked);
-  var newsletterOptIn = !!(newsEl && newsEl.checked);
-  _shReqMsg('', null);
-  if(!name){ _shReqMsg('Vul je naam in.', 'error'); return; }
-  if(!email){ _shReqMsg('Vul je e-mailadres in.', 'error'); return; }
-  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ _shReqMsg('Dit is geen geldig e-mailadres.', 'error'); return; }
-  if(!club){ _shReqMsg('Vul je club of organisatie in.', 'error'); return; }
-  if(!functie){ _shReqMsg('Kies je functie.', 'error'); return; }
-  if(!acceptedTerms){ _shReqMsg('Accepteer eerst de voorwaarden.', 'error'); return; }
-  var btn = document.getElementById('sh-req-send');
-  if(btn){ btn.disabled = true; btn.textContent = 'Versturen\u2026'; }
-  try {
-    var _apiBase = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE)
-      ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
-    var r = await fetch(_apiBase + '/api/request-access', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email, name: name, club: club, message: message, functie: functie, acceptedTerms: acceptedTerms, newsletterOptIn: newsletterOptIn })
-    });
-    var j = {}; try { j = await r.json(); } catch(_){}
-    if(r.ok && j && j.ok){
-      var card = document.querySelector('#sh-req-access .sh-req-card');
-      if(card){
-        card.innerHTML =
-          '<button type="button" class="sh-req-x" data-close="1" aria-label="Sluiten">\u00d7</button>' +
-          '<div style="text-align:center; padding:8px 4px;">' +
-            '<div style="font-size:36px; line-height:1; margin-bottom:6px;">\u2705</div>' +
-            '<div class="sh-pm-title">Aanvraag ontvangen</div>' +
-            '<div class="sh-req-sub">We nemen binnen 24 uur contact met je op. Check ook je spam-map.</div>' +
-            '<button type="button" class="settings-btn sh-req-send" data-close="1" style="margin-top:10px; width:100%;">Sluiten</button>' +
-          '</div>';
-      }
-    } else {
-      _shReqMsg((j && j.error) || 'Er ging iets mis. Probeer het later opnieuw.', 'error');
-      if(btn){ btn.disabled = false; btn.textContent = 'Aanvraag versturen'; }
-    }
-  } catch(e){
-    _shReqMsg('Geen verbinding. Controleer je internet en probeer het opnieuw.', 'error');
-    if(btn){ btn.disabled = false; btn.textContent = 'Aanvraag versturen'; }
-  }
-}
-window._shSubmitAccessRequest = _shSubmitAccessRequest;
-
-
-/* ============================================================
-   FASE 2 — BEHEER (admin): Toegangsaanvragen + Gebruikers.
-   Additief. Admin = role 'admin' OF isAdminEmail (marcelsteeman1).
-   Leest access_requests (admin-read in rules) en users ROOT-docs
-   (admin-read toegevoegd; subcollecties blijven owner-only).
-   Muteert uitsluitend: access_requests.status/assignedRole/reviewed*,
-   en users.{uid}.role (rol wijzigen). Geen scoutdata aangeraakt.
-   ============================================================ */
-function _shIsAdmin(){
-  try {
-    if(window._shUserRole === 'admin') return true;
-    if(currentUser && currentUser.email && ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1) return true;
-  } catch(_){}
-  return false;
-}
-window._shIsAdmin = _shIsAdmin;
-
-let _bhAanvrFilter = 'pending';
-let _bhAanvrCache = [];
-let _bhUserCache = [];
-let _bhAuditCache = [];
-
-function _bhEsc(v){ return String(v==null?'':v).replace(/[&<>"]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
-function _bhDate(v){
-  if(!v) return '—';
-  try { var d = new Date(v); if(isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'}) + ' ' + d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
-  } catch(_){ return '—'; }
-}
-function _bhDateShort(v){
-  if(!v) return '—';
-  try {
-    var ms = (v && typeof v.toMillis==='function') ? v.toMillis()
-           : (v && v.seconds) ? v.seconds*1000 : 0;
-    var d = ms ? new Date(ms) : new Date(v);
-    if(isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString('nl-NL',{day:'numeric',month:'short',year:'numeric'});
-  } catch(_){ return '—'; }
-}
-function _bhFunctieLabel(f){
-  var map = { scout:'Scout', coordinator:'Co\u00f6rdinator', td:'Technisch directeur', anders:'Anders' };
-  return map[f] || f || '\u2014';
-}
-function _bhStatusBadge(status){
-  var map = { pending:['Open','bh-b-orange'], approved:['Goedgekeurd','bh-b-green'], rejected:['Afgewezen','bh-b-red'] };
-  var m = map[status] || [status||'—','bh-b-grey'];
-  return '<span class="bh-badge '+m[1]+'">'+_bhEsc(m[0])+'</span>';
-}
-
-function _bhModal(title, bodyHtml, opts){
-  opts = opts || {};
-  var bd = document.createElement('div');
-  bd.className = 'sh-photo-menu-bd'; bd.id = 'bh-modal';
-  var actions = '';
-  if(opts.confirmLabel){
-    actions = '<div class="bh-modal-actions">' +
-      '<button type="button" class="bh-btn bh-btn-ghost" data-close="1">Annuleren</button>' +
-      '<button type="button" class="bh-btn '+(opts.confirmClass||'')+'" id="bh-modal-ok">'+_bhEsc(opts.confirmLabel)+'</button>' +
-    '</div>';
-  }
-  bd.innerHTML = '<div class="sh-photo-menu bh-modal-card" role="dialog" aria-modal="true" aria-label="'+_bhEsc(title)+'">' +
-    '<button type="button" class="sh-req-x" data-close="1" aria-label="Sluiten">×</button>' +
-    '<div class="sh-pm-title">'+_bhEsc(title)+'</div>' +
-    '<div class="bh-modal-body">'+bodyHtml+'</div>' + actions +
-  '</div>';
-  document.body.appendChild(bd);
-  function onKey(e){ if(e.key==='Escape') close(); }
-  function close(){ try { bd.remove(); } catch(_){} document.removeEventListener('keydown', onKey); }
-  document.addEventListener('keydown', onKey);
-  bd.addEventListener('click', function(e){ if(e.target===bd || (e.target.closest && e.target.closest('[data-close]'))) close(); });
-  var ok = document.getElementById('bh-modal-ok');
-  if(ok && typeof opts.onConfirm === 'function'){
-    ok.addEventListener('click', async function(){
-      ok.disabled = true;
-      try { await opts.onConfirm(); close(); }
-      catch(e){ ok.disabled = false; if(!(e && e._handled) && typeof toast==='function') toast('Er ging iets mis', true); }
-    });
-  }
-  return { close: close, root: bd };
-}
-
-async function renderBeheer(){
-  var denied = document.getElementById('bh-denied');
-  var wrap = document.getElementById('bh-wrap');
-  if(!_shIsAdmin()){
-    if(denied) denied.style.display='block';
-    if(wrap) wrap.style.display='none';
-    return;
-  }
-  if(denied) denied.style.display='none';
-  if(wrap) wrap.style.display='';
-  _bhMaybeVerifyBanner(wrap);
-  if(!window.__bhWired){
-    window.__bhWired = true;
-    document.querySelectorAll('.bh-tab').forEach(function(t){
-      t.addEventListener('click', function(){
-        var tab = t.dataset.bhTab;
-        document.querySelectorAll('.bh-tab').forEach(function(x){ x.classList.toggle('active', x===t); });
-        document.querySelectorAll('.bh-section').forEach(function(sec){ sec.classList.toggle('active', sec.id==='bh-section-'+tab); });
-        if(tab==='gebruikers') _bhLoadUsers(); else if(tab==='logboek') _bhLoadAudit(); else _bhLoadAanvragen();
-      });
-    });
-    document.querySelectorAll('#bh-aanvr-filters .bh-filter').forEach(function(f){
-      f.addEventListener('click', function(){
-        _bhAanvrFilter = f.dataset.status;
-        document.querySelectorAll('#bh-aanvr-filters .bh-filter').forEach(function(x){ x.classList.toggle('active', x===f); });
-        _bhRenderAanvragen();
-      });
-    });
-    var us = document.getElementById('bh-user-search'); if(us) us.addEventListener('input', _bhRenderUsers);
-    var ur = document.getElementById('bh-user-role'); if(ur) ur.addEventListener('change', _bhRenderUsers);
-    var usort = document.getElementById('bh-user-sort'); if(usort) usort.addEventListener('change', _bhRenderUsers);
-  }
-  _bhLoadAanvragen();
-}
-window.renderBeheer = renderBeheer;
-
-/* FASE 4 — Supportlogboek in Beheer (leesbaar audit-overzicht). */
-function _bhDateTime(v){ try { var ms=_suMs(v); if(!ms) return '—'; var d=new Date(ms); return d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}); } catch(_){ return '—'; } }
-function _bhUserLabel(uid){ if(!uid) return '—'; var u=_bhUserCache.find(function(x){ return x._id===uid; }); return u ? (_bhEsc(u.displayName)||_bhEsc(u.email)||String(uid).slice(0,6)) : String(uid).slice(0,6); }
-async function _bhLoadAudit(){
-  var list=document.getElementById('bh-audit-list');
-  if(list) list.innerHTML='<div class="bh-empty">Laden…</div>';
-  try {
-    if(!_bhUserCache.length){ try { var us=await getDocs(collection(db,'users')); _bhUserCache=[]; us.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhUserCache.push(x); }); } catch(_){} }
-    var snap;
-    try { snap=await getDocs(query(collection(db,'support_audit'), orderBy('timestamp','desc'))); }
-    catch(_){ snap=await getDocs(collection(db,'support_audit')); }
-    _bhAuditCache=[]; snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhAuditCache.push(x); });
-    _bhAuditCache.sort(function(a,b){ return _suMs(b.timestamp)-_suMs(a.timestamp); });
-    _bhRenderAudit();
-  } catch(e){ if(list) list.innerHTML='<div class="bh-empty">Kon logboek niet laden.</div>'; }
-}
-var _BH_AUDIT_L = { request_created:['📨','Verzoek aangemaakt'], request_approved:['✅','Toegestaan'], request_rejected:['⛔','Geweigerd'], grant_started:['🔓','Sessie gestart'], session_opened:['👁️','Omgeving geopend'], session_ended_by_admin:['🔒','Beëindigd door admin'], session_ended_by_user:['🔒','Beëindigd door gebruiker'], session_expired:['⏱️','Verlopen'] };
-function _bhRenderAudit(){
-  var list=document.getElementById('bh-audit-list'); if(!list) return;
-  if(!_bhAuditCache.length){ list.innerHTML='<div class="bh-empty">Nog geen logregels</div>'; return; }
-  function _mkGroup(a){ return { items:[], adminUid:a.adminUid, targetUid:a.targetUid, reason:(a.reason||''), latest:_suMs(a.timestamp) }; }
-  function _addToGroup(g,a){ g.items.push(a); if(a.reason && !g.reason) g.reason=a.reason; if(!g.targetUid && a.targetUid) g.targetUid=a.targetUid; if(!g.adminUid && a.adminUid) g.adminUid=a.adminUid; var ms=_suMs(a.timestamp); if(ms>g.latest) g.latest=ms; }
-  function _isEnd(act){ return act==='session_ended_by_admin' || act==='session_ended_by_user' || act==='session_expired' || act==='request_rejected'; }
-  var allGroups=[];
-  // 1) Regels MET sessionId -> exact groeperen.
-  var withSid={};
-  _bhAuditCache.forEach(function(a){ if(a.sessionId){ if(!withSid[a.sessionId]){ withSid[a.sessionId]=_mkGroup(a); allGroups.push(withSid[a.sessionId]); } _addToGroup(withSid[a.sessionId], a); } });
-  // 2) Regels ZONDER sessionId -> reconstrueer sessies per admin+gebruiker, gesplitst op eind-gebeurtenissen.
-  var noSid=_bhAuditCache.filter(function(a){ return !a.sessionId; });
-  var byPair={};
-  noSid.forEach(function(a){ var k=(a.adminUid||'')+'__'+(a.targetUid||''); (byPair[k]=byPair[k]||[]).push(a); });
-  var GAP_MS = 90*60*1000;   // veiligheidsnet: > anderhalf uur stilte = zeker nieuwe sessie
-  Object.keys(byPair).forEach(function(k){
-    var items=byPair[k].slice().sort(function(a,b){ return _suMs(a.timestamp)-_suMs(b.timestamp); });
-    var curr=null, lastMs=0;
-    items.forEach(function(a){
-      var act=a.action, ms=_suMs(a.timestamp);
-      var startNew = false;
-      if(curr===null) startNew=true;
-      else if(act==='request_created') startNew=true;                 // elk nieuw verzoek = nieuwe sessie
-      else if(act==='grant_started' && curr._hasGrantStart) startNew=true; // 2e grant-start = nieuwe sessie
-      else if(lastMs && (ms - lastMs) > GAP_MS) startNew=true;         // grote stilte = nieuwe sessie
-      if(startNew){ curr=_mkGroup(a); curr._hasGrantStart=false; allGroups.push(curr); }
-      _addToGroup(curr,a);
-      if(act==='grant_started') curr._hasGrantStart=true;
-      lastMs = ms;
-      if(_isEnd(act)) { curr=null; lastMs=0; }
-    });
-  });
-  // Nieuwste sessie eerst.
-  allGroups.sort(function(a,b){ return b.latest-a.latest; });
-  list.innerHTML=allGroups.map(function(g){
-    g.items.sort(function(a,b){ return _suMs(a.timestamp)-_suMs(b.timestamp); });   // tijdlijn oplopend
-    var ended=g.items.some(function(a){ return a.action==='session_ended_by_admin'||a.action==='session_ended_by_user'||a.action==='session_expired'; });
-    var rejected=g.items.some(function(a){ return a.action==='request_rejected'; });
-    var statusBadge = rejected ? '<span class="bh-badge bh-b-red">Geweigerd</span>' : (ended ? '<span class="bh-badge bh-b-grey">Afgesloten</span>' : '<span class="bh-badge bh-b-green">Actief</span>');
-    var timeline = g.items.map(function(a){
-      var m=_BH_AUDIT_L[a.action]||['•',(a.action||'—')];
-      return '<div class="bh-tl-row"><span class="bh-tl-t">'+_suTime(a.timestamp)+'</span><span class="bh-tl-ic">'+m[0]+'</span><span class="bh-tl-lbl">'+_bhEsc(m[1])+'</span></div>';
-    }).join('');
-    return '<div class="bh-card bh-sess-card">' +
-      '<div class="bh-card-top"><div class="bh-card-name">🔒 Sessie — '+_bhUserLabel(g.targetUid)+'</div>'+statusBadge+'</div>' +
-      (g.reason ? ('<div class="bh-card-row"><span>Reden</span><b>'+_bhEsc(g.reason)+'</b></div>') : '') +
-      '<div class="bh-card-row"><span>Admin</span><b>'+_bhUserLabel(g.adminUid)+'</b></div>' +
-      '<div class="bh-card-row"><span>Datum</span><b>'+_bhDateTime(g.latest)+'</b></div>' +
-      '<div class="bh-tl">'+timeline+'</div>' +
-    '</div>';
-  }).join('');
-}
-window._bhLoadAudit = _bhLoadAudit;
-
-/* FASE 3 (eenmalig) — admin e-mailverificatie. Toont alleen een knop
-   zolang de ingelogde admin email_verified=false heeft; daarna weg. */
-async function _shVerifyMyEmail(btn){
-  try {
-    if(typeof auth==='undefined' || !auth.currentUser) return;
-    if(btn){ btn.disabled=true; btn.textContent='Versturen\u2026'; }
-    await sendEmailVerification(auth.currentUser);
-    if(typeof toast==='function') toast('Verificatie-mail verstuurd naar '+(auth.currentUser.email||'')+' \u2713');
-    if(btn){ btn.textContent='Mail verstuurd \u2014 check je inbox + spam'; }
-  } catch(e){
-    if(typeof toast==='function') toast('Kon verificatie-mail niet versturen', true);
-    if(btn){ btn.disabled=false; btn.textContent='Verstuur verificatie-mail'; }
-  }
-}
-window._shVerifyMyEmail = _shVerifyMyEmail;
-async function _bhMaybeVerifyBanner(wrap){
-  try {
-    if(typeof auth==='undefined' || !auth.currentUser){ var e0=document.getElementById('bh-verify'); if(e0) e0.remove(); return; }
-    // Verse verificatie-status ophalen; auth.currentUser.emailVerified is anders gecachet.
-    try { await reload(auth.currentUser); } catch(_){}
-    var _em = (auth.currentUser.email||'').toLowerCase();
-    var _isAdminEmail = ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'].indexOf(_em) !== -1;
-    var needV = (auth.currentUser.emailVerified === false) && (window._shUserRole !== 'admin') && !_isAdminEmail;
-    var existing = document.getElementById('bh-verify');
-    if(needV && !existing && wrap){
-      var bn = document.createElement('div');
-      bn.id='bh-verify'; bn.className='bh-verify';
-      bn.innerHTML = '<div class="bh-verify-txt">Je e-mailadres (<b>'+_bhEsc(auth.currentUser.email||'')+'</b>) is nog niet geverifieerd. Dit is \u00e9\u00e9nmalig nodig om accounts te kunnen aanmaken en de lijsten te laden.</div>'+
-        '<button type="button" class="bh-btn bh-btn-blue" id="bh-verify-btn">Verstuur verificatie-mail</button>';
-      wrap.insertBefore(bn, wrap.firstChild);
-      var vb=document.getElementById('bh-verify-btn');
-      if(vb) vb.addEventListener('click', function(){ _shVerifyMyEmail(vb); });
-    } else if(!needV && existing){ existing.remove(); }
-  } catch(_){}
-}
-
-async function _bhLoadAanvragen(){
-  var list = document.getElementById('bh-aanvr-list');
-  if(list) list.innerHTML = '<div class="bh-empty">Laden…</div>';
-  try {
-    var snap;
-    try { snap = await getDocs(query(collection(db,'access_requests'), orderBy('requestedAt','desc'))); }
-    catch(_){ snap = await getDocs(collection(db,'access_requests')); }
-    _bhAanvrCache = [];
-    snap.forEach(function(d){ var x = d.data()||{}; x._id = d.id; _bhAanvrCache.push(x); });
-    _bhAanvrCache.sort(function(a,b){ return String(b.requestedAt||'').localeCompare(String(a.requestedAt||'')); });
-    _bhRenderAanvragen();
-  } catch(e){
-    if(list) list.innerHTML = '<div class="bh-empty">Kon aanvragen niet laden. Probeer het later opnieuw.</div>';
-  }
-}
-
-function _bhRenderAanvragen(){
-  var list = document.getElementById('bh-aanvr-list');
-  if(!list) return;
-  var rows = _bhAanvrCache;
-  if(_bhAanvrFilter !== 'all') rows = rows.filter(function(r){ return (r.status||'pending') === _bhAanvrFilter; });
-  if(!rows.length){
-    list.innerHTML = '<div class="bh-empty">' + (_bhAanvrFilter==='pending' ? 'Geen open aanvragen' : 'Geen aanvragen in deze categorie') + '</div>';
-    return;
-  }
-  list.innerHTML = rows.map(function(r){
-    var id = _bhEsc(r._id);
-    var status = r.status || 'pending';
-    var actions = (status==='pending')
-      ? '<div class="bh-actions">' +
-          '<button class="bh-btn bh-btn-green" data-bh-approve="'+id+'" data-role="scout">Goedkeuren als scout</button>' +
-          '<button class="bh-btn bh-btn-blue" data-bh-approve="'+id+'" data-role="coordinator">Goedkeuren als coördinator</button>' +
-          '<button class="bh-btn bh-btn-red" data-bh-reject="'+id+'">Afwijzen</button>' +
-        '</div>'
-      : '<div class="bh-meta">' + (r.assignedRole ? ('Rol: '+_bhEsc(r.assignedRole)+' · ') : '') + 'beoordeeld ' + _bhDate(r.reviewedAt) + '</div>';
-    return '<div class="bh-card">' +
-      '<div class="bh-card-top"><div class="bh-card-name">'+(_bhEsc(r.name)||'—')+'</div>'+_bhStatusBadge(status)+'</div>' +
-      '<div class="bh-card-row"><span>E-mail</span><b>'+_bhEsc(r.email)+'</b></div>' +
-      '<div class="bh-card-row"><span>Club</span><b>'+(_bhEsc(r.club)||'—')+'</b></div>' +
-      (r.functie ? ('<div class="bh-card-row"><span>Functie</span><b>'+_bhEsc(_bhFunctieLabel(r.functie))+'</b></div>') : '') +
-      (r.message ? ('<div class="bh-card-row"><span>Reden</span><b>'+_bhEsc(r.message)+'</b></div>') : '') +
-      (typeof r.acceptedTerms !== 'undefined' ? ('<div class="bh-card-row"><span>Voorwaarden</span><b>'+(r.acceptedTerms ? ('\u2705 Geaccepteerd'+(r.acceptedTermsAt ? (' ('+_bhDateShort(r.acceptedTermsAt)+')') : '')) : '\u2014')+'</b></div>') : '') +
-      (typeof r.newsletterOptIn !== 'undefined' ? ('<div class="bh-card-row"><span>Nieuwsbrief</span><b>'+(r.newsletterOptIn ? '\ud83d\udcec Ja' : 'Nee')+'</b></div>') : '') +
-      '<div class="bh-card-row"><span>Aangevraagd</span><b>'+_bhDate(r.requestedAt)+'</b></div>' +
-      actions +
-    '</div>';
-  }).join('');
-  list.querySelectorAll('[data-bh-approve]').forEach(function(b){
-    b.addEventListener('click', function(){ _bhApprove(b.getAttribute('data-bh-approve'), b.getAttribute('data-role'), b); });
-  });
-  list.querySelectorAll('[data-bh-reject]').forEach(function(b){
-    b.addEventListener('click', function(){ _bhConfirmReject(b.getAttribute('data-bh-reject')); });
-  });
-}
-
-async function _bhApprove(id, role, btn){
-  if(!id || !_shIsAdmin()) return;
-  if(role!=='scout' && role!=='coordinator') return;
-  var req = _bhAanvrCache.find(function(x){ return x._id===id; });
-  if(!req || !req.email){ if(typeof toast==='function') toast('Aanvraag niet gevonden', true); return; }
-  var card = btn && btn.closest ? btn.closest('.bh-card') : null;
-  if(card) card.querySelectorAll('button').forEach(function(x){ x.disabled=true; });
-  // FASE 3: account aanmaken via de worker (admin-idToken-gated accounts:signUp).
-  try {
-    var idToken = '';
-    try { if(typeof auth!=='undefined' && auth.currentUser) idToken = await auth.currentUser.getIdToken(true); } catch(_){}
-    if(!idToken) throw new Error('no-token');
-    var base = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE)
-      ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
-    var r = await fetch(base + '/api/create-account', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken: idToken, email: req.email, displayName: req.name || '', role: role, club: req.club || '', accessRequestId: id })
-    });
-    var j = {}; try { j = await r.json(); } catch(_){}
-    if(r.ok && j && j.ok){
-      if(typeof toast==='function') toast('Account aangemaakt als '+role+' ✅' + (j.mailSent ? ' · welkomstmail verstuurd' : ' · mail niet verstuurd'));
-      _bhLoadAanvragen();
-    } else {
-      if(typeof toast==='function') toast((j && j.error) || 'Kon account niet aanmaken', true);
-      if(card) card.querySelectorAll('button').forEach(function(x){ x.disabled=false; });
-    }
-  } catch(e){
-    if(typeof toast==='function') toast('Geen verbinding met de server', true);
-    if(card) card.querySelectorAll('button').forEach(function(x){ x.disabled=false; });
-  }
-}
-
-function _bhConfirmReject(id){
-  if(!id) return;
-  _bhModal('Aanvraag afwijzen?', '<p style="margin:0;color:#9aa8bd;font-size:14px;line-height:1.5;">De aanvraag wordt op <b>afgewezen</b> gezet. De aanvrager wordt niet automatisch geïnformeerd.</p>', {
-    confirmLabel: 'Afwijzen', confirmClass: 'bh-btn-red',
-    onConfirm: async function(){
-      if(!_shIsAdmin()) return;
-      await updateDoc(doc(db,'access_requests',id), {
-        status: 'rejected', reviewedAt: new Date().toISOString(),
-        reviewedBy: (currentUser && currentUser.uid) || null
-      });
-      if(typeof toast==='function') toast('Aanvraag afgewezen');
-      _bhLoadAanvragen();
-    }
-  });
-}
-
-async function _bhLoadUsers(){
-  var list = document.getElementById('bh-user-list');
-  if(list) list.innerHTML = '<div class="bh-empty">Laden…</div>';
-  try {
-    var snap = await getDocs(collection(db,'users'));
-    _bhUserCache = [];
-    snap.forEach(function(d){ var x = d.data()||{}; x._id = d.id; _bhUserCache.push(x); });
-    _bhRenderUsers();
-  } catch(e){
-    if(list) list.innerHTML = '<div class="bh-empty">Kon gebruikers niet laden. Zijn de admin-rules gepubliceerd?</div>';
-  }
-}
-
-function _bhRenderUsers(){
-  var list = document.getElementById('bh-user-list'); if(!list) return;
-  var qel = document.getElementById('bh-user-search');
-  var q = (qel && qel.value || '').toLowerCase().trim();
-  var rfEl = document.getElementById('bh-user-role'); var rf = rfEl && rfEl.value || '';
-  var sortEl = document.getElementById('bh-user-sort'); var sort = sortEl && sortEl.value || 'name';
-  var rows = _bhUserCache.slice();
-  rows = rows.filter(function(u){ return (u.status || '') !== 'deleted'; });   // verwijderde accounts verbergen
-  if(rf) rows = rows.filter(function(u){ return (u.role||'scout')===rf; });
-  if(q) rows = rows.filter(function(u){ return ((u.displayName||'')+' '+(u.email||'')).toLowerCase().indexOf(q) !== -1; });
-  rows.sort(function(a,b){
-    return sort==='created'
-      ? String(b.createdAt||'').localeCompare(String(a.createdAt||''))
-      : (a.displayName||a.email||'').localeCompare(b.displayName||b.email||'');
-  });
-  if(!rows.length){ list.innerHTML = '<div class="bh-empty">Geen gebruikers gevonden</div>'; return; }
-  list.innerHTML = rows.map(function(u){
-    var id = _bhEsc(u._id); var role = u.role || 'scout';
-    var rcl = role==='admin' ? 'bh-b-purple' : (role==='coordinator' ? 'bh-b-blue' : 'bh-b-grey');
-    var roleBadge = '<span class="bh-badge '+rcl+'">'+_bhEsc(role)+'</span>';
-    var _myUid = ((typeof currentUser!=='undefined'&&currentUser)?currentUser.uid:'');
-    var _canDelete = (u._id !== _myUid) && (role !== 'admin');
-    return '<div class="bh-card">' +
-      '<div class="bh-card-top"><div class="bh-card-name">'+(_bhEsc(u.displayName)||_bhEsc(u.email)||'—')+'</div>'+roleBadge+'</div>' +
-      '<div class="bh-card-row"><span>E-mail</span><b>'+(_bhEsc(u.email)||'—')+'</b></div>' +
-      '<div class="bh-card-row"><span>Aangemaakt</span><b>'+_bhDateShort(u.createdAt)+'</b></div>' +
-      (u.isActive===false ? '<div class="bh-card-row"><span>Status</span><b>Gedeactiveerd</b></div>' : '') +
-      '<div class="bh-actions">' +
-        '<button class="bh-btn" data-bh-userdetail="'+id+'">Details</button>' +
-        '<button class="bh-btn bh-btn-blue" data-bh-userrole="'+id+'">Rol wijzigen</button>' +
-        ((u._id !== _myUid) ? '<button class="bh-btn bh-btn-amber" data-bh-support="'+id+'">Supporttoegang</button>' : '') +
-        ((role !== 'admin' && u._id !== _myUid)
-           ? (u.isActive===false
-                ? '<button class="bh-btn bh-btn-green" data-bh-activate="'+id+'">Reactiveren</button>'
-                : '<button class="bh-btn bh-btn-ghost" data-bh-deactivate="'+id+'">Deactiveren</button>')
-           : '<button class="bh-btn bh-btn-ghost" disabled>Deactiveren</button>') +
-      '</div>' +
-      (_canDelete ? '<div class="bh-actions-danger"><button class="bh-btn bh-btn-danger-outline" data-bh-userdelete="'+id+'">Verwijderen</button></div>' : '') +
-    '</div>';
-  }).join('');
-  list.querySelectorAll('[data-bh-userdetail]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserDetail(b.getAttribute('data-bh-userdetail')); }); });
-  list.querySelectorAll('[data-bh-userrole]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserRole(b.getAttribute('data-bh-userrole')); }); });
-  list.querySelectorAll('[data-bh-support]').forEach(function(b){ b.addEventListener('click', function(){ _suRequestAccess(b.getAttribute('data-bh-support')); }); });
-  list.querySelectorAll('[data-bh-userdelete]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserDelete(b.getAttribute('data-bh-userdelete')); }); });
-  list.querySelectorAll('[data-bh-deactivate]').forEach(function(b){ b.addEventListener('click', function(){ _bhToggleActive(b.getAttribute('data-bh-deactivate'), false); }); });
-  list.querySelectorAll('[data-bh-activate]').forEach(function(b){ b.addEventListener('click', function(){ _bhToggleActive(b.getAttribute('data-bh-activate'), true); }); });
-}
-
-/* ============================================================
-   Account verwijderen (admin-only). Soft-delete via de worker:
-   Firebase Auth-account weg + profiel op status:"deleted"
-   (isActive:false). Observaties/rapporten blijven eigenaar-only
-   behouden. Admin-accounts en je eigen account zijn beschermd.
-   Bevestiging vereist het exact typen van "VERWIJDEREN".
-   ============================================================ */
-function _bhUserDelete(uid){
-  if(!_shIsAdmin()) return;
-  var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;
-  var myUid = (typeof currentUser!=='undefined' && currentUser) ? currentUser.uid : '';
-  if(uid === myUid){ if(typeof toast==='function') toast('Je kunt je eigen account niet verwijderen', true); return; }
-  if((u.role||'scout')==='admin'){ if(typeof toast==='function') toast('Admin-accounts kunnen niet verwijderd worden', true); return; }
-  var rawNaam = u.displayName || u.email || 'deze gebruiker';
-  var naam = _bhEsc(rawNaam);
-  var body =
-    '<p style="margin:0 0 12px;color:#9aa8bd;font-size:14px;line-height:1.5;">Je staat op het punt het account van <b>'+naam+'</b> te verwijderen.</p>' +
-    '<div class="bh-danger-box">' +
-      '<p style="margin:0 0 6px;color:#fca5a5;"><b>Wat gebeurt er?</b></p>' +
-      '<ul style="margin:0;padding-left:18px;color:#cbd5e1;"><li>de gebruiker kan niet meer inloggen;</li><li>de gebruiker verdwijnt uit Beheer;</li><li>de gekoppelde gebruikersdata wordt verwijderd of geanonimiseerd volgens het verwijderbeleid.</li></ul>' +
-      '<p style="margin:8px 0 0;color:#cbd5e1;">Wil je de toegang alleen tijdelijk blokkeren met behoud van gegevens? Gebruik dan <b>Deactiveren</b>.</p>' +
-    '</div>' +
-    '<label class="sh-req-l" for="bh-del-confirm" style="display:block;margin-top:14px;">Typ <b>VERWIJDEREN</b> om te bevestigen</label>' +
-    '<input type="text" id="bh-del-confirm" class="sh-req-i" autocomplete="off" autocapitalize="characters" placeholder="VERWIJDEREN" style="width:100%;">';
-  var m = _bhModal('Account verwijderen', body, {
-    confirmLabel: 'Definitief verwijderen', confirmClass: 'bh-btn-red',
-    onConfirm: async function(){
-      var inp = m.root.querySelector('#bh-del-confirm');
-      if(!inp || inp.value.trim() !== 'VERWIJDEREN'){ var _e0 = new Error('confirm'); _e0._handled = true; throw _e0; }
-      await _bhDoDeleteAccount(uid, rawNaam);
-    }
-  });
-  var ok = m.root.querySelector('#bh-modal-ok');
-  var inp = m.root.querySelector('#bh-del-confirm');
-  if(ok) ok.disabled = true;
-  if(inp && ok){
-    inp.addEventListener('input', function(){ ok.disabled = (inp.value.trim() !== 'VERWIJDEREN'); });
-    setTimeout(function(){ try { inp.focus(); } catch(_){} }, 60);
-  }
-}
-
-async function _bhDoDeleteAccount(uid, rawNaam){
-  if(!_shIsAdmin()){ var _ea = new Error('not-admin'); _ea._handled = true; throw _ea; }
-  // Soft-delete client-side: een admin mag (via de Security Rules) het users-doc
-  // bijwerken — net als 'Rol wijzigen'. Het Firebase Auth-account zelf kan niet
-  // client-side worden verwijderd (vereist een service-account); de gebruiker
-  // verdwijnt uit Beheer en wordt op status:'deleted'/isActive:false gezet.
-  // Observaties, rapporten en toernooidata blijven behouden.
-  try {
-    await updateDoc(doc(db,'users',uid), {
-      status: 'deleted', isActive: false,
-      deletedAt: new Date(),
-      deletedBy: (typeof currentUser!=='undefined' && currentUser ? currentUser.uid : '') || ''
-    });
-  } catch(e){
-    if(typeof toast==='function') toast('Kon account niet verwijderen', true);
-    var _e3 = new Error('fail'); _e3._handled = true; throw _e3;
-  }
-  if(typeof toast==='function') toast('Account van '+rawNaam+' is verwijderd');
-  _bhLoadUsers();
-}
-
-// Account (de)activeren — client-side toggle op isActive (admin-only).
-async function _bhToggleActive(uid, makeActive){
-  if(!_shIsAdmin()) return;
-  var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;
-  var myUid = (typeof currentUser!=='undefined' && currentUser) ? currentUser.uid : '';
-  if(uid === myUid){ if(typeof toast==='function') toast('Je kunt je eigen account niet deactiveren', true); return; }
-  if((u.role||'scout')==='admin'){ if(typeof toast==='function') toast('Admin-accounts kun je niet deactiveren', true); return; }
-  var naam = u.displayName || u.email || 'gebruiker';
-  try {
-    await updateDoc(doc(db,'users',uid), { isActive: !!makeActive });
-    if(typeof toast==='function') toast('Account van '+naam+(makeActive ? ' is gereactiveerd' : ' is gedeactiveerd'));
-    _bhLoadUsers();
-  } catch(e){
-    if(typeof toast==='function') toast('Kon de status niet wijzigen', true);
-  }
-}
-
-
-function _bhUserDetail(uid){
-  var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;
-  var rows = [
-    ['Naam', u.displayName||'—'], ['E-mail', u.email||'—'], ['Rol', u.role||'scout'],
-    ['Team', u.teamId||'—'], ['Aangemaakt', _bhDateShort(u.createdAt)], ['UID', u._id],
-    ['Status', u.isActive===false ? 'Gedeactiveerd' : 'Actief']
-  ];
-  var body = '<div class="bh-detail">' +
-    rows.map(function(r){ return '<div class="bh-card-row"><span>'+_bhEsc(r[0])+'</span><b>'+_bhEsc(r[1])+'</b></div>'; }).join('') +
-    '<div class="bh-modal-note">Alleen metadata. De scoutdata van deze gebruiker (spelers, rapporten, toernooien) is niet zichtbaar — die blijft eigenaar-only.</div></div>';
-  _bhModal('Gebruiker', body, {});
-}
-
-function _bhUserRole(uid){
-  var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;
-  var cur = u.role || 'scout';
-  var body = '<div class="bh-role-pick">' +
-    ['scout','coordinator','admin'].map(function(r){
-      return '<button type="button" class="bh-btn '+(r===cur?'bh-btn-active':'')+'" data-pick-role="'+r+'">'+r+(r===cur?' (huidig)':'')+'</button>';
-    }).join('') +
-  '</div><div class="bh-modal-note">Wijziging is direct actief; de gebruiker moet opnieuw inloggen om het zelf te zien.</div>';
-  var m = _bhModal('Rol wijzigen — '+(_bhEsc(u.displayName)||_bhEsc(u.email)||''), body, {});
-  m.root.querySelectorAll('[data-pick-role]').forEach(function(b){
-    b.addEventListener('click', async function(){
-      var role = b.getAttribute('data-pick-role');
-      if(role===cur){ m.close(); return; }
-      if(!_shIsAdmin()) return;
-      m.root.querySelectorAll('[data-pick-role]').forEach(function(x){ x.disabled=true; });
-      try {
-        await updateDoc(doc(db,'users',uid), { role: role });
-        if(typeof toast==='function') toast('Rol gewijzigd naar '+role+' ✓');
-        m.close(); _bhLoadUsers();
-      } catch(e){
-        if(typeof toast==='function') toast('Kon rol niet wijzigen', true);
-        m.root.querySelectorAll('[data-pick-role]').forEach(function(x){ x.disabled=false; });
-      }
-    });
-  });
-}
-
-
-/* ============================================================
-   FASE 4 — Delegated support (read-only, tijdelijk, auditbaar).
-   Admin vraagt -> gebruiker geeft in-app toestemming -> tijdelijke
-   read-only grant. Support mode = banner + apart read-only paneel.
-   Geen impersonatie; admin blijft admin. Alles additief.
-   ============================================================ */
-function _suGrantId(adminUid, targetUid){ return adminUid + '_' + targetUid; }
-function _suMs(v){ try { if(!v) return 0; if(typeof v.toMillis==='function') return v.toMillis(); if(v.seconds) return v.seconds*1000; var d=new Date(v); return isNaN(d.getTime())?0:d.getTime(); } catch(_){ return 0; } }
-function _suTime(d){ try { var ms=_suMs(d); if(!ms) return ''; return new Date(ms).toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}); } catch(_){ return ''; } }
-async function _suAudit(action, data){
-  try {
-    await addDoc(collection(db,'support_audit'), {
-      adminUid: (data && data.adminUid) || '',
-      targetUid: (data && data.targetUid) || '',
-      action: action,
-      timestamp: new Date(),
-      details: (data && data.details) || '',
-      sessionId: (data && data.sessionId) || '',
-      reason: (data && data.reason) || ''
-    });
-  } catch(_){}
-}
-
-/* ---- ADMIN: supporttoegang aanvragen ---- */
-function _suRequestAccess(uid){
-  if(!_shIsAdmin()) return;
-  var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;
-  if(uid === (currentUser && currentUser.uid)){ if(typeof toast==='function') toast('Niet op je eigen account', true); return; }
-  var who = _bhEsc(u.displayName) || _bhEsc(u.email) || '';
-  var body =
-    '<p style="margin:0 0 10px;color:#9aa8bd;font-size:13px;">Je vraagt <b>tijdelijke, read-only</b> toegang tot het account van <b>'+who+'</b>. De gebruiker moet dit eerst toestaan; de toegang verloopt automatisch.</p>' +
-    '<label class="sh-req-l" for="su-reason">Reden <span class="su-req-star">*</span></label>' +
-    '<textarea id="su-reason" class="sh-req-i" rows="3" placeholder="Bijv. bug onderzoeken in rapportoverzicht"></textarea>' +
-    '<div id="su-reason-err" class="su-field-err" role="alert"></div>' +
-    '<label class="sh-req-l" for="su-duration">Duur</label>' +
-    '<select id="su-duration" class="bh-select" style="width:100%;"><option value="30">30 minuten</option><option value="60">60 minuten</option></select>';
-  _bhModal('Supporttoegang vragen', body, {
-    confirmLabel: 'Verstuur verzoek', confirmClass: 'bh-btn-blue',
-    onConfirm: async function(){
-      var reason = (document.getElementById('su-reason') && document.getElementById('su-reason').value || '').trim();
-      var minutes = parseInt((document.getElementById('su-duration') && document.getElementById('su-duration').value) || '30', 10);
-      if(minutes!==30 && minutes!==60) minutes = 30;
-      var _errEl = document.getElementById('su-reason-err');
-      var _ta = document.getElementById('su-reason');
-      if(!reason){ if(_errEl){ _errEl.textContent='Reden is verplicht'; _errEl.style.display='block'; } if(_ta) _ta.classList.add('su-input-err'); var _re = new Error('no-reason'); _re._handled = true; throw _re; }
-      if(_errEl){ _errEl.textContent=''; _errEl.style.display='none'; } if(_ta) _ta.classList.remove('su-input-err');
-      var sessionId = currentUser.uid + '_' + uid + '_' + Date.now();
-      var payload = {
-        targetUid: uid, requestedByUid: currentUser.uid, reason: reason,
-        durationMinutes: minutes, status: 'pending', sessionId: sessionId,
-        requestedAt: new Date(), approvedAt: null, rejectedAt: null, expiresAt: null
-      };
-      // TIJDELIJKE DEBUG-LOGS (Fase 4): payload + exacte fout in de console.
-      try { console.log('[support] write support_requests; durationMinutes=', minutes, 'type=', typeof minutes, '; myUid=', currentUser.uid, '; role=', window._shUserRole, '; payload=', payload); } catch(_){}
-      try {
-        await addDoc(collection(db,'support_requests'), payload);
-      } catch(err){
-        try { console.error('[support] create FAILED — code=', (err && err.code), 'message=', (err && err.message), err); } catch(_){}
-        if(typeof toast==='function') toast('Verzoek mislukt: ' + ((err && err.message) ? err.message : 'onbekend'), true);
-        try { err._handled = true; } catch(_){}
-        throw err;
-      }
-      await _suAudit('request_created', { adminUid: currentUser.uid, targetUid: uid, details: 'min='+minutes, sessionId: sessionId, reason: reason });
-      try {
-        var idToken = await auth.currentUser.getIdToken();
-        var base = (typeof TOERNOOI_API_BASE!=='undefined' && TOERNOOI_API_BASE) ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
-        await fetch(base + '/api/support-notify', {
-          method:'POST', headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ idToken: idToken, targetEmail: u.email, targetName: u.displayName||'', reason: reason, durationMinutes: minutes })
-        });
-      } catch(_){}
-      if(typeof toast==='function') toast('Supportverzoek verstuurd ✅');
-    }
-  });
-}
-window._suRequestAccess = _suRequestAccess;
-
-/* ---- GEBRUIKER: in-app consent-modal ---- */
-function _suShowConsent(req){
-  if(document.getElementById('su-consent')) return;
-  var minutes = req.durationMinutes || 30;
-  var body =
-    '<p style="margin:0 0 12px;color:#cdd6e4;font-size:14px;line-height:1.5;">Een beheerder van ScoutingHub vraagt <b>tijdelijke, alleen-lezen</b> toegang tot jouw account om je te helpen of een probleem te onderzoeken.</p>' +
-    '<div class="bh-card-row"><span>Reden</span><b>'+(_bhEsc(req.reason)||'—')+'</b></div>' +
-    '<div class="bh-card-row"><span>Duur</span><b>'+minutes+' minuten</b></div>' +
-    '<div class="bh-card-row"><span>Toegang</span><b>Alleen lezen</b></div>' +
-    '<div class="bh-modal-note">Zonder jouw toestemming krijgt niemand toegang. Je kunt de ondersteuning op elk moment beëindigen; ze verloopt sowieso automatisch.</div>' +
-    '<div class="bh-modal-actions"><button type="button" class="bh-btn bh-btn-ghost" id="su-deny">Weigeren</button><button type="button" class="bh-btn bh-btn-green" id="su-allow">Toestaan</button></div>';
-  var bd = document.createElement('div');
-  bd.id='su-consent'; bd.className='sh-photo-menu-bd';
-  bd.innerHTML='<div class="sh-photo-menu bh-modal-card" role="dialog" aria-modal="true" aria-label="Supportverzoek"><div class="sh-pm-title">Verzoek om ondersteuningstoegang</div><div class="bh-modal-body">'+body+'</div></div>';
-  document.body.appendChild(bd);
-  function close(){ try { bd.remove(); } catch(_){} }
-  var allow = document.getElementById('su-allow');
-  var deny = document.getElementById('su-deny');
-  if(allow) allow.addEventListener('click', async function(){
-    allow.disabled=true; if(deny) deny.disabled=true;
-    try {
-      var expires = new Date(Date.now() + minutes*60000);
-      var gid = _suGrantId(req.requestedByUid, currentUser.uid);
-      await setDoc(doc(db,'support_grants',gid), {
-        targetUid: currentUser.uid, targetEmail: (currentUser.email||''), targetName: (currentUser.displayName||''),
-        adminUid: req.requestedByUid, status: 'active', scope: 'read_only',
-        sessionId: (req.sessionId||''), reason: (req.reason||''),
-        approvedAt: new Date(), expiresAt: expires, endedAt: null, endedBy: null
-      });
-      await updateDoc(doc(db,'support_requests',req._id), { status:'approved', approvedAt: new Date(), expiresAt: expires });
-      await _suAudit('request_approved', { adminUid: req.requestedByUid, targetUid: currentUser.uid, sessionId: (req.sessionId||''), reason: (req.reason||'') });
-      await _suAudit('grant_started', { adminUid: req.requestedByUid, targetUid: currentUser.uid, details:'min='+minutes, sessionId: (req.sessionId||''), reason: (req.reason||'') });
-      if(typeof toast==='function') toast('Toegang verleend tot '+_suTime(expires));
-      close();
-    } catch(e){
-      if(typeof toast==='function') toast('Kon toestemming niet opslaan', true);
-      allow.disabled=false; if(deny) deny.disabled=false;
-    }
-  });
-  if(deny) deny.addEventListener('click', async function(){
-    deny.disabled=true; if(allow) allow.disabled=true;
-    try {
-      await updateDoc(doc(db,'support_requests',req._id), { status:'rejected', rejectedAt: new Date() });
-      await _suAudit('request_rejected', { adminUid: req.requestedByUid, targetUid: currentUser.uid, sessionId: (req.sessionId||''), reason: (req.reason||'') });
-      if(typeof toast==='function') toast('Verzoek geweigerd');
-      close();
-    } catch(e){ if(typeof toast==='function') toast('Kon niet opslaan', true); deny.disabled=false; if(allow) allow.disabled=false; }
-  });
-}
-
-/* ---- REALTIME: onSnapshot voor requests (gebruiker) + grants (beide rollen) ---- */
-function _suStopSubs(){
-  ['__suUnsubReq','__suUnsubGrantT','__suUnsubGrantA'].forEach(function(k){
-    try { if(window[k]){ window[k](); window[k]=null; } } catch(_){}
-  });
-}
-function _suInit(){
-  if(!currentUser) return;
-  _suStopSubs();
-  // (a) inkomende verzoeken voor MIJ -> consent realtime
-  try {
-    window.__suUnsubReq = onSnapshot(query(collection(db,'support_requests'), where('targetUid','==',currentUser.uid)), function(snap){
-      var pending=[]; snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; if((x.status||'pending')==='pending') pending.push(x); });
-      if(pending.length){ pending.sort(function(a,b){ return _suMs(b.requestedAt)-_suMs(a.requestedAt); }); _suShowConsent(pending[0]); }
-      else { var c=document.getElementById('su-consent'); if(c) c.remove(); }
-    }, function(){});
-  } catch(_){}
-  // (b) grants waar IK de target ben -> gebruiker-banner realtime
-  try {
-    window.__suUnsubGrantT = onSnapshot(query(collection(db,'support_grants'), where('targetUid','==',currentUser.uid)), function(snap){
-      var now=Date.now(), active=null;
-      snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; if(x.status==='active' && _suMs(x.expiresAt)>now) active=x; });
-      _suRenderUserBanner(active);
-    }, function(){});
-  } catch(_){}
-  // (c) grants waar IK admin ben -> admin-banner realtime
-  try {
-    window.__suUnsubGrantA = onSnapshot(query(collection(db,'support_grants'), where('adminUid','==',currentUser.uid)), function(snap){
-      var now=Date.now(), active=null;
-      snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; if(x.status==='active' && _suMs(x.expiresAt)>now) active=x; });
-      _suRenderAdminBanner(active);
-    }, function(){});
-  } catch(_){}
-}
-window._suInit = _suInit;
-
-/* ---- BANNERS (realtime, datum-veilig) ---- */
-function _suMountBanner(id, extraClass, html){
-  var el=document.getElementById(id);
-  if(!el){ el=document.createElement('div'); el.id=id; el.className='su-banner'+(extraClass?(' '+extraClass):''); document.body.appendChild(el); }
-  el.innerHTML=html;
-}
-function _suRenderAdminBanner(g){
-  var ex=document.getElementById('su-banner');
-  if(!g){ if(ex) ex.remove(); if(window.__suCtx){ window.__suCtx=null; document.body.classList.remove('support-mode'); var pe=document.getElementById('su-env'); if(pe) pe.remove(); } return; }
-  var html='<span class="su-banner-ic">🔒</span>' +
-    '<span class="su-banner-txt"><b>ONDERSTEUNINGSMODUS ACTIEF</b> — je kijkt mee in: '+(_bhEsc(g.targetEmail)||_bhEsc(g.targetName)||'gebruiker')+' · geldig tot '+_suTime(g.expiresAt)+' · alleen-lezen</span>' +
-    '<span class="su-banner-actions"><button type="button" class="su-banner-btn" id="su-view">Bekijk omgeving</button><button type="button" class="su-banner-btn ghost" id="su-end">Beëindig sessie</button></span>';
-  _suMountBanner('su-banner','', html);
-  var vb=document.getElementById('su-view'); if(vb) vb.onclick=function(){ _suOpenEnvPanel(g); };
-  var eb=document.getElementById('su-end'); if(eb) eb.onclick=function(){ _suEndGrant(g,'admin'); };
-}
-function _suRenderUserBanner(g){
-  var ex=document.getElementById('su-ubanner');
-  if(!g){ if(ex) ex.remove(); return; }
-  var html='<span class="su-banner-ic">🔒</span>' +
-    '<span class="su-banner-txt"><b>ONDERSTEUNING ACTIEF</b> — een beheerder kijkt tijdelijk mee in jouw account · geldig tot '+_suTime(g.expiresAt)+' · alleen-lezen</span>' +
-    '<span class="su-banner-actions"><button type="button" class="su-banner-btn ghost" id="su-uend">Ondersteuning beëindigen</button></span>';
-  _suMountBanner('su-ubanner','su-banner-user', html);
-  var eb=document.getElementById('su-uend'); if(eb) eb.onclick=function(){ _suEndGrant(g,'user'); };
-}
-
-/* ---- SESSIE BEËINDIGEN (admin OF gebruiker) ---- */
-async function _suEndGrant(g, endedBy){
-  try {
-    var now=new Date();
-    await updateDoc(doc(db,'support_grants',g._id), {
-      targetUid:g.targetUid, adminUid:g.adminUid, scope:'read_only',
-      status:'ended', expiresAt: now, endedAt: now, endedBy: endedBy
-    });
-    await _suAudit(endedBy==='admin'?'session_ended_by_admin':'session_ended_by_user', { adminUid:g.adminUid, targetUid:g.targetUid, details:'endedBy='+endedBy, sessionId: (g.sessionId||''), reason: (g.reason||'') });
-    var pe=document.getElementById('su-env'); if(pe) pe.remove();
-    window.__suCtx=null; document.body.classList.remove('support-mode');
-    if(typeof toast==='function') toast('Ondersteuning beëindigd');
-    // de realtime onSnapshot-listeners verwijderen de banners aan beide kanten vanzelf
-  } catch(e){ if(typeof toast==='function') toast('Kon niet beëindigen', true); }
-}
-
-/* ---- READ-ONLY: volledige omgeving van de gebruiker (apart paneel) ---- */
-async function _suOpenEnvPanel(g){
-  if(document.getElementById('su-env')) return;
-  window.__suCtx = g.targetUid; document.body.classList.add('support-mode');
-  try { await _suAudit('session_opened', { adminUid:g.adminUid, targetUid:g.targetUid, sessionId: (g.sessionId||''), reason: (g.reason||'') }); } catch(_){}
-  var who=_bhEsc(g.targetEmail)||_bhEsc(g.targetName)||'gebruiker';
-  var ov=document.createElement('div'); ov.id='su-env'; ov.className='su-env';
-  ov.innerHTML='<div class="su-env-card">' +
-    '<div class="su-env-top"><div class="su-env-title">🔒 Omgeving van '+who+' <span class="su-env-ro">alleen-lezen</span></div><button type="button" class="bh-btn bh-btn-ghost" id="su-env-close">Sluiten</button></div>' +
-    '<div class="su-env-tabs" id="su-env-tabs"></div><div class="su-env-body" id="su-env-body"><div class="bh-empty">Laden…</div></div></div>';
-  document.body.appendChild(ov);
-  document.getElementById('su-env-close').onclick=function(){ ov.remove(); window.__suCtx=null; document.body.classList.remove('support-mode'); };
-  var tabs=[['dashboard','Overzicht'],['spelers','Spelers'],['programma','Programma'],['rapporten','Rapporten'],['toernooien','Toernooien']];
-  var tabsEl=document.getElementById('su-env-tabs');
-  tabsEl.innerHTML=tabs.map(function(t,k){ return '<button type="button" class="su-env-tab'+(k===0?' active':'')+'" data-et="'+t[0]+'">'+t[1]+'</button>'; }).join('');
-  var data={ players:[], reports:[], programma:[], tournaments:[] };
-  try {
-    var r=await Promise.all([
-      getDocs(collection(db,'users',g.targetUid,'players')),
-      getDocs(collection(db,'users',g.targetUid,'match_reports')),
-      getDocs(collection(db,'users',g.targetUid,'programma')),
-      getDocs(collection(db,'users',g.targetUid,'tournaments'))
-    ]);
-    r[0].forEach(function(d){ data.players.push(d.data()||{}); });
-    r[1].forEach(function(d){ data.reports.push(d.data()||{}); });
-    r[2].forEach(function(d){ data.programma.push(d.data()||{}); });
-    r[3].forEach(function(d){ data.tournaments.push(d.data()||{}); });
-  } catch(e){ var b0=document.getElementById('su-env-body'); if(b0) b0.innerHTML='<div class="bh-empty">Kon data niet laden (grant verlopen of ingetrokken?).</div>'; return; }
-  function row(a,c){ return '<div class="su-ro-row"><b>'+a+'</b><span>'+c+'</span></div>'; }
-  function renderTab(which){
-    var b=document.getElementById('su-env-body'); if(!b) return;
-    if(which==='dashboard'){
-      b.innerHTML='<div class="su-ro-stats">' +
-        '<div class="su-ro-stat"><b>'+data.players.length+'</b><span>spelers</span></div>' +
-        '<div class="su-ro-stat"><b>'+data.reports.length+'</b><span>rapporten</span></div>' +
-        '<div class="su-ro-stat"><b>'+data.programma.length+'</b><span>programma</span></div>' +
-        '<div class="su-ro-stat"><b>'+data.tournaments.length+'</b><span>toernooien</span></div></div>';
-    } else if(which==='spelers'){
-      b.innerHTML = data.players.length ? ('<div class="su-ro-list">'+data.players.slice(0,200).map(function(pl){ var nm=pl.naam||[pl.voornaam,pl.achternaam].filter(Boolean).join(' ')||'—'; return row(_bhEsc(nm), (_bhEsc(pl.club)||'')+(pl.positie?(' · '+_bhEsc(pl.positie)):'')); }).join('')+'</div>') : '<div class="bh-empty">Geen spelers</div>';
-    } else if(which==='programma'){
-      b.innerHTML = data.programma.length ? ('<div class="su-ro-list">'+data.programma.slice(0,200).map(function(m){ return row(_bhEsc(m.thuis||m.home||'')+' - '+_bhEsc(m.uit||m.away||''), _bhEsc(m.datum||m.date||'')); }).join('')+'</div>') : '<div class="bh-empty">Geen programma</div>';
-    } else if(which==='rapporten'){
-      b.innerHTML = data.reports.length ? ('<div class="su-ro-list">'+data.reports.slice(0,200).map(function(rp){ return row(_bhEsc(rp.speler||rp.naam||rp.playerName||'rapport'), _bhEsc(rp.datum||rp.date||'')); }).join('')+'</div>') : '<div class="bh-empty">Geen rapporten</div>';
-    } else if(which==='toernooien'){
-      b.innerHTML = data.tournaments.length ? ('<div class="su-ro-list">'+data.tournaments.slice(0,100).map(function(t){ return row(_bhEsc(t.naam||t.name||'—'), _bhEsc(t.datum||t.date||'')); }).join('')+'</div>') : '<div class="bh-empty">Geen toernooien</div>';
-    }
-  }
-  tabsEl.querySelectorAll('[data-et]').forEach(function(tb){ tb.addEventListener('click', function(){ tabsEl.querySelectorAll('.su-env-tab').forEach(function(x){ x.classList.toggle('active', x===tb); }); renderTab(tb.getAttribute('data-et')); }); });
-  renderTab('dashboard');
-}
-
-
-/* ============================================================
-   FASE 5 — Role-based onboarding (fullscreen, PWA-first).
-   Triggert wanneer users/{uid}.onboardingCompleted === false
-   (nieuwe, via admin goedgekeurde accounts). 5 stappen, rol-aware.
-   Schrijft alleen onboardingCompleted + onboardingStep (+ optioneel
-   displayName/club). Geen bestaande velden/flows aangeraakt.
-   ============================================================ */
-function _obComplete(uid, state, nav){
-  try {
-    var payload = { onboardingCompleted: true, onboardingStep: 5 };
-    if(state){ if(state.displayName) payload.displayName = state.displayName; if(state.club) payload.club = state.club; }
-    updateDoc(doc(db,'users',uid), payload).catch(function(){});
-  } catch(_){}
-  var ov = document.getElementById('sh-onb'); if(ov){ try { ov.remove(); } catch(_){} }
-  document.body.classList.remove('sh-onb-open');
-  if(nav && typeof go==='function'){ try { go(nav); } catch(_){} }
-}
-function _obStart(role, data){
-  if(document.getElementById('sh-onb')) return;
-  var uid = (currentUser && currentUser.uid) || (typeof auth!=='undefined' && auth.currentUser && auth.currentUser.uid) || '';
-  if(!uid) return;
-  try { if(typeof _shSetOnbDone==='function') _shSetOnbDone(uid); } catch(_){}     // onderdruk losse welkomst-wizard
-  try { var wz=document.getElementById('sh-wiz-backdrop'); if(wz) wz.remove(); } catch(_){}
-  var isCoord = (role === 'coordinator');
-  var roleLabel = isCoord ? 'Coördinator' : 'Scout';
-  var state = { displayName: (data && data.displayName) || (currentUser && currentUser.displayName) || '', club: (data && data.club) || '', role: role };
-  var i = 0; var TOTAL = 5;
-
-  var ov = document.createElement('div');
-  ov.id = 'sh-onb'; ov.className = 'sh-onb';
-  ov.innerHTML = '<div class="sh-onb-card" role="dialog" aria-modal="true" aria-label="Onboarding">' +
-    '<div class="sh-onb-prog" id="ob-prog"></div>' +
-    '<div class="sh-onb-body" id="ob-body"></div>' +
-    '<div class="sh-onb-nav"><button type="button" class="bh-btn bh-btn-ghost" id="ob-back">← Vorige</button><button type="button" class="bh-btn bh-btn-blue" id="ob-next">Start</button></div>' +
-  '</div>';
-  document.body.appendChild(ov);
-  document.body.classList.add('sh-onb-open');
-
-  var body = document.getElementById('ob-body');
-  var prog = document.getElementById('ob-prog');
-  var back = document.getElementById('ob-back');
-  var next = document.getElementById('ob-next');
-
-  function stepHtml(n){
-    if(n===0) return '<div class="sh-onb-ic">👋</div><h2>Welkom bij ScoutingHub</h2><p>We zetten je in een paar korte stappen op weg. Het duurt minder dan een minuut.</p>';
-    if(n===1) return '<h2>Je profiel</h2>' +
-      '<label class="sh-req-l" for="ob-name">Naam *</label>' +
-      '<input type="text" id="ob-name" class="sh-req-i" value="' + _bhEsc(state.displayName) + '" placeholder="Je naam">' +
-      '<label class="sh-req-l" for="ob-club">Club / organisatie</label>' +
-      '<input type="text" id="ob-club" class="sh-req-i" value="' + _bhEsc(state.club) + '" placeholder="Optioneel">' +
-      '<div class="sh-onb-role">Jouw rol: <span class="bh-badge ' + (isCoord?'bh-b-blue':'bh-b-grey') + '">' + roleLabel + '</span></div>';
-    if(n===2) return isCoord
-      ? '<div class="sh-onb-ic">📋</div><h2>Jouw team overzien</h2><p>Als coördinator zie je de rapporten van de scouts in je team en kun je wedstrijden voor hen inplannen — zo houd je grip op alle observaties.</p>'
-      : '<div class="sh-onb-ic">⚽</div><h2>Scouten met chips</h2><p>Beoordeel spelers langs de lijn met één tik: 🟢 goed · 🟠 normaal · 🔴 matig. Promoot een observatie later tot een volledig rapport.</p>';
-    if(n===3) return '<div class="sh-onb-ic">🚀</div><h2>Je eerste actie</h2><p>Begin meteen — je vindt alles later terug in het menu.</p>' +
-      '<div class="sh-onb-actions">' +
-        (isCoord
-          ? '<button type="button" class="bh-btn bh-btn-blue" data-ob-go="programma">Bekijk programma</button><button type="button" class="bh-btn" data-ob-go="database">Bekijk spelers</button>'
-          : '<button type="button" class="bh-btn bh-btn-blue" data-ob-go="database">Voeg eerste speler toe</button><button type="button" class="bh-btn" data-ob-go="programma">Bekijk programma</button>') +
-      '</div><div class="sh-onb-skip-note">Of klik op Volgende om af te ronden.</div>';
-    return '<div class="sh-onb-ic">🎉</div><h2>Je bent klaar!</h2><p>Veel succes met scouten. Deze uitleg vind je later terug in de Handleiding.</p>';
-  }
-  function saveProfile(){
-    var nEl = document.getElementById('ob-name'); var cEl = document.getElementById('ob-club');
-    if(nEl) state.displayName = (nEl.value || '').trim();
-    if(cEl) state.club = (cEl.value || '').trim();
-  }
-  function render(){
-    body.innerHTML = stepHtml(i);
-    prog.innerHTML = 'Stap ' + (i+1) + ' / ' + TOTAL;
-    back.style.visibility = (i===0) ? 'hidden' : '';
-    next.textContent = (i===TOTAL-1) ? 'Naar dashboard' : ((i===0) ? 'Start' : 'Volgende →');
-    body.querySelectorAll('[data-ob-go]').forEach(function(b){
-      b.addEventListener('click', function(){ saveProfile(); _obComplete(uid, state, b.getAttribute('data-ob-go')); });
-    });
-  }
-  back.addEventListener('click', function(){ if(i>0){ if(i===1) saveProfile(); i--; render(); } });
-  next.addEventListener('click', function(){
-    if(i===1){ saveProfile(); if(!state.displayName){ if(typeof toast==='function') toast('Vul je naam in', true); return; } }
-    if(i < TOTAL-1){ i++; render(); }
-    else { _obComplete(uid, state, 'dashboard'); }
-  });
-  render();
-}
-window._obStart = _obStart;
-
-/* ============================================================
-   DEEL 3 — Auto-grow voor meerregelige notitievelden (.sh-grow-note).
-   Eén gedelegeerde listener voor alle textareas met deze klasse, in
-   welke modal dan ook (opgevallen speler, gekoppelde speler,
-   wedstrijdnotitie, conceptrapport). Groeit mee met de inhoud tot de
-   CSS max-height; daarna scrollt het veld. Geen per-component wiring.
-   ============================================================ */
-(function _shGrowNotesInit(){
-  function grow(el){
-    if(!el || !el.classList || !el.classList.contains('sh-grow-note')) return;
-    el.style.height = 'auto';
-    var max = 150; // px — spiegelt CSS max-height, voorkomt exploderende modal
-    el.style.height = Math.min(el.scrollHeight, max) + 'px';
-    el.style.overflowY = (el.scrollHeight > max) ? 'auto' : 'hidden';
-  }
-  // Groeien tijdens typen
-  document.addEventListener('input', function(e){ grow(e.target); }, true);
-  // Bij focus (waarde reeds geprefilld) direct op de juiste hoogte zetten
-  document.addEventListener('focusin', function(e){ grow(e.target); }, true);
-  window._shGrowNote = grow;
-})();
-
-/* ============================================================
-   DEEL 7 — Toetsenbord/scroll-stabilisatie programma "wedstrijd aanmaken".
-   Thuis/uit-ploeg en elftal thuis/uit (+ speler-koppelvelden) centreren
-   zichzelf netjes boven het toetsenbord, net als de wedstrijdnotitie —
-   in plaats van dat het scherm naar beneden schiet. Eén gedelegeerde
-   focusin-listener, alleen actief op de bekende programmavelden.
-   ============================================================ */
-(function _pmKeyboardStabilizeInit(){
-  var IDS = { 'pm-thuis':1, 'pm-uit':1, 'pm-thuis-elftal':1, 'pm-uit-elftal':1,
-              'pmpp-voornaam':1, 'pmpp-achternaam':1, 'pmpp-geboorte':1, 'pmpp-club':1 };
-  document.addEventListener('focusin', function(e){
-    var t = e.target;
-    if(!t || !t.id || !IDS[t.id]) return;
-    if(!/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
-    // Korte delay zodat iOS het toetsenbord eerst opent, dan centreren.
-    setTimeout(function(){ try { t.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} }, 300);
-  }, true);
-})();
-
-/* ============================================================
-   BATCH A — FIX 1/4 — zichtbare veld-validatie (rood + fouttekst).
-   Generieke helper: markeert een veld rood, toont een fouttekst eronder,
-   en wist die zodra de gebruiker het veld aanpast. Geen data-impact.
-   ============================================================ */
-function _shFieldError(id, msg){
-  const el = document.getElementById(id); if(!el) return;
-  el.classList.add('sh-field-error'); el.setAttribute('aria-invalid', 'true');
-  let m = document.getElementById(id + '-err');
-  if(!m){
-    m = document.createElement('div');
-    m.id = id + '-err';
-    m.className = 'sh-field-error-msg';
-    if(el.parentNode) el.parentNode.insertBefore(m, el.nextSibling);
-  }
-  m.textContent = msg;
-  if(!el._shErrWired){
-    el._shErrWired = true;
-    const clear = () => _shClearFieldError(id);
-    el.addEventListener('input', clear);
-    el.addEventListener('change', clear);
-  }
-}
-function _shClearFieldError(id){
-  const el = document.getElementById(id);
-  if(el){ el.classList.remove('sh-field-error'); el.removeAttribute('aria-invalid'); }
-  const m = document.getElementById(id + '-err'); if(m) m.remove();
-}
-window._shFieldError = _shFieldError;
-window._shClearFieldError = _shClearFieldError;

@@ -6097,16 +6097,20 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
       const _shTryLiveChips = function(){
         try {
           if(document.querySelectorAll('#view-report .report-trefwoorden .obs-tag[data-rating]').length) return;
-          if(!Array.isArray(prog.snelnotities)) return;
-          var _snC = prog.snelnotities.find(function(s){ return s && s.spelerKey === progSp.id; });
-          if(!_snC || !Array.isArray(_snC.tags) || !_snC.tags.length) return;
-          var _c2s = { techniek:'techniek_huidig', inzicht:'inzicht_huidig', mentaliteit:'mentaliteit_huidig', explosiviteit:'explosiviteit_huidig', sprinten:'sprinten_huidig', duelleren:'duelleren_huidig', wendbaarheid:'wendbaarheid_huidig' };
-          var _mc = _snC.tags.map(function(t){
-            var sec = t && _c2s[(t.category||'').toLowerCase()];
-            if(!sec || !t.rating) return null;
-            return { label:t.label, rating:t.rating, rapport_section:sec, category:(t.category||'').toLowerCase() };
-          }).filter(Boolean);
-          if(_mc.length && typeof _injectReportTrefwoorden === 'function') _injectReportTrefwoorden(_mc);
+          // BATCH 1 / 1B — bron 1: in-geheugen snelnotitie-tags (snel pad).
+          var _snC = Array.isArray(prog.snelnotities) ? prog.snelnotities.find(function(s){ return s && s.spelerKey === progSp.id; }) : null;
+          if(_snC && Array.isArray(_snC.tags) && _snC.tags.length){
+            var _c2s = { techniek:'techniek_huidig', inzicht:'inzicht_huidig', mentaliteit:'mentaliteit_huidig', explosiviteit:'explosiviteit_huidig', sprinten:'sprinten_huidig', duelleren:'duelleren_huidig', wendbaarheid:'wendbaarheid_huidig' };
+            var _mc = _snC.tags.map(function(t){
+              var sec = t && _c2s[(t.category||'').toLowerCase()];
+              if(!sec || !t.rating) return null;
+              return { label:t.label, rating:t.rating, rapport_section:sec, category:(t.category||'').toLowerCase() };
+            }).filter(Boolean);
+            if(_mc.length && typeof _injectReportTrefwoorden === 'function'){ _injectReportTrefwoorden(_mc); return; }
+          }
+          // BATCH 1 / 1B — bron 2 (fallback): cloud-notitie (live_match_notes). Wordt
+          // betrouwbaar weggeschreven door de live-vorm, ook als het geheugen leeg is.
+          if(typeof _liveToReport === 'function') _liveToReport(prog.id, progSp.id);
         } catch(_e){ console.warn('live-chip-prefill', _e); }
       };
       if(slotConcept){
@@ -16415,6 +16419,21 @@ async function submitReport(e){
     niet_gerapporteerd_reden: _ngChecked ? _ngReden : '',
     niet_gerapporteerd_note: _ngChecked ? _ngNote : ''
   };
+    // BATCH 1 / 1A-ii — ROOTCAUSE "data weg na heropenen": savePlayer schrijft met
+    // setDoc ZONDER merge, dus elk veld dat niet in dit object zit wordt gewist.
+    // Hierdoor verloor een gekoppelde-speler-concept zijn koppeling (programma_link)
+    // en kon findSlotConcept het bij heropenen niet meer vinden. Daarom bewaren we de
+    // koppeling expliciet: uit de actieve scouting-context, anders uit het bestaande record.
+    try {
+      var _plCtx = window.__shScoutingCtx;
+      if(_plCtx && _plCtx.progId && _plCtx.spelerKey){
+        player.programma_link = { progId: _plCtx.progId, spelerKey: _plCtx.spelerKey };
+      } else if(_existRep && _existRep.programma_link && _existRep.programma_link.progId){
+        player.programma_link = _existRep.programma_link;
+      }
+      // Aanmaakmoment behouden (anders telkens 'nieuw' bij overschrijven).
+      if(_existRep && _existRep.created && !player.created) player.created = _existRep.created;
+    } catch(_plErr){ console.warn('programma_link-behoud', _plErr); }
     await savePlayer(player);
     // Toernooicontext: patch rapport met tournament-velden indien aangemaakt vanuit bundeling
     if(window.__shTournamentContext){
@@ -28624,7 +28643,11 @@ function _injectReportTrefwoorden(existingTags){
   };
   var tags = Array.isArray(existingTags) ? existingTags : [];
   function ratingOf(section, label){
-    var t = tags.find(function(x){ return x && x.label === label && x.rapport_section === section; });
+    // BATCH 1 / 1B — match tolerant op rapport_section ÉN category. Live-chips uit
+    // live_match_notes dragen alleen 'category' (techniek/inzicht/...), gemapte chips
+    // dragen 'rapport_section' (techniek_huidig/...). Beide moeten highlighten.
+    var _cat = String(section||'').replace('_huidig','');
+    var t = tags.find(function(x){ return x && x.label === label && (x.rapport_section === section || x.category === _cat); });
     return t && t.rating ? t.rating : '';
   }
   Object.keys(MAP).forEach(function(dk){

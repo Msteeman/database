@@ -3054,14 +3054,17 @@ function toast(msg, isError=false){
 function setSync(state){
   const dot = $('#sync-dot');
   const txt = $('#sync-text');
+  const ind = $('#sync-indicator');
   if(!dot) return;
   dot.classList.remove('syncing','offline');
-  if(state === 'syncing'){ dot.classList.add('syncing'); txt.textContent = 'Bezig met synchroniseren...'; }
-  else if(state === 'offline'){ dot.classList.add('offline'); txt.textContent = 'Geen verbinding'; }
+  let _label = 'Gesynchroniseerd';
+  if(state === 'syncing'){ dot.classList.add('syncing'); _label = 'Bezig met synchroniseren...'; }
+  else if(state === 'offline'){ dot.classList.add('offline'); _label = 'Geen verbinding'; }
   else {
-    txt.textContent = 'Cloud gesynchroniseerd';
     window.__lastSyncMs = Date.now();
   }
+  if(txt) txt.textContent = _label;
+  if(ind) ind.title = _label;
   // s35ar (#224): UID-6 + project + relatieve laatste-sync tijd
   try {
     const uidEl = document.getElementById('sync-detail-uid');
@@ -5835,6 +5838,15 @@ const KNVB_DUUR_MIN = {
   'O.13':75, 'O.14':85, 'O.15':85, 'O.16':95, 'O.17':95,
   'O.18':105,'O.19':105,'O.21':105,'O.23':105
 };
+// sh-v352: leid leeftijdscategorie af uit een elftal-string ('O.16-1'→'O.16',
+// 'JO11-2'→'O.11', 'MO13'→'O.13'). Zo hoeft de scout geen apart leeftijdveld
+// meer in te vullen — het volgt automatisch uit het elftal.
+function _deriveLeeftijd(elftal){
+  if(!elftal) return '';
+  const m = String(elftal).trim().toUpperCase().match(/\b[JM]?O\.?(\d{1,2})\b/);
+  return m ? ('O.' + m[1]) : '';
+}
+window._deriveLeeftijd = _deriveLeeftijd;
 function getMatchDurationMin(leeftijd){
   if(!leeftijd) return 120;
   const k = String(leeftijd).trim().toUpperCase();
@@ -5864,14 +5876,47 @@ function getMatchWindow(prog){
           || (prog.thuis_elftal && String(prog.thuis_elftal).trim())
           || (prog.uit_elftal && String(prog.uit_elftal).trim())
           || '';
-  const end   = new Date(kick.getTime() + (getMatchDurationMin(lf) + SCOUTING_POST_MIN)*60000);
-  return { kick, start, end };
+  const dur   = getMatchDurationMin(lf);
+  const end   = new Date(kick.getTime() + (dur + SCOUTING_POST_MIN)*60000);
+  return { kick, start, end, dur };
 }
+// s35dk: handmatige Start/Einde-klok per wedstrijd. De kaart verschijnt
+// automatisch 5 min voor aftrap (auto-window), maar de scout klikt zelf op
+// "Start wedstrijd" en "Einde wedstrijd". Na het klikken van Einde blijft de
+// kaart nog SCOUTING_POST_MIN (5 min) staan en schuift dan door naar de tab
+// Wedstrijden. Wordt er nooit op Einde geklikt, dan valt de zichtbaarheid
+// terug op het auto-window (kick + speelduur + 5 min) zodat een kaart nooit
+// eindeloos blijft hangen.
+let _matchClock = {};
+try { _matchClock = JSON.parse(localStorage.getItem('sh_match_clock') || '{}') || {}; } catch(_){ _matchClock = {}; }
+function _saveMatchClock(){ try { localStorage.setItem('sh_match_clock', JSON.stringify(_matchClock)); } catch(_){} }
+function getMatchClock(progId){ return (progId && _matchClock[progId]) ? _matchClock[progId] : null; }
+function setMatchStarted(progId){
+  if(!progId) return;
+  const c = _matchClock[progId] || {};
+  c.startedAt = Date.now(); delete c.endedAt;
+  _matchClock[progId] = c; _saveMatchClock();
+  if(typeof renderDashboardAgenda === 'function') renderDashboardAgenda();
+}
+function setMatchEnded(progId){
+  if(!progId) return;
+  const c = _matchClock[progId] || {};
+  c.endedAt = Date.now();
+  _matchClock[progId] = c; _saveMatchClock();
+  if(typeof renderDashboardAgenda === 'function') renderDashboardAgenda();
+}
+window.getMatchClock = getMatchClock;
+window.setMatchStarted = setMatchStarted;
+window.setMatchEnded = setMatchEnded;
 function isMatchInWindow(prog, now){
   const w = getMatchWindow(prog);
   if(!w) return false;
   const t = (now || new Date()).getTime();
-  return t >= w.start.getTime() && t <= w.end.getTime();
+  if(t < w.start.getTime()) return false;
+  const clk = getMatchClock(prog.id);
+  if(clk && clk.endedAt) return t <= clk.endedAt + SCOUTING_POST_MIN*60000;
+  if(clk && clk.startedAt) return t <= clk.startedAt + (w.dur + SCOUTING_POST_MIN)*60000;
+  return t <= w.end.getTime();
 }
 // s35ca-1: een wedstrijd is 'op slot' zodra fluitje+15 verstreken is.
 // Vanaf dat moment zijn snel-notities en spelersrapport-edits op het
@@ -5881,6 +5926,9 @@ function _shIsMatchLocked(prog, now){
   const w = getMatchWindow(prog);
   if(!w) return false;
   const t = (now || new Date()).getTime();
+  const clk = getMatchClock(prog.id);
+  if(clk && clk.endedAt) return t > clk.endedAt + SCOUTING_POST_MIN*60000;
+  if(clk && clk.startedAt) return t > clk.startedAt + (w.dur + SCOUTING_POST_MIN)*60000;
   return t > w.end.getTime();
 }
 window._shIsMatchLocked = _shIsMatchLocked;
@@ -6375,7 +6423,7 @@ function openObservatieForm(prog, sn){
   const setV = (id, v) => { const el = document.getElementById(id); if(el && v) el.value = v; else if(el) el.value = ''; };
   setV('obs-naam', sn && (sn.naam||''));
   setV('obs-rug', sn && (sn.rugnummer||''));
-  setV('obs-omschrijving', '');
+  setV('obs-omschrijving', sn && (sn.omschrijving||''));
   // BATCH A — FIX 2: positie is nu een dropdown. Graceful: een opgeslagen waarde
   // die niet in de standaardlijst staat, als extra optie injecteren zodat ze
   // zichtbaar/bewaard blijft.
@@ -6401,23 +6449,27 @@ function openObservatieForm(prog, sn){
     const clubInp = document.getElementById('obs-club');
     if(!choiceEl || !clubInp) return;
     if(_obsHomeClub || _obsAwayClub){
-      clubInp.placeholder = 'Kies club hieronder of typ zelf';
+      // Wedstrijd is al gekoppeld aan clubs → toon alleen de twee knoppen.
+      // Eén klik = gekozen én verwerkt; geen los tekstveld/bevestiging nodig.
       const mk = (val, icon, rol) => val
         ? '<button type="button" class="obs-club-opt'+(_obsExistingClub===val?' active':'')+'" data-club="'+escapeHtml(val)+'"><span class="obs-club-opt-rol">'+icon+' '+rol+'</span><span class="obs-club-opt-naam">'+escapeHtml(val)+'</span></button>'
         : '';
       choiceEl.innerHTML = mk(_obsHomeClub, '🏠', 'Thuisploeg') + mk(_obsAwayClub, '✈️', 'Uitploeg');
       choiceEl.style.display = '';
+      clubInp.style.display = 'none';   // vrij tekstveld verbergen — club komt uit programma
       choiceEl.querySelectorAll('.obs-club-opt').forEach(b => {
         b.onclick = () => {
           clubInp.value = b.dataset.club || '';
           choiceEl.querySelectorAll('.obs-club-opt').forEach(x => x.classList.remove('active'));
           b.classList.add('active');
-          // Trigger autosave + sluit clubsuggestie
+          // Trigger autosave (club is meteen verwerkt)
           try { clubInp.dispatchEvent(new Event('input', { bubbles: true })); } catch(_){}
         };
       });
     } else {
+      // Geen programma-clubs bekend → val terug op het vrije tekstveld.
       clubInp.placeholder = 'Clubnaam';
+      clubInp.style.display = '';
       choiceEl.style.display = 'none';
       choiceEl.innerHTML = '';
     }
@@ -6482,6 +6534,7 @@ function openObservatieForm(prog, sn){
         _d.positie= (document.getElementById('obs-positie')?.value||'').trim();
         _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
         _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
+        _d.omschrijving = (document.getElementById('obs-omschrijving')?.value||'').trim();
         // BATCH A — FIX 3: huidig niveau + advies meebewaren zodat ze na heropenen terugkomen
         _d.huidig_niveau = (document.getElementById('obs-niveau')?.value||'').trim();
         _d.advies = (document.getElementById('obs-advies')?.value||'').trim();
@@ -6603,6 +6656,7 @@ const PLF_CHIP_CATS = {
   wendbaarheid: ['Soepel','Lichtvoetig','Draaien','Balans','Wendbaar'],
   algemeen: ['Interessant','Opvolgen','Uitblinker','Aanrader']
 };
+const PLF_VOETEN = ['Linksbenig','Rechtsbenig','Tweebenig'];
 const playerLiveState = {};
 let _plfCtx = null;
 let _plfTm = null;
@@ -6667,7 +6721,26 @@ function openPlayerLiveForm(prog, sp){
   if(fieldsEl){
     const seedTags = (sn && Array.isArray(sn.tags)) ? sn.tags : [];
     const ratingOf = (cat, label) => { const t = seedTags.find(x => x && x.label===label && String(x.category||'').toLowerCase()===cat.toLowerCase()); return t && t.rating ? t.rating : ''; };
+    const _voetSel = (sn && sn.voorkeursbeen) || _g('voorkeursbeen') || _g('been') || '';
+    const _posSel = (sn && sn.positie) || _pos || '';
+    const _opmSel = (sn && sn.opmerking) || '';
+    const footChips = PLF_VOETEN.map(v => '<button type="button" class="obs-tag plf-foot" data-voet="'+escapeHtml(v)+'"'+(_voetSel===v?' data-rating="good"':'')+' onclick="_plfFootPick(this)">'+escapeHtml(v)+'</button>').join('');
+    const posOpts = _toernPositieOpts();
+    const _rugSel = (sn && sn.rugnummer) || _rug || '';
+    const metaHtml = '<div class="plf-meta">'+
+      '<div class="plf-foot-rug-row">'+
+        '<div class="plf-aspect plf-aspect-foot"><div class="plf-aspect-label">Voorkeursbeen</div>'+
+          '<div class="obs-tags plf-aspect-chips plf-foot-chips">'+footChips+'</div></div>'+
+        '<div class="plf-aspect plf-aspect-rug"><div class="plf-aspect-label">Rugnummer</div>'+
+          '<input id="plf-rug" class="plf-rug-in" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="#" value="'+escapeHtml(_rugSel)+'"></div>'+
+      '</div>'+
+      '<div class="plf-aspect"><div class="plf-aspect-label">Positie</div>'+
+        '<select id="plf-positie" class="plf-positie-sel"><option value="">— Kies —</option>'+posOpts+'</select></div>'+
+      '<div class="plf-aspect"><div class="plf-aspect-label">Opmerking</div>'+
+        '<textarea class="plf-field-in sh-grow-note" id="plf-opm" rows="2" autocomplete="off" placeholder="korte opmerking">'+escapeHtml(_opmSel)+'</textarea></div>'+
+    '</div>';
     fieldsEl.innerHTML = '<div class="plf-section-label">Per aspect <span class="plf-dim">(tik chip: groen \u2192 oranje \u2192 rood \u2192 uit, + eigen notitie)</span></div>' +
+      metaHtml +
       PLF_FIELDS.map(f => {
         const chips = (PLF_CHIP_CATS[f]||[]).map(w => { const r = ratingOf(f, w); return '<button type="button" class="obs-tag" data-category="'+f+'" data-label="'+escapeHtml(w)+'"'+(r?' data-rating="'+r+'"':'')+' onclick="_plfTagCycle(this)">'+escapeHtml(w)+'</button>'; }).join('');
         return '<div class="plf-aspect">'+
@@ -6683,6 +6756,16 @@ function openPlayerLiveForm(prog, sp){
         clearTimeout(_plfTm); _plfTm = setTimeout(() => _plfSoftSave(false), 600);
       });
     });
+    const _posSelEl = fieldsEl.querySelector('#plf-positie');
+    if(_posSelEl){
+      const opt = Array.from(_posSelEl.options).find(o => o.value === _posSel || o.textContent === _posSel);
+      if(opt) _posSelEl.value = opt.value;
+      _posSelEl.addEventListener('change', () => { clearTimeout(_plfTm); _plfTm = setTimeout(() => _plfSoftSave(false), 300); });
+    }
+    const _opmEl = fieldsEl.querySelector('#plf-opm');
+    if(_opmEl) _opmEl.addEventListener('input', () => { clearTimeout(_plfTm); _plfTm = setTimeout(() => _plfSoftSave(false), 600); });
+    const _rugEl = fieldsEl.querySelector('#plf-rug');
+    if(_rugEl) _rugEl.addEventListener('input', () => { clearTimeout(_plfTm); _plfTm = setTimeout(() => _plfSoftSave(false), 600); });
     if(!fieldsEl._plfFocusWired){
       fieldsEl._plfFocusWired = true;
       fieldsEl.addEventListener('focusin', (e) => {
@@ -6720,6 +6803,15 @@ function _plfTagCycle(el){
 }
 window._plfTagCycle = _plfTagCycle;
 
+function _plfFootPick(el){
+  const on = el.getAttribute('data-rating') === 'good';
+  const box = el.closest('.plf-foot-chips');
+  if(box) Array.from(box.querySelectorAll('.plf-foot')).forEach(b => b.removeAttribute('data-rating'));
+  if(!on) el.setAttribute('data-rating', 'good');
+  clearTimeout(_plfTm); _plfTm = setTimeout(() => _plfSoftSave(false), 400);
+}
+window._plfFootPick = _plfFootPick;
+
 function _plfSoftSave(showToast){
   try {
     if(!_plfCtx) return;
@@ -6740,7 +6832,11 @@ function _plfSoftSave(showToast){
       prog.snelnotities.push(sn);
     }
     sn.fields = fields;
-    try { sn.tags = Array.from(document.querySelectorAll('#plf-fields .obs-tag[data-rating]')).map(el => ({ label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') })).filter(t => t.rating); } catch(_){}
+    try { sn.tags = Array.from(document.querySelectorAll('#plf-fields .obs-tag[data-rating]')).filter(el => !el.classList.contains('plf-foot')).map(el => ({ label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') })).filter(t => t.rating); } catch(_){}
+    try { const fEl = document.querySelector('#plf-fields .plf-foot[data-rating]'); sn.voorkeursbeen = fEl ? (fEl.dataset.voet||'') : ''; } catch(_){}
+    try { const pEl = document.getElementById('plf-positie'); if(pEl){ const o = pEl.options[pEl.selectedIndex]; sn.positie = o ? (o.textContent||pEl.value||'') : (pEl.value||''); } } catch(_){}
+    try { const oEl = document.getElementById('plf-opm'); sn.opmerking = oEl ? (oEl.value||'').trim() : ''; } catch(_){}
+    try { const rEl = document.getElementById('plf-rug'); if(rEl) sn.rugnummer = (rEl.value||'').trim(); } catch(_){}
     sn.tekst = tekst;
     sn.modified = Date.now();
     prog.modified = Date.now();
@@ -6988,7 +7084,7 @@ const matchLiveState = {};
 let _mlfCtx = null;
 let _mlfTm = null;
 
-function _mlfEmptyTeam(){ const o={}; MLF_TEAM_CATS.forEach(c => { o[c[0]] = { chips:[], note:'' }; }); return o; }
+function _mlfEmptyTeam(){ const o={}; MLF_TEAM_CATS.forEach(c => { o[c[0]] = { chips:[], ratings:{}, note:'' }; }); return o; }
 function _mlfEmptyState(){ return { thuis:_mlfEmptyTeam(), uit:_mlfEmptyTeam(), gedeeld:{ weer:{chips:[],note:''}, algemeen:{note:''} } }; }
 function _mlfMigrateOld(prog, st){
   try {
@@ -7000,16 +7096,18 @@ function _mlfMigrateOld(prog, st){
 function _mlfFromDoc(d){
   const st = _mlfEmptyState();
   ['thuis','uit'].forEach(team => {
-    if(d[team]) MLF_TEAM_CATS.forEach(c => { const x=d[team][c[0]]; if(x){ st[team][c[0]] = { chips: Array.isArray(x.chips)?x.chips:[], note: x.note||'' }; } });
+    if(d[team]) MLF_TEAM_CATS.forEach(c => { const x=d[team][c[0]]; if(x){ st[team][c[0]] = { chips: Array.isArray(x.chips)?x.chips:[], ratings: (x.ratings&&typeof x.ratings==='object')?x.ratings:{}, note: x.note||'' }; } });
   });
   if(d.gedeeld){ if(d.gedeeld.weer){ st.gedeeld.weer = { chips: Array.isArray(d.gedeeld.weer.chips)?d.gedeeld.weer.chips:[], note: d.gedeeld.weer.note||'' }; } if(d.gedeeld.algemeen){ st.gedeeld.algemeen = { note: d.gedeeld.algemeen.note||'' }; } }
   return st;
 }
 
-async function openMatchLiveForm(prog){
+async function openMatchLiveForm(prog, opts){
   const bd = document.getElementById('mlf-backdrop'); if(!bd || !prog) return;
+  opts = opts || {};
+  const isRapport = opts.mode === 'rapport';
   const matchId = prog.id;
-  if(!matchLiveState[matchId]){
+  if(!matchLiveState[matchId] || isRapport){
     let seed = _mlfEmptyState();
     try {
       const ds = await getDoc(doc(db,'users',currentUser.uid,'live_match_notes', matchId+'_match'));
@@ -7017,25 +7115,28 @@ async function openMatchLiveForm(prog){
     } catch(_){ _mlfMigrateOld(prog, seed); }
     matchLiveState[matchId] = seed;
   }
-  _mlfCtx = { matchId, progId: prog.id, thuis: prog.thuis||'', uit: prog.uit||'' };
+  _mlfCtx = { matchId, progId: prog.id, thuis: prog.thuis||'', uit: prog.uit||'', isRapport };
   const st = matchLiveState[matchId];
 
   const titleEl = document.getElementById('mlf-title'); if(titleEl) titleEl.textContent = (prog.thuis||'?') + ' — ' + (prog.uit||'?');
-  const subEl = document.getElementById('mlf-sub'); if(subEl) subEl.textContent = 'Live wedstrijdnotitie (concept)';
+  const subEl = document.getElementById('mlf-sub'); if(subEl) subEl.textContent = isRapport ? 'Wedstrijdrapport' : 'Live wedstrijdnotitie (concept)';
   const ctxParts = [];
   if(prog.datum) ctxParts.push(prog.datum + (prog.tijd?' · '+prog.tijd:''));
   if(prog.veld) ctxParts.push('Veld '+prog.veld); else if(prog.locatie) ctxParts.push(prog.locatie);
   if(prog.competitie || prog.toernooi) ctxParts.push(prog.competitie||prog.toernooi);
   if(prog.leeftijd) ctxParts.push(prog.leeftijd);
   const ctxEl = document.getElementById('mlf-ctx');
-  if(ctxEl) ctxEl.innerHTML = '<div class="mlf-ctx-match">'+escapeHtml((prog.thuis||'?')+' — '+(prog.uit||'?'))+'</div>'+(ctxParts.length?'<div class="mlf-ctx-meta">'+ctxParts.map(escapeHtml).join(' · ')+'</div>':'')+'<div class="mlf-ctx-note">📋 Live concept — definitief rapport maak je na de wedstrijd in Wedstrijden.</div>';
+  const ctxNote = isRapport
+    ? '📋 Wedstrijdrapport — voor-ingevuld met je live-notities. Vul aan en dien in.'
+    : '📋 Live concept — definitief rapport maak je na de wedstrijd in Wedstrijden.';
+  if(ctxEl) ctxEl.innerHTML = '<div class="mlf-ctx-match">'+escapeHtml((prog.thuis||'?')+' — '+(prog.uit||'?'))+'</div>'+(ctxParts.length?'<div class="mlf-ctx-meta">'+ctxParts.map(escapeHtml).join(' · ')+'</div>':'')+'<div class="mlf-ctx-note">'+ctxNote+'</div>';
 
   const renderTeam = (team, teamName) => {
     return '<div class="mlf-col" data-team="'+team+'"><div class="mlf-team-head mlf-team-'+team+'">'+escapeHtml(teamName||team)+'</div>'+
       MLF_TEAM_CATS.map(function(c){
         const cat=c[0], label=c[1], chips=c[2];
-        const cst=(st[team]&&st[team][cat])||{chips:[],note:''};
-        const chipHtml=chips.map(function(w){ const on=(cst.chips||[]).indexOf(w)>=0; return '<button type="button" class="mlf-chip'+(on?' active':'')+'" data-team="'+team+'" data-cat="'+cat+'" data-label="'+escapeHtml(w)+'">'+escapeHtml(w)+'</button>'; }).join('');
+        const cst=(st[team]&&st[team][cat])||{chips:[],ratings:{},note:''};
+        const chipHtml=chips.map(function(w){ const r=(cst.ratings&&cst.ratings[w])||''; return '<button type="button" class="obs-tag" data-team="'+team+'" data-cat="'+cat+'" data-label="'+escapeHtml(w)+'"'+(r?' data-rating="'+r+'"':'')+'>'+escapeHtml(w)+'</button>'; }).join('');
         return '<div class="mlf-cat"><div class="mlf-cat-label">'+label+'</div><div class="mlf-chips">'+chipHtml+'</div><textarea class="mlf-note plf-field-in sh-grow-note" data-team="'+team+'" data-cat="'+cat+'" rows="2" autocomplete="off" placeholder="Notitie...">'+escapeHtml(cst.note||'')+'</textarea></div>';
       }).join('')+'</div>';
   };
@@ -7051,6 +7152,8 @@ async function openMatchLiveForm(prog){
     if(!body._mlfWired){
       body._mlfWired = true;
       body.addEventListener('click', function(e){
+        const tag = e.target.closest('.obs-tag');
+        if(tag && tag.dataset.team){ _mlfCycleTag(tag); return; }
         const chip = e.target.closest('.mlf-chip');
         if(chip){ _mlfToggleChip(chip); return; }
         const tab = e.target.closest('.mlf-tab');
@@ -7066,9 +7169,13 @@ async function openMatchLiveForm(prog){
     }
     _mlfUpdateBadges();
   }
-  const cl=document.getElementById('mlf-close'); if(cl) cl.onclick=function(){ _mlfSync(false); _mlfClose(); };
+  const cl=document.getElementById('mlf-close'); if(cl) cl.onclick=function(){ if(!isRapport) _mlfSync(false); _mlfClose(); };
   const ca=document.getElementById('mlf-cancel'); if(ca) ca.onclick=function(){ _mlfClose(); };
-  const sv=document.getElementById('mlf-save'); if(sv) sv.onclick=function(){ _mlfSync(true); _mlfClose(); };
+  const sv=document.getElementById('mlf-save');
+  if(sv){
+    sv.textContent = isRapport ? 'Indienen' : 'Opslaan';
+    sv.onclick = isRapport ? function(){ _mlfSubmitRapport(); } : function(){ _mlfSync(true); _mlfClose(); };
+  }
 
   bd.style.display='flex';
   document.body.style.top='-'+window.scrollY+'px';
@@ -7088,6 +7195,20 @@ function _mlfToggleChip(el){
   _mlfUpdateBadges();
 }
 function _mlfSetNote(team, cat, val){ if(!_mlfCtx) return; const slot=_mlfStTeam(team)[cat]; if(slot) slot.note=val; }
+function _mlfCycleTag(el){
+  if(!_mlfCtx) return;
+  const team=el.dataset.team, cat=el.dataset.cat, label=el.dataset.label;
+  const slot=_mlfStTeam(team)[cat]; if(!slot) return;
+  if(!slot.ratings) slot.ratings={};
+  if(!Array.isArray(slot.chips)) slot.chips=[];
+  const order=['','good','average','poor'];
+  const cur=el.getAttribute('data-rating')||'';
+  const next=order[(order.indexOf(cur)+1)%order.length];
+  if(next){ el.setAttribute('data-rating',next); slot.ratings[label]=next; if(slot.chips.indexOf(label)<0) slot.chips.push(label); }
+  else { el.removeAttribute('data-rating'); delete slot.ratings[label]; const i=slot.chips.indexOf(label); if(i>=0) slot.chips.splice(i,1); }
+  clearTimeout(_mlfTm); _mlfTm=setTimeout(function(){ _mlfSync(false); }, 500);
+  _mlfUpdateBadges();
+}
 function _mlfSwitchTab(tab){
   const body=document.getElementById('mlf-body'); if(!body) return;
   body.className = (tab==='uit')?'mlf-show-uit':'mlf-show-thuis';
@@ -7119,6 +7240,32 @@ async function _mlfSync(showToast){
     if(showToast && typeof toast==='function') toast('Wedstrijdnotitie opgeslagen ✓');
   } catch(_){}
 }
+async function _mlfSubmitRapport(){
+  try {
+    if(!_mlfCtx) return;
+    const matchId = _mlfCtx.matchId;
+    const prog = programmaCache.find(function(p){ return p && p.id === _mlfCtx.progId; });
+    if(!prog){ if(typeof toast==='function') toast('Wedstrijd niet gevonden', true); return; }
+    const sv=document.getElementById('mlf-save'); if(sv){ sv.disabled=true; sv.textContent='Indienen…'; }
+    await _mlfSync(false);
+    const st = matchLiveState[matchId] || {};
+    const docLike = { thuis: st.thuis, uit: st.uit, gedeeld: st.gedeeld, matchContext: { thuis: prog.thuis||'', uit: prog.uit||'' } };
+    const tekst = _mlfComposeRapportText(docLike) || '';
+    prog.wedstrijdrapport = Object.assign({}, prog.wedstrijdrapport, { status:'ingediend', tekst: tekst, opmerking: tekst, ingediend_op: Date.now() });
+    prog.modified = Date.now();
+    try { const ref=doc(db,'users',currentUser.uid,'live_match_notes', matchId+'_match'); await setDoc(ref, { status:'ingediend' }, { merge:true }); } catch(_){}
+    if(typeof saveProgrammaItem === 'function'){ try { await saveProgrammaItem(prog); } catch(_){} }
+    if(typeof toast === 'function') toast('Wedstrijdnotitie ingediend ✓');
+    _mlfClose();
+    if(typeof renderMatches === 'function') renderMatches();
+  } catch(e){
+    console.error('mlf submit rapport', e);
+    const sv=document.getElementById('mlf-save'); if(sv){ sv.disabled=false; sv.textContent='Indienen'; }
+    if(typeof toast === 'function') toast('Indienen mislukt', true);
+  }
+}
+window._mlfSubmitRapport = _mlfSubmitRapport;
+
 function _mlfClose(){
   const bd=document.getElementById('mlf-backdrop'); if(bd) bd.style.display='none';
   const y=parseInt(document.body.style.top||'0')*-1; document.body.classList.remove('modal-open'); document.body.style.top=''; if(y) window.scrollTo(0,y);
@@ -7149,7 +7296,7 @@ function _mlfComposeRapportText(d){
       const note = (s.note || '').trim();
       if(!chips.length && !note) return;
       let line = label + ': ';
-      if(chips.length) line += chips.join(', ');
+      if(chips.length) line += chips.map(function(ch){ const r=(s.ratings&&s.ratings[ch])||''; const dot=r==='good'?'🟢':r==='average'?'🟠':r==='poor'?'🔴':''; return (dot?dot+' ':'')+ch; }).join(', ');
       if(note) line += (chips.length ? ' — ' : '') + note;
       parts.push(line);
     });
@@ -7271,6 +7418,7 @@ async function _obsSubmit(e){
         _d.positie = (document.getElementById('obs-positie')?.value||'').trim();
         _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
         _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
+        _d.omschrijving = (document.getElementById('obs-omschrijving')?.value||'').trim();
         // BATCH A — FIX 3: huidig niveau + advies meebewaren zodat ze na heropenen terugkomen
         _d.huidig_niveau = (document.getElementById('obs-niveau')?.value||'').trim();
         _d.advies = (document.getElementById('obs-advies')?.value||'').trim();
@@ -7460,6 +7608,7 @@ async function _obsSubmit(e){
             _d.positie = (document.getElementById('obs-positie')?.value||'').trim();
             _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
             _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
+            _d.omschrijving = (document.getElementById('obs-omschrijving')?.value||'').trim();
         // BATCH A — FIX 3: huidig niveau + advies meebewaren zodat ze na heropenen terugkomen
         _d.huidig_niveau = (document.getElementById('obs-niveau')?.value||'').trim();
         _d.advies = (document.getElementById('obs-advies')?.value||'').trim();
@@ -7616,6 +7765,31 @@ function injectScoutingBanner(prog, progSp, matchedPlayer){
   }
 }
 
+function fitSaTitle(el){
+  if(!el) return;
+  // s94b: titel altijd op één regel, fontgrootte ratio-gebaseerd geschaald naar
+  // de beschikbare breedte zodat ook lange namen (bv. "Willem van der Heijden")
+  // volledig zichtbaar blijven i.p.v. afgekapt met "…".
+  el.style.fontSize = '';
+  const parent = el.parentElement; // .sa-title (flex: pulse-dot + txt)
+  if(!parent) return;
+  const base = parseFloat(getComputedStyle(parent).fontSize) || 15;
+  const MIN = 8;
+  el.style.fontSize = base + 'px';
+  const avail = el.clientWidth;        // beschikbare breedte (flex:1 -> = ruimte)
+  const needed = el.scrollWidth;        // volledige tekstbreedte op base-grootte
+  if(avail > 0 && needed > avail){
+    let size = base * (avail / needed) - 0.5; // marge tegen afronding
+    if(size < MIN) size = MIN;
+    el.style.fontSize = size + 'px';
+    // fijn-correctie als ratio net te ruim/krap uitkwam
+    let guard = 0;
+    while(el.scrollWidth > el.clientWidth + 1 && size > MIN && guard < 20){
+      size -= 0.5; el.style.fontSize = size + 'px'; guard++;
+    }
+  }
+}
+
 function renderActiveScouting(){
   const wrap = document.getElementById('scouting-active-wrap');
   if(!wrap) return;
@@ -7645,30 +7819,31 @@ function renderActiveScouting(){
   const cards = active.map(prog => {
     const w = getMatchWindow(prog);
     const kickT  = w ? w.kick.getTime() : null;
-    const matchDur = w ? getMatchDurationMin(
-      (prog.leeftijd && String(prog.leeftijd).trim())
-      || (prog.thuis_elftal && String(prog.thuis_elftal).trim())
-      || (prog.uit_elftal  && String(prog.uit_elftal).trim())  || ''
-    ) : 120;
-    const endT   = kickT ? kickT + matchDur * 60000 : null;
-    // Vier fases: voorbereiding → live → afgelopen → afgesloten (kaart weg)
-    let status = 'live', statusLabel = '● Live';
-    if(kickT && now.getTime() < kickT){
-      // Fase 1: voorbereiding (pre-window, max 5 min voor aftrap)
-      status = 'warmup';
-      const min = Math.round((kickT - now.getTime()) / 60000);
-      statusLabel = '⏱ Voorbereiding — aftrap over ' + min + ' min';
-    } else if(endT && now.getTime() > endT){
-      // Fase 3: afgelopen (post-window, max 15 min na einde)
+    const matchDur = w ? w.dur : 120;
+    // s35dk: handmatige Start/Einde-klok. De auto-tijd bepaalt of de kaart
+    // verschijnt, maar de scout bepaalt zelf wanneer de wedstrijd-klok loopt.
+    const clk = getMatchClock(prog.id);
+    const tNow = now.getTime();
+    // sh-v358: de klok loopt AUTOMATISCH vanaf de geplande aftrap (kickT) — de
+    // scout hoeft niets te starten. Begint de wedstrijd eerder of later dan
+    // gepland, dan tikt de scout op "Aftrap nu" / "Klok herstarten" en loopt de
+    // klok (opnieuw) vanaf nu (setMatchStarted zet startedAt=now). 'anchor' =
+    // het handmatige (her)startmoment, anders de geplande aftrap.
+    const anchor = (clk && clk.startedAt) ? clk.startedAt : kickT;
+    let status = 'warmup', statusLabel = '', clockBtnHtml = '';
+    if(clk && clk.endedAt){
+      // Afgelopen — kaart blijft nog 5 min staan
       status = 'ended';
-      const min = Math.round((now.getTime() - endT) / 60000);
-      statusLabel = '✓ Afgelopen — ' + min + ' min geleden gestopt';
-    } else if(kickT){
-      // Fase 2: live (aftrap t/m einde speeltijd)
-      // s82: 1e helft / rust / 2e helft op basis van leeftijdscategorie
-      const minElapsed = Math.round((now.getTime() - kickT) / 60000);
+      const min = Math.max(0, Math.round((tNow - clk.endedAt) / 60000));
+      const restMin = Math.max(0, Math.ceil((clk.endedAt + SCOUTING_POST_MIN*60000 - tNow)/60000));
+      statusLabel = '✓ Afgelopen — ' + min + ' min geleden' + (restMin>0 ? ' · nog ' + restMin + ' min zichtbaar' : '');
+      clockBtnHtml = `<button class="sa-clock-btn sa-clock-start" data-sa-act="match-start" data-progid="${escapeHtml(prog.id)}" title="Toch nog bezig? Start de klok opnieuw vanaf nu">⟲ Opnieuw</button>`;
+    } else if(anchor && tNow >= anchor){
+      // Live — klok loopt automatisch vanaf de aftrap (of vanaf handmatige herstart)
+      status = 'live';
+      const minElapsed = Math.max(0, Math.round((tNow - anchor) / 60000));
       const halfDur    = Math.round(matchDur / 2);
-      const breakEst   = 10; // geschatte rustduur in minuten
+      const breakEst   = 10;
       if(minElapsed < halfDur){
         statusLabel = '● 1e helft — ' + minElapsed + "'";
       } else if(minElapsed < halfDur + breakEst){
@@ -7677,15 +7852,60 @@ function renderActiveScouting(){
         const m2 = Math.max(1, minElapsed - halfDur - breakEst);
         statusLabel = '● 2e helft — ' + m2 + "'";
       }
+      clockBtnHtml =
+        `<button class="sa-clock-btn sa-clock-restart" data-sa-act="match-start" data-progid="${escapeHtml(prog.id)}" title="Begon de wedstrijd later? Herstart de klok vanaf nu">⟲ Herstart</button>`
+      + `<button class="sa-clock-btn sa-clock-end sa-clock-icon" data-sa-act="match-end" data-progid="${escapeHtml(prog.id)}" title="Wedstrijd beëindigen" aria-label="Wedstrijd beëindigen">⏹</button>`;
+    } else {
+      // Voorbereiding — aftrap nog niet bereikt. Begint de wedstrijd eerder? "Aftrap nu".
+      status = 'warmup';
+      if(anchor && tNow < anchor){
+        const min = Math.max(1, Math.round((anchor - tNow) / 60000));
+        statusLabel = '⏱ Aftrap over ' + min + ' min';
+      } else {
+        statusLabel = '⏱ Klaar om te starten';
+      }
+      clockBtnHtml = `<button class="sa-clock-btn sa-clock-start" data-sa-act="match-start" data-progid="${escapeHtml(prog.id)}" title="Begint de wedstrijd eerder? Start de klok nu">▶ Aftrap nu</button>`;
     }
     // s35bd: titel-format 'Club Elftal — Club Elftal'
     const teams = `${escapeHtml(prog.thuis||'?')}${prog.thuis_elftal?' '+escapeHtml(prog.thuis_elftal):''} — ${escapeHtml(prog.uit||'?')}${prog.uit_elftal?' '+escapeHtml(prog.uit_elftal):''}`;
     const metaParts = [];
     if(prog.tijd) metaParts.push('<b>Aftrap</b> ' + escapeHtml(prog.tijd));
     if(prog.leeftijd) metaParts.push('<b>Elftal</b> ' + escapeHtml(prog.leeftijd));
-    if(prog.methode) metaParts.push(escapeHtml(prog.methode));
+    if(prog.methode && !/^live$/i.test(String(prog.methode).trim())) metaParts.push(escapeHtml(prog.methode));
     if(prog.locatie) metaParts.push('📍 ' + escapeHtml(prog.locatie));
     const spelers = Array.isArray(prog.spelers) ? prog.spelers : [];
+    const _gkNaam = (s) => s.naam || [s.voornaam, s.achternaam].filter(Boolean).join(' ') || 'Speler';
+    let gkBtnHtml = '';
+    if(spelers.length === 1){
+      gkBtnHtml = `<button class="sa-live-btn sa-live-btn-gk sa-trigger-gk" data-sa-act="open-gk" data-progid="${escapeHtml(prog.id)}" data-sp-idx="0" title="Gekoppelde speler"><span class="sa-live-btn-icon">🔗</span><span class="sa-live-btn-label">${escapeHtml(_gkNaam(spelers[0]))}</span></button>`;
+    } else if(spelers.length > 1){
+      const gkItems = spelers.map((s, idx) => `<button type="button" class="sa-gk-item" data-sa-act="open-gk" data-progid="${escapeHtml(prog.id)}" data-sp-idx="${idx}">${escapeHtml(_gkNaam(s))}</button>`).join('');
+      gkBtnHtml = `<div class="sa-gk-wrap"><button class="sa-live-btn sa-live-btn-gk sa-gk-toggle" data-sa-act="toggle-gk" data-progid="${escapeHtml(prog.id)}" title="Gekoppelde spelers"><span class="sa-live-btn-icon">🔗</span><span class="sa-live-btn-label">Gekoppelde spelers (${spelers.length})</span><span class="sa-gk-chev">▾</span></button><div class="sa-gk-menu" style="display:none">${gkItems}</div></div>`;
+    }
+    // sh-v359: "Opgevallen speler" als dropdown (zelfde patroon als gekoppelde
+    // spelers). Bestaande obs-drafts staan in een uitklapmenu OP de knop i.p.v.
+    // als losse sectie onder de kaart. Geen drafts → knop-klik = direct nieuwe obs.
+    const _obsDrafts = (prog.snelnotities||[]).filter(sn => sn && sn.rapport_type === 'observatie' && sn.obs_draft === true && sn.ingediend !== true);
+    let obsBtnHtml;
+    if(_obsDrafts.length === 0){
+      obsBtnHtml = `<button class="sa-live-btn sa-live-btn-obs sa-trigger-obs" data-sa-act="add-observatie" data-progid="${escapeHtml(prog.id)}" title="Opvallende speler noteren"><span class="sa-live-btn-icon">👁</span><span class="sa-live-btn-label">Opgevallen speler</span></button>`;
+    } else {
+      const _obsItems = _obsDrafts.map(sn => {
+        const _rug = (sn.rugnummer||'').trim();
+        let _titleTxt;
+        if(sn.naam && sn.naam.trim()) _titleTxt = sn.naam.trim();
+        else if(sn.omschrijving && sn.omschrijving.trim()) _titleTxt = sn.omschrijving.trim();
+        else _titleTxt = _rug ? ('Naam onbekend · #'+_rug) : 'Naam onbekend';
+        const _nm = escapeHtml(_titleTxt);
+        const _subParts = [];
+        if(_rug && _titleTxt.indexOf('#'+_rug) === -1) _subParts.push('#'+_rug);
+        if(sn.club) _subParts.push(sn.club);
+        if(sn.positie) _subParts.push(sn.positie);
+        const _sub = escapeHtml(_subParts.join(' · '));
+        return `<button type="button" class="sa-obs-item" data-sa-act="open-obs-draft" data-progid="${escapeHtml(prog.id)}" data-snid="${escapeHtml(sn.id||'')}"><span class="sa-obs-item-naam">${_nm}</span>${_sub?`<span class="sa-obs-item-sub">${_sub}</span>`:''}</button>`;
+      }).join('');
+      obsBtnHtml = `<div class="sa-obs-wrap"><button class="sa-live-btn sa-live-btn-obs sa-obs-toggle" data-sa-act="toggle-obs" data-progid="${escapeHtml(prog.id)}" title="Opgevallen spelers"><span class="sa-live-btn-icon">👁</span><span class="sa-live-btn-label">Opgevallen speler (${_obsDrafts.length})</span><span class="sa-gk-chev">▾</span></button><div class="sa-obs-menu" style="display:none"><button type="button" class="sa-obs-item sa-obs-item-new" data-sa-act="add-observatie" data-progid="${escapeHtml(prog.id)}">+ Nieuwe opgevallen speler</button>${_obsItems}</div></div>`;
+    }
     let tilesHtml = '';
     if(spelers.length === 0){
       tilesHtml = '<div class="sa-empty-players">Nog geen spelers gepland voor deze wedstrijd.</div>';
@@ -7706,6 +7926,7 @@ function renderActiveScouting(){
           sp.club || ''
         ].filter(Boolean).join(' · ');
         const conceptTag = concept ? `<div class="sa-tile-concept-tag">concept</div>` : '';
+        const linkedTag = (player && !concept) ? `<div class="sa-tile-linked-tag">gekoppeld</div>` : '';
         // s83: zoek bestaande snelnotitie voor inline panel
         const existingSn = (prog.snelnotities || []).find(s => s && s.spelerKey === sp.id);
         const snelTekst  = existingSn ? (existingSn.tekst || '') : '';
@@ -7745,6 +7966,7 @@ function renderActiveScouting(){
           <button type="button" class="sa-tile-close" data-tile-act="close" aria-label="Sluiten" style="display:none">×</button>
           <div class="sa-tile-name">${escapeHtml(naam)}${isOpvallend ? '<span class="sa-tile-star" aria-hidden="true">⭐</span>' : ''}</div>
           ${meta ? `<div class="sa-tile-meta">${escapeHtml(meta)}</div>` : ''}
+          ${linkedTag}
           ${conceptTag}
           <div class="sa-tile-obs-header">
             <div class="sa-tile-obs-naam">${escapeHtml(naam)}</div>
@@ -7761,24 +7983,25 @@ function renderActiveScouting(){
       <div class="sa-card is-live-card" data-prog-id="${escapeHtml(prog.id)}">
         <div class="sa-header" data-sa-collapse="1">
           <div style="flex:1; min-width:0;">
-            <div class="sa-title"><span class="sa-pulse"></span> Bezig met scouten — ${teams}</div>
+            <div class="sa-title"><span class="sa-pulse${status==='live'?'':' sa-pulse-off'}"></span> <span class="sa-title-txt">${status==='warmup'?'Voorbereiding':(status==='ended'?'Afgelopen':'Live')} — ${teams}</span></div>
             <div class="sa-meta">${metaParts.join('<span style=\"opacity:.3\">|</span>')}</div>
           </div>
           <div class="sa-header-right">
-            <div class="sa-status ${status}">${statusLabel}</div>
-            <div class="sa-header-acts">
-              <button class="sa-live-btn sa-live-btn-obs sa-trigger-obs" data-sa-act="add-observatie" data-progid="${escapeHtml(prog.id)}" title="Opvallende speler noteren">
-                <span class="sa-live-btn-icon">👁</span><span class="sa-live-btn-label">Opgevallen speler</span>
-              </button>
-              <button class="sa-live-btn sa-live-btn-wstr sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}" title="Wedstrijdnotitie toevoegen">
-                <span class="sa-live-btn-icon">📋</span><span class="sa-live-btn-label">Wedstrijdnotitie</span>
-              </button>
+            <div class="sa-status-row">
+              <div class="sa-status ${status}">${statusLabel}</div>
+              ${clockBtnHtml}
             </div>
           </div>
           <span class="sa-collapse-chev" aria-hidden="true">&#9662;</span>
         </div>
-        <div class="sa-players-title">Spelers (${spelers.length})</div>
-        <div class="sa-tiles">${tilesHtml}</div>
+        <div class="sa-header-acts sa-header-acts-row">
+          ${gkBtnHtml}
+          ${obsBtnHtml}
+          <button class="sa-live-btn sa-live-btn-wstr sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}" title="Wedstrijdnotitie toevoegen">
+            <span class="sa-live-btn-icon">📋</span><span class="sa-live-btn-label">Wedstrijdnotitie</span>
+          </button>
+        </div>
+        ${spelers.length === 0 ? `<div class="sa-players-title">Spelers (0)</div><div class="sa-tiles">${tilesHtml}</div>` : ''}
         <div class="sa-snel-form" data-progid="${escapeHtml(prog.id)}" style="display:none;">
           <!-- s35bg: heading werkt als sluit-knop -->
           <div class="sa-snel-form-header">
@@ -7825,28 +8048,9 @@ function renderActiveScouting(){
           </div><!-- /sa-snel-form-body -->
         </div>
         ${(()=>{
-          // Opgevallen spelers: obs-drafts als paarse heropen-kaartjes
-          const _obsDrafts = (prog.snelnotities||[]).filter(sn => sn && sn.rapport_type === 'observatie' && sn.obs_draft === true && sn.ingediend !== true);
-          if(!_obsDrafts.length) return '';
-          return `<div class="sa-obs-drafts-section" data-progid="${escapeHtml(prog.id)}">
-            <div class="sa-obs-drafts-hdr">
-              <span class="sa-obs-drafts-icon">👁</span>
-              <span class="sa-obs-drafts-title">Opgevallen spelers (${_obsDrafts.length})</span>
-            </div>
-            ${_obsDrafts.map(sn => {
-              const _nm = escapeHtml(sn.naam || 'Nieuwe speler');
-              const _cl = escapeHtml(sn.club || '');
-              const _pos = escapeHtml(sn.positie || '');
-              const _sub = [_cl, _pos].filter(Boolean).join(' · ');
-              return `<div class="sa-obs-draft-card" data-obs-progid="${escapeHtml(prog.id)}" data-obs-snid="${escapeHtml(sn.id||'')}">
-                <div class="sa-obs-draft-avatar">👁</div>
-                <div class="sa-obs-draft-info">
-                  <div class="sa-obs-draft-naam">${_nm}</div>
-                  ${_sub ? `<div class="sa-obs-draft-sub">${_sub}</div>` : ''}
-                </div>
-              </div>`;
-            }).join('')}
-          </div>`;
+          // sh-v359: obs-drafts staan nu in het uitklapmenu OP de "Opgevallen
+          // speler"-knop (zie obsBtnHtml) i.p.v. als losse sectie onder de kaart.
+          return '';
         })()}
         ${(prog.wedstrijdnotities && prog.wedstrijdnotities.length) ? `
         <div class="sa-wstrnotities-wrap" style="margin-top:10px; border-top:1px solid var(--border,#2a2f3a); padding-top:8px;">
@@ -7920,7 +8124,24 @@ function renderActiveScouting(){
   wrap.innerHTML = cards;
   wrap.style.display = '';
 
-  // ===== s35bl: sa-card inklapbaar op mobiel (header = toggle) =====
+  // s94: live-titel op één regel houden + auto-shrinken aan de beschikbare
+  // breedte. Lange teamnamen (bv. "Willem van der Heijden") wrappen niet meer,
+  // de fontgrootte krimpt tot de tekst past. In rAF zodat de layout klaar is
+  // (anders is clientWidth nog 0 en grijpt de CSS-ellipsis onterecht in).
+  try {
+    const _fitAll = () => wrap.querySelectorAll('.sa-title-txt').forEach(fitSaTitle);
+    requestAnimationFrame(() => requestAnimationFrame(_fitAll));
+    if(!window.__saTitleResizeBound){
+      window.__saTitleResizeBound = true;
+      let _saFitT = null;
+      window.addEventListener('resize', () => {
+        clearTimeout(_saFitT);
+        _saFitT = setTimeout(() => {
+          document.querySelectorAll('#scouting-active-wrap .sa-title-txt').forEach(fitSaTitle);
+        }, 120);
+      });
+    }
+  } catch(_){}
   try {
     const isMobile = window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
     wrap.querySelectorAll('.sa-card').forEach(card => {
@@ -8315,6 +8536,16 @@ function renderActiveScouting(){
           return;
         }
       }
+      if(act === 'match-start'){
+        if(typeof setMatchStarted === 'function') setMatchStarted(progId);
+        if(typeof toast === 'function') toast('Klok loopt vanaf nu');
+        return;
+      }
+      if(act === 'match-end'){
+        if(typeof setMatchEnded === 'function') setMatchEnded(progId);
+        if(typeof toast === 'function') toast('Wedstrijd beëindigd — nog 5 min zichtbaar');
+        return;
+      }
       if(act === 'toggle-wstr'){
         const wstrWrap = btn.closest('.sa-card');
         if(!wstrWrap) return;
@@ -8549,6 +8780,30 @@ function renderActiveScouting(){
           try { form.scrollIntoView({behavior:'smooth', block:'nearest'}); } catch(_){}
         }
         if(naamIn) naamIn.focus();
+      } else if(act === 'toggle-gk'){
+        const wrap2 = btn.closest('.sa-gk-wrap');
+        if(wrap2){ const menu = wrap2.querySelector('.sa-gk-menu'); if(menu) menu.style.display = (menu.style.display === 'block' ? 'none' : 'block'); }
+      } else if(act === 'open-gk'){
+        try {
+          const _gkProg = programmaCache.find(p => p.id === progId);
+          const _gkSp = _gkProg && (_gkProg.spelers||[])[parseInt(btn.dataset.spIdx,10)];
+          if(_gkProg && _gkSp && typeof openPlayerLiveForm === 'function'){
+            const menu = btn.closest('.sa-gk-menu'); if(menu) menu.style.display = 'none';
+            openPlayerLiveForm(_gkProg, _gkSp);
+          }
+        } catch(_){}
+      } else if(act === 'toggle-obs'){
+        const wrap2 = btn.closest('.sa-obs-wrap');
+        if(wrap2){ const menu = wrap2.querySelector('.sa-obs-menu'); if(menu) menu.style.display = (menu.style.display === 'block' ? 'none' : 'block'); }
+      } else if(act === 'open-obs-draft'){
+        try {
+          const _odProg = programmaCache && programmaCache.find(p => p && p.id === progId);
+          const _odSn = _odProg && (_odProg.snelnotities||[]).find(s => s && s.id === btn.dataset.snid);
+          if(_odProg && _odSn && typeof openObservatieForm === 'function'){
+            const menu = btn.closest('.sa-obs-menu'); if(menu) menu.style.display = 'none';
+            openObservatieForm(_odProg, _odSn);
+          }
+        } catch(_){}
       } else if(act === 'add-observatie'){
         // Elke klik = nieuwe obs-draft (meerdere opgevallen spelers per wedstrijd mogelijk)
         const _obsProg = programmaCache && programmaCache.find(p => p && p.id === progId);
@@ -8797,6 +9052,7 @@ function renderTodayMatches(){
   const _komend = [], _gespeeld = [];
   programmaCache.forEach(p => {
     if(!p || p.datum !== today) return;
+    if(p.id === _dashHeroProgId) return; // s94: staat al als VOLGENDE-hero
     if(typeof isMatchInWindow === 'function' && isMatchInWindow(p, __nowF)) return; // live -> niet hier
     let _fin = false;
     if(typeof getMatchWindow === 'function'){ const w = getMatchWindow(p); if(w && w.end < __nowF) _fin = true; }
@@ -9071,6 +9327,7 @@ function renderUpcomingMatches(){
   const horizon3 = new Date(today.getTime() + 4*24*3600*1000);
   const progItems = (Array.isArray(programmaCache) ? programmaCache : []).filter(p => {
     if(!p || !p.datum) return false;
+    if(p.id === _dashHeroProgId) return false; // s94: staat al als VOLGENDE-hero
     const d = new Date(p.datum + 'T00:00:00');
     return d > today && d < horizon3;
   });
@@ -9250,6 +9507,118 @@ function renderVandaagBanner(){
   });
 }
 
+// s94: VOLGENDE-zone — de eerstvolgende te scouten wedstrijd als prominente
+// hero-kaart (vult de voorheen lege #dash-next-match-wrap). Verbergt zichzelf
+// als er een live wedstrijd loopt (die staat dan in de LIVE-zone). De getoonde
+// wedstrijd wordt via _dashHeroProgId uitgesloten van VANDAAG en AANKOMEND zodat
+// hij niet dubbel verschijnt.
+let _dashHeroProgId = '';
+function renderNextMatchHero(){
+  const wrap = document.getElementById('dash-next-match-wrap');
+  if(!wrap) return;
+  _dashHeroProgId = '';
+  if(typeof programmaCache === 'undefined' || !Array.isArray(programmaCache) || !programmaCache.length){
+    wrap.style.display = 'none'; wrap.innerHTML = ''; return;
+  }
+  const now = new Date();
+  const anyLive = programmaCache.some(p => p && typeof isMatchInWindow === 'function' && isMatchInWindow(p, now));
+  if(anyLive){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  function kickoff(p){
+    const [Y,M,D] = String(p.datum).split('-').map(n => parseInt(n,10));
+    if(!Y||!M||!D) return null;
+    if(p.tijd){
+      const [h,m] = String(p.tijd).split(':').map(n => parseInt(n,10));
+      if(!isNaN(h) && !isNaN(m)) return new Date(Y, M-1, D, h, m, 0, 0);
+    }
+    return new Date(Y, M-1, D, 12, 0, 0, 0); // tijdloos item → middag van die dag
+  }
+  const cands = [];
+  programmaCache.forEach(p => {
+    if(!p || !p.datum || !(p.thuis || p.uit)) return;
+    const k = kickoff(p); if(!k) return;
+    let fin = false;
+    if(typeof getMatchWindow === 'function'){ const w = getMatchWindow(p); if(w && w.end < now) fin = true; }
+    else if(k < now && (now - k) > 3*3600*1000) fin = true;
+    if(fin) return;
+    const dayStart = new Date(k.getFullYear(), k.getMonth(), k.getDate());
+    if(dayStart < startOfToday) return;
+    cands.push({ p, k });
+  });
+  if(!cands.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  cands.sort((a,b) => a.k - b.k);
+  const it = cands[0].p, k = cands[0].k;
+  _dashHeroProgId = it.id;
+
+  const weekdays = ['zo','ma','di','wo','do','vr','za'];
+  const dayStart = new Date(k.getFullYear(), k.getMonth(), k.getDate());
+  const diffD = Math.round((dayStart - startOfToday) / 86400000);
+  const dayLabel = diffD === 0 ? 'Vandaag' : diffD === 1 ? 'Morgen' : diffD === 2 ? 'Overmorgen'
+    : `${weekdays[k.getDay()]} ${String(k.getDate()).padStart(2,'0')}-${String(k.getMonth()+1).padStart(2,'0')}`;
+  let cd = '';
+  if(it.tijd){
+    const diffMin = Math.round((k - now) / 60000);
+    if(diffMin > 0){
+      const dd = Math.floor(diffMin/1440), hh = Math.floor((diffMin%1440)/60), mm = diffMin%60;
+      cd = dd > 0 ? `over ${dd}d ${hh}u` : (hh > 0 ? `over ${hh}u ${mm}m` : `over ${mm}m`);
+    }
+  }
+  const thuis = it.thuis_elftal ? `${it.thuis} ${it.thuis_elftal}` : (it.thuis || '?');
+  const uit   = it.uit_elftal   ? `${it.uit} ${it.uit_elftal}`     : (it.uit   || '?');
+  const n = Array.isArray(it.spelers) ? it.spelers.length : 0;
+  const club = (typeof CLUB_ADRESSEN !== 'undefined' && it.thuis) ? CLUB_ADRESSEN[it.thuis.toLowerCase().trim()] : null;
+  const locLabel = it.locatie || (club && club.sportpark) || (club && club.adres) || '';
+  let mapsUrl = '';
+  if(club && club.lat && club.lon) mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${club.lat},${club.lon}`;
+  else if(club && club.adres) mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(club.adres)}`;
+  else if(it.locatie) mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(it.locatie)}`;
+
+  const metaParts = [];
+  if(it.leeftijd) metaParts.push(`<span class="dhero-tag">${escapeHtml(it.leeftijd)}</span>`);
+  metaParts.push(`<span class="dhero-players">${n} speler${n===1?'':'s'} gekoppeld</span>`);
+  if(locLabel){
+    metaParts.push(mapsUrl
+      ? `<span class="dhero-loc dhero-loc-nav" data-maps-url="${escapeAttr(mapsUrl)}" data-loc-label="${escapeAttr(locLabel)}" title="Klik om te navigeren">📍 ${escapeHtml(locLabel)}</span>`
+      : `<span class="dhero-loc">📍 ${escapeHtml(locLabel)}</span>`);
+  }
+
+  wrap.innerHTML = `
+    <div class="dash-hero" data-hero-progid="${escapeHtml(it.id)}">
+      <div class="dash-hero-label"><span class="dhero-spark">▸</span> Volgende wedstrijd</div>
+      <div class="dash-hero-teams">${escapeHtml(thuis)} <span class="dhero-vs">—</span> ${escapeHtml(uit)}</div>
+      <div class="dash-hero-when">
+        <span class="dhero-day">${escapeHtml(dayLabel)}</span>
+        ${it.tijd ? `<span class="dhero-time">${escapeHtml(it.tijd)}</span>` : ''}
+        ${cd ? `<span class="dhero-cd">${escapeHtml(cd)}</span>` : ''}
+      </div>
+      <div class="dash-hero-meta">${metaParts.join('')}</div>
+      <button class="dash-hero-cta" data-hero-progid="${escapeHtml(it.id)}">Bekijk wedstrijd →</button>
+    </div>`;
+  wrap.style.display = 'block';
+
+  // Navigatie naar de wedstrijd-locatie (route)
+  wrap.querySelectorAll('.dhero-loc-nav').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const url = el.dataset.mapsUrl, label = el.dataset.locLabel || 'deze locatie';
+      if(url && confirm(`Wil je navigeren naar ${label}?`)) window.open(url, '_blank', 'noopener');
+    });
+  });
+  // Kaart/CTA → open de wedstrijd in Programma
+  const goToProg = (e) => {
+    if(e.target.closest('.dhero-loc-nav')) return;
+    const pid = it.id;
+    if(typeof go === 'function') go('programma');
+    setTimeout(() => {
+      const card = document.querySelector(`[data-prog-id="${pid}"]`);
+      if(card){ card.scrollIntoView({ behavior:'smooth', block:'center' }); card.classList.add('highlight-flash'); setTimeout(() => card.classList.remove('highlight-flash'), 1200); }
+    }, 350);
+  };
+  const heroEl = wrap.querySelector('.dash-hero');
+  if(heroEl){ heroEl.style.cursor = 'pointer'; heroEl.addEventListener('click', goToProg); }
+}
+window.renderNextMatchHero = renderNextMatchHero;
+
 function renderDashboardAgenda(){
   const now = new Date();
 
@@ -9259,8 +9628,12 @@ function renderDashboardAgenda(){
     hasActive = programmaCache.some(p => p && typeof isMatchInWindow === 'function' && isMatchInWindow(p, now));
   }
 
-  // Render de drie sub-secties
-  if(typeof renderVandaagBanner  === 'function') renderVandaagBanner();
+  // Render de zones (s94: hero VÓÓR today/upcoming zodat _dashHeroProgId klaarstaat)
+  // De oude "Vandaag op het programma"-banner is uitgeschakeld: VANDAAG zit nu in
+  // today-matches, VOLGENDE in de hero. Dat haalt de dubbeling weg.
+  const _vb = document.getElementById('dash-vandaag-banner');
+  if(_vb){ _vb.style.display = 'none'; _vb.innerHTML = ''; }
+  if(typeof renderNextMatchHero  === 'function') renderNextMatchHero();
   if(typeof renderActiveScouting === 'function') renderActiveScouting();
   if(typeof renderTodayMatches   === 'function') renderTodayMatches();
   if(typeof renderUpcomingMatches=== 'function') renderUpcomingMatches();
@@ -11722,18 +12095,21 @@ function _shOpenEditModal(m){
 
   if(wrIngProg){
     html += `<div class="wstr-player-row wstr-wr-done" style="background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.28);border-radius:8px;padding:10px 12px;">
-      <span style="color:#34d399;font-size:13px;font-weight:600;">📋 Wedstrijdrapport ingediend</span>
+      <span class="wstr-type-dot wedstrijd"></span>
+      <span style="color:#34d399;font-size:13px;font-weight:600;">Wedstrijdrapport ingediend</span>
       <button type="button" class="wstr-edit-note-action" data-wr-open-modal="${escapeHtml(wrIngProg.id)}" style="margin-left:auto;">Bekijk →</button>
     </div>`;
   } else if(wrConceptProg){
     html += `<div class="wstr-player-row">
-      <span style="font-size:13px;color:var(--text-2);">📝 Concept wedstrijdrapport aanwezig</span>
+      <span class="wstr-type-dot wedstrijd"></span>
+      <span style="font-size:13px;color:var(--text-2);">Wedstrijdrapport</span>
       <button type="button" class="wstr-edit-note-action primary" data-wr-open-modal="${escapeHtml(wrConceptProg.id)}" style="margin-left:auto;">→ Wedstrijdrapport</button>
     </div>`;
   } else {
     // FIX 2 (C1/C2): id zodat _mlfMaybeUpgradeWrStatus deze rij async kan upgraden
     // naar "Live wedstrijdnotitie aanwezig" als {id}_match inhoud bevat.
     html += `<div class="wstr-player-row" id="wstr-wr-norow">
+      <span class="wstr-type-dot wedstrijd" style="opacity:.4;"></span>
       <span style="font-size:12px;color:var(--text-3);">Nog geen rapport</span>
       ${_firstProgId2 ? `<button type="button" class="wstr-edit-note-action primary" data-edit-wstr-prog="${escapeHtml(_firstProgId2)}" data-edit-wstr-idx="-1" style="margin-left:auto;">→ Wedstrijdrapport</button>` : ''}
     </div>`;
@@ -12342,7 +12718,7 @@ function renderElftallen(){
     const doSearch = () => {
       const _inp = document.getElementById('elf-search-input');
       const _res = document.getElementById('elf-results');
-      if(_res) _elfShowTeamTiles(loadPlayers(), _res, (_inp?.value||'').trim());
+      if(_res) _elfRender(loadPlayers(), _res, (_inp?.value||'').trim());
     };
     if(input._elfHandler) {
       input.removeEventListener('input', input._elfHandler);
@@ -12360,14 +12736,14 @@ function renderElftallen(){
         const _inp = document.getElementById('elf-search-input');
         const _res = document.getElementById('elf-results');
         if(_inp) _inp.value = '';
-        if(_res) _elfShowTeamTiles(loadPlayers(), _res, '');
+        if(_res) _elfRender(loadPlayers(), _res, '');
         if(_inp) _inp.focus();
       });
     }
   }
 
   const q = (input?.value || '').trim();
-  _elfShowTeamTiles(players, resultsEl, q);
+  _elfRender(players, resultsEl, q);
   // Retry tot data beschikbaar is (Firestore laadt async)
   if(!players.length){
     [500, 1200, 2500].forEach(delay => {
@@ -12377,11 +12753,18 @@ function renderElftallen(){
         if(!_pl.length) return;
         const _res = document.getElementById('elf-results');
         const _inp = document.getElementById('elf-search-input');
-        if(_res) _elfShowTeamTiles(_pl, _res, (_inp?.value||'').trim());
+        if(_res) _elfRender(_pl, _res, (_inp?.value||'').trim());
       }, delay);
     });
   }
 }
+
+/* Drill-down dispatcher: zonder zoekterm -> clubs; met zoekterm -> teams (plat) */
+function _elfRender(players, resultsEl, q){
+  if(q) _elfShowTeamTiles(players, resultsEl, q);
+  else _elfShowClubTiles(players, resultsEl, '');
+}
+let _elfCurClub = '';
 
 function _elfBuildTeamMap(players){
   const teamMap = new Map();
@@ -12407,12 +12790,78 @@ function _elfTeamColor(elftal){
   return 'elf-tile-red';
 }
 
-function _elfShowTeamTiles(players, resultsEl, query){
+function _elfShowClubTiles(players, resultsEl, query){
   if(!resultsEl) return;
+  _elfCurClub = '';
+  const teamMap = _elfBuildTeamMap(players);
+  const q = (query||'').toLowerCase();
+  const clubMap = new Map();
+  [...teamMap.values()].filter(t => t.elftal).forEach(t => {
+    const key = _shNormTeamKey(t.club);
+    if(!clubMap.has(key)) clubMap.set(key, { club: t.club, teams: [], players: 0, nR: 0, nO: 0 });
+    const c = clubMap.get(key);
+    c.teams.push(t);
+    c.players += t.players.length;
+    c.nR += t.players.filter(p => p.rapport_type !== 'observatie').length;
+    c.nO += t.players.filter(p => p.rapport_type === 'observatie').length;
+  });
+  let clubs = [...clubMap.values()];
+  if(q) clubs = clubs.filter(c => c.club.toLowerCase().includes(q));
+  clubs.sort((a,b) => a.club.localeCompare(b.club,'nl'));
+
+  if(!clubs.length){
+    resultsEl.innerHTML = `<div class="elf-empty">${q ? 'Geen clubs gevonden voor <strong>'+escapeHtml(query)+'</strong>.' : 'Nog geen spelers gescout.'}</div>`;
+    return;
+  }
+
+  let html = `<div class="elf-section-label">Clubs <span class="elf-section-count">${clubs.length}</span></div>`;
+  html += '<div class="elf-tiles-grid">';
+  clubs.forEach(c => {
+    html += `<div class="elf-tile elf-tile-clublvl" data-elf-clubname="${escapeAttr(c.club)}">
+  <div class="elf-tile-club">${escapeHtml(c.club)}</div>
+  <div class="elf-tile-elftal">${c.teams.length} team${c.teams.length===1?'':'s'}</div>
+  <div class="elf-tile-seen">${c.players} speler${c.players===1?'':'s'} gezien</div>
+  <div class="elf-tile-footer">
+    <span class="elf-tile-badges">${c.nR?'<span class="elf-tbadge elf-tbadge-r">'+c.nR+'R</span>':''}${c.nO?'<span class="elf-tbadge elf-tbadge-o">'+c.nO+'O</span>':''}</span>
+    <span class="elf-ua-arrow">›</span>
+  </div>
+</div>`;
+  });
+  html += '</div>';
+
+  const unassigned = players.filter(p => !(p.elftal||deriveElftalFromReport(p)||'').trim());
+  if(unassigned.length && !q){
+    html += '<div class="elf-unassigned-row" id="elf-unassigned-btn"><span>&#9679; '+unassigned.length+' speler'+(unassigned.length===1?'':'s')+' zonder elftal</span><span class="elf-ua-arrow">›</span></div>';
+  }
+
+  resultsEl.innerHTML = html;
+  resultsEl.querySelectorAll('.elf-tile[data-elf-clubname]').forEach(tile => {
+    tile.addEventListener('click', () => _elfOpenClub(tile.dataset.elfClubname));
+  });
+  const uaBtn = resultsEl.querySelector('#elf-unassigned-btn');
+  if(uaBtn) uaBtn.addEventListener('click', window._elfOpenUnassigned);
+}
+
+function _elfOpenClub(club){
+  const resultsEl = document.getElementById('elf-results');
+  if(resultsEl) _elfShowTeamTiles(loadPlayers(), resultsEl, '', club);
+}
+window._elfOpenClub = _elfOpenClub;
+
+window._elfBackToClubs = function(){
+  const inp = document.getElementById('elf-search-input'); if(inp) inp.value = '';
+  const resultsEl = document.getElementById('elf-results');
+  if(resultsEl) _elfShowClubTiles(loadPlayers(), resultsEl, '');
+};
+
+function _elfShowTeamTiles(players, resultsEl, query, clubFilter){
+  if(!resultsEl) return;
+  _elfCurClub = clubFilter || '';
   const teamMap = _elfBuildTeamMap(players);
   const q = query.toLowerCase();
 
   let teams = [...teamMap.values()].filter(t => t.elftal);
+  if(clubFilter) teams = teams.filter(t => _shNormTeamKey(t.club) === _shNormTeamKey(clubFilter));
   if(q) teams = teams.filter(t => t.club.toLowerCase().includes(q) || t.elftal.toLowerCase().includes(q));
   teams.sort((a,b) => { const cl = a.club.localeCompare(b.club,'nl'); return cl !== 0 ? cl : a.elftal.localeCompare(b.elftal,'nl'); });
 
@@ -12421,7 +12870,15 @@ function _elfShowTeamTiles(players, resultsEl, query){
     return;
   }
 
-  let html = `<div class="elf-section-label">Elftallen <span class="elf-section-count">${teams.length}</span></div>`;
+  let html = '';
+  if(clubFilter){
+    html += `<div class="elf-back-bar">
+  <button class="elf-back-btn" onclick="window._elfBackToClubs()">&#8592; Clubs</button>
+  <div class="elf-back-info"><div class="elf-back-elftal">${escapeHtml(clubFilter)}</div></div>
+  <div class="elf-back-count">${teams.length} team${teams.length===1?'':'s'}</div>
+</div>`;
+  }
+  html += `<div class="elf-section-label">Elftallen <span class="elf-section-count">${teams.length}</span></div>`;
   html += '<div class="elf-tiles-grid">';
   teams.forEach(t => {
     const nR = t.players.filter(p => p.rapport_type !== 'observatie').length;
@@ -12440,7 +12897,7 @@ function _elfShowTeamTiles(players, resultsEl, query){
   html += '</div>';
 
   const unassigned = players.filter(p => !(p.elftal||deriveElftalFromReport(p)||'').trim());
-  if(unassigned.length && !q){
+  if(unassigned.length && !q && !clubFilter){
     html += '<div class="elf-unassigned-row" id="elf-unassigned-btn"><span>&#9679; '+unassigned.length+' speler'+(unassigned.length===1?'':'s')+' zonder elftal</span><span class="elf-ua-arrow">›</span></div>';
   }
 
@@ -12526,7 +12983,10 @@ window._elfBackToTiles = function(){
   const input = document.getElementById('elf-search-input');
   const q = (input?.value||'').trim();
   const resultsEl = document.getElementById('elf-results');
-  if(resultsEl) _elfShowTeamTiles(loadPlayers(), resultsEl, q);
+  if(!resultsEl) return;
+  if(_elfCurClub && !q) _elfShowTeamTiles(loadPlayers(), resultsEl, '', _elfCurClub);
+  else if(q) _elfShowTeamTiles(loadPlayers(), resultsEl, q);
+  else _elfShowClubTiles(loadPlayers(), resultsEl, '');
 };
 
 /* C1: _elfDoSearch (ongebruikt) verwijderd. */
@@ -14236,20 +14696,28 @@ function renderDetailObsOverview(p){
     } catch(_){}
   }
 
-  // Onderdeel 4 — chips + notitie per categorie tonen (indien aanwezig)
+  // Onderdeel 4 — chips + notitie per categorie tonen (indien aanwezig).
+  // Zelfde chip-grootte/stijl als het spelersrapport: gevulde .obs-tag[data-rating]
+  // pills (groen/oranje/rood) in een flex-rij, i.p.v. kleine emoji-dot + tekst.
   let _obsTagsHtml = '';
   {
     const _cn = (p.category_notes && typeof p.category_notes === 'object') ? p.category_notes : {};
     const _byCat = {};
-    (Array.isArray(p.tags)?p.tags:[]).forEach(function(t){ const c=String(t.category||'').toLowerCase(); if(!c||!t.label) return; (_byCat[c]=_byCat[c]||[]).push((t.rating==='good'?'🟢':t.rating==='average'?'🟠':t.rating==='poor'?'🔴':'⚪')+' '+t.label); });
+    (Array.isArray(p.tags)?p.tags:[]).forEach(function(t){ const c=String(t.category||'').toLowerCase(); if(!c||!t.label) return; (_byCat[c]=_byCat[c]||[]).push(t); });
     const _allCats = [];
     Object.keys(_byCat).forEach(function(c){ if(_allCats.indexOf(c)<0) _allCats.push(c); });
     Object.keys(_cn).forEach(function(c){ if(_cn[c] && _allCats.indexOf(c)<0) _allCats.push(c); });
     if(_allCats.length){
       _obsTagsHtml = '<div class="obs-tags-summary" style="margin-bottom:12px;">' + _allCats.map(function(c){
-        const chips = (_byCat[c]||[]).join('  ');
+        const chips = (_byCat[c]||[]).map(function(t){
+          return '<span class="obs-tag"'+(t.rating?(' data-rating="'+escapeAttr(t.rating)+'"'):'')+'>'+escapeHtml(t.label||'')+'</span>';
+        }).join('');
         const note = (_cn[c]||'').trim();
-        return '<div class="bnd-cat" style="margin-bottom:6px;"><span class="bnd-cat-label" style="font-weight:600;text-transform:uppercase;font-size:11px;opacity:.7;margin-right:6px;">'+escapeHtml(c)+'</span>'+escapeHtml(chips)+(note?'<div style="font-size:12px;color:var(--text-2,#9aa8bd);margin-top:2px;">'+escapeHtml(note)+'</div>':'')+'</div>';
+        return '<div class="bnd-cat" style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(168,85,247,.12);">'
+          +'<div class="bnd-cat-label" style="font-weight:700;text-transform:uppercase;font-size:11px;color:#a855f7;letter-spacing:.7px;margin-bottom:7px;">'+escapeHtml(c)+'</div>'
+          +(chips?'<div class="rep-tw-chips" style="display:flex;flex-wrap:wrap;gap:7px;">'+chips+'</div>':'')
+          +(note?'<div style="font-size:13px;color:var(--text-2,#9aa8bd);margin-top:7px;line-height:1.5;">'+escapeHtml(note)+'</div>':'')
+          +'</div>';
       }).join('') + '</div>';
     }
   }
@@ -14450,6 +14918,13 @@ function renderDetailOverview(p){
     : null;
   const mode = selectedReport ? 'single-report'
              : (reportCount >= 2 ? 'average' : 'player-record');
+  /* OPDRACHT 1: speler met precies 1 rapport (of profiel zonder losse rapporten)
+     → open DIRECT het volledige rapport, geen tussen-/voorrapport. Bij ≥2 rapporten
+     blijft het gemiddelde-overzicht + uitklapmenu bestaan. */
+  if(mode !== 'average' && !window.__shForceOverview){
+    renderDetailFullReport(selectedReport ? buildPlayerFromReport(p, selectedReport) : p);
+    return;
+  }
   let vp = p;
   if(mode === 'single-report') vp = buildPlayerFromReport(p, selectedReport);
   else if(mode === 'average')  vp = buildAvgPlayer(p);
@@ -14774,12 +15249,12 @@ function renderDetailOverview(p){
     try { await deletePlayer(p.id); go(previousViewBeforePlayer || 'database'); if(typeof toast==='function') toast('Rapport verwijderd'); }
     catch(err){ if(typeof toast==='function') toast('Verwijderen mislukt', true); }
   });
-  $('#dtl-pdf').addEventListener('click', () => generatePlayerPDF(p));
-  $('#dtl-edit').addEventListener('click', () => {
+  const _dtlPdf = $('#dtl-pdf'); if(_dtlPdf) _dtlPdf.addEventListener('click', () => generatePlayerPDF(p));
+  const _dtlEdit = $('#dtl-edit'); if(_dtlEdit) _dtlEdit.addEventListener('click', () => {
     go('report');
     loadIntoForm(p);
   });
-  $('#dtl-del').addEventListener('click', async () => {
+  const _dtlDel = $('#dtl-del'); if(_dtlDel) _dtlDel.addEventListener('click', async () => {
     // v70h-s27: harde dubbele bevestiging — eerst waarschuwing, dan naam typen.
     const naam = (p.naam || '').trim() || 'onbekende speler';
     const warn = [
@@ -14882,6 +15357,10 @@ function renderDetailObsCard(p){
   if(!wrap) return;
   wrap.innerHTML = '';
   const isObs = p.rapport_type === 'observatie';
+  // Deze paarse "Observatie"-kaart hoort UITSLUITEND bij observatie-records.
+  // Rapport-spelers (1 of meerdere/gemiddelde rapporten) tonen hun eigen
+  // rapport-content (radar + Beoordeling per onderdeel) en GEEN observatie-kaart.
+  if(!isObs) return;
 
   const _wd = p.wedstrijd || (p.rapport && p.rapport.wedstrijd) || {};
   const wDatum = (p.wedstrijd_datum || _wd.datum || p.datum || '').trim();
@@ -14889,7 +15368,11 @@ function renderDetailObsCard(p){
   const wUit   = (p.wedstrijd_uit   || _wd.uit   || '').trim();
 
   let tekst = (p.notities_raw || p.notities || p.opmerkingen || '').trim();
-  if(!tekst && typeof programmaCache !== 'undefined'){
+  // Chips + categorie-notities meenemen zodat dit blok er net zo uitziet als de
+  // prefill van het observatieformulier (gekleurde chips per categorie).
+  let _obsTags = Array.isArray(p.tags) ? p.tags.slice() : [];
+  let _obsCatNotes = (p.category_notes && typeof p.category_notes === 'object') ? Object.assign({}, p.category_notes) : {};
+  if((!tekst || !_obsTags.length) && typeof programmaCache !== 'undefined'){
     try {
       const pId = p.id||'', pNm = (p.naam||'').toLowerCase().trim();
       outer: for(const prog of programmaCache){
@@ -14897,7 +15380,12 @@ function renderDetailObsCard(p){
         for(const sn of prog.snelnotities){
           if(!sn) continue;
           const hit=(pId&&(sn.player_id===pId||sn.__convertedToPlayerId===pId))||(pNm&&(sn.naam||'').toLowerCase().trim()===pNm);
-          if(hit&&sn.tekst){tekst=sn.tekst.trim();break outer;}
+          if(hit){
+            if(!tekst && sn.tekst) tekst = sn.tekst.trim();
+            if(!_obsTags.length && Array.isArray(sn.tags) && sn.tags.length) _obsTags = sn.tags.slice();
+            if(!Object.keys(_obsCatNotes).length && sn.category_notes && typeof sn.category_notes === 'object') _obsCatNotes = Object.assign({}, sn.category_notes);
+            if(tekst && _obsTags.length) break outer;
+          }
         }
       }
     }catch(_){}
@@ -14905,7 +15393,7 @@ function renderDetailObsCard(p){
   if(!tekst&&window.__shSnTekstMap){
     tekst=window.__shSnTekstMap[p.id]||window.__shSnTekstMap['n:'+(p.naam||'').toLowerCase().trim()]||'';
   }
-  if(!wDatum&&!wThuis&&!tekst) return;
+  if(!wDatum&&!wThuis&&!tekst&&!_obsTags.length) return;
 
   const _LABELS={techniek:'Techniek',inzicht:'Inzicht',mentaliteit:'Mentaliteit',
     explosiviteit:'Explosiviteit',sprinten:'Sprinten',duelleren:'Duelleren',
@@ -14934,12 +15422,46 @@ function renderDetailObsCard(p){
 
   const overigHtml=overig.length?'<div style="margin-top:10px;font-size:12.5px;color:var(--text-2);line-height:1.6;border-top:1px solid rgba(168,85,247,.12);padding-top:10px;">'+escapeHtml(overig.join(' '))+'</div>':'';
 
+  // Chips per categorie tonen — zelfde look als de prefill van het observatieformulier:
+  // gekleurde trefwoord-chips (🟢 goed / 🟠 gemiddeld / 🔴 ondermaats) + categorie-notitie.
+  // Categorie-volgorde gelijk aan het observatieformulier.
+  let _obsChipsHtml = '';
+  {
+    const _catOrder = ['mentaliteit','techniek','snelheid','fysiek','inzicht'];
+    const _catLabels = {mentaliteit:'Mentaliteit',techniek:'Techniek',snelheid:'Snelheid',fysiek:'Fysiek',inzicht:'Inzicht'};
+    const _byCat = {};
+    _obsTags.forEach(function(t){
+      if(!t) return;
+      const c=String(t.category||'').toLowerCase();
+      if(!c||!t.label) return;
+      (_byCat[c]=_byCat[c]||[]).push(t);
+    });
+    const _cats=[];
+    _catOrder.forEach(function(c){ if(_byCat[c]||_obsCatNotes[c]) _cats.push(c); });
+    Object.keys(_byCat).forEach(function(c){ if(_cats.indexOf(c)<0) _cats.push(c); });
+    Object.keys(_obsCatNotes).forEach(function(c){ if(_obsCatNotes[c]&&_cats.indexOf(c)<0) _cats.push(c); });
+    if(_cats.length){
+      _obsChipsHtml = _cats.map(function(c){
+        const chips=(_byCat[c]||[]).map(function(t){
+          return '<span class="obs-tag"'+(t.rating?(' data-rating="'+escapeAttr(t.rating)+'"'):'')+'>'+escapeHtml(t.label||'')+'</span>';
+        }).join('');
+        const note=(_obsCatNotes[c]||'').trim();
+        return '<div style="padding:9px 0;border-bottom:1px solid rgba(168,85,247,.12);">'
+          +'<div style="font-size:10.5px;font-weight:700;color:#a855f7;text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;">'+escapeHtml(_catLabels[c]||(c.charAt(0).toUpperCase()+c.slice(1)))+'</div>'
+          +(chips?'<div class="rep-tw-chips" style="display:flex;flex-wrap:wrap;gap:6px;">'+chips+'</div>':'')
+          +(note?'<div style="font-size:12.5px;color:var(--text);line-height:1.5;margin-top:6px;">'+escapeHtml(note)+'</div>':'')
+          +'</div>';
+      }).join('');
+    }
+  }
+  const bodyHtml = _obsChipsHtml || rowsHtml;
+
   // BATCH 1 / 1C — observatie blijft observatie: geen 'Maak spelersrapport'-knop
   // meer in de alleen-lezen weergave.
   const rapportBtn='';
 
   wrap.innerHTML=
-    '<div class="card compare-card" style="margin-bottom:16px;border-left:3px solid #a855f7;background:rgba(168,85,247,.04);">'
+    '<div class="card compare-card report-trefwoorden" style="margin-bottom:16px;border-left:3px solid #a855f7;background:rgba(168,85,247,.04);">'
       +'<div class="compare-card-title" style="border-bottom:1px solid rgba(168,85,247,.15);">'
         +'<span style="display:flex;align-items:center;gap:8px;">'
           +'<span style="width:8px;height:8px;border-radius:50%;background:#a855f7;flex-shrink:0;"></span>'
@@ -14948,7 +15470,7 @@ function renderDetailObsCard(p){
         +(subStr?'<span class="compare-card-sub">'+subStr+'</span>':'')
       +'</div>'
       +'<div style="padding:4px 16px 16px;">'
-        +(rowsHtml||'<div style="font-size:12px;color:var(--text-3);padding:12px 0;">Geen criteria ingevuld.</div>')
+        +(bodyHtml||'<div style="font-size:12px;color:var(--text-3);padding:12px 0;">Geen criteria ingevuld.</div>')
         +overigHtml
         +rapportBtn
       +'</div>'
@@ -15761,7 +16283,16 @@ function renderDetailFullReport(p){
   `;
   if(typeof renderDetailPizza === 'function') renderDetailPizza(p);
   if(typeof renderDetailBars === 'function') renderDetailBars(p);
-  $('#dtl-back-overview')?.addEventListener('click', ()=> renderDetailOverview(p));
+  $('#dtl-back-overview')?.addEventListener('click', ()=>{
+    /* OPDRACHT 1: bij <2 rapporten is er geen overzicht meer → terug naar de vorige lijst */
+    const _rc = (typeof reportsForPlayer === 'function') ? reportsForPlayer(p.id).length : 0;
+    if(_rc >= 2){
+      window.__shForceOverview = true;
+      try { renderDetailOverview(p); } finally { window.__shForceOverview = false; }
+    } else {
+      go(previousViewBeforePlayer || 'database');
+    }
+  });
   $(`#del-${p.id}`)?.addEventListener('click', async ()=>{
     if(confirm('Dit rapport verwijderen?')){
       await deletePlayer(p.id);
@@ -16646,6 +17177,41 @@ function normAge(s){
   return m ? ('O.' + m[1]) : s;
 }
 
+// s94: één bron-van-waarheid voor "wedstrijd volledig verwerkt" — gebruikt door
+// zowel de teller-tegels als de groene gloed op de kaart. Spiegelt exact de
+// logica in de render-loop (programma- én aggregated-tak) zodat de cijfers
+// nooit meer uit elkaar lopen.
+function _shMatchFullyVerwerkt(m){
+  try {
+    if(!m) return false;
+    if(m.kind === 'programma'){
+      const progP = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === m.progId) : null;
+      const spelers = progP ? (progP.spelers || []) : [];
+      const sns = progP ? (progP.snelnotities || []) : [];
+      const wstr = progP ? progP.wedstrijdrapport : null;
+      const linkedKeys = new Set(spelers.map(sp => sp && sp.id).filter(Boolean));
+      const allObsIngediend = sns.filter(sn => sn && sn.naam && !linkedKeys.has(sn.spelerKey)).every(sn => sn.ingediend);
+      const allSpVerwerkt = spelers.length === 0 ? true : spelers.every(sp => {
+        const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(m.progId, sp.id) : null;
+        return concept && !_shPlayerIsConcept(concept);
+      });
+      const mrForMatch = (typeof matchReportsCache !== 'undefined') ? matchReportsCache.find(mr => {
+        if(!mr) return false;
+        const _d = (mr.datum||'').trim(); const _th = (mr.thuis||'').toLowerCase().trim(); const _ut = (mr.uit||'').toLowerCase().trim();
+        const _md = (progP && progP.datum||'').trim(); const _mt = (progP && progP.thuis||'').toLowerCase().trim(); const _mu = (progP && progP.uit||'').toLowerCase().trim();
+        return _d === _md && (_th === _mt || _mt.startsWith(_th) || _th.startsWith(_mt)) && (_ut === _mu || _mu.startsWith(_ut) || _ut.startsWith(_mu));
+      }) : null;
+      const wstrVerwerkt = (wstr && (wstr.status === 'ingediend' || wstr.status === 'verwerkt')) || !!mrForMatch;
+      const hasItems = spelers.length > 0 || !!wstr || sns.some(sn => sn && sn.naam);
+      return !!(hasItems && allSpVerwerkt && wstrVerwerkt && allObsIngediend);
+    }
+    // aggregated-tak
+    const isVerwerktA = (typeof shIsWedstrijdVerwerkt === 'function') ? shIsWedstrijdVerwerkt(_shMatchKey(m)) : false;
+    const allIngediendA = Array.isArray(m.players) && m.players.length > 0 && m.players.every(pl => !_shPlayerIsConcept(pl));
+    return !!(isVerwerktA || allIngediendA);
+  } catch(_){ return false; }
+}
+
 function renderMatches(){
   const players = loadPlayers();
   let matches = aggregateMatches(players).map(m => ({...m, kind: 'aggregated'}));
@@ -16668,7 +17234,7 @@ function renderMatches(){
         const _isLockedOrPast = (typeof _shIsMatchLocked === 'function' && _shIsMatchLocked(p))
           || (!p.tijd && _d <= _dNow);
         if(!_isLockedOrPast) return;
-        const _pm = { datum: p.datum, thuis: p.thuis, uit: p.uit, age: p.leeftijd||'', kind:'programma', progId:p.id, id:p.id, players:[] };
+        const _pm = { datum: p.datum, tijd: p.tijd||'', thuis: p.thuis, uit: p.uit, age: p.leeftijd||'', kind:'programma', progId:p.id, id:p.id, players:[] };
         const _k = _shMatchKey(_pm);
         if(!_existK.has(_k)){ matches.push(_pm); _existK.add(_k); }
       });
@@ -16677,8 +17243,8 @@ function renderMatches(){
 
   // s18b: stats vóór filtering (totalen op volledige set — geen 'report' meer)
   const _statTotal = matches.length;
-  const _statVerwerkt = matches.filter(m => m.kind === 'aggregated').length;
-  const _statNogVerwerken = matches.filter(m => (m.kind === 'aggregated' || m.kind === 'programma') && !shIsWedstrijdVerwerkt(_shMatchKey(m))).length;
+  const _statVerwerkt = matches.filter(m => _shMatchFullyVerwerkt(m)).length;
+  const _statNogVerwerken = _statTotal - _statVerwerkt;
   const _setText = (id, n) => { const el = document.getElementById(id); if(el) el.textContent = n; };
   _setText('m-stat-total', _statTotal);
   _setText('m-stat-verwerkt', _statVerwerkt);
@@ -16747,11 +17313,29 @@ function renderMatches(){
     matches = matches.filter(m => Array.isArray(m.players) && m.players.some(pl => pl && pl.is_opvallend));
   }
 
-  // Sort
+  // Sort — dag-niveau eerst (nieuwste dag boven), dan BINNEN de dag op aftraptijd
+  // (laatste wedstrijd boven, vroegste onderaan). Tijd komt uit het item zelf of
+  // wordt opgezocht in programmaCache op datum+thuis+uit.
+  const _matchTime = (m) => {
+    let t = (m.tijd||'').trim();
+    if(!t && typeof programmaCache !== 'undefined' && Array.isArray(programmaCache)){
+      const _th = (m.thuis||'').toLowerCase().trim(), _ut = (m.uit||'').toLowerCase().trim();
+      const pp = programmaCache.find(p => p && p.datum===m.datum
+        && (p.thuis||'').toLowerCase().trim()===_th
+        && (p.uit||'').toLowerCase().trim()===_ut);
+      if(pp) t = (pp.tijd||'').trim();
+    }
+    return t;
+  };
   matches.sort((a,b)=>{
-    const da = new Date(a.datum).getTime() || 0;
-    const db = new Date(b.datum).getTime() || 0;
-    return sortMode === 'oldest' ? da - db : db - da;
+    const da = new Date((a.datum||'')+'T00:00:00').getTime() || 0;
+    const db = new Date((b.datum||'')+'T00:00:00').getTime() || 0;
+    if(da !== db) return sortMode === 'oldest' ? da - db : db - da;
+    // Zelfde dag: sorteer op tijd. Items zonder tijd onderaan.
+    const ta = _matchTime(a) || (sortMode === 'oldest' ? '99:99' : '');
+    const tb = _matchTime(b) || (sortMode === 'oldest' ? '99:99' : '');
+    const c = (ta||'00:00').localeCompare(tb||'00:00');
+    return sortMode === 'oldest' ? c : -c;
   });
 
   $('#matches-count').textContent =
@@ -16813,11 +17397,6 @@ function renderMatches(){
       const _linkedKeys = new Set(_spelers.map(sp => sp && sp.id).filter(Boolean));
       // Ingediende obs tellen NIET mee als "openstaand" — alleen nog-niet-ingediende obs
       const _unlinkedSns = _sns.filter(sn => sn && sn.naam && !_linkedKeys.has(sn.spelerKey) && !sn.ingediend);
-      const _allObsIngediend = _sns.filter(sn => sn && sn.naam && !_linkedKeys.has(sn.spelerKey)).every(sn => sn.ingediend);
-      const _allSpVerwerkt = _spelers.length === 0 ? true : _spelers.every(sp => {
-        const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(m.progId, sp.id) : null;
-        return concept && !_shPlayerIsConcept(concept);
-      });
       // Check ook matchReportsCache: als er een report bestaat voor deze wedstrijd, is het ingediend
       const _mrForMatch = (typeof matchReportsCache !== 'undefined') ? matchReportsCache.find(mr => {
         if(!mr) return false;
@@ -16826,9 +17405,9 @@ function renderMatches(){
         return _d === _md && (_th === _mt || _mt.startsWith(_th) || _th.startsWith(_mt)) && (_ut === _mu || _mu.startsWith(_ut) || _ut.startsWith(_mu));
       }) : null;
       const _wstrVerwerkt = (_wstr && (_wstr.status === 'ingediend' || _wstr.status === 'verwerkt')) || !!_mrForMatch;
-      // groen vinkje: items aanwezig + alles ingediend/verwerkt
+      // groen vinkje: items aanwezig + alles ingediend/verwerkt (s94: gedeelde helper)
       const _hasItems = _spelers.length > 0 || !!_wstr || _sns.some(sn => sn && sn.naam);
-      const _allVerwerkt = _hasItems && _allSpVerwerkt && _wstrVerwerkt && _allObsIngediend;
+      const _allVerwerkt = _shMatchFullyVerwerkt(m);
       // s93: dropdown rows
       let _dropRows = '';
       // Spelersrapporten
@@ -16967,25 +17546,32 @@ function renderMatches(){
     const countMeta = `<span class="match-players-count">${m.players.length} rapport${m.players.length===1?'':'en'}</span>`;
     const chevron = `<span class="match-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;
     const dropdownRows = m.players.map(pl => {
-      const initials = (pl.naam || '?').split(/\s+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+      const isObs2 = pl.rapport_type === 'observatie';
+      // OBS: naam óf rugnummer/omschrijving als fallback; rapport: altijd volledige naam
+      const _rug = (pl.rugnummer || pl.rugnr || pl.nummer || '').toString().trim();
+      const _oms = (pl.omschrijving || pl.naam_omschrijving || '').toString().trim();
+      const dispNaam = (pl.naam && pl.naam.trim())
+        ? pl.naam.trim()
+        : (isObs2 ? (_rug ? ('#' + _rug) : (_oms || 'Observatie')) : (pl.naam || '—'));
+      const initials = (dispNaam || '?').replace(/^#/,'').split(/\s+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
       const posLabel = (typeof positionLabel === 'function' ? (positionLabel(pl.positie) || pl.positie || '') : (pl.positie || ''));
       const sub = [posLabel, pl.club].filter(Boolean).join(' • ');
       const hg = pl.huidig_niveau || 'D';
       const pg = pl.potentieel_niveau || 'D';
       const isConcept = _shPlayerIsConcept(pl);
-      const isObs2 = pl.rapport_type === 'observatie';
+      const typeClass = isObs2 ? 'mdr-type-obs' : 'mdr-type-rapport';
       const typeLabel2 = isObs2 
-        ? `<span style="font-size:10px;background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3);border-radius:4px;padding:1px 6px;">OBS</span>`
-        : `<span style="font-size:10px;background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25);border-radius:4px;padding:1px 6px;">Rapport</span>`;
+        ? `<span class="mdr-type-pill mdr-pill-obs">OBS</span>`
+        : `<span class="mdr-type-pill mdr-pill-rapport">Rapport</span>`;
       const conceptBadge = isConcept ? `<span class="mdr-concept-badge">Concept</span>` : `<span style="font-size:10px;color:var(--text-3);">✓ Ingediend</span>`;
       const submitBtn = isConcept ? `<button type="button" class="mdr-submit" data-mdr-submit="${escapeHtml(pl.id)}" title="Direct indienen">→ Indienen</button>` : '';
       const _plNotities = (pl.notities_raw || pl.notities || pl.opmerkingen || '').trim();
       const _plNoteSnippet = _plNotities ? escapeHtml(_plNotities.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' · ').trim().slice(0,80)) + (_plNotities.length > 80 ? '…' : '') : '';
       return `
-        <button type="button" class="match-dropdown-row${isConcept?'':' submitted-glow-row'}" data-player-id="${escapeHtml(pl.id)}">
+        <button type="button" class="match-dropdown-row ${typeClass}${isConcept?'':' is-ingediend'}" data-player-id="${escapeHtml(pl.id)}">
           <span class="match-dropdown-avatar">${escapeHtml(initials || '?')}</span>
           <span class="match-dropdown-info">
-            <span class="match-dropdown-name">${escapeHtml(pl.naam || '—')}${conceptBadge}</span>
+            <span class="match-dropdown-name"><span class="mdr-name-txt">${escapeHtml(dispNaam || '—')}</span>${typeLabel2}${conceptBadge}</span>
             ${sub ? `<span class="match-dropdown-pos">${escapeHtml(sub)}</span>` : ''}
             ${_plNoteSnippet ? `<span style="font-size:12px;color:var(--text-2,#94a3b8);display:block;margin-top:2px;line-height:1.4;">${_plNoteSnippet}</span>` : ''}
           </span>
@@ -17001,9 +17587,47 @@ function renderMatches(){
     {
       const _shKeyA = _shMatchKey(m);
       const _shIsVerwerktA = shIsWedstrijdVerwerkt(_shKeyA);
+      // OPDRACHT 2: groene rand zodra alle rapporten in deze wedstrijd zijn ingediend (s94: gedeelde helper)
+      const _glowA = _shMatchFullyVerwerkt(m);
       const _shBan = _shBannerHTML(m);
+      // Wedstrijdrapport-blok (geel) — uniform met rapport(groen)/obs(paars) blokken
+      let _wstrRow = '';
+      let _hasWstr = false;
+      try {
+        const _lp = (typeof _shFindLinkedPrograms === 'function') ? _shFindLinkedPrograms(m) : [];
+        const _wpProg = _lp.find(p => p && p.wedstrijdrapport && p.wedstrijdrapport.status);
+        if(_wpProg){
+          _hasWstr = true;
+          const _wr = _wpProg.wedstrijdrapport;
+          const _wrIngediend = (_wr.status === 'ingediend' || _wr.status === 'verwerkt');
+          const _wrBadge = _wrIngediend
+            ? `<span style="font-size:10px;color:var(--text-3);">\u2713 Ingediend</span>`
+            : `<span class="mdr-concept-badge">Concept</span>`;
+          const _wrOpm = (_wr.opmerking || _wr.tekst || '').trim();
+          _wstrRow = `
+            <button type="button" class="match-dropdown-row mdr-type-wedstrijd${_wrIngediend?' is-ingediend':''}" data-wstr-prog="${escapeHtml(_wpProg.id)}">
+              <span class="match-dropdown-avatar">WR</span>
+              <span class="match-dropdown-info">
+                <span class="match-dropdown-name">Wedstrijdrapport</span>
+                <span style="display:block;margin-top:2px;">${_wrBadge}</span>
+                ${_wrOpm ? `<span style="font-size:12px;color:var(--text-2,#94a3b8);display:block;margin-top:2px;line-height:1.4;">${escapeHtml(_wrOpm.replace(/\n+/g,' \u00b7 ').trim().slice(0,80))}${_wrOpm.length>80?'\u2026':''}</span>` : ''}
+              </span>
+              <svg class="match-dropdown-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>`;
+        }
+      } catch(_){}
+      // Mix-teller: tel per type (rapport · observatie · wedstrijdrapport)
+      const _nObs = m.players.filter(pl => pl && pl.rapport_type === 'observatie').length;
+      const _nRap = m.players.length - _nObs;
+      const _cntParts = [];
+      if(_nRap) _cntParts.push(`${_nRap} rapport${_nRap===1?'':'en'}`);
+      if(_nObs) _cntParts.push(`${_nObs} observatie${_nObs===1?'':'s'}`);
+      if(_hasWstr) _cntParts.push(`1 wedstrijdrapport`);
+      const countMetaTyped = _cntParts.length
+        ? `<span class="match-players-count">${_cntParts.join(' \u00b7 ')}</span>`
+        : countMeta;
       html += `
-        <div class="match-card expandable${_shIsVerwerktA?' locked':''}" data-match-id="${escapeHtml(m.id || (m.datum+'|'+m.thuis+'|'+m.uit))}" data-match-key="${escapeHtml(_shKeyA)}">
+        <div class="match-card expandable${_shIsVerwerktA?' locked':''}${_glowA?' submitted-glow':''}" data-match-id="${escapeHtml(m.id || (m.datum+'|'+m.thuis+'|'+m.uit))}" data-match-key="${escapeHtml(_shKeyA)}">
           <div class="match-date match-toggle">
             <div class="match-date-day">${d.day}</div>
             <div class="match-date-month">${d.month}</div>
@@ -17020,16 +17644,15 @@ function renderMatches(){
               ${chevron}
             </div>
             <div class="match-meta">
-              ${_shIsVerwerktA ? '<span class="match-status-pill verwerkt">✓ Verwerkt</span>' : ''}
+              ${_glowA ? '<span class="match-status-pill verwerkt">✓ Alles verwerkt</span>' : ''}
               ${opstellingMeta}
-              ${countMeta}
+              ${countMetaTyped}
             </div>
             ${_shBan}
           </div>
-          <div class="match-players">${playersChips}</div>
           <div class="match-dropdown">
-            <div class="match-dropdown-title">Rapporten — klik op een speler om te openen</div>
-            <div class="match-dropdown-list">${dropdownRows}</div>
+            <div class="match-dropdown-title">Klik op een blok om te openen</div>
+            <div class="match-dropdown-list">${dropdownRows}${_wstrRow}</div>
           </div>
         </div>
       `;
@@ -17080,45 +17703,42 @@ function renderMatches(){
       openDetail(chip.dataset.playerId);
     });
   });
-  // s35bt: aggregated niet-toernooi cards openen nu de Wedstrijd-bewerken modal
-  //        (gelijk aan report-cards). Toernooi-cards blijven inline uitklappen.
+  // OPDRACHT 2: aggregated wedstrijdkaarten klappen ALTIJD inline uit (nooit modal).
   list.querySelectorAll('.match-card.expandable').forEach(card => {
-    if(false){
-      // Originele expand-inline gedrag voor toernooi clusters
-      card.querySelectorAll('.match-toggle').forEach(el => {
-        el.addEventListener('click', (e)=>{
-          const wasOpen = card.classList.contains('open');
-          list.querySelectorAll('.match-card.open').forEach(c => { if(c !== card) c.classList.remove('open'); });
-          card.classList.toggle('open', !wasOpen);
-        });
-      });
-    } else {
-      // Aggregated wedstrijd -> opent Wedstrijd-bewerken modal
-      card.addEventListener('click', (e) => {
-        // Negeer kliks die uit interactieve children komen (chips, knoppen, dropdown-rijen)
-        const t = e.target;
-        if(t && t.closest && (
-            t.closest('.match-player-chip') ||
-            t.closest('.match-dropdown-row') ||
-            t.closest('.match-verwerk-toggle') ||
-            t.closest('[data-match-verwerk]') ||
-            t.closest('.mdr-submit') ||
-            t.closest('.m-snel-chip') ||
-            t.closest('button') ||
-            t.closest('a')
-        )) return;
-        const key = card.dataset.matchKey;
-        if(!key) return;
-        const m = _shFindMatchByKey(key);
-        if(!m){ if(typeof toast === 'function') toast('Wedstrijd niet gevonden', true); return; }
-        m.kind = 'aggregated';
-        _shOpenEditModal(m);
-      });
-    }
+    card.addEventListener('click', (e) => {
+      // Negeer kliks die uit interactieve children komen (chips, knoppen, dropdown-rijen)
+      const t = e.target;
+      if(t && t.closest && (
+          t.closest('.match-player-chip') ||
+          t.closest('.match-dropdown-row') ||
+          t.closest('.match-verwerk-toggle') ||
+          t.closest('[data-match-verwerk]') ||
+          t.closest('.mdr-submit') ||
+          t.closest('.m-snel-chip') ||
+          t.closest('button') ||
+          t.closest('a')
+      )) return;
+      const wasOpen = card.classList.contains('open');
+      list.querySelectorAll('.match-card.expandable.open').forEach(c => { if(c !== card) c.classList.remove('open'); });
+      card.classList.toggle('open', !wasOpen);
+    });
   });
   list.querySelectorAll('.match-dropdown-row').forEach(row => {
     row.addEventListener('click', (e)=>{
       e.stopPropagation();
+      if(row.dataset.wstrProg){
+        const pid = row.dataset.wstrProg;
+        const prog = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === pid) : null;
+        if(prog && typeof openMatchLiveForm === 'function'){
+          openMatchLiveForm(prog, { mode: 'rapport' });
+        } else if(typeof openProgrammaWedstrijdrapport === 'function'){
+          openProgrammaWedstrijdrapport(pid);
+        } else if(prog){
+          _shOpenEditModal({...prog, kind:'programma', progId:prog.id});
+        }
+        return;
+      }
+      if(!row.dataset.playerId) return;
       openDetail(row.dataset.playerId);
     });
   });
@@ -17285,15 +17905,10 @@ function renderMatches(){
     if(btnWstrRapport){
       e.stopPropagation();
       const pid = btnWstrRapport.dataset.pmWstrRapport;
-      // Check of al ingediend → read-only
       const _progWr = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === pid) : null;
-      const _wrStatus = _progWr && _progWr.wedstrijdrapport ? _progWr.wedstrijdrapport.status : '';
-      if(_wrStatus === 'ingediend' || _wrStatus === 'verwerkt'){
-        // Read-only: zoek matchReport op datum+thuis
-        const _mr = (typeof matchReportsCache !== 'undefined')
-          ? matchReportsCache.find(r => r.datum === (_progWr.datum||'') && (r.thuis||'').toLowerCase() === (_progWr.thuis||'').toLowerCase())
-          : null;
-        if(typeof openMatchReportModal === 'function') openMatchReportModal(_mr ? _mr.id : '');
+      // OPDRACHT 4: open HETZELFDE wedstrijdnotitie-formulier (live), voor-ingevuld, met Indienen.
+      if(_progWr && typeof openMatchLiveForm === 'function'){
+        openMatchLiveForm(_progWr, { mode: 'rapport' });
       } else if(pid && typeof _shConvertWstrNotitieToRapport === 'function'){
         _shConvertWstrNotitieToRapport(pid, 0);
       }
@@ -17345,13 +17960,9 @@ function renderMatches(){
         e.stopPropagation();
         const progId_ro = btnWstrReadonly.dataset.pmWstrReadonly;
         const prog_ro = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === progId_ro) : null;
-        if(prog_ro && prog_ro.wedstrijdrapport){
-          const wr = prog_ro.wedstrijdrapport;
-          // Zoek matchReport id in matchReportsCache op datum+thuis
-          const mrId = (typeof matchReportsCache !== 'undefined')
-            ? (matchReportsCache.find(r => r.datum === prog_ro.datum && (r.thuis||'').toLowerCase() === (prog_ro.thuis||'').toLowerCase())?.id || '')
-            : '';
-          if(typeof openMatchReportModal === 'function') openMatchReportModal(mrId || '');
+        // OPDRACHT 4: bekijk/bewerk hetzelfde wedstrijdnotitie-formulier (voor-ingevuld).
+        if(prog_ro && typeof openMatchLiveForm === 'function'){
+          openMatchLiveForm(prog_ro, { mode: 'rapport' });
         }
         return;
       }
@@ -19588,7 +20199,28 @@ function renderProgramma(){
       .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
     const hasItems = dayItems.length>0;
     const abbr     = DAY_NAMES_NL[(d.getDay()+6)%7].slice(0,2).toUpperCase();
-    const cardsHtml = dayItems.map(it=>evCardHTML(it,dStr)).join('');
+    // sh-v352: bij 2+ wedstrijden op een dag groeperen we per dagdeel
+    // (Ochtend/Middag/Avond) — geeft overzicht op drukke scoutdagen/toernooien.
+    const _dagdeel = (t) => {
+      if(!t) return 'Overig';
+      const h = parseInt(String(t).split(':')[0], 10);
+      if(isNaN(h)) return 'Overig';
+      if(h < 12) return 'Ochtend';
+      if(h < 17) return 'Middag';
+      return 'Avond';
+    };
+    let cardsHtml;
+    if(dayItems.length >= 2){
+      let _lastDd = '___';
+      cardsHtml = dayItems.map(it => {
+        const dd = _dagdeel(it.tijd);
+        let head = '';
+        if(dd !== _lastDd){ head = `<div class="pag-dagdeel">${dd}</div>`; _lastDd = dd; }
+        return head + evCardHTML(it, dStr);
+      }).join('');
+    } else {
+      cardsHtml = dayItems.map(it=>evCardHTML(it,dStr)).join('');
+    }
     return `<div class="pag-day${isToday?' is-today':''}${!hasItems?' is-empty':''}" data-pag-day="${i}">
       <div class="pag-day-head">
         <span class="pag-abbr">${abbr}</span>
@@ -19599,7 +20231,7 @@ function renderProgramma(){
       <div class="pag-day-body">
         ${cardsHtml||'<div class="pag-vrij">—</div>'}
       </div>
-      <button class="pag-add-day-btn" data-add-day="${dStr}" title="Toevoegen op ${abbr} ${d.getDate()}">+</button>
+      <button class="pag-add-day-btn" data-add-day="${dStr}" title="Toevoegen op ${abbr} ${d.getDate()}"><span class="pag-add-icon">+</span><span class="pag-add-txt">Inplannen</span></button>
     </div>`;
   }).join('');
 
@@ -20083,15 +20715,12 @@ function openProgMatchDetailModal(progId){
   if(_wstrRapBtn){
     _wstrRapBtn.addEventListener('click', () => {
       closeProgMatchDetailModal();
-      // Open wedstrijdrapport modal prefilled met eerste wedstrijdnotitie
-      if(typeof _shConvertWstrNotitieToRapport === 'function'){
+      // OPDRACHT 4: open HETZELFDE wedstrijdnotitie-formulier (live), voor-ingevuld, met Indienen.
+      const _prg = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === progId) : null;
+      if(_prg && typeof openMatchLiveForm === 'function'){
+        openMatchLiveForm(_prg, { mode: 'rapport' });
+      } else if(typeof _shConvertWstrNotitieToRapport === 'function'){
         _shConvertWstrNotitieToRapport(progId, 0);
-      } else if(typeof openMatchReportModal === 'function'){
-        openMatchReportModal(null, {
-          datum: it.datum, thuis: it.thuis, uit: it.uit,
-          leeftijd: it.leeftijd, locatie: it.locatie,
-          tekst: _wns.map(wn => (wn.tekst||'').trim()).filter(Boolean).join('\n\n')
-        });
       }
     });
   }
@@ -20157,6 +20786,19 @@ function openProgMatchModal(progId, defaultDate){
   if($('#pm-veld')) $('#pm-veld').value = it ? (it.veld||'') : '';
   $('#pm-notities').value = it ? (it.notities||'') : '';
   $('#pm-delete').style.display = it ? '' : 'none';
+  // sh-v352: "Meer details" standaard dicht bij nieuw; open bij bewerken als er
+  // niet-default secundaire info is (methode≠Live, type gekozen, of veld ingevuld).
+  try {
+    const moreEl = document.getElementById('pm-more-details');
+    if(moreEl){
+      const hasExtra = !!it && (
+        (it.methode && it.methode !== 'Live') ||
+        (it.info && String(it.info).trim()) ||
+        (it.veld && String(it.veld).trim())
+      );
+      moreEl.open = !!hasExtra;
+    }
+  } catch(_){}
   /* s35cg: vul scout-dropdown als je coordinator/admin bent */
   try {
     if(typeof populateScoutDropdown === 'function'){
@@ -20256,6 +20898,13 @@ async function saveProgMatchFromForm(e){
   const _targetScoutUid = (_scoutSel && _scoutSel.value) ? _scoutSel.value : '';
   // s35dg Fase A: merge pending koppelingen uit het aanmaak-formulier.
   const existingSpelers = existing ? (existing.spelers || []) : [];
+  // BATCH: knop "Toevoegen aan plan" verwijderd — een nog-niet-toegevoegde
+  // handmatig getypte speler wordt alsnog meegenomen bij opslaan.
+  try {
+    const _vnP = ($('#pmpp-voornaam')?.value || '').trim();
+    const _anP = ($('#pmpp-achternaam')?.value || '').trim();
+    if(_vnP && _anP && typeof pmppAdd === 'function') pmppAdd();
+  } catch(_){}
   const pendingSpelers = Array.isArray(__pmPendingPlayers) ? __pmPendingPlayers.slice() : [];
   // Filter dubbele namen (zelfde voornaam+achternaam+geboorte) tov bestaande lijst
   const seen = new Set(existingSpelers.map(s =>
@@ -20287,7 +20936,9 @@ async function saveProgMatchFromForm(e){
     type: _pmType,
     naam: _pmNaam,
     tijd: $('#pm-tijd').value,
-    // s35be: leeftijd-veld weg (elftal nu per-club)
+    // sh-v352: leeftijd auto-afgeleid uit elftal (thuis voorrang, anders uit).
+    // Behoud bestaande waarde als beide elftallen leeg zijn.
+    leeftijd: _deriveLeeftijd(thuis_elftal) || _deriveLeeftijd(uit_elftal) || (existing ? (existing.leeftijd || '') : ''),
     methode: $('#pm-methode').value,
     info: $('#pm-info').value.trim(),
     thuis, uit, locatie,
@@ -21551,12 +22202,23 @@ function wireProgrammaUI(){
 const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+// sh-v353: body-scroll moet op ÁLLE mobiele/touch-apparaten gelockt worden
+// (niet alleen iOS). Anders scrollt bij een Android-PWA het scherm weg terwijl
+// je in een modal typt en lijkt het invulvenster "weg te vallen".
+function _shShouldLockBody(){
+  if(_isIOS) return true;
+  const touch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  return !!(touch && window.matchMedia && window.matchMedia('(max-width: 820px)').matches);
+}
+
 function showModal(id){
   const el = document.getElementById(id);
   if(!el) return;
   el.classList.add('open');
-  // iOS PWA only: vergrendel body-scroll zodat scherm niet mee scrollt bij toetsenbord
-  if(_isIOS){
+  // Vergrendel body-scroll zodat scherm niet mee-scrollt bij toetsenbord-open.
+  // Guard: niet overschrijven als er al een modal open is (anders gaat scrollY
+  // verloren bij gestapelde modals — body staat dan op top:-Ypx → scrollY=0).
+  if(_shShouldLockBody() && !document.body.classList.contains('modal-open')){
     document.body._modalScrollY = window.scrollY;
     document.body.style.top = '-' + window.scrollY + 'px';
     document.body.classList.add('modal-open');
@@ -21565,14 +22227,14 @@ function showModal(id){
 function hideModal(id){
   const el = document.getElementById(id);
   if(el) el.classList.remove('open');
-  if(_isIOS){
-    const anyOpen = document.querySelector('.modal-backdrop.open');
-    if(!anyOpen){
-      document.body.classList.remove('modal-open');
-      const scrollY = document.body._modalScrollY || 0;
-      document.body.style.top = '';
-      window.scrollTo(0, scrollY);
-    }
+  // Ontgrendel alleen als er geen enkele modal meer open is. Conditie op de
+  // class (niet op device) zodat de lock altijd netjes wordt opgeheven.
+  const anyOpen = document.querySelector('.modal-backdrop.open');
+  if(!anyOpen && document.body.classList.contains('modal-open')){
+    document.body.classList.remove('modal-open');
+    const scrollY = document.body._modalScrollY || 0;
+    document.body.style.top = '';
+    window.scrollTo(0, scrollY);
   }
 }
 
@@ -26432,7 +27094,7 @@ function _injectObsTrefwoorden(existingTags, existingNotes){
       return `<div class="obs-field-block"><span class="obs-field-label">${cat}</span><div class="obs-tags">${chips}</div><textarea class="obs-cat-note" data-cat-note="${cat.toLowerCase()}" rows="1" placeholder="Notitie (optioneel)...">${escapeHtml((existingNotes[cat.toLowerCase()]||''))}</textarea></div>`;
     }).join('');
   host.parentNode.insertBefore(wrap, host);
-  try { wrap.querySelectorAll('.obs-cat-note').forEach(ta => { const grow = () => { ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,120)+'px'; }; ta.addEventListener('input', grow); grow(); }); } catch(_){}
+  try { wrap.querySelectorAll('.obs-cat-note').forEach(ta => { const grow = () => { ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,120)+'px'; ta.style.overflowY=(ta.scrollHeight>120)?'auto':'hidden'; }; ta.addEventListener('input', grow); grow(); }); } catch(_){}
 }
 window._injectObsTrefwoorden = _injectObsTrefwoorden;
 
@@ -26934,7 +27596,7 @@ function _shUpdateConnBadge(){
   const online = (typeof navigator !== 'undefined') ? navigator.onLine : true;
   try { document.body.classList.toggle('sh-offline', !online); } catch(_){}
   const txt = document.getElementById('sync-text');
-  if(txt) txt.textContent = online ? 'Cloud gesynchroniseerd' : 'Offline — wordt gesynchroniseerd bij verbinding';
+  if(txt) txt.textContent = online ? 'Gesynchroniseerd' : 'Offline — wordt gesynchroniseerd bij verbinding';
   const dot = document.getElementById('sync-dot');
   if(dot) dot.style.background = online ? '' : 'var(--red, #ef4444)';
 }

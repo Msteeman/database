@@ -780,25 +780,33 @@
       </nav>
 
       <div class="scout-profile">
-        <div class="scout-avatar-wrap" id="scout-avatar-wrap">
-          <img class="scout-avatar-img" id="scout-avatar-img" alt="Profielfoto" style="display:none;" />
-          <div class="scout-avatar-initials" id="scout-avatar-initials" aria-hidden="true">SH</div>
+        <div class="scout-profile-row">
+          <div class="scout-avatar-wrap" id="scout-avatar-wrap">
+            <img class="scout-avatar-img" id="scout-avatar-img" alt="Profielfoto" style="display:none;" />
+            <div class="scout-avatar-initials" id="scout-avatar-initials" aria-hidden="true">SH</div>
+          </div>
+          <div class="scout-profile-id">
+            <div class="scout-name" id="scout-name">—</div>
+          </div>
+          <div class="sync-indicator" id="sync-indicator" title="Gesynchroniseerd">
+            <span class="sync-dot" id="sync-dot"></span>
+          </div>
         </div>
-        <div class="scout-name" id="scout-name">—</div>
+        <div class="scout-profile-actions">
+          <button type="button" class="scout-icon-btn" id="sidebar-settings-btn" title="Instellingen" aria-label="Instellingen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            <span class="scout-icon-btn-label">Instellingen</span>
+          </button>
+          <button type="button" class="scout-icon-btn" id="logout-btn" title="Uitloggen" aria-label="Uitloggen">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span class="scout-icon-btn-label">Uitloggen</span>
+          </button>
+        </div>
         <!-- v70h-s30: scout-email weg uit sidebar, zit nu in Instellingen-modal -->
-        <div class="sync-indicator" id="sync-indicator" title="Klik voor sync-details">
-          <span class="sync-dot" id="sync-dot"></span>
-          <span id="sync-text">Cloud gesynchroniseerd</span>
-        </div>
-        <div id="sync-detail" style="font-size:10.5px; color:var(--muted,#9aa3b7); margin-top:2px; padding:0 4px; line-height:1.35; opacity:.75;">
+        <div id="sync-detail" style="display:none;">
           <span id="sync-detail-uid">—</span> &middot; <span id="sync-detail-time">—</span>
         </div>
-        <button type="button" class="sidebar-settings-btn" id="sidebar-settings-btn" title="Instellingen">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-          <span>Instellingen</span>
-        </button>
         <!-- v70h-s30: install-btn verplaatst naar Instellingen-modal -->
-        <button class="logout-btn" id="logout-btn">Uitloggen</button>
         <!-- s35cr: juridische footer-links -->
         <div class="sidebar-legal-links" id="sidebar-legal-links">
           <a href="#" onclick="event.preventDefault(); window.go && window.go('privacy');">Privacy</a>
@@ -826,11 +834,6 @@
             <div class="page-title">Dashboard</div>
             <div class="page-sub" id="dashboard-date">—</div>
           </div>
-          <!-- H8: snelle acties -->
-          <div style="display:flex; gap:8px; flex-wrap:wrap;">
-            <button class="btn btn-primary" type="button" data-go="report">+ Spelersrapport</button>
-            <button class="btn btn-secondary" type="button" onclick="window.go && window.go('programma')">+ Wedstrijd</button>
-          </div>
         </div>
 
         <!-- s19: Vandaag banner — prominente melding als er vandaag een wedstrijd is met spelers -->
@@ -839,6 +842,7 @@
         <!-- s35dj: Unified dashboard agenda (live / vandaag / aankomend) -->
         <div id="dashboard-agenda-wrap">
           <div id="scouting-active-wrap" class="scouting-active-wrap" style="display:none;"></div>
+          <div id="dash-next-match-wrap" style="display:none; margin-bottom:18px;"></div>
           <div id="today-matches-wrap" style="display:none; margin-bottom:18px;"></div>
           <div id="upcoming-matches-wrap" style="display:none; margin-bottom:18px;"></div>
         </div>
@@ -1515,7 +1519,7 @@ algemeen:</textarea>
             <div class="field-row">
               <div class="field">
                 <label>Club van de speler</label>
-                <input id="f-club" type="text" autocomplete="off" list="club-suggestions" data-picker="club" />
+                <input id="f-club" type="text" autocomplete="off" data-picker="club" />
               </div>
               <div class="field">
                 <label>Plaats</label>
@@ -1563,11 +1567,11 @@ algemeen:</textarea>
               </div>
               <div class="field">
                 <label>Thuisspelende ploeg</label>
-                <input id="f-w-thuis" type="text" placeholder="Bijv. FC Twente O15" autocomplete="off" list="club-suggestions" data-picker="club" />
+                <input id="f-w-thuis" type="text" placeholder="Bijv. FC Twente O15" autocomplete="off" data-picker="club" />
               </div>
               <div class="field">
                 <label>Uitspelende ploeg</label>
-                <input id="f-w-uit" type="text" placeholder="Bijv. Sparta Rotterdam O15" autocomplete="off" list="club-suggestions" data-picker="club" />
+                <input id="f-w-uit" type="text" placeholder="Bijv. Sparta Rotterdam O15" autocomplete="off" data-picker="club" />
               </div>
             </div>
             <!-- s35dg Fase H: locatie-velden, prefilled vanuit programma -->
@@ -1772,18 +1776,18 @@ algemeen:</textarea>
             <div class="form-section-title">Eindbeoordeling</div>
             <div class="dual-grade">
               <div class="field">
-                <label><span class="dual-label-pill pill-current">Huidig niveau *</span> <button type="button" class="sh-help" aria-label="Help" data-help="Kies het huidige niveau: A = uitzonderlijk, B = goed, C = gemiddeld, D = onder.">?</button></label>
+                <label><span class="dual-label-pill pill-current">Huidig niveau *</span> <button type="button" class="sh-help" aria-label="Help" data-help="Huidig niveau nu: A = Champions League, B = Top Eredivisie, C = Eredivisie, D = KKD.">?</button></label>
                 <div class="grade-picker" data-key="huidig_niveau" data-required="1"></div>
               </div>
               <div class="field">
-                <label><span class="dual-label-pill pill-potential">Potentieel niveau *</span></label>
+                <label><span class="dual-label-pill pill-potential">Potentieel niveau *</span> <button type="button" class="sh-help" aria-label="Help" data-help="Hoogst haalbare niveau: A = Champions League, B = Top Eredivisie, C = Eredivisie, D = KKD.">?</button></label>
                 <div class="grade-picker pot" data-key="potentieel_niveau" data-required="1"></div>
               </div>
             </div>
 
             <div class="field-row" style="margin-top:14px;">
-              <div class="field">
-                <label>Advies * <button type="button" class="sh-help" aria-label="Help" data-help="Wat adviseer je? Dit wordt getoond aan de co&ouml;rdinator.">?</button></label>
+              <div class="field" style="grid-column:1 / -1;">
+                <label>Advies *</label>
                 <select id="f-advies" style="display:none;" aria-hidden="true" tabindex="-1">
                   <option value="">Kies...</option>
                   <option value="4">Direct contracteren</option>
@@ -1791,22 +1795,24 @@ algemeen:</textarea>
                   <option value="2">Periodiek monitoren</option>
                   <option value="1">Geen vervolgstap</option>
                 </select>
-                <div class="adv-chips" id="f-advies-chips">
+                <div class="adv-chips adv-chips-wide" id="f-advies-chips">
                   <button type="button" class="adv-chip" data-v="4" onclick="_repPickAdvies(this,'4')">Direct contracteren</button>
                   <button type="button" class="adv-chip" data-v="3" onclick="_repPickAdvies(this,'3')">Op proef uitnodigen</button>
                   <button type="button" class="adv-chip" data-v="2" onclick="_repPickAdvies(this,'2')">Periodiek monitoren</button>
                   <button type="button" class="adv-chip" data-v="1" onclick="_repPickAdvies(this,'1')">Geen vervolgstap</button>
                 </div>
               </div>
-              <div class="field">
-                <label>Persoonlijk wapen</label>
-                <input id="f-wapen" type="text" placeholder="Wat onderscheidt deze speler?" />
-              </div>
             </div>
             <div class="field" style="margin-top:14px;">
               <label>Notities / Algemene opmerking</label>
               <textarea id="f-notities" placeholder="Observaties, ontwikkelpunten, context, advies-onderbouwing..."></textarea>
             </div>
+          </div>
+
+          <!-- DEEL 7: Persoonlijk wapen verplaatst — smal blok net boven Indienen -->
+          <div class="field sh-wapen-block" style="margin-top:16px;">
+            <label>Persoonlijk wapen</label>
+            <input id="f-wapen" type="text" placeholder="Wat onderscheidt deze speler?" />
           </div>
 
           <!-- s35ar (#226): kleine "Verwijder dit concept"-knop onderaan rapport, met bevestiging -->
@@ -2661,38 +2667,15 @@ algemeen:</textarea>
         <!-- s35be: pm-leeftijd weg (elftal wordt nu per-club ingevuld) -->
         <!-- s35dj: pm-wedstrijd-fields — verborgen bij training/vergadering -->
         <div id="pm-wedstrijd-fields">
-        <div class="field" style="margin-top:12px;">
-          <label>Scoutingmethode</label>
-          <select id="pm-methode">
-            <option>Live</option>
-            <option>Video</option>
-          </select>
-        </div>
-        <!-- s35cg: scout-dropdown — alleen zichtbaar voor coord/admin -->
-        <div class="field" id="pm-scout-row" style="margin-top:12px;">
-          <label>Toewijzen aan scout</label>
-          <select id="pm-scout">
-            <option value="">— Mijzelf —</option>
-          </select>
-          <div style="font-size:11px; color:#9ca3af; margin-top:4px;">Coördinator: kies een scout uit je team om de wedstrijd voor te plannen.</div>
-        </div>
-        <div class="field" style="margin-top:12px;">
-          <label>Wedstrijdinformatie</label>
-          <select id="pm-info">
-            <option value="">Kies type wedstrijd</option>
-            <option>Competitie</option>
-            <option>Beker</option>
-            <option>Vriendschappelijk</option>
-          </select>
-        </div>
+        <!-- sh-v352: teams eerst — dit is het essentiële van een wedstrijd -->
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Thuisspelende ploeg *</label>
-            <input id="pm-thuis" type="text" placeholder="Bijv. AFC" autocomplete="off" list="club-suggestions" data-picker="club" />
+            <input id="pm-thuis" type="text" placeholder="Bijv. AFC" autocomplete="off" data-picker="club" />
           </div>
           <div class="field">
             <label>Uitspelende ploeg *</label>
-            <input id="pm-uit" type="text" placeholder="Bijv. Ajax" autocomplete="off" list="club-suggestions" data-picker="club" />
+            <input id="pm-uit" type="text" placeholder="Bijv. Ajax" autocomplete="off" data-picker="club" />
           </div>
         </div>
         <!-- s35bd: elftal per club (bv. O.16-1 vs O.16-2) -->
@@ -2706,20 +2689,49 @@ algemeen:</textarea>
             <input id="pm-uit-elftal" type="text" placeholder="bv. O.16-2" autocomplete="off" maxlength="20" data-picker="elftal" />
           </div>
         </div>
-        <div class="field-row" style="margin-top:12px;">
-          <div class="field">
-            <label>Plaats</label>
-            <input id="pm-plaats" type="text" placeholder="Wordt automatisch ingevuld vanuit thuisclub" />
+        <!-- sh-v352: secundaire velden achter "Meer details" — sneller inplannen op mobiel.
+             Plaats/locatie vullen automatisch vanuit de thuisclub, methode = Live default. -->
+        <details class="pm-more" id="pm-more-details">
+          <summary>Meer details <span class="pm-more-hint">— methode, type, locatie, veld</span></summary>
+          <div class="field" style="margin-top:12px;">
+            <label>Scoutingmethode</label>
+            <select id="pm-methode">
+              <option>Live</option>
+              <option>Video</option>
+            </select>
           </div>
-          <div class="field">
-            <label>Sportpark / locatie</label>
-            <input id="pm-locatie" type="text" placeholder="Wordt automatisch ingevuld op basis van thuisclub" />
+          <!-- s35cg: scout-dropdown — alleen zichtbaar voor coord/admin -->
+          <div class="field" id="pm-scout-row" style="margin-top:12px;">
+            <label>Toewijzen aan scout</label>
+            <select id="pm-scout">
+              <option value="">— Mijzelf —</option>
+            </select>
+            <div style="font-size:11px; color:#9ca3af; margin-top:4px;">Coördinator: kies een scout uit je team om de wedstrijd voor te plannen.</div>
           </div>
-        </div>
-        <div class="field" style="margin-top:12px;">
-          <label>Veld (optioneel)</label>
-          <input id="pm-veld" type="text" placeholder="bv. 2, 3, 4a, 5b, 1b" maxlength="8" />
-        </div>
+          <div class="field" style="margin-top:12px;">
+            <label>Wedstrijdinformatie</label>
+            <select id="pm-info">
+              <option value="">Kies type wedstrijd</option>
+              <option>Competitie</option>
+              <option>Beker</option>
+              <option>Vriendschappelijk</option>
+            </select>
+          </div>
+          <div class="field-row" style="margin-top:12px;">
+            <div class="field">
+              <label>Plaats</label>
+              <input id="pm-plaats" type="text" placeholder="Wordt automatisch ingevuld vanuit thuisclub" />
+            </div>
+            <div class="field">
+              <label>Sportpark / locatie</label>
+              <input id="pm-locatie" type="text" placeholder="Wordt automatisch ingevuld op basis van thuisclub" />
+            </div>
+          </div>
+          <div class="field" style="margin-top:12px;">
+            <label>Veld (optioneel)</label>
+            <input id="pm-veld" type="text" placeholder="bv. 2, 3, 4a, 5b, 1b" maxlength="8" />
+          </div>
+        </details>
         </div><!-- /pm-wedstrijd-fields -->
         <div class="field" style="margin-top:12px;">
           <label>Notities (optioneel)</label>
@@ -2735,13 +2747,10 @@ algemeen:</textarea>
             </div>
             <div class="field-row" style="margin-top:8px;">
               <div class="field"><label>Geboortedatum</label><input id="pmpp-geboorte" type="date" /></div>
-              <div class="field"><label>Club</label><input id="pmpp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" list="club-suggestions" /></div>
+              <div class="field"><label>Club</label><input id="pmpp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" data-picker="club" /></div>
             </div>
             <div id="pmpp-suggestion-wrap" class="pp-suggestion-wrap" style="display:none; margin-top:8px;"></div>
             <div id="pmpp-known-banner" style="display:none; margin-top:8px; padding:10px 12px; border-radius:10px; background:rgba(34,197,94,0.10); border:1px solid rgba(34,197,94,0.40); font-size:12.5px; color:#bbf7d0; line-height:1.4;"></div>
-            <div style="display:flex; justify-content:flex-end; margin-top:10px;">
-              <button type="button" class="btn btn-primary" id="pmpp-add" style="font-size:12.5px;">+ Toevoegen aan plan</button>
-            </div>
             <div id="pmpp-list" style="margin-top:10px;"></div>
           </div>
         </details>
@@ -2790,7 +2799,7 @@ algemeen:</textarea>
           </div>
           <div class="field">
             <label>Club</label>
-            <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" list="club-suggestions" data-picker="club" />
+            <input id="pp-club" type="text" placeholder="Wordt vooraf ingevuld" autocomplete="off" data-picker="club" />
           </div>
         </div>
         <!-- s35q: hidden naam (auto-synced); s35p hidden rugnummer/positie (preserve) -->
@@ -3052,11 +3061,11 @@ algemeen:</textarea>
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
             <label>Thuisspelende ploeg *</label>
-            <input id="mr-thuis" type="text" required placeholder="Bijv. Roda'46 12.2" autocomplete="off" list="club-suggestions" data-picker="club" />
+            <input id="mr-thuis" type="text" required placeholder="Bijv. Roda'46 12.2" autocomplete="off" data-picker="club" />
           </div>
           <div class="field">
             <label>Uitspelende ploeg *</label>
-            <input id="mr-uit" type="text" required placeholder="Bijv. Scherpenzeel 12.1" autocomplete="off" list="club-suggestions" data-picker="club" />
+            <input id="mr-uit" type="text" required placeholder="Bijv. Scherpenzeel 12.1" autocomplete="off" data-picker="club" />
           </div>
         </div>
         <div class="field-row" style="margin-top:12px;">
@@ -3262,7 +3271,9 @@ algemeen:</textarea>
           <div id="obs-club-choice" class="obs-club-choice" style="display:none;"></div>
           <input id="obs-club" type="text" placeholder="Clubnaam" autocomplete="off" />
         </div>
-        <div class="obs-field obs-field-sm">
+      </div>
+      <div class="obs-row">
+        <div class="obs-field obs-field-grow">
           <label>Positie</label>
           <select id="obs-positie">
             <option value="">Positie…</option>

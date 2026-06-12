@@ -3054,14 +3054,17 @@ function toast(msg, isError=false){
 function setSync(state){
   const dot = $('#sync-dot');
   const txt = $('#sync-text');
+  const ind = $('#sync-indicator');
   if(!dot) return;
   dot.classList.remove('syncing','offline');
-  if(state === 'syncing'){ dot.classList.add('syncing'); txt.textContent = 'Bezig met synchroniseren...'; }
-  else if(state === 'offline'){ dot.classList.add('offline'); txt.textContent = 'Geen verbinding'; }
+  let _label = 'Gesynchroniseerd';
+  if(state === 'syncing'){ dot.classList.add('syncing'); _label = 'Bezig met synchroniseren...'; }
+  else if(state === 'offline'){ dot.classList.add('offline'); _label = 'Geen verbinding'; }
   else {
-    txt.textContent = 'Cloud gesynchroniseerd';
     window.__lastSyncMs = Date.now();
   }
+  if(txt) txt.textContent = _label;
+  if(ind) ind.title = _label;
   // s35ar (#224): UID-6 + project + relatieve laatste-sync tijd
   try {
     const uidEl = document.getElementById('sync-detail-uid');
@@ -5835,6 +5838,15 @@ const KNVB_DUUR_MIN = {
   'O.13':75, 'O.14':85, 'O.15':85, 'O.16':95, 'O.17':95,
   'O.18':105,'O.19':105,'O.21':105,'O.23':105
 };
+// sh-v352: leid leeftijdscategorie af uit een elftal-string ('O.16-1'→'O.16',
+// 'JO11-2'→'O.11', 'MO13'→'O.13'). Zo hoeft de scout geen apart leeftijdveld
+// meer in te vullen — het volgt automatisch uit het elftal.
+function _deriveLeeftijd(elftal){
+  if(!elftal) return '';
+  const m = String(elftal).trim().toUpperCase().match(/\b[JM]?O\.?(\d{1,2})\b/);
+  return m ? ('O.' + m[1]) : '';
+}
+window._deriveLeeftijd = _deriveLeeftijd;
 function getMatchDurationMin(leeftijd){
   if(!leeftijd) return 120;
   const k = String(leeftijd).trim().toUpperCase();
@@ -5864,14 +5876,47 @@ function getMatchWindow(prog){
           || (prog.thuis_elftal && String(prog.thuis_elftal).trim())
           || (prog.uit_elftal && String(prog.uit_elftal).trim())
           || '';
-  const end   = new Date(kick.getTime() + (getMatchDurationMin(lf) + SCOUTING_POST_MIN)*60000);
-  return { kick, start, end };
+  const dur   = getMatchDurationMin(lf);
+  const end   = new Date(kick.getTime() + (dur + SCOUTING_POST_MIN)*60000);
+  return { kick, start, end, dur };
 }
+// s35dk: handmatige Start/Einde-klok per wedstrijd. De kaart verschijnt
+// automatisch 5 min voor aftrap (auto-window), maar de scout klikt zelf op
+// "Start wedstrijd" en "Einde wedstrijd". Na het klikken van Einde blijft de
+// kaart nog SCOUTING_POST_MIN (5 min) staan en schuift dan door naar de tab
+// Wedstrijden. Wordt er nooit op Einde geklikt, dan valt de zichtbaarheid
+// terug op het auto-window (kick + speelduur + 5 min) zodat een kaart nooit
+// eindeloos blijft hangen.
+let _matchClock = {};
+try { _matchClock = JSON.parse(localStorage.getItem('sh_match_clock') || '{}') || {}; } catch(_){ _matchClock = {}; }
+function _saveMatchClock(){ try { localStorage.setItem('sh_match_clock', JSON.stringify(_matchClock)); } catch(_){} }
+function getMatchClock(progId){ return (progId && _matchClock[progId]) ? _matchClock[progId] : null; }
+function setMatchStarted(progId){
+  if(!progId) return;
+  const c = _matchClock[progId] || {};
+  c.startedAt = Date.now(); delete c.endedAt;
+  _matchClock[progId] = c; _saveMatchClock();
+  if(typeof renderDashboardAgenda === 'function') renderDashboardAgenda();
+}
+function setMatchEnded(progId){
+  if(!progId) return;
+  const c = _matchClock[progId] || {};
+  c.endedAt = Date.now();
+  _matchClock[progId] = c; _saveMatchClock();
+  if(typeof renderDashboardAgenda === 'function') renderDashboardAgenda();
+}
+window.getMatchClock = getMatchClock;
+window.setMatchStarted = setMatchStarted;
+window.setMatchEnded = setMatchEnded;
 function isMatchInWindow(prog, now){
   const w = getMatchWindow(prog);
   if(!w) return false;
   const t = (now || new Date()).getTime();
-  return t >= w.start.getTime() && t <= w.end.getTime();
+  if(t < w.start.getTime()) return false;
+  const clk = getMatchClock(prog.id);
+  if(clk && clk.endedAt) return t <= clk.endedAt + SCOUTING_POST_MIN*60000;
+  if(clk && clk.startedAt) return t <= clk.startedAt + (w.dur + SCOUTING_POST_MIN)*60000;
+  return t <= w.end.getTime();
 }
 // s35ca-1: een wedstrijd is 'op slot' zodra fluitje+15 verstreken is.
 // Vanaf dat moment zijn snel-notities en spelersrapport-edits op het
@@ -5881,6 +5926,9 @@ function _shIsMatchLocked(prog, now){
   const w = getMatchWindow(prog);
   if(!w) return false;
   const t = (now || new Date()).getTime();
+  const clk = getMatchClock(prog.id);
+  if(clk && clk.endedAt) return t > clk.endedAt + SCOUTING_POST_MIN*60000;
+  if(clk && clk.startedAt) return t > clk.startedAt + (w.dur + SCOUTING_POST_MIN)*60000;
   return t > w.end.getTime();
 }
 window._shIsMatchLocked = _shIsMatchLocked;
@@ -6375,7 +6423,7 @@ function openObservatieForm(prog, sn){
   const setV = (id, v) => { const el = document.getElementById(id); if(el && v) el.value = v; else if(el) el.value = ''; };
   setV('obs-naam', sn && (sn.naam||''));
   setV('obs-rug', sn && (sn.rugnummer||''));
-  setV('obs-omschrijving', '');
+  setV('obs-omschrijving', sn && (sn.omschrijving||''));
   // BATCH A — FIX 2: positie is nu een dropdown. Graceful: een opgeslagen waarde
   // die niet in de standaardlijst staat, als extra optie injecteren zodat ze
   // zichtbaar/bewaard blijft.
@@ -6401,23 +6449,27 @@ function openObservatieForm(prog, sn){
     const clubInp = document.getElementById('obs-club');
     if(!choiceEl || !clubInp) return;
     if(_obsHomeClub || _obsAwayClub){
-      clubInp.placeholder = 'Kies club hieronder of typ zelf';
+      // Wedstrijd is al gekoppeld aan clubs → toon alleen de twee knoppen.
+      // Eén klik = gekozen én verwerkt; geen los tekstveld/bevestiging nodig.
       const mk = (val, icon, rol) => val
         ? '<button type="button" class="obs-club-opt'+(_obsExistingClub===val?' active':'')+'" data-club="'+escapeHtml(val)+'"><span class="obs-club-opt-rol">'+icon+' '+rol+'</span><span class="obs-club-opt-naam">'+escapeHtml(val)+'</span></button>'
         : '';
       choiceEl.innerHTML = mk(_obsHomeClub, '🏠', 'Thuisploeg') + mk(_obsAwayClub, '✈️', 'Uitploeg');
       choiceEl.style.display = '';
+      clubInp.style.display = 'none';   // vrij tekstveld verbergen — club komt uit programma
       choiceEl.querySelectorAll('.obs-club-opt').forEach(b => {
         b.onclick = () => {
           clubInp.value = b.dataset.club || '';
           choiceEl.querySelectorAll('.obs-club-opt').forEach(x => x.classList.remove('active'));
           b.classList.add('active');
-          // Trigger autosave + sluit clubsuggestie
+          // Trigger autosave (club is meteen verwerkt)
           try { clubInp.dispatchEvent(new Event('input', { bubbles: true })); } catch(_){}
         };
       });
     } else {
+      // Geen programma-clubs bekend → val terug op het vrije tekstveld.
       clubInp.placeholder = 'Clubnaam';
+      clubInp.style.display = '';
       choiceEl.style.display = 'none';
       choiceEl.innerHTML = '';
     }
@@ -6482,6 +6534,7 @@ function openObservatieForm(prog, sn){
         _d.positie= (document.getElementById('obs-positie')?.value||'').trim();
         _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
         _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
+        _d.omschrijving = (document.getElementById('obs-omschrijving')?.value||'').trim();
         // BATCH A — FIX 3: huidig niveau + advies meebewaren zodat ze na heropenen terugkomen
         _d.huidig_niveau = (document.getElementById('obs-niveau')?.value||'').trim();
         _d.advies = (document.getElementById('obs-advies')?.value||'').trim();
@@ -6603,6 +6656,7 @@ const PLF_CHIP_CATS = {
   wendbaarheid: ['Soepel','Lichtvoetig','Draaien','Balans','Wendbaar'],
   algemeen: ['Interessant','Opvolgen','Uitblinker','Aanrader']
 };
+const PLF_VOETEN = ['Linksbenig','Rechtsbenig','Tweebenig'];
 const playerLiveState = {};
 let _plfCtx = null;
 let _plfTm = null;
@@ -6667,7 +6721,26 @@ function openPlayerLiveForm(prog, sp){
   if(fieldsEl){
     const seedTags = (sn && Array.isArray(sn.tags)) ? sn.tags : [];
     const ratingOf = (cat, label) => { const t = seedTags.find(x => x && x.label===label && String(x.category||'').toLowerCase()===cat.toLowerCase()); return t && t.rating ? t.rating : ''; };
+    const _voetSel = (sn && sn.voorkeursbeen) || _g('voorkeursbeen') || _g('been') || '';
+    const _posSel = (sn && sn.positie) || _pos || '';
+    const _opmSel = (sn && sn.opmerking) || '';
+    const footChips = PLF_VOETEN.map(v => '<button type="button" class="obs-tag plf-foot" data-voet="'+escapeHtml(v)+'"'+(_voetSel===v?' data-rating="good"':'')+' onclick="_plfFootPick(this)">'+escapeHtml(v)+'</button>').join('');
+    const posOpts = _toernPositieOpts();
+    const _rugSel = (sn && sn.rugnummer) || _rug || '';
+    const metaHtml = '<div class="plf-meta">'+
+      '<div class="plf-foot-rug-row">'+
+        '<div class="plf-aspect plf-aspect-foot"><div class="plf-aspect-label">Voorkeursbeen</div>'+
+          '<div class="obs-tags plf-aspect-chips plf-foot-chips">'+footChips+'</div></div>'+
+        '<div class="plf-aspect plf-aspect-rug"><div class="plf-aspect-label">Rugnummer</div>'+
+          '<input id="plf-rug" class="plf-rug-in" type="text" inputmode="numeric" maxlength="3" autocomplete="off" placeholder="#" value="'+escapeHtml(_rugSel)+'"></div>'+
+      '</div>'+
+      '<div class="plf-aspect"><div class="plf-aspect-label">Positie</div>'+
+        '<select id="plf-positie" class="plf-positie-sel"><option value="">— Kies —</option>'+posOpts+'</select></div>'+
+      '<div class="plf-aspect"><div class="plf-aspect-label">Opmerking</div>'+
+        '<textarea class="plf-field-in sh-grow-note" id="plf-opm" rows="2" autocomplete="off" placeholder="korte opmerking">'+escapeHtml(_opmSel)+'</textarea></div>'+
+    '</div>';
     fieldsEl.innerHTML = '<div class="plf-section-label">Per aspect <span class="plf-dim">(tik chip: groen \u2192 oranje \u2192 rood \u2192 uit, + eigen notitie)</span></div>' +
+      metaHtml +
       PLF_FIELDS.map(f => {
         const chips = (PLF_CHIP_CATS[f]||[]).map(w => { const r = ratingOf(f, w); return '<button type="button" class="obs-tag" data-category="'+f+'" data-label="'+escapeHtml(w)+'"'+(r?' data-rating="'+r+'"':'')+' onclick="_plfTagCycle(this)">'+escapeHtml(w)+'</button>'; }).join('');
         return '<div class="plf-aspect">'+
@@ -6683,6 +6756,16 @@ function openPlayerLiveForm(prog, sp){
         clearTimeout(_plfTm); _plfTm = setTimeout(() => _plfSoftSave(false), 600);
       });
     });
+    const _posSelEl = fieldsEl.querySelector('#plf-positie');
+    if(_posSelEl){
+      const opt = Array.from(_posSelEl.options).find(o => o.value === _posSel || o.textContent === _posSel);
+      if(opt) _posSelEl.value = opt.value;
+      _posSelEl.addEventListener('change', () => { clearTimeout(_plfTm); _plfTm = setTimeout(() => _plfSoftSave(false), 300); });
+    }
+    const _opmEl = fieldsEl.querySelector('#plf-opm');
+    if(_opmEl) _opmEl.addEventListener('input', () => { clearTimeout(_plfTm); _plfTm = setTimeout(() => _plfSoftSave(false), 600); });
+    const _rugEl = fieldsEl.querySelector('#plf-rug');
+    if(_rugEl) _rugEl.addEventListener('input', () => { clearTimeout(_plfTm); _plfTm = setTimeout(() => _plfSoftSave(false), 600); });
     if(!fieldsEl._plfFocusWired){
       fieldsEl._plfFocusWired = true;
       fieldsEl.addEventListener('focusin', (e) => {
@@ -6720,6 +6803,15 @@ function _plfTagCycle(el){
 }
 window._plfTagCycle = _plfTagCycle;
 
+function _plfFootPick(el){
+  const on = el.getAttribute('data-rating') === 'good';
+  const box = el.closest('.plf-foot-chips');
+  if(box) Array.from(box.querySelectorAll('.plf-foot')).forEach(b => b.removeAttribute('data-rating'));
+  if(!on) el.setAttribute('data-rating', 'good');
+  clearTimeout(_plfTm); _plfTm = setTimeout(() => _plfSoftSave(false), 400);
+}
+window._plfFootPick = _plfFootPick;
+
 function _plfSoftSave(showToast){
   try {
     if(!_plfCtx) return;
@@ -6740,7 +6832,11 @@ function _plfSoftSave(showToast){
       prog.snelnotities.push(sn);
     }
     sn.fields = fields;
-    try { sn.tags = Array.from(document.querySelectorAll('#plf-fields .obs-tag[data-rating]')).map(el => ({ label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') })).filter(t => t.rating); } catch(_){}
+    try { sn.tags = Array.from(document.querySelectorAll('#plf-fields .obs-tag[data-rating]')).filter(el => !el.classList.contains('plf-foot')).map(el => ({ label: el.dataset.label, category: el.dataset.category, rating: el.getAttribute('data-rating') })).filter(t => t.rating); } catch(_){}
+    try { const fEl = document.querySelector('#plf-fields .plf-foot[data-rating]'); sn.voorkeursbeen = fEl ? (fEl.dataset.voet||'') : ''; } catch(_){}
+    try { const pEl = document.getElementById('plf-positie'); if(pEl){ const o = pEl.options[pEl.selectedIndex]; sn.positie = o ? (o.textContent||pEl.value||'') : (pEl.value||''); } } catch(_){}
+    try { const oEl = document.getElementById('plf-opm'); sn.opmerking = oEl ? (oEl.value||'').trim() : ''; } catch(_){}
+    try { const rEl = document.getElementById('plf-rug'); if(rEl) sn.rugnummer = (rEl.value||'').trim(); } catch(_){}
     sn.tekst = tekst;
     sn.modified = Date.now();
     prog.modified = Date.now();
@@ -6988,7 +7084,7 @@ const matchLiveState = {};
 let _mlfCtx = null;
 let _mlfTm = null;
 
-function _mlfEmptyTeam(){ const o={}; MLF_TEAM_CATS.forEach(c => { o[c[0]] = { chips:[], note:'' }; }); return o; }
+function _mlfEmptyTeam(){ const o={}; MLF_TEAM_CATS.forEach(c => { o[c[0]] = { chips:[], ratings:{}, note:'' }; }); return o; }
 function _mlfEmptyState(){ return { thuis:_mlfEmptyTeam(), uit:_mlfEmptyTeam(), gedeeld:{ weer:{chips:[],note:''}, algemeen:{note:''} } }; }
 function _mlfMigrateOld(prog, st){
   try {
@@ -7000,16 +7096,18 @@ function _mlfMigrateOld(prog, st){
 function _mlfFromDoc(d){
   const st = _mlfEmptyState();
   ['thuis','uit'].forEach(team => {
-    if(d[team]) MLF_TEAM_CATS.forEach(c => { const x=d[team][c[0]]; if(x){ st[team][c[0]] = { chips: Array.isArray(x.chips)?x.chips:[], note: x.note||'' }; } });
+    if(d[team]) MLF_TEAM_CATS.forEach(c => { const x=d[team][c[0]]; if(x){ st[team][c[0]] = { chips: Array.isArray(x.chips)?x.chips:[], ratings: (x.ratings&&typeof x.ratings==='object')?x.ratings:{}, note: x.note||'' }; } });
   });
   if(d.gedeeld){ if(d.gedeeld.weer){ st.gedeeld.weer = { chips: Array.isArray(d.gedeeld.weer.chips)?d.gedeeld.weer.chips:[], note: d.gedeeld.weer.note||'' }; } if(d.gedeeld.algemeen){ st.gedeeld.algemeen = { note: d.gedeeld.algemeen.note||'' }; } }
   return st;
 }
 
-async function openMatchLiveForm(prog){
+async function openMatchLiveForm(prog, opts){
   const bd = document.getElementById('mlf-backdrop'); if(!bd || !prog) return;
+  opts = opts || {};
+  const isRapport = opts.mode === 'rapport';
   const matchId = prog.id;
-  if(!matchLiveState[matchId]){
+  if(!matchLiveState[matchId] || isRapport){
     let seed = _mlfEmptyState();
     try {
       const ds = await getDoc(doc(db,'users',currentUser.uid,'live_match_notes', matchId+'_match'));
@@ -7017,25 +7115,28 @@ async function openMatchLiveForm(prog){
     } catch(_){ _mlfMigrateOld(prog, seed); }
     matchLiveState[matchId] = seed;
   }
-  _mlfCtx = { matchId, progId: prog.id, thuis: prog.thuis||'', uit: prog.uit||'' };
+  _mlfCtx = { matchId, progId: prog.id, thuis: prog.thuis||'', uit: prog.uit||'', isRapport };
   const st = matchLiveState[matchId];
 
   const titleEl = document.getElementById('mlf-title'); if(titleEl) titleEl.textContent = (prog.thuis||'?') + ' — ' + (prog.uit||'?');
-  const subEl = document.getElementById('mlf-sub'); if(subEl) subEl.textContent = 'Live wedstrijdnotitie (concept)';
+  const subEl = document.getElementById('mlf-sub'); if(subEl) subEl.textContent = isRapport ? 'Wedstrijdrapport' : 'Live wedstrijdnotitie (concept)';
   const ctxParts = [];
   if(prog.datum) ctxParts.push(prog.datum + (prog.tijd?' · '+prog.tijd:''));
   if(prog.veld) ctxParts.push('Veld '+prog.veld); else if(prog.locatie) ctxParts.push(prog.locatie);
   if(prog.competitie || prog.toernooi) ctxParts.push(prog.competitie||prog.toernooi);
   if(prog.leeftijd) ctxParts.push(prog.leeftijd);
   const ctxEl = document.getElementById('mlf-ctx');
-  if(ctxEl) ctxEl.innerHTML = '<div class="mlf-ctx-match">'+escapeHtml((prog.thuis||'?')+' — '+(prog.uit||'?'))+'</div>'+(ctxParts.length?'<div class="mlf-ctx-meta">'+ctxParts.map(escapeHtml).join(' · ')+'</div>':'')+'<div class="mlf-ctx-note">📋 Live concept — definitief rapport maak je na de wedstrijd in Wedstrijden.</div>';
+  const ctxNote = isRapport
+    ? '📋 Wedstrijdrapport — voor-ingevuld met je live-notities. Vul aan en dien in.'
+    : '📋 Live concept — definitief rapport maak je na de wedstrijd in Wedstrijden.';
+  if(ctxEl) ctxEl.innerHTML = '<div class="mlf-ctx-match">'+escapeHtml((prog.thuis||'?')+' — '+(prog.uit||'?'))+'</div>'+(ctxParts.length?'<div class="mlf-ctx-meta">'+ctxParts.map(escapeHtml).join(' · ')+'</div>':'')+'<div class="mlf-ctx-note">'+ctxNote+'</div>';
 
   const renderTeam = (team, teamName) => {
     return '<div class="mlf-col" data-team="'+team+'"><div class="mlf-team-head mlf-team-'+team+'">'+escapeHtml(teamName||team)+'</div>'+
       MLF_TEAM_CATS.map(function(c){
         const cat=c[0], label=c[1], chips=c[2];
-        const cst=(st[team]&&st[team][cat])||{chips:[],note:''};
-        const chipHtml=chips.map(function(w){ const on=(cst.chips||[]).indexOf(w)>=0; return '<button type="button" class="mlf-chip'+(on?' active':'')+'" data-team="'+team+'" data-cat="'+cat+'" data-label="'+escapeHtml(w)+'">'+escapeHtml(w)+'</button>'; }).join('');
+        const cst=(st[team]&&st[team][cat])||{chips:[],ratings:{},note:''};
+        const chipHtml=chips.map(function(w){ const r=(cst.ratings&&cst.ratings[w])||''; return '<button type="button" class="obs-tag" data-team="'+team+'" data-cat="'+cat+'" data-label="'+escapeHtml(w)+'"'+(r?' data-rating="'+r+'"':'')+'>'+escapeHtml(w)+'</button>'; }).join('');
         return '<div class="mlf-cat"><div class="mlf-cat-label">'+label+'</div><div class="mlf-chips">'+chipHtml+'</div><textarea class="mlf-note plf-field-in sh-grow-note" data-team="'+team+'" data-cat="'+cat+'" rows="2" autocomplete="off" placeholder="Notitie...">'+escapeHtml(cst.note||'')+'</textarea></div>';
       }).join('')+'</div>';
   };
@@ -7051,6 +7152,8 @@ async function openMatchLiveForm(prog){
     if(!body._mlfWired){
       body._mlfWired = true;
       body.addEventListener('click', function(e){
+        const tag = e.target.closest('.obs-tag');
+        if(tag && tag.dataset.team){ _mlfCycleTag(tag); return; }
         const chip = e.target.closest('.mlf-chip');
         if(chip){ _mlfToggleChip(chip); return; }
         const tab = e.target.closest('.mlf-tab');
@@ -7066,9 +7169,13 @@ async function openMatchLiveForm(prog){
     }
     _mlfUpdateBadges();
   }
-  const cl=document.getElementById('mlf-close'); if(cl) cl.onclick=function(){ _mlfSync(false); _mlfClose(); };
+  const cl=document.getElementById('mlf-close'); if(cl) cl.onclick=function(){ if(!isRapport) _mlfSync(false); _mlfClose(); };
   const ca=document.getElementById('mlf-cancel'); if(ca) ca.onclick=function(){ _mlfClose(); };
-  const sv=document.getElementById('mlf-save'); if(sv) sv.onclick=function(){ _mlfSync(true); _mlfClose(); };
+  const sv=document.getElementById('mlf-save');
+  if(sv){
+    sv.textContent = isRapport ? 'Indienen' : 'Opslaan';
+    sv.onclick = isRapport ? function(){ _mlfSubmitRapport(); } : function(){ _mlfSync(true); _mlfClose(); };
+  }
 
   bd.style.display='flex';
   document.body.style.top='-'+window.scrollY+'px';
@@ -7088,6 +7195,20 @@ function _mlfToggleChip(el){
   _mlfUpdateBadges();
 }
 function _mlfSetNote(team, cat, val){ if(!_mlfCtx) return; const slot=_mlfStTeam(team)[cat]; if(slot) slot.note=val; }
+function _mlfCycleTag(el){
+  if(!_mlfCtx) return;
+  const team=el.dataset.team, cat=el.dataset.cat, label=el.dataset.label;
+  const slot=_mlfStTeam(team)[cat]; if(!slot) return;
+  if(!slot.ratings) slot.ratings={};
+  if(!Array.isArray(slot.chips)) slot.chips=[];
+  const order=['','good','average','poor'];
+  const cur=el.getAttribute('data-rating')||'';
+  const next=order[(order.indexOf(cur)+1)%order.length];
+  if(next){ el.setAttribute('data-rating',next); slot.ratings[label]=next; if(slot.chips.indexOf(label)<0) slot.chips.push(label); }
+  else { el.removeAttribute('data-rating'); delete slot.ratings[label]; const i=slot.chips.indexOf(label); if(i>=0) slot.chips.splice(i,1); }
+  clearTimeout(_mlfTm); _mlfTm=setTimeout(function(){ _mlfSync(false); }, 500);
+  _mlfUpdateBadges();
+}
 function _mlfSwitchTab(tab){
   const body=document.getElementById('mlf-body'); if(!body) return;
   body.className = (tab==='uit')?'mlf-show-uit':'mlf-show-thuis';
@@ -7119,6 +7240,32 @@ async function _mlfSync(showToast){
     if(showToast && typeof toast==='function') toast('Wedstrijdnotitie opgeslagen ✓');
   } catch(_){}
 }
+async function _mlfSubmitRapport(){
+  try {
+    if(!_mlfCtx) return;
+    const matchId = _mlfCtx.matchId;
+    const prog = programmaCache.find(function(p){ return p && p.id === _mlfCtx.progId; });
+    if(!prog){ if(typeof toast==='function') toast('Wedstrijd niet gevonden', true); return; }
+    const sv=document.getElementById('mlf-save'); if(sv){ sv.disabled=true; sv.textContent='Indienen…'; }
+    await _mlfSync(false);
+    const st = matchLiveState[matchId] || {};
+    const docLike = { thuis: st.thuis, uit: st.uit, gedeeld: st.gedeeld, matchContext: { thuis: prog.thuis||'', uit: prog.uit||'' } };
+    const tekst = _mlfComposeRapportText(docLike) || '';
+    prog.wedstrijdrapport = Object.assign({}, prog.wedstrijdrapport, { status:'ingediend', tekst: tekst, opmerking: tekst, ingediend_op: Date.now() });
+    prog.modified = Date.now();
+    try { const ref=doc(db,'users',currentUser.uid,'live_match_notes', matchId+'_match'); await setDoc(ref, { status:'ingediend' }, { merge:true }); } catch(_){}
+    if(typeof saveProgrammaItem === 'function'){ try { await saveProgrammaItem(prog); } catch(_){} }
+    if(typeof toast === 'function') toast('Wedstrijdnotitie ingediend ✓');
+    _mlfClose();
+    if(typeof renderMatches === 'function') renderMatches();
+  } catch(e){
+    console.error('mlf submit rapport', e);
+    const sv=document.getElementById('mlf-save'); if(sv){ sv.disabled=false; sv.textContent='Indienen'; }
+    if(typeof toast === 'function') toast('Indienen mislukt', true);
+  }
+}
+window._mlfSubmitRapport = _mlfSubmitRapport;
+
 function _mlfClose(){
   const bd=document.getElementById('mlf-backdrop'); if(bd) bd.style.display='none';
   const y=parseInt(document.body.style.top||'0')*-1; document.body.classList.remove('modal-open'); document.body.style.top=''; if(y) window.scrollTo(0,y);
@@ -7149,7 +7296,7 @@ function _mlfComposeRapportText(d){
       const note = (s.note || '').trim();
       if(!chips.length && !note) return;
       let line = label + ': ';
-      if(chips.length) line += chips.join(', ');
+      if(chips.length) line += chips.map(function(ch){ const r=(s.ratings&&s.ratings[ch])||''; const dot=r==='good'?'🟢':r==='average'?'🟠':r==='poor'?'🔴':''; return (dot?dot+' ':'')+ch; }).join(', ');
       if(note) line += (chips.length ? ' — ' : '') + note;
       parts.push(line);
     });
@@ -7271,6 +7418,7 @@ async function _obsSubmit(e){
         _d.positie = (document.getElementById('obs-positie')?.value||'').trim();
         _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
         _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
+        _d.omschrijving = (document.getElementById('obs-omschrijving')?.value||'').trim();
         // BATCH A — FIX 3: huidig niveau + advies meebewaren zodat ze na heropenen terugkomen
         _d.huidig_niveau = (document.getElementById('obs-niveau')?.value||'').trim();
         _d.advies = (document.getElementById('obs-advies')?.value||'').trim();
@@ -7460,6 +7608,7 @@ async function _obsSubmit(e){
             _d.positie = (document.getElementById('obs-positie')?.value||'').trim();
             _d.elftal = (document.getElementById('obs-elftal')?.value||'').trim();
             _d.rugnummer = (document.getElementById('obs-rug')?.value||'').trim();
+            _d.omschrijving = (document.getElementById('obs-omschrijving')?.value||'').trim();
         // BATCH A — FIX 3: huidig niveau + advies meebewaren zodat ze na heropenen terugkomen
         _d.huidig_niveau = (document.getElementById('obs-niveau')?.value||'').trim();
         _d.advies = (document.getElementById('obs-advies')?.value||'').trim();
@@ -7616,6 +7765,31 @@ function injectScoutingBanner(prog, progSp, matchedPlayer){
   }
 }
 
+function fitSaTitle(el){
+  if(!el) return;
+  // s94b: titel altijd op één regel, fontgrootte ratio-gebaseerd geschaald naar
+  // de beschikbare breedte zodat ook lange namen (bv. "Willem van der Heijden")
+  // volledig zichtbaar blijven i.p.v. afgekapt met "…".
+  el.style.fontSize = '';
+  const parent = el.parentElement; // .sa-title (flex: pulse-dot + txt)
+  if(!parent) return;
+  const base = parseFloat(getComputedStyle(parent).fontSize) || 15;
+  const MIN = 8;
+  el.style.fontSize = base + 'px';
+  const avail = el.clientWidth;        // beschikbare breedte (flex:1 -> = ruimte)
+  const needed = el.scrollWidth;        // volledige tekstbreedte op base-grootte
+  if(avail > 0 && needed > avail){
+    let size = base * (avail / needed) - 0.5; // marge tegen afronding
+    if(size < MIN) size = MIN;
+    el.style.fontSize = size + 'px';
+    // fijn-correctie als ratio net te ruim/krap uitkwam
+    let guard = 0;
+    while(el.scrollWidth > el.clientWidth + 1 && size > MIN && guard < 20){
+      size -= 0.5; el.style.fontSize = size + 'px'; guard++;
+    }
+  }
+}
+
 function renderActiveScouting(){
   const wrap = document.getElementById('scouting-active-wrap');
   if(!wrap) return;
@@ -7645,30 +7819,31 @@ function renderActiveScouting(){
   const cards = active.map(prog => {
     const w = getMatchWindow(prog);
     const kickT  = w ? w.kick.getTime() : null;
-    const matchDur = w ? getMatchDurationMin(
-      (prog.leeftijd && String(prog.leeftijd).trim())
-      || (prog.thuis_elftal && String(prog.thuis_elftal).trim())
-      || (prog.uit_elftal  && String(prog.uit_elftal).trim())  || ''
-    ) : 120;
-    const endT   = kickT ? kickT + matchDur * 60000 : null;
-    // Vier fases: voorbereiding → live → afgelopen → afgesloten (kaart weg)
-    let status = 'live', statusLabel = '● Live';
-    if(kickT && now.getTime() < kickT){
-      // Fase 1: voorbereiding (pre-window, max 5 min voor aftrap)
-      status = 'warmup';
-      const min = Math.round((kickT - now.getTime()) / 60000);
-      statusLabel = '⏱ Voorbereiding — aftrap over ' + min + ' min';
-    } else if(endT && now.getTime() > endT){
-      // Fase 3: afgelopen (post-window, max 15 min na einde)
+    const matchDur = w ? w.dur : 120;
+    // s35dk: handmatige Start/Einde-klok. De auto-tijd bepaalt of de kaart
+    // verschijnt, maar de scout bepaalt zelf wanneer de wedstrijd-klok loopt.
+    const clk = getMatchClock(prog.id);
+    const tNow = now.getTime();
+    // sh-v358: de klok loopt AUTOMATISCH vanaf de geplande aftrap (kickT) — de
+    // scout hoeft niets te starten. Begint de wedstrijd eerder of later dan
+    // gepland, dan tikt de scout op "Aftrap nu" / "Klok herstarten" en loopt de
+    // klok (opnieuw) vanaf nu (setMatchStarted zet startedAt=now). 'anchor' =
+    // het handmatige (her)startmoment, anders de geplande aftrap.
+    const anchor = (clk && clk.startedAt) ? clk.startedAt : kickT;
+    let status = 'warmup', statusLabel = '', clockBtnHtml = '';
+    if(clk && clk.endedAt){
+      // Afgelopen — kaart blijft nog 5 min staan
       status = 'ended';
-      const min = Math.round((now.getTime() - endT) / 60000);
-      statusLabel = '✓ Afgelopen — ' + min + ' min geleden gestopt';
-    } else if(kickT){
-      // Fase 2: live (aftrap t/m einde speeltijd)
-      // s82: 1e helft / rust / 2e helft op basis van leeftijdscategorie
-      const minElapsed = Math.round((now.getTime() - kickT) / 60000);
+      const min = Math.max(0, Math.round((tNow - clk.endedAt) / 60000));
+      const restMin = Math.max(0, Math.ceil((clk.endedAt + SCOUTING_POST_MIN*60000 - tNow)/60000));
+      statusLabel = '✓ Afgelopen — ' + min + ' min geleden' + (restMin>0 ? ' · nog ' + restMin + ' min zichtbaar' : '');
+      clockBtnHtml = `<button class="sa-clock-btn sa-clock-start" data-sa-act="match-start" data-progid="${escapeHtml(prog.id)}" title="Toch nog bezig? Start de klok opnieuw vanaf nu">⟲ Opnieuw</button>`;
+    } else if(anchor && tNow >= anchor){
+      // Live — klok loopt automatisch vanaf de aftrap (of vanaf handmatige herstart)
+      status = 'live';
+      const minElapsed = Math.max(0, Math.round((tNow - anchor) / 60000));
       const halfDur    = Math.round(matchDur / 2);
-      const breakEst   = 10; // geschatte rustduur in minuten
+      const breakEst   = 10;
       if(minElapsed < halfDur){
         statusLabel = '● 1e helft — ' + minElapsed + "'";
       } else if(minElapsed < halfDur + breakEst){
@@ -7677,15 +7852,60 @@ function renderActiveScouting(){
         const m2 = Math.max(1, minElapsed - halfDur - breakEst);
         statusLabel = '● 2e helft — ' + m2 + "'";
       }
+      clockBtnHtml =
+        `<button class="sa-clock-btn sa-clock-restart" data-sa-act="match-start" data-progid="${escapeHtml(prog.id)}" title="Begon de wedstrijd later? Herstart de klok vanaf nu">⟲ Herstart</button>`
+      + `<button class="sa-clock-btn sa-clock-end sa-clock-icon" data-sa-act="match-end" data-progid="${escapeHtml(prog.id)}" title="Wedstrijd beëindigen" aria-label="Wedstrijd beëindigen">⏹</button>`;
+    } else {
+      // Voorbereiding — aftrap nog niet bereikt. Begint de wedstrijd eerder? "Aftrap nu".
+      status = 'warmup';
+      if(anchor && tNow < anchor){
+        const min = Math.max(1, Math.round((anchor - tNow) / 60000));
+        statusLabel = '⏱ Aftrap over ' + min + ' min';
+      } else {
+        statusLabel = '⏱ Klaar om te starten';
+      }
+      clockBtnHtml = `<button class="sa-clock-btn sa-clock-start" data-sa-act="match-start" data-progid="${escapeHtml(prog.id)}" title="Begint de wedstrijd eerder? Start de klok nu">▶ Aftrap nu</button>`;
     }
     // s35bd: titel-format 'Club Elftal — Club Elftal'
     const teams = `${escapeHtml(prog.thuis||'?')}${prog.thuis_elftal?' '+escapeHtml(prog.thuis_elftal):''} — ${escapeHtml(prog.uit||'?')}${prog.uit_elftal?' '+escapeHtml(prog.uit_elftal):''}`;
     const metaParts = [];
     if(prog.tijd) metaParts.push('<b>Aftrap</b> ' + escapeHtml(prog.tijd));
     if(prog.leeftijd) metaParts.push('<b>Elftal</b> ' + escapeHtml(prog.leeftijd));
-    if(prog.methode) metaParts.push(escapeHtml(prog.methode));
+    if(prog.methode && !/^live$/i.test(String(prog.methode).trim())) metaParts.push(escapeHtml(prog.methode));
     if(prog.locatie) metaParts.push('📍 ' + escapeHtml(prog.locatie));
     const spelers = Array.isArray(prog.spelers) ? prog.spelers : [];
+    const _gkNaam = (s) => s.naam || [s.voornaam, s.achternaam].filter(Boolean).join(' ') || 'Speler';
+    let gkBtnHtml = '';
+    if(spelers.length === 1){
+      gkBtnHtml = `<button class="sa-live-btn sa-live-btn-gk sa-trigger-gk" data-sa-act="open-gk" data-progid="${escapeHtml(prog.id)}" data-sp-idx="0" title="Gekoppelde speler"><span class="sa-live-btn-icon">🔗</span><span class="sa-live-btn-label">${escapeHtml(_gkNaam(spelers[0]))}</span></button>`;
+    } else if(spelers.length > 1){
+      const gkItems = spelers.map((s, idx) => `<button type="button" class="sa-gk-item" data-sa-act="open-gk" data-progid="${escapeHtml(prog.id)}" data-sp-idx="${idx}">${escapeHtml(_gkNaam(s))}</button>`).join('');
+      gkBtnHtml = `<div class="sa-gk-wrap"><button class="sa-live-btn sa-live-btn-gk sa-gk-toggle" data-sa-act="toggle-gk" data-progid="${escapeHtml(prog.id)}" title="Gekoppelde spelers"><span class="sa-live-btn-icon">🔗</span><span class="sa-live-btn-label">Gekoppelde spelers (${spelers.length})</span><span class="sa-gk-chev">▾</span></button><div class="sa-gk-menu" style="display:none">${gkItems}</div></div>`;
+    }
+    // sh-v359: "Opgevallen speler" als dropdown (zelfde patroon als gekoppelde
+    // spelers). Bestaande obs-drafts staan in een uitklapmenu OP de knop i.p.v.
+    // als losse sectie onder de kaart. Geen drafts → knop-klik = direct nieuwe obs.
+    const _obsDrafts = (prog.snelnotities||[]).filter(sn => sn && sn.rapport_type === 'observatie' && sn.obs_draft === true && sn.ingediend !== true);
+    let obsBtnHtml;
+    if(_obsDrafts.length === 0){
+      obsBtnHtml = `<button class="sa-live-btn sa-live-btn-obs sa-trigger-obs" data-sa-act="add-observatie" data-progid="${escapeHtml(prog.id)}" title="Opvallende speler noteren"><span class="sa-live-btn-icon">👁</span><span class="sa-live-btn-label">Opgevallen speler</span></button>`;
+    } else {
+      const _obsItems = _obsDrafts.map(sn => {
+        const _rug = (sn.rugnummer||'').trim();
+        let _titleTxt;
+        if(sn.naam && sn.naam.trim()) _titleTxt = sn.naam.trim();
+        else if(sn.omschrijving && sn.omschrijving.trim()) _titleTxt = sn.omschrijving.trim();
+        else _titleTxt = _rug ? ('Naam onbekend · #'+_rug) : 'Naam onbekend';
+        const _nm = escapeHtml(_titleTxt);
+        const _subParts = [];
+        if(_rug && _titleTxt.indexOf('#'+_rug) === -1) _subParts.push('#'+_rug);
+        if(sn.club) _subParts.push(sn.club);
+        if(sn.positie) _subParts.push(sn.positie);
+        const _sub = escapeHtml(_subParts.join(' · '));
+        return `<button type="button" class="sa-obs-item" data-sa-act="open-obs-draft" data-progid="${escapeHtml(prog.id)}" data-snid="${escapeHtml(sn.id||'')}"><span class="sa-obs-item-naam">${_nm}</span>${_sub?`<span class="sa-obs-item-sub">${_sub}</span>`:''}</button>`;
+      }).join('');
+      obsBtnHtml = `<div class="sa-obs-wrap"><button class="sa-live-btn sa-live-btn-obs sa-obs-toggle" data-sa-act="toggle-obs" data-progid="${escapeHtml(prog.id)}" title="Opgevallen spelers"><span class="sa-live-btn-icon">👁</span><span class="sa-live-btn-label">Opgevallen speler (${_obsDrafts.length})</span><span class="sa-gk-chev">▾</span></button><div class="sa-obs-menu" style="display:none"><button type="button" class="sa-obs-item sa-obs-item-new" data-sa-act="add-observatie" data-progid="${escapeHtml(prog.id)}">+ Nieuwe opgevallen speler</button>${_obsItems}</div></div>`;
+    }
     let tilesHtml = '';
     if(spelers.length === 0){
       tilesHtml = '<div class="sa-empty-players">Nog geen spelers gepland voor deze wedstrijd.</div>';
@@ -7706,6 +7926,7 @@ function renderActiveScouting(){
           sp.club || ''
         ].filter(Boolean).join(' · ');
         const conceptTag = concept ? `<div class="sa-tile-concept-tag">concept</div>` : '';
+        const linkedTag = (player && !concept) ? `<div class="sa-tile-linked-tag">gekoppeld</div>` : '';
         // s83: zoek bestaande snelnotitie voor inline panel
         const existingSn = (prog.snelnotities || []).find(s => s && s.spelerKey === sp.id);
         const snelTekst  = existingSn ? (existingSn.tekst || '') : '';
@@ -7745,6 +7966,7 @@ function renderActiveScouting(){
           <button type="button" class="sa-tile-close" data-tile-act="close" aria-label="Sluiten" style="display:none">×</button>
           <div class="sa-tile-name">${escapeHtml(naam)}${isOpvallend ? '<span class="sa-tile-star" aria-hidden="true">⭐</span>' : ''}</div>
           ${meta ? `<div class="sa-tile-meta">${escapeHtml(meta)}</div>` : ''}
+          ${linkedTag}
           ${conceptTag}
           <div class="sa-tile-obs-header">
             <div class="sa-tile-obs-naam">${escapeHtml(naam)}</div>
@@ -7761,24 +7983,25 @@ function renderActiveScouting(){
       <div class="sa-card is-live-card" data-prog-id="${escapeHtml(prog.id)}">
         <div class="sa-header" data-sa-collapse="1">
           <div style="flex:1; min-width:0;">
-            <div class="sa-title"><span class="sa-pulse"></span> Bezig met scouten — ${teams}</div>
+            <div class="sa-title"><span class="sa-pulse${status==='live'?'':' sa-pulse-off'}"></span> <span class="sa-title-txt">${status==='warmup'?'Voorbereiding':(status==='ended'?'Afgelopen':'Live')} — ${teams}</span></div>
             <div class="sa-meta">${metaParts.join('<span style=\"opacity:.3\">|</span>')}</div>
           </div>
           <div class="sa-header-right">
-            <div class="sa-status ${status}">${statusLabel}</div>
-            <div class="sa-header-acts">
-              <button class="sa-live-btn sa-live-btn-obs sa-trigger-obs" data-sa-act="add-observatie" data-progid="${escapeHtml(prog.id)}" title="Opvallende speler noteren">
-                <span class="sa-live-btn-icon">👁</span><span class="sa-live-btn-label">Opgevallen speler</span>
-              </button>
-              <button class="sa-live-btn sa-live-btn-wstr sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}" title="Wedstrijdnotitie toevoegen">
-                <span class="sa-live-btn-icon">📋</span><span class="sa-live-btn-label">Wedstrijdnotitie</span>
-              </button>
+            <div class="sa-status-row">
+              <div class="sa-status ${status}">${statusLabel}</div>
+              ${clockBtnHtml}
             </div>
           </div>
           <span class="sa-collapse-chev" aria-hidden="true">&#9662;</span>
         </div>
-        <div class="sa-players-title">Spelers (${spelers.length})</div>
-        <div class="sa-tiles">${tilesHtml}</div>
+        <div class="sa-header-acts sa-header-acts-row">
+          ${gkBtnHtml}
+          ${obsBtnHtml}
+          <button class="sa-live-btn sa-live-btn-wstr sa-trigger-wstr" data-sa-act="add-snel-wstr" data-progid="${escapeHtml(prog.id)}" title="Wedstrijdnotitie toevoegen">
+            <span class="sa-live-btn-icon">📋</span><span class="sa-live-btn-label">Wedstrijdnotitie</span>
+          </button>
+        </div>
+        ${spelers.length === 0 ? `<div class="sa-players-title">Spelers (0)</div><div class="sa-tiles">${tilesHtml}</div>` : ''}
         <div class="sa-snel-form" data-progid="${escapeHtml(prog.id)}" style="display:none;">
           <!-- s35bg: heading werkt als sluit-knop -->
           <div class="sa-snel-form-header">
@@ -7825,28 +8048,9 @@ function renderActiveScouting(){
           </div><!-- /sa-snel-form-body -->
         </div>
         ${(()=>{
-          // Opgevallen spelers: obs-drafts als paarse heropen-kaartjes
-          const _obsDrafts = (prog.snelnotities||[]).filter(sn => sn && sn.rapport_type === 'observatie' && sn.obs_draft === true && sn.ingediend !== true);
-          if(!_obsDrafts.length) return '';
-          return `<div class="sa-obs-drafts-section" data-progid="${escapeHtml(prog.id)}">
-            <div class="sa-obs-drafts-hdr">
-              <span class="sa-obs-drafts-icon">👁</span>
-              <span class="sa-obs-drafts-title">Opgevallen spelers (${_obsDrafts.length})</span>
-            </div>
-            ${_obsDrafts.map(sn => {
-              const _nm = escapeHtml(sn.naam || 'Nieuwe speler');
-              const _cl = escapeHtml(sn.club || '');
-              const _pos = escapeHtml(sn.positie || '');
-              const _sub = [_cl, _pos].filter(Boolean).join(' · ');
-              return `<div class="sa-obs-draft-card" data-obs-progid="${escapeHtml(prog.id)}" data-obs-snid="${escapeHtml(sn.id||'')}">
-                <div class="sa-obs-draft-avatar">👁</div>
-                <div class="sa-obs-draft-info">
-                  <div class="sa-obs-draft-naam">${_nm}</div>
-                  ${_sub ? `<div class="sa-obs-draft-sub">${_sub}</div>` : ''}
-                </div>
-              </div>`;
-            }).join('')}
-          </div>`;
+          // sh-v359: obs-drafts staan nu in het uitklapmenu OP de "Opgevallen
+          // speler"-knop (zie obsBtnHtml) i.p.v. als losse sectie onder de kaart.
+          return '';
         })()}
         ${(prog.wedstrijdnotities && prog.wedstrijdnotities.length) ? `
         <div class="sa-wstrnotities-wrap" style="margin-top:10px; border-top:1px solid var(--border,#2a2f3a); padding-top:8px;">
@@ -7920,7 +8124,24 @@ function renderActiveScouting(){
   wrap.innerHTML = cards;
   wrap.style.display = '';
 
-  // ===== s35bl: sa-card inklapbaar op mobiel (header = toggle) =====
+  // s94: live-titel op één regel houden + auto-shrinken aan de beschikbare
+  // breedte. Lange teamnamen (bv. "Willem van der Heijden") wrappen niet meer,
+  // de fontgrootte krimpt tot de tekst past. In rAF zodat de layout klaar is
+  // (anders is clientWidth nog 0 en grijpt de CSS-ellipsis onterecht in).
+  try {
+    const _fitAll = () => wrap.querySelectorAll('.sa-title-txt').forEach(fitSaTitle);
+    requestAnimationFrame(() => requestAnimationFrame(_fitAll));
+    if(!window.__saTitleResizeBound){
+      window.__saTitleResizeBound = true;
+      let _saFitT = null;
+      window.addEventListener('resize', () => {
+        clearTimeout(_saFitT);
+        _saFitT = setTimeout(() => {
+          document.querySelectorAll('#scouting-active-wrap .sa-title-txt').forEach(fitSaTitle);
+        }, 120);
+      });
+    }
+  } catch(_){}
   try {
     const isMobile = window.matchMedia && window.matchMedia('(max-width: 900px)').matches;
     wrap.querySelectorAll('.sa-card').forEach(card => {
@@ -8315,6 +8536,16 @@ function renderActiveScouting(){
           return;
         }
       }
+      if(act === 'match-start'){
+        if(typeof setMatchStarted === 'function') setMatchStarted(progId);
+        if(typeof toast === 'function') toast('Klok loopt vanaf nu');
+        return;
+      }
+      if(act === 'match-end'){
+        if(typeof setMatchEnded === 'function') setMatchEnded(progId);
+        if(typeof toast === 'function') toast('Wedstrijd beëindigd — nog 5 min zichtbaar');
+        return;
+      }
       if(act === 'toggle-wstr'){
         const wstrWrap = btn.closest('.sa-card');
         if(!wstrWrap) return;
@@ -8549,6 +8780,30 @@ function renderActiveScouting(){
           try { form.scrollIntoView({behavior:'smooth', block:'nearest'}); } catch(_){}
         }
         if(naamIn) naamIn.focus();
+      } else if(act === 'toggle-gk'){
+        const wrap2 = btn.closest('.sa-gk-wrap');
+        if(wrap2){ const menu = wrap2.querySelector('.sa-gk-menu'); if(menu) menu.style.display = (menu.style.display === 'block' ? 'none' : 'block'); }
+      } else if(act === 'open-gk'){
+        try {
+          const _gkProg = programmaCache.find(p => p.id === progId);
+          const _gkSp = _gkProg && (_gkProg.spelers||[])[parseInt(btn.dataset.spIdx,10)];
+          if(_gkProg && _gkSp && typeof openPlayerLiveForm === 'function'){
+            const menu = btn.closest('.sa-gk-menu'); if(menu) menu.style.display = 'none';
+            openPlayerLiveForm(_gkProg, _gkSp);
+          }
+        } catch(_){}
+      } else if(act === 'toggle-obs'){
+        const wrap2 = btn.closest('.sa-obs-wrap');
+        if(wrap2){ const menu = wrap2.querySelector('.sa-obs-menu'); if(menu) menu.style.display = (menu.style.display === 'block' ? 'none' : 'block'); }
+      } else if(act === 'open-obs-draft'){
+        try {
+          const _odProg = programmaCache && programmaCache.find(p => p && p.id === progId);
+          const _odSn = _odProg && (_odProg.snelnotities||[]).find(s => s && s.id === btn.dataset.snid);
+          if(_odProg && _odSn && typeof openObservatieForm === 'function'){
+            const menu = btn.closest('.sa-obs-menu'); if(menu) menu.style.display = 'none';
+            openObservatieForm(_odProg, _odSn);
+          }
+        } catch(_){}
       } else if(act === 'add-observatie'){
         // Elke klik = nieuwe obs-draft (meerdere opgevallen spelers per wedstrijd mogelijk)
         const _obsProg = programmaCache && programmaCache.find(p => p && p.id === progId);
@@ -8797,6 +9052,7 @@ function renderTodayMatches(){
   const _komend = [], _gespeeld = [];
   programmaCache.forEach(p => {
     if(!p || p.datum !== today) return;
+    if(p.id === _dashHeroProgId) return; // s94: staat al als VOLGENDE-hero
     if(typeof isMatchInWindow === 'function' && isMatchInWindow(p, __nowF)) return; // live -> niet hier
     let _fin = false;
     if(typeof getMatchWindow === 'function'){ const w = getMatchWindow(p); if(w && w.end < __nowF) _fin = true; }
@@ -9071,6 +9327,7 @@ function renderUpcomingMatches(){
   const horizon3 = new Date(today.getTime() + 4*24*3600*1000);
   const progItems = (Array.isArray(programmaCache) ? programmaCache : []).filter(p => {
     if(!p || !p.datum) return false;
+    if(p.id === _dashHeroProgId) return false; // s94: staat al als VOLGENDE-hero
     const d = new Date(p.datum + 'T00:00:00');
     return d > today && d < horizon3;
   });
@@ -9250,6 +9507,118 @@ function renderVandaagBanner(){
   });
 }
 
+// s94: VOLGENDE-zone — de eerstvolgende te scouten wedstrijd als prominente
+// hero-kaart (vult de voorheen lege #dash-next-match-wrap). Verbergt zichzelf
+// als er een live wedstrijd loopt (die staat dan in de LIVE-zone). De getoonde
+// wedstrijd wordt via _dashHeroProgId uitgesloten van VANDAAG en AANKOMEND zodat
+// hij niet dubbel verschijnt.
+let _dashHeroProgId = '';
+function renderNextMatchHero(){
+  const wrap = document.getElementById('dash-next-match-wrap');
+  if(!wrap) return;
+  _dashHeroProgId = '';
+  if(typeof programmaCache === 'undefined' || !Array.isArray(programmaCache) || !programmaCache.length){
+    wrap.style.display = 'none'; wrap.innerHTML = ''; return;
+  }
+  const now = new Date();
+  const anyLive = programmaCache.some(p => p && typeof isMatchInWindow === 'function' && isMatchInWindow(p, now));
+  if(anyLive){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  function kickoff(p){
+    const [Y,M,D] = String(p.datum).split('-').map(n => parseInt(n,10));
+    if(!Y||!M||!D) return null;
+    if(p.tijd){
+      const [h,m] = String(p.tijd).split(':').map(n => parseInt(n,10));
+      if(!isNaN(h) && !isNaN(m)) return new Date(Y, M-1, D, h, m, 0, 0);
+    }
+    return new Date(Y, M-1, D, 12, 0, 0, 0); // tijdloos item → middag van die dag
+  }
+  const cands = [];
+  programmaCache.forEach(p => {
+    if(!p || !p.datum || !(p.thuis || p.uit)) return;
+    const k = kickoff(p); if(!k) return;
+    let fin = false;
+    if(typeof getMatchWindow === 'function'){ const w = getMatchWindow(p); if(w && w.end < now) fin = true; }
+    else if(k < now && (now - k) > 3*3600*1000) fin = true;
+    if(fin) return;
+    const dayStart = new Date(k.getFullYear(), k.getMonth(), k.getDate());
+    if(dayStart < startOfToday) return;
+    cands.push({ p, k });
+  });
+  if(!cands.length){ wrap.style.display = 'none'; wrap.innerHTML = ''; return; }
+  cands.sort((a,b) => a.k - b.k);
+  const it = cands[0].p, k = cands[0].k;
+  _dashHeroProgId = it.id;
+
+  const weekdays = ['zo','ma','di','wo','do','vr','za'];
+  const dayStart = new Date(k.getFullYear(), k.getMonth(), k.getDate());
+  const diffD = Math.round((dayStart - startOfToday) / 86400000);
+  const dayLabel = diffD === 0 ? 'Vandaag' : diffD === 1 ? 'Morgen' : diffD === 2 ? 'Overmorgen'
+    : `${weekdays[k.getDay()]} ${String(k.getDate()).padStart(2,'0')}-${String(k.getMonth()+1).padStart(2,'0')}`;
+  let cd = '';
+  if(it.tijd){
+    const diffMin = Math.round((k - now) / 60000);
+    if(diffMin > 0){
+      const dd = Math.floor(diffMin/1440), hh = Math.floor((diffMin%1440)/60), mm = diffMin%60;
+      cd = dd > 0 ? `over ${dd}d ${hh}u` : (hh > 0 ? `over ${hh}u ${mm}m` : `over ${mm}m`);
+    }
+  }
+  const thuis = it.thuis_elftal ? `${it.thuis} ${it.thuis_elftal}` : (it.thuis || '?');
+  const uit   = it.uit_elftal   ? `${it.uit} ${it.uit_elftal}`     : (it.uit   || '?');
+  const n = Array.isArray(it.spelers) ? it.spelers.length : 0;
+  const club = (typeof CLUB_ADRESSEN !== 'undefined' && it.thuis) ? CLUB_ADRESSEN[it.thuis.toLowerCase().trim()] : null;
+  const locLabel = it.locatie || (club && club.sportpark) || (club && club.adres) || '';
+  let mapsUrl = '';
+  if(club && club.lat && club.lon) mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${club.lat},${club.lon}`;
+  else if(club && club.adres) mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(club.adres)}`;
+  else if(it.locatie) mapsUrl = `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(it.locatie)}`;
+
+  const metaParts = [];
+  if(it.leeftijd) metaParts.push(`<span class="dhero-tag">${escapeHtml(it.leeftijd)}</span>`);
+  metaParts.push(`<span class="dhero-players">${n} speler${n===1?'':'s'} gekoppeld</span>`);
+  if(locLabel){
+    metaParts.push(mapsUrl
+      ? `<span class="dhero-loc dhero-loc-nav" data-maps-url="${escapeAttr(mapsUrl)}" data-loc-label="${escapeAttr(locLabel)}" title="Klik om te navigeren">📍 ${escapeHtml(locLabel)}</span>`
+      : `<span class="dhero-loc">📍 ${escapeHtml(locLabel)}</span>`);
+  }
+
+  wrap.innerHTML = `
+    <div class="dash-hero" data-hero-progid="${escapeHtml(it.id)}">
+      <div class="dash-hero-label"><span class="dhero-spark">▸</span> Volgende wedstrijd</div>
+      <div class="dash-hero-teams">${escapeHtml(thuis)} <span class="dhero-vs">—</span> ${escapeHtml(uit)}</div>
+      <div class="dash-hero-when">
+        <span class="dhero-day">${escapeHtml(dayLabel)}</span>
+        ${it.tijd ? `<span class="dhero-time">${escapeHtml(it.tijd)}</span>` : ''}
+        ${cd ? `<span class="dhero-cd">${escapeHtml(cd)}</span>` : ''}
+      </div>
+      <div class="dash-hero-meta">${metaParts.join('')}</div>
+      <button class="dash-hero-cta" data-hero-progid="${escapeHtml(it.id)}">Bekijk wedstrijd →</button>
+    </div>`;
+  wrap.style.display = 'block';
+
+  // Navigatie naar de wedstrijd-locatie (route)
+  wrap.querySelectorAll('.dhero-loc-nav').forEach(el => {
+    el.addEventListener('click', e => {
+      e.stopPropagation();
+      const url = el.dataset.mapsUrl, label = el.dataset.locLabel || 'deze locatie';
+      if(url && confirm(`Wil je navigeren naar ${label}?`)) window.open(url, '_blank', 'noopener');
+    });
+  });
+  // Kaart/CTA → open de wedstrijd in Programma
+  const goToProg = (e) => {
+    if(e.target.closest('.dhero-loc-nav')) return;
+    const pid = it.id;
+    if(typeof go === 'function') go('programma');
+    setTimeout(() => {
+      const card = document.querySelector(`[data-prog-id="${pid}"]`);
+      if(card){ card.scrollIntoView({ behavior:'smooth', block:'center' }); card.classList.add('highlight-flash'); setTimeout(() => card.classList.remove('highlight-flash'), 1200); }
+    }, 350);
+  };
+  const heroEl = wrap.querySelector('.dash-hero');
+  if(heroEl){ heroEl.style.cursor = 'pointer'; heroEl.addEventListener('click', goToProg); }
+}
+window.renderNextMatchHero = renderNextMatchHero;
+
 function renderDashboardAgenda(){
   const now = new Date();
 
@@ -9259,9 +9628,14 @@ function renderDashboardAgenda(){
     hasActive = programmaCache.some(p => p && typeof isMatchInWindow === 'function' && isMatchInWindow(p, now));
   }
 
-  // Render de drie sub-secties
-  if(typeof renderVandaagBanner  === 'function') renderVandaagBanner();
+  // Render de zones (s94: hero VÓÓR today/upcoming zodat _dashHeroProgId klaarstaat)
+  // De oude "Vandaag op het programma"-banner is uitgeschakeld: VANDAAG zit nu in
+  // today-matches, VOLGENDE in de hero. Dat haalt de dubbeling weg.
+  const _vb = document.getElementById('dash-vandaag-banner');
+  if(_vb){ _vb.style.display = 'none'; _vb.innerHTML = ''; }
+  if(typeof renderNextMatchHero  === 'function') renderNextMatchHero();
   if(typeof renderActiveScouting === 'function') renderActiveScouting();
+  if(typeof renderTournamentDashboard === 'function') renderTournamentDashboard();
   if(typeof renderTodayMatches   === 'function') renderTodayMatches();
   if(typeof renderUpcomingMatches=== 'function') renderUpcomingMatches();
 
@@ -9285,6 +9659,83 @@ function renderDashboardAgenda(){
   }
 }
 window.renderDashboardAgenda = renderDashboardAgenda;
+
+
+/* ══ TOERNOOI-OVERZICHT OP HET LIVE DASHBOARD ══════════════════════
+   Additief: toont actieve toernooien van vandaag met een uitklapbare
+   lijst van de wedstrijden die de scout wil bekijken (watchStatus
+   'watch'), plus een link naar het volledige schema. Klik op een
+   wedstrijd opent dezelfde match-detail als in de toernooi-tab (met de
+   live-klok). Raakt de reguliere live-kaart NIET aan. */
+async function renderTournamentDashboard(){
+  const host = document.getElementById('tournament-dash-wrap');
+  if(!host) return;
+  if(typeof tourmCache === 'undefined' || !Array.isArray(tourmCache)){ host.style.display='none'; host.innerHTML=''; return; }
+  const today = (typeof todayISO === 'function') ? todayISO() : new Date().toISOString().slice(0,10);
+  // Actief vandaag = vandaag valt binnen [startDate, endDate]
+  const active = tourmCache.filter(t => {
+    const sd = t.startDate || '', ed = t.endDate || t.startDate || '';
+    return sd && sd <= today && ed >= today;
+  });
+  if(!active.length){ host.style.display='none'; host.innerHTML=''; return; }
+
+  const cards = [];
+  for(const t of active){
+    let matches = [], days = [];
+    try {
+      const [dSnap, mSnap] = await Promise.all([
+        getDocs(tournSubCol(t.id, 'days')),
+        getDocs(query(tournSubCol(t.id, 'matches'), orderBy('startTime')))
+      ]);
+      days = dSnap.docs.map(d => ({...d.data(), id:d.id}));
+      matches = mSnap.docs.map(d => ({...d.data(), id:d.id}));
+    } catch(_){ continue; }
+    // Alleen de dag(en) van vandaag
+    const todayDayIds = new Set(days.filter(d => (d.date||'') === today).map(d => d.id));
+    let dayMatches = matches.filter(m => !m.dayId || todayDayIds.size === 0 || todayDayIds.has(m.dayId));
+    // De wedstrijden die de scout wil bekijken
+    const watched = dayMatches.filter(m => m.watchStatus === 'watch');
+    if(!watched.length) continue;
+    watched.sort((a,b) => String(a.startTime||'').localeCompare(String(b.startTime||'')));
+
+    let liveCount = 0;
+    const rows = watched.map(m => {
+      const clk = (typeof toernClockGet === 'function') ? toernClockGet(t.id, m.id) : null;
+      const isLive = !!(clk && clk.startedAt && !clk.endedAt);
+      const isDone = !!(clk && clk.endedAt);
+      if(isLive) liveCount++;
+      const teams = `${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}`;
+      const _st = String(m.startTime||'');
+      const tm = _st.includes('T') ? _st.split('T')[1].slice(0,5) : _st.slice(0,5);
+      const statusHtml = isLive
+        ? '<span class="tdm-live">● live</span>'
+        : (isDone ? '<span class="tdm-done">✓ klaar</span>' : '<span class="tdm-chev">›</span>');
+      return `<button type="button" class="toern-dash-match ${isLive?'is-live':''}" onclick="openMatchDetail('${t.id}','${m.id}',{fromToernooi:false})">
+        <span class="tdm-time">${escapeHtml(tm||'—')}</span>
+        <span class="tdm-teams">${teams}</span>
+        ${statusHtml}
+      </button>`;
+    }).join('');
+
+    const open = liveCount > 0;   // bij een live wedstrijd standaard uitgeklapt
+    const subParts = [`${watched.length} te bekijken`];
+    if(liveCount) subParts.unshift(`<span class="tdm-live">● ${liveCount} live</span>`);
+    cards.push(`<div class="toern-dash-card${liveCount?' has-live':''}">
+      <div class="toern-dash-head" onclick="this.parentNode.classList.toggle('collapsed')">
+        <div class="toern-dash-title">🏆 ${escapeHtml(t.name||'Toernooi')}</div>
+        <div class="toern-dash-sub">${subParts.join(' · ')}</div>
+        <span class="toern-dash-toggle">▾</span>
+      </div>
+      <div class="toern-dash-matches">${rows}</div>
+      <button type="button" class="toern-dash-schema" onclick="event.stopPropagation(); go('toernooien'); setTimeout(function(){ renderToernooiDetail('${t.id}'); }, 0);">Volledig schema bekijken →</button>
+    </div>${open?'':''}`);
+  }
+
+  if(!cards.length){ host.style.display='none'; host.innerHTML=''; return; }
+  host.innerHTML = cards.join('');
+  host.style.display = 'block';
+}
+window.renderTournamentDashboard = renderTournamentDashboard;
 
 
 /* ══ DASHBOARD VISUALS ══════════════════════════════════════════ */
@@ -10684,6 +11135,34 @@ function applyFilters(){
     return 0;
   });
 
+  // ── Persoon-groepering: meerdere records van dezelfde speler (zelfde naam +
+  // club, binnen hetzelfde type obs/rapport) worden tot ÉÉN rij gebundeld met
+  // een telgetal. Voorkomt dubbele rijen (bv. 4× "Liam de Boer"). De losse
+  // records blijven bereikbaar via de uitklap. We muteren playersCache NIET.
+  window._dbDupGroups = {};
+  {
+    const _seenGroup = new Map();
+    const _out = [];
+    filtered.forEach(p => {
+      const nm = (p.naam || '').trim().toLowerCase();
+      if(!nm){ _out.push(p); return; }   // naamloze records nooit groeperen
+      const bucket = p.rapport_type === 'observatie' ? 'obs' : 'rap';
+      const key = bucket + '|' + nm + '|' + (p.club || '').trim().toLowerCase();
+      if(_seenGroup.has(key)){
+        const rep = _seenGroup.get(key);
+        rep.__dupCount = (rep.__dupCount || 1) + 1;
+        window._dbDupGroups[rep.id].push(p);
+      } else {
+        const rep = Object.assign({}, p);   // kloon zodat annotatie de cache niet raakt
+        rep.__dupCount = 1;
+        _seenGroup.set(key, rep);
+        window._dbDupGroups[rep.id] = [p];
+        _out.push(rep);
+      }
+    });
+    filtered = _out;
+  }
+
   const wrap = $('#db-table-wrap');
   // s35ar (#225): alle concepten ophalen — slot-concepten + losse draft
   const _draftParts = [];
@@ -10830,18 +11309,22 @@ function applyFilters(){
         ${pageItems.map(p=>{
           const _rpts = reportsForPlayer(p.id);
           const _rcount = _rpts.length;
-          const _expandCell = (_rcount >= 2)
-            ? `<button type="button" class="db-expand-btn" data-id="${escapeAttr(p.id)}" aria-label="Toon ${_rcount} rapporten" aria-expanded="false" title="${_rcount} rapporten"><span class="db-expand-chev">▸</span><span class="db-expand-count">${_rcount}</span></button>`
+          const _dupCount = p.__dupCount || 1;
+          const _isTourn = !!(p && ((p.wedstrijd && p.wedstrijd.toernooi === true) || p.fromTournamentId));
+          // Telgetal = aantal gebundelde records (persoon-groep) óf aantal rapporten.
+          const _badgeCount = Math.max(_dupCount, _rcount);
+          const _expandCell = (_badgeCount >= 2)
+            ? `<button type="button" class="db-expand-btn" data-id="${escapeAttr(p.id)}" ${_dupCount >= 2 ? 'data-dup="1"' : ''} aria-label="Toon ${_badgeCount} records" aria-expanded="false" title="${_badgeCount} records"><span class="db-expand-chev">▸</span><span class="db-expand-count">${_badgeCount}</span></button>`
             : '';
           return `
-          <tr data-id="${p.id}" class="${dbCheckedIds.includes(p.id)?'db-row-checked':''} ${p.rapport_type==='observatie'?'db-row-obs':''}">
+          <tr data-id="${p.id}" class="${dbCheckedIds.includes(p.id)?'db-row-checked':''} ${p.rapport_type==='observatie'?'db-row-obs':''} ${_isTourn?'db-row-tournament':''}">
             <td class="db-check-col"><input type="checkbox" class="db-check" data-id="${escapeAttr(p.id)}" ${dbCheckedIds.includes(p.id)?'checked':''} aria-label="Selecteer ${escapeAttr(p.naam||'speler')}"/></td>
             <td class="db-expand-col">${_expandCell}</td>
             <td>
               <div style="display:flex; align-items:center; gap:10px;">
                 <div class="recent-avatar ${p.rapport_type==='observatie'?'avatar-obs':''}" style="width:30px;height:30px;font-size:11px;">${_shAvatarInner(p)}</div>
                 <div>
-                  <div style="font-weight:600;">${escapeHtml(p.naam)}${p.rapport_type==='observatie'?'<span class="db-obs-badge">OBS</span>':''}${p.concept ? '<span class="db-concept-badge">● concept</span>' : ''}</div>
+                  <div style="font-weight:600;">${escapeHtml(p.naam)}${p.rapport_type==='observatie'?'<span class="db-obs-badge">OBS</span>':''}${_isTourn?'<span class="db-tourn-badge" title="Vanuit toernooi">🏆 toernooi</span>':''}${p.concept ? '<span class="db-concept-badge">● concept</span>' : ''}</div>
                   <div style="font-size:11px; color:var(--text-3);">${p.been||''}</div>
                 </div>
               </div>
@@ -10926,6 +11409,56 @@ function applyFilters(){
         b.classList.remove('open');
       });
       if(isOpen) return; // klik op open knop = sluiten
+      // Dup-groep (meerdere records van dezelfde persoon) → toon de losse records.
+      const _dupRecs = (btn.dataset.dup && window._dbDupGroups && window._dbDupGroups[pid]) ? window._dbDupGroups[pid] : null;
+      if(_dupRecs && _dupRecs.length >= 2){
+        const recs = _dupRecs.slice().sort((a,b)=>{
+          const da = (a.datum||(a.wedstrijd&&a.wedstrijd.datum)||a.created||0);
+          const db = (b.datum||(b.wedstrijd&&b.wedstrijd.datum)||b.created||0);
+          return (db>da?1:db<da?-1:0);
+        });
+        btn.setAttribute('aria-expanded', 'true');
+        btn.classList.add('open');
+        const colCount = tr.children.length;
+        const exTr = document.createElement('tr');
+        exTr.className = 'db-expanded-row';
+        exTr.dataset.for = pid;
+        const td = document.createElement('td');
+        td.colSpan = colCount;
+        td.className = 'db-expanded-cell';
+        td.innerHTML = `
+          <div class="db-expanded-inner">
+            <div class="db-expanded-title">${recs.length} rapportages van deze speler — klik om te openen</div>
+            <div class="db-expanded-list">
+              ${recs.map(r => {
+                const dat = formatDate(r.datum || (r.wedstrijd&&r.wedstrijd.datum) || '');
+                const wd = r.wedstrijd || {};
+                const tegen = (wd.thuis && wd.uit) ? (wd.thuis + ' – ' + wd.uit) : (r.club || '');
+                const grade = r.huidig_niveau || '';
+                const adv = adviesLabel(r.advies) || '';
+                const isT = !!((r.wedstrijd && r.wedstrijd.toernooi === true) || r.fromTournamentId);
+                return `
+                  <button type="button" class="db-expanded-row-item" data-pid="${escapeAttr(r.id)}">
+                    <span class="db-er-date">${escapeHtml(dat||'—')}</span>
+                    <span class="db-er-match">${tegen ? escapeHtml(tegen) : '<span style="color:var(--text-3);">—</span>'}${isT?' <span class="db-tourn-badge">🏆</span>':''}</span>
+                    <span class="db-er-advies">${escapeHtml(adv)}</span>
+                    <span class="db-er-grade">${grade ? `<span class="grade ${escapeAttr(grade)}">${escapeHtml(grade)}</span>` : ''}</span>
+                    <span class="db-er-chev">›</span>
+                  </button>`;
+              }).join('')}
+            </div>
+          </div>`;
+        exTr.appendChild(td);
+        tr.parentNode.insertBefore(exTr, tr.nextSibling);
+        $$('.db-expanded-row-item', exTr).forEach(item => {
+          item.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const pidx = item.dataset.pid;
+            if(pidx && typeof openDetail === 'function') openDetail(pidx);
+          });
+        });
+        return;
+      }
       const rpts = reportsForPlayer(pid).slice().sort((a,b)=>{
         const da = (a.datum||a.created_at||0); const db = (b.datum||b.created_at||0);
         return (db>da?1:db<da?-1:0);
@@ -11722,18 +12255,21 @@ function _shOpenEditModal(m){
 
   if(wrIngProg){
     html += `<div class="wstr-player-row wstr-wr-done" style="background:rgba(34,197,94,.10);border:1px solid rgba(34,197,94,.28);border-radius:8px;padding:10px 12px;">
-      <span style="color:#34d399;font-size:13px;font-weight:600;">📋 Wedstrijdrapport ingediend</span>
+      <span class="wstr-type-dot wedstrijd"></span>
+      <span style="color:#34d399;font-size:13px;font-weight:600;">Wedstrijdrapport ingediend</span>
       <button type="button" class="wstr-edit-note-action" data-wr-open-modal="${escapeHtml(wrIngProg.id)}" style="margin-left:auto;">Bekijk →</button>
     </div>`;
   } else if(wrConceptProg){
     html += `<div class="wstr-player-row">
-      <span style="font-size:13px;color:var(--text-2);">📝 Concept wedstrijdrapport aanwezig</span>
+      <span class="wstr-type-dot wedstrijd"></span>
+      <span style="font-size:13px;color:var(--text-2);">Wedstrijdrapport</span>
       <button type="button" class="wstr-edit-note-action primary" data-wr-open-modal="${escapeHtml(wrConceptProg.id)}" style="margin-left:auto;">→ Wedstrijdrapport</button>
     </div>`;
   } else {
     // FIX 2 (C1/C2): id zodat _mlfMaybeUpgradeWrStatus deze rij async kan upgraden
     // naar "Live wedstrijdnotitie aanwezig" als {id}_match inhoud bevat.
     html += `<div class="wstr-player-row" id="wstr-wr-norow">
+      <span class="wstr-type-dot wedstrijd" style="opacity:.4;"></span>
       <span style="font-size:12px;color:var(--text-3);">Nog geen rapport</span>
       ${_firstProgId2 ? `<button type="button" class="wstr-edit-note-action primary" data-edit-wstr-prog="${escapeHtml(_firstProgId2)}" data-edit-wstr-idx="-1" style="margin-left:auto;">→ Wedstrijdrapport</button>` : ''}
     </div>`;
@@ -12342,7 +12878,7 @@ function renderElftallen(){
     const doSearch = () => {
       const _inp = document.getElementById('elf-search-input');
       const _res = document.getElementById('elf-results');
-      if(_res) _elfShowTeamTiles(loadPlayers(), _res, (_inp?.value||'').trim());
+      if(_res) _elfRender(loadPlayers(), _res, (_inp?.value||'').trim());
     };
     if(input._elfHandler) {
       input.removeEventListener('input', input._elfHandler);
@@ -12360,14 +12896,14 @@ function renderElftallen(){
         const _inp = document.getElementById('elf-search-input');
         const _res = document.getElementById('elf-results');
         if(_inp) _inp.value = '';
-        if(_res) _elfShowTeamTiles(loadPlayers(), _res, '');
+        if(_res) _elfRender(loadPlayers(), _res, '');
         if(_inp) _inp.focus();
       });
     }
   }
 
   const q = (input?.value || '').trim();
-  _elfShowTeamTiles(players, resultsEl, q);
+  _elfRender(players, resultsEl, q);
   // Retry tot data beschikbaar is (Firestore laadt async)
   if(!players.length){
     [500, 1200, 2500].forEach(delay => {
@@ -12377,11 +12913,18 @@ function renderElftallen(){
         if(!_pl.length) return;
         const _res = document.getElementById('elf-results');
         const _inp = document.getElementById('elf-search-input');
-        if(_res) _elfShowTeamTiles(_pl, _res, (_inp?.value||'').trim());
+        if(_res) _elfRender(_pl, _res, (_inp?.value||'').trim());
       }, delay);
     });
   }
 }
+
+/* Drill-down dispatcher: zonder zoekterm -> clubs; met zoekterm -> teams (plat) */
+function _elfRender(players, resultsEl, q){
+  if(q) _elfShowTeamTiles(players, resultsEl, q);
+  else _elfShowClubTiles(players, resultsEl, '');
+}
+let _elfCurClub = '';
 
 function _elfBuildTeamMap(players){
   const teamMap = new Map();
@@ -12407,12 +12950,78 @@ function _elfTeamColor(elftal){
   return 'elf-tile-red';
 }
 
-function _elfShowTeamTiles(players, resultsEl, query){
+function _elfShowClubTiles(players, resultsEl, query){
   if(!resultsEl) return;
+  _elfCurClub = '';
+  const teamMap = _elfBuildTeamMap(players);
+  const q = (query||'').toLowerCase();
+  const clubMap = new Map();
+  [...teamMap.values()].filter(t => t.elftal).forEach(t => {
+    const key = _shNormTeamKey(t.club);
+    if(!clubMap.has(key)) clubMap.set(key, { club: t.club, teams: [], players: 0, nR: 0, nO: 0 });
+    const c = clubMap.get(key);
+    c.teams.push(t);
+    c.players += t.players.length;
+    c.nR += t.players.filter(p => p.rapport_type !== 'observatie').length;
+    c.nO += t.players.filter(p => p.rapport_type === 'observatie').length;
+  });
+  let clubs = [...clubMap.values()];
+  if(q) clubs = clubs.filter(c => c.club.toLowerCase().includes(q));
+  clubs.sort((a,b) => a.club.localeCompare(b.club,'nl'));
+
+  if(!clubs.length){
+    resultsEl.innerHTML = `<div class="elf-empty">${q ? 'Geen clubs gevonden voor <strong>'+escapeHtml(query)+'</strong>.' : 'Nog geen spelers gescout.'}</div>`;
+    return;
+  }
+
+  let html = `<div class="elf-section-label">Clubs <span class="elf-section-count">${clubs.length}</span></div>`;
+  html += '<div class="elf-tiles-grid">';
+  clubs.forEach(c => {
+    html += `<div class="elf-tile elf-tile-clublvl" data-elf-clubname="${escapeAttr(c.club)}">
+  <div class="elf-tile-club">${escapeHtml(c.club)}</div>
+  <div class="elf-tile-elftal">${c.teams.length} team${c.teams.length===1?'':'s'}</div>
+  <div class="elf-tile-seen">${c.players} speler${c.players===1?'':'s'} gezien</div>
+  <div class="elf-tile-footer">
+    <span class="elf-tile-badges">${c.nR?'<span class="elf-tbadge elf-tbadge-r" title="'+c.nR+' rapport'+(c.nR===1?'':'en')+'">'+c.nR+' rap</span>':''}${c.nO?'<span class="elf-tbadge elf-tbadge-o" title="'+c.nO+' observatie'+(c.nO===1?'':'s')+'">'+c.nO+' obs</span>':''}</span>
+    <span class="elf-ua-arrow">›</span>
+  </div>
+</div>`;
+  });
+  html += '</div>';
+
+  const unassigned = players.filter(p => !(p.elftal||deriveElftalFromReport(p)||'').trim());
+  if(unassigned.length && !q){
+    html += '<div class="elf-unassigned-row" id="elf-unassigned-btn"><span>&#9679; '+unassigned.length+' speler'+(unassigned.length===1?'':'s')+' zonder elftal</span><span class="elf-ua-arrow">›</span></div>';
+  }
+
+  resultsEl.innerHTML = html;
+  resultsEl.querySelectorAll('.elf-tile[data-elf-clubname]').forEach(tile => {
+    tile.addEventListener('click', () => _elfOpenClub(tile.dataset.elfClubname));
+  });
+  const uaBtn = resultsEl.querySelector('#elf-unassigned-btn');
+  if(uaBtn) uaBtn.addEventListener('click', window._elfOpenUnassigned);
+}
+
+function _elfOpenClub(club){
+  const resultsEl = document.getElementById('elf-results');
+  if(resultsEl) _elfShowTeamTiles(loadPlayers(), resultsEl, '', club);
+}
+window._elfOpenClub = _elfOpenClub;
+
+window._elfBackToClubs = function(){
+  const inp = document.getElementById('elf-search-input'); if(inp) inp.value = '';
+  const resultsEl = document.getElementById('elf-results');
+  if(resultsEl) _elfShowClubTiles(loadPlayers(), resultsEl, '');
+};
+
+function _elfShowTeamTiles(players, resultsEl, query, clubFilter){
+  if(!resultsEl) return;
+  _elfCurClub = clubFilter || '';
   const teamMap = _elfBuildTeamMap(players);
   const q = query.toLowerCase();
 
   let teams = [...teamMap.values()].filter(t => t.elftal);
+  if(clubFilter) teams = teams.filter(t => _shNormTeamKey(t.club) === _shNormTeamKey(clubFilter));
   if(q) teams = teams.filter(t => t.club.toLowerCase().includes(q) || t.elftal.toLowerCase().includes(q));
   teams.sort((a,b) => { const cl = a.club.localeCompare(b.club,'nl'); return cl !== 0 ? cl : a.elftal.localeCompare(b.elftal,'nl'); });
 
@@ -12421,7 +13030,15 @@ function _elfShowTeamTiles(players, resultsEl, query){
     return;
   }
 
-  let html = `<div class="elf-section-label">Elftallen <span class="elf-section-count">${teams.length}</span></div>`;
+  let html = '';
+  if(clubFilter){
+    html += `<div class="elf-back-bar">
+  <button class="elf-back-btn" onclick="window._elfBackToClubs()">&#8592; Clubs</button>
+  <div class="elf-back-info"><div class="elf-back-elftal">${escapeHtml(clubFilter)}</div></div>
+  <div class="elf-back-count">${teams.length} team${teams.length===1?'':'s'}</div>
+</div>`;
+  }
+  html += `<div class="elf-section-label">Elftallen <span class="elf-section-count">${teams.length}</span></div>`;
   html += '<div class="elf-tiles-grid">';
   teams.forEach(t => {
     const nR = t.players.filter(p => p.rapport_type !== 'observatie').length;
@@ -12433,14 +13050,14 @@ function _elfShowTeamTiles(players, resultsEl, query){
   <div class="elf-tile-seen">${t.players.length} speler${t.players.length===1?'':'s'} gezien</div>
   <div class="elf-tile-footer">
     <span></span>
-    <span class="elf-tile-badges">${nR?'<span class="elf-tbadge elf-tbadge-r">'+nR+'R</span>':''}${nO?'<span class="elf-tbadge elf-tbadge-o">'+nO+'O</span>':''}</span>
+    <span class="elf-tile-badges">${nR?'<span class="elf-tbadge elf-tbadge-r" title="'+nR+' rapport'+(nR===1?'':'en')+'">'+nR+' rap</span>':''}${nO?'<span class="elf-tbadge elf-tbadge-o" title="'+nO+' observatie'+(nO===1?'':'s')+'">'+nO+' obs</span>':''}</span>
   </div>
 </div>`;
   });
   html += '</div>';
 
   const unassigned = players.filter(p => !(p.elftal||deriveElftalFromReport(p)||'').trim());
-  if(unassigned.length && !q){
+  if(unassigned.length && !q && !clubFilter){
     html += '<div class="elf-unassigned-row" id="elf-unassigned-btn"><span>&#9679; '+unassigned.length+' speler'+(unassigned.length===1?'':'s')+' zonder elftal</span><span class="elf-ua-arrow">›</span></div>';
   }
 
@@ -12526,7 +13143,10 @@ window._elfBackToTiles = function(){
   const input = document.getElementById('elf-search-input');
   const q = (input?.value||'').trim();
   const resultsEl = document.getElementById('elf-results');
-  if(resultsEl) _elfShowTeamTiles(loadPlayers(), resultsEl, q);
+  if(!resultsEl) return;
+  if(_elfCurClub && !q) _elfShowTeamTiles(loadPlayers(), resultsEl, '', _elfCurClub);
+  else if(q) _elfShowTeamTiles(loadPlayers(), resultsEl, q);
+  else _elfShowClubTiles(loadPlayers(), resultsEl, '');
 };
 
 /* C1: _elfDoSearch (ongebruikt) verwijderd. */
@@ -14236,20 +14856,28 @@ function renderDetailObsOverview(p){
     } catch(_){}
   }
 
-  // Onderdeel 4 — chips + notitie per categorie tonen (indien aanwezig)
+  // Onderdeel 4 — chips + notitie per categorie tonen (indien aanwezig).
+  // Zelfde chip-grootte/stijl als het spelersrapport: gevulde .obs-tag[data-rating]
+  // pills (groen/oranje/rood) in een flex-rij, i.p.v. kleine emoji-dot + tekst.
   let _obsTagsHtml = '';
   {
     const _cn = (p.category_notes && typeof p.category_notes === 'object') ? p.category_notes : {};
     const _byCat = {};
-    (Array.isArray(p.tags)?p.tags:[]).forEach(function(t){ const c=String(t.category||'').toLowerCase(); if(!c||!t.label) return; (_byCat[c]=_byCat[c]||[]).push((t.rating==='good'?'🟢':t.rating==='average'?'🟠':t.rating==='poor'?'🔴':'⚪')+' '+t.label); });
+    (Array.isArray(p.tags)?p.tags:[]).forEach(function(t){ const c=String(t.category||'').toLowerCase(); if(!c||!t.label) return; (_byCat[c]=_byCat[c]||[]).push(t); });
     const _allCats = [];
     Object.keys(_byCat).forEach(function(c){ if(_allCats.indexOf(c)<0) _allCats.push(c); });
     Object.keys(_cn).forEach(function(c){ if(_cn[c] && _allCats.indexOf(c)<0) _allCats.push(c); });
     if(_allCats.length){
       _obsTagsHtml = '<div class="obs-tags-summary" style="margin-bottom:12px;">' + _allCats.map(function(c){
-        const chips = (_byCat[c]||[]).join('  ');
+        const chips = (_byCat[c]||[]).map(function(t){
+          return '<span class="obs-tag"'+(t.rating?(' data-rating="'+escapeAttr(t.rating)+'"'):'')+'>'+escapeHtml(t.label||'')+'</span>';
+        }).join('');
         const note = (_cn[c]||'').trim();
-        return '<div class="bnd-cat" style="margin-bottom:6px;"><span class="bnd-cat-label" style="font-weight:600;text-transform:uppercase;font-size:11px;opacity:.7;margin-right:6px;">'+escapeHtml(c)+'</span>'+escapeHtml(chips)+(note?'<div style="font-size:12px;color:var(--text-2,#9aa8bd);margin-top:2px;">'+escapeHtml(note)+'</div>':'')+'</div>';
+        return '<div class="bnd-cat" style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(168,85,247,.12);">'
+          +'<div class="bnd-cat-label" style="font-weight:700;text-transform:uppercase;font-size:11px;color:#a855f7;letter-spacing:.7px;margin-bottom:7px;">'+escapeHtml(c)+'</div>'
+          +(chips?'<div class="rep-tw-chips" style="display:flex;flex-wrap:wrap;gap:7px;">'+chips+'</div>':'')
+          +(note?'<div style="font-size:13px;color:var(--text-2,#9aa8bd);margin-top:7px;line-height:1.5;">'+escapeHtml(note)+'</div>':'')
+          +'</div>';
       }).join('') + '</div>';
     }
   }
@@ -14450,6 +15078,13 @@ function renderDetailOverview(p){
     : null;
   const mode = selectedReport ? 'single-report'
              : (reportCount >= 2 ? 'average' : 'player-record');
+  /* OPDRACHT 1: speler met precies 1 rapport (of profiel zonder losse rapporten)
+     → open DIRECT het volledige rapport, geen tussen-/voorrapport. Bij ≥2 rapporten
+     blijft het gemiddelde-overzicht + uitklapmenu bestaan. */
+  if(mode !== 'average' && !window.__shForceOverview){
+    renderDetailFullReport(selectedReport ? buildPlayerFromReport(p, selectedReport) : p);
+    return;
+  }
   let vp = p;
   if(mode === 'single-report') vp = buildPlayerFromReport(p, selectedReport);
   else if(mode === 'average')  vp = buildAvgPlayer(p);
@@ -14546,10 +15181,23 @@ function renderDetailOverview(p){
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-left:3px;"><polyline points="9 18 15 12 9 6"/></svg>
       </button>` : ''}
       <div class="dtl-icon-actions" style="margin-left:auto;display:flex;gap:6px;align-items:center;">
-        <button class="btn btn-sm" id="dtl-show-report-top" style="background:var(--primary-2);color:#fff;border-color:var(--primary-2);">
+        <div class="dtl-report-dd" style="position:relative;">
+        <button class="btn btn-sm" id="dtl-show-report-top" style="background:var(--primary-2);color:#fff;border-color:var(--primary-2);" ${mode==='average'?'aria-haspopup="true" aria-expanded="false"':''}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          ${escapeHtml(topBtnLabel)}
+          ${escapeHtml(topBtnLabel)}${mode==='average'?'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-left:5px;"><polyline points="6 9 12 15 18 9"/></svg>':''}
         </button>
+        ${mode==='average' ? `<div class="dtl-report-dd-menu" id="dtl-report-menu" role="menu" hidden>
+          ${allReports.map(r => {
+            const teams = r.wedstrijd ? [r.wedstrijd.thuis, r.wedstrijd.uit].filter(Boolean).join(' – ') : '';
+            const dt = r.datum ? formatDate(r.datum) : '—';
+            const hn = r.huidig_niveau || '–';
+            return `<button type="button" class="dtl-report-dd-item" role="menuitem" data-rid="${escapeAttr(r.id)}">
+              <span class="dtl-dd-grade grade ${hn==='–'?'D':hn}">${escapeHtml(hn)}</span>
+              <span class="dtl-dd-text"><span class="dtl-dd-match">${escapeHtml(teams || 'Wedstrijd')}</span><span class="dtl-dd-date">${escapeHtml(dt)}</span></span>
+            </button>`;
+          }).join('')}
+        </div>` : ''}
+        </div>
         <button class="btn btn-sm dtl-icon-btn" id="dtl-edit-top" title="Bewerken">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
@@ -14729,12 +15377,44 @@ function renderDetailOverview(p){
     });
   };
   const handleShowReport = () => {
-    if(mode === 'average') flashReports();
-    else renderDetailFullReport(vp);
+    if(mode === 'average'){
+      const menu = document.getElementById('dtl-report-menu');
+      const btn = document.getElementById('dtl-show-report-top');
+      if(!menu) return;
+      const willOpen = menu.hasAttribute('hidden');
+      if(willOpen){ menu.removeAttribute('hidden'); } else { menu.setAttribute('hidden',''); }
+      if(btn) btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    } else {
+      renderDetailFullReport(vp);
+    }
   };
   const _dsr = document.getElementById('dtl-show-report'); if(_dsr) _dsr.addEventListener('click', handleShowReport);
   const topBtn = document.getElementById('dtl-show-report-top');
-  if(topBtn) topBtn.addEventListener('click', handleShowReport);
+  if(topBtn) topBtn.addEventListener('click', (e) => { e.stopPropagation(); handleShowReport(); });
+  // dropdown-items: open direct het gekozen rapport
+  document.querySelectorAll('#dtl-report-menu .dtl-report-dd-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const rid = item.getAttribute('data-rid');
+      const rep = allReports.find(x => x.id === rid);
+      const menu = document.getElementById('dtl-report-menu');
+      if(menu) menu.setAttribute('hidden','');
+      if(rep) renderDetailFullReport(buildPlayerFromReport(p, rep));
+    });
+  });
+  // sluit dropdown bij klik buiten
+  if(mode === 'average' && !window.__dtlReportDdBound){
+    window.__dtlReportDdBound = true;
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('dtl-report-menu');
+      if(!menu || menu.hasAttribute('hidden')) return;
+      if(!e.target.closest('.dtl-report-dd')){
+        menu.setAttribute('hidden','');
+        const b = document.getElementById('dtl-show-report-top');
+        if(b) b.setAttribute('aria-expanded','false');
+      }
+    });
+  }
   // BATCH 1 / 1B — vanuit de wedstrijd direct het volledige rapport tonen i.p.v.
   // eerst het overzicht/voorrapport. Geldt in elke modus: bij meerdere rapporten
   // toont 'vp' het gemiddelde rapport, bij één rapport dat rapport.
@@ -14774,12 +15454,12 @@ function renderDetailOverview(p){
     try { await deletePlayer(p.id); go(previousViewBeforePlayer || 'database'); if(typeof toast==='function') toast('Rapport verwijderd'); }
     catch(err){ if(typeof toast==='function') toast('Verwijderen mislukt', true); }
   });
-  $('#dtl-pdf').addEventListener('click', () => generatePlayerPDF(p));
-  $('#dtl-edit').addEventListener('click', () => {
+  const _dtlPdf = $('#dtl-pdf'); if(_dtlPdf) _dtlPdf.addEventListener('click', () => generatePlayerPDF(p));
+  const _dtlEdit = $('#dtl-edit'); if(_dtlEdit) _dtlEdit.addEventListener('click', () => {
     go('report');
     loadIntoForm(p);
   });
-  $('#dtl-del').addEventListener('click', async () => {
+  const _dtlDel = $('#dtl-del'); if(_dtlDel) _dtlDel.addEventListener('click', async () => {
     // v70h-s27: harde dubbele bevestiging — eerst waarschuwing, dan naam typen.
     const naam = (p.naam || '').trim() || 'onbekende speler';
     const warn = [
@@ -14882,6 +15562,10 @@ function renderDetailObsCard(p){
   if(!wrap) return;
   wrap.innerHTML = '';
   const isObs = p.rapport_type === 'observatie';
+  // Deze paarse "Observatie"-kaart hoort UITSLUITEND bij observatie-records.
+  // Rapport-spelers (1 of meerdere/gemiddelde rapporten) tonen hun eigen
+  // rapport-content (radar + Beoordeling per onderdeel) en GEEN observatie-kaart.
+  if(!isObs) return;
 
   const _wd = p.wedstrijd || (p.rapport && p.rapport.wedstrijd) || {};
   const wDatum = (p.wedstrijd_datum || _wd.datum || p.datum || '').trim();
@@ -14889,7 +15573,11 @@ function renderDetailObsCard(p){
   const wUit   = (p.wedstrijd_uit   || _wd.uit   || '').trim();
 
   let tekst = (p.notities_raw || p.notities || p.opmerkingen || '').trim();
-  if(!tekst && typeof programmaCache !== 'undefined'){
+  // Chips + categorie-notities meenemen zodat dit blok er net zo uitziet als de
+  // prefill van het observatieformulier (gekleurde chips per categorie).
+  let _obsTags = Array.isArray(p.tags) ? p.tags.slice() : [];
+  let _obsCatNotes = (p.category_notes && typeof p.category_notes === 'object') ? Object.assign({}, p.category_notes) : {};
+  if((!tekst || !_obsTags.length) && typeof programmaCache !== 'undefined'){
     try {
       const pId = p.id||'', pNm = (p.naam||'').toLowerCase().trim();
       outer: for(const prog of programmaCache){
@@ -14897,7 +15585,12 @@ function renderDetailObsCard(p){
         for(const sn of prog.snelnotities){
           if(!sn) continue;
           const hit=(pId&&(sn.player_id===pId||sn.__convertedToPlayerId===pId))||(pNm&&(sn.naam||'').toLowerCase().trim()===pNm);
-          if(hit&&sn.tekst){tekst=sn.tekst.trim();break outer;}
+          if(hit){
+            if(!tekst && sn.tekst) tekst = sn.tekst.trim();
+            if(!_obsTags.length && Array.isArray(sn.tags) && sn.tags.length) _obsTags = sn.tags.slice();
+            if(!Object.keys(_obsCatNotes).length && sn.category_notes && typeof sn.category_notes === 'object') _obsCatNotes = Object.assign({}, sn.category_notes);
+            if(tekst && _obsTags.length) break outer;
+          }
         }
       }
     }catch(_){}
@@ -14905,7 +15598,7 @@ function renderDetailObsCard(p){
   if(!tekst&&window.__shSnTekstMap){
     tekst=window.__shSnTekstMap[p.id]||window.__shSnTekstMap['n:'+(p.naam||'').toLowerCase().trim()]||'';
   }
-  if(!wDatum&&!wThuis&&!tekst) return;
+  if(!wDatum&&!wThuis&&!tekst&&!_obsTags.length) return;
 
   const _LABELS={techniek:'Techniek',inzicht:'Inzicht',mentaliteit:'Mentaliteit',
     explosiviteit:'Explosiviteit',sprinten:'Sprinten',duelleren:'Duelleren',
@@ -14934,12 +15627,46 @@ function renderDetailObsCard(p){
 
   const overigHtml=overig.length?'<div style="margin-top:10px;font-size:12.5px;color:var(--text-2);line-height:1.6;border-top:1px solid rgba(168,85,247,.12);padding-top:10px;">'+escapeHtml(overig.join(' '))+'</div>':'';
 
+  // Chips per categorie tonen — zelfde look als de prefill van het observatieformulier:
+  // gekleurde trefwoord-chips (🟢 goed / 🟠 gemiddeld / 🔴 ondermaats) + categorie-notitie.
+  // Categorie-volgorde gelijk aan het observatieformulier.
+  let _obsChipsHtml = '';
+  {
+    const _catOrder = ['mentaliteit','techniek','snelheid','fysiek','inzicht'];
+    const _catLabels = {mentaliteit:'Mentaliteit',techniek:'Techniek',snelheid:'Snelheid',fysiek:'Fysiek',inzicht:'Inzicht'};
+    const _byCat = {};
+    _obsTags.forEach(function(t){
+      if(!t) return;
+      const c=String(t.category||'').toLowerCase();
+      if(!c||!t.label) return;
+      (_byCat[c]=_byCat[c]||[]).push(t);
+    });
+    const _cats=[];
+    _catOrder.forEach(function(c){ if(_byCat[c]||_obsCatNotes[c]) _cats.push(c); });
+    Object.keys(_byCat).forEach(function(c){ if(_cats.indexOf(c)<0) _cats.push(c); });
+    Object.keys(_obsCatNotes).forEach(function(c){ if(_obsCatNotes[c]&&_cats.indexOf(c)<0) _cats.push(c); });
+    if(_cats.length){
+      _obsChipsHtml = _cats.map(function(c){
+        const chips=(_byCat[c]||[]).map(function(t){
+          return '<span class="obs-tag"'+(t.rating?(' data-rating="'+escapeAttr(t.rating)+'"'):'')+'>'+escapeHtml(t.label||'')+'</span>';
+        }).join('');
+        const note=(_obsCatNotes[c]||'').trim();
+        return '<div style="padding:9px 0;border-bottom:1px solid rgba(168,85,247,.12);">'
+          +'<div style="font-size:10.5px;font-weight:700;color:#a855f7;text-transform:uppercase;letter-spacing:.7px;margin-bottom:6px;">'+escapeHtml(_catLabels[c]||(c.charAt(0).toUpperCase()+c.slice(1)))+'</div>'
+          +(chips?'<div class="rep-tw-chips" style="display:flex;flex-wrap:wrap;gap:6px;">'+chips+'</div>':'')
+          +(note?'<div style="font-size:12.5px;color:var(--text);line-height:1.5;margin-top:6px;">'+escapeHtml(note)+'</div>':'')
+          +'</div>';
+      }).join('');
+    }
+  }
+  const bodyHtml = _obsChipsHtml || rowsHtml;
+
   // BATCH 1 / 1C — observatie blijft observatie: geen 'Maak spelersrapport'-knop
   // meer in de alleen-lezen weergave.
   const rapportBtn='';
 
   wrap.innerHTML=
-    '<div class="card compare-card" style="margin-bottom:16px;border-left:3px solid #a855f7;background:rgba(168,85,247,.04);">'
+    '<div class="card compare-card report-trefwoorden" style="margin-bottom:16px;border-left:3px solid #a855f7;background:rgba(168,85,247,.04);">'
       +'<div class="compare-card-title" style="border-bottom:1px solid rgba(168,85,247,.15);">'
         +'<span style="display:flex;align-items:center;gap:8px;">'
           +'<span style="width:8px;height:8px;border-radius:50%;background:#a855f7;flex-shrink:0;"></span>'
@@ -14948,7 +15675,7 @@ function renderDetailObsCard(p){
         +(subStr?'<span class="compare-card-sub">'+subStr+'</span>':'')
       +'</div>'
       +'<div style="padding:4px 16px 16px;">'
-        +(rowsHtml||'<div style="font-size:12px;color:var(--text-3);padding:12px 0;">Geen criteria ingevuld.</div>')
+        +(bodyHtml||'<div style="font-size:12px;color:var(--text-3);padding:12px 0;">Geen criteria ingevuld.</div>')
         +overigHtml
         +rapportBtn
       +'</div>'
@@ -15761,7 +16488,16 @@ function renderDetailFullReport(p){
   `;
   if(typeof renderDetailPizza === 'function') renderDetailPizza(p);
   if(typeof renderDetailBars === 'function') renderDetailBars(p);
-  $('#dtl-back-overview')?.addEventListener('click', ()=> renderDetailOverview(p));
+  $('#dtl-back-overview')?.addEventListener('click', ()=>{
+    /* OPDRACHT 1: bij <2 rapporten is er geen overzicht meer → terug naar de vorige lijst */
+    const _rc = (typeof reportsForPlayer === 'function') ? reportsForPlayer(p.id).length : 0;
+    if(_rc >= 2){
+      window.__shForceOverview = true;
+      try { renderDetailOverview(p); } finally { window.__shForceOverview = false; }
+    } else {
+      go(previousViewBeforePlayer || 'database');
+    }
+  });
   $(`#del-${p.id}`)?.addEventListener('click', async ()=>{
     if(confirm('Dit rapport verwijderen?')){
       await deletePlayer(p.id);
@@ -16646,6 +17382,41 @@ function normAge(s){
   return m ? ('O.' + m[1]) : s;
 }
 
+// s94: één bron-van-waarheid voor "wedstrijd volledig verwerkt" — gebruikt door
+// zowel de teller-tegels als de groene gloed op de kaart. Spiegelt exact de
+// logica in de render-loop (programma- én aggregated-tak) zodat de cijfers
+// nooit meer uit elkaar lopen.
+function _shMatchFullyVerwerkt(m){
+  try {
+    if(!m) return false;
+    if(m.kind === 'programma'){
+      const progP = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === m.progId) : null;
+      const spelers = progP ? (progP.spelers || []) : [];
+      const sns = progP ? (progP.snelnotities || []) : [];
+      const wstr = progP ? progP.wedstrijdrapport : null;
+      const linkedKeys = new Set(spelers.map(sp => sp && sp.id).filter(Boolean));
+      const allObsIngediend = sns.filter(sn => sn && sn.naam && !linkedKeys.has(sn.spelerKey)).every(sn => sn.ingediend);
+      const allSpVerwerkt = spelers.length === 0 ? true : spelers.every(sp => {
+        const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(m.progId, sp.id) : null;
+        return concept && !_shPlayerIsConcept(concept);
+      });
+      const mrForMatch = (typeof matchReportsCache !== 'undefined') ? matchReportsCache.find(mr => {
+        if(!mr) return false;
+        const _d = (mr.datum||'').trim(); const _th = (mr.thuis||'').toLowerCase().trim(); const _ut = (mr.uit||'').toLowerCase().trim();
+        const _md = (progP && progP.datum||'').trim(); const _mt = (progP && progP.thuis||'').toLowerCase().trim(); const _mu = (progP && progP.uit||'').toLowerCase().trim();
+        return _d === _md && (_th === _mt || _mt.startsWith(_th) || _th.startsWith(_mt)) && (_ut === _mu || _mu.startsWith(_ut) || _ut.startsWith(_mu));
+      }) : null;
+      const wstrVerwerkt = (wstr && (wstr.status === 'ingediend' || wstr.status === 'verwerkt')) || !!mrForMatch;
+      const hasItems = spelers.length > 0 || !!wstr || sns.some(sn => sn && sn.naam);
+      return !!(hasItems && allSpVerwerkt && wstrVerwerkt && allObsIngediend);
+    }
+    // aggregated-tak
+    const isVerwerktA = (typeof shIsWedstrijdVerwerkt === 'function') ? shIsWedstrijdVerwerkt(_shMatchKey(m)) : false;
+    const allIngediendA = Array.isArray(m.players) && m.players.length > 0 && m.players.every(pl => !_shPlayerIsConcept(pl));
+    return !!(isVerwerktA || allIngediendA);
+  } catch(_){ return false; }
+}
+
 function renderMatches(){
   const players = loadPlayers();
   let matches = aggregateMatches(players).map(m => ({...m, kind: 'aggregated'}));
@@ -16668,7 +17439,7 @@ function renderMatches(){
         const _isLockedOrPast = (typeof _shIsMatchLocked === 'function' && _shIsMatchLocked(p))
           || (!p.tijd && _d <= _dNow);
         if(!_isLockedOrPast) return;
-        const _pm = { datum: p.datum, thuis: p.thuis, uit: p.uit, age: p.leeftijd||'', kind:'programma', progId:p.id, id:p.id, players:[] };
+        const _pm = { datum: p.datum, tijd: p.tijd||'', thuis: p.thuis, uit: p.uit, age: p.leeftijd||'', kind:'programma', progId:p.id, id:p.id, players:[] };
         const _k = _shMatchKey(_pm);
         if(!_existK.has(_k)){ matches.push(_pm); _existK.add(_k); }
       });
@@ -16677,8 +17448,8 @@ function renderMatches(){
 
   // s18b: stats vóór filtering (totalen op volledige set — geen 'report' meer)
   const _statTotal = matches.length;
-  const _statVerwerkt = matches.filter(m => m.kind === 'aggregated').length;
-  const _statNogVerwerken = matches.filter(m => (m.kind === 'aggregated' || m.kind === 'programma') && !shIsWedstrijdVerwerkt(_shMatchKey(m))).length;
+  const _statVerwerkt = matches.filter(m => _shMatchFullyVerwerkt(m)).length;
+  const _statNogVerwerken = _statTotal - _statVerwerkt;
   const _setText = (id, n) => { const el = document.getElementById(id); if(el) el.textContent = n; };
   _setText('m-stat-total', _statTotal);
   _setText('m-stat-verwerkt', _statVerwerkt);
@@ -16747,11 +17518,29 @@ function renderMatches(){
     matches = matches.filter(m => Array.isArray(m.players) && m.players.some(pl => pl && pl.is_opvallend));
   }
 
-  // Sort
+  // Sort — dag-niveau eerst (nieuwste dag boven), dan BINNEN de dag op aftraptijd
+  // (laatste wedstrijd boven, vroegste onderaan). Tijd komt uit het item zelf of
+  // wordt opgezocht in programmaCache op datum+thuis+uit.
+  const _matchTime = (m) => {
+    let t = (m.tijd||'').trim();
+    if(!t && typeof programmaCache !== 'undefined' && Array.isArray(programmaCache)){
+      const _th = (m.thuis||'').toLowerCase().trim(), _ut = (m.uit||'').toLowerCase().trim();
+      const pp = programmaCache.find(p => p && p.datum===m.datum
+        && (p.thuis||'').toLowerCase().trim()===_th
+        && (p.uit||'').toLowerCase().trim()===_ut);
+      if(pp) t = (pp.tijd||'').trim();
+    }
+    return t;
+  };
   matches.sort((a,b)=>{
-    const da = new Date(a.datum).getTime() || 0;
-    const db = new Date(b.datum).getTime() || 0;
-    return sortMode === 'oldest' ? da - db : db - da;
+    const da = new Date((a.datum||'')+'T00:00:00').getTime() || 0;
+    const db = new Date((b.datum||'')+'T00:00:00').getTime() || 0;
+    if(da !== db) return sortMode === 'oldest' ? da - db : db - da;
+    // Zelfde dag: sorteer op tijd. Items zonder tijd onderaan.
+    const ta = _matchTime(a) || (sortMode === 'oldest' ? '99:99' : '');
+    const tb = _matchTime(b) || (sortMode === 'oldest' ? '99:99' : '');
+    const c = (ta||'00:00').localeCompare(tb||'00:00');
+    return sortMode === 'oldest' ? c : -c;
   });
 
   $('#matches-count').textContent =
@@ -16813,11 +17602,6 @@ function renderMatches(){
       const _linkedKeys = new Set(_spelers.map(sp => sp && sp.id).filter(Boolean));
       // Ingediende obs tellen NIET mee als "openstaand" — alleen nog-niet-ingediende obs
       const _unlinkedSns = _sns.filter(sn => sn && sn.naam && !_linkedKeys.has(sn.spelerKey) && !sn.ingediend);
-      const _allObsIngediend = _sns.filter(sn => sn && sn.naam && !_linkedKeys.has(sn.spelerKey)).every(sn => sn.ingediend);
-      const _allSpVerwerkt = _spelers.length === 0 ? true : _spelers.every(sp => {
-        const concept = (typeof findSlotConcept === 'function') ? findSlotConcept(m.progId, sp.id) : null;
-        return concept && !_shPlayerIsConcept(concept);
-      });
       // Check ook matchReportsCache: als er een report bestaat voor deze wedstrijd, is het ingediend
       const _mrForMatch = (typeof matchReportsCache !== 'undefined') ? matchReportsCache.find(mr => {
         if(!mr) return false;
@@ -16826,9 +17610,9 @@ function renderMatches(){
         return _d === _md && (_th === _mt || _mt.startsWith(_th) || _th.startsWith(_mt)) && (_ut === _mu || _mu.startsWith(_ut) || _ut.startsWith(_mu));
       }) : null;
       const _wstrVerwerkt = (_wstr && (_wstr.status === 'ingediend' || _wstr.status === 'verwerkt')) || !!_mrForMatch;
-      // groen vinkje: items aanwezig + alles ingediend/verwerkt
+      // groen vinkje: items aanwezig + alles ingediend/verwerkt (s94: gedeelde helper)
       const _hasItems = _spelers.length > 0 || !!_wstr || _sns.some(sn => sn && sn.naam);
-      const _allVerwerkt = _hasItems && _allSpVerwerkt && _wstrVerwerkt && _allObsIngediend;
+      const _allVerwerkt = _shMatchFullyVerwerkt(m);
       // s93: dropdown rows
       let _dropRows = '';
       // Spelersrapporten
@@ -16967,25 +17751,32 @@ function renderMatches(){
     const countMeta = `<span class="match-players-count">${m.players.length} rapport${m.players.length===1?'':'en'}</span>`;
     const chevron = `<span class="match-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;
     const dropdownRows = m.players.map(pl => {
-      const initials = (pl.naam || '?').split(/\s+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
+      const isObs2 = pl.rapport_type === 'observatie';
+      // OBS: naam óf rugnummer/omschrijving als fallback; rapport: altijd volledige naam
+      const _rug = (pl.rugnummer || pl.rugnr || pl.nummer || '').toString().trim();
+      const _oms = (pl.omschrijving || pl.naam_omschrijving || '').toString().trim();
+      const dispNaam = (pl.naam && pl.naam.trim())
+        ? pl.naam.trim()
+        : (isObs2 ? (_rug ? ('#' + _rug) : (_oms || 'Observatie')) : (pl.naam || '—'));
+      const initials = (dispNaam || '?').replace(/^#/,'').split(/\s+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
       const posLabel = (typeof positionLabel === 'function' ? (positionLabel(pl.positie) || pl.positie || '') : (pl.positie || ''));
       const sub = [posLabel, pl.club].filter(Boolean).join(' • ');
       const hg = pl.huidig_niveau || 'D';
       const pg = pl.potentieel_niveau || 'D';
       const isConcept = _shPlayerIsConcept(pl);
-      const isObs2 = pl.rapport_type === 'observatie';
+      const typeClass = isObs2 ? 'mdr-type-obs' : 'mdr-type-rapport';
       const typeLabel2 = isObs2 
-        ? `<span style="font-size:10px;background:rgba(168,85,247,.15);color:#a855f7;border:1px solid rgba(168,85,247,.3);border-radius:4px;padding:1px 6px;">OBS</span>`
-        : `<span style="font-size:10px;background:rgba(34,197,94,.12);color:#22c55e;border:1px solid rgba(34,197,94,.25);border-radius:4px;padding:1px 6px;">Rapport</span>`;
+        ? `<span class="mdr-type-pill mdr-pill-obs">OBS</span>`
+        : `<span class="mdr-type-pill mdr-pill-rapport">Rapport</span>`;
       const conceptBadge = isConcept ? `<span class="mdr-concept-badge">Concept</span>` : `<span style="font-size:10px;color:var(--text-3);">✓ Ingediend</span>`;
       const submitBtn = isConcept ? `<button type="button" class="mdr-submit" data-mdr-submit="${escapeHtml(pl.id)}" title="Direct indienen">→ Indienen</button>` : '';
       const _plNotities = (pl.notities_raw || pl.notities || pl.opmerkingen || '').trim();
       const _plNoteSnippet = _plNotities ? escapeHtml(_plNotities.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' · ').trim().slice(0,80)) + (_plNotities.length > 80 ? '…' : '') : '';
       return `
-        <button type="button" class="match-dropdown-row${isConcept?'':' submitted-glow-row'}" data-player-id="${escapeHtml(pl.id)}">
+        <button type="button" class="match-dropdown-row ${typeClass}${isConcept?'':' is-ingediend'}" data-player-id="${escapeHtml(pl.id)}">
           <span class="match-dropdown-avatar">${escapeHtml(initials || '?')}</span>
           <span class="match-dropdown-info">
-            <span class="match-dropdown-name">${escapeHtml(pl.naam || '—')}${conceptBadge}</span>
+            <span class="match-dropdown-name"><span class="mdr-name-txt">${escapeHtml(dispNaam || '—')}</span>${typeLabel2}${conceptBadge}</span>
             ${sub ? `<span class="match-dropdown-pos">${escapeHtml(sub)}</span>` : ''}
             ${_plNoteSnippet ? `<span style="font-size:12px;color:var(--text-2,#94a3b8);display:block;margin-top:2px;line-height:1.4;">${_plNoteSnippet}</span>` : ''}
           </span>
@@ -17001,9 +17792,47 @@ function renderMatches(){
     {
       const _shKeyA = _shMatchKey(m);
       const _shIsVerwerktA = shIsWedstrijdVerwerkt(_shKeyA);
+      // OPDRACHT 2: groene rand zodra alle rapporten in deze wedstrijd zijn ingediend (s94: gedeelde helper)
+      const _glowA = _shMatchFullyVerwerkt(m);
       const _shBan = _shBannerHTML(m);
+      // Wedstrijdrapport-blok (geel) — uniform met rapport(groen)/obs(paars) blokken
+      let _wstrRow = '';
+      let _hasWstr = false;
+      try {
+        const _lp = (typeof _shFindLinkedPrograms === 'function') ? _shFindLinkedPrograms(m) : [];
+        const _wpProg = _lp.find(p => p && p.wedstrijdrapport && p.wedstrijdrapport.status);
+        if(_wpProg){
+          _hasWstr = true;
+          const _wr = _wpProg.wedstrijdrapport;
+          const _wrIngediend = (_wr.status === 'ingediend' || _wr.status === 'verwerkt');
+          const _wrBadge = _wrIngediend
+            ? `<span style="font-size:10px;color:var(--text-3);">\u2713 Ingediend</span>`
+            : `<span class="mdr-concept-badge">Concept</span>`;
+          const _wrOpm = (_wr.opmerking || _wr.tekst || '').trim();
+          _wstrRow = `
+            <button type="button" class="match-dropdown-row mdr-type-wedstrijd${_wrIngediend?' is-ingediend':''}" data-wstr-prog="${escapeHtml(_wpProg.id)}">
+              <span class="match-dropdown-avatar">WR</span>
+              <span class="match-dropdown-info">
+                <span class="match-dropdown-name">Wedstrijdrapport</span>
+                <span style="display:block;margin-top:2px;">${_wrBadge}</span>
+                ${_wrOpm ? `<span style="font-size:12px;color:var(--text-2,#94a3b8);display:block;margin-top:2px;line-height:1.4;">${escapeHtml(_wrOpm.replace(/\n+/g,' \u00b7 ').trim().slice(0,80))}${_wrOpm.length>80?'\u2026':''}</span>` : ''}
+              </span>
+              <svg class="match-dropdown-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>`;
+        }
+      } catch(_){}
+      // Mix-teller: tel per type (rapport · observatie · wedstrijdrapport)
+      const _nObs = m.players.filter(pl => pl && pl.rapport_type === 'observatie').length;
+      const _nRap = m.players.length - _nObs;
+      const _cntParts = [];
+      if(_nRap) _cntParts.push(`${_nRap} rapport${_nRap===1?'':'en'}`);
+      if(_nObs) _cntParts.push(`${_nObs} observatie${_nObs===1?'':'s'}`);
+      if(_hasWstr) _cntParts.push(`1 wedstrijdrapport`);
+      const countMetaTyped = _cntParts.length
+        ? `<span class="match-players-count">${_cntParts.join(' \u00b7 ')}</span>`
+        : countMeta;
       html += `
-        <div class="match-card expandable${_shIsVerwerktA?' locked':''}" data-match-id="${escapeHtml(m.id || (m.datum+'|'+m.thuis+'|'+m.uit))}" data-match-key="${escapeHtml(_shKeyA)}">
+        <div class="match-card expandable${_shIsVerwerktA?' locked':''}${_glowA?' submitted-glow':''}" data-match-id="${escapeHtml(m.id || (m.datum+'|'+m.thuis+'|'+m.uit))}" data-match-key="${escapeHtml(_shKeyA)}">
           <div class="match-date match-toggle">
             <div class="match-date-day">${d.day}</div>
             <div class="match-date-month">${d.month}</div>
@@ -17020,16 +17849,15 @@ function renderMatches(){
               ${chevron}
             </div>
             <div class="match-meta">
-              ${_shIsVerwerktA ? '<span class="match-status-pill verwerkt">✓ Verwerkt</span>' : ''}
+              ${_glowA ? '<span class="match-status-pill verwerkt">✓ Alles verwerkt</span>' : ''}
               ${opstellingMeta}
-              ${countMeta}
+              ${countMetaTyped}
             </div>
             ${_shBan}
           </div>
-          <div class="match-players">${playersChips}</div>
           <div class="match-dropdown">
-            <div class="match-dropdown-title">Rapporten — klik op een speler om te openen</div>
-            <div class="match-dropdown-list">${dropdownRows}</div>
+            <div class="match-dropdown-title">Klik op een blok om te openen</div>
+            <div class="match-dropdown-list">${dropdownRows}${_wstrRow}</div>
           </div>
         </div>
       `;
@@ -17080,45 +17908,42 @@ function renderMatches(){
       openDetail(chip.dataset.playerId);
     });
   });
-  // s35bt: aggregated niet-toernooi cards openen nu de Wedstrijd-bewerken modal
-  //        (gelijk aan report-cards). Toernooi-cards blijven inline uitklappen.
+  // OPDRACHT 2: aggregated wedstrijdkaarten klappen ALTIJD inline uit (nooit modal).
   list.querySelectorAll('.match-card.expandable').forEach(card => {
-    if(false){
-      // Originele expand-inline gedrag voor toernooi clusters
-      card.querySelectorAll('.match-toggle').forEach(el => {
-        el.addEventListener('click', (e)=>{
-          const wasOpen = card.classList.contains('open');
-          list.querySelectorAll('.match-card.open').forEach(c => { if(c !== card) c.classList.remove('open'); });
-          card.classList.toggle('open', !wasOpen);
-        });
-      });
-    } else {
-      // Aggregated wedstrijd -> opent Wedstrijd-bewerken modal
-      card.addEventListener('click', (e) => {
-        // Negeer kliks die uit interactieve children komen (chips, knoppen, dropdown-rijen)
-        const t = e.target;
-        if(t && t.closest && (
-            t.closest('.match-player-chip') ||
-            t.closest('.match-dropdown-row') ||
-            t.closest('.match-verwerk-toggle') ||
-            t.closest('[data-match-verwerk]') ||
-            t.closest('.mdr-submit') ||
-            t.closest('.m-snel-chip') ||
-            t.closest('button') ||
-            t.closest('a')
-        )) return;
-        const key = card.dataset.matchKey;
-        if(!key) return;
-        const m = _shFindMatchByKey(key);
-        if(!m){ if(typeof toast === 'function') toast('Wedstrijd niet gevonden', true); return; }
-        m.kind = 'aggregated';
-        _shOpenEditModal(m);
-      });
-    }
+    card.addEventListener('click', (e) => {
+      // Negeer kliks die uit interactieve children komen (chips, knoppen, dropdown-rijen)
+      const t = e.target;
+      if(t && t.closest && (
+          t.closest('.match-player-chip') ||
+          t.closest('.match-dropdown-row') ||
+          t.closest('.match-verwerk-toggle') ||
+          t.closest('[data-match-verwerk]') ||
+          t.closest('.mdr-submit') ||
+          t.closest('.m-snel-chip') ||
+          t.closest('button') ||
+          t.closest('a')
+      )) return;
+      const wasOpen = card.classList.contains('open');
+      list.querySelectorAll('.match-card.expandable.open').forEach(c => { if(c !== card) c.classList.remove('open'); });
+      card.classList.toggle('open', !wasOpen);
+    });
   });
   list.querySelectorAll('.match-dropdown-row').forEach(row => {
     row.addEventListener('click', (e)=>{
       e.stopPropagation();
+      if(row.dataset.wstrProg){
+        const pid = row.dataset.wstrProg;
+        const prog = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === pid) : null;
+        if(prog && typeof openMatchLiveForm === 'function'){
+          openMatchLiveForm(prog, { mode: 'rapport' });
+        } else if(typeof openProgrammaWedstrijdrapport === 'function'){
+          openProgrammaWedstrijdrapport(pid);
+        } else if(prog){
+          _shOpenEditModal({...prog, kind:'programma', progId:prog.id});
+        }
+        return;
+      }
+      if(!row.dataset.playerId) return;
       openDetail(row.dataset.playerId);
     });
   });
@@ -17285,15 +18110,10 @@ function renderMatches(){
     if(btnWstrRapport){
       e.stopPropagation();
       const pid = btnWstrRapport.dataset.pmWstrRapport;
-      // Check of al ingediend → read-only
       const _progWr = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === pid) : null;
-      const _wrStatus = _progWr && _progWr.wedstrijdrapport ? _progWr.wedstrijdrapport.status : '';
-      if(_wrStatus === 'ingediend' || _wrStatus === 'verwerkt'){
-        // Read-only: zoek matchReport op datum+thuis
-        const _mr = (typeof matchReportsCache !== 'undefined')
-          ? matchReportsCache.find(r => r.datum === (_progWr.datum||'') && (r.thuis||'').toLowerCase() === (_progWr.thuis||'').toLowerCase())
-          : null;
-        if(typeof openMatchReportModal === 'function') openMatchReportModal(_mr ? _mr.id : '');
+      // OPDRACHT 4: open HETZELFDE wedstrijdnotitie-formulier (live), voor-ingevuld, met Indienen.
+      if(_progWr && typeof openMatchLiveForm === 'function'){
+        openMatchLiveForm(_progWr, { mode: 'rapport' });
       } else if(pid && typeof _shConvertWstrNotitieToRapport === 'function'){
         _shConvertWstrNotitieToRapport(pid, 0);
       }
@@ -17345,13 +18165,9 @@ function renderMatches(){
         e.stopPropagation();
         const progId_ro = btnWstrReadonly.dataset.pmWstrReadonly;
         const prog_ro = (typeof programmaCache !== 'undefined') ? programmaCache.find(x => x && x.id === progId_ro) : null;
-        if(prog_ro && prog_ro.wedstrijdrapport){
-          const wr = prog_ro.wedstrijdrapport;
-          // Zoek matchReport id in matchReportsCache op datum+thuis
-          const mrId = (typeof matchReportsCache !== 'undefined')
-            ? (matchReportsCache.find(r => r.datum === prog_ro.datum && (r.thuis||'').toLowerCase() === (prog_ro.thuis||'').toLowerCase())?.id || '')
-            : '';
-          if(typeof openMatchReportModal === 'function') openMatchReportModal(mrId || '');
+        // OPDRACHT 4: bekijk/bewerk hetzelfde wedstrijdnotitie-formulier (voor-ingevuld).
+        if(prog_ro && typeof openMatchLiveForm === 'function'){
+          openMatchLiveForm(prog_ro, { mode: 'rapport' });
         }
         return;
       }
@@ -19588,7 +20404,28 @@ function renderProgramma(){
       .sort((a,b) => (a.tijd||'99:99').localeCompare(b.tijd||'99:99'));
     const hasItems = dayItems.length>0;
     const abbr     = DAY_NAMES_NL[(d.getDay()+6)%7].slice(0,2).toUpperCase();
-    const cardsHtml = dayItems.map(it=>evCardHTML(it,dStr)).join('');
+    // sh-v352: bij 2+ wedstrijden op een dag groeperen we per dagdeel
+    // (Ochtend/Middag/Avond) — geeft overzicht op drukke scoutdagen/toernooien.
+    const _dagdeel = (t) => {
+      if(!t) return 'Overig';
+      const h = parseInt(String(t).split(':')[0], 10);
+      if(isNaN(h)) return 'Overig';
+      if(h < 12) return 'Ochtend';
+      if(h < 17) return 'Middag';
+      return 'Avond';
+    };
+    let cardsHtml;
+    if(dayItems.length >= 2){
+      let _lastDd = '___';
+      cardsHtml = dayItems.map(it => {
+        const dd = _dagdeel(it.tijd);
+        let head = '';
+        if(dd !== _lastDd){ head = `<div class="pag-dagdeel">${dd}</div>`; _lastDd = dd; }
+        return head + evCardHTML(it, dStr);
+      }).join('');
+    } else {
+      cardsHtml = dayItems.map(it=>evCardHTML(it,dStr)).join('');
+    }
     return `<div class="pag-day${isToday?' is-today':''}${!hasItems?' is-empty':''}" data-pag-day="${i}">
       <div class="pag-day-head">
         <span class="pag-abbr">${abbr}</span>
@@ -19599,7 +20436,7 @@ function renderProgramma(){
       <div class="pag-day-body">
         ${cardsHtml||'<div class="pag-vrij">—</div>'}
       </div>
-      <button class="pag-add-day-btn" data-add-day="${dStr}" title="Toevoegen op ${abbr} ${d.getDate()}">+</button>
+      <button class="pag-add-day-btn" data-add-day="${dStr}" title="Toevoegen op ${abbr} ${d.getDate()}"><span class="pag-add-icon">+</span><span class="pag-add-txt">Inplannen</span></button>
     </div>`;
   }).join('');
 
@@ -20083,15 +20920,12 @@ function openProgMatchDetailModal(progId){
   if(_wstrRapBtn){
     _wstrRapBtn.addEventListener('click', () => {
       closeProgMatchDetailModal();
-      // Open wedstrijdrapport modal prefilled met eerste wedstrijdnotitie
-      if(typeof _shConvertWstrNotitieToRapport === 'function'){
+      // OPDRACHT 4: open HETZELFDE wedstrijdnotitie-formulier (live), voor-ingevuld, met Indienen.
+      const _prg = (typeof programmaCache !== 'undefined') ? programmaCache.find(p => p && p.id === progId) : null;
+      if(_prg && typeof openMatchLiveForm === 'function'){
+        openMatchLiveForm(_prg, { mode: 'rapport' });
+      } else if(typeof _shConvertWstrNotitieToRapport === 'function'){
         _shConvertWstrNotitieToRapport(progId, 0);
-      } else if(typeof openMatchReportModal === 'function'){
-        openMatchReportModal(null, {
-          datum: it.datum, thuis: it.thuis, uit: it.uit,
-          leeftijd: it.leeftijd, locatie: it.locatie,
-          tekst: _wns.map(wn => (wn.tekst||'').trim()).filter(Boolean).join('\n\n')
-        });
       }
     });
   }
@@ -20157,6 +20991,19 @@ function openProgMatchModal(progId, defaultDate){
   if($('#pm-veld')) $('#pm-veld').value = it ? (it.veld||'') : '';
   $('#pm-notities').value = it ? (it.notities||'') : '';
   $('#pm-delete').style.display = it ? '' : 'none';
+  // sh-v352: "Meer details" standaard dicht bij nieuw; open bij bewerken als er
+  // niet-default secundaire info is (methode≠Live, type gekozen, of veld ingevuld).
+  try {
+    const moreEl = document.getElementById('pm-more-details');
+    if(moreEl){
+      const hasExtra = !!it && (
+        (it.methode && it.methode !== 'Live') ||
+        (it.info && String(it.info).trim()) ||
+        (it.veld && String(it.veld).trim())
+      );
+      moreEl.open = !!hasExtra;
+    }
+  } catch(_){}
   /* s35cg: vul scout-dropdown als je coordinator/admin bent */
   try {
     if(typeof populateScoutDropdown === 'function'){
@@ -20256,6 +21103,13 @@ async function saveProgMatchFromForm(e){
   const _targetScoutUid = (_scoutSel && _scoutSel.value) ? _scoutSel.value : '';
   // s35dg Fase A: merge pending koppelingen uit het aanmaak-formulier.
   const existingSpelers = existing ? (existing.spelers || []) : [];
+  // BATCH: knop "Toevoegen aan plan" verwijderd — een nog-niet-toegevoegde
+  // handmatig getypte speler wordt alsnog meegenomen bij opslaan.
+  try {
+    const _vnP = ($('#pmpp-voornaam')?.value || '').trim();
+    const _anP = ($('#pmpp-achternaam')?.value || '').trim();
+    if(_vnP && _anP && typeof pmppAdd === 'function') pmppAdd();
+  } catch(_){}
   const pendingSpelers = Array.isArray(__pmPendingPlayers) ? __pmPendingPlayers.slice() : [];
   // Filter dubbele namen (zelfde voornaam+achternaam+geboorte) tov bestaande lijst
   const seen = new Set(existingSpelers.map(s =>
@@ -20287,7 +21141,9 @@ async function saveProgMatchFromForm(e){
     type: _pmType,
     naam: _pmNaam,
     tijd: $('#pm-tijd').value,
-    // s35be: leeftijd-veld weg (elftal nu per-club)
+    // sh-v352: leeftijd auto-afgeleid uit elftal (thuis voorrang, anders uit).
+    // Behoud bestaande waarde als beide elftallen leeg zijn.
+    leeftijd: _deriveLeeftijd(thuis_elftal) || _deriveLeeftijd(uit_elftal) || (existing ? (existing.leeftijd || '') : ''),
     methode: $('#pm-methode').value,
     info: $('#pm-info').value.trim(),
     thuis, uit, locatie,
@@ -21551,12 +22407,23 @@ function wireProgrammaUI(){
 const _isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
                (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 
+// sh-v353: body-scroll moet op ÁLLE mobiele/touch-apparaten gelockt worden
+// (niet alleen iOS). Anders scrollt bij een Android-PWA het scherm weg terwijl
+// je in een modal typt en lijkt het invulvenster "weg te vallen".
+function _shShouldLockBody(){
+  if(_isIOS) return true;
+  const touch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+  return !!(touch && window.matchMedia && window.matchMedia('(max-width: 820px)').matches);
+}
+
 function showModal(id){
   const el = document.getElementById(id);
   if(!el) return;
   el.classList.add('open');
-  // iOS PWA only: vergrendel body-scroll zodat scherm niet mee scrollt bij toetsenbord
-  if(_isIOS){
+  // Vergrendel body-scroll zodat scherm niet mee-scrollt bij toetsenbord-open.
+  // Guard: niet overschrijven als er al een modal open is (anders gaat scrollY
+  // verloren bij gestapelde modals — body staat dan op top:-Ypx → scrollY=0).
+  if(_shShouldLockBody() && !document.body.classList.contains('modal-open')){
     document.body._modalScrollY = window.scrollY;
     document.body.style.top = '-' + window.scrollY + 'px';
     document.body.classList.add('modal-open');
@@ -21565,14 +22432,14 @@ function showModal(id){
 function hideModal(id){
   const el = document.getElementById(id);
   if(el) el.classList.remove('open');
-  if(_isIOS){
-    const anyOpen = document.querySelector('.modal-backdrop.open');
-    if(!anyOpen){
-      document.body.classList.remove('modal-open');
-      const scrollY = document.body._modalScrollY || 0;
-      document.body.style.top = '';
-      window.scrollTo(0, scrollY);
-    }
+  // Ontgrendel alleen als er geen enkele modal meer open is. Conditie op de
+  // class (niet op device) zodat de lock altijd netjes wordt opgeheven.
+  const anyOpen = document.querySelector('.modal-backdrop.open');
+  if(!anyOpen && document.body.classList.contains('modal-open')){
+    document.body.classList.remove('modal-open');
+    const scrollY = document.body._modalScrollY || 0;
+    document.body.style.top = '';
+    window.scrollTo(0, scrollY);
   }
 }
 
@@ -23121,11 +23988,12 @@ async function saveTournamentPlayer(tid, tp){
   } catch(e){ toast('Speler opslaan mislukt', true); setSync('offline'); throw e; }
 }
 
-async function addTournamentPlayer(tid, { playerId=null, teamId='', quickName=null, quickNumber=null, type='linked', position=null }){
+async function addTournamentPlayer(tid, { playerId=null, teamId='', quickName=null, quickNumber=null, type='linked', position=null, quickFirstName=null, quickLastName=null, birthDate=null }){
   const id = tuid('tp');
   const tp = {
     id, tournamentId: tid, teamId,
     playerId, quickName, quickNumber, position,
+    quickFirstName: quickFirstName||null, quickLastName: quickLastName||null, birthDate: birthDate||null,
     type,
     addedAt: new Date().toISOString(),
     addedByUserId: currentUser.uid,
@@ -23207,7 +24075,7 @@ async function saveObservation(tid, obs){
   } catch(e){ toast('Observatie opslaan mislukt', true); setSync('offline'); throw e; }
 }
 
-async function createOrUpdateObservation(tid, { matchId, dayId, tournamentPlayerId, text, tags=[], position=null, grade=null, category_notes={} }){
+async function createOrUpdateObservation(tid, { matchId, dayId, tournamentPlayerId, text, tags=[], position=null, grade=null, category_notes={}, voorkeursbeen=null, note=null }){
   // Check of er al een observatie is voor deze speler+wedstrijd
   const existing = await getDocs(query(
     tournSubCol(tid, 'observations'),
@@ -23219,7 +24087,7 @@ async function createOrUpdateObservation(tid, { matchId, dayId, tournamentPlayer
     const existingDoc = existing.docs[0];
     const existingData = existingDoc.data();
     // Als al gesloten: sla edit op in history
-    const patch = { text, tags, position, grade, overallRating: grade, category_notes, updatedAt: now };
+    const patch = { text, tags, position, grade, overallRating: grade, category_notes, voorkeursbeen, note, updatedAt: now };
     if(existingData.closedAt){
       patch.editHistory = [...(existingData.editHistory||[]), {
         editedAt: now,
@@ -23235,6 +24103,7 @@ async function createOrUpdateObservation(tid, { matchId, dayId, tournamentPlayer
   const obs = {
     id, tournamentId: tid, matchId, dayId: dayId||'', tournamentPlayerId,
     text, tags, position, grade, overallRating: grade, category_notes,
+    voorkeursbeen: voorkeursbeen||null, note: note||null,
     createdAt: now, updatedAt: now,
     closedAt: null, editHistory: []
   };
@@ -23423,19 +24292,39 @@ async function createReportFromSummary(tid, summaryId){
 let _tournObsContext = null; // { tid, matchId, dayId, tournamentPlayerId, tpName }
 
 async function openTournamentObs(tid, matchId, dayId, tournamentPlayerId, tpName){
-  _tournObsContext = { tid, matchId, dayId, tournamentPlayerId, tpName };
-
-  // Haal bestaande observatie op (indien aanwezig)
-  const existing = await getDocs(query(
-    tournSubCol(tid, 'observations'),
-    where('matchId','==',matchId),
-    where('tournamentPlayerId','==',tournamentPlayerId)
-  ));
-  const existingObs = existing.empty ? null : {...existing.docs[0].data(), id: existing.docs[0].id};
-
   // Haal matchinfo op voor context
   const matchSnap = await getDoc(tournSubDoc(tid, 'matches', matchId));
   const match = matchSnap.exists() ? matchSnap.data() : null;
+
+  // Bewaar context (incl. team-info) zodat de submit-handler bij een nieuwe
+  // opgevallen speler de juiste spotted-TournamentPlayer kan aanmaken.
+  _tournObsContext = {
+    tid, matchId, dayId,
+    tournamentPlayerId: tournamentPlayerId || null,
+    isNew: !tournamentPlayerId,
+    tpName: tpName || '',
+    teamAId: match ? (match.teamAId || '') : '',
+    teamBId: match ? (match.teamBId || '') : '',
+    teamAName: match ? (match.teamAName || '') : '',
+    teamBName: match ? (match.teamBName || '') : ''
+  };
+
+  // Haal bestaande observatie op (alleen voor een reeds bestaande speler)
+  let existingObs = null;
+  let isLinked = false;   // gekoppelde speler → 8 PLF-onderdelen; opgevallen → 5 obs-categorieën
+  if(tournamentPlayerId){
+    const [existing, tpSnap] = await Promise.all([
+      getDocs(query(
+        tournSubCol(tid, 'observations'),
+        where('matchId','==',matchId),
+        where('tournamentPlayerId','==',tournamentPlayerId)
+      )),
+      getDoc(tournSubDoc(tid, 'players', tournamentPlayerId))
+    ]);
+    existingObs = existing.empty ? null : {...existing.docs[0].data(), id: existing.docs[0].id};
+    if(tpSnap.exists()) isLinked = (tpSnap.data().type !== 'spotted');
+  }
+  _tournObsContext.isLinked = isLinked;
 
   // Open het bestaande obs-formulier met fake prog-object
   const prog = match ? {
@@ -23477,10 +24366,74 @@ async function openTournamentObs(tid, matchId, dayId, tournamentPlayerId, tpName
       await _tournObsSubmit();
     });
   }
-  _injectObsTrefwoorden(existingObs && Array.isArray(existingObs.tags) ? existingObs.tags : [], (existingObs && existingObs.category_notes) || {});
+  _injectTournTrefwoorden(isLinked, existingObs && Array.isArray(existingObs.tags) ? existingObs.tags : [], (existingObs && existingObs.category_notes) || {});
   _injectOverallRating(existingObs ? (existingObs.grade || existingObs.overallRating || '') : '');
-  _injectEarlierObs(tid, tournamentPlayerId, matchId);
+  _injectTournFootNote(existingObs ? (existingObs.voorkeursbeen||'') : '', existingObs ? (existingObs.note||'') : '');
+  if(tournamentPlayerId) _injectEarlierObs(tid, tournamentPlayerId, matchId);
 }
+
+// Voorkeursbeen-chips + vrij notitieveld — zelfde velden als het reguliere
+// gekoppelde-speler-formulier. Alleen in de toernooi-observatie geïnjecteerd
+// (raakt het reguliere obs-formulier niet).
+const _TOURN_VOETEN = ['Linksbenig','Rechtsbenig','Tweebenig'];
+function _injectTournFootNote(voetSel, noteVal){
+  const host = document.getElementById('obs-trefwoorden') || document.getElementById('obs-form');
+  if(!host) return;
+  const old = document.getElementById('tourn-footnote-block');
+  if(old) old.remove();
+  const block = document.createElement('div');
+  block.id = 'tourn-footnote-block';
+  block.className = 'tourn-footnote-block';
+  const footChips = _TOURN_VOETEN.map(v =>
+    `<button type="button" class="obs-tag tourn-foot${voetSel===v?' active':''}" data-voet="${escapeHtml(v)}" onclick="_tournFootPick(this)">${escapeHtml(v)}</button>`
+  ).join('');
+  block.innerHTML =
+    `<div class="tourn-fn-label">Voorkeursbeen</div>` +
+    `<div class="obs-tags tourn-foot-chips">${footChips}</div>` +
+    `<div class="tourn-fn-label" style="margin-top:10px;">Notitie</div>` +
+    `<textarea id="tourn-obs-note" class="obs-term-in sh-grow-note" rows="2" placeholder="Vrije notitie over deze speler (optioneel)...">${escapeHtml(noteVal||'')}</textarea>`;
+  host.appendChild(block);
+}
+function _tournFootPick(btn){
+  const box = btn.closest('.tourn-foot-chips');
+  const wasActive = btn.classList.contains('active');
+  if(box) Array.from(box.querySelectorAll('.tourn-foot')).forEach(b => b.classList.remove('active'));
+  if(!wasActive) btn.classList.add('active');
+}
+window._tournFootPick = _tournFootPick;
+
+// Trefwoorden injecteren voor het TOERNOOI-formulier. Gekoppelde speler krijgt
+// exact dezelfde onderdelen als de reguliere live gekoppelde-speler-vorm (8 PLF-
+// aspecten met chips + eigen notitie). Opgevallen speler krijgt het reguliere
+// observatieformulier (5 categorieën) — daarvoor delegeren we naar de bestaande
+// functie zodat het gegarandeerd identiek is.
+function _injectTournTrefwoorden(isLinked, existingTags, existingNotes){
+  if(!isLinked){ return _injectObsTrefwoorden(existingTags || [], existingNotes || {}); }
+  existingTags = existingTags || [];
+  existingNotes = existingNotes || {};
+  const host = document.getElementById('obs-terms');
+  if(!host) return;
+  const prev = document.getElementById('obs-trefwoorden');
+  if(prev) prev.remove();
+  const defs = _tournCatDefs(true);   // 8 PLF-onderdelen
+  const ratingOf = (cat, label) => {
+    const t = (existingTags || []).find(x => x && x.label === label && String(x.category||'').toLowerCase() === cat.toLowerCase());
+    return t && t.rating ? t.rating : '';
+  };
+  const wrap = document.createElement('div');
+  wrap.id = 'obs-trefwoorden';
+  wrap.innerHTML = '<div class="obs-section-label" style="margin-top:6px;">Trefwoorden <span style="font-weight:400;color:var(--text-3);">(klik: 🟢 goed → 🟠 gemiddeld → 🔴 ondermaats → uit)</span></div>' +
+    defs.map(([cat, lbl, words]) => {
+      const chips = words.map(w => {
+        const r = ratingOf(cat, w);
+        return `<button type="button" class="obs-tag" data-category="${cat}" data-label="${escapeHtml(w)}"${r ? ` data-rating="${r}"` : ''} onclick="_obsTagCycle(this)">${escapeHtml(w)}</button>`;
+      }).join('');
+      return `<div class="obs-field-block"><span class="obs-field-label">${lbl}</span><div class="obs-tags">${chips}</div><textarea class="obs-cat-note" data-cat-note="${cat}" rows="1" placeholder="Notitie (optioneel)...">${escapeHtml((existingNotes[cat]||''))}</textarea></div>`;
+    }).join('');
+  host.parentNode.insertBefore(wrap, host);
+  try { wrap.querySelectorAll('.obs-cat-note').forEach(ta => { const grow = () => { ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,120)+'px'; ta.style.overflowY=(ta.scrollHeight>120)?'auto':'hidden'; }; ta.addEventListener('input', grow); grow(); }); } catch(_){}
+}
+window._injectTournTrefwoorden = _injectTournTrefwoorden;
 
 async function _tournObsSubmit(){
   const ctx = _tournObsContext;
@@ -23505,11 +24458,27 @@ async function _tournObsSubmit(){
       .filter(t => t.rating);
     const category_notes = {};
     document.querySelectorAll('#obs-trefwoorden .obs-cat-note').forEach(ta => { const c = ta.dataset.catNote; const v = (ta.value||'').trim(); if(c && v) category_notes[c] = v; });
+    const _footEl = document.querySelector('#tourn-footnote-block .tourn-foot.active');
+    const voorkeursbeen = _footEl ? (_footEl.dataset.voet||'') : '';
+    const note = (document.getElementById('tourn-obs-note')?.value||'').trim();
+    // Nieuwe opgevallen speler: maak eerst een spotted-TournamentPlayer aan,
+    // koppel die aan déze wedstrijd, en gebruik dan zijn id voor de observatie.
+    // Het team komt uit de thuis/uit-clubkeuze van het reguliere obs-formulier.
+    if(!ctx.tournamentPlayerId){
+      const rug = parseInt((document.getElementById('obs-rug')||{}).value) || null;
+      const club = (document.getElementById('obs-club')?.value||'').trim();
+      let teamId = '';
+      if(club && ctx.teamAName && club === ctx.teamAName) teamId = ctx.teamAId;
+      else if(club && ctx.teamBName && club === ctx.teamBName) teamId = ctx.teamBId;
+      const tp = await addTournamentPlayer(ctx.tid, { playerId:null, teamId, quickName:(naam||null), quickNumber:rug, type:'spotted', position:positie });
+      await linkPlayerToMatch(ctx.tid, tp.id, ctx.matchId, 'manual');
+      ctx.tournamentPlayerId = tp.id;
+    }
     await createOrUpdateObservation(ctx.tid, {
       matchId: ctx.matchId,
       dayId: ctx.dayId,
       tournamentPlayerId: ctx.tournamentPlayerId,
-      text, tags, position: positie, grade, category_notes
+      text, tags, position: positie, grade, category_notes, voorkeursbeen, note
     });
 
     // Update speler naam bij quick add als naam ingevuld
@@ -23539,67 +24508,37 @@ async function _tournObsSubmit(){
   }
 }
 
-// ── Quick add speler (spotted) ────────────────────────────────────
+// ── Opgevallen speler toevoegen ───────────────────────────────────
+// Zelfde observatie-formulier als bij reguliere wedstrijden. De speler wordt
+// pas als spotted-TournamentPlayer aangemaakt zodra de observatie wordt
+// opgeslagen (team volgt uit de thuis/uit-clubkeuze in het obs-formulier).
 async function quickAddAndObserve(tid, matchId, dayId){
-  const snap = await getDoc(tournSubDoc(tid, 'matches', matchId));
-  const match = snap.exists() ? snap.data() : {};
-  const aName = match.teamAName || 'Team A', bName = match.teamBName || 'Team B';
-  _toernOpenOverlay(`
-    <h3 style="margin:0 0 4px;">Opgevallen speler toevoegen</h3>
-    <p style="margin:0 0 12px;font-size:12px;color:var(--muted,#888);">Kies het team van deze wedstrijd, vul de gegevens in en koppel direct.</p>
-    <div style="margin-bottom:10px;">
-      <label style="font-size:12px;display:block;margin-bottom:6px;">Team</label>
-      <div class="qa-team-row" style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" class="btn qa-team-btn active" data-team="A" onclick="_qaPickTeam(this)">${escapeHtml(aName)}</button>
-        <button type="button" class="btn qa-team-btn" data-team="B" onclick="_qaPickTeam(this)">${escapeHtml(bName)}</button>
-      </div>
-    </div>
-    <div class="toern-form-row"><label>Naam</label><input id="qa-naam" type="text" placeholder="Voornaam Achternaam" /></div>
-    <div class="toern-form-row"><label>Rugnummer</label><input id="qa-rug" type="number" min="1" max="99" /></div>
-    <div class="toern-form-row"><label>Positie</label><select id="qa-positie"><option value="">— Kies —</option>${_toernPositieOpts()}</select></div>
-    <input type="hidden" id="qa-team" value="A" />
-    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
-      <button class="btn btn-sm btn-primary" onclick="_qaSubmit('${tid}','${matchId}','${dayId||''}')">Toevoegen & observeren</button>
-    </div>`);
+  await openTournamentObs(tid, matchId, dayId, null, '');
 }
-function _qaPickTeam(btn){
-  document.querySelectorAll('.qa-team-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  const h = document.getElementById('qa-team'); if(h) h.value = btn.dataset.team;
-}
-window._qaPickTeam = _qaPickTeam;
-async function _qaSubmit(tid, matchId, dayId){
-  const naam = (document.getElementById('qa-naam')||{}).value || '';
-  const rug = parseInt((document.getElementById('qa-rug')||{}).value) || null;
-  const positie = (document.getElementById('qa-positie')||{}).value || null;
-  const pick = (document.getElementById('qa-team')||{}).value || 'A';
-  const snap = await getDoc(tournSubDoc(tid, 'matches', matchId));
-  const match = snap.exists() ? snap.data() : {};
-  const teamId = pick === 'B' ? (match.teamBId || '') : (match.teamAId || '');
-  const tp = await addTournamentPlayer(tid, { playerId: null, teamId, quickName: (naam.trim() || null), quickNumber: rug, type: 'spotted', position: positie });
-  await linkPlayerToMatch(tid, tp.id, matchId, 'manual');
-  _toernCloseOverlay();
-  await openTournamentObs(tid, matchId, dayId, tp.id, naam.trim() || 'Nieuwe speler');
-}
-window._qaSubmit = _qaSubmit;
 
 // ── Match detail overlay ──────────────────────────────────────────
 window.__shOpenMatchDetailTid = null;
 window.__shOpenMatchDetailId = null;
 
-async function openMatchDetail(tid, matchId){
+async function openMatchDetail(tid, matchId, opts){
   window.__shOpenMatchDetailTid = tid;
   window.__shOpenMatchDetailId = matchId;
+  // Context-vlag: de watchStatus-knoppen (Bekijken/Optioneel/Niet haalbaar)
+  // horen alleen thuis in de toernooi-tab. Bij heropenen/navigeren (geen opts)
+  // blijft de eerder gezette vlag staan.
+  if(opts && typeof opts.fromToernooi === 'boolean') window.__shMatchShowStatus = opts.fromToernooi;
+  else if(typeof window.__shMatchShowStatus !== 'boolean') window.__shMatchShowStatus = false;
 
   const bd = document.getElementById('toern-match-backdrop');
   if(!bd) return;
 
   // Laad data
-  const [matchSnap, mpList, obsSnap, teamsSnap] = await Promise.all([
+  const [matchSnap, mpList, obsSnap, teamsSnap, allPlayersSnap] = await Promise.all([
     getDoc(tournSubDoc(tid, 'matches', matchId)),
     getMatchPlayers(tid, matchId),
     getObservationsForMatch(tid, matchId),
-    getDocs(tournSubCol(tid, 'teams'))
+    getDocs(tournSubCol(tid, 'teams')),
+    getDocs(tournSubCol(tid, 'players'))
   ]);
   if(!matchSnap.exists()){ toast('Wedstrijd niet gevonden', true); return; }
   const match = {...matchSnap.data(), id: matchSnap.id};
@@ -23615,16 +24554,12 @@ async function openMatchDetail(tid, matchId){
   } catch(_){}
   window._matchNav = { tid, ids: _navIds, idx: Math.max(0, _navIds.indexOf(matchId)) };
 
-  // Haal TournamentPlayer info op
-  const tpIds = mpList.map(mp => mp.tournamentPlayerId);
+  // Haal TournamentPlayer info op — uit de volledige spelerslijst van het toernooi,
+  // zodat ook aan-het-elftal-gekoppelde spelers (die niet in matchPlayers staan)
+  // beschikbaar zijn.
   const tpCache = {};
-  if(tpIds.length){
-    for(let _i = 0; _i < tpIds.length; _i += 30){
-      const _chunk = tpIds.slice(_i, _i + 30);
-      const tpSnap = await getDocs(query(tournSubCol(tid, 'players'), where('__name__','in', _chunk)));
-      tpSnap.docs.forEach(d => { tpCache[d.id] = {...d.data(), id: d.id}; });
-    }
-  }
+  const allPlayers = allPlayersSnap.docs.map(d => ({...d.data(), id: d.id}));
+  allPlayers.forEach(tp => { tpCache[tp.id] = tp; });
 
   // Bouw obs lookup
   const obsMap = {};
@@ -23644,15 +24579,22 @@ async function openMatchDetail(tid, matchId){
     match.categoryId || ''
   ].filter(Boolean).join(' · ');
 
-  // Status knoppen — scout-keuze (watchStatus). Standaard géén selectie.
+  // Status knoppen — scout-keuze (watchStatus). Alleen in de toernooi-tab;
+  // vanaf het live dashboard verborgen (daar kies je geen planning).
   const statusWrap = document.getElementById('toern-match-status');
   if(statusWrap){
-    const cur = match.watchStatus;
-    const labels = { watch:'✅ Bekijken', optional:'🔶 Optioneel', skip:'❌ Niet haalbaar' };
-    statusWrap.innerHTML = ['watch','optional','skip'].map(s => `
-      <button class="toern-status-btn toern-status-${s} ${cur===s?'active':''}" data-st="${s}" onclick="setMatchWatchStatus('${tid}','${matchId}','${s}')">
-        ${labels[s]}
-      </button>`).join('');
+    if(window.__shMatchShowStatus){
+      const cur = match.watchStatus;
+      const labels = { watch:'✅ Bekijken', optional:'🔶 Optioneel', skip:'❌ Niet haalbaar' };
+      statusWrap.style.display = '';
+      statusWrap.innerHTML = ['watch','optional','skip'].map(s => `
+        <button class="toern-status-btn toern-status-${s} ${cur===s?'active':''}" data-st="${s}" onclick="setMatchWatchStatus('${tid}','${matchId}','${s}')">
+          ${labels[s]}
+        </button>`).join('');
+    } else {
+      statusWrap.style.display = 'none';
+      statusWrap.innerHTML = '';
+    }
   }
 
   // Dag-afsluiting
@@ -23663,40 +24605,57 @@ async function openMatchDetail(tid, matchId){
       : `<span class="toern-badge toern-badge-open">Dag open</span>`;
   }
 
-  // Spelers lijst — toon ALLEEN echte, door de scout gekoppelde spelers.
+  // Spelers lijst — toon zowel (a) spelers die aan een van beide elftallen van deze
+  // wedstrijd gekoppeld zijn (automatisch, voor álle wedstrijden van dat team), als
+  // (b) opgevallen/handmatig aan déze wedstrijd gekoppelde spelers (matchPlayers).
   // Placeholder-spelers ("Speler — Teamnaam") uit de import worden uitgefilterd.
   const lijst = document.getElementById('toern-match-players');
   if(lijst){
-    const realMp = mpList.filter(mp => {
-      const tp = tpCache[mp.tournamentPlayerId];
-      return tp && !isPlaceholderTournamentPlayer(tp);
+    const _mpByTp = {};
+    mpList.forEach(mp => { _mpByTp[mp.tournamentPlayerId] = mp; });
+    const _teamIds = [match.teamAId, match.teamBId].filter(Boolean);
+    // Verzamel kandidaten: elftal-gekoppeld OF via matchPlayers gekoppeld.
+    const _seen = new Set();
+    const rows = [];
+    allPlayers.forEach(tp => {
+      if(isPlaceholderTournamentPlayer(tp)) return;
+      const linkedToTeam = tp.teamId && _teamIds.includes(tp.teamId);
+      const linkedToMatch = !!_mpByTp[tp.id];
+      if(!linkedToTeam && !linkedToMatch) return;
+      if(_seen.has(tp.id)) return;
+      _seen.add(tp.id);
+      rows.push({ tp, mp: _mpByTp[tp.id] || null });
     });
-    if(realMp.length === 0){
-      lijst.innerHTML = '<div class="toern-empty">Nog geen spelers gekoppeld aan deze wedstrijd</div>';
+    // Sorteer: eerst op team (thuis voor uit), dan op naam.
+    const _teamRank = id => (id === match.teamAId ? 0 : id === match.teamBId ? 1 : 2);
+    rows.sort((a,b) =>
+      _teamRank(a.tp.teamId) - _teamRank(b.tp.teamId)
+      || String(a.tp.quickName||'').localeCompare(String(b.tp.quickName||'')));
+
+    if(rows.length === 0){
+      lijst.innerHTML = '<div class="toern-empty">Nog geen spelers gekoppeld aan een van beide elftallen</div>';
     } else {
-      lijst.innerHTML = realMp.map(mp => {
-        const tp = tpCache[mp.tournamentPlayerId];
-        if(!tp) return '';
+      lijst.innerHTML = rows.map(({tp, mp}) => {
         const naam = tp.quickName || (tp.playerId ? '(speler uit database)' : 'Onbekend');
         const obs = obsMap[tp.id];
         const hasObs = !!obs;
         const gradeLabel = obs && obs.grade ? obs.grade : '';
-        return `<div class="toern-player-card ${hasObs?'has-obs':''}">
-          <div class="toern-player-card-left" onclick="openTournamentObs('${tid}','${matchId}','${match.dayId||''}','${tp.id}','${escapeHtml(naam)}')">
+        const _isLive = mp && mp.addedBy === 'manual';
+        const _club = (() => { const c = _teamsById[tp.teamId] && _teamsById[tp.teamId].name; return c ? escapeHtml(c) + ' · ' : ''; })();
+        // Hele balk is klikbaar → opent de per-speler observatie. NOOIT direct
+        // naar een spelersrapport (dat gebeurt pas na "Toernooi afronden").
+        return `<div class="toern-player-card ${hasObs?'has-obs':''}" onclick="openTournamentObs('${tid}','${matchId}','${match.dayId||''}','${tp.id}','${escapeHtml(naam)}')">
+          <div class="toern-player-card-left">
             <div class="toern-player-avatar">${initials(naam)}</div>
             <div>
               <div class="toern-player-name">${escapeHtml(naam)}</div>
-              <div class="toern-player-meta">${(() => { const c = _teamsById[tp.teamId] && _teamsById[tp.teamId].name; return c ? escapeHtml(c) + ' · ' : ''; })()}${tp.type==='spotted'?'Opgevallen':'Gekoppeld'}${mp.addedBy==='manual'?' · live':''}</div>
+              <div class="toern-player-meta">${_club}${tp.type==='spotted'?'Opgevallen':'Gekoppeld'}${_isLive?' · live':''}</div>
             </div>
           </div>
           <div class="toern-player-card-right">
             ${hasObs ? `<span class="toern-obs-badge">${gradeLabel||'✓'}</span>` : '<span class="toern-obs-empty">Geen obs</span>'}
             ${hasObs ? `<button class="toern-share-btn" title="Deel observatie" aria-label="Deel observatie" onclick="event.stopPropagation();shareObservation('${tid}','${matchId}','${tp.id}')">↗</button>` : ''}
             <button class="toern-must-btn ${tp.mustScout?'on':''}" title="Must scout" aria-label="Must-scout aan- of uitzetten" onclick="event.stopPropagation();toggleMustScout('${tid}','${tp.id}',${tp.mustScout?'false':'true'})">${tp.mustScout?'⭐':'☆'}</button>
-            <button class="toern-rapport-btn" title="Rapport starten" aria-label="Rapport starten"
-              onclick="event.stopPropagation();startRapportVanuitMatch('${tid}','${matchId}','${mp.id}','${tp.id}')">
-              📋
-            </button>
           </div>
         </div>`;
       }).join('');
@@ -23709,19 +24668,13 @@ async function openMatchDetail(tid, matchId){
     addBtn.onclick = () => quickAddAndObserve(tid, matchId, match.dayId||'');
   }
 
-  // TIP 3: snelle wedstrijdnotitie (matchNote)
+  // Snelle wedstrijdnotitie (matchNote) — blijft in het toernooi, gaat nooit
+  // naar de spelersdatabase. Wordt einde toernooi per club gebundeld.
   const noteEl = document.getElementById('toern-match-note');
   if(noteEl){
     noteEl.value = match.matchNote || '';
     noteEl.onblur = () => saveMatchNote(tid, matchId, noteEl.value);
   }
-  // H4: inline uitslag-invoer in de detail-modal
-  const _scA = document.getElementById('toern-match-score-a');
-  const _scB = document.getElementById('toern-match-score-b');
-  if(_scA) _scA.value = (match.scoreHome != null ? match.scoreHome : '');
-  if(_scB) _scB.value = (match.scoreAway != null ? match.scoreAway : '');
-  const _scBtn = document.getElementById('toern-match-score-save');
-  if(_scBtn) _scBtn.onclick = () => _saveMatchScoreInline(tid, matchId);
 
   // TIP 4: lokale wedstrijd-timer (verdwijnt bij sluiten; niets opgeslagen)
   _initMatchTimer(tid, match);
@@ -23859,33 +24812,231 @@ async function renderBundelingTab(tid){
   const wrap = document.getElementById('toern-bundeling-wrap');
   if(!wrap) return;
   wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
+  tid = tid || _currentTournamentId;
 
-  const [summaries, playersSnap] = await Promise.all([
-    getTournamentSummaries(tid),
-    getDocs(tournSubCol(tid, 'players'))
-  ]);
-  const players = playersSnap.docs.map(d => ({...d.data(), id: d.id}));
+  const { entries, tournament } = await _collectTournamentExportData(tid);
+  const st = (typeof _toernEffectiveStatus === 'function') ? _toernEffectiveStatus(tournament) : 'active';
+  const done = st === 'done';
 
-  if(summaries.length === 0){
-    wrap.innerHTML = '<div class="toern-empty">Nog geen bundelingen — sluit eerst een dag af.</div>';
+  if(entries.length === 0){
+    wrap.innerHTML = '<div class="toern-empty">Nog geen geobserveerde spelers om te bundelen.</div>';
     return;
   }
 
-  const statusLabel = { draft:'Concept', edited:'Bewerkt', ready:'Klaar ✓' };
-  wrap.innerHTML = summaries.map(s => {
-    const tp = players.find(p => p.id === s.tournamentPlayerId);
-    const naam = tp ? (tp.quickName || (tp.playerId ? 'Speler (uit DB)' : '?')) : 'Onbekend';
-    const wedstrijdCount = (s.dayBlocks||[]).reduce((n,b) => n + (b.observationIds||[]).length, 0);
-    return `<div class="toern-summ-card" onclick="openBundelingDetail('${tid}','${s.id}')">
-      <div class="toern-summ-avatar">${initials(naam)}</div>
-      <div class="toern-summ-info">
-        <div class="toern-summ-name">${escapeHtml(naam)}</div>
-        <div class="toern-summ-meta">${wedstrijdCount} observatie${wedstrijdCount!==1?'s':''}</div>
+  const linked = entries.filter(e => e.isLinked);
+  const spotted = entries.filter(e => !e.isLinked);
+  const nSub = entries.filter(e => e.bundleSubmitted).length;
+  const allSub = nSub === entries.length;
+
+  const card = (e) => {
+    const g = _bestGrade(e.obs) || '';
+    const sub = !!e.bundleSubmitted;
+    return `<div class="bndl-card ${sub?'bndl-card-done':''}" onclick="openBundelDetail('${tid}','${e.tpId}')">
+      <div class="bndl-card-avatar">${initials(e.naam)}</div>
+      <div class="bndl-card-info">
+        <div class="bndl-card-name">${escapeHtml(e.naam)}${e.club?` <span class="bndl-card-club">${escapeHtml(e.club)}</span>`:''}</div>
+        <div class="bndl-card-meta">${e.obs.length} observatie${e.obs.length!==1?'s':''}${g?` · niveau ${g}`:''}</div>
       </div>
-      <div class="toern-summ-status toern-summ-status-${s.status}">${statusLabel[s.status]||s.status}</div>
+      <div class="bndl-card-status ${sub?'bndl-st-done':'bndl-st-todo'}">${sub?'✓ Ingediend':'Indienen'}</div>
     </div>`;
-  }).join('');
+  };
+
+  let html = `<div class="bndl-head">
+      <div class="bndl-progress">
+        <div class="bndl-progress-bar"><span style="width:${Math.round(nSub/entries.length*100)}%"></span></div>
+        <div class="bndl-progress-txt">${nSub} / ${entries.length} ingediend</div>
+      </div>
+      <button type="button" class="btn btn-xs" onclick="openTournamentClubNotesModal('${tid}')">📝 Wedstrijdnotities per club</button>
+    </div>`;
+
+  if(!done){
+    html += `<p class="bndl-intro">Klik een speler om het <strong>gebundelde concept</strong> te bekijken/bewerken en in te dienen. Gekoppelde spelers worden een <strong>rapport</strong>, opgevallen spelers een <strong>observatie</strong>. Alles blijft <strong>in dit toernooi</strong> — niets gaat naar de spelersdatabase. Wedstrijdnotities zijn niet verplicht.</p>`;
+  } else {
+    html += `<p class="bndl-intro">Dit toernooi is afgerond. Alle rapporten en observaties blijven hier in het toernooi bewaard (alleen-lezen, heropenbaar om te bewerken).</p>`;
+  }
+
+  if(linked.length) html += `<div class="bndl-group-title">Gekoppelde spelers → rapport</div>${linked.map(card).join('')}`;
+  if(spotted.length) html += `<div class="bndl-group-title">Opgevallen spelers → observatie</div>${spotted.map(card).join('')}`;
+
+  if(!done && allSub){
+    html += `<div class="bndl-finish-row"><button type="button" class="btn btn-primary" onclick="finalizeTournament('${tid}')">🏆 Toernooi afronden</button></div>`;
+  }
+
+  wrap.innerHTML = html;
 }
+
+// Gebundeld concept van één speler bekijken/bewerken en indienen.
+async function openBundelDetail(tid, tpId){
+  tid = tid || _currentTournamentId;
+  const { entries, tournament } = await _collectTournamentExportData(tid);
+  const e = entries.find(x => x.tpId === tpId);
+  if(!e){ toast('Speler niet gevonden', true); return; }
+  const mode = e.isLinked ? 'rapport' : 'observatie';
+  const submitted = !!e.bundleSubmitted;
+  const b = e.bundle || {};
+
+  // Prefill-waarden: eerder ingediende bundel > geaggregeerd uit observaties.
+  const g = (b.grade != null && b.grade !== '') ? b.grade : (_bestGrade(e.obs) || '');
+  let voet = b.voorkeursbeen || '';
+  if(!voet){ (e.obs||[]).forEach(o => { if(o.voorkeursbeen) voet = o.voorkeursbeen; }); }
+  const pos = (b.positie != null) ? b.positie : (e.position || '');
+
+  // Notitie-prefill: opgeslagen bundel-notitie > vrije per-speler notities.
+  let notePrefill;
+  if(b.note != null){
+    notePrefill = b.note;
+  } else {
+    const footNotes = (e.obs||[]).map(o => {
+      if(!o.note || !o.note.trim()) return null;
+      const m = e.matchById[o.matchId];
+      const ctx = m ? `vs ${m.teamAName||''}–${m.teamBName||''}: ` : '';
+      return `${ctx}${o.note.trim()}`;
+    }).filter(Boolean);
+    notePrefill = footNotes.join('\n');
+  }
+
+  // Trefwoord-ratings: opgeslagen bundel-tags > dominante rating uit observaties.
+  let ratingMap;   // { catLower: { label: rating } }
+  if(Array.isArray(b.tags)){
+    ratingMap = {};
+    b.tags.forEach(t => { const c = String(t.category||'').toLowerCase(); if(!c||!t.label) return; (ratingMap[c] = ratingMap[c]||{})[t.label] = t.rating; });
+  } else {
+    ratingMap = _bndlAggRatingMap(e.obs);
+  }
+  const catNotes = (b.category_notes && typeof b.category_notes === 'object') ? b.category_notes : _bndlAggCatNotes(e.obs);
+
+  // Volledig bewerkbaar trefwoord-blok — identiek aan reguliere vorm:
+  // gekoppelde speler = 8 PLF-onderdelen, opgevallen speler = 5 obs-categorieën.
+  const _catDefs = _tournCatDefs(e.isLinked);
+  const ro = submitted ? 'pointer-events:none;opacity:.75;' : '';
+  const termsHtml = _catDefs.map(([cl, lbl, words]) => {
+    const chips = words.map(w => {
+      const r = (ratingMap[cl] && ratingMap[cl][w]) ? ratingMap[cl][w] : '';
+      return `<button type="button" class="obs-tag" data-category="${cl}" data-label="${escapeHtml(w)}"${r?` data-rating="${r}"`:''} ${submitted?'':'onclick="_obsTagCycle(this)"'}>${escapeHtml(w)}</button>`;
+    }).join('');
+    return `<div class="obs-field-block"><span class="obs-field-label">${lbl}</span><div class="obs-tags">${chips}</div><textarea class="obs-cat-note bndl-cat-note" data-cat-note="${cl}" rows="1" placeholder="Notitie (optioneel)..." ${submitted?'readonly':''}>${escapeHtml((catNotes[cl]||''))}</textarea></div>`;
+  }).join('');
+
+  // Read-only per-wedstrijd context (waar de bundeling vandaan komt).
+  const _CATS = _catDefs.map(([c, lbl]) => [c, lbl]);
+  const _ratICO = r => r==='good'?'🟢':r==='average'?'🟠':'🔴';
+  const ctxRows = (e.obs||[]).map(o => {
+    const m = e.matchById[o.matchId]; if(!m) return '';
+    const meta = [_toernMatchClock(m), _toernFieldLabel(m.field)].filter(Boolean).join(' · ');
+    const grd = o.grade || o.overallRating || '';
+    const cnotes = o.category_notes || {};
+    let body = '';
+    _CATS.forEach(([c,lbl]) => {
+      const tags = (o.tags||[]).filter(t => String(t.category||'').toLowerCase() === c && t.label);
+      const note = (cnotes[c]||'').trim();
+      if(!tags.length && !note) return;
+      const chips = tags.map(t => `<span class="bndl-w-chip">${_ratICO(t.rating)} ${escapeHtml(t.label)}</span>`).join('');
+      body += `<div class="bndl-w-cat"><span class="bndl-w-cat-label">${lbl}</span><div class="bndl-w-cat-body">${chips}${note?`<div class="bndl-w-note">${escapeHtml(note)}</div>`:''}</div></div>`;
+    });
+    if(!body) body = '<div class="bndl-cat-empty">Geen onderdelen vastgelegd.</div>';
+    return `<div class="bndl-wedstr">
+      <div class="bndl-wedstr-h">🏟️ ${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}${meta?` · ${escapeHtml(meta)}`:''}${grd?` <span class="bndl-w-grade grade-${grd}">${grd}</span>`:''}</div>
+      ${body}
+    </div>`;
+  }).filter(Boolean).join('');
+
+  const grades = ['A','B','C','D'];
+  const gradeChips = grades.map(x => `<button type="button" class="bndl-grade-btn grade-${x} ${g===x?'active':''}" data-g="${x}" onclick="_bndlPickGrade(this)">${x}</button>`).join('');
+  const footChips = _TOURN_VOETEN.map(v => `<button type="button" class="obs-tag tourn-foot ${voet===v?'active':''}" data-voet="${escapeHtml(v)}" onclick="_tournFootPick(this)">${escapeHtml(v)}</button>`).join('');
+
+  const foot = submitted
+    ? `<button type="button" class="btn btn-sm" onclick="_bundelReopen('${tid}','${tpId}','${mode}')">✏️ Opnieuw bewerken</button><div class="bndl-submitted-badge">✓ Ingediend (blijft in toernooi)</div>`
+    : `<button type="button" class="btn btn-primary" id="bndl-submit-btn" onclick="_bundelSubmit('${tid}','${tpId}','${mode}')">Indienen als ${mode}</button>`;
+
+  _toernOpenOverlay(`
+    <h3 style="margin:0 0 2px;">${escapeHtml(e.naam)}</h3>
+    <div style="font-size:12px;color:var(--muted,#93a0b5);margin-bottom:12px;">${escapeHtml(e.club||'')} · gebundeld ${mode} uit ${e.obs.length} observatie${e.obs.length!==1?'s':''}</div>
+    <div id="bndl-detail" data-tp="${tpId}">
+      <div class="bndl-field-label">Eindniveau</div>
+      <div class="bndl-grade-chips" ${submitted?'style="pointer-events:none;opacity:.7;"':''}>${gradeChips}</div>
+      <div class="bndl-field-label">Positie</div>
+      <input type="text" id="bndl-pos" class="obs-term-in" placeholder="Bijv. Centrale verdediger" value="${escapeHtml(pos)}" ${submitted?'readonly':''} style="width:100%;">
+      <div class="bndl-field-label">Voorkeursbeen</div>
+      <div class="obs-tags tourn-foot-chips" ${submitted?'style="pointer-events:none;opacity:.7;"':''}>${footChips}</div>
+      <div class="bndl-field-label">Trefwoorden per onderdeel <span style="font-weight:400;color:var(--text-3);">(klik: 🟢 → 🟠 → 🔴 → uit)</span></div>
+      <div id="bndl-terms" style="${ro}">${termsHtml}</div>
+      <div class="bndl-field-label">Notitie (gebundeld, bewerkbaar)</div>
+      <textarea id="bndl-note" class="obs-term-in sh-grow-note" rows="4" placeholder="Vrije gebundelde notitie..." ${submitted?'readonly':''}>${escapeHtml(notePrefill)}</textarea>
+      <div class="bndl-field-label">Per wedstrijd (bron-observaties)</div>
+      <div class="bndl-wedstr-list">${ctxRows||'<div class="bndl-cat-empty">—</div>'}</div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin-top:14px;">${foot}</div>`);
+  try { document.querySelectorAll('#bndl-detail .bndl-cat-note, #bndl-note').forEach(ta => { const grow = () => { ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,140)+'px'; }; ta.addEventListener('input', grow); grow(); }); } catch(_){}
+}
+window.openBundelDetail = openBundelDetail;
+
+function _bndlPickGrade(btn){
+  const box = btn.closest('.bndl-grade-chips');
+  const was = btn.classList.contains('active');
+  if(box) Array.from(box.querySelectorAll('.bndl-grade-btn')).forEach(b => b.classList.remove('active'));
+  if(!was) btn.classList.add('active');
+}
+window._bndlPickGrade = _bndlPickGrade;
+
+// Verzamel de bewerkte bundel-velden uit het detail-overlay.
+function _bndlCollectForm(){
+  const gEl = document.querySelector('#bndl-detail .bndl-grade-btn.active');
+  const grade = gEl ? gEl.dataset.g : '';
+  const vEl = document.querySelector('#bndl-detail .tourn-foot.active');
+  const voorkeursbeen = vEl ? (vEl.dataset.voet || '') : '';
+  const positie = (document.getElementById('bndl-pos')?.value || '').trim();
+  const note = (document.getElementById('bndl-note')?.value || '').trim();
+  const tags = [];
+  document.querySelectorAll('#bndl-terms .obs-tag[data-rating]').forEach(b => {
+    const r = b.dataset.rating; if(!r) return;
+    tags.push({ label: b.dataset.label, category: b.dataset.category, rating: r });
+  });
+  const category_notes = {};
+  document.querySelectorAll('#bndl-terms .bndl-cat-note').forEach(ta => {
+    const v = (ta.value||'').trim(); if(v) category_notes[ta.dataset.catNote] = v;
+  });
+  return { grade, voorkeursbeen, positie, note, tags, category_notes };
+}
+
+// "Indienen" → bundel-data opslaan IN het toernooi-speler-doc. Gaat NIET naar
+// de spelersdatabase; blijft volledig binnen het toernooi.
+async function _bundelSubmit(tid, tpId, mode){
+  const btn = document.getElementById('bndl-submit-btn');
+  if(btn){ btn.disabled = true; btn.textContent = 'Indienen...'; }
+  try {
+    const bundle = _bndlCollectForm();
+    bundle.mode = mode;
+    await setDoc(tournSubDoc(tid, 'players', tpId), {
+      bundle, bundleSubmitted: true, bundleSubmittedAt: new Date().toISOString()
+    }, { merge: true });
+    toast((mode === 'rapport' ? 'Rapport' : 'Observatie') + ' ingediend — blijft in toernooi ✓');
+    _toernCloseOverlay();
+    if(_currentTournamentId === tid){
+      renderBundelingTab(tid);
+      const t = tourmCache.find(x => x.id === tid);
+      if(typeof _renderToernAfrondUI === 'function') _renderToernAfrondUI(t);
+    }
+  } catch(err){
+    console.error('bundel submit error', err);
+    toast('Indienen mislukt', true);
+    if(btn){ btn.disabled = false; btn.textContent = 'Indienen als ' + mode; }
+  }
+}
+window._bundelSubmit = _bundelSubmit;
+
+// Ingediende bundeling weer openzetten voor bewerking.
+async function _bundelReopen(tid, tpId, mode){
+  try {
+    await setDoc(tournSubDoc(tid, 'players', tpId), { bundleSubmitted: false }, { merge: true });
+    if(_currentTournamentId === tid){
+      renderBundelingTab(tid);
+      const t = tourmCache.find(x => x.id === tid);
+      if(typeof _renderToernAfrondUI === 'function') _renderToernAfrondUI(t);
+    }
+    openBundelDetail(tid, tpId);
+  } catch(err){ console.error('bundel reopen error', err); toast('Kon niet heropenen', true); }
+}
+window._bundelReopen = _bundelReopen;
 
 async function openBundelingDetail(tid, summaryId){
   _currentSummaryId = summaryId;
@@ -24131,9 +25282,9 @@ async function renderTournamentTeamDetail(tid, teamId){
       const naam = tp.quickName || (tp.playerId ? 'Speler uit database' : '?');
       const badge = tp.type === 'spotted' ? '<span class="toern-badge toern-badge-spotted">Opgevallen</span>' : '<span class="toern-badge toern-badge-linked">Gekoppeld</span>';
       const mergeWarn = tp.mergeStatus === 'unlinked' ? '<div class="toern-merge-warn">⚠️ Niet gekoppeld aan spelersprofiel</div>' : '';
-      const _exp = tp.exportedAs
-        ? `<span class="toern-badge toern-badge-linked">✅ ${tp.exportedAs==='rapport'?'Rapport':'Verwerkt'}</span>`
-        : `<button class="btn btn-xs toern-exp-btn" onclick="event.stopPropagation();exportSingleTournamentPlayer('${tid}','${tp.id}')">→ ${tp.type==='spotted'?'Observatie':'Rapport'}</button>`;
+      const _exp = tp.bundleSubmitted
+        ? `<span class="toern-badge toern-badge-linked">✓ Ingediend</span>`
+        : '';
       return `<div class="toern-speler-row">
         <div class="toern-player-avatar">${initials(naam)}</div>
         <div class="toern-speler-info">
@@ -24201,12 +25352,21 @@ async function renderToernooiDetail(tid){
 
   // Render actieve tab
   renderToernooiTab(_toernTab, tid);
+  // Afrond-flow UI (knop-state + zichtbaarheid Afronden-tab) bijwerken
+  if(typeof _renderToernAfrondUI === 'function') _renderToernAfrondUI(tournament);
 }
 window.renderToernooiDetail = renderToernooiDetail;
 
 function renderToernooiTab(tab, tid){
-  _toernTab = tab;
   tid = tid || _currentTournamentId;
+  // Afronden-tab ("bundeling") is alleen toegankelijk zodra het toernooi
+  // is afgelopen (status closing/done). Anders terugvallen op de tijdlijn.
+  if(tab === 'bundeling'){
+    const _t = tourmCache.find(x => x.id === tid);
+    const _st = (typeof _toernEffectiveStatus === 'function') ? _toernEffectiveStatus(_t) : 'active';
+    if(_st !== 'closing' && _st !== 'done'){ tab = 'tijdlijn'; }
+  }
+  _toernTab = tab;
   // Tab knoppen
   document.querySelectorAll('.toern-tab-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
@@ -24258,19 +25418,26 @@ async function renderTijdlijnTab(tid){
     const _today = (typeof todayISO === 'function') ? todayISO() : new Date().toISOString().slice(0,10);
     const _dayDate = {}; days.forEach(d => { _dayDate[d.id] = d.date; });
     const _now = new Date(); const _nowMin = _now.getHours()*60 + _now.getMinutes();
-    window._notifMatches = []; window._liveMatch = null;
+    window._notifMatches = []; window._liveMatch = null; window._liveMatches = [];
     matches.forEach(m => {
       const tijd = _toernMatchClock(m); if(!tijd) return;
       if(_dayDate[m.dayId] !== _today) return;
       const mm = tijd.match(/^(\d{2}):(\d{2})$/); if(!mm) return;
       const start = (+mm[1])*60 + (+mm[2]);
       const teams = `${m.teamAName||''} – ${m.teamBName||''}`.trim();
-      if(m.watchStatus === 'watch') window._notifMatches.push({ id: m.id, tid: tid, time: tijd, teams, field: _toernFieldLabel(m.field) });
+      const field = _toernFieldLabel(m.field);
+      if(m.watchStatus === 'watch') window._notifMatches.push({ id: m.id, tid: tid, time: tijd, teams, field });
+      // Handmatige wedstrijdklok heeft voorrang op tijd-detectie (mirror regulier dashboard)
+      const _ck = (typeof toernClockGet === 'function') ? toernClockGet(tid, m.id) : null;
+      if(_ck && _ck.startedAt && !_ck.endedAt){ window._liveMatches.push({ tid, id: m.id, teams, field, time: tijd }); return; }
+      if(_ck && _ck.endedAt){ return; }   // handmatig beëindigd → niet live
       const endT = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
       const em = String(endT||'').match(/^(\d{2}):(\d{2})$/);
       const end = em ? (+em[1])*60 + (+em[2]) : start + 90;
-      if(_nowMin >= start && _nowMin <= end && !window._liveMatch) window._liveMatch = { tid, id: m.id, teams };
+      if(_nowMin >= start && _nowMin <= end) window._liveMatches.push({ tid, id: m.id, teams, field, time: tijd });
     });
+    // Backwards-compat: eerste live-wedstrijd ook als enkel object bewaren.
+    if(window._liveMatches.length) window._liveMatch = window._liveMatches[0];
   } catch(_){}
 
   const f = _progWatchFilter;
@@ -24298,12 +25465,15 @@ async function renderTijdlijnTab(tid){
     // Onder een actief filter lege dagen overslaan (rust in de lijst)
     if(f !== 'all' && dayMatches.length === 0) continue;
 
+    const _singleDay = !Array.isArray(days) || days.length <= 1;
     const closedBadge = day.closedAt
       ? `<span class="toern-badge toern-badge-closed">Afgesloten</span>
          <button class="btn btn-xs" onclick="confirmReopenDay('${tid}','${day.id}')">Heropenen</button>`
       : ((day.date && typeof todayISO === 'function' && day.date > todayISO())
           ? `<span class="toern-badge">Begint ${formatDate(day.date)}</span>`
-          : `<button class="btn btn-xs" onclick="confirmCloseDay('${tid}','${day.id}')">Dag afsluiten</button>`);
+          : (_singleDay
+              ? ''   // 1-daags toernooi → "Toernooi afronden" volstaat, geen losse "Dag afsluiten"
+              : `<button class="btn btn-xs" onclick="confirmCloseDay('${tid}','${day.id}')">Dag afsluiten</button>`));
     html += `<div class="toern-day-block">
       <div class="toern-day-header">
         <span class="toern-day-label">${escapeHtml(day.label)} — ${formatDate(day.date)}</span>
@@ -24495,6 +25665,20 @@ async function showAddPlayerForm(tid, preselectTeamId){
   const teamsSnap = await getDocs(tournSubCol(tid, 'teams'));
   const teams = teamsSnap.docs.map(d => ({...d.data(), id: d.id}));
   const teamOpts = teams.map(t => `<option value="${t.id}" ${preselectTeamId===t.id?'selected':''}>${escapeHtml(t.name)}</option>`).join('') || '<option value="">Geen teams aangemaakt</option>';
+  // Bekende spelers uit de spelersdatabase voor autofill (geen concepten).
+  const dbPlayers = ((typeof loadPlayers === 'function') ? loadPlayers() : [])
+    .filter(p => !(typeof _shPlayerIsConcept === 'function' && _shPlayerIsConcept(p)));
+  window._toernAddDbPlayers = dbPlayers;
+  window._toernAddTeams = teams;
+  const seen = new Set();
+  const dataOpts = dbPlayers.map(p => {
+    const vn = p.voornaam || (p.naam||'').split(' ')[0] || '';
+    const an = p.achternaam || (p.naam||'').split(' ').slice(1).join(' ') || '';
+    const full = `${vn} ${an}`.trim();
+    if(!full || seen.has(full.toLowerCase())) return '';
+    seen.add(full.toLowerCase());
+    return `<option value="${escapeHtml(full)}">${escapeHtml(p.club||'')}</option>`;
+  }).filter(Boolean).join('');
   const wrap = document.getElementById('toern-spelers-wrap');
   if(!wrap) return;
   document.querySelectorAll('.toern-inline-form').forEach(f => f.remove());
@@ -24502,8 +25686,18 @@ async function showAddPlayerForm(tid, preselectTeamId){
   form.className = 'toern-inline-form';
   form.innerHTML = `
     <div class="toern-form-title">Speler koppelen</div>
+    <input type="hidden" id="tf-p-playerid" value="" />
     <div class="toern-form-row">
-      <label>Naam</label><input id="tf-p-naam" type="text" placeholder="Voornaam Achternaam" />
+      <label>Zoek bestaande speler</label>
+      <input id="tf-p-zoek" list="tf-p-namelist" type="text" placeholder="Begin te typen…" oninput="_toernPickKnownPlayer()" autocomplete="off" />
+      <datalist id="tf-p-namelist">${dataOpts}</datalist>
+    </div>
+    <div class="toern-form-row toern-form-row-2">
+      <div><label>Voornaam</label><input id="tf-p-voornaam" type="text" placeholder="Voornaam" oninput="_toernNameAutofill()" /></div>
+      <div><label>Achternaam</label><input id="tf-p-achternaam" type="text" placeholder="Achternaam" oninput="_toernNameAutofill()" /></div>
+    </div>
+    <div class="toern-form-row">
+      <label>Geboortedatum</label><input id="tf-p-geboorte" type="date" />
     </div>
     <div class="toern-form-row">
       <label>Rugnummer</label><input id="tf-p-rug" type="number" min="1" max="99" />
@@ -24521,6 +25715,7 @@ async function showAddPlayerForm(tid, preselectTeamId){
         <option value="spotted">Opgevallen (live)</option>
       </select>
     </div>
+    <div id="tf-p-dbhint" class="toern-form-hint" style="display:none;"></div>
     <div class="toern-form-actions">
       <button class="btn btn-secondary" onclick="this.closest('.toern-inline-form').remove()">Annuleren</button>
       <button class="btn btn-primary" onclick="submitAddPlayer('${tid}')">Koppelen</button>
@@ -24529,13 +25724,77 @@ async function showAddPlayerForm(tid, preselectTeamId){
 }
 window.showAddPlayerForm = showAddPlayerForm;
 
+// Vind een DB-speler op voornaam+achternaam (case-insensitief).
+function _toernFindDbPlayer(voornaam, achternaam){
+  const list = window._toernAddDbPlayers || [];
+  const vn = (voornaam||'').trim().toLowerCase();
+  const an = (achternaam||'').trim().toLowerCase();
+  if(!vn && !an) return null;
+  return list.find(p => {
+    const pvn = (p.voornaam || (p.naam||'').split(' ')[0] || '').trim().toLowerCase();
+    const pan = (p.achternaam || (p.naam||'').split(' ').slice(1).join(' ') || '').trim().toLowerCase();
+    return pvn === vn && pan === an;
+  }) || null;
+}
+
+// Vul de formuliervelden met een gevonden DB-speler.
+function _toernApplyDbPlayer(p){
+  if(!p) return;
+  const vn = p.voornaam || (p.naam||'').split(' ')[0] || '';
+  const an = p.achternaam || (p.naam||'').split(' ').slice(1).join(' ') || '';
+  const set = (id,v) => { const el = document.getElementById(id); if(el && v != null && v !== '') el.value = v; };
+  set('tf-p-voornaam', vn);
+  set('tf-p-achternaam', an);
+  set('tf-p-geboorte', p.geboorte || '');
+  if(p.rugnummer) set('tf-p-rug', p.rugnummer);
+  if(p.positie) set('tf-p-positie', p.positie);
+  const pid = document.getElementById('tf-p-playerid'); if(pid) pid.value = p.id || '';
+  // Team voorselecteren als een toernooi-team dezelfde club is.
+  const teams = window._toernAddTeams || [];
+  const club = (p.club||'').trim().toLowerCase();
+  if(club){
+    const match = teams.find(t => (t.name||'').trim().toLowerCase().includes(club) || club.includes((t.name||'').trim().toLowerCase()));
+    const sel = document.getElementById('tf-p-team');
+    if(match && sel) sel.value = match.id;
+  }
+  const hint = document.getElementById('tf-p-dbhint');
+  if(hint){ hint.style.display = ''; hint.innerHTML = `✓ Gevonden in spelersdatabase${p.club?` · ${escapeHtml(p.club)}`:''}${p.geboorte?` · ${escapeHtml(p.geboorte)}`:''}`; }
+}
+
+// Keuze uit de "Zoek bestaande speler"-datalist.
+function _toernPickKnownPlayer(){
+  const v = (document.getElementById('tf-p-zoek')?.value||'').trim();
+  if(!v) return;
+  const parts = v.split(' ');
+  const p = _toernFindDbPlayer(parts[0], parts.slice(1).join(' '));
+  if(p) _toernApplyDbPlayer(p);
+}
+window._toernPickKnownPlayer = _toernPickKnownPlayer;
+
+// Autofill terwijl voornaam/achternaam worden getypt (exacte match).
+function _toernNameAutofill(){
+  const vn = document.getElementById('tf-p-voornaam')?.value || '';
+  const an = document.getElementById('tf-p-achternaam')?.value || '';
+  const p = _toernFindDbPlayer(vn, an);
+  const hint = document.getElementById('tf-p-dbhint');
+  const pid = document.getElementById('tf-p-playerid');
+  if(p){ _toernApplyDbPlayer(p); }
+  else { if(hint) hint.style.display = 'none'; if(pid) pid.value = ''; }
+}
+window._toernNameAutofill = _toernNameAutofill;
+
 async function submitAddPlayer(tid){
-  const naam = document.getElementById('tf-p-naam')?.value.trim() || null;
+  const voornaam = document.getElementById('tf-p-voornaam')?.value.trim() || '';
+  const achternaam = document.getElementById('tf-p-achternaam')?.value.trim() || '';
+  const naam = `${voornaam} ${achternaam}`.trim() || null;
+  const geboorte = document.getElementById('tf-p-geboorte')?.value || null;
   const rug  = parseInt(document.getElementById('tf-p-rug')?.value)||null;
   const teamId = document.getElementById('tf-p-team')?.value || '';
   const positie = document.getElementById('tf-p-positie')?.value || null;
   const type   = document.getElementById('tf-p-type')?.value || 'linked';
-  await addTournamentPlayer(tid, { playerId: null, teamId, quickName: naam, quickNumber: rug, type, position: positie });
+  const playerId = document.getElementById('tf-p-playerid')?.value || null;
+  if(!naam){ toast('Vul minstens een naam in', true); return; }
+  await addTournamentPlayer(tid, { playerId: playerId||null, teamId, quickName: naam, quickNumber: rug, type, position: positie, quickFirstName: voornaam||null, quickLastName: achternaam||null, birthDate: geboorte });
   document.querySelectorAll('.toern-inline-form').forEach(f => f.remove());
   toast('Speler gekoppeld ✓');
   renderSpelersTab(tid);
@@ -25073,6 +26332,21 @@ function _withMatchDuration(rule){
 /* Effectieve regel voor (categorie[, stage]) — stage → categorie →
    defaultRules → KNVB-default → null */
 function getEffectiveTournamentRule(t, categoryId, stage){
+  // NIEUW: één toernooi-brede wedstrijdduur (1e helft / rust / 2e helft) heeft
+  // voorrang en geldt automatisch voor álle wedstrijden van het toernooi.
+  if(t && t.matchDuration && (t.matchDuration.firstHalf || t.matchDuration.secondHalf)){
+    const md = t.matchDuration;
+    const fh = Number(md.firstHalf) || 0;
+    const sh = Number(md.secondHalf) || 0;
+    return _withMatchDuration({
+      numberOfHalves: 2,
+      firstHalf: fh,
+      secondHalf: sh,
+      halfDuration: (fh && sh && fh === sh) ? fh : null,
+      halftimeBreak: Number(md.halftimeBreak) || 0,
+      matchDuration: (fh + sh) || null
+    });
+  }
   const tr = (t && t.tournamentRules) || null;
   const key = normTournamentCategoryKey(categoryId);
   if(tr && tr.categories && tr.categories[key]){
@@ -25197,48 +26471,91 @@ function _fileToBase64(file){
 }
 
 /* ================================================================
-   TOERNOOIREGELS INSTELLEN
+   WEDSTRIJDDUUR INSTELLEN — één duur voor het hele toernooi
+   (1e helft / rust / 2e helft → totaal automatisch berekend).
+   Geldt automatisch voor álle wedstrijden van dit toernooi.
    ================================================================ */
+function _deriveLegacyDuration(t){
+  // Pre-fill vanuit oude per-categorie regels / KNVB-default zodat de
+  // editor zinnige startwaarden toont bij toernooien zonder matchDuration.
+  const cat = (Array.isArray(t.categories) && t.categories[0]) || null;
+  const r = getEffectiveTournamentRule(t, cat, null);
+  if(r){
+    const half = r.halfDuration
+      || (r.matchDuration && r.numberOfHalves ? Math.round(r.matchDuration / r.numberOfHalves) : null);
+    if(half) return { firstHalf: half, halftimeBreak: r.halftimeBreak || 0, secondHalf: half };
+  }
+  return null;
+}
+
+function _toernDurTotal(){
+  const f = Number(document.getElementById('dur-first')?.value) || 0;
+  const b = Number(document.getElementById('dur-break')?.value) || 0;
+  const s = Number(document.getElementById('dur-second')?.value) || 0;
+  const play = f + s;
+  const total = f + b + s;
+  const el = document.getElementById('dur-total');
+  if(!el) return;
+  el.innerHTML = play
+    ? `Totale speeltijd: <strong>${play} min</strong> &nbsp;·&nbsp; met rust: <strong>${total} min</strong>`
+    : '<span style="color:var(--muted,#888);">Vul de helften in…</span>';
+}
+window._toernDurTotal = _toernDurTotal;
+
 async function openTournamentRulesModal(tid){
   tid = tid || _currentTournamentId;
   const t = tourmCache.find(x => x.id === tid);
   if(!t){ toast('Toernooi niet gevonden', true); return; }
+  if(_toernEffectiveStatus(t) === 'done'){ toast('Toernooi is afgerond — wedstrijdduur staat op slot', true); return; }
 
-  // Categorieën verzamelen: tournament.categories + distinct match-categoryIds
-  let cats = Array.isArray(t.categories) ? t.categories.slice() : [];
-  try {
-    const ms = await getDocs(tournSubCol(tid, 'matches'));
-    ms.docs.forEach(d => { const c = (d.data() || {}).categoryId; if(c) cats.push(c); });
-  } catch(_){}
-  const keys = [...new Set(cats.map(normTournamentCategoryKey).filter(Boolean))].sort();
-  if(!keys.length){ keys.push('O13'); }
-
-  const tr = t.tournamentRules || {};
-  const rowHtml = keys.map(k => {
-    const eff = getEffectiveTournamentRule(t, k, null) || {};
-    const stored = (tr.categories && tr.categories[k]) || {};
-    const isDefault = !(tr.categories && tr.categories[k]);
-    return `<div class="toern-rule-row" data-key="${k}" style="display:grid;grid-template-columns:64px repeat(5,1fr);gap:6px;align-items:center;margin-bottom:6px;">
-      <strong>${escapeHtml(k)}</strong>
-      <label style="font-size:11px;">Helften<input type="number" min="1" max="4" data-f="numberOfHalves" value="${eff.numberOfHalves ?? 2}" style="width:100%;"></label>
-      <label style="font-size:11px;">Helft (min)<input type="number" min="1" max="60" data-f="halfDuration" value="${eff.halfDuration ?? ''}" style="width:100%;"></label>
-      <label style="font-size:11px;">Rust (min)<input type="number" min="0" max="30" data-f="halftimeBreak" value="${eff.halftimeBreak ?? 0}" style="width:100%;"></label>
-      <label style="font-size:11px;">Verleng.<input type="checkbox" data-f="extraTime" ${eff.extraTime ? 'checked' : ''}></label>
-      <label style="font-size:11px;">Straf.<input type="checkbox" data-f="penalties" ${eff.penalties ? 'checked' : ''}></label>
-      <span style="grid-column:1/-1;font-size:10px;color:var(--muted,#888);">${isDefault ? 'KNVB-standaard (nog niet aangepast)' : 'Aangepast' }</span>
-    </div>`;
-  }).join('');
+  const md = t.matchDuration || _deriveLegacyDuration(t) || {};
+  const fh = md.firstHalf != null ? md.firstHalf : '';
+  const hb = md.halftimeBreak != null ? md.halftimeBreak : '';
+  const sh = md.secondHalf != null ? md.secondHalf : '';
 
   _toernOpenOverlay(`
-    <h3 style="margin:0 0 4px;">Toernooiregels — ${escapeHtml(t.name || '')}</h3>
-    <p style="margin:0 0 14px;font-size:12px;color:var(--muted,#888);">Speeltijd per categorie. Eindtijden in het programma en de observatie-timer gebruiken deze waarden.</p>
-    <div id="toern-rules-form">${rowHtml}</div>
+    <h3 style="margin:0 0 4px;">Wedstrijdduur — ${escapeHtml(t.name || '')}</h3>
+    <p style="margin:0 0 14px;font-size:12px;color:var(--muted,#888);">Geldt voor álle wedstrijden van dit toernooi. Eindtijden in het programma en de wedstrijdklok gebruiken deze waarden.</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      <label style="font-size:12px;">1e helft (min)<input type="number" inputmode="numeric" min="1" max="60" id="dur-first" value="${fh}" oninput="_toernDurTotal()" style="width:100%;"></label>
+      <label style="font-size:12px;">Rust (min)<input type="number" inputmode="numeric" min="0" max="30" id="dur-break" value="${hb}" oninput="_toernDurTotal()" style="width:100%;"></label>
+      <label style="font-size:12px;">2e helft (min)<input type="number" inputmode="numeric" min="1" max="60" id="dur-second" value="${sh}" oninput="_toernDurTotal()" style="width:100%;"></label>
+    </div>
+    <div id="dur-total" style="margin-top:14px;font-size:14px;"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
       <button class="btn btn-sm" onclick="_toernCloseOverlay()">Annuleren</button>
-      <button class="btn btn-sm btn-primary" onclick="saveTournamentRules('${tid}')">Opslaan</button>
+      <button class="btn btn-sm btn-primary" onclick="saveTournamentDuration('${tid}')">Opslaan</button>
     </div>`);
+  _toernDurTotal();
 }
 window.openTournamentRulesModal = openTournamentRulesModal;
+
+async function saveTournamentDuration(tid){
+  const f = Number(document.getElementById('dur-first')?.value) || 0;
+  const b = Number(document.getElementById('dur-break')?.value) || 0;
+  const s = Number(document.getElementById('dur-second')?.value) || 0;
+  if(!f || !s){ toast('Vul beide helften in', true); return; }
+  const md = {
+    firstHalf: f,
+    halftimeBreak: b,
+    secondHalf: s,
+    play: f + s,
+    total: f + b + s,
+    updatedAt: new Date().toISOString()
+  };
+  try {
+    await setDoc(tournDoc(tid), { matchDuration: md }, { merge: true });
+    const c = tourmCache.find(x => x.id === tid);
+    if(c) c.matchDuration = md;
+    toast('Wedstrijdduur opgeslagen ✓');
+    _toernCloseOverlay();
+    if(_currentTournamentId === tid && _toernTab === 'tijdlijn') renderTijdlijnTab(tid);
+  } catch(e){
+    console.error('saveTournamentDuration error:', e);
+    toast('Opslaan mislukt: ' + (e.message || e), true);
+  }
+}
+window.saveTournamentDuration = saveTournamentDuration;
 
 async function saveTournamentRules(tid){
   const t = tourmCache.find(x => x.id === tid) || {};
@@ -25438,6 +26755,7 @@ async function syncTournamentScores(tid){
   const t = tourmCache.find(x => x.id === tid);
   const statusEl = document.getElementById('toern-sync-status');
   if(!t){ toast('Toernooi niet gevonden', true); return; }
+  if(_toernEffectiveStatus(t) === 'done'){ toast('Toernooi is afgerond — synchroniseren staat op slot', true); return; }
   const tournifyUrl = t.tournifyUrl || (t.tournifyId ? `https://tournifyapp.com/live/${encodeURIComponent(t.tournifyId)}` : '');
   if(!tournifyUrl){
     if(statusEl) statusEl.textContent = 'Handmatig toernooi — voer uitslagen in via het programma (tik op de score).';
@@ -26126,7 +27444,7 @@ function _mpRowHtml(tid, m, conflict, playersByTeam){
   const flag = conflict ? '<span class="mp-conflict-flag">⚠️ tegelijk!</span>' : '';
   const sub = _toernLinkedPlayersSub(m, playersByTeam);
   const note = m.matchNote ? `<span class="tp-note">📝 ${escapeHtml(m.matchNote)}</span>` : '';
-  return `<div class="toern-prog-row toern-watch-${ws} ${conflict?'mp-conflict':''}" onclick="openMatchDetail('${tid}','${m.id}')">
+  return `<div class="toern-prog-row toern-watch-${ws} ${conflict?'mp-conflict':''}" onclick="openMatchDetail('${tid}','${m.id}',{fromToernooi:true})">
     <span class="tp-ind">${_mpDot(ws)}</span>
     <span class="tp-time" data-col="Tijd">${escapeHtml(timeLabel)}</span>
     <span class="tp-match" data-col="Wedstrijd"><span class="tp-teams">${_toernMustStar(m)}${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>${flag}${sub}${note}</span>
@@ -26344,7 +27662,7 @@ function _progRowHtml(tid, m, playersByTeam){
   const dot = _mpDot(ws);
   const sub = _toernLinkedPlayersSub(m, playersByTeam);
   const note = m.matchNote ? `<span class="tp-note">📝 ${escapeHtml(m.matchNote)}</span>` : '';
-  return `<div class="toern-prog-row toern-watch-${ws}" onclick="openMatchDetail('${tid}','${m.id}')">
+  return `<div class="toern-prog-row toern-watch-${ws}" onclick="openMatchDetail('${tid}','${m.id}',{fromToernooi:true})">
     <span class="tp-ind">${dot}</span>
     <span class="tp-time" data-col="Tijd">${escapeHtml(timeLabel)}</span>
     <span class="tp-match" data-col="Wedstrijd">
@@ -26432,7 +27750,7 @@ function _injectObsTrefwoorden(existingTags, existingNotes){
       return `<div class="obs-field-block"><span class="obs-field-label">${cat}</span><div class="obs-tags">${chips}</div><textarea class="obs-cat-note" data-cat-note="${cat.toLowerCase()}" rows="1" placeholder="Notitie (optioneel)...">${escapeHtml((existingNotes[cat.toLowerCase()]||''))}</textarea></div>`;
     }).join('');
   host.parentNode.insertBefore(wrap, host);
-  try { wrap.querySelectorAll('.obs-cat-note').forEach(ta => { const grow = () => { ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,120)+'px'; }; ta.addEventListener('input', grow); grow(); }); } catch(_){}
+  try { wrap.querySelectorAll('.obs-cat-note').forEach(ta => { const grow = () => { ta.style.height='auto'; ta.style.height=Math.min(ta.scrollHeight,120)+'px'; ta.style.overflowY=(ta.scrollHeight>120)?'auto':'hidden'; }; ta.addEventListener('input', grow); grow(); }); } catch(_){}
 }
 window._injectObsTrefwoorden = _injectObsTrefwoorden;
 
@@ -26529,48 +27847,128 @@ window._shLoadUserName = _shLoadUserName;
 
 
 /* ================================================================
-   TIP 4 — lokale wedstrijd-timer in het wedstrijd-detail.
-   Toont per helft een meelopende klok op basis van de ingestelde
-   toernooiregels (halfDuration). Puur lokaal: niets wordt opgeslagen,
-   en de timer verdwijnt zodra de modal sluit.
+   TIP 4 — PERSISTENTE wedstrijdklok in het wedstrijd-detail.
+   Gespiegeld aan het reguliere live-dashboard: de scout duidt zelf
+   aan wanneer de wedstrijd start/stopt (▶ Aftrap nu / ⟲ Herstart /
+   ⏹ Einde). startedAt/endedAt worden in localStorage bewaard, dus de
+   klok overleeft het sluiten van de modal én een herlaadbeurt. De klok
+   loopt automatisch door de fasen (1e helft → rust → 2e helft) op basis
+   van de ingestelde wedstrijdduur.
    ================================================================ */
-let _wstrTimerState = null;
+let _toernClockStore = {};
+try { _toernClockStore = JSON.parse(localStorage.getItem('sh_toern_clock') || '{}') || {}; } catch(_){ _toernClockStore = {}; }
+function _toernClockSave(){ try { localStorage.setItem('sh_toern_clock', JSON.stringify(_toernClockStore)); } catch(_){} }
+function _toernClockKey(tid, matchId){ return String(tid) + ':' + String(matchId); }
+function toernClockGet(tid, matchId){ return _toernClockStore[_toernClockKey(tid, matchId)] || null; }
+window.toernClockGet = toernClockGet;
+
+let _wstrTimerState = null;   // { tid, matchId, halfLens:[min], breakSec, iv }
 function _wstrTimerFmt(sec){
   sec = Math.max(0, sec | 0);
   const m = Math.floor(sec / 60), s = sec % 60;
   return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
 }
+/* Bepaal de fase (welke helft / rust / voorbij) na 'elapsedSec' seconden. */
+function _toernClockPhase(elapsedSec, halfLens, breakSec){
+  let acc = 0;
+  for(let i = 0; i < halfLens.length; i++){
+    const hs = halfLens[i] * 60;
+    if(elapsedSec < acc + hs) return { inHalf: true, half: i + 1, t: elapsedSec - acc, len: hs };
+    acc += hs;
+    if(i < halfLens.length - 1 && breakSec > 0){
+      if(elapsedSec < acc + breakSec) return { rust: true, next: i + 2, remain: (acc + breakSec) - elapsedSec };
+      acc += breakSec;
+    }
+  }
+  return { ended: true, over: elapsedSec - acc };
+}
 function _wstrTimerRender(){
-  const st = _wstrTimerState;
-  const el = document.getElementById('toern-match-timer-display');
-  if(!el || !st) return;
-  el.textContent = `${st.half}e helft: ${_wstrTimerFmt(st.sec)} / ${_wstrTimerFmt(st.halfLenSec)}`;
-  el.classList.toggle('over', st.sec >= st.halfLenSec);
+  const st = _wstrTimerState; if(!st) return;
+  const lblEl = document.getElementById('toern-timer-phase');
+  const subEl = document.getElementById('toern-timer-sub');
   const startBtn = document.getElementById('toern-timer-start');
-  if(startBtn) startBtn.textContent = st.running ? '⏸ Pauze' : '▶ Start';
-  const nextBtn = document.getElementById('toern-timer-next');
-  if(nextBtn) nextBtn.style.display = (st.half < st.halves) ? '' : 'none';
+  const restartBtn = document.getElementById('toern-timer-restart');
+  const endBtn = document.getElementById('toern-timer-end');
+  if(!lblEl) return;
+  const setState = cls => { lblEl.className = 'sa-status ' + cls; };
+  const clk = toernClockGet(st.tid, st.matchId);
+  // Nog niet gestart — net als een reguliere wedstrijd vóór de aftrap.
+  if(!clk || !clk.startedAt){
+    setState('warmup');
+    lblEl.textContent = '⏱ Klaar om te starten';
+    if(subEl){
+      const sym = (st.halfLens.length === 2 && st.halfLens[0] === st.halfLens[1]);
+      subEl.textContent = (sym ? `2×${st.halfLens[0]}′` : st.halfLens.map(h => h + '′').join(' + ')) + (st.breakSec ? ` · rust ${Math.round(st.breakSec/60)}′` : '');
+    }
+    if(startBtn){ startBtn.style.display = ''; startBtn.textContent = '▶ Aftrap nu'; }
+    if(restartBtn) restartBtn.style.display = 'none';
+    if(endBtn) endBtn.style.display = 'none';
+    return;
+  }
+  // Afgelopen
+  if(clk.endedAt){
+    setState('ended');
+    const durMin = Math.max(0, Math.round((clk.endedAt - clk.startedAt) / 60000));
+    lblEl.textContent = '✓ Afgelopen';
+    if(subEl) subEl.textContent = `gespeeld ${durMin} min`;
+    if(startBtn) startBtn.style.display = 'none';
+    if(restartBtn){ restartBtn.style.display = ''; restartBtn.textContent = '⟲ Opnieuw'; }
+    if(endBtn) endBtn.style.display = 'none';
+    return;
+  }
+  // Live — minuut-gebaseerd, identiek aan het reguliere live-dashboard.
+  const elapsed = Math.max(0, Math.floor((Date.now() - clk.startedAt) / 1000));
+  const ph = _toernClockPhase(elapsed, st.halfLens, st.breakSec);
+  if(ph.inHalf){
+    setState('live');
+    lblEl.textContent = `● ${ph.half}e helft — ${Math.floor(ph.t/60)}'`;
+    if(subEl) subEl.textContent = `van ${Math.round(ph.len/60)}′`;
+  } else if(ph.rust){
+    setState('warmup');
+    lblEl.textContent = '⏸ Rust';
+    if(subEl) subEl.textContent = `nog ${Math.ceil(ph.remain/60)} min`;
+  } else {
+    setState('live');
+    lblEl.textContent = '⏱ Speeltijd voorbij';
+    if(subEl) subEl.textContent = `+${Math.floor(ph.over/60)} min`;
+  }
+  if(startBtn) startBtn.style.display = 'none';
+  if(restartBtn){ restartBtn.style.display = ''; restartBtn.textContent = '⟲ Herstart'; }
+  if(endBtn) endBtn.style.display = '';
 }
-function _wstrTimerTick(){ if(!_wstrTimerState) return; _wstrTimerState.sec++; _wstrTimerRender(); }
-function toggleMatchTimer(){
-  const st = _wstrTimerState; if(!st) return;
-  if(st.running){ st.running = false; if(st.iv){ clearInterval(st.iv); st.iv = null; } }
-  else { st.running = true; st.iv = setInterval(_wstrTimerTick, 1000); }
+function _wstrEnsureInterval(){
+  if(!_wstrTimerState) return;
+  const clk = toernClockGet(_wstrTimerState.tid, _wstrTimerState.matchId);
+  const live = clk && clk.startedAt && !clk.endedAt;
+  if(live && !_wstrTimerState.iv){ _wstrTimerState.iv = setInterval(_wstrTimerRender, 1000); }
+  else if(!live && _wstrTimerState.iv){ clearInterval(_wstrTimerState.iv); _wstrTimerState.iv = null; }
+}
+function _toernClockAfterChange(tid){
+  _wstrEnsureInterval();
   _wstrTimerRender();
+  // Live-status in de tijdlijn (FAB / NU BEZIG) bijwerken
+  if(typeof _currentTournamentId !== 'undefined' && _currentTournamentId === tid
+     && typeof _toernTab !== 'undefined' && _toernTab === 'tijdlijn'
+     && typeof renderTijdlijnTab === 'function'){
+    renderTijdlijnTab(tid);
+  }
 }
-window.toggleMatchTimer = toggleMatchTimer;
-function resetMatchTimer(){
-  const st = _wstrTimerState; if(!st) return;
-  if(st.iv){ clearInterval(st.iv); st.iv = null; }
-  st.sec = 0; st.half = 1; st.running = false;
-  _wstrTimerRender();
+function toernClockStart(tid, matchId){
+  _toernClockStore[_toernClockKey(tid, matchId)] = { startedAt: Date.now() };
+  _toernClockSave();
+  _toernClockAfterChange(tid);
 }
-window.resetMatchTimer = resetMatchTimer;
-function nextHalfTimer(){
-  const st = _wstrTimerState; if(!st) return;
-  if(st.half < st.halves){ st.half++; st.sec = 0; _wstrTimerRender(); }
+window.toernClockStart = toernClockStart;
+function toernClockEnd(tid, matchId){
+  const k = _toernClockKey(tid, matchId);
+  const c = _toernClockStore[k] || {};
+  if(!c.startedAt) c.startedAt = Date.now();
+  c.endedAt = Date.now();
+  _toernClockStore[k] = c;
+  _toernClockSave();
+  _toernClockAfterChange(tid);
 }
-window.nextHalfTimer = nextHalfTimer;
+window.toernClockEnd = toernClockEnd;
 function _wstrTimerStop(){
   if(_wstrTimerState && _wstrTimerState.iv) clearInterval(_wstrTimerState.iv);
   _wstrTimerState = null;
@@ -26583,19 +27981,35 @@ function _initMatchTimer(tid, match){
   const t = tourmCache.find(x => x.id === tid);
   const rule = (typeof getEffectiveTournamentRule === 'function')
     ? getEffectiveTournamentRule(t, match.categoryId, match.stage || null) : null;
-  const halfMin = rule && rule.halfDuration ? rule.halfDuration : null;
-  if(!halfMin){ host.innerHTML = ''; return; }   // geen regels → geen timer
-  const halves = rule && rule.numberOfHalves ? rule.numberOfHalves : 2;
-  _wstrTimerState = { sec: 0, running: false, half: 1, halfLenSec: halfMin * 60, halves, iv: null };
+  // Helft-lengtes + rust uit de toernooi-brede wedstrijdduur (asymmetrisch
+  // toegestaan), met symmetrische halfDuration als fallback.
+  let halfLens = null, breakSec = 0;
+  if(rule){
+    if(rule.firstHalf || rule.secondHalf){
+      const f = rule.firstHalf || rule.secondHalf;
+      const s = rule.secondHalf || rule.firstHalf;
+      halfLens = [f, s];
+    } else if(rule.halfDuration){
+      const n = rule.numberOfHalves || 2;
+      halfLens = Array.from({ length: n }, () => rule.halfDuration);
+    }
+    breakSec = (rule.halftimeBreak || 0) * 60;
+  }
+  if(!halfLens || !halfLens.length){ host.innerHTML = ''; return; }   // geen duur → geen klok
+  _wstrTimerState = { tid, matchId: match.id, halfLens, breakSec, iv: null };
   host.innerHTML = `
     <div class="toern-timer">
-      <div class="toern-timer-display" id="toern-match-timer-display">1e helft: 00:00 / ${_wstrTimerFmt(halfMin * 60)}</div>
+      <div class="sa-status-row">
+        <span class="sa-status warmup" id="toern-timer-phase">⏱ Klaar om te starten</span>
+        <span class="toern-timer-sub" id="toern-timer-sub"></span>
+      </div>
       <div class="toern-timer-btns">
-        <button type="button" class="btn btn-xs" id="toern-timer-start" onclick="toggleMatchTimer()">▶ Start</button>
-        <button type="button" class="btn btn-xs" id="toern-timer-next" onclick="nextHalfTimer()" style="display:none;">Volgende helft</button>
-        <button type="button" class="btn btn-xs" onclick="resetMatchTimer()">↺ Reset</button>
+        <button type="button" class="sa-clock-btn sa-clock-start" id="toern-timer-start" onclick="toernClockStart('${tid}','${match.id}')">▶ Aftrap nu</button>
+        <button type="button" class="sa-clock-btn sa-clock-restart" id="toern-timer-restart" onclick="toernClockStart('${tid}','${match.id}')" style="display:none;">⟲ Herstart</button>
+        <button type="button" class="sa-clock-btn sa-clock-end sa-clock-icon" id="toern-timer-end" onclick="toernClockEnd('${tid}','${match.id}')" style="display:none;" title="Wedstrijd beëindigen" aria-label="Wedstrijd beëindigen">⏹</button>
       </div>
     </div>`;
+  _wstrEnsureInterval();
   _wstrTimerRender();
 }
 window._initMatchTimer = _initMatchTimer;
@@ -26610,6 +28024,7 @@ window._initMatchTimer = _initMatchTimer;
 function _toernEffectiveStatus(t){
   if(!t) return 'active';
   if(t.status === 'done' || t.finishedAt) return 'done';   // expliciet afgerond
+  if(t.status === 'closing') return 'closing';              // "Toernooi afgelopen" → bundeling/afronding
   const today = (typeof todayISO === 'function') ? todayISO() : new Date().toISOString().slice(0,10);
   const sd = t.startDate || '';
   const ed = t.endDate || t.startDate || '';
@@ -26690,6 +28105,70 @@ function _bestGrade(obs){
   return best;
 }
 
+// Trefwoord-categorieën — identiek aan het reguliere observatieformulier
+// (_injectObsTrefwoorden), zodat het gebundelde formulier dezelfde onderdelen heeft.
+const _BNDL_TAG_CATS = {
+  'Mentaliteit': ['Winnaar','Leider','Communicatief','Rustig','Nerveus','Emotioneel','Doorzetter','Opgeven','Concentratie','Gretig'],
+  'Techniek': ['Balbehandeling','Passing','Eerste aanname','Traptechniek','Koppen','Dribbel','Overzicht','Beide benen'],
+  'Snelheid': ['Startsnelheid','Topsnelheid','Wendbaarheid','Versnelling','Traag','Explosief'],
+  'Fysiek': ['Sterk','Licht','Lenig','Groot','Klein','Dualkracht','Uithoudingsvermogen'],
+  'Inzicht': ['Scannen','Positiespel','Ruimte zien','Anticipatie','Coaching','Rust aan de bal','Loopacties','Timing']
+};
+
+// Dominante rating per (categorie,label) over alle observaties van een speler.
+function _bndlAggRatingMap(obs){
+  const acc = {};
+  (obs||[]).forEach(o => (o.tags||[]).forEach(t => {
+    const c = String(t.category||'').toLowerCase(); if(!c || !t.label) return;
+    acc[c] = acc[c] || {}; acc[c][t.label] = acc[c][t.label] || { good:0, average:0, poor:0 };
+    if(t.rating === 'good') acc[c][t.label].good++;
+    else if(t.rating === 'average') acc[c][t.label].average++;
+    else if(t.rating === 'poor') acc[c][t.label].poor++;
+  }));
+  const out = {};
+  Object.keys(acc).forEach(c => {
+    out[c] = {};
+    Object.keys(acc[c]).forEach(lab => {
+      const a = acc[c][lab];
+      out[c][lab] = (a.good >= a.average && a.good >= a.poor) ? 'good' : (a.average >= a.poor ? 'average' : 'poor');
+    });
+  });
+  return out;
+}
+
+// Gecombineerde per-categorie notities over alle observaties (uniek).
+function _bndlAggCatNotes(obs){
+  const out = {};
+  (obs||[]).forEach(o => {
+    const cn = o.category_notes || {};
+    Object.keys(cn).forEach(c => {
+      const v = (cn[c]||'').trim(); if(!v) return;
+      out[c] = out[c] || [];
+      if(!out[c].includes(v)) out[c].push(v);
+    });
+  });
+  const flat = {}; Object.keys(out).forEach(c => { flat[c] = out[c].join('; '); });
+  return flat;
+}
+
+// Eén bron van waarheid voor de onderdelen (categorie + label + trefwoorden) van
+// het toernooi-formulier én de bundel. Gekoppelde speler = identiek aan de
+// reguliere live gekoppelde-speler-vorm (8 PLF-onderdelen). Opgevallen speler =
+// identiek aan het reguliere observatieformulier (5 categorieën).
+function _tournCatDefs(isLinked){
+  if(isLinked){
+    const lbl = { techniek:'Techniek', inzicht:'Inzicht', mentaliteit:'Mentaliteit', explosiviteit:'Explosiviteit', sprinten:'Sprinten', duelleren:'Duelleren', wendbaarheid:'Wendbaarheid', algemeen:'Algemeen' };
+    return Object.keys(PLF_CHIP_CATS).map(c => [c, lbl[c] || c, PLF_CHIP_CATS[c]]);
+  }
+  return [
+    ['mentaliteit','Mentaliteit', _BNDL_TAG_CATS.Mentaliteit],
+    ['techniek','Techniek', _BNDL_TAG_CATS.Techniek],
+    ['snelheid','Snelheid', _BNDL_TAG_CATS.Snelheid],
+    ['fysiek','Fysiek', _BNDL_TAG_CATS.Fysiek],
+    ['inzicht','Inzicht', _BNDL_TAG_CATS.Inzicht]
+  ];
+}
+
 // Stelt een leesbare analyse-tekst samen uit alle observaties van één speler.
 function _composeBundelText(entry, matchById, tournament){
   const CATS = [['mentaliteit','MENTALITEIT'],['techniek','TECHNIEK'],['snelheid','SNELHEID'],['fysiek','FYSIEK'],['inzicht','INZICHT']];
@@ -26749,18 +28228,36 @@ async function _collectTournamentExportData(tid){
     if(!obs.length) return;   // alleen spelers met observaties
     const club = teamsById[tp.teamId] ? teamsById[tp.teamId].name : '';
     const categoryId = (matchById[(obs[0]||{}).matchId] || {}).categoryId || '';
-    entries.push({ tpId: tp.id, naam: tp.quickName || 'Onbekend', club, position: tp.position || '', categoryId, isLinked: tp.type !== 'spotted', obs, matchById, exported: tp.exportedAs || null });
+    entries.push({ tpId: tp.id, naam: tp.quickName || 'Onbekend', club, position: tp.position || '', categoryId, isLinked: tp.type !== 'spotted', obs, matchById, exported: tp.exportedAs || null, bundle: tp.bundle || null, bundleSubmitted: !!tp.bundleSubmitted });
   });
   return { entries, tournament: tourmCache.find(x => x.id === tid) || {} };
 }
 
 // Maak één regulier document (rapport of observatie) uit een speler-bundeling.
-async function _exportTournamentPlayer(tid, entry, tournament){
+async function _exportTournamentPlayer(tid, entry, tournament, overrides){
+  overrides = overrides || {};
   const mode = entry.isLinked ? 'rapport' : 'observatie';
-  const grade = _bestGrade(entry.obs) || '';
+  const grade = (overrides.grade != null && overrides.grade !== '') ? overrides.grade : (_bestGrade(entry.obs) || '');
   const fullText = _composeBundelText(entry, entry.matchById, tournament);
   const notesOnly = _composeNotesOnly(entry, entry.matchById, tournament);
   const catText = _aggTagsByCat(entry.obs);
+  // Voorkeursbeen: override > meest recente niet-lege waarde over alle observaties.
+  let voorkeursbeen = '';
+  (entry.obs||[]).forEach(o => { if(o.voorkeursbeen) voorkeursbeen = o.voorkeursbeen; });
+  if(overrides.voorkeursbeen != null && overrides.voorkeursbeen !== '') voorkeursbeen = overrides.voorkeursbeen;
+  // Vrije per-speler notities (apart van trefwoord-omschrijvingen) bundelen.
+  let footNotes;
+  if(overrides.note != null){
+    footNotes = overrides.note.trim() ? [overrides.note.trim()] : [];
+  } else {
+    footNotes = (entry.obs||[]).map(o => {
+      if(!o.note || !o.note.trim()) return null;
+      const m = entry.matchById[o.matchId];
+      const ctx = m ? `vs ${m.teamAName||''}–${m.teamBName||''}: ` : '';
+      return `${ctx}${o.note.trim()}`;
+    }).filter(Boolean);
+  }
+  const noteBlock = footNotes.length ? `\n\nNOTITIES:\n${footNotes.join('\n')}` : '';
   const id = tuid('p');
   const now = Date.now();
   const tdatum = tournament.startDate || todayISO();
@@ -26768,6 +28265,7 @@ async function _exportTournamentPlayer(tid, entry, tournament){
   const age = _toernAgeLabel(tournament) || entry.categoryId || '';
   const base = {
     id, naam: entry.naam || 'Onbekend', club, positie: entry.position || '', elftal: age,
+    voorkeursbeen: voorkeursbeen || '',
     huidig_niveau: grade, potentieel_niveau: '', advies: '',
     wedstrijd: { datum: tdatum, thuis: club, uit: '', leeftijd: age, plaats: tournament.location || '', sportpark: '', toernooi: true, toernooi_naam: tournament.name || '' },
     wedstrijd_datum: tdatum, wedstrijd_thuis: club, wedstrijd_uit: '', wedstrijd_leeftijd: age,
@@ -26780,7 +28278,7 @@ async function _exportTournamentPlayer(tid, entry, tournament){
     // Tags → criterium-TEKSTvelden. De score-velden (*_huidig) blijven LEEG;
     // die vult de scout zelf in bij het concept.
     rec = { ...base, concept: true,
-      notities: notesOnly, notities_raw: notesOnly,
+      notities: notesOnly + noteBlock, notities_raw: notesOnly + noteBlock,
       beoordelingen: {
         techniek_huidig: '',      techniek_tekst:      catText.techniek    || '',
         inzicht_huidig: '',       inzicht_tekst:       catText.inzicht     || '',
@@ -26792,7 +28290,7 @@ async function _exportTournamentPlayer(tid, entry, tournament){
       }
     };
   } else {
-    rec = { ...base, notities: fullText, notities_raw: fullText, rapport_type: 'observatie', status: 'observatie', concept: false, is_opvallend: true };
+    rec = { ...base, notities: fullText + noteBlock, notities_raw: fullText + noteBlock, rapport_type: 'observatie', status: 'observatie', concept: false, is_opvallend: true };
   }
   await savePlayer(rec);
   // Markeer de toernooi-speler additief (geen overschrijven van bestaande velden)
@@ -26819,6 +28317,121 @@ async function exportSingleTournamentPlayer(tid, tpId){
 window.exportSingleTournamentPlayer = exportSingleTournamentPlayer;
 
 // STAP 1D — bulk afronden.
+/* ================================================================
+   AFROND-FLOW STATE MACHINE (Marcel's herontwerp)
+   active → [Toernooi afgelopen] → closing → (alle spelers ingediend)
+          → [Toernooi afronden] → done
+   ================================================================ */
+
+// Werk de actie-knop + zichtbaarheid van de Afronden-tab bij o.b.v. status.
+function _renderToernAfrondUI(tournament){
+  const btn = document.getElementById('toern-btn-afronden');
+  const tabBtn = document.getElementById('toern-tab-bundeling');
+  const st = _toernEffectiveStatus(tournament);
+  // Afronden-tab alleen tonen vanaf closing
+  if(tabBtn) tabBtn.style.display = (st === 'closing' || st === 'done') ? '' : 'none';
+  // Na afronden: wedstrijdduur + uitslagen-sync op slot (niet meer klikbaar).
+  const lock = (st === 'done');
+  ['toern-btn-regels','toern-btn-sync'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.disabled = lock;
+    el.style.opacity = lock ? '.45' : '';
+    el.style.pointerEvents = lock ? 'none' : '';
+    el.title = lock ? 'Vergrendeld — toernooi is afgerond' : (el.dataset._t || el.title);
+  });
+  if(!btn) return;
+  btn.disabled = false;
+  btn.style.opacity = '';
+  if(st === 'prep'){
+    btn.style.display = 'none';
+    return;
+  }
+  btn.style.display = '';
+  if(st === 'active'){
+    btn.textContent = '🏁 Toernooi afgelopen';
+    btn.title = 'Markeer als afgelopen → bundelen en indienen';
+  } else if(st === 'closing'){
+    btn.textContent = '🏆 Toernooi afronden';
+    btn.title = 'Rond af zodra alle spelers zijn ingediend';
+    // Live nakijken of alles is ingediend om de knop te enablen/disablen
+    _bundelAllSubmitted(tournament.id).then(allDone => {
+      if(_currentTournamentId !== tournament.id) return;
+      btn.disabled = !allDone;
+      btn.style.opacity = allDone ? '' : '.55';
+      btn.title = allDone ? 'Rond het toernooi definitief af' : 'Dien eerst alle spelers in (zie Afronden-tab)';
+    });
+  } else { // done
+    btn.textContent = '✅ Afgerond';
+    btn.title = 'Dit toernooi is al afgerond';
+    btn.disabled = true;
+    btn.style.opacity = '.55';
+  }
+}
+window._renderToernAfrondUI = _renderToernAfrondUI;
+
+// Centrale klik-handler voor de actie-knop.
+async function onAfrondActieClick(tid){
+  tid = tid || _currentTournamentId;
+  const t = tourmCache.find(x => x.id === tid);
+  const st = _toernEffectiveStatus(t);
+  if(st === 'done'){ toast('Dit toernooi is al afgerond', true); return; }
+  if(st === 'active' || st === 'prep'){ markTournamentClosing(tid); return; }
+  // closing → controleer of alles is ingediend
+  const allDone = await _bundelAllSubmitted(tid);
+  if(!allDone){
+    toast('Dien eerst alle spelers in op de Afronden-tab', true);
+    renderToernooiTab('bundeling', tid);
+    return;
+  }
+  finalizeTournament(tid);
+}
+window.onAfrondActieClick = onAfrondActieClick;
+
+// Stap 1: "Toernooi afgelopen" → status closing, Afronden-tab tonen + ernaartoe.
+async function markTournamentClosing(tid){
+  tid = tid || _currentTournamentId;
+  const { entries } = await _collectTournamentExportData(tid);
+  if(!entries.length){ toast('Nog geen geobserveerde spelers om af te ronden', true); return; }
+  try { await setDoc(tournDoc(tid), { status: 'closing' }, { merge: true }); } catch(_){}
+  const t = tourmCache.find(x => x.id === tid); if(t){ t.status = 'closing'; delete t.finishedAt; }
+  toast('Toernooi afgelopen — bundel en dien de spelers in');
+  if(_currentTournamentId === tid){
+    renderToernooiDetail(tid);
+    renderToernooiTab('bundeling', tid);
+  }
+}
+window.markTournamentClosing = markTournamentClosing;
+
+// True als élke geobserveerde speler (gekoppeld + opgevallen) is ingediend.
+async function _bundelAllSubmitted(tid){
+  try {
+    const { entries } = await _collectTournamentExportData(tid);
+    if(!entries.length) return false;
+    return entries.every(e => !!e.bundleSubmitted);
+  } catch(_){ return false; }
+}
+window._bundelAllSubmitted = _bundelAllSubmitted;
+
+// Stap 3: "Toernooi afronden" → status done. De gebundelde rapporten/observaties
+// blijven IN het toernooi bewaard; er gaat NIETS naar de spelersdatabase.
+async function finalizeTournament(tid){
+  tid = tid || _currentTournamentId;
+  const { entries, tournament } = await _collectTournamentExportData(tid);
+  const nRap = entries.filter(e => e.isLinked).length;
+  const nObs = entries.filter(e => !e.isLinked).length;
+  try { await setDoc(tournDoc(tid), { status: 'done', finishedAt: new Date().toISOString() }, { merge: true }); } catch(_){}
+  const t = tourmCache.find(x => x.id === tid); if(t){ t.status = 'done'; t.finishedAt = new Date().toISOString(); }
+  _toernOpenOverlay(`
+    <h3 style="margin:0 0 8px;">Toernooi afgerond ✓</h3>
+    <p style="font-size:14px;line-height:1.5;">${nRap} rapport${nRap !== 1 ? 'en' : ''} en ${nObs} observatie${nObs !== 1 ? 's' : ''} zijn vastgelegd. Ze blijven <strong>in dit toernooi</strong> bewaard (alleen-lezen) en zijn heropenbaar om te bewerken. Er is niets naar de spelersdatabase geschreven.</p>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:14px;">
+      <button type="button" class="btn btn-sm btn-primary" onclick="_toernCloseOverlay()">Terug naar toernooi</button>
+    </div>`);
+  if(_currentTournamentId === tid) renderToernooiDetail(tid);
+}
+window.finalizeTournament = finalizeTournament;
+
 async function openTournamentAfrondenModal(tid){
   tid = tid || _currentTournamentId;
   const { entries, tournament } = await _collectTournamentExportData(tid);
@@ -26842,6 +28455,7 @@ async function openTournamentAfrondenModal(tid){
       <button type="button" class="btn btn-xs" onclick="_afrSelect('ab')">Selecteer A+B</button>
       <button type="button" class="btn btn-xs" onclick="_afrSelect('all')">Alles</button>
       <button type="button" class="btn btn-xs" onclick="_afrSelect('none')">Niets</button>
+      <button type="button" class="btn btn-xs" onclick="openTournamentClubNotesModal('${tid}')">📝 Wedstrijdnotities per club</button>
     </div>
     ${linked.length ? `<div class="afr-group-title">Gekoppelde spelers → rapport</div>${linked.map(row).join('')}` : ''}
     ${spotted.length ? `<div class="afr-group-title">Opgevallen spelers → observatie</div>${spotted.map(row).join('')}` : ''}
@@ -26885,7 +28499,119 @@ async function _afrondTournament(tid){
 window._afrondTournament = _afrondTournament;
 
 
-/* Mini-fix — tags per categorie als TEKST (geen scores) + losse notities. */
+/* ================================================================
+   Wedstrijdnotities per club bundelen (blijft in het toernooi).
+   Elke wedstrijdnotitie hoort bij 2 clubs (thuis+uit). Per club tonen
+   we alle losse wedstrijdnotities + één groot vrij tekstvenster
+   (samenvattend clubverhaal). Na indienen: alleen-lezen, maar te
+   heropenen met "Bewerken". Gaat NOOIT naar de spelersdatabase.
+   ================================================================ */
+async function openTournamentClubNotesModal(tid){
+  tid = tid || _currentTournamentId;
+  const [teamsSnap, matchesSnap, notesSnap] = await Promise.all([
+    getDocs(tournSubCol(tid, 'teams')),
+    getDocs(tournSubCol(tid, 'matches')),
+    getDocs(tournSubCol(tid, 'clubNotes'))
+  ]);
+  const teamsById = {}; teamsSnap.docs.forEach(d => { teamsById[d.id] = { ...d.data(), id: d.id }; });
+  const matches = matchesSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+  const clubNoteById = {}; notesSnap.docs.forEach(d => { clubNoteById[d.id] = d.data(); });
+
+  // Verzamel per club (teamId) de wedstrijden waaraan die club deelnam,
+  // met de bijbehorende wedstrijdnotitie (matchNote).
+  const byClub = {};
+  const ensure = (teamId, teamName) => {
+    if(!teamId) return null;
+    if(!byClub[teamId]) byClub[teamId] = { teamId, name: teamName || (teamsById[teamId] ? teamsById[teamId].name : '') || 'Onbekende club', notes: [] };
+    return byClub[teamId];
+  };
+  matches.forEach(m => {
+    const a = ensure(m.teamAId, m.teamAName);
+    const b = ensure(m.teamBId, m.teamBName);
+    if(m.matchNote && m.matchNote.trim()){
+      const opp = (other) => other || '?';
+      const clk = _toernMatchClock(m) || '';
+      if(a) a.notes.push({ matchId: m.id, opp: opp(m.teamBName), clk, text: m.matchNote.trim() });
+      if(b) b.notes.push({ matchId: m.id, opp: opp(m.teamAName), clk, text: m.matchNote.trim() });
+    }
+  });
+
+  // Alleen clubs met minstens één wedstrijdnotitie tonen.
+  const clubs = Object.values(byClub).filter(c => c.notes.length > 0)
+    .sort((x,y) => (x.name||'').localeCompare(y.name||''));
+
+  if(!clubs.length){
+    _toernOpenOverlay(`<h3 style="margin:0 0 8px;">Wedstrijdnotities per club</h3>
+      <p style="font-size:14px;color:var(--muted,#93a0b5);">Nog geen wedstrijdnotities. Schrijf tijdens de wedstrijden een snelle notitie; die verschijnen hier gebundeld per club.</p>`);
+    return;
+  }
+
+  const blocks = clubs.map(c => {
+    const cn = clubNoteById[c.teamId] || {};
+    const submitted = !!cn.submittedAt;
+    const summaryVal = cn.summary || '';
+    const noteList = c.notes.map(n =>
+      `<div class="clubnote-item"><div class="clubnote-item-head">${n.clk ? `<span class="clubnote-clk">${escapeHtml(n.clk)}</span> ` : ''}vs ${escapeHtml(n.opp)}</div><div class="clubnote-item-text">${escapeHtml(n.text)}</div></div>`
+    ).join('');
+    return `<div class="clubnote-block" data-team="${c.teamId}">
+      <div class="clubnote-club-head">
+        <span class="clubnote-club-name">${escapeHtml(c.name)}</span>
+        <span class="clubnote-count">${c.notes.length} notitie${c.notes.length!==1?'s':''}</span>
+        ${submitted ? '<span class="clubnote-submitted">✓ Ingediend</span>' : ''}
+      </div>
+      <div class="clubnote-list">${noteList}</div>
+      <div class="clubnote-summary-label">Samenvattend clubverhaal</div>
+      <textarea class="clubnote-summary" data-team="${c.teamId}" rows="4" placeholder="Schrijf hier een samenvattend verhaal over deze club over het hele toernooi (optioneel)..." ${submitted ? 'readonly' : ''}>${escapeHtml(summaryVal)}</textarea>
+      <div class="clubnote-actions" data-team="${c.teamId}">
+        ${submitted
+          ? `<button type="button" class="btn btn-xs" onclick="_editClubNote('${tid}','${c.teamId}')">Bewerken</button>`
+          : `<button type="button" class="btn btn-xs" onclick="_saveClubNote('${tid}','${c.teamId}',false)">Opslaan</button>
+             <button type="button" class="btn btn-xs btn-primary" onclick="_saveClubNote('${tid}','${c.teamId}',true)">Indienen</button>`}
+      </div>
+    </div>`;
+  }).join('');
+
+  _toernOpenOverlay(`
+    <h3 style="margin:0 0 4px;">Wedstrijdnotities per club</h3>
+    <p style="margin:0 0 12px;font-size:12px;color:var(--muted,#93a0b5);">Per club zie je alle losse wedstrijdnotities. Schrijf eronder één samenvattend clubverhaal. Deze notities blijven in het toernooi — ze gaan nooit naar de spelersdatabase. Na indienen alleen-lezen, maar je kunt ze altijd weer bewerken.</p>
+    ${blocks}`);
+}
+window.openTournamentClubNotesModal = openTournamentClubNotesModal;
+
+async function _saveClubNote(tid, teamId, submit){
+  const ta = document.querySelector(`.clubnote-summary[data-team="${teamId}"]`);
+  const summary = ta ? (ta.value||'').trim() : '';
+  const patch = { teamId, summary: summary || '', updatedAt: new Date().toISOString() };
+  if(submit) patch.submittedAt = new Date().toISOString();
+  try {
+    await setDoc(tournSubDoc(tid, 'clubNotes', teamId), patch, { merge: true });
+  } catch(e){ console.error('saveClubNote error:', e); toast('Opslaan mislukt', true); return; }
+  toast(submit ? 'Clubverhaal ingediend ✓' : 'Opgeslagen ✓');
+  if(submit){
+    // Heropen de modal zodat het blok naar alleen-lezen schakelt.
+    openTournamentClubNotesModal(tid);
+  }
+}
+window._saveClubNote = _saveClubNote;
+
+function _editClubNote(tid, teamId){
+  const block = document.querySelector(`.clubnote-block[data-team="${teamId}"]`);
+  if(!block) return;
+  const ta = block.querySelector('.clubnote-summary');
+  if(ta) ta.removeAttribute('readonly');
+  const actions = block.querySelector(`.clubnote-actions[data-team="${teamId}"]`);
+  if(actions){
+    actions.innerHTML =
+      `<button type="button" class="btn btn-xs" onclick="_saveClubNote('${tid}','${teamId}',false)">Opslaan</button>
+       <button type="button" class="btn btn-xs btn-primary" onclick="_saveClubNote('${tid}','${teamId}',true)">Opnieuw indienen</button>`;
+  }
+  const sub = block.querySelector('.clubnote-submitted');
+  if(sub) sub.remove();
+  if(ta) ta.focus();
+}
+window._editClubNote = _editClubNote;
+
+
 function _aggTagsByCat(obs){
   const agg = {};
   (obs||[]).forEach(o => (o.tags||[]).forEach(t => {
@@ -26934,7 +28660,7 @@ function _shUpdateConnBadge(){
   const online = (typeof navigator !== 'undefined') ? navigator.onLine : true;
   try { document.body.classList.toggle('sh-offline', !online); } catch(_){}
   const txt = document.getElementById('sync-text');
-  if(txt) txt.textContent = online ? 'Cloud gesynchroniseerd' : 'Offline — wordt gesynchroniseerd bij verbinding';
+  if(txt) txt.textContent = online ? 'Gesynchroniseerd' : 'Offline — wordt gesynchroniseerd bij verbinding';
   const dot = document.getElementById('sync-dot');
   if(dot) dot.style.background = online ? '' : 'var(--red, #ef4444)';
 }
@@ -26994,22 +28720,31 @@ async function openTournamentStats(tid){
   ]);
   const teamsById = {}; teamsSnap.docs.forEach(d => { teamsById[d.id] = d.data(); });
   const teams = teamsSnap.docs.map(d => d.data());
+  const matchById = {}; matchesSnap.docs.forEach(d => { matchById[d.id] = d.data(); });
   const playersById = {}; playersSnap.docs.forEach(d => { const tp = { ...d.data(), id: d.id }; if(!isPlaceholderTournamentPlayer(tp)) playersById[tp.id] = tp; });
   const obs = obsSnap.docs.map(d => d.data());
-  const obsByTp = {}; const matchSet = new Set(); const obsByTeam = {};
+  const obsByTp = {}; const matchSet = new Set();
   obs.forEach(o => {
     if(!playersById[o.tournamentPlayerId]) return;
     (obsByTp[o.tournamentPlayerId] = obsByTp[o.tournamentPlayerId] || []).push(o);
     if(o.matchId) matchSet.add(o.matchId);
-    const tp = playersById[o.tournamentPlayerId];
-    if(tp && tp.teamId) obsByTeam[tp.teamId] = (obsByTeam[tp.teamId] || 0) + 1;
   });
   const observedTps = Object.keys(obsByTp);
   let nA = 0, nB = 0;
   observedTps.forEach(id => { const g = _bestGrade(obsByTp[id]); if(g === 'A') nA++; else if(g === 'B') nB++; });
   const clubsGevolgd = teams.filter(t => t.priority).length;
+  // Meest bekeken club = club die in de meeste BEKEKEN wedstrijden voorkomt
+  // (beide teams van elke wedstrijd waarin je observeerde). Robuuster dan
+  // observaties-per-team tellen: één speler vaak observeren telt niet als
+  // "club vaker bekeken", en spotted-spelers met een afwijkende teamId
+  // vertekenen het beeld niet meer.
+  const clubMatchCount = {};
+  matchSet.forEach(mid => {
+    const m = matchById[mid]; if(!m) return;
+    [m.teamAId, m.teamBId].forEach(k => { if(k) clubMatchCount[k] = (clubMatchCount[k] || 0) + 1; });
+  });
   let topClub = '—', topClubN = 0;
-  Object.keys(obsByTeam).forEach(k => { if(obsByTeam[k] > topClubN){ topClubN = obsByTeam[k]; topClub = (teamsById[k] ? teamsById[k].name : k); } });
+  Object.keys(clubMatchCount).forEach(k => { if(clubMatchCount[k] > topClubN){ topClubN = clubMatchCount[k]; topClub = (teamsById[k] ? teamsById[k].name : k); } });
   let topPl = '—', topPlN = 0;
   observedTps.forEach(id => { const n = obsByTp[id].length; if(n > topPlN){ topPlN = n; topPl = playersById[id].quickName || '?'; } });
   const row = (label, val) => `<div class="afr-row" style="cursor:default;"><span class="afr-name">${escapeHtml(label)}</span><span class="afr-meta">${escapeHtml(String(val))}</span></div>`;
@@ -27167,24 +28902,82 @@ try {
 function _updateToernFab(){
   const fab = document.getElementById('toern-fab');
   if(!fab) return;
-  if((typeof currentView === 'undefined' || currentView !== 'toernooien') || !_currentTournamentId){ fab.style.display = 'none'; return; }
+  if((typeof currentView === 'undefined' || currentView !== 'toernooien') || !_currentTournamentId){ _toernCloseLiveStack(); fab.style.display = 'none'; return; }
   const bd = document.getElementById('toern-match-backdrop');
   const matchOpen = bd && bd.style.display === 'flex';
   if(matchOpen){
+    _toernCloseLiveStack();
     fab.style.display = ''; fab.textContent = '📋 Programma';
     fab.onclick = () => { closeMatchDetail(); renderToernooiTab('tijdlijn'); _updateToernFab(); };
     return;
   }
-  const live = window._liveMatch;
-  if(live && live.tid === _currentTournamentId){
-    fab.style.display = ''; fab.textContent = '▶ ' + live.teams;
-    fab.onclick = () => { openMatchDetail(live.tid, live.id); };
+  const live = window._liveMatches || (window._liveMatch ? [window._liveMatch] : []);
+  const liveHere = live.filter(x => x.tid === _currentTournamentId);
+  if(liveHere.length === 1){
+    _toernCloseLiveStack();
+    const lm = liveHere[0];
+    fab.style.display = ''; fab.textContent = '▶ ' + lm.teams;
+    fab.onclick = () => { openMatchDetail(lm.tid, lm.id); };
     return;
   }
+  if(liveHere.length > 1){
+    fab.style.display = ''; fab.textContent = `▶ ${liveHere.length} live`;
+    fab.onclick = () => { _toggleLiveStack(liveHere); };
+    // Houd een al-geopende stack in sync met de actuele lijst.
+    if(document.getElementById('toern-live-stack')) _renderLiveStack(liveHere);
+    return;
+  }
+  _toernCloseLiveStack();
   fab.style.display = 'none';
 }
 window._updateToernFab = _updateToernFab;
 try { setInterval(_updateToernFab, 4000); } catch(_){}
+
+// Uitklapbare live-stack (meerdere gelijktijdige live-wedstrijden).
+function _toggleLiveStack(list){
+  if(document.getElementById('toern-live-stack')){ _toernCloseLiveStack(); return; }
+  _renderLiveStack(list);
+}
+function _renderLiveStack(list){
+  _toernCloseLiveStack();
+  const fab = document.getElementById('toern-fab');
+  if(!fab) return;
+  const stack = document.createElement('div');
+  stack.id = 'toern-live-stack';
+  stack.className = 'toern-live-stack';
+  stack.innerHTML = `<div class="toern-live-stack-title">Live wedstrijden</div>` + list.map(lm =>
+    `<button type="button" class="toern-live-stack-item" data-tid="${lm.tid}" data-id="${lm.id}">
+       <span class="tls-dot"></span>
+       <span class="tls-teams">${escapeHtml(lm.teams)}</span>
+       ${lm.field ? `<span class="tls-field">${escapeHtml(lm.field)}</span>` : ''}
+     </button>`
+  ).join('');
+  document.body.appendChild(stack);
+  stack.querySelectorAll('.toern-live-stack-item').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tid = btn.dataset.tid, id = btn.dataset.id;
+      _toernCloseLiveStack();
+      openMatchDetail(tid, id);
+    });
+  });
+  // Klik buiten de stack (en niet op de FAB) → sluiten.
+  setTimeout(() => {
+    document.addEventListener('click', _liveStackOutside, true);
+  }, 0);
+}
+function _liveStackOutside(e){
+  const stack = document.getElementById('toern-live-stack');
+  const fab = document.getElementById('toern-fab');
+  if(!stack) { document.removeEventListener('click', _liveStackOutside, true); return; }
+  if(stack.contains(e.target) || (fab && fab.contains(e.target))) return;
+  _toernCloseLiveStack();
+}
+function _toernCloseLiveStack(){
+  const ex = document.getElementById('toern-live-stack');
+  if(ex) ex.remove();
+  document.removeEventListener('click', _liveStackOutside, true);
+}
+window._toernCloseLiveStack = _toernCloseLiveStack;
 
 // Feature 10 — weer & veldomstandigheden (per dag, op het toernooi-doc onder conditions[datum]).
 async function openConditionsModal(tid){
@@ -28679,7 +30472,7 @@ try {
       var d = ev.data || {};
       if(d.type === 'SH_OPEN_MATCH' && d.data){
         try { if(typeof go === 'function') go('toernooien'); } catch(_){}
-        try { if(d.data.tid && d.data.matchId && typeof openMatchDetail === 'function') setTimeout(function(){ openMatchDetail(d.data.tid, d.data.matchId); }, 350); } catch(_){}
+        try { if(d.data.tid && d.data.matchId && typeof openMatchDetail === 'function') setTimeout(function(){ openMatchDetail(d.data.tid, d.data.matchId, {fromToernooi:true}); }, 350); } catch(_){}
       }
     });
   }

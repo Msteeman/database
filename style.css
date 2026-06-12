@@ -9082,11 +9082,31 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
 /* ── C2: Grade A sh
 /* ── Speler-detail: icon-knoppen bovenaan ── */
 .dtl-icon-btn {
-  width: 32px; height: 32px; padding: 0;
+  width: 40px; height: 40px; padding: 0;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
 }
+.dtl-icon-btn svg { width: 19px; height: 19px; }
 .dtl-icon-btn:hover { background: var(--bg-3); }
+
+/* ── Speler-detail: rapporten-dropdown ── */
+.dtl-report-dd { position: relative; }
+.dtl-report-dd-menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 50;
+  min-width: 240px; max-width: 320px; max-height: 60vh; overflow-y: auto;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: var(--shadow); padding: 6px;
+}
+.dtl-report-dd-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  background: none; border: none; text-align: left; cursor: pointer;
+  padding: 9px 10px; border-radius: 8px; color: var(--text);
+}
+.dtl-report-dd-item:hover { background: var(--bg-3); }
+.dtl-dd-grade { flex-shrink: 0; min-width: 26px; text-align: center; }
+.dtl-dd-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.dtl-dd-match { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dtl-dd-date { font-size: 11px; color: var(--text-3); }
 
 /* ── Floating "terug naar boven" knop ── */
 #sh-back-to-top {

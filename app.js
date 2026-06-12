@@ -12822,7 +12822,7 @@ function _elfShowClubTiles(players, resultsEl, query){
   <div class="elf-tile-elftal">${c.teams.length} team${c.teams.length===1?'':'s'}</div>
   <div class="elf-tile-seen">${c.players} speler${c.players===1?'':'s'} gezien</div>
   <div class="elf-tile-footer">
-    <span class="elf-tile-badges">${c.nR?'<span class="elf-tbadge elf-tbadge-r">'+c.nR+'R</span>':''}${c.nO?'<span class="elf-tbadge elf-tbadge-o">'+c.nO+'O</span>':''}</span>
+    <span class="elf-tile-badges">${c.nR?'<span class="elf-tbadge elf-tbadge-r" title="'+c.nR+' rapport'+(c.nR===1?'':'en')+'">'+c.nR+' rap</span>':''}${c.nO?'<span class="elf-tbadge elf-tbadge-o" title="'+c.nO+' observatie'+(c.nO===1?'':'s')+'">'+c.nO+' obs</span>':''}</span>
     <span class="elf-ua-arrow">›</span>
   </div>
 </div>`;
@@ -12890,7 +12890,7 @@ function _elfShowTeamTiles(players, resultsEl, query, clubFilter){
   <div class="elf-tile-seen">${t.players.length} speler${t.players.length===1?'':'s'} gezien</div>
   <div class="elf-tile-footer">
     <span></span>
-    <span class="elf-tile-badges">${nR?'<span class="elf-tbadge elf-tbadge-r">'+nR+'R</span>':''}${nO?'<span class="elf-tbadge elf-tbadge-o">'+nO+'O</span>':''}</span>
+    <span class="elf-tile-badges">${nR?'<span class="elf-tbadge elf-tbadge-r" title="'+nR+' rapport'+(nR===1?'':'en')+'">'+nR+' rap</span>':''}${nO?'<span class="elf-tbadge elf-tbadge-o" title="'+nO+' observatie'+(nO===1?'':'s')+'">'+nO+' obs</span>':''}</span>
   </div>
 </div>`;
   });
@@ -15021,10 +15021,23 @@ function renderDetailOverview(p){
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-left:3px;"><polyline points="9 18 15 12 9 6"/></svg>
       </button>` : ''}
       <div class="dtl-icon-actions" style="margin-left:auto;display:flex;gap:6px;align-items:center;">
-        <button class="btn btn-sm" id="dtl-show-report-top" style="background:var(--primary-2);color:#fff;border-color:var(--primary-2);">
+        <div class="dtl-report-dd" style="position:relative;">
+        <button class="btn btn-sm" id="dtl-show-report-top" style="background:var(--primary-2);color:#fff;border-color:var(--primary-2);" ${mode==='average'?'aria-haspopup="true" aria-expanded="false"':''}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
-          ${escapeHtml(topBtnLabel)}
+          ${escapeHtml(topBtnLabel)}${mode==='average'?'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-left:5px;"><polyline points="6 9 12 15 18 9"/></svg>':''}
         </button>
+        ${mode==='average' ? `<div class="dtl-report-dd-menu" id="dtl-report-menu" role="menu" hidden>
+          ${allReports.map(r => {
+            const teams = r.wedstrijd ? [r.wedstrijd.thuis, r.wedstrijd.uit].filter(Boolean).join(' – ') : '';
+            const dt = r.datum ? formatDate(r.datum) : '—';
+            const hn = r.huidig_niveau || '–';
+            return `<button type="button" class="dtl-report-dd-item" role="menuitem" data-rid="${escapeAttr(r.id)}">
+              <span class="dtl-dd-grade grade ${hn==='–'?'D':hn}">${escapeHtml(hn)}</span>
+              <span class="dtl-dd-text"><span class="dtl-dd-match">${escapeHtml(teams || 'Wedstrijd')}</span><span class="dtl-dd-date">${escapeHtml(dt)}</span></span>
+            </button>`;
+          }).join('')}
+        </div>` : ''}
+        </div>
         <button class="btn btn-sm dtl-icon-btn" id="dtl-edit-top" title="Bewerken">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         </button>
@@ -15204,12 +15217,44 @@ function renderDetailOverview(p){
     });
   };
   const handleShowReport = () => {
-    if(mode === 'average') flashReports();
-    else renderDetailFullReport(vp);
+    if(mode === 'average'){
+      const menu = document.getElementById('dtl-report-menu');
+      const btn = document.getElementById('dtl-show-report-top');
+      if(!menu) return;
+      const willOpen = menu.hasAttribute('hidden');
+      if(willOpen){ menu.removeAttribute('hidden'); } else { menu.setAttribute('hidden',''); }
+      if(btn) btn.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    } else {
+      renderDetailFullReport(vp);
+    }
   };
   const _dsr = document.getElementById('dtl-show-report'); if(_dsr) _dsr.addEventListener('click', handleShowReport);
   const topBtn = document.getElementById('dtl-show-report-top');
-  if(topBtn) topBtn.addEventListener('click', handleShowReport);
+  if(topBtn) topBtn.addEventListener('click', (e) => { e.stopPropagation(); handleShowReport(); });
+  // dropdown-items: open direct het gekozen rapport
+  document.querySelectorAll('#dtl-report-menu .dtl-report-dd-item').forEach(item => {
+    item.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const rid = item.getAttribute('data-rid');
+      const rep = allReports.find(x => x.id === rid);
+      const menu = document.getElementById('dtl-report-menu');
+      if(menu) menu.setAttribute('hidden','');
+      if(rep) renderDetailFullReport(buildPlayerFromReport(p, rep));
+    });
+  });
+  // sluit dropdown bij klik buiten
+  if(mode === 'average' && !window.__dtlReportDdBound){
+    window.__dtlReportDdBound = true;
+    document.addEventListener('click', (e) => {
+      const menu = document.getElementById('dtl-report-menu');
+      if(!menu || menu.hasAttribute('hidden')) return;
+      if(!e.target.closest('.dtl-report-dd')){
+        menu.setAttribute('hidden','');
+        const b = document.getElementById('dtl-show-report-top');
+        if(b) b.setAttribute('aria-expanded','false');
+      }
+    });
+  }
   // BATCH 1 / 1B — vanuit de wedstrijd direct het volledige rapport tonen i.p.v.
   // eerst het overzicht/voorrapport. Geldt in elke modus: bij meerdere rapporten
   // toont 'vp' het gemiddelde rapport, bij één rapport dat rapport.

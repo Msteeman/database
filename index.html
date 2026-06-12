@@ -842,6 +842,7 @@
         <!-- s35dj: Unified dashboard agenda (live / vandaag / aankomend) -->
         <div id="dashboard-agenda-wrap">
           <div id="scouting-active-wrap" class="scouting-active-wrap" style="display:none;"></div>
+          <div id="tournament-dash-wrap" style="display:none; margin-bottom:18px;"></div>
           <div id="dash-next-match-wrap" style="display:none; margin-bottom:18px;"></div>
           <div id="today-matches-wrap" style="display:none; margin-bottom:18px;"></div>
           <div id="upcoming-matches-wrap" style="display:none; margin-bottom:18px;"></div>
@@ -992,7 +993,7 @@
             <option value="30">Laatste 30 dagen</option>
             <option value="90">Laatste 90 dagen</option>
           </select>
-          <button type="button" class="db-obs-filter-btn" id="db-rapport-filter-btn" title="Toon alleen spelersrapporten">
+          <button type="button" class="db-obs-filter-btn db-rapport-filter-btn" id="db-rapport-filter-btn" title="Toon alleen spelersrapporten">
             📋 Rapporten
           </button>
           <button type="button" class="db-obs-filter-btn" id="db-obs-filter-btn" title="Toon alleen observaties">
@@ -2419,12 +2420,10 @@ algemeen:</textarea>
 
           <!-- Toernooi-acties: regels / reglement / sync -->
           <div class="toern-actions" id="toern-detail-actions" style="display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 8px;">
-            <button class="btn btn-ghost btn-sm" id="toern-btn-regels" onclick="openTournamentRulesModal()">⚙️ Toernooiregels</button>
-            <button class="btn btn-ghost btn-sm" id="toern-btn-reglement" onclick="openReglementModal()">📄 Reglement toevoegen</button>
+            <button class="btn btn-ghost btn-sm" id="toern-btn-regels" onclick="openTournamentRulesModal()">⏱️ Wedstrijdduur</button>
             <button class="btn btn-ghost btn-sm" id="toern-btn-sync" onclick="syncTournamentScores()">🔄 Uitslagen synchroniseren</button>
-            <button class="btn btn-ghost btn-sm" id="toern-btn-cond" onclick="openConditionsModal()" title="Weer & veldomstandigheden">🌤️ Omstandigheden</button>
             <button class="btn btn-ghost btn-sm" id="toern-btn-stats" onclick="openTournamentStats()" title="Statistieken">📊 Statistieken</button>
-            <button class="btn btn-ghost btn-sm" id="toern-btn-afronden" onclick="openTournamentAfrondenModal()" title="Toernooi afronden → rapporten/observaties">🏁 Toernooi afronden</button>
+            <button class="btn btn-ghost btn-sm" id="toern-btn-afronden" onclick="onAfrondActieClick()" title="Toernooi afronden">🏁 Toernooi afgelopen</button>
             <button class="btn btn-ghost btn-sm toern-btn-delete" id="toern-btn-delete" onclick="confirmDeleteTournament()" title="Verwijder dit toernooi">🗑️ Verwijder toernooi</button>
             <span class="toern-sync-status" id="toern-sync-status" style="font-size:12px;color:var(--muted);align-self:center;"></span>
           </div>
@@ -2435,7 +2434,7 @@ algemeen:</textarea>
             <button class="toern-tab-btn" data-tab="mijn-programma" onclick="renderToernooiTab('mijn-programma')">Mijn programma</button>
             <button class="toern-tab-btn" data-tab="spelers" onclick="renderToernooiTab('spelers')">Spelers</button>
             <button class="toern-tab-btn" data-tab="standen" onclick="renderToernooiTab('standen')">Standen</button>
-            <button class="toern-tab-btn" data-tab="bundeling" onclick="renderToernooiTab('bundeling')">Bundeling</button>
+            <button class="toern-tab-btn" id="toern-tab-bundeling" data-tab="bundeling" onclick="renderToernooiTab('bundeling')" style="display:none;">Afronden</button>
           </div>
 
           <!-- Tijdlijn tab -->
@@ -3807,22 +3806,15 @@ algemeen:</textarea>
     <div class="toern-modal-body">
       <div id="toern-match-day-info" style="margin-bottom:10px;"></div>
       <div id="toern-match-status" class="toern-status-row" style="margin-bottom:14px;"></div>
-      <!-- H4: inline uitslag-invoer (niet meer via losse browser-prompt) -->
-      <div class="toern-match-score-wrap" style="display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-        <span class="toern-section-label" style="margin:0;">Uitslag</span>
-        <input id="toern-match-score-a" type="number" inputmode="numeric" min="0" max="99" placeholder="\u2013" style="width:54px;text-align:center;" />
-        <span>\u2013</span>
-        <input id="toern-match-score-b" type="number" inputmode="numeric" min="0" max="99" placeholder="\u2013" style="width:54px;text-align:center;" />
-        <button type="button" class="btn btn-sm" id="toern-match-score-save">Opslaan</button>
-      </div>
+      <!-- Uitslag wordt bijgehouden via de Tournify-sync in de toernooi-tab -->
       <!-- TIP 4: lokale wedstrijd-timer (alleen bij ingestelde toernooiregels) -->
       <div id="toern-match-timer"></div>
-      <!-- TIP 3: snelle wedstrijdnotitie -->
+      <!-- Snelle wedstrijdnotitie (over de wedstrijd, niet per speler) -->
       <div class="toern-match-note-wrap">
         <div class="toern-match-note-label">Snelle notitie <span style="font-weight:400;color:var(--text-3);">(over de wedstrijd, niet per speler)</span></div>
         <textarea id="toern-match-note" class="toern-match-note" rows="2" placeholder="Bijv. regen, slecht veld, wedstrijd gestaakt, niveau laag..."></textarea>
       </div>
-      <div class="toern-section-label">Spelers</div>
+      <div class="toern-section-label">Spelers <span style="font-weight:400;color:var(--text-3);">(gekoppeld aan beide elftallen)</span></div>
       <div id="toern-match-players"></div>
       <button class="btn btn-sm" style="margin-top:12px;width:100%;" id="toern-match-add-player">+ Opgevallen speler toevoegen</button>
     </div>

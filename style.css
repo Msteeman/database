@@ -10139,6 +10139,49 @@ items: center; gap: 4px;
   box-shadow: 0 2px 10px rgba(92,62,224,.35);
 }
 
+/* Rapporten-knop = groen (zelfde tint als de Wedstrijden-tab) */
+.db-rapport-filter-btn {
+  border-color: rgba(16,185,129,0.45);
+  background: rgba(16,185,129,0.08);
+  color: #34d399;
+}
+.db-rapport-filter-btn:hover {
+  background: rgba(16,185,129,0.16);
+  border-color: rgba(16,185,129,0.7);
+}
+.db-rapport-filter-btn.active {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 2px 10px rgba(5,150,105,.35);
+}
+
+/* Toernooi-record rij (rapport/obs ingediend vanuit een toernooi) — goud/amber,
+   bewust anders dan blauw (wedstrijdrapport) en paars (observatie) */
+tr.db-row-tournament {
+  background: linear-gradient(90deg, rgba(245,158,11,0.10) 0%, transparent 60%);
+}
+tr.db-row-tournament:hover {
+  background: linear-gradient(90deg, rgba(245,158,11,0.18) 0%, rgba(245,158,11,0.05) 100%) !important;
+}
+tr.db-row-tournament td:first-child {
+  border-left: 2px solid rgba(245,158,11,0.7);
+}
+.db-tourn-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: .03em;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
 /* ── Observatie rij in spelersdatabase tabel ───────────────────────────── */
 tr.db-row-obs {
   background: linear-gradient(90deg, rgba(124,95,245,0.07) 0%, transparent 60%);
@@ -11512,6 +11555,7 @@ body.modal-open {
 /* ── Toernooi view layout (PWA + desktop) ─────────────────────── */
 #view-toernooien {
   overflow-y: auto;
+  overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
 }
 #toern-list-pane,
@@ -11536,6 +11580,13 @@ body.modal-open {
   width: 100%;
   box-sizing: border-box;
 }
+.toern-form-row-2 { display:flex; gap:10px; }
+.toern-form-row-2 > div { flex:1 1 0; min-width:0; }
+.toern-form-row-2 > div label { display:block; }
+.toern-form-hint { font-size:12px; color:var(--green,#22c55e); font-weight:600; margin:4px 0 2px; }
+
+/* Geen ongewenste horizontale scrollbar in toernooi-detail tabs */
+#toern-mijn-wrap, #toern-bundeling-wrap, #toern-spelers-wrap { max-width:100%; overflow-x:hidden; }
 
 /* ================================================================
    TOERNOOI — Mijn programma, veldnaam-overflow, spelers-subtekst
@@ -11851,6 +11902,55 @@ body.modal-open {
 .afr-meta { margin-left: auto; color: var(--text-3); font-size: 11.5px; white-space: nowrap; }
 .toern-exp-btn { flex-shrink: 0; }
 
+/* ---- Afrond-flow / Bundeling-workspace (state-machine) ---------- */
+.bndl-head { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:10px; }
+.bndl-progress { flex:1 1 220px; min-width:180px; }
+.bndl-progress-bar { height:8px; border-radius:6px; background:var(--bg-2,#1b2230); overflow:hidden; }
+.bndl-progress-bar span { display:block; height:100%; background:var(--grade-a,#22c55e); border-radius:6px; transition:width .3s; }
+.bndl-progress-txt { font-size:11.5px; color:var(--text-3,#93a0b5); margin-top:4px; }
+.bndl-intro { font-size:12.5px; color:var(--text-3,#93a0b5); line-height:1.5; margin:4px 0 14px; }
+.bndl-group-title { font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--text-3,#93a0b5); margin:16px 0 8px; }
+.bndl-card { display:flex; align-items:center; gap:12px; padding:11px 12px; border:1px solid var(--border,#2a2f3a); border-radius:10px; margin-bottom:8px; cursor:pointer; background:var(--panel-2,rgba(255,255,255,0.015)); transition:border-color .15s, background .15s; }
+.bndl-card:hover { border-color:var(--accent,#c58e75); }
+.bndl-card-done { border-color:rgba(34,197,94,.4); background:rgba(34,197,94,.05); }
+.bndl-card-avatar { width:38px; height:38px; border-radius:50%; background:var(--accent,#c58e75); color:#1a0f08; font-weight:800; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.bndl-card-info { flex:1; min-width:0; }
+.bndl-card-name { font-weight:700; color:var(--text,#e5e9f5); font-size:14px; }
+.bndl-card-club { font-weight:500; color:var(--text-3,#93a0b5); font-size:12px; }
+.bndl-card-meta { font-size:11.5px; color:var(--text-3,#93a0b5); margin-top:2px; }
+.bndl-card-status { flex-shrink:0; font-size:12px; font-weight:700; padding:5px 11px; border-radius:999px; }
+.bndl-st-todo { background:rgba(245,158,11,.15); color:var(--grade-c,#f59e0b); }
+.bndl-st-done { background:rgba(34,197,94,.15); color:var(--grade-a,#22c55e); }
+.bndl-finish-row { display:flex; justify-content:center; margin:22px 0 8px; }
+.bndl-finish-row .btn { font-size:15px; padding:11px 26px; }
+.bndl-field-label { font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--text-3,#93a0b5); margin:14px 0 6px; }
+.bndl-grade-chips { display:flex; gap:8px; }
+.bndl-grade-btn { width:40px; height:40px; border-radius:9px; border:1px solid var(--border,#2a2f3a); background:var(--bg-2,#1b2230); color:var(--text-3,#93a0b5); font-weight:800; font-size:15px; cursor:pointer; }
+.bndl-grade-btn.active.grade-A { background:var(--grade-a,#22c55e); color:#06210f; border-color:transparent; }
+.bndl-grade-btn.active.grade-B { background:var(--grade-b,#84cc16); color:#0f1a06; border-color:transparent; }
+.bndl-grade-btn.active.grade-C { background:var(--grade-c,#f59e0b); color:#1a1206; border-color:transparent; }
+.bndl-grade-btn.active.grade-D { background:var(--grade-d,#ef4444); color:#2a0a0a; border-color:transparent; }
+.bndl-cats { display:flex; flex-direction:column; gap:6px; }
+.bndl-cat { display:flex; gap:8px; font-size:12.5px; align-items:baseline; }
+.bndl-cat-label { flex-shrink:0; width:92px; font-weight:700; color:var(--text-2,#c3cbdb); }
+.bndl-cat-tags { color:var(--text,#e5e9f5); }
+.bndl-cat-empty { font-size:12.5px; color:var(--text-3,#93a0b5); font-style:italic; }
+.bndl-wedstr-list { display:flex; flex-direction:column; gap:8px; }
+.bndl-wedstr { border:1px solid var(--border,#2a2f3a); border-radius:8px; padding:8px 10px; background:var(--bg-2,rgba(255,255,255,0.02)); }
+.bndl-wedstr-h { font-size:12.5px; font-weight:600; color:var(--text-2,#c3cbdb); }
+.bndl-wedstr-t { font-size:12.5px; color:var(--text-3,#93a0b5); margin-top:3px; }
+.bndl-w-grade { display:inline-block; min-width:18px; height:18px; line-height:18px; text-align:center; border-radius:5px; font-weight:800; font-size:11px; padding:0 4px; margin-left:4px; vertical-align:middle; }
+.bndl-w-grade.grade-A { background:var(--grade-a,#22c55e); color:#06210f; }
+.bndl-w-grade.grade-B { background:var(--grade-b,#84cc16); color:#0f1a06; }
+.bndl-w-grade.grade-C { background:var(--grade-c,#f59e0b); color:#1a1206; }
+.bndl-w-grade.grade-D { background:var(--grade-d,#ef4444); color:#2a0a0a; }
+.bndl-w-cat { display:flex; gap:8px; margin-top:7px; align-items:baseline; }
+.bndl-w-cat-label { flex-shrink:0; width:82px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--text-3,#93a0b5); padding-top:2px; }
+.bndl-w-cat-body { flex:1; display:flex; flex-wrap:wrap; gap:5px; align-items:center; }
+.bndl-w-chip { font-size:12px; font-weight:600; padding:2px 9px; border-radius:999px; background:var(--bg-2,#1b2230); color:var(--text-2,#c3cbdb); border:1px solid var(--border,#2a2f3a); }
+.bndl-w-note { flex-basis:100%; font-size:12px; color:var(--text-3,#93a0b5); font-style:italic; margin-top:2px; }
+.bndl-submitted-badge { font-size:13px; font-weight:700; color:var(--grade-a,#22c55e); }
+
 /* FEATURE 6 — offline-indicatie */
 body.sh-offline #sync-indicator { color: var(--red, #ef4444); }
 body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
@@ -11912,6 +12012,33 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 }
 .toern-fab:hover { filter: brightness(1.05); }
 @media (min-width: 980px) { .toern-fab { bottom: 24px; right: 24px; } }
+
+/* Uitklapbare live-stack — meerdere gelijktijdige live-wedstrijden */
+.toern-live-stack {
+  position: fixed; right: 16px; z-index: 1201;
+  bottom: calc(60px + env(safe-area-inset-bottom, 0px) + 16px + 52px);
+  display: flex; flex-direction: column; gap: 8px;
+  max-width: min(86vw, 360px);
+  animation: tlsRise .16s ease-out;
+}
+@media (min-width: 980px) { .toern-live-stack { right: 24px; bottom: calc(24px + 52px); } }
+@keyframes tlsRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.toern-live-stack-title {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px;
+  color: var(--text-3, #9aa3b7); padding: 2px 6px; text-align: right;
+}
+.toern-live-stack-item {
+  display: flex; align-items: center; gap: 9px;
+  padding: 11px 14px; border-radius: 12px; border: 1px solid var(--border, #2a2f3a);
+  background: var(--panel, #111722); color: var(--text, #e5e9f5);
+  font-size: 13px; font-weight: 600; cursor: pointer; text-align: left;
+  box-shadow: 0 6px 20px rgba(0,0,0,.35);
+}
+.toern-live-stack-item:hover { border-color: var(--accent, #e30613); }
+.tls-dot { width: 9px; height: 9px; border-radius: 50%; background: #ef4444; flex: 0 0 auto; box-shadow: 0 0 0 0 rgba(239,68,68,.6); animation: tlsPulse 1.6s infinite; }
+@keyframes tlsPulse { 0% { box-shadow: 0 0 0 0 rgba(239,68,68,.55);} 70% { box-shadow: 0 0 0 7px rgba(239,68,68,0);} 100% { box-shadow: 0 0 0 0 rgba(239,68,68,0);} }
+.tls-teams { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tls-field { flex: 0 0 auto; font-size: 11px; font-weight: 600; color: var(--text-3, #9aa3b7); background: var(--bg-2, rgba(255,255,255,.04)); padding: 2px 7px; border-radius: 999px; }
 
 /* Feature 10 — omstandigheden chips */
 .cond-row { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -12638,6 +12765,66 @@ body.sh-onb-open{ overflow:hidden; }
      onderste rij; Annuleren + Opslaan blijven onderaan gepind & zichtbaar. */
   .obs-actions > #obs-delete-btn{ flex:1 1 100%; margin-right:0 !important; order:-1; }
 }
+
+/* Toernooi wedstrijdklok (persistent: Aftrap/Herstart/Einde) */
+.toern-timer{ display:flex; flex-direction:column; align-items:center; gap:8px; padding:12px; border-radius:12px; background:var(--panel-2,#1d2533); border:1px solid var(--border,#232d40); color:var(--text,#e8edf5); }
+.toern-timer .sa-status-row{ justify-content:center; }
+.toern-timer .sa-status{ font-size:13px; padding:5px 12px; }
+.toern-timer-sub{ font-size:12px; font-weight:600; color:var(--muted,#93a0b5); font-variant-numeric:tabular-nums; }
+.toern-timer-btns{ display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+.toern-score-box{ display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; padding:12px 14px; border-radius:12px; background:var(--panel-2,#1d2533); border:1px solid var(--border,#232d40); }
+.toern-score-label{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--muted,#93a0b5); }
+.toern-score-pair{ display:flex; align-items:center; gap:10px; }
+.toern-score-in{ width:58px; height:54px; text-align:center; font-size:26px; font-weight:800; font-variant-numeric:tabular-nums; border-radius:10px; border:1px solid var(--border,#2a3346); background:var(--panel,#141b27); color:var(--text,#e8edf5); }
+.toern-score-in:focus{ outline:none; border-color:var(--accent,#3b82f6); }
+.toern-score-dash{ font-size:24px; font-weight:700; color:var(--muted,#93a0b5); }
+.toern-score-save{ margin-left:4px; }
+
+/* Toernooi-overzicht op het live dashboard */
+.toern-dash-card{ border-radius:14px; background:var(--panel-2,#1d2533); border:1px solid var(--border,#232d40); margin-bottom:14px; overflow:hidden; }
+.toern-dash-card.has-live{ border-color:rgba(16,185,129,0.5); box-shadow:0 0 0 1px rgba(16,185,129,0.25); }
+.toern-dash-head{ display:flex; align-items:center; gap:10px; padding:14px 16px; cursor:pointer; }
+.toern-dash-title{ font-weight:800; font-size:15px; color:var(--text,#e8edf5); }
+.toern-dash-sub{ font-size:12px; font-weight:600; color:var(--muted,#93a0b5); margin-left:auto; }
+.toern-dash-toggle{ font-size:13px; color:var(--muted,#93a0b5); transition:transform .15s; }
+.toern-dash-card.collapsed .toern-dash-toggle{ transform:rotate(-90deg); }
+.toern-dash-card.collapsed .toern-dash-matches,
+.toern-dash-card.collapsed .toern-dash-schema{ display:none; }
+.toern-dash-matches{ display:flex; flex-direction:column; gap:6px; padding:0 12px 8px; }
+.toern-dash-match{ display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:10px 12px; border-radius:10px; border:1px solid var(--border,#2a3346); background:var(--panel,#141b27); color:var(--text,#e8edf5); cursor:pointer; transition:background .12s,border-color .12s; }
+.toern-dash-match:hover{ background:var(--panel-2,#1d2533); border-color:var(--accent,#3b82f6); }
+.toern-dash-match.is-live{ border-color:rgba(16,185,129,0.55); background:rgba(16,185,129,0.06); }
+.tdm-time{ font-weight:700; font-variant-numeric:tabular-nums; font-size:13px; color:var(--muted,#93a0b5); min-width:42px; }
+.tdm-teams{ flex:1; font-weight:600; font-size:13.5px; }
+.tdm-live{ font-size:11px; font-weight:700; color:#34d399; }
+.tdm-done{ font-size:11px; font-weight:700; color:var(--muted,#93a0b5); }
+.tdm-chev{ font-size:16px; color:var(--muted,#93a0b5); }
+.toern-dash-schema{ display:block; width:calc(100% - 24px); margin:0 12px 12px; padding:9px; border-radius:9px; border:1px dashed var(--border,#2a3346); background:transparent; color:var(--accent,#60a5fa); font-weight:700; font-size:12.5px; cursor:pointer; }
+.toern-dash-schema:hover{ background:rgba(96,165,250,0.08); }
+
+/* Toernooi-observatie: voorkeursbeen-chips + notitieveld (geïnjecteerd) */
+.tourn-footnote-block{ margin-top:14px; }
+.tourn-fn-label{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--muted,#93a0b5); margin-bottom:6px; }
+.tourn-foot-chips{ display:flex; gap:8px; flex-wrap:wrap; }
+.obs-tag.tourn-foot{ cursor:pointer; }
+.obs-tag.tourn-foot.active{ background:var(--green,#22c55e); border-color:var(--green,#22c55e); color:#04240f; font-weight:700; }
+#tourn-obs-note{ width:100%; }
+
+/* Wedstrijdnotities per club — bundeling-modal */
+.clubnote-block{ border:1px solid var(--border,#2a2f3a); border-radius:10px; padding:14px; margin-bottom:14px; background:var(--panel-2,rgba(255,255,255,0.02)); }
+.clubnote-club-head{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+.clubnote-club-name{ font-weight:700; font-size:15px; }
+.clubnote-count{ font-size:12px; color:var(--muted,#93a0b5); }
+.clubnote-submitted{ font-size:12px; font-weight:700; color:var(--green,#22c55e); margin-left:auto; }
+.clubnote-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+.clubnote-item{ border-left:3px solid var(--accent,#60a5fa); padding:6px 10px; background:rgba(96,165,250,0.06); border-radius:0 6px 6px 0; }
+.clubnote-item-head{ font-size:12px; font-weight:600; color:var(--muted,#93a0b5); margin-bottom:2px; }
+.clubnote-clk{ color:var(--accent,#60a5fa); }
+.clubnote-item-text{ font-size:13px; line-height:1.4; white-space:pre-wrap; }
+.clubnote-summary-label{ font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; color:var(--muted,#93a0b5); margin-bottom:6px; }
+.clubnote-summary{ width:100%; border:1px solid var(--border,#2a2f3a); border-radius:8px; background:var(--input-bg,#0d1320); color:var(--text,#e5e9f5); padding:8px 10px; font-size:13px; line-height:1.45; resize:vertical; }
+.clubnote-summary[readonly]{ opacity:.85; background:rgba(255,255,255,0.02); }
+.clubnote-actions{ display:flex; gap:8px; justify-content:flex-end; margin-top:8px; }
 
 
 /* ============================================================

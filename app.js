@@ -3195,11 +3195,16 @@ function loadPlayers(){
     const isObs = p.rapport_type === 'observatie';
     const isConceptSubmitted = !p.rapport_type && !!p.programma_link;
     if(isObs || isConceptSubmitted){
+      // v326 — obs en rapport in GESCHEIDEN dedup-pools ('obs:' vs 'rap:' prefix).
+      // Voorheen deelden ze één pool op naam+datum, waardoor een ingediend rapport
+      // kon worden opgeslokt door een observatie van dezelfde speler/wedstrijd en
+      // zo uit de spelersdatabase verdween.
       const key = [
+        (isObs ? 'obs' : 'rap'),
         (p.naam||'').toLowerCase().trim(),
         (p.wedstrijd_datum||p.datum||(p.wedstrijd&&p.wedstrijd.datum)||(p.rapport&&p.rapport.wedstrijd&&p.rapport.wedstrijd.datum)||'')
       ].join('|');
-      if(key && key !== '|'){
+      if(key && key !== 'obs||' && key !== 'rap||'){
         if(seen.has(key)){
           // Al een record — kopieer notities naar bestaand record als dat leeg is
           const existingIdx = seen.get(key);
@@ -7397,30 +7402,31 @@ async function _obsSubmit(e){
     // Onderdeel 2: keuze-modal — observatie bewaren of er een rapport van maken.
     const _obsAfterSaveNav = () => {
       _obsClose();
-      const _obsReturnMatch = window.__shWstrEditReturn || null;
       window.__shWstrEditReturn = null;
-      if(_obsReturnMatch === 'pm-view'){
-        if(typeof renderActiveScouting === 'function') renderActiveScouting();
-        if(typeof renderMatches === 'function') setTimeout(renderMatches, 80);
-      } else if(_obsReturnMatch && typeof _shOpenEditModal === 'function'){
-        if(typeof renderActiveScouting === 'function') renderActiveScouting();
-        go('wedstrijden');
-        setTimeout(() => { try { _shOpenEditModal(_obsReturnMatch); } catch(_){} }, 180);
-      } else {
-        if(typeof renderActiveScouting === 'function') renderActiveScouting();
-        const _retM = window.__shCurrentEditMatch || null;
-        // BATCH 1 / 1C — keer terug naar de view waar je vandaan kwam. Kwam je van
-        // het (live) dashboard, blijf dáár en her-render (voorheen ging het altijd
-        // naar 'wedstrijden', wat vanaf het dashboard een leeg hoofdscherm gaf).
-        if(typeof currentView !== 'undefined' && currentView === 'dashboard'){
-          go('dashboard');
-        } else {
-          go('wedstrijden');
-        }
-        if(_retM && typeof _shOpenEditModal === 'function'){
-          setTimeout(() => { try { _shOpenEditModal(_retM); } catch(_){} }, 220);
-        }
-      }
+      if(typeof renderActiveScouting === 'function') renderActiveScouting();
+      // v326 — na het indienen van een observatie ALTIJD terug naar de
+      // Wedstrijden-tab, met de wedstrijd waar de observatie bij hoort
+      // UITGEKLAPT (geen modal-venster, geen leeg scherm).
+      let _progId = null;
+      try {
+        _progId = (ctx && (ctx.progId || ctx.matchId))
+          || (window.__shCurrentEditMatch && (window.__shCurrentEditMatch.progId || window.__shCurrentEditMatch.id))
+          || null;
+      } catch(_){}
+      go('wedstrijden');
+      setTimeout(() => {
+        try {
+          if(!_progId) return;
+          const card = document.querySelector('[data-prog-match-id="' + _progId + '"]');
+          if(!card) return;
+          card.classList.add('pm-open');
+          const drop = card.querySelector('.pm-dropdown');
+          if(drop) drop.style.display = 'block';
+          const chev = card.querySelector('.pm-chev');
+          if(chev) chev.style.transform = 'rotate(180deg)';
+          card.scrollIntoView({ block:'center', behavior:'smooth' });
+        } catch(_){}
+      }, 280);
     };
     // DEEL 7: OBS blijft OBS — GEEN keuze-modal "observatie bewaren of omzetten
     // naar rapport". Opslaan = observatie opslaan + terug naar wedstrijdcontext.
@@ -16431,17 +16437,17 @@ async function submitReport(e){
     // en kon findSlotConcept het bij heropenen niet meer vinden. Daarom bewaren we de
     // koppeling expliciet: uit de actieve scouting-context, anders uit het bestaande record.
     try {
-      // ALLEEN bij concept (Opslaan): de koppeling bewaren zodat findSlotConcept het
-      // concept bij heropenen terugvindt. Bij Indienen (definitief) NIET — anders komt
-      // het record in de dedup-pool van loadPlayers (isConceptSubmitted) terecht en
-      // verdwijnt het uit de spelersdatabase. (Regressie-fix v321.)
-      if(__mode === 'draft'){
-        var _plCtx = window.__shScoutingCtx;
-        if(_plCtx && _plCtx.progId && _plCtx.spelerKey){
-          player.programma_link = { progId: _plCtx.progId, spelerKey: _plCtx.spelerKey };
-        } else if(_existRep && _existRep.programma_link && _existRep.programma_link.progId){
-          player.programma_link = _existRep.programma_link;
-        }
+      // v326 — koppeling ALTIJD bewaren (concept én ingediend). Bij Indienen is de
+      // koppeling nodig zodat het rapport onder de bestaande wedstrijd blijft groeperen
+      // (anders verschijnt er een NIEUWE wedstrijd-kaart in de Wedstrijden-tab).
+      // Het eerdere database-verdwijn-probleem zat niet in de koppeling maar in de
+      // dedup van loadPlayers (obs en rapport deelden één dedup-pool) — die is nu
+      // gescheiden, dus de koppeling kan veilig blijven.
+      var _plCtx = window.__shScoutingCtx;
+      if(_plCtx && _plCtx.progId && _plCtx.spelerKey){
+        player.programma_link = { progId: _plCtx.progId, spelerKey: _plCtx.spelerKey };
+      } else if(_existRep && _existRep.programma_link && _existRep.programma_link.progId){
+        player.programma_link = _existRep.programma_link;
       }
       // Aanmaakmoment behouden (anders telkens 'nieuw' bij overschrijven).
       if(_existRep && _existRep.created && !player.created) player.created = _existRep.created;
@@ -21106,7 +21112,26 @@ function shSyncNietGerapporteerdUI(){
   // verbergen (alleen reden + optionele notitie + Indienen blijven). Class op het
   // formulier; CSS verbergt de rest. Niets verwijderd, puur weergave.
   const _ngForm = document.getElementById('report-form');
-  if(_ngForm) _ngForm.classList.toggle('sh-ng-active', !!(cb && cb.checked));
+  const _ngOn = !!(cb && cb.checked);
+  if(_ngForm) _ngForm.classList.toggle('sh-ng-active', _ngOn);
+  // v326 — Indienen-knop geforceerd zichtbaar in JS (onafhankelijk van style.css
+  // en van het alleen-lezen-slot dat de knop kan verbergen). Opslaan verbergen:
+  // bij niet-gerapporteerd is alleen Indienen relevant.
+  try {
+    const _fa = document.getElementById('report-form-actions');
+    const _sb = document.getElementById('report-save-btn');
+    const _db = document.getElementById('report-save-draft-btn');
+    if(_ngOn){
+      if(_fa){ _fa.style.display = 'flex'; _fa.style.position = 'static'; }
+      if(_sb){ _sb.style.display = ''; _sb.disabled = false; }
+      if(_db){ _db.style.display = 'none'; }
+    } else {
+      if(_fa){ _fa.style.display = ''; _fa.style.position = ''; }
+      const _locked = !!(_ngForm && _ngForm.classList.contains('sh-form-locked'));
+      if(_sb){ _sb.style.display = _locked ? 'none' : ''; }
+      if(_db){ _db.style.display = _locked ? 'none' : ''; }
+    }
+  } catch(_ngBtnErr){}
 }
 window.shSyncNietGerapporteerdUI = shSyncNietGerapporteerdUI;
 /* s36f: zichtbaarheid betrouwbaar bijwerken zolang het rapport-formulier

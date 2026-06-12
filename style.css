@@ -12910,3 +12910,13 @@ textarea.sh-grow-note{
 #report-form.sh-ng-active > *:not(#niet-gerapporteerd-section):not(#report-form-actions){
   display:none !important;
 }
+
+/* BATCH 1 / 1B (v322) — "niet gerapporteerd": forceer de actie-balk met Indienen
+   direct zichtbaar onder de reden (niet als sticky balk die kan wegvallen), en
+   verberg de Opslaan-knop — bij niet-gerapporteerd is alleen Indienen relevant. */
+#report-form.sh-ng-active #report-form-actions{
+  display:flex !important;
+  position:static !important;
+  margin-top:14px;
+}
+#report-form.sh-ng-active #report-save-draft-btn{ display:none !important; }

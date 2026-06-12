@@ -5916,7 +5916,7 @@ function findPlayerMatch(speler){
   if(!speler) return { player:null, mode:null };
   // s35x: concept-records uitsluiten — die zijn slot-specifiek
   const allPlayers = (typeof loadPlayers === 'function') ? loadPlayers() : [];
-  const players = allPlayers.filter(p => !p.concept);
+  const players = allPlayers.filter(p => !_shPlayerIsConcept(p));
   if(!players.length) return { player:null, mode:null };
   const norm = s => String(s||'').trim().toLowerCase();
   const vn = norm(speler.voornaam);
@@ -5984,7 +5984,7 @@ function findExistingPlayer(voornaam, achternaam, geboorte){
   const vn = norm(voornaam), an = norm(achternaam), gb = norm(geboorte);
   if(!vn || !an) return { player:null, mode:null };
   const allPlayers = (typeof loadPlayers === 'function') ? loadPlayers() : [];
-  const players = allPlayers.filter(p => !p.concept);
+  const players = allPlayers.filter(p => !_shPlayerIsConcept(p));
   function namen(p){
     let pvn = norm(p.voornaam), pan = norm(p.achternaam);
     if((!pvn || !pan) && p.naam && typeof splitNaam === 'function'){
@@ -7409,7 +7409,14 @@ async function _obsSubmit(e){
       } else {
         if(typeof renderActiveScouting === 'function') renderActiveScouting();
         const _retM = window.__shCurrentEditMatch || null;
-        go('wedstrijden');
+        // BATCH 1 / 1C — keer terug naar de view waar je vandaan kwam. Kwam je van
+        // het (live) dashboard, blijf dáár en her-render (voorheen ging het altijd
+        // naar 'wedstrijden', wat vanaf het dashboard een leeg hoofdscherm gaf).
+        if(typeof currentView !== 'undefined' && currentView === 'dashboard'){
+          go('dashboard');
+        } else {
+          go('wedstrijden');
+        }
         if(_retM && typeof _shOpenEditModal === 'function'){
           setTimeout(() => { try { _shOpenEditModal(_retM); } catch(_){} }, 220);
         }
@@ -10539,7 +10546,7 @@ function renderDatabase(){
   const _rapBtnR = document.getElementById('db-rapport-filter-btn');
   if(_obsBtnR) _obsBtnR.classList.remove('active');
   if(_rapBtnR) _rapBtnR.classList.remove('active');
-  const players = loadPlayers().filter(p => !p.concept);
+  const players = loadPlayers().filter(p => !_shPlayerIsConcept(p));
   $('#db-count').textContent = `${players.length} speler${players.length===1?'':'s'}`;
 
   const posSel = $('#filter-position');
@@ -10601,7 +10608,7 @@ function buildDbPaginator(totalItems, page, pageSize, position){
 function applyFilters(){
   const allPlayers = loadPlayers();
   // Concept-records nooit tonen in spelersdatabase — alleen na indienen (concept:false)
-  let players = allPlayers.filter(p => !p.concept);
+  let players = allPlayers.filter(p => !_shPlayerIsConcept(p));
   // Verrijk obs-spelers met datum uit programmaCache als datum leeg is
   if(typeof programmaCache !== 'undefined'){
     players = players.map(p => {
@@ -12992,7 +12999,7 @@ function renderCmpAddResults(){
   const fcur = cmpAddModalState.cur;
   const fpot = cmpAddModalState.pot;
 
-  let players = loadPlayers().filter(p => !p.concept);
+  let players = loadPlayers().filter(p => !_shPlayerIsConcept(p));
   if(q){
     players = players.filter(p => {
       const hay = `${p.naam||''} ${p.club||''} ${positionLabel(p.positie)||''} ${p.positie||''} ${p.linie||''} ${p.elftal||''}`.toLowerCase();
@@ -14263,16 +14270,12 @@ function renderDetailObsOverview(p){
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><polyline points="15 18 9 12 15 6"/></svg>
         Terug naar spelers
       </button>
-      <button class="btn btn-sm" onclick="_nieuweObsVoorSpeler('${p.id}')" title="Nieuwe observatie van deze speler">+ Nieuwe observatie</button>
-      <button class="btn btn-sm btn-primary" onclick="_obsToRapport('${p.id}')" title="Maak een rapport op basis van deze observatie">📝 Promoot naar rapport</button>
-      ${cmpBtn}
+      <!-- BATCH 1 / 1C — alleen-lezen OBS: knoppen 'Nieuwe observatie', 'Promoot naar
+           rapport', 'Vergelijk' en 'Maak spelersrapport' verwijderd (observatie blijft
+           observatie). Alleen Terug + een grotere prullenbak blijven. -->
       <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
-        <button class="btn btn-sm" id="dtl-obs-to-rapport-top" style="background:rgba(168,85,247,.15);color:#c084fc;border-color:rgba(168,85,247,.4);font-weight:600;">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          Maak spelersrapport
-        </button>
-        <button class="btn btn-sm dtl-icon-btn" id="dtl-del-obs" title="Verwijder observatie" style="color:#ef4444;border-color:rgba(239,68,68,.3);">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
+        <button class="btn dtl-icon-btn" id="dtl-del-obs" title="Verwijder observatie" style="color:#ef4444;border-color:rgba(239,68,68,.35);padding:9px 13px;">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
         </button>
       </div>
     </div>
@@ -14324,10 +14327,16 @@ function renderDetailObsOverview(p){
 
   // Event listeners
   document.getElementById('dtl-back-prev')?.addEventListener('click', ()=>go(previousViewBeforePlayer||'database'));
-  document.getElementById('dtl-del-obs')?.addEventListener('click', async ()=>{
-    if(!confirm('Observatie van '+p.naam+' verwijderen?')) return;
-    try{ await deletePlayer(p.id); go(previousViewBeforePlayer||'database'); if(typeof toast==='function') toast('Observatie verwijderd'); }
-    catch(_){ if(typeof toast==='function') toast('Verwijderen mislukt',true); }
+  document.getElementById('dtl-del-obs')?.addEventListener('click', ()=>{
+    // BATCH 1 / 1C — site-stijl popup i.p.v. browser-confirm
+    _shStyledConfirm({
+      title: 'Observatie verwijderen?',
+      msg: 'De observatie van ' + (p.naam || 'deze speler') + ' wordt definitief verwijderd.',
+      yes: '🗑️ Ja, verwijderen'
+    }, async ()=>{
+      try{ await deletePlayer(p.id); go(previousViewBeforePlayer||'database'); if(typeof toast==='function') toast('Observatie verwijderd'); }
+      catch(_){ if(typeof toast==='function') toast('Verwijderen mislukt',true); }
+    });
   });
   const _cmpT = document.getElementById('dtl-cmp-toggle');
   if(_cmpT) _cmpT.addEventListener('click',()=>{
@@ -14919,12 +14928,9 @@ function renderDetailObsCard(p){
 
   const overigHtml=overig.length?'<div style="margin-top:10px;font-size:12.5px;color:var(--text-2);line-height:1.6;border-top:1px solid rgba(168,85,247,.12);padding-top:10px;">'+escapeHtml(overig.join(' '))+'</div>':'';
 
-  const rapportBtn=isObs
-    ?'<button id="dtl-obs-to-rapport" class="btn btn-sm" style="margin-top:16px;background:rgba(168,85,247,.13);color:#c084fc;border-color:rgba(168,85,247,.4);font-weight:600;">'
-      +'<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:5px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>'
-      +'Maak spelersrapport van deze observatie'
-    +'</button>'
-    :'';
+  // BATCH 1 / 1C — observatie blijft observatie: geen 'Maak spelersrapport'-knop
+  // meer in de alleen-lezen weergave.
+  const rapportBtn='';
 
   wrap.innerHTML=
     '<div class="card compare-card" style="margin-bottom:16px;border-left:3px solid #a855f7;background:rgba(168,85,247,.04);">'
@@ -16425,11 +16431,17 @@ async function submitReport(e){
     // en kon findSlotConcept het bij heropenen niet meer vinden. Daarom bewaren we de
     // koppeling expliciet: uit de actieve scouting-context, anders uit het bestaande record.
     try {
-      var _plCtx = window.__shScoutingCtx;
-      if(_plCtx && _plCtx.progId && _plCtx.spelerKey){
-        player.programma_link = { progId: _plCtx.progId, spelerKey: _plCtx.spelerKey };
-      } else if(_existRep && _existRep.programma_link && _existRep.programma_link.progId){
-        player.programma_link = _existRep.programma_link;
+      // ALLEEN bij concept (Opslaan): de koppeling bewaren zodat findSlotConcept het
+      // concept bij heropenen terugvindt. Bij Indienen (definitief) NIET — anders komt
+      // het record in de dedup-pool van loadPlayers (isConceptSubmitted) terecht en
+      // verdwijnt het uit de spelersdatabase. (Regressie-fix v321.)
+      if(__mode === 'draft'){
+        var _plCtx = window.__shScoutingCtx;
+        if(_plCtx && _plCtx.progId && _plCtx.spelerKey){
+          player.programma_link = { progId: _plCtx.progId, spelerKey: _plCtx.spelerKey };
+        } else if(_existRep && _existRep.programma_link && _existRep.programma_link.progId){
+          player.programma_link = _existRep.programma_link;
+        }
       }
       // Aanmaakmoment behouden (anders telkens 'nieuw' bij overschrijven).
       if(_existRep && _existRep.created && !player.created) player.created = _existRep.created;
@@ -20599,6 +20611,10 @@ function pmppApplySuggestion(playerId){
   const wrap = document.getElementById('pmpp-suggestion-wrap');
   if(wrap){ wrap.style.display = 'none'; wrap.innerHTML = ''; }
   try { pmppRenderKnownBanner(); } catch(_){}
+  // BATCH 2 / DEEL 1 — koppelen = genoeg: na het koppelen wordt de speler DIRECT
+  // aan het plan toegevoegd (voorheen moest je daarna ook nog 'Toevoegen aan plan'
+  // klikken — stap te veel). De knop blijft bestaan voor handmatig getypte spelers.
+  try { if(typeof pmppAdd === 'function') pmppAdd(); } catch(_e){ console.warn('koppelen-direct', _e); }
 }
 
 function pmppRenderKnownBanner(){
@@ -27567,6 +27583,33 @@ function _liveToReport(matchId, playerId){
 }
 window._liveToReport = _liveToReport;
 
+
+/* BATCH 1 / 1C — herbruikbare bevestigings-popup in site-stijl (vervangt browser-
+   confirm). Hergebruikt de obs-keuze styling. Roept onYes aan bij bevestigen. */
+function _shStyledConfirm(opts, onYes){
+  try {
+    var title = (opts && opts.title) || 'Weet je het zeker?';
+    var msg = (opts && opts.msg) || '';
+    var yesLabel = (opts && opts.yes) || 'Ja';
+    var ov = document.createElement('div');
+    ov.className = 'obs-keuze-backdrop';
+    ov.innerHTML = '<div class="obs-keuze-card" role="dialog" aria-modal="true" aria-label="' + escapeHtml(title) + '">'
+      + '<div class="obs-keuze-title">' + escapeHtml(title) + '</div>'
+      + (msg ? '<div class="obs-keuze-meta">' + escapeHtml(msg) + '</div>' : '')
+      + '<button type="button" class="obs-keuze-btn primary" data-act="yes"><span class="okb-t">' + escapeHtml(yesLabel) + '</span></button>'
+      + '<button type="button" class="obs-keuze-btn" data-act="no"><span class="okb-t">Annuleren</span></button>'
+      + '</div>';
+    var _close = function(){ try { ov.remove(); } catch(_){} };
+    ov.addEventListener('click', function(e){ if(e.target === ov) _close(); });
+    ov.querySelector('[data-act="no"]').addEventListener('click', _close);
+    ov.querySelector('[data-act="yes"]').addEventListener('click', function(){ _close(); try { if(typeof onYes === 'function') onYes(); } catch(_){} });
+    document.body.appendChild(ov);
+  } catch(_e){
+    // Vangnet: als de popup niet kan renderen, val terug op browser-confirm
+    try { if(window.confirm(((opts && opts.title) || 'Weet je het zeker?'))) { if(typeof onYes === 'function') onYes(); } } catch(__){}
+  }
+}
+window._shStyledConfirm = _shStyledConfirm;
 
 /* Onderdeel 2 — keuze-modal na het opslaan van een observatie. */
 function _showObsKeuze(rec, onStay){

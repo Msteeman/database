@@ -159,33 +159,6 @@
     .hb-tabs{ display:flex; gap:8px; padding:10px 16px; overflow-x:auto; -webkit-overflow-scrolling:touch; position:sticky; top:calc(60px + env(safe-area-inset-top, 0px)); z-index:20; background:var(--bg); border-bottom:1px solid var(--border); }
   }
   @media print{ .hb-tabs{ display:none !important; } }
-
-  /* ===== Quick Reference (print) ===== */
-  #qr-print{display:none;}
-  @media print{
-    body{background:#fff !important; color:#000 !important;}
-    .hb-top,.hb-nav,.hb-content,.hb-nav-backdrop{display:none !important;}
-    #qr-print{display:block !important;}
-  }
-  /* on-screen preview of QR card */
-  .qr-screen{display:none; max-width:900px; margin:24px auto; padding:0 16px;}
-  .qr-screen.show{display:block;}
-  .qr-page{
-    background:#fff; color:#111; border-radius:10px; padding:26px 30px; margin:0 auto 22px; max-width:760px;
-    box-shadow:0 8px 40px rgba(0,0,0,.4);
-  }
-  .qr-page h1{font-size:21px; margin:0 0 4px; color:#0b1220;}
-  .qr-page h2{font-size:15px; margin:18px 0 7px; color:#0b1220; border-bottom:2px solid #0b1220; padding-bottom:3px;}
-  .qr-page ol,.qr-page ul{margin:0 0 8px; padding-left:20px;}
-  .qr-page li{margin:3px 0; font-size:13.5px;}
-  .qr-legend{display:grid; grid-template-columns:1fr 1fr; gap:6px 22px; margin:6px 0;}
-  .qr-legend div{font-size:13.5px;}
-  .qr-sub{color:#555; font-size:12px; margin:0 0 14px;}
-  @media print{
-    @page{size:A4; margin:14mm;}
-    .qr-page{box-shadow:none; max-width:none; padding:0; margin:0; page-break-after:always;}
-    .qr-page:last-child{page-break-after:auto;}
-  }
 </style>
 </head>
 <body>
@@ -198,7 +171,6 @@
     <input type="search" class="hb-search" id="hb-search" placeholder="Zoek in de handleiding…" aria-label="Zoeken">
   </div>
   <div class="hb-actions">
-    <button class="hb-btn" id="hb-print-qr">📄 <span class="hb-btn-label">Quick Reference</span></button>
     <a class="hb-btn hb-btn-primary" href="index.html">Naar de app</a>
   </div>
 </div>
@@ -560,100 +532,6 @@
   </main>
 </div>
 
-<!-- ============ QUICK REFERENCE (print + on-screen preview) ============ -->
-<div class="qr-screen" id="qr-screen">
-  <div style="text-align:center; margin-bottom:14px;">
-    <button class="hb-btn hb-btn-primary" onclick="window.print()">🖨️ Nu printen</button>
-    <button class="hb-btn" onclick="document.getElementById('qr-screen').classList.remove('show')">Sluiten</button>
-  </div>
-</div>
-
-<div id="qr-print">
-  <div class="qr-page">
-    <h1>ScoutingHub — Quick Reference</h1>
-    <p class="qr-sub">Print en neem mee naar de veldrand.</p>
-
-    <h2>🏟️ Wedstrijd scouten</h2>
-    <ol>
-      <li>Programma → klik op de wedstrijd</li>
-      <li>Koppel spelers (+ Speler koppelen)</li>
-      <li>Klik OBS bij een speler</li>
-      <li>Chips tikken: 🟢 goed · 🟠 normaal · 🔴 matig · ⚪ uit</li>
-      <li>Notitie per categorie (optioneel)</li>
-      <li>Overall: A · B · C · D</li>
-      <li>Opslaan → kies obs of rapport</li>
-    </ol>
-
-    <h2>🏆 Toernooi</h2>
-    <ol>
-      <li>Toernooien → + Nieuw → Tournify-URL (let op: dubbel-detectie)</li>
-      <li>Programma: Bekijken / Optioneel / Niet haalbaar</li>
-      <li>Mijn programma: je persoonlijke schema</li>
-      <li>Scout per wedstrijd (zelfde chips als hierboven)</li>
-      <li>Score invoeren in de wedstrijd-modal zelf</li>
-      <li>Bundeling: chips samengevat + eindoordeel</li>
-      <li>Afronden → rapporten genereren</li>
-    </ol>
-
-    <h2>📝 Na de wedstrijd</h2>
-    <ol>
-      <li>Vul de uitslag in</li>
-      <li>Review je observaties (progress: 3/5 ✅)</li>
-      <li>Maak een rapport (of promoot een observatie)</li>
-      <li>Vul A/B/C/D in (verplicht) — chips + grade + tekst</li>
-      <li>Indienen</li>
-    </ol>
-  </div>
-
-  <div class="qr-page">
-    <h1>ScoutingHub — Legenda</h1>
-
-    <h2>Chips-legenda</h2>
-    <div class="qr-legend">
-      <div>🟢 Goed — 1× tik</div>
-      <div>🟠 Normaal — 2× tik</div>
-      <div>🔴 Matig — 3× tik</div>
-      <div>⚪ Uit / reset — 4× tik</div>
-    </div>
-
-    <h2>Overall rating</h2>
-    <div class="qr-legend">
-      <div><strong>A</strong> = Uitzonderlijk</div>
-      <div><strong>B</strong> = Goed</div>
-      <div><strong>C</strong> = Gemiddeld</div>
-      <div><strong>D</strong> = Onder niveau</div>
-    </div>
-
-    <h2>Watchstatus (toernooi)</h2>
-    <div class="qr-legend">
-      <div>🟢 Bekijken</div>
-      <div>🟠 Optioneel</div>
-      <div>🔴 Niet haalbaar</div>
-    </div>
-
-    <h2>📱 PWA installeren</h2>
-    <ul>
-      <li><strong>iPhone:</strong> Safari → Deel → Zet op beginscherm</li>
-      <li><strong>Android:</strong> Chrome → ⋮ → Toevoegen aan startscherm</li>
-    </ul>
-
-    <h2>📶 Offline</h2>
-    <ul><li>Alles wordt automatisch gesynchroniseerd zodra je weer online bent.</li></ul>
-
-    <h2>Advies</h2>
-    <ul><li>Kies je advies met <strong>chips</strong> (geen dropdown).</li></ul>
-
-    <h2>🚗 Ritten</h2>
-    <ul><li>€/km instelbaar · bedrag + maandtotalen · CSV &amp; PDF-declaratie · favoriete routes.</li></ul>
-
-    <h2>📊 Vergelijken</h2>
-    <ul><li>Radar + balken + vormtrend · obs = geschatte score (gelabeld) · PDF-export &amp; delen.</li></ul>
-
-    <h2>🔔 Herinneringen</h2>
-    <ul><li>Melding 5/10/15 min vóór een 🟢 Bekijken-wedstrijd · aan/uit in Instellingen.</li></ul>
-  </div>
-</div>
-
 <script>
 (function(){
   var nav = document.getElementById('hb-nav');
@@ -714,13 +592,7 @@
     search.addEventListener('input', function(){ applySearch(search.value); });
   }
 
-  // Quick Reference
-  document.getElementById('hb-print-qr').addEventListener('click', function(){
-    document.getElementById('qr-screen').classList.add('show');
-    document.getElementById('qr-screen').scrollIntoView({behavior:'smooth'});
-    // also trigger print after a tick so the print layout is ready
-    setTimeout(function(){ window.print(); }, 350);
-  });
+  // Quick Reference verwijderd (rm-quick-ref)
 
   // Register SW for offline (shares app's worker scope)
   if('serviceWorker' in navigator){

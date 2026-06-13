@@ -13528,3 +13528,13 @@ textarea.sh-grow-note{
 @media (min-width: 650px) and (max-width: 800px) and (min-aspect-ratio: 3/4) {
   html, body { overflow-y: auto; height: auto; min-height: 100dvh; }
 }
+
+/* Linkermenu volledig zichtbaar: compacter op kortere/laptop-schermen (en het
+   foldable-binnenscherm) zodat alle onderdelen passen zonder verborgen scroll. */
+@media (max-height: 900px) {
+  .sidebar { padding-top: calc(8px + env(safe-area-inset-top, 0px)); }
+  .brand { padding: 2px 4px 6px 4px; margin-bottom: 6px; }
+  .nav { gap: 0; }
+  .nav-item { padding-top: 6px; padding-bottom: 6px; }
+  .nav-section-label { padding-top: 6px; padding-bottom: 1px; margin-top: 2px; font-size: 10px; letter-spacing: .04em; }
+}

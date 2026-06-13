@@ -24749,7 +24749,6 @@ async function _tournObsSubmit(){
 async function quickAddAndObserve(tid, matchId, dayId){
   tid = tid || _currentTournamentId;
   // FIX afgerond-lock: in een afgerond toernooi geen NIEUWE opgevallen spelers.
-  // (Bestaande observaties/rapporten blijven heropenbaar om te bewerken.)
   const _t = (typeof tourmCache !== 'undefined') ? tourmCache.find(x => x.id === tid) : null;
   if(_t && typeof _toernEffectiveStatus === 'function' && _toernEffectiveStatus(_t) === 'done'){
     toast('Toernooi is afgerond \u2014 nieuwe opgevallen spelers toevoegen staat op slot', true);
@@ -25435,13 +25434,15 @@ async function renderSpelersTab(tid){
   const _spAdd = document.getElementById('toern-spelers-addrow'); if(_spAdd) _spAdd.style.display = '';
   wrap.innerHTML = '<div class="toern-loading">Laden...</div>';
 
-  const [playersSnap, teamsSnap] = await Promise.all([
+  const [playersSnap, teamsSnap, matchesSnap] = await Promise.all([
     getDocs(tournSubCol(tid, 'players')),
-    getDocs(tournSubCol(tid, 'teams'))
+    getDocs(tournSubCol(tid, 'teams')),
+    getDocs(tournSubCol(tid, 'matches'))
   ]);
   const players = playersSnap.docs.map(d => ({...d.data(), id: d.id}));
   const teams = teamsSnap.docs.map(d => ({...d.data(), id: d.id}))
     .sort((a,b) => String(a.name||'').localeCompare(String(b.name||'')));
+  const matches = matchesSnap.docs.map(d => ({...d.data(), id: d.id}));
 
   // Echte (niet-placeholder) spelers per team tellen
   const realByTeam = {};
@@ -25452,29 +25453,95 @@ async function renderSpelersTab(tid){
   });
 
   if(teams.length === 0){
-    wrap.innerHTML = '<div class="toern-empty">Nog geen clubs in dit toernooi.</div>';
+    wrap.innerHTML = '<div class="toern-empty">Nog geen teams in dit toernooi.</div>';
     return;
   }
 
-  wrap.innerHTML = `<div class="toern-club-grid">` + teams.map(t => {
+  // Poule per team afleiden uit dezelfde reconstructie als de standen (zelfde labels).
+  const pouleOf = {}; let pouleLabels = [];
+  try {
+    const st = computeStandingsFromMatches(matches);
+    pouleLabels = Object.keys(st);
+    for(const lab of pouleLabels){ for(const row of ((st[lab].teams)||[])){ pouleOf[_normTeamName(row.name)] = lab; } }
+  } catch(_){}
+
+  const OVERIG = '__overig__';
+  const groups = {};
+  for(const t of teams){ const lab = pouleOf[_normTeamName(t.name)] || OVERIG; (groups[lab] = groups[lab] || []).push(t); }
+  const orderedLabels = pouleLabels.filter(l => groups[l]); if(groups[OVERIG]) orderedLabels.push(OVERIG);
+  const hasPoules = pouleLabels.length > 0;
+  const followedCount = teams.filter(t => t.priority === true).length;
+
+  const teamCard = (t) => {
     const n = (realByTeam[t.id] || []).length;
     const sub = n ? `${n} speler${n!==1?'s':''} gekoppeld` : 'Nog geen spelers gekoppeld';
     const following = t.priority === true;
-    // Ster-toggle "Volgen": alle wedstrijden van een gevolgde club verschijnen
-    // automatisch in Mijn Programma.
-    const star = `<button class="toern-club-follow ${following?'on':''}" title="${following?'Club gevolgd — klik om te ontvolgen':'Volg deze club'}"
-        onclick="event.stopPropagation();toggleClubPriority('${tid}','${t.id}',${!following})">${following?'★':'☆'}</button>`;
-    return `<div class="toern-club-card ${following?'is-followed':''}" onclick="openTournamentTeamDetail('${tid}','${t.id}')">
+    const follow = `<button onclick="event.stopPropagation();toggleClubPriority('${tid}','${t.id}',${!following})" title="${following?'Gevolgd — klik om te ontvolgen':'Volg dit team'}" style="border:1px solid ${following?'#eb1f37':'rgba(255,255,255,.18)'};background:${following?'rgba(235,31,55,.15)':'transparent'};color:${following?'#ff6b7d':'#cfd8e6'};border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">${following?'★ Gevolgd':'☆ Volgen'}</button>`;
+    return `<div class="toern-club-card ${following?'is-followed':''}" data-team-name="${escapeHtml(String(t.name||'').toLowerCase())}" data-followed="${following?'1':'0'}" onclick="openTournamentTeamDetail('${tid}','${t.id}')">
       <div class="toern-club-avatar">${initials(t.name||'?')}</div>
       <div class="toern-club-info">
         <div class="toern-club-name">${escapeHtml(t.name||'?')}</div>
-        <div class="toern-club-meta">${sub}${following?' · <span class="toern-club-followed">gevolgd</span>':''}</div>
+        <div class="toern-club-meta">${sub}</div>
       </div>
-      ${star}
+      ${follow}
       <span class="toern-club-arrow" aria-hidden="true">›</span>
     </div>`;
-  }).join('') + `</div>`;
+  };
+
+  const headStyle = 'display:flex;align-items:center;gap:8px;width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:10px 12px;color:#e8edf5;font-weight:600;font-size:14px;cursor:pointer;text-align:left;margin:14px 0 8px;';
+  const sections = orderedLabels.map((lab) => {
+    const label = lab === OVERIG ? (hasPoules ? 'Overig (geen poule-indeling)' : 'Alle teams') : lab;
+    const fc = groups[lab].filter(t => t.priority === true).length;
+    const collapsed = (orderedLabels.length > 4 && fc === 0 && lab !== OVERIG);
+    const cards = groups[lab].map(teamCard).join('');
+    return `<div data-sp-sec>
+      <button type="button" style="${headStyle}" onclick="var b=this.nextElementSibling; var open=b.style.display!=='none'; b.style.display=open?'none':''; this.querySelector('[data-caret]').textContent=open?'▸':'▾';">
+        <span data-caret style="opacity:.7;">${collapsed?'▸':'▾'}</span>
+        <span style="flex:1;">${escapeHtml(label)}</span>
+        <span style="font-weight:500;font-size:12px;color:#9aa8bd;">${groups[lab].length} team${groups[lab].length!==1?'s':''}${fc?` · ${fc} gevolgd`:''}</span>
+      </button>
+      <div class="toern-club-grid" style="${collapsed?'display:none;':''}">${cards}</div>
+    </div>`;
+  }).join('');
+
+  const toolbar = `<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:4px;">
+      <input type="search" placeholder="🔍 Zoek een team…" oninput="_spelersFilter(this.value)" style="flex:1;min-width:160px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:9px 12px;color:#e8edf5;font-size:14px;" />
+      <div style="display:flex;gap:4px;background:rgba(255,255,255,.05);border-radius:10px;padding:3px;">
+        <button type="button" data-spf="all" onclick="_spelersFollowFilter('all',this)" style="border:0;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;background:#eb1f37;color:#fff;">Alle</button>
+        <button type="button" data-spf="followed" onclick="_spelersFollowFilter('followed',this)" style="border:0;border-radius:8px;padding:7px 12px;font-size:13px;cursor:pointer;background:transparent;color:#9aa8bd;">Gevolgd${followedCount?` (${followedCount})`:''}</button>
+      </div>
+    </div>`;
+
+  window.__spFollowOnly = false;
+  wrap.innerHTML = toolbar + `<div id="sp-poule-wrap">${sections}</div><div id="sp-noresults" class="toern-empty" style="display:none;">Geen teams gevonden.</div>`;
 }
+function _spelersFilter(q){
+  q = String(q==null?'':q).trim().toLowerCase();
+  const followOnly = !!window.__spFollowOnly;
+  let anyVisible = false;
+  document.querySelectorAll('#sp-poule-wrap [data-sp-sec]').forEach(sec => {
+    let secVisible = 0;
+    sec.querySelectorAll('.toern-club-card').forEach(c => {
+      const nm = c.getAttribute('data-team-name') || '';
+      const okName = !q || nm.indexOf(q) !== -1;
+      const okFollow = !followOnly || c.getAttribute('data-followed') === '1';
+      const show = okName && okFollow;
+      c.style.display = show ? '' : 'none';
+      if(show){ secVisible++; anyVisible = true; }
+    });
+    sec.style.display = secVisible ? '' : 'none';
+    if((q || followOnly) && secVisible){ const b = sec.querySelector('.toern-club-grid'); if(b) b.style.display=''; const car = sec.querySelector('[data-caret]'); if(car) car.textContent='▾'; }
+  });
+  const nr = document.getElementById('sp-noresults'); if(nr) nr.style.display = anyVisible ? 'none' : '';
+}
+window._spelersFilter = _spelersFilter;
+function _spelersFollowFilter(mode, btn){
+  window.__spFollowOnly = (mode === 'followed');
+  try { btn.parentElement.querySelectorAll('[data-spf]').forEach(b => { const on = (b === btn); b.style.background = on ? '#eb1f37' : 'transparent'; b.style.color = on ? '#fff' : '#9aa8bd'; }); } catch(_){}
+  const s = document.querySelector('#toern-spelers-wrap input[type=search]');
+  _spelersFilter(s ? s.value : '');
+}
+window._spelersFollowFilter = _spelersFollowFilter;
 
 // Club volgen/ontvolgen → team.priority (additief veld, merge).
 async function toggleClubPriority(tid, teamId, val){
@@ -26432,9 +26499,7 @@ async function importFromTournifyUrl(url, statusCallback){
     tournifyData: rawData,
     tournifyId:   T.tournifyId || tournifyId,
     importMeta:   T.importMeta || null,
-    // FIX poule-standen: Tournify-standings + sync-tijd meteen meeschrijven, zodat
-    // renderStandenTab de echte poules toont i.p.v. terug te vallen op de
-    // grove "Klasse (Dagdeel)"-groepering van computeStandingsFromMatches.
+    // FIX poule-standen: Tournify-standings + sync-tijd meteen meeschrijven.
     standings:    (T.standings && Object.keys(T.standings).length) ? T.standings : {},
     lastSyncedAt: (T.standings && Object.keys(T.standings).length) ? new Date().toISOString() : null
   });
@@ -27144,31 +27209,66 @@ function _emptyStandRow(name){
   return { name, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, rank: 0 };
 }
 function computeStandingsFromMatches(matches){
-  const groups = {};
+  // Alleen GESPEELDE GROEPS-wedstrijden tellen in de stand. Knockout-/finale-
+  // wedstrijden horen niet in een poule-stand en zouden bij de poule-reconstructie
+  // verschillende poules onterecht samenvoegen.
+  const isGroupMatch = (m) => {
+    const s = String(m.stage == null ? '' : m.stage).toLowerCase().trim();
+    if(s === '' || s === '0') return true;
+    if(/poule|groep|group|voorronde|pool/.test(s)) return true;
+    if(/kwart|halve|finale|kruis|knock|troost/.test(s)) return false;
+    if(/^\d+$/.test(s)) return Number(s) === 0;   // numerieke fase >0 = knockout
+    return true;
+  };
+  const byCat = {};
   for(const m of (matches || [])){
     if(m.scoreHome == null || m.scoreAway == null) continue;
     if(String(m.resultStatus || 'finished').toLowerCase() !== 'finished') continue;
-    const g = m.categoryId || 'Algemeen';
-    if(!groups[g]) groups[g] = {};
-    const A = m.teamAName || '?', B = m.teamBName || '?';
-    if(!groups[g][A]) groups[g][A] = _emptyStandRow(A);
-    if(!groups[g][B]) groups[g][B] = _emptyStandRow(B);
-    const ra = groups[g][A], rb = groups[g][B];
-    const sh = Number(m.scoreHome), sa = Number(m.scoreAway);
-    ra.played++; rb.played++;
-    ra.goalsFor += sh; ra.goalsAgainst += sa;
-    rb.goalsFor += sa; rb.goalsAgainst += sh;
-    if(sh > sa){ ra.won++; ra.points += 3; rb.lost++; }
-    else if(sh < sa){ rb.won++; rb.points += 3; ra.lost++; }
-    else { ra.drawn++; rb.drawn++; ra.points++; rb.points++; }
+    if(!isGroupMatch(m)) continue;
+    const cat = m.categoryId || 'Algemeen';
+    (byCat[cat] = byCat[cat] || []).push(m);
   }
   const out = {};
-  for(const g of Object.keys(groups)){
-    const teams = Object.values(groups[g]);
-    teams.forEach(r => { r.goalDifference = r.goalsFor - r.goalsAgainst; });
-    teams.sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor || a.name.localeCompare(b.name));
-    teams.forEach((r, i) => { r.rank = i + 1; });
-    out[g] = { teams };
+  for(const cat of Object.keys(byCat)){
+    const cms = byCat[cat];
+    // POULE-RECONSTRUCTIE: in een poule speelt iedereen elkaar; teams uit
+    // verschillende poules niet. Verbonden componenten van de "speelde-tegen"-graaf
+    // binnen deze category = de echte poules.
+    const parent = {};
+    const add  = (x) => { if(parent[x] == null) parent[x] = x; };
+    const find = (x) => { while(parent[x] !== x){ parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+    const union = (a, b) => { add(a); add(b); const ra = find(a), rb = find(b); if(ra !== rb) parent[ra] = rb; };
+    for(const m of cms){ union(m.teamAName || '?', m.teamBName || '?'); }
+    const compMatches = {};
+    for(const m of cms){ const root = find(m.teamAName || '?'); (compMatches[root] = compMatches[root] || []).push(m); }
+    const comps = Object.keys(compMatches).map(root => {
+      const names = new Set();
+      compMatches[root].forEach(m => { names.add(m.teamAName || '?'); names.add(m.teamBName || '?'); });
+      return { root, minName: [...names].sort((a,b)=>a.localeCompare(b))[0] || '' };
+    }).sort((a,b) => a.minName.localeCompare(b.minName));
+    const multi = comps.length > 1;
+    comps.forEach((comp, ci) => {
+      const rows = {};
+      for(const m of compMatches[comp.root]){
+        const A = m.teamAName || '?', B = m.teamBName || '?';
+        if(!rows[A]) rows[A] = _emptyStandRow(A);
+        if(!rows[B]) rows[B] = _emptyStandRow(B);
+        const ra = rows[A], rb = rows[B];
+        const sh = Number(m.scoreHome), sa = Number(m.scoreAway);
+        ra.played++; rb.played++;
+        ra.goalsFor += sh; ra.goalsAgainst += sa;
+        rb.goalsFor += sa; rb.goalsAgainst += sh;
+        if(sh > sa){ ra.won++; ra.points += 3; rb.lost++; }
+        else if(sh < sa){ rb.won++; rb.points += 3; ra.lost++; }
+        else { ra.drawn++; rb.drawn++; ra.points++; rb.points++; }
+      }
+      const teams = Object.values(rows);
+      teams.forEach(r => { r.goalDifference = r.goalsFor - r.goalsAgainst; });
+      teams.sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor || a.name.localeCompare(b.name));
+      teams.forEach((r, i) => { r.rank = i + 1; });
+      const label = multi ? (cat + ' \u00b7 Poule ' + (ci + 1)) : cat;
+      out[label] = { teams };
+    });
   }
   return out;
 }
@@ -27246,18 +27346,10 @@ async function renderStandenTab(tid){
 }
 window.renderStandenTab = renderStandenTab;
 
-/* ================================================================
-   HERSTEL — standen + poule-indeling (+ veld) herstellen uit de bij
-   import opgeslagen Tournify-data (t.tournifyData). Eenmalige reparatie
-   voor toernooien die VOOR de standen-fix zijn geimporteerd.
-   PREVIEW-FIRST: toont eerst wat er zou veranderen en logt de structuur
-   in de console; schrijft pas NA bevestiging. Schrijft UITSLUITEND
-   tournament.standings + per-match categoryId/field (merge). Raakt NOOIT
-   scores, observaties, rapporten of spelers aan. Doet niets tenzij de
-   eigenaar 'm bewust aanroept vanuit de console:
-       _toernRepairFromTournify()        // huidig geopend toernooi
-       _toernRepairFromTournify('<tid>') // specifiek toernooi
-   ================================================================ */
+/* HERSTEL — standen/poules/veld uit de bij import opgeslagen Tournify-data
+   (t.tournifyData). PREVIEW-FIRST: toont eerst en logt naar console; schrijft
+   pas NA bevestiging; merge-only; raakt NOOIT scores/observaties/rapporten aan.
+   Console: _toernRepairFromTournify()  of  _toernRepairFromTournify('<tid>') */
 async function _toernRepairFromTournify(tid){
   tid = tid || _currentTournamentId;
   if(!tid){ alert('Geen toernooi geopend.'); return; }
@@ -27265,69 +27357,52 @@ async function _toernRepairFromTournify(tid){
   if(!t){ try { const s = await getDoc(tournDoc(tid)); if(s.exists()) t = { ...s.data(), id: tid }; } catch(_){} }
   if(!t){ alert('Toernooi niet gevonden.'); return; }
   const raw = t.tournifyData || null;
-  if(!raw){ alert('Geen opgeslagen Tournify-data op dit toernooi (tournifyData ontbreekt) \u2014 herstel niet mogelijk.'); return; }
+  if(!raw){ alert('Geen opgeslagen Tournify-data (tournifyData ontbreekt).'); return; }
   const standings = (raw.standings && typeof raw.standings === 'object') ? raw.standings : {};
   const rawMatches = Array.isArray(raw.matches) ? raw.matches : [];
   const pouleNames = Object.keys(standings);
-
   const teamPoule = {};
-  for(const pn of pouleNames){
-    for(const row of (((standings[pn]||{}).teams)||[])){
-      const nm = _normTeamName(row && row.name);
-      if(nm) teamPoule[nm] = pn;
-    }
-  }
-  const rawFieldByPair = {};
-  for(const rm of rawMatches){
-    const a = _normTeamName(rm.homeTeam || rm.teamAName), b = _normTeamName(rm.awayTeam || rm.teamBName);
-    const fld = rm.field || rm.veld || '';
-    if(a && b && fld){ rawFieldByPair[a+'|'+b] = fld; rawFieldByPair[b+'|'+a] = fld; }
-  }
-
+  for(const pn of pouleNames){ for(const row of (((standings[pn]||{}).teams)||[])){ const nm = _normTeamName(row && row.name); if(nm) teamPoule[nm] = pn; } }
+  const rawByPair = {};
+  for(const rm of rawMatches){ const a = _normTeamName(rm.homeTeam || rm.teamAName), b = _normTeamName(rm.awayTeam || rm.teamBName); if(a && b){ rawByPair[a+'|'+b] = rm; rawByPair[b+'|'+a] = rm; } }
   try {
     console.log('[Repair] poules in standings:', pouleNames.length, pouleNames);
     console.log('[Repair] teams met poule:', Object.keys(teamPoule).length);
-    console.log('[Repair] ruwe matches met veld:', Object.keys(rawFieldByPair).length/2, 'van', rawMatches.length);
-    console.log('[Repair] standings (eerste 4000 tekens):', JSON.stringify(standings).slice(0, 4000));
+    console.log('[Repair] ruwe matches:', rawMatches.length);
+    console.log('[Repair] standings:', JSON.stringify(standings).slice(0, 4000));
     console.log('[Repair] match-sample:', JSON.stringify(rawMatches.slice(0,3)));
+    console.log('[Repair] raw match keys:', rawMatches[0] ? Object.keys(rawMatches[0]) : []);
+    console.log('[Repair] importMeta.debug:', JSON.stringify((t.importMeta && t.importMeta.debug) || {}).slice(0, 6000));
   } catch(_){}
-
-  if(pouleNames.length === 0){
-    alert('Geen poule-standen in de opgeslagen Tournify-data \u2014 niets te herstellen. Bekijk de console (F12) en deel die uitvoer desnoods.');
-    return;
-  }
-
+  // Schrijf in elk geval category/veld/stage uit de bron terug op de lokale matches
+  // (zodat de poule-reconstructie in de stand alle signalen heeft). Standings alleen
+  // als Tournify ze leverde.
   const preview = 'Herstel uit opgeslagen Tournify-data\n\n'
-    + '\u2022 Poules gevonden: ' + pouleNames.length + (pouleNames.length ? ('  (' + pouleNames.join(', ') + ')') : '')
-    + '\n\u2022 Teams met poule: ' + Object.keys(teamPoule).length
-    + '\n\u2022 Wedstrijden met veld in bron: ' + (Object.keys(rawFieldByPair).length/2)
-    + '\n\nWat wordt bijgewerkt (merge, niets verwijderd):'
-    + '\n  - Standen-tabblad krijgt de echte poule-standen'
-    + '\n  - Per wedstrijd: poule + veld uit de bron'
-    + '\n\nNIET aangeraakt: scores, observaties, rapporten, spelers.'
-    + '\n\nDetails staan in de console (F12). Toepassen?';
+    + '\u2022 Poule-standen van Tournify: ' + pouleNames.length + '\n'
+    + '\u2022 Ruwe wedstrijden: ' + rawMatches.length + '\n\n'
+    + 'Bijwerken (merge): per wedstrijd category + veld + fase uit de bron'
+    + (pouleNames.length ? ', plus de Tournify-poule-standen' : ' (Tournify gaf geen kant-en-klare standen \u2014 de app berekent de poules dan uit de wedstrijden)')
+    + '.\n\nNIET aangeraakt: scores, observaties, rapporten, spelers.\n\nToepassen?';
   if(!confirm(preview)){ console.log('[Repair] geannuleerd \u2014 niets weggeschreven.'); return; }
-
-  try {
-    await setDoc(tournDoc(tid), { standings, lastSyncedAt: new Date().toISOString() }, { merge: true });
-  } catch(e){ console.error('[Repair] standings schrijven mislukt:', e); alert('Standen schrijven mislukt \u2014 zie console.'); return; }
-
+  if(pouleNames.length){
+    try { await setDoc(tournDoc(tid), { standings, lastSyncedAt: new Date().toISOString() }, { merge: true }); } catch(e){ console.error('[Repair] standings schrijven mislukt:', e); }
+  }
   let upd = 0;
   try {
     const snap = await getDocs(tournSubCol(tid, 'matches'));
     for(const d of snap.docs){
       const m = d.data();
       const a = _normTeamName(m.teamAName), b = _normTeamName(m.teamBName);
-      const poule = teamPoule[a] || teamPoule[b] || '';
-      const fld = rawFieldByPair[a+'|'+b] || '';
+      const rm = rawByPair[a+'|'+b] || null;
       const patch = {};
-      if(poule) patch.categoryId = poule;
-      if(fld) patch.field = fld;
+      if(teamPoule[a] || teamPoule[b]) patch.categoryId = teamPoule[a] || teamPoule[b];
+      else if(rm && (rm.category || rm.poule)) patch.categoryId = rm.category || rm.poule;
+      if(rm && (rm.field || rm.veld)) patch.field = rm.field || rm.veld;
+      if(rm && rm.stage != null && rm.stage !== '') patch.stage = String(rm.stage);
       if(Object.keys(patch).length){ await setDoc(tournSubDoc(tid, 'matches', d.id), patch, { merge: true }); upd++; }
     }
   } catch(e){ console.error('[Repair] match-update mislukt:', e); }
-
-  toast('Hersteld: standen + ' + upd + ' wedstrijden bijgewerkt \u2713');
+  toast('Hersteld: ' + upd + ' wedstrijden bijgewerkt \u2713');
   if(_currentTournamentId === tid && typeof renderStandenTab === 'function' && _toernTab === 'standen') renderStandenTab(tid);
 }
 window._toernRepairFromTournify = _toernRepairFromTournify;

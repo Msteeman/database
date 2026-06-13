@@ -8,6 +8,30 @@ service-account-aanpak migreert, en welke beveiligingswinst dat oplevert.
 
 ---
 
+## 0. Status & besluit (13 juni 2026) — UITGESTELD, OPTIONEEL
+
+**Besluit:** het service-account is **niet vereist** voor de gewenste werkwijze en is
+bewust **uitgesteld**. De huidige situatie blijft staan.
+
+**Reden / context:**
+- Het **aanvraagformulier** (iedereen mag toegang *aanvragen*, de eigenaar beslist) staat
+  hier **los** van — dat blijft bewust open en werkt zonder service-account.
+- Het service-account lost twee zaken op die nu géén blokkade vormen:
+  1. Het sluiten van de Firebase "Enable sign-up"-schakelaar (het kleine, theoretische
+     risico van rommel-Auth-accounts die buiten het formulier om worden aangemaakt — zo'n
+     account heeft geen `users`-doc/rol/goedkeuring en komt niet zinvol in de app).
+  2. Échte permanente verwijdering (hard-delete) i.p.v. de huidige soft-delete + login-gate.
+- Voor de huidige fase zijn beide acceptabel.
+
+**Wanneer alsnog oppakken (triggers):**
+- Er ontstaat daadwerkelijk last van junk-/rommel-accounts in de Auth-lijst, **of**
+- Er moet een AVG-"verwijder al mijn gegevens"-verzoek waterdicht permanent worden afgehandeld.
+
+Tot een van die triggers zich voordoet: **geen actie nodig.** De rest van dit document
+beschrijft de uitvoering voor als/zodra dat moment komt.
+
+---
+
 ## 1. Waarom nodig?
 
 De huidige account-flows draaien op de **publieke Firebase web-key** (Browser key)

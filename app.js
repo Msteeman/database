@@ -24747,6 +24747,14 @@ async function _tournObsSubmit(){
 // pas als spotted-TournamentPlayer aangemaakt zodra de observatie wordt
 // opgeslagen (team volgt uit de thuis/uit-clubkeuze in het obs-formulier).
 async function quickAddAndObserve(tid, matchId, dayId){
+  tid = tid || _currentTournamentId;
+  // FIX afgerond-lock: in een afgerond toernooi geen NIEUWE opgevallen spelers.
+  // (Bestaande observaties/rapporten blijven heropenbaar om te bewerken.)
+  const _t = (typeof tourmCache !== 'undefined') ? tourmCache.find(x => x.id === tid) : null;
+  if(_t && typeof _toernEffectiveStatus === 'function' && _toernEffectiveStatus(_t) === 'done'){
+    toast('Toernooi is afgerond \u2014 nieuwe opgevallen spelers toevoegen staat op slot', true);
+    return;
+  }
   await openTournamentObs(tid, matchId, dayId, null, '');
 }
 
@@ -25471,6 +25479,12 @@ async function renderSpelersTab(tid){
 // Club volgen/ontvolgen → team.priority (additief veld, merge).
 async function toggleClubPriority(tid, teamId, val){
   tid = tid || _currentTournamentId;
+  // FIX afgerond-lock: in een afgerond toernooi geen clubs meer volgen/ontvolgen.
+  const _tDone = (typeof tourmCache !== 'undefined') ? tourmCache.find(x => x.id === tid) : null;
+  if(_tDone && typeof _toernEffectiveStatus === 'function' && _toernEffectiveStatus(_tDone) === 'done'){
+    toast('Toernooi is afgerond \u2014 clubs volgen staat op slot', true);
+    return;
+  }
   try {
     await setDoc(tournSubDoc(tid, 'teams', teamId), { priority: !!val }, { merge: true });
   } catch(e){
@@ -26339,7 +26353,10 @@ function mapTournifyToTournamentModel(parsed, fallbackId, fallbackUrl){
       categories,
       tournifyId:  meta.detectedTournamentId,
       tournifyUrl: meta.url,
-      importMeta:  { fetchedVia: meta.fetchedVia, warnings, debug: meta.debug }
+      importMeta:  { fetchedVia: meta.fetchedVia, warnings, debug: meta.debug },
+      // FIX poule-standen: Tournify's eigen (per-poule) standings bewaren i.p.v.
+      // weggooien, zodat het Standen-tabblad de echte poules toont na import.
+      standings:   (parsed.standings && typeof parsed.standings === 'object') ? parsed.standings : {}
     },
     teams,
     days,
@@ -26414,7 +26431,12 @@ async function importFromTournifyUrl(url, statusCallback){
     ...tournament,
     tournifyData: rawData,
     tournifyId:   T.tournifyId || tournifyId,
-    importMeta:   T.importMeta || null
+    importMeta:   T.importMeta || null,
+    // FIX poule-standen: Tournify-standings + sync-tijd meteen meeschrijven, zodat
+    // renderStandenTab de echte poules toont i.p.v. terug te vallen op de
+    // grove "Klasse (Dagdeel)"-groepering van computeStandingsFromMatches.
+    standings:    (T.standings && Object.keys(T.standings).length) ? T.standings : {},
+    lastSyncedAt: (T.standings && Object.keys(T.standings).length) ? new Date().toISOString() : null
   });
 
   // Teams aanmaken + id-mapping (importedId én lowercase naam → intern id)
@@ -27223,6 +27245,92 @@ async function renderStandenTab(tid){
   wrap.innerHTML = html;
 }
 window.renderStandenTab = renderStandenTab;
+
+/* ================================================================
+   HERSTEL — standen + poule-indeling (+ veld) herstellen uit de bij
+   import opgeslagen Tournify-data (t.tournifyData). Eenmalige reparatie
+   voor toernooien die VOOR de standen-fix zijn geimporteerd.
+   PREVIEW-FIRST: toont eerst wat er zou veranderen en logt de structuur
+   in de console; schrijft pas NA bevestiging. Schrijft UITSLUITEND
+   tournament.standings + per-match categoryId/field (merge). Raakt NOOIT
+   scores, observaties, rapporten of spelers aan. Doet niets tenzij de
+   eigenaar 'm bewust aanroept vanuit de console:
+       _toernRepairFromTournify()        // huidig geopend toernooi
+       _toernRepairFromTournify('<tid>') // specifiek toernooi
+   ================================================================ */
+async function _toernRepairFromTournify(tid){
+  tid = tid || _currentTournamentId;
+  if(!tid){ alert('Geen toernooi geopend.'); return; }
+  let t = (typeof tourmCache !== 'undefined') ? tourmCache.find(x => x.id === tid) : null;
+  if(!t){ try { const s = await getDoc(tournDoc(tid)); if(s.exists()) t = { ...s.data(), id: tid }; } catch(_){} }
+  if(!t){ alert('Toernooi niet gevonden.'); return; }
+  const raw = t.tournifyData || null;
+  if(!raw){ alert('Geen opgeslagen Tournify-data op dit toernooi (tournifyData ontbreekt) \u2014 herstel niet mogelijk.'); return; }
+  const standings = (raw.standings && typeof raw.standings === 'object') ? raw.standings : {};
+  const rawMatches = Array.isArray(raw.matches) ? raw.matches : [];
+  const pouleNames = Object.keys(standings);
+
+  const teamPoule = {};
+  for(const pn of pouleNames){
+    for(const row of (((standings[pn]||{}).teams)||[])){
+      const nm = _normTeamName(row && row.name);
+      if(nm) teamPoule[nm] = pn;
+    }
+  }
+  const rawFieldByPair = {};
+  for(const rm of rawMatches){
+    const a = _normTeamName(rm.homeTeam || rm.teamAName), b = _normTeamName(rm.awayTeam || rm.teamBName);
+    const fld = rm.field || rm.veld || '';
+    if(a && b && fld){ rawFieldByPair[a+'|'+b] = fld; rawFieldByPair[b+'|'+a] = fld; }
+  }
+
+  try {
+    console.log('[Repair] poules in standings:', pouleNames.length, pouleNames);
+    console.log('[Repair] teams met poule:', Object.keys(teamPoule).length);
+    console.log('[Repair] ruwe matches met veld:', Object.keys(rawFieldByPair).length/2, 'van', rawMatches.length);
+    console.log('[Repair] standings (eerste 4000 tekens):', JSON.stringify(standings).slice(0, 4000));
+    console.log('[Repair] match-sample:', JSON.stringify(rawMatches.slice(0,3)));
+  } catch(_){}
+
+  if(pouleNames.length === 0){
+    alert('Geen poule-standen in de opgeslagen Tournify-data \u2014 niets te herstellen. Bekijk de console (F12) en deel die uitvoer desnoods.');
+    return;
+  }
+
+  const preview = 'Herstel uit opgeslagen Tournify-data\n\n'
+    + '\u2022 Poules gevonden: ' + pouleNames.length + (pouleNames.length ? ('  (' + pouleNames.join(', ') + ')') : '')
+    + '\n\u2022 Teams met poule: ' + Object.keys(teamPoule).length
+    + '\n\u2022 Wedstrijden met veld in bron: ' + (Object.keys(rawFieldByPair).length/2)
+    + '\n\nWat wordt bijgewerkt (merge, niets verwijderd):'
+    + '\n  - Standen-tabblad krijgt de echte poule-standen'
+    + '\n  - Per wedstrijd: poule + veld uit de bron'
+    + '\n\nNIET aangeraakt: scores, observaties, rapporten, spelers.'
+    + '\n\nDetails staan in de console (F12). Toepassen?';
+  if(!confirm(preview)){ console.log('[Repair] geannuleerd \u2014 niets weggeschreven.'); return; }
+
+  try {
+    await setDoc(tournDoc(tid), { standings, lastSyncedAt: new Date().toISOString() }, { merge: true });
+  } catch(e){ console.error('[Repair] standings schrijven mislukt:', e); alert('Standen schrijven mislukt \u2014 zie console.'); return; }
+
+  let upd = 0;
+  try {
+    const snap = await getDocs(tournSubCol(tid, 'matches'));
+    for(const d of snap.docs){
+      const m = d.data();
+      const a = _normTeamName(m.teamAName), b = _normTeamName(m.teamBName);
+      const poule = teamPoule[a] || teamPoule[b] || '';
+      const fld = rawFieldByPair[a+'|'+b] || '';
+      const patch = {};
+      if(poule) patch.categoryId = poule;
+      if(fld) patch.field = fld;
+      if(Object.keys(patch).length){ await setDoc(tournSubDoc(tid, 'matches', d.id), patch, { merge: true }); upd++; }
+    }
+  } catch(e){ console.error('[Repair] match-update mislukt:', e); }
+
+  toast('Hersteld: standen + ' + upd + ' wedstrijden bijgewerkt \u2713');
+  if(_currentTournamentId === tid && typeof renderStandenTab === 'function' && _toernTab === 'standen') renderStandenTab(tid);
+}
+window._toernRepairFromTournify = _toernRepairFromTournify;
 
 /* ================================================================
    EINDE ONDERDEEL 10

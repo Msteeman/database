@@ -2290,7 +2290,7 @@ const __SH_DEMO_MATCHES = [
         "positie": "cs"
       }
     ],
-    "status": "gepland",
+    "status": "verwerkt",
     "created": 1743847200000,
     "modified": 1743847200000,
     "toernooi": false,
@@ -2317,7 +2317,7 @@ const __SH_DEMO_MATCHES = [
         "positie": "rmv"
       }
     ],
-    "status": "gepland",
+    "status": "verwerkt",
     "created": 1744452000000,
     "modified": 1744452000000,
     "toernooi": false,
@@ -2350,7 +2350,7 @@ const __SH_DEMO_MATCHES = [
         "positie": "lv"
       }
     ],
-    "status": "gepland",
+    "status": "verwerkt",
     "created": 1744710000000,
     "modified": 1744710000000,
     "toernooi": false,
@@ -2377,7 +2377,7 @@ const __SH_DEMO_MATCHES = [
         "positie": "lb"
       }
     ],
-    "status": "gepland",
+    "status": "verwerkt",
     "created": 1745832000000,
     "modified": 1745832000000,
     "toernooi": false,
@@ -2404,7 +2404,7 @@ const __SH_DEMO_MATCHES = [
         "positie": "cs"
       }
     ],
-    "status": "gepland",
+    "status": "verwerkt",
     "created": 1746874800000,
     "modified": 1746874800000,
     "toernooi": false,
@@ -2423,8 +2423,21 @@ const __SH_DEMO_MATCHES = [
     "veld": "Veld 2",
     "info": "Seizoensfinale. Wessel Bos te observeren als aanvoerder.",
     "notities": "",
-    "spelers": [],
-    "status": "gepland",
+    "spelers": [
+      {
+        "id": "demo_p004",
+        "naam": "Wessel Bos",
+        "club": "AZ",
+        "positie": "lv"
+      },
+      {
+        "id": "demo_p003",
+        "naam": "Ruben Janssen",
+        "club": "sc Heerenveen",
+        "positie": "cs"
+      }
+    ],
+    "status": "verwerkt",
     "created": 1748608000000,
     "modified": 1748608000000,
     "toernooi": false,
@@ -2452,25 +2465,29 @@ const __SH_DEMO_MATCHES = [
   },
   {
     "id": "demo_m010",
-    "datum": "2026-06-14",
+    "datum": "2026-06-11",
     "tijd": "14:00",
     "leeftijd": "O.18",
-    "methode": "Video",
-    "thuis": "Jong PSV",
-    "uit": "Jong AZ",
-    "locatie": "",
+    "methode": "Live",
+    "thuis": "Jong PSV O.18",
+    "uit": "Jong AZ O.18",
+    "locatie": "PSV Campus De Herdgang",
     "plaats": "Eindhoven",
-    "veld": "",
-    "info": "Videoanalyse gepland.",
+    "veld": "Veld 4",
+    "info": "Beloften — nog uit te werken.",
     "notities": "",
     "spelers": [],
     "status": "gepland",
-    "created": 1749826800000,
-    "modified": 1749826800000,
+    "created": 1749600000000,
+    "modified": 1749600000000,
     "toernooi": false,
     "toernooi_naam": ""
   }
 ];
+// Demo-observaties: ingediende observatie-spelersrecords (in playersCache) die
+// per verwerkte wedstrijd worden gegenereerd door __shEnrichDemoMatches(). Leeg
+// tot de enrichment draait; de seed schrijft ze daarna naar Firestore.
+let __SH_DEMO_OBS = [];
 const __SH_DEMO_TEAMS = [];
 const __SH_DEMO_CONTACTS = [
   {
@@ -2745,6 +2762,212 @@ async function __shResetAndReseedDemo(){
   }
 }
 
+// Demo-verrijking: maak elke wedstrijd realistisch "afgehandeld". Per VERWERKTE
+// wedstrijd genereren we 3 INGEDIENDE observatie-spelersrecords (in playersCache)
+// — exact de vorm die de echte obs-flow oplevert (_rdBuildPlayerRec). Die voeden
+// zowel aggregateMatches (de wedstrijd verschijnt met spelers/observaties) als
+// _shMatchFullyVerwerkt (alle records niet-concept -> verwerkt). De wedstrijd
+// krijgt daarnaast een ingediend wedstrijdrapport. De laatste 2 wedstrijden
+// blijven bewust ONverwerkt: m009 = recent met CONCEPT-observaties (nog te
+// verwerken), m010 = toekomst (gepland, geen observaties).
+function __shEnrichDemoMatches(){
+  if(__shEnrichDemoMatches._done) return;
+  try {
+    __shEnrichDemoReports();
+    __SH_DEMO_OBS = [];
+    const reports = (typeof __SH_DEMO_REPORTS !== 'undefined' ? __SH_DEMO_REPORTS : []);
+    const players = (typeof __SH_DEMO_PLAYERS !== 'undefined' ? __SH_DEMO_PLAYERS : []);
+    const playerById = {}; players.forEach(p => { if(p && p.id) playerById[p.id] = p; });
+    const FLD = (typeof RD_FIELDS !== 'undefined') ? RD_FIELDS : ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
+    function latestReportFor(pid, beforeDate){
+      let best = null;
+      reports.forEach(r => {
+        if(!r || r.player_id !== pid) return;
+        if(beforeDate && (r.datum||'') > beforeDate) return;
+        if(!best || (r.datum||'') > (best.datum||'')) best = r;
+      });
+      if(!best){ reports.forEach(r => { if(r && r.player_id===pid && (!best || (r.datum||'')>(best.datum||''))) best = r; }); }
+      return best;
+    }
+    const _norm = s => String(s||'').toLowerCase().trim();
+    function clubInTeam(club, team){
+      const c = _norm(club); const t = _norm(team);
+      if(!c || !t) return false;
+      const cBase = c.replace(/^jong\s+/,'').trim();
+      const tBase = t.replace(/\s+o\.\d+.*$/,'').replace(/^jong\s+/,'').trim();
+      return t.includes(c) || c.includes(tBase) || cBase === tBase || tBase.includes(cBase);
+    }
+    // Kies tot N spelers voor een wedstrijd: eerst de roster, dan spelers wiens
+    // club bij thuis/uit hoort, dan opvullen uit de pool — altijd uniek op id.
+    function pickPlayers(m, n){
+      const out = []; const seen = new Set();
+      const add = pid => { if(pid && !seen.has(pid) && playerById[pid]){ seen.add(pid); out.push(pid); } };
+      (Array.isArray(m.spelers) ? m.spelers : []).forEach(rp => add(rp && rp.id));
+      if(out.length < n){
+        players.forEach(p => { if(out.length<n && p && (clubInTeam(p.club, m.thuis) || clubInTeam(p.club, m.uit))) add(p.id); });
+      }
+      if(out.length < n){ players.forEach(p => { if(out.length<n) add(p && p.id); }); }
+      return out.slice(0, n);
+    }
+    // Nieuwe, EIGEN spelers voor observaties (bewust NIET dezelfde namen als de
+    // spelersdatabase/rapporten — een observatie is een nét opgevallen, nog
+    // onbekende speler). Niveaus/positie verzonnen; de beoordelingstekst wordt
+    // als sjabloon uit een rapport geleend (generieke voetbaltaal).
+    const OBS_NAMES = [
+      { voornaam:'Sem',    achternaam:'Vermeulen', positie:'Spits',             been:'Rechts', huidig:'Regionaal',     potentieel:'Landelijk',     advies:'3' },
+      { voornaam:'Daan',   achternaam:'Hofman',    positie:'Centrale verdediger',been:'Links',  huidig:'Regionaal',     potentieel:'Regionaal',     advies:'2' },
+      { voornaam:'Lucas',  achternaam:'Brouwer',   positie:'Centrale middenvelder',been:'Rechts',huidig:'Landelijk',    potentieel:'Landelijk',     advies:'3' },
+      { voornaam:'Finn',   achternaam:'Koster',    positie:'Linksback',         been:'Links',  huidig:'Regionaal',     potentieel:'Landelijk',     advies:'2' },
+      { voornaam:'Noud',   achternaam:'Willems',   positie:'Rechtsbuiten',      been:'Rechts', huidig:'Regionaal',     potentieel:'Regionaal',     advies:'2' },
+      { voornaam:'Tijn',   achternaam:'Maas',      positie:'Keeper',            been:'Rechts', huidig:'Landelijk',     potentieel:'Landelijk',     advies:'3' },
+      { voornaam:'Bram',   achternaam:'Schouten',  positie:'Verdedigende middenvelder',been:'Rechts',huidig:'Regionaal',potentieel:'Landelijk',  advies:'2' },
+      { voornaam:'Jesse',  achternaam:'Peeters',   positie:'Aanvallende middenvelder',been:'Links',huidig:'Regionaal', potentieel:'Landelijk',     advies:'3' },
+      { voornaam:'Mees',   achternaam:'Kuijpers',  positie:'Rechtsback',        been:'Rechts', huidig:'Regionaal',     potentieel:'Regionaal',     advies:'2' },
+      { voornaam:'Lars',   achternaam:'Verbeek',   positie:'Linksbuiten',       been:'Links',  huidig:'Landelijk',     potentieel:'Landelijk',     advies:'3' },
+      { voornaam:'Stan',   achternaam:'Driessen',  positie:'Centrale verdediger',been:'Rechts', huidig:'Regionaal',     potentieel:'Regionaal',     advies:'2' },
+      { voornaam:'Gijs',   achternaam:'Bakhuis',   positie:'Spits',             been:'Rechts', huidig:'Regionaal',     potentieel:'Landelijk',     advies:'3' },
+      { voornaam:'Thijs',  achternaam:'Evers',     positie:'Centrale middenvelder',been:'Links', huidig:'Regionaal',    potentieel:'Regionaal',     advies:'2' },
+      { voornaam:'Ruben',  achternaam:'Sanders',   positie:'Rechtsbuiten',      been:'Rechts', huidig:'Regionaal',     potentieel:'Landelijk',     advies:'2' },
+      { voornaam:'Cas',    achternaam:'Verhoeven', positie:'Linksback',         been:'Links',  huidig:'Landelijk',     potentieel:'Landelijk',     advies:'3' },
+      { voornaam:'Joep',   achternaam:'Timmermans',positie:'Spits',             been:'Rechts', huidig:'Regionaal',     potentieel:'Regionaal',     advies:'2' },
+      { voornaam:'Luuk',   achternaam:'Roeloffs',  positie:'Verdedigende middenvelder',been:'Rechts',huidig:'Regionaal',potentieel:'Landelijk', advies:'3' },
+      { voornaam:'Pepijn', achternaam:'Holman',    positie:'Aanvallende middenvelder',been:'Links',huidig:'Regionaal', potentieel:'Regionaal',     advies:'2' },
+      { voornaam:'Teun',   achternaam:'Akkerman',  positie:'Keeper',            been:'Rechts', huidig:'Regionaal',     potentieel:'Landelijk',     advies:'2' },
+      { voornaam:'Olivier',achternaam:'Donders',   positie:'Centrale verdediger',been:'Rechts', huidig:'Landelijk',     potentieel:'Landelijk',     advies:'3' },
+      { voornaam:'Morris', achternaam:'Klaassen',  positie:'Rechtsbuiten',      been:'Rechts', huidig:'Regionaal',     potentieel:'Landelijk',     advies:'2' }
+    ];
+    // Rapporten met chips als tekst-/chip-sjabloon (alleen de bewoordingen, niet
+    // de identiteit). We roteren erdoorheen voor variatie.
+    const tmplReports = reports.filter(r => r && (r.beoordelingen || (Array.isArray(r.rapport_tags) && r.rapport_tags.length)));
+    let _obsIdx = 0;
+    // Bouw een observatie-spelersrecord voor een NIEUWE speler (vorm = live obs).
+    function buildObsRecord(m, concept){
+      const id = _obsIdx;
+      const np = OBS_NAMES[_obsIdx % OBS_NAMES.length];
+      const rep = tmplReports.length ? tmplReports[_obsIdx % tmplReports.length] : null;
+      _obsIdx++;
+      const b = rep ? (rep.beoordelingen || {}) : {};
+      const srcMap = {
+        techniek: b.techniek_tekst, inzicht: b.inzicht_tekst, mentaliteit: b.grit_tekst,
+        explosiviteit: b.explosiviteit_tekst, sprinten: b.sprinten_tekst, duelleren: b.duelleren_tekst,
+        wendbaarheid: b.wendbaarheid_tekst, algemeen: ((rep && rep.notities)||'').split('. ')[0]
+      };
+      const fields = {}; FLD.forEach(f => { fields[f] = (srcMap[f]||'').trim(); });
+      // Korte vrije-tekst voor het wedstrijdblok; volledige per-categorie info blijft in category_notes.
+      const _catNotes = {}; FLD.forEach(f => { if(f !== 'algemeen' && fields[f]) _catNotes[f] = fields[f]; });
+      const notities = (fields.algemeen || fields.techniek || fields.inzicht || '').trim();
+      const tags = (rep && Array.isArray(rep.rapport_tags)) ? rep.rapport_tags.map(t => ({ label:t.label, category:t.category, rating:t.rating })) : [];
+      const naam = (np.voornaam + ' ' + np.achternaam).trim();
+      // Observatie volgt het gescoute team: wissel thuis/uit af voor spreiding.
+      const isHome = (id % 2 === 0);
+      const club = isHome ? (m.thuis||'') : (m.uit||'');
+      const rugnummer = String(2 + (id % 18));
+      return {
+        id: 'obs_' + m.id + '_' + np.achternaam.toLowerCase() + '_' + id,
+        naam, voornaam: np.voornaam, achternaam: np.achternaam, naam_onbekend:false, omschrijving:'',
+        club, positie: np.positie, elftal: m.leeftijd || '', rugnummer,
+        notities, notities_raw: notities, category_notes: _catNotes,
+        huidig_niveau: np.huidig, potentieel_niveau: np.potentieel, advies: np.advies,
+        tags,
+        rapport_type: 'observatie', concept: !!concept, status: concept ? 'concept' : 'observatie',
+        is_opvallend: parseInt(np.advies,10) >= 3,
+        datum: m.datum,
+        wedstrijd: { datum: m.datum, thuis: m.thuis, uit: m.uit, leeftijd: m.leeftijd||'', plaats: m.plaats||'', sportpark: m.locatie||'', uitslag: m.uitslag||'' },
+        wedstrijd_datum: m.datum, wedstrijd_thuis: m.thuis, wedstrijd_uit: m.uit, wedstrijd_leeftijd: m.leeftijd||'',
+        team: club,
+        voorkeursbeen: np.been,
+        programma_link: null,
+        created: m.created || Date.now(), modified: m.modified || Date.now(),
+        scout: 'Demo Scout'
+      };
+    }
+    const matches = (typeof __SH_DEMO_MATCHES !== 'undefined' ? __SH_DEMO_MATCHES : []);
+    matches.forEach(m => {
+      if(!m) return;
+      // Reset roster/notities die een vorige (oude) enrichment kan hebben gezet.
+      if(m.snelnotities) delete m.snelnotities;
+      if(m.id === 'demo_m009' || m.id === 'demo_m010'){
+        // Laatste 2 wedstrijden: recent gespeeld, scout heeft CONCEPT-observaties
+        // (nog niet ingediend) -> wedstrijd blijft "nog te verwerken".
+        for(let i=0;i<3;i++) __SH_DEMO_OBS.push(buildObsRecord(m, true));
+        m.spelers = []; m.status = 'gepland';
+        if(m.wedstrijdrapport) delete m.wedstrijdrapport;
+        return;
+      }
+      // Alle overige wedstrijden: volledig verwerkt met 3 ingediende observaties.
+      const recs = [buildObsRecord(m, false), buildObsRecord(m, false), buildObsRecord(m, false)];
+      if(!recs.length) return;
+      recs.forEach(r => __SH_DEMO_OBS.push(r));
+      const opvallend = recs.filter(r => r.is_opvallend).map(r => r.naam);
+      const samenvatting = ((m.info || '').trim()
+        + (opvallend.length ? (m.info ? ' ' : '') + 'Opgevallen: ' + opvallend.join(', ') + '.' : '')).trim()
+        || 'Wedstrijd live geobserveerd en verwerkt.';
+      m.spelers = [];
+      m.wedstrijdrapport = {
+        status: 'ingediend',
+        tekst: samenvatting, opmerking: samenvatting,
+        datum: m.datum, thuis: m.thuis, uit: m.uit,
+        leeftijd: m.leeftijd || '', methode: m.methode || '',
+        plaats: m.plaats || '', sportpark: m.locatie || '', veld: m.veld || '',
+        uitslag: m.uitslag || '',
+        updated_at: m.modified || Date.now(),
+        ingediend_op: m.modified || Date.now()
+      };
+      m.status = 'verwerkt';
+      // Voorkom dat de auto-converter dit ingediende rapport terugzet naar concept.
+      m.__notesConverted = true;
+    });
+    __shEnrichDemoMatches._done = true;
+  } catch(e){ console.error('enrich demo matches', e); }
+}
+
+// Demo-verrijking: maak elk seed-rapport visueel compleet (trefwoord-chips per
+// onderdeel + Beoogde positie) zonder elke chip handmatig in te typen. Idempotent.
+function __shEnrichDemoReports(){
+  if(__shEnrichDemoReports._done) return;
+  try {
+    const posMap = {};
+    (typeof __SH_DEMO_PLAYERS !== 'undefined' ? __SH_DEMO_PLAYERS : []).forEach(p => { if(p && p.id) posMap[p.id] = p.positie || ''; });
+    const CATS = [
+      ['techniek',     'techniek_huidig'],
+      ['inzicht',      'inzicht_huidig'],
+      ['mentaliteit',  'grit_huidig'],
+      ['explosiviteit','explosiviteit_huidig'],
+      ['sprinten',     'sprinten_huidig'],
+      ['duelleren',    'duelleren_huidig'],
+      ['wendbaarheid', 'wendbaarheid_huidig']
+    ];
+    const baseRatingFor = g => (g==='A'||g==='B') ? 'goed' : (g==='C' ? 'gemiddeld' : (g==='D' ? 'ondermaats' : ''));
+    (typeof __SH_DEMO_REPORTS !== 'undefined' ? __SH_DEMO_REPORTS : []).forEach((r, ri) => {
+      if(!r) return;
+      if(!r.beoogd) r.beoogd = posMap[r.player_id] || '';
+      if(!Array.isArray(r.rapport_tags) || !r.rapport_tags.length){
+        const tags = [];
+        const b = r.beoordelingen || {};
+        CATS.forEach(([cat, gradeKey], ci) => {
+          const g = b[gradeKey]; const base = baseRatingFor(g); if(!base) return;
+          const pool = (typeof PLF_CHIP_CATS !== 'undefined' && PLF_CHIP_CATS[cat]) ? PLF_CHIP_CATS[cat] : [];
+          if(!pool.length) return;
+          const n = 2 + ((ri + ci) % 2);               // 2 of 3 chips
+          const start = (ri*3 + ci*2) % pool.length;    // gevarieerd per rapport
+          for(let k=0;k<n;k++){
+            const label = pool[(start+k) % pool.length];
+            if(tags.some(t => t.label===label && t.category===cat)) continue;
+            // lichte nuance: sterk onderdeel toch 1 ontwikkelpunt, zwak onderdeel 1 lichtpunt
+            let rating = base;
+            if(base==='goed' && k===n-1) rating='gemiddeld';
+            else if(base==='gemiddeld' && k===0) rating='goed';
+            else if(base==='ondermaats' && k===n-1) rating='gemiddeld';
+            tags.push({ label, rating, rapport_section: cat+'_huidig', category: cat });
+          }
+        });
+        r.rapport_tags = tags;
+      }
+    });
+    __shEnrichDemoReports._done = true;
+  } catch(e){ console.error('enrich demo reports', e); }
+}
+
 async function __shSeedDemoToFirestore(_skipConfirm){
   if(!__shIsDemoUser()){
     if(typeof toast === 'function') toast('Demo-vullen alleen beschikbaar voor demo-account', true);
@@ -2774,6 +2997,7 @@ async function __shSeedDemoToFirestore(_skipConfirm){
 
   let okP=0, okR=0, okM=0, okT=0, okC=0, okTi=0, fail=0;
   if(typeof toast === 'function') toast('Demo-data laden…');
+  __shEnrichDemoReports();
   // Spelers — krijgen beoordelingen+advies van hun MEEST RECENTE rapport
   try {
     const latestByPlayer = {};
@@ -2795,10 +3019,21 @@ async function __shSeedDemoToFirestore(_skipConfirm){
   } catch(e){ console.error('seed reports block', e); }
   // Wedstrijden (programma)
   try {
+    __shEnrichDemoMatches();
     for(const m of __SH_DEMO_MATCHES){
       try { await saveProgrammaItem({...m}); okM++; } catch(e){ fail++; console.error('seed match', e); }
     }
   } catch(e){ console.error('seed matches block', e); }
+  // Observaties — ingediende (+ enkele concept) observatie-spelersrecords per
+  // verwerkte wedstrijd. Gegenereerd door __shEnrichDemoMatches() hierboven.
+  let okO = 0;
+  try {
+    if(Array.isArray(__SH_DEMO_OBS)){
+      for(const o of __SH_DEMO_OBS){
+        try { await savePlayer({...o}); okO++; } catch(e){ fail++; console.error('seed obs', e); }
+      }
+    }
+  } catch(e){ console.error('seed obs block', e); }
   // Teams (analyses)
   try {
     for(const t of __SH_DEMO_TEAMS){
@@ -2825,9 +3060,9 @@ async function __shSeedDemoToFirestore(_skipConfirm){
     }
   } catch(e){ console.error('seed ritten block', e); }
 
-  const msg = `Demo-data geladen: ${okP} spelers, ${okR} rapporten, ${okM} wedstrijden, ${okC} contacten, ${okTi} tips, ${okRit} ritten` + (fail ? ` (${fail} fouten)` : '') + ' — pagina wordt herladen.';
+  const msg = `Demo-data geladen: ${okP} spelers, ${okR} rapporten, ${okM} wedstrijden, ${okO} observaties, ${okC} contacten, ${okTi} tips, ${okRit} ritten` + (fail ? ` (${fail} fouten)` : '') + ' — pagina wordt herladen.';
   if(typeof toast === 'function') toast(msg);
-  if(typeof __shTrace === 'function') __shTrace('demo-seed-done', {okP, okR, okM, okT, okC, okTi, fail});
+  if(typeof __shTrace === 'function') __shTrace('demo-seed-done', {okP, okR, okM, okO, okT, okC, okTi, fail});
   // s-seed-fix: pagina herladen zodat caches volledig worden vernieuwd
   setTimeout(() => location.reload(), 1800);
 }
@@ -2841,65 +3076,39 @@ setTimeout(() => {
   }
 }, 2500);
 
-// s35ax: AUTO-SEED bij allereerste demo-login
-// Wacht 5s zodat Firestore-listeners zeker eerste snapshot hebben geleverd.
-// Als playersCache dan ECHT leeg is voor demo-user, seed automatisch.
-// Vlag in localStorage voorkomt herhalen na refresh in dezelfde sessie.
+// s35ax → daily-reseed: AUTO-SEED voor demo-account.
+// De demo wordt elke dag automatisch vers neergezet: de "seed-dag" rolt om
+// 07:00 lokale tijd om. Wordt het demo-account na 07:00 op een nieuwe dag
+// geopend, dan wist + herseed + herlaadt de app zichzelf (volledig verrijkt).
 let __shAutoSeedDone = false;
+function __shDemoSeedDay(){
+  const now = new Date();
+  const d = new Date(now);
+  if(now.getHours() < 7) d.setDate(d.getDate() - 1); // vóór 07:00 = vorige kalenderdag
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
 setTimeout(async () => {
   try {
     if(__shAutoSeedDone) return;
     if(typeof currentUser === 'undefined' || !currentUser || !currentUser.email) return;
     if(currentUser.email.toLowerCase() !== 'demo@scoutinghub.nl') return;
-    // Firestore moet leeg zijn EN we mogen niet eerder geseed hebben deze sessie
-    const seenKey = 'sh_demo_autoseed_' + currentUser.uid;
-    if(localStorage.getItem(seenKey)) return;
-    if(Array.isArray(playersCache) && playersCache.length > 0
-       && playersCache.some(p => !p.id || !p.id.startsWith('demo_'))) {
-      // Er staat al echte data — niks doen
-      return;
-    }
-    if(Array.isArray(playersCache) && playersCache.length > 0) {
-      // Caches gevuld met demo-IDs maar mogelijk alleen in-memory; seed alsnog
-    }
-    if(typeof __shTrace === 'function') __shTrace('demo-autoseed-start', {uid: currentUser.uid});
-    let okP=0, okR=0, okM=0, okT=0, okC=0, okTi=0, fail=0;
-    // s35cx: meest-recente rapport per speler bepalen
-    const latestByPlayer = {};
-    __SH_DEMO_REPORTS.forEach(r => {
-      const prev = latestByPlayer[r.player_id];
-      if(!prev || (r.datum || '') > (prev.datum || '')) latestByPlayer[r.player_id] = r;
-    });
-    for(const p of __SH_DEMO_PLAYERS){
-      const rep = latestByPlayer[p.id];
-      const rec = rep ? {...p, beoordelingen: rep.beoordelingen, advies: rep.advies} : {...p};
-      try { await savePlayer(rec); okP++; } catch(e){ fail++; }
-    }
-    for(const r of __SH_DEMO_REPORTS){
-      try { await saveMatchReport({...r}); okR++; } catch(e){ fail++; }
-    }
-    for(const m of __SH_DEMO_MATCHES){
-      try { await saveProgrammaItem({...m}); okM++; } catch(e){ fail++; }
-    }
-    for(const t of __SH_DEMO_TEAMS){
-      try { await saveAnalysis({...t}); okT++; } catch(e){ fail++; }
-    }
-    for(const c of __SH_DEMO_CONTACTS){
-      try { await saveContact({...c}); okC++; } catch(e){ fail++; }
-    }
-    for(const tp of __SH_DEMO_TIPS){
-      try { await saveTip({...tp}); okTi++; } catch(e){ fail++; }
-    }
-    let okRit = 0;
-    for(const rit of __SH_DEMO_RITTEN){
-      try { await saveRit({...rit}); okRit++; } catch(e){ fail++; }
-    }
-    localStorage.setItem(seenKey, new Date().toISOString());
+    const dayKey = 'sh_demo_seedday_' + currentUser.uid;
+    const today  = __shDemoSeedDay();
+    // Al vers geseed vandaag (in deze browser)? Niets doen.
+    if(localStorage.getItem(dayKey) === today) return;
+    // Staat er ECHTE (niet-demo) data? Dan nooit automatisch overschrijven.
+    if(Array.isArray(playersCache) && playersCache.some(p => p && (!p.id || !String(p.id).startsWith('demo_')))) return;
     __shAutoSeedDone = true;
-    if(typeof __shTrace === 'function') __shTrace('demo-autoseed-done', {okP, okR, okM, okT, okC, okTi, fail});
-    if(typeof toast === 'function') toast(`Demo-data geladen (${okP} spelers, ${okR} rapporten, ${okM} wedstrijden, ${okT} teams, ${okC} contacten, ${okTi} tips, ${okRit} ritten)`);
+    if(typeof __shTrace === 'function') __shTrace('demo-autoseed-start', {uid: currentUser.uid, day: today});
+    // Volledige verse seed: wist eerst alles + verrijkt rapporten/observaties + herlaadt.
+    if(typeof __shSeedDemoToFirestore === 'function'){
+      localStorage.setItem(dayKey, today); // markeer vóór reload zodat het niet herhaalt
+      await __shSeedDemoToFirestore(true);
+    }
+    if(typeof __shTrace === 'function') __shTrace('demo-autoseed-done', {day: today});
   } catch(e){
     console.error('auto-seed error:', e);
+    __shAutoSeedDone = false;
   }
 }, 5000);
 
@@ -5694,6 +5903,10 @@ function go(view){
   $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-'+view));
   $$('.nav-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
   $$('#bottom-nav .bn-item').forEach(n => n.classList.toggle('active', n.dataset.view === view));
+  // s36: zet body.view-active-report zodat de zwevende Indienen-balk (mobile/tablet)
+  // zichtbaar is én #view-report de juiste padding-bottom krijgt. Zonder deze class
+  // verborg style.css de balk (regel 2883) en verdween het laatste stuk achter de bottom-nav.
+  document.body.classList.toggle('view-active-report', view === 'report');
   if(view === 'dashboard') renderDashboard();
   if(view === 'database')  renderDatabase();
   if(view === 'compare')   { renderCompare(); shUpdateCmpUI(); }
@@ -5721,6 +5934,7 @@ function go(view){
           sv('f-positie', _op.positie || '');
           sv('f-elftal', _op.elftal || '');
           sv('f-rugnummer', _op.rugnummer || '');
+          sv('f-been', _op.been || '');
           sv('f-geboorte', _op.geboorte || '');
           sv('f-methode', _op.methode || 'Live');
           const w = _op.wedstrijd || {};
@@ -6228,6 +6442,7 @@ function openScoutingPlayerForm(prog, progSp, matchedPlayer, slotConceptHint){
         if(progSp.geboorte && $('#f-geboorte')) $('#f-geboorte').value = progSp.geboorte;
         if(progSp.club && $('#f-club')) $('#f-club').value = progSp.club;
         if(progSp.rugnummer && $('#f-rugnummer')) $('#f-rugnummer').value = progSp.rugnummer;
+        if(progSp.been && $('#f-been')) $('#f-been').value = progSp.been;
         if(progSp.positie && $('#f-positie')) $('#f-positie').value = progSp.positie;
         // s35dj: leeftijdscategorie uit thuis_elftal als primaire bron
         const _sfElftalNew = (prog.thuis_elftal||'').trim() || (prog.uit_elftal||'').trim() || (prog.leeftijd||'').trim();
@@ -11853,8 +12068,15 @@ function _shConvertNotesToDrafts(prog){
   if(prog.__notesConverted === true) return false;
   // Alleen omzetten als de wedstrijd echt op slot staat (fluitje+15 voorbij).
   if(typeof _shIsMatchLocked === 'function' && !_shIsMatchLocked(prog)) return false;
+  // Een reeds INGEDIENDE wedstrijd (wedstrijdrapport ingediend/verwerkt en geen
+  // openstaande concept-notities meer) niet terugdraaien naar 'concept'. Anders
+  // zou de auto-converter een afgehandelde wedstrijd weer als onverwerkt tonen.
+  const _wstrSubmitted = prog.wedstrijdrapport && (prog.wedstrijdrapport.status === 'ingediend' || prog.wedstrijdrapport.status === 'verwerkt');
+  const _hasSnel = Array.isArray(prog.snelnotities) && prog.snelnotities.length > 0;
+  const _allSnIngediend = _hasSnel && prog.snelnotities.every(sn => sn && sn.ingediend);
+  if(_wstrSubmitted && (!_hasSnel || _allSnIngediend)) return false;
   const tekst = _shCollectWedstrijdTekst(prog);
-  const hasSnel = Array.isArray(prog.snelnotities) && prog.snelnotities.length > 0;
+  const hasSnel = _hasSnel;
   if(!tekst && !hasSnel) return false;
   let plaats = '';
   try {
@@ -11962,6 +12184,13 @@ function _shConvertSnelToConceptPlayers(prog){
       const detId = 'concept_' + String(prog.id).replace(/[^a-z0-9_-]/gi,'')
                   + '__' + String(sn.id).replace(/[^a-z0-9_-]/gi,'');
       const nowIso = new Date().toISOString();
+      // #4/#5: voorkeursbeen + rugnummer robuust uit het gekoppelde spelerrecord halen
+      // (de snelnotitie slaat 'been' niet op; rugnummer soms wel). Zo vullen beide
+      // velden automatisch vanuit het live-dashboard.
+      const _snPlayer = (sn.spelerKey && typeof playersCache !== 'undefined' && Array.isArray(playersCache))
+        ? playersCache.find(p => p && p.id === sn.spelerKey) : null;
+      const _snBeen = sn.been || (_snPlayer && _snPlayer.been) || '';
+      const _snRug  = sn.rugnummer || (_snPlayer && _snPlayer.rugnummer) || '';
       // s35dj: elftal/leeftijd meegenomen uit programma
       const _snElftal = (prog.thuis_elftal||'').trim() || (prog.uit_elftal||'').trim() || (prog.leeftijd||'').trim();
       const _snThuis  = prog.thuis ? `${prog.thuis}${prog.thuis_elftal?' '+prog.thuis_elftal:''}`.trim() : '';
@@ -11973,7 +12202,8 @@ function _shConvertSnelToConceptPlayers(prog){
         voornaam: vn,
         achternaam: an,
         naam: fullNaam,
-        rugnummer: sn.rugnummer || '',
+        rugnummer: _snRug,
+        been: _snBeen,
         positie: sn.positie || '',
         elftal: sn.elftal || _snElftal,
         leeftijd: _snElftal,
@@ -17085,7 +17315,7 @@ async function submitReport(e){
     if(_miss.length){
       if(typeof toast === 'function') toast('Je moet nog invullen: ' + _miss.join(', '), true);
       const _feId = !voornaam ? 'f-voornaam' : (!achternaam ? 'f-achternaam' : null);
-      const _fe = (_feId && document.getElementById(_feId)) || document.querySelector('.grade-picker.sh-picker-error') || document.getElementById('f-advies-chips');
+      const _fe = (_feId && document.getElementById(_feId)) || document.querySelector('.grade-picker.sh-picker-error') || document.getElementById('f-advies');
       if(_fe){ try { _fe.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} setTimeout(() => { try { _fe.focus && _fe.focus(); } catch(_){} }, 150); }
       return;
     }
@@ -17303,6 +17533,8 @@ function aggregateMatches(players){
         huidig_niveau: p.huidig_niveau || '',
         potentieel_niveau: p.potentieel_niveau || '',
         rapport_type: p.rapport_type || '',
+        concept: (p.concept === true || p.status === 'concept'),
+        status: p.status || '',
         notities: p.notities || '',
         notities_raw: p.notities_raw || '',
         opmerkingen: p.opmerkingen || ''
@@ -17509,9 +17741,9 @@ function renderMatches(){
   }
   // s35bq + s35bt: status-filter
   if(matchStatusFilter === 'verwerkt'){
-    matches = matches.filter(m => m.kind === 'aggregated');
+    matches = matches.filter(m => _shMatchFullyVerwerkt(m));
   } else if(matchStatusFilter === 'nog-verwerken'){
-    matches = matches.filter(m => (m.kind === 'aggregated' || m.kind === 'programma') && !shIsWedstrijdVerwerkt(_shMatchKey(m)));
+    matches = matches.filter(m => !_shMatchFullyVerwerkt(m));
   }
   // M10: alleen wedstrijden met minstens één opgevallen speler
   if(_matchOpvallendOnly){
@@ -17747,6 +17979,18 @@ function renderMatches(){
     const ageBadge = m.age
       ? `<span class="match-age-badge">${escapeHtml(m.age)}</span>`
       : '';
+    // Volledige teamnaam MET leeftijd in de titel (bv. "AZ O.17"). Namen die de
+    // leeftijd al bevatten blijven zoals ze zijn; anders plakken we de leeftijd
+    // er met punt-notatie achter. De losse leeftijd-badge vervalt dan.
+    const _ageDot = m.age ? String(m.age).replace(/^O\.?\s*/i, 'O.') : '';
+    const _teamDisp = (nm) => {
+      const raw = (nm || '').trim();
+      if(!raw) return '—';
+      if(stripAgeFromTeam(raw) !== raw) return escapeHtml(raw);
+      return _ageDot ? escapeHtml(raw) + ' ' + escapeHtml(_ageDot) : escapeHtml(raw);
+    };
+    const thuisDisp = _teamDisp(m.thuis);
+    const uitDisp = _teamDisp(m.uit);
     const opstellingMeta = m.opstelling ? `<span class="match-players-count">${escapeHtml(m.opstelling)}</span>` : '';
     const countMeta = `<span class="match-players-count">${m.players.length} rapport${m.players.length===1?'':'en'}</span>`;
     const chevron = `<span class="match-chevron"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>`;
@@ -17761,30 +18005,21 @@ function renderMatches(){
       const initials = (dispNaam || '?').replace(/^#/,'').split(/\s+/).map(s=>s[0]).filter(Boolean).slice(0,2).join('').toUpperCase();
       const posLabel = (typeof positionLabel === 'function' ? (positionLabel(pl.positie) || pl.positie || '') : (pl.positie || ''));
       const sub = [posLabel, pl.club].filter(Boolean).join(' • ');
-      const hg = pl.huidig_niveau || 'D';
-      const pg = pl.potentieel_niveau || 'D';
       const isConcept = _shPlayerIsConcept(pl);
       const typeClass = isObs2 ? 'mdr-type-obs' : 'mdr-type-rapport';
       const typeLabel2 = isObs2 
         ? `<span class="mdr-type-pill mdr-pill-obs">OBS</span>`
         : `<span class="mdr-type-pill mdr-pill-rapport">Rapport</span>`;
-      const conceptBadge = isConcept ? `<span class="mdr-concept-badge">Concept</span>` : `<span style="font-size:10px;color:var(--text-3);">✓ Ingediend</span>`;
-      const submitBtn = isConcept ? `<button type="button" class="mdr-submit" data-mdr-submit="${escapeHtml(pl.id)}" title="Direct indienen">→ Indienen</button>` : '';
       const _plNotities = (pl.notities_raw || pl.notities || pl.opmerkingen || '').trim();
       const _plNoteSnippet = _plNotities ? escapeHtml(_plNotities.replace(/^[a-z]+:\s*/gmi,'').replace(/\n+/g,' · ').trim().slice(0,80)) + (_plNotities.length > 80 ? '…' : '') : '';
       return `
         <button type="button" class="match-dropdown-row ${typeClass}${isConcept?'':' is-ingediend'}" data-player-id="${escapeHtml(pl.id)}">
           <span class="match-dropdown-avatar">${escapeHtml(initials || '?')}</span>
           <span class="match-dropdown-info">
-            <span class="match-dropdown-name"><span class="mdr-name-txt">${escapeHtml(dispNaam || '—')}</span>${typeLabel2}${conceptBadge}</span>
+            <span class="match-dropdown-name"><span class="mdr-name-txt">${escapeHtml(dispNaam || '—')}</span>${typeLabel2}</span>
             ${sub ? `<span class="match-dropdown-pos">${escapeHtml(sub)}</span>` : ''}
             ${_plNoteSnippet ? `<span style="font-size:12px;color:var(--text-2,#94a3b8);display:block;margin-top:2px;line-height:1.4;">${_plNoteSnippet}</span>` : ''}
           </span>
-          <span class="match-dropdown-grades" aria-label="Huidig en potentieel niveau">
-            <span class="grade ${hg}" title="Huidig niveau">${escapeHtml(pl.huidig_niveau || '-')}</span>
-            <span class="grade outline ${pg}" title="Potentieel niveau">${escapeHtml(pl.potentieel_niveau || '-')}</span>
-          </span>
-          ${submitBtn}
           <svg class="match-dropdown-arrow" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
       `;
@@ -17842,10 +18077,9 @@ function renderMatches(){
             <div class="match-teams-row">
               ${m.toernooi
                 ? `<span class="match-team-home">🏆 ${escapeHtml(m.toernooi_naam||'Toernooi')} — ${thuisClean}${m.age?` · ${escapeHtml(m.age)}`:''}</span>`
-                : `<span class="match-team-home">${thuisClean}</span>
+                : `<span class="match-team-home">${thuisDisp}</span>
               ${scoreHtml}
-              <span class="match-team-away">${uitClean}</span>
-              ${ageBadge}`}
+              <span class="match-team-away">${uitDisp}</span>`}
               ${chevron}
             </div>
             <div class="match-meta">
@@ -31657,7 +31891,7 @@ function _shMarkPickerError(key, on){
   if(p) p.classList.toggle('sh-picker-error', on !== false);
 }
 function _shMarkAdviesError(on){
-  const c = document.getElementById('f-advies-chips');
+  const c = document.getElementById('f-advies') || document.getElementById('f-advies-chips');
   if(c) c.classList.toggle('sh-picker-error', on !== false);
 }
 window._shMarkPickerError = _shMarkPickerError;

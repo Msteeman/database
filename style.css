@@ -2068,7 +2068,7 @@ a { color: var(--accent); text-decoration: none; }
 }
 
 /* Main */
-.main { padding: 24px 32px 48px 32px; max-width: 1500px; grid-column: 2; }
+.main { padding: 24px 32px 48px 32px; max-width: 1500px; grid-column: 2; min-width: 0; }
 .topbar {
   display: flex; justify-content: space-between; align-items: center;
   margin-bottom: 22px;
@@ -2350,6 +2350,7 @@ a { color: var(--accent); text-decoration: none; }
 .panel {
   background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 18px 20px;
+  min-width: 0;
 }
 .panel-title {
   font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;
@@ -10822,6 +10823,7 @@ tr.db-row-obs td:first-child {
   background: var(--bg-3); border: 1px solid var(--border);
   border-radius: 10px; padding: 12px 10px;
   cursor: pointer; position: relative;
+  min-width: 0;
   transition: transform .15s, border-color .15s;
 }
 .dash-talent-card:hover { border-color: var(--border-2); }
@@ -11085,7 +11087,16 @@ tr.db-row-obs td:first-child {
   html { height: 100%; }
   body { height: 100%; overflow: hidden; }
   #app { height: 100%; }
-  .app-grid { height: 100%; }
+  /* .app-grid vult de ruimte ONDER de in-flow sticky .mobile-topbar. Voorheen
+     kreeg het height:100% terwijl de 60px topbar erboven in-flow staat → het
+     raster + de interne main-scroller staken 60px onder het viewport
+     ("dashboard glijdt niet helemaal door", laatste stukje onzichtbaar/achter
+     de bottom-nav). Trek de topbar-hoogte (60px + notch safe-area) af.
+     min-height:0 neutraliseert de iOS -webkit-fill-available hierboven. */
+  .app-grid {
+    height: calc(100% - 60px - env(safe-area-inset-top));
+    min-height: 0;
+  }
   main.content { 
     height: calc(100% - 52px);
     overflow-y: auto;
@@ -13150,12 +13161,33 @@ body.sh-onb-open{ overflow:hidden; }
 #landing-overlay .lp-feat-t{ font-size:14.5px; }
 #landing-overlay .lp-feat-s{ font-size:12.5px; }
 
-/* Carousel: beeld links, tekst rechts op desktop (compacter, max 58% beeld) */
-@media (min-width:760px){
-  #landing-overlay .lp-slide{ flex-direction:row; align-items:center; gap:30px; padding:10px 30px 4px; }
-  #landing-overlay .lp-slide .lp-media{ flex:0 0 58%; max-width:58%; margin:0; }
-  #landing-overlay .lp-slide-cap{ flex:1; text-align:left; padding:0; }
-  #landing-overlay .lp-carousel{ max-width:980px; }
+/* ============================================================
+   ZO WERKT HET — afwisselende beeld/tekst-rijen (pro-stijl)
+   ============================================================ */
+#landing-overlay .lp-rows{ display:flex; flex-direction:column; gap:64px; max-width:1080px; margin:8px auto 0; }
+#landing-overlay .lp-row{ display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:56px; }
+#landing-overlay .lp-row .lp-media{ width:100%; max-width:520px; margin:0; }
+#landing-overlay .lp-row .lp-media img{ display:block; width:100%; height:auto; max-height:440px; object-fit:contain; }
+#landing-overlay .lp-row:nth-child(even) .lp-media{ order:2; justify-self:end; }
+#landing-overlay .lp-row:nth-child(even) .lp-rowtext{ order:1; }
+#landing-overlay .lp-row-t{ font-size:clamp(20px,2.1vw,26px); font-weight:800; letter-spacing:-.4px; line-height:1.2; color:var(--text,#e8edf5); }
+#landing-overlay .lp-row-s{ font-size:16px; line-height:1.62; color:var(--text-2,#9aa8bd); margin-top:12px; max-width:44ch; }
+
+/* desktop: rechte, scherpe beelden (geen scheve tilt) — ogt professioneel */
+@media (min-width:761px){
+  #landing-overlay .lp-row .lp-media{ transform:none; }
+  #landing-overlay .lp-row .lp-media.lp-float:hover{ transform:translateY(-6px); }
+}
+
+/* mobiel: stapelen, beeld altijd boven, tekst eronder */
+@media (max-width:760px){
+  #landing-overlay .lp-rows{ gap:44px; }
+  #landing-overlay .lp-row{ grid-template-columns:1fr; gap:18px; }
+  #landing-overlay .lp-row .lp-media{ max-width:460px; margin:0 auto; }
+  #landing-overlay .lp-row:nth-child(even) .lp-media{ order:0; justify-self:center; }
+  #landing-overlay .lp-row:nth-child(even) .lp-rowtext{ order:0; }
+  #landing-overlay .lp-row-t{ text-align:center; }
+  #landing-overlay .lp-row-s{ max-width:none; text-align:center; }
 }
 
 /* ============================================================
@@ -13419,7 +13451,8 @@ textarea.sh-grow-note{
 
 /* BATCH 1 / 1A — verplichte niveau-picker / advies-chips rood bij ontbreken */
 .grade-picker.sh-picker-error,
-#f-advies-chips.sh-picker-error{
+#f-advies-chips.sh-picker-error,
+#f-advies.sh-picker-error{
   outline:2px solid #ef4444;
   outline-offset:2px;
   border-radius:8px;

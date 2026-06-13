@@ -28141,6 +28141,38 @@ function _pouleCmp(a, b){
 }
 window._pouleCmp = _pouleCmp;
 
+/* Globale "naar boven"-knop: verschijnt op elke view zodra je een stuk naar
+   beneden scrollt; klik = direct naar boven. Werkt op de body-scroll (desktop)
+   én de main.content-scroller (mobiel/foldable, body staat daar op overflow:hidden). */
+(function _shScrollTopInit(){
+  function init(){
+    if(document.getElementById('sh-scrolltop')) return;
+    const btn = document.createElement('button');
+    btn.id = 'sh-scrolltop';
+    btn.type = 'button';
+    btn.setAttribute('aria-label', 'Naar boven');
+    btn.textContent = '↑';
+    btn.style.cssText = 'position:fixed;right:16px;bottom:calc(72px + env(safe-area-inset-bottom,0px));z-index:1100;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.18);background:rgba(20,26,38,.92);color:#e8edf5;font-size:20px;font-weight:700;line-height:1;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);';
+    document.body.appendChild(btn);
+    const curTop = () => {
+      const m = document.querySelector('main.content');
+      return Math.max(window.scrollY || window.pageYOffset || 0, (m ? m.scrollTop : 0));
+    };
+    const update = () => { btn.style.display = curTop() > 300 ? 'flex' : 'none'; };
+    btn.addEventListener('click', () => {
+      try { window.scrollTo({ top: 0, behavior: 'smooth' }); } catch(_){ window.scrollTo(0,0); }
+      const m = document.querySelector('main.content');
+      if(m){ try { m.scrollTo({ top: 0, behavior: 'smooth' }); } catch(_){ m.scrollTop = 0; } }
+    });
+    // capture:true vangt ook scroll van de main.content-scroller (scroll bubbelt niet).
+    document.addEventListener('scroll', update, { passive: true, capture: true });
+    window.addEventListener('scroll', update, { passive: true });
+    update();
+  }
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+  else init();
+})();
+
 
 /* BUG 2 — standaard veldposities voor de toernooi-dropdowns */
 function _toernPositieOpts(){

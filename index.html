@@ -107,21 +107,20 @@
   <header class="lp-nav">
     <div class="lp-brand"><span class="lp-logo-dot" aria-hidden="true"></span> ScoutingHub</div>
     <div class="lp-nav-actions">
-      <a class="lp-btn lp-btn-ghost lp-btn-sm" href="handleiding.html">Handleiding</a>
-      <button type="button" class="lp-btn lp-btn-primary lp-btn-sm" onclick="_lpLogin()">Inloggen</button>
+      <a class="lp-btn lp-btn-ghost lp-btn-sm" href="handleiding.html" target="_blank" rel="noopener">Handleiding</a>
+      <a href="#" class="lp-nav-login" onclick="event.preventDefault();_lpLogin()">Inloggen</a>
     </div>
   </header>
 
   <!-- 3B — HERO -->
   <section class="lp-hero">
     <div class="lp-hero-text">
-      <h1 class="lp-h1">Zie wat anderen missen.</h1>
-      <p class="lp-sub">Het complete scoutingplatform voor jeugdvoetbal. Observeer langs de lijn, analyseer met data, rapporteer met impact.</p>
+      <h1 class="lp-h1">Het complete scoutingplatform voor jeugdvoetbal.</h1>
+      <p class="lp-sub">Observeer razendsnel langs de lijn, analyseer gestructureerd met data en rapporteer met impact. Speciaal gebouwd voor moderne jeugdscouts en voetbalclubs.</p>
       <div class="lp-cta-row">
-        <button type="button" class="lp-btn lp-btn-primary" onclick="_lpLogin()">Inloggen</button>
-        <button type="button" class="lp-btn lp-btn-ghost" onclick="document.getElementById('lp-hoe').scrollIntoView({behavior:'smooth'})">Ontdek ScoutingHub</button>
+        <button type="button" class="lp-btn lp-btn-primary" onclick="document.getElementById('lp-cta').scrollIntoView({behavior:'smooth'})">Toegang aanvragen &rarr;</button>
+        <button type="button" class="lp-btn lp-btn-ghost" onclick="document.getElementById('lp-hoe').scrollIntoView({behavior:'smooth'})">Bekijk functies</button>
       </div>
-      <div class="lp-sub-link">Nog geen account? <a href="#" onclick="event.preventDefault(); window._shRequestAccess && window._shRequestAccess()">Toegang aanvragen &rarr;</a></div>
     </div>
     <div class="lp-hero-visual">
       <div class="lp-media lp-media-hero lp-float"><img src="lp-shot-dashboard.jpg" alt="ScoutingHub dashboard met statistieken, recente rapporten en niveauverdeling" loading="eager"></div>
@@ -141,32 +140,32 @@
 
       <div class="lp-row">
         <div class="lp-media lp-float"><img src="screenshot-obs-chips.png" alt="Observatieformulier met trefwoord-chips per categorie" loading="lazy"></div>
-        <div class="lp-rowtext"><div class="lp-row-t">E&eacute;n tik. E&eacute;n beoordeling.</div><div class="lp-row-s">Beoordeel spelers met trefwoorden langs de lijn. Groen, oranje, rood &mdash; geen toetsenbord nodig. Snel, objectief, consistent.</div></div>
+        <div class="lp-rowtext"><div class="lp-row-t">E&eacute;n tik. Binnen 5 seconden een beoordeling.</div><div class="lp-row-s">Beoordeel spelers met trefwoorden langs de lijn. Groen, oranje, rood &mdash; geen toetsenbord nodig. Snel, objectief, consistent.</div></div>
       </div>
 
       <div class="lp-row">
         <div class="lp-media lp-float"><img src="lp-shot-wedstrijden.jpg" alt="Wedstrijdenoverzicht met filters, datums en statusindicatie" loading="lazy"></div>
-        <div class="lp-rowtext"><div class="lp-row-t">Live langs de lijn.</div><div class="lp-row-s">Volg wedstrijden in real-time. Noteer per speler, per aspect. Alles wordt automatisch bewaard &mdash; jij focust op het spel.</div></div>
+        <div class="lp-rowtext"><div class="lp-row-t">Live scouten direct langs de lijn.</div><div class="lp-row-s">Volg wedstrijden in real-time. Noteer per speler, per aspect. Alles wordt automatisch bewaard &mdash; jij focust op het spel.</div></div>
       </div>
 
       <div class="lp-row">
         <div class="lp-media lp-float"><img src="lp-shot-vormtrend.jpg" alt="Spelersprofiel met niveau, potentieel, advies, score en vormtrend over tijd" loading="lazy"></div>
-        <div class="lp-rowtext"><div class="lp-row-t">Onderbouw je advies.</div><div class="lp-row-s">Je observaties worden automatisch klaargezet als concept-rapport. Beoordeel, vul aan, dien in. Professioneel en compleet.</div></div>
+        <div class="lp-rowtext"><div class="lp-row-t">Bespaar uren aan rapportages.</div><div class="lp-row-s">Je observaties worden automatisch klaargezet als concept-rapport. Beoordeel, vul aan, dien in. Professioneel en compleet.</div></div>
       </div>
 
       <div class="lp-row">
         <div class="lp-media lp-float"><img src="screenshot-vergelijken.png" alt="Twee spelers head-to-head vergelijken met radar-chart en criteriumscores" loading="lazy"></div>
-        <div class="lp-rowtext"><div class="lp-row-t">Vergelijk objectief.</div><div class="lp-row-s">Zet spelers naast elkaar. Radar-charts, head-to-head, criteriumscores. Data die je advies onderbouwt.</div></div>
+        <div class="lp-rowtext"><div class="lp-row-t">Vergelijk talenten op basis van harde criteria.</div><div class="lp-row-s">Zet spelers naast elkaar. Radar-charts, head-to-head, criteriumscores. Data die je advies onderbouwt.</div></div>
       </div>
 
       <div class="lp-row">
         <div class="lp-media lp-float"><img src="lp-shot-spelersdatabase.jpg" alt="Spelersdatabase met niveau, potentieel en advies per speler en filters bovenaan" loading="lazy"></div>
-        <div class="lp-rowtext"><div class="lp-row-t">Je hele selectie in beeld.</div><div class="lp-row-s">Al je spelers in &eacute;&eacute;n database &mdash; met niveau, potentieel en advies. Filter, zoek en vind het talent dat je zoekt.</div></div>
+        <div class="lp-rowtext"><div class="lp-row-t">Vind direct het juiste talent terug.</div><div class="lp-row-s">Al je spelers in &eacute;&eacute;n database &mdash; met niveau, potentieel en advies. Filter, zoek en vind het talent dat je zoekt.</div></div>
       </div>
 
       <div class="lp-row">
         <div class="lp-media lp-float"><img src="lp-shot-teams.jpg" alt="Gescoute teams als kaarten met club, leeftijd en aantal rapporten" loading="lazy"></div>
-        <div class="lp-rowtext"><div class="lp-row-t">Overzicht per club.</div><div class="lp-row-s">Al je gescoute teams in &eacute;&eacute;n oogopslag &mdash; per club, leeftijdscategorie en aantal rapporten. Zo houd je grip op je hele scoutingnetwerk.</div></div>
+        <div class="lp-rowtext"><div class="lp-row-t">Je complete scoutingnetwerk in &eacute;&eacute;n oogopslag.</div><div class="lp-row-s">Al je gescoute teams in &eacute;&eacute;n oogopslag &mdash; per club, leeftijdscategorie en aantal rapporten. Zo houd je grip op je hele scoutingnetwerk.</div></div>
       </div>
 
     </div>
@@ -177,14 +176,14 @@
     <h2 class="lp-h2 has-sub">Alles wat een scout nodig heeft</h2>
     <div class="lp-h2-sub">E&eacute;n platform. Geen compromissen.</div>
     <div class="lp-features">
-      <div class="lp-feat"><div class="lp-feat-ic">&#9889;</div><div class="lp-feat-t">Snel observeren</div><div class="lp-feat-s">Beoordeel spelers met chips langs de lijn. E&eacute;n hand, &eacute;&eacute;n tik, &eacute;&eacute;n beoordeling. Geen afleiding van het spel.</div></div>
-      <div class="lp-feat"><div class="lp-feat-ic">&#127942;</div><div class="lp-feat-t">Toernooi-modus</div><div class="lp-feat-s">Importeer elk toernooi, plan je schema, scout meerdere wedstrijden per dag. E&eacute;n overzicht, geen chaos.</div></div>
-      <div class="lp-feat"><div class="lp-feat-ic">&#128202;</div><div class="lp-feat-t">Objectief vergelijken</div><div class="lp-feat-s">Zet spelers naast elkaar met harde data. Radar-charts, head-to-head, criteriumscores. Onderbouw je advies.</div></div>
-      <div class="lp-feat"><div class="lp-feat-ic">&#128203;</div><div class="lp-feat-t">Professioneel rapporteren</div><div class="lp-feat-s">Van live-notities naar een volledig rapport. Niveau, potentieel, advies &mdash; alles in &eacute;&eacute;n document. Klaar om te delen.</div></div>
-      <div class="lp-feat"><div class="lp-feat-ic">&#128241;</div><div class="lp-feat-t">Werkt overal</div><div class="lp-feat-s">Installeer op je telefoon &mdash; geen app store. Werkt offline langs de lijn. Synchroniseert zodra je verbinding hebt.</div></div>
-      <div class="lp-feat"><div class="lp-feat-ic">&#128274;</div><div class="lp-feat-t">Jouw data, jouw controle</div><div class="lp-feat-s">Alleen jij ziet je observaties en rapporten. Strikt priv&eacute;. Geen gedeelde databases. Jouw scouting blijft van jou.</div></div>
-      <div class="lp-feat"><div class="lp-feat-ic">&#128663;</div><div class="lp-feat-t">Ritten &amp; declaraties</div><div class="lp-feat-s">Registreer je kilometers automatisch. Exporteer als PDF-declaratie. Administratie zonder gedoe.</div></div>
-      <div class="lp-feat"><div class="lp-feat-ic">&#127967;</div><div class="lp-feat-t">Clubs &amp; locaties</div><div class="lp-feat-s">Het complete adresboek van het Nederlandse jeugdvoetbal. Clubs, sportparken, contactpersonen &mdash; altijd bij de hand.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">&#9889;</div><div class="lp-feat-t">Snel observeren</div><div class="lp-feat-s">Beoordeel spelers met chips langs de lijn. <strong>E&eacute;n hand, &eacute;&eacute;n tik, &eacute;&eacute;n beoordeling.</strong> Geen afleiding van het spel.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">&#127942;</div><div class="lp-feat-t">Toernooi-modus</div><div class="lp-feat-s">Importeer elk toernooi, plan je schema, scout <strong>meerdere wedstrijden per dag</strong>. E&eacute;n overzicht, geen chaos.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">&#128202;</div><div class="lp-feat-t">Objectief vergelijken</div><div class="lp-feat-s">Zet spelers naast elkaar met harde data. <strong>Radar-charts, head-to-head, criteriumscores.</strong> Onderbouw je advies.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">&#128203;</div><div class="lp-feat-t">Professioneel rapporteren</div><div class="lp-feat-s">Van live-notities naar een volledig rapport. Niveau, potentieel, advies &mdash; <strong>alles in &eacute;&eacute;n document</strong>. Klaar om te delen.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">&#128241;</div><div class="lp-feat-t">Werkt overal</div><div class="lp-feat-s">Installeer op je telefoon &mdash; <strong>geen app store</strong>. Werkt <strong>offline langs de lijn</strong>. Synchroniseert zodra je verbinding hebt.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">&#128274;</div><div class="lp-feat-t">Jouw data, jouw controle</div><div class="lp-feat-s">Alleen jij ziet je observaties en rapporten. <strong>Strikt priv&eacute;.</strong> Geen gedeelde databases. Jouw scouting blijft van jou.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">&#128663;</div><div class="lp-feat-t">Ritten &amp; declaraties</div><div class="lp-feat-s">Registreer je kilometers automatisch. Exporteer als <strong>PDF-declaratie</strong>. Administratie zonder gedoe.</div></div>
+      <div class="lp-feat"><div class="lp-feat-ic">&#127967;</div><div class="lp-feat-t">Clubs &amp; locaties</div><div class="lp-feat-s">Het <strong>complete adresboek</strong> van het Nederlandse jeugdvoetbal. Clubs, sportparken, contactpersonen &mdash; altijd bij de hand.</div></div>
     </div>
   </section>
 
@@ -202,6 +201,28 @@
     </div>
   </section>
 
+  <!-- 3F2 — WAAROM JEUGDSCOUTS KIEZEN -->
+  <section class="lp-section lp-reveal">
+    <h2 class="lp-h2">Waarom jeugdscouts kiezen voor ScoutingHub</h2>
+    <div class="lp-why">
+      <div class="lp-feat">
+        <div class="lp-feat-ic">&#9201;</div>
+        <div class="lp-feat-t">Direct klaar na het fluitsignaal</div>
+        <div class="lp-feat-s">Geen urenlange administratie meer op zondagavond. Omdat je tijdens de wedstrijd met &eacute;&eacute;n tik scoort, staat je concept-rapport bij het laatste fluitsignaal al voor <strong>90% klaar</strong>.</div>
+      </div>
+      <div class="lp-feat">
+        <div class="lp-feat-ic">&#9878;</div>
+        <div class="lp-feat-t">Geen discussie meer op onderbuikgevoel</div>
+        <div class="lp-feat-s">Mensen herinneren zich vaak alleen de allerlaatste actie van een speler. Door criteria <strong>systematisch vast te leggen</strong>, ontstaat er een eerlijk en consistent beeld over de hele wedstrijd.</div>
+      </div>
+      <div class="lp-feat">
+        <div class="lp-feat-ic">&#128274;</div>
+        <div class="lp-feat-t">Alles in &eacute;&eacute;n veilige database</div>
+        <div class="lp-feat-s">Geen rondslingerende notitieboekjes of Excel-lijsten die kwijtraken. Jouw scoutingdata is <strong>strikt priv&eacute;</strong>, veilig opgeslagen en direct vindbaar wanneer de technische commissie erom vraagt.</div>
+      </div>
+    </div>
+  </section>
+
   <!-- 3G — QUOTE -->
   <section class="lp-section lp-reveal">
     <div class="lp-quotebox">
@@ -211,12 +232,11 @@
   </section>
 
   <!-- 3H — CTA -->
-  <section class="lp-section lp-cta-final lp-reveal">
+  <section class="lp-section lp-cta-final lp-reveal" id="lp-cta">
     <h2 class="lp-h2">Klaar om het verschil te maken?</h2>
-    <div class="lp-cta-sub">ScoutingHub is op uitnodiging beschikbaar. Vraag toegang aan en ontdek wat professioneel scouten kan zijn.</div>
+    <div class="lp-cta-sub">ScoutingHub is momenteel exclusief op uitnodiging beschikbaar. Vraag direct toegang aan en ontvang binnen 24 uur jouw persoonlijke inloggegevens om te starten.</div>
     <div class="lp-cta-row-center">
-      <button type="button" class="lp-btn lp-btn-primary lp-btn-lg" onclick="_lpLogin()">Inloggen</button>
-      <button type="button" class="lp-btn lp-btn-ghost lp-btn-lg" onclick="window._shRequestAccess && window._shRequestAccess()">Toegang aanvragen &rarr;</button>
+      <button type="button" class="lp-btn lp-btn-primary lp-btn-lg" onclick="window._shRequestAccess && window._shRequestAccess()">Toegang aanvragen &rarr;</button>
     </div>
   </section>
 

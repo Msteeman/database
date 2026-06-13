@@ -319,16 +319,16 @@
    ========================================================= */
 
 :root {
-  --bg: #0b0f15;
-  --bg-2: #111722;
-  --bg-3: #1a2332;
-  --panel: #151c28;
-  --panel-2: #1d2533;
-  --border: #232d40;
+  --bg: #10151e;
+  --bg-2: #161e2a;
+  --bg-3: #202b3a;
+  --panel: #1a2230;
+  --panel-2: #232d3c;
+  --border: #2b374c;
   --border-2: #2f3b52;
   --text: #e8edf5;
-  --text-2: #9aa8bd;
-  --text-3: #8b97ad; /* A3: lichter voor beter contrast (WCAG AA) op donkere achtergrond */
+  --text-2: #aab6c9;
+  --text-3: #9aa6ba; /* A3: lichter voor beter contrast (WCAG AA) op donkere achtergrond */
   --primary: #e30613;        /* FC Twente rood */
   --primary-2: #ff2a3a;
   --secondary: #f5c518;      /* Heracles geel */
@@ -13541,3 +13541,11 @@ textarea.sh-grow-note{
   .nav-item { padding-top: 6px; padding-bottom: 6px; }
   .nav-section-label { padding-top: 6px; padding-bottom: 1px; margin-top: 2px; font-size: 10px; letter-spacing: .04em; }
 }
+
+/* Landingspagina — conversie-optimalisatie */
+.lp-nav-login { color: var(--text-2, #9aa8bd); font-size: 13px; text-decoration: none; padding: 6px 6px; cursor: pointer; transition: color .15s ease; }
+.lp-nav-login:hover { color: var(--text, #e8edf5); }
+.lp-media-hero { box-shadow: 0 0 25px rgba(235, 31, 55, 0.15), 0 24px 60px rgba(0,0,0,.45); }
+.lp-row-s { font-size: 15px; color: #c7d2e0; }
+.lp-why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 6px; }
+@media (max-width: 760px) { .lp-why { grid-template-columns: 1fr; } }

@@ -577,6 +577,19 @@ function enrichFirestoreMatches(result) {
 
   const poulesById = nameMapFrom(result.standings);
   const fieldsById = nameMapFrom(result.fields);
+  // FIX poule-letter: volledig poule-label (naam + letter) per poule-id. Tournify
+  // geeft per poule een `name` ("1e Klasse (Middag)") EN een `letter` ("C"); zonder
+  // de letter vallen alle sub-poules met dezelfde naam samen tot één lijst.
+  const pouleLabelById = new Map();
+  for (const p of (Array.isArray(result.standings) ? result.standings : [])) {
+    if (!p || typeof p !== 'object') continue;
+    const _ppid = firstNonEmpty(p.id, pickId(p, ['_id', 'key', 'uid']));
+    if (!_ppid) continue;
+    const _pnm = S(firstNonEmpty(p.name, p.title, p.naam)).trim();
+    const _plt = S(firstNonEmpty(p.letter, p.pouleLetter, p.poule_letter)).trim();
+    const _label = (_pnm && _plt) ? (_pnm + ' - Poule ' + _plt) : (_pnm || (_plt ? ('Poule ' + _plt) : ''));
+    if (_label) pouleLabelById.set(String(_ppid), _label);
+  }
   const resolveRef = (ref, map) => {              // generiek (poule/veld)
     const id = teamIdFromRef(ref);
     if (id && map.has(id)) return map.get(id);
@@ -628,9 +641,14 @@ function enrichFirestoreMatches(result) {
     // 2. starttijd uit `st` (en `et` als eindtijd)
     if (m.startTime == null && m.st != null) m.startTime = m.st;
     if (m.endTime == null && m.et != null) m.endTime = m.et;
-    // 3. categorie: poule-naam via poule-referentie, anders pouleKey/pouleId ruw
+    // 3. categorie: VOLLEDIG poule-label (naam + letter) via poule-referentie, zodat
+    //    sub-poules met dezelfde naam (A/B/C…) niet samenvallen tot één lijst.
+    //    Val terug op alleen-naam, dan ruwe pouleKey/pouleId.
     if (m.category == null) {
-      m.category = SorNull(resolveRef(m.poule, poulesById)) || SorNull(firstNonEmpty(m.pouleKey, m.pouleId)) || null;
+      const _pid = teamIdFromRef(m.poule) || ((typeof m.poule === 'string' || typeof m.poule === 'number') ? String(m.poule) : null);
+      m.category = (_pid && pouleLabelById.has(String(_pid)) ? pouleLabelById.get(String(_pid)) : null)
+        || SorNull(resolveRef(m.poule, poulesById))
+        || SorNull(firstNonEmpty(m.pouleKey, m.pouleId)) || null;
     }
     // 4. stage uit `round`
     if (m.stage == null && m.round != null) m.stage = m.round;
@@ -734,6 +752,12 @@ async function fetchFromFirestore(id, warnings, debug, timeLeft) {
   debug.unresolvedTrace = result._unresolvedTrace;    // tot 5 niet-opgeloste matches: poule bekend? knock-out?
   debug.pouleOrder = result._pouleOrder;              // per poule de geordende teamlijst (positie → naam)
   if (Array.isArray(result.standings) && result.standings.length) debug.pouleSampleRaw = JSON.stringify(result.standings[0]).slice(0, 1000);
+  // DEBUG veldnaam-onderzoek: ruwe waarden van de fields/sportParks-bron, zodat we
+  // zien of de echte veldnaam ("2C") leesbaar is en hoe match.field ("9") koppelt.
+  if (Array.isArray(result.fields) && result.fields.length) {
+    debug.fieldsCount = result.fields.length;
+    debug.fieldsSampleRaw = result.fields.slice(0, 5).map(f => JSON.stringify(f).slice(0, 400));
+  } else { debug.fieldsCount = 0; }
   if (Array.isArray(result.matches) && result.matches.length) {
     const m0 = result.matches[0];
     debug.enrichedSample = { homeTeam: m0.homeTeam, awayTeam: m0.awayTeam, startTime: m0.startTime, field: m0.field, category: m0.category, stage: m0.stage, scoreHome: m0.scoreHome, scoreAway: m0.scoreAway };

@@ -13522,3 +13522,9 @@ textarea.sh-grow-note{
 @media (min-width: 650px) and (max-width: 800px) and (min-aspect-ratio: 3/4) {
   body { zoom: 1; }
 }
+
+/* Foldable scroll-vangnet: forceer dat de hele pagina kan scrollen op het
+   bijna-vierkante binnenscherm (geen per ongeluk afgeknelde verticale scroll). */
+@media (min-width: 650px) and (max-width: 800px) and (min-aspect-ratio: 3/4) {
+  html, body { overflow-y: auto; height: auto; min-height: 100dvh; }
+}

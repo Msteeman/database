@@ -25468,7 +25468,7 @@ async function renderSpelersTab(tid){
   const OVERIG = '__overig__';
   const groups = {};
   for(const t of teams){ const lab = pouleOf[_normTeamName(t.name)] || OVERIG; (groups[lab] = groups[lab] || []).push(t); }
-  const orderedLabels = pouleLabels.filter(l => groups[l]); if(groups[OVERIG]) orderedLabels.push(OVERIG);
+  const orderedLabels = pouleLabels.filter(l => groups[l]).sort(_pouleCmp); if(groups[OVERIG]) orderedLabels.push(OVERIG);
   const hasPoules = pouleLabels.length > 0;
   const followedCount = teams.filter(t => t.priority === true).length;
 
@@ -27304,7 +27304,7 @@ async function renderStandenTab(tid){
   }
 
   let html = `<div style="font-size:11px;color:var(--muted,#888);margin-bottom:8px;">${escapeHtml(sourceNote)}</div>`;
-  for(const g of groupNames.sort()){
+  for(const g of groupNames.sort(_pouleCmp)){
     const rows = (standings[g].teams || []).map(r => `<tr>
       <td style="text-align:center;">${r.rank || ''}</td>
       <td>${escapeHtml(r.name || '?')}</td>
@@ -27317,13 +27317,13 @@ async function renderStandenTab(tid){
       <td style="text-align:center;"><strong>${r.points || 0}</strong></td>
     </tr>`).join('');
     html += `<div class="toern-stand-group" style="margin-bottom:16px;">
-      <div class="toern-stand-title" style="font-weight:600;margin-bottom:4px;">${escapeHtml((String(g).match(/Poule\s+[A-Za-z0-9]+/i)||[g])[0])}</div>
+      <div class="toern-stand-title" style="font-weight:600;margin-bottom:4px;">${escapeHtml(_pouleShort(g))}</div>
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <table style="width:100%;min-width:480px;font-size:12px;border-collapse:collapse;">
         <thead><tr style="text-align:left;border-bottom:1px solid var(--border,#ddd);">
-          <th style="text-align:center;">#</th><th>Team</th><th style="text-align:center;">G</th>
-          <th style="text-align:center;">W</th><th style="text-align:center;">GL</th><th style="text-align:center;">V</th>
-          <th style="text-align:center;">Doelp.</th><th style="text-align:center;">DS</th><th style="text-align:center;">Ptn</th>
+          <th style="text-align:center;width:28px;">#</th><th style="text-align:left;width:100%;">Team</th><th style="text-align:center;width:34px;">G</th>
+          <th style="text-align:center;width:34px;">W</th><th style="text-align:center;width:34px;">GL</th><th style="text-align:center;width:34px;">V</th>
+          <th style="text-align:center;width:54px;">Doelp.</th><th style="text-align:center;width:40px;">DS</th><th style="text-align:center;width:40px;">Ptn</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -28122,10 +28122,24 @@ window._progFilter = _progFilter;
 // "1e Klasse (Middag) - Poule F" — past beter in smalle kolommen.
 function _pouleShort(cat){
   const s = String(cat == null ? '' : cat);
-  const m = s.match(/Poule\s+[A-Za-z0-9]+/i);
+  const m = s.match(/Poule\s+[A-Za-z0-9-]+/i);   // incl. koppelteken -> "Poule U12-A" blijft heel
   return m ? m[0] : s;
 }
 window._pouleShort = _pouleShort;
+// Sorteer poules oplopend: eerst leeftijd (U9 < U12), dan letter (A<B<C<D).
+function _pouleCmp(a, b){
+  const key = (label) => {
+    const s = String(label || '');
+    const am = s.match(/(?:U|JO|MO|O)\s*-?\s*(\d{1,2})/i);
+    const age = am ? Number(am[1]) : 999;
+    const lm = s.match(/-\s*([A-Za-z])\s*$/) || s.match(/Poule\s+([A-Za-z])\s*$/i);
+    const letter = lm ? lm[1].toUpperCase() : 'ZZ';
+    return [age, letter, s];
+  };
+  const ka = key(a), kb = key(b);
+  return ka[0] - kb[0] || ka[1].localeCompare(kb[1]) || ka[2].localeCompare(kb[2]);
+}
+window._pouleCmp = _pouleCmp;
 
 
 /* BUG 2 — standaard veldposities voor de toernooi-dropdowns */

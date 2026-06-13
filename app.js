@@ -27221,10 +27221,11 @@ function computeStandingsFromMatches(matches){
     if(/^\d+$/.test(s)) return Number(s) === 0;   // numerieke fase >0 = knockout
     return true;
   };
+  // Groepeer op de ECHTE poule (categoryId, geleverd door de worker). ALLE teams van
+  // de poule komen erin \u2014 ook teams die nog niet gespeeld hebben staan op 0 \u2014 zodat de
+  // stand direct na import zichtbaar is en bijwerkt zodra er uitslagen binnenkomen.
   const byCat = {};
   for(const m of (matches || [])){
-    if(m.scoreHome == null || m.scoreAway == null) continue;
-    if(String(m.resultStatus || 'finished').toLowerCase() !== 'finished') continue;
     if(!isGroupMatch(m)) continue;
     const cat = m.categoryId || 'Algemeen';
     (byCat[cat] = byCat[cat] || []).push(m);
@@ -27232,44 +27233,33 @@ function computeStandingsFromMatches(matches){
   const out = {};
   for(const cat of Object.keys(byCat)){
     const cms = byCat[cat];
-    // POULE-RECONSTRUCTIE: in een poule speelt iedereen elkaar; teams uit
-    // verschillende poules niet. Verbonden componenten van de "speelde-tegen"-graaf
-    // binnen deze category = de echte poules.
-    const parent = {};
-    const add  = (x) => { if(parent[x] == null) parent[x] = x; };
-    const find = (x) => { while(parent[x] !== x){ parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
-    const union = (a, b) => { add(a); add(b); const ra = find(a), rb = find(b); if(ra !== rb) parent[ra] = rb; };
-    for(const m of cms){ union(m.teamAName || '?', m.teamBName || '?'); }
-    const compMatches = {};
-    for(const m of cms){ const root = find(m.teamAName || '?'); (compMatches[root] = compMatches[root] || []).push(m); }
-    const comps = Object.keys(compMatches).map(root => {
-      const names = new Set();
-      compMatches[root].forEach(m => { names.add(m.teamAName || '?'); names.add(m.teamBName || '?'); });
-      return { root, minName: [...names].sort((a,b)=>a.localeCompare(b))[0] || '' };
-    }).sort((a,b) => a.minName.localeCompare(b.minName));
-    const multi = comps.length > 1;
-    comps.forEach((comp, ci) => {
-      const rows = {};
-      for(const m of compMatches[comp.root]){
-        const A = m.teamAName || '?', B = m.teamBName || '?';
-        if(!rows[A]) rows[A] = _emptyStandRow(A);
-        if(!rows[B]) rows[B] = _emptyStandRow(B);
-        const ra = rows[A], rb = rows[B];
-        const sh = Number(m.scoreHome), sa = Number(m.scoreAway);
-        ra.played++; rb.played++;
-        ra.goalsFor += sh; ra.goalsAgainst += sa;
-        rb.goalsFor += sa; rb.goalsAgainst += sh;
-        if(sh > sa){ ra.won++; ra.points += 3; rb.lost++; }
-        else if(sh < sa){ rb.won++; rb.points += 3; ra.lost++; }
-        else { ra.drawn++; rb.drawn++; ra.points++; rb.points++; }
+    const rows = {};
+    // 1. alle teams van deze poule op 0 (ongeacht of er al gespeeld is)
+    for(const m of cms){
+      for(const nm of [m.teamAName || '?', m.teamBName || '?']){
+        if(!rows[nm]) rows[nm] = _emptyStandRow(nm);
       }
-      const teams = Object.values(rows);
-      teams.forEach(r => { r.goalDifference = r.goalsFor - r.goalsAgainst; });
-      teams.sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor || a.name.localeCompare(b.name));
-      teams.forEach((r, i) => { r.rank = i + 1; });
-      const label = multi ? (cat + ' \u00b7 Poule ' + (ci + 1)) : cat;
-      out[label] = { teams };
-    });
+    }
+    // 2. gespeelde wedstrijden tellen
+    for(const m of cms){
+      if(m.scoreHome == null || m.scoreAway == null) continue;
+      if(String(m.resultStatus || 'finished').toLowerCase() !== 'finished') continue;
+      const A = m.teamAName || '?', B = m.teamBName || '?';
+      const ra = rows[A], rb = rows[B];
+      if(!ra || !rb) continue;
+      const sh = Number(m.scoreHome), sa = Number(m.scoreAway);
+      ra.played++; rb.played++;
+      ra.goalsFor += sh; ra.goalsAgainst += sa;
+      rb.goalsFor += sa; rb.goalsAgainst += sh;
+      if(sh > sa){ ra.won++; ra.points += 3; rb.lost++; }
+      else if(sh < sa){ rb.won++; rb.points += 3; ra.lost++; }
+      else { ra.drawn++; rb.drawn++; ra.points++; rb.points++; }
+    }
+    const teams = Object.values(rows);
+    teams.forEach(r => { r.goalDifference = r.goalsFor - r.goalsAgainst; });
+    teams.sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor || a.name.localeCompare(b.name));
+    teams.forEach((r, i) => { r.rank = i + 1; });
+    out[cat] = { teams };
   }
   return out;
 }
@@ -27296,18 +27286,15 @@ async function renderStandenTab(tid){
     const sh = m.scoreHome, sa = m.scoreAway;
     return sh != null && sa != null && (Number(sh) !== 0 || Number(sa) !== 0);
   };
-  if(!matches.some(isPlayed)){
-    wrap.innerHTML = '<div class="toern-empty">Nog geen uitslagen beschikbaar.</div>';
-    return;
-  }
-
+  // Geen bail meer bij 0 gespeelde wedstrijden: we tonen de poule-stand met alle
+  // teams op 0 direct vanaf import, en werken bij zodra er uitslagen binnenkomen.
   let standings = (t.standings && Object.keys(t.standings).length) ? t.standings : null;
   let sourceNote;
   if(standings){
     sourceNote = t.lastSyncedAt ? `Gesynchroniseerd vanaf Tournify` : `Gesynchroniseerd`;
   } else {
     standings = computeStandingsFromMatches(matches);
-    sourceNote = 'Berekend op basis van ingevoerde uitslagen';
+    sourceNote = 'Stand uit het programma — werkt bij zodra er uitslagen binnenkomen';
   }
 
   const groupNames = Object.keys(standings);
@@ -27330,7 +27317,7 @@ async function renderStandenTab(tid){
       <td style="text-align:center;"><strong>${r.points || 0}</strong></td>
     </tr>`).join('');
     html += `<div class="toern-stand-group" style="margin-bottom:16px;">
-      <div class="toern-stand-title" style="font-weight:600;margin-bottom:4px;">${escapeHtml(g)}</div>
+      <div class="toern-stand-title" style="font-weight:600;margin-bottom:4px;">${escapeHtml((String(g).match(/Poule\s+[A-Za-z0-9]+/i)||[g])[0])}</div>
       <div style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
       <table style="width:100%;min-width:480px;font-size:12px;border-collapse:collapse;">
         <thead><tr style="text-align:left;border-bottom:1px solid var(--border,#ddd);">
@@ -28108,7 +28095,8 @@ function toggleTimeBlock(btn){
   if(block) block.classList.toggle('collapsed');
 }
 window.toggleTimeBlock = toggleTimeBlock;
-// Zoekfilter voor de Programma-tab: verberg wedstrijdrijen die niet matchen.
+// Zoekfilter voor de Programma-tab: verberg niet-matchende rijen ÉN lege tijds-/dagblokken,
+// zodat je een nette lijst onder elkaar krijgt zonder gaten van lege tijdstippen.
 function _progFilter(q){
   q = String(q==null?'':q).trim().toLowerCase();
   const wrap = document.getElementById('toern-tijdlijn-wrap');
@@ -28117,8 +28105,27 @@ function _progFilter(q){
     const nm = r.getAttribute('data-prog-name') || '';
     r.style.display = (!q || nm.indexOf(q) !== -1) ? '' : 'none';
   });
+  wrap.querySelectorAll('.toern-timeblock').forEach(tb => {
+    if(!q){ tb.style.display = ''; return; }
+    const vis = [...tb.querySelectorAll('.toern-prog-row')].some(r => r.style.display !== 'none');
+    tb.style.display = vis ? '' : 'none';
+    if(vis) tb.classList.remove('collapsed');   // matchend tijdblok openklappen
+  });
+  wrap.querySelectorAll('.toern-day-block').forEach(db => {
+    if(!q){ db.style.display = ''; return; }
+    const vis = [...db.querySelectorAll('.toern-timeblock')].some(tb => tb.style.display !== 'none');
+    db.style.display = vis ? '' : 'none';
+  });
 }
 window._progFilter = _progFilter;
+// Toon alleen de poule-aanduiding ("Poule F") i.p.v. het volledige
+// "1e Klasse (Middag) - Poule F" — past beter in smalle kolommen.
+function _pouleShort(cat){
+  const s = String(cat == null ? '' : cat);
+  const m = s.match(/Poule\s+[A-Za-z0-9]+/i);
+  return m ? m[0] : s;
+}
+window._pouleShort = _pouleShort;
 
 
 /* BUG 2 — standaard veldposities voor de toernooi-dropdowns */

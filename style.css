@@ -13473,3 +13473,45 @@ textarea.sh-grow-note{
   margin-top:14px;
 }
 #report-form.sh-ng-active #report-save-draft-btn{ display:none !important; }
+
+
+/* ============================================================
+   FOLDABLE (Honor Magic V5 binnenscherm) + SAFE-AREA
+   Additieve PWA-optimalisatie. Breekt bestaande mobiel/desktop NIET:
+   env(safe-area-inset-*) = 0px zonder insets, en de media queries gelden
+   alleen op korte/bijna-vierkante schermen. (sh-foldable)
+   ============================================================ */
+
+/* 1. Safe-area: respecteer punch-hole camera + afgeronde hoeken op vaste
+   elementen. env() valt terug op 0px -> geen effect op gewone schermen. */
+.sidebar {
+  padding-left: calc(12px + env(safe-area-inset-left, 0px));
+  padding-top: calc(14px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+}
+.bottom-nav { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.lp-nav { padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+
+/* 2. Linkermenu altijd volledig zichtbaar: op kortere schermen de nav-items
+   compacter zodat alle onderdelen passen (en anders netjes scrollbaar). */
+@media (max-height: 860px) {
+  .nav-item { padding-top: 7px; padding-bottom: 7px; }
+  .nav-section-label { padding-top: 8px; padding-bottom: 2px; margin-top: 4px; }
+  .nav { gap: 0; }
+}
+
+/* 3. Bijna-vierkant binnenscherm (~724x784 CSS px): tussen telefoon en tablet.
+   Geef content meer lucht en beperk modals tot ~600px gecentreerd. */
+@media (min-width: 650px) and (max-width: 800px) and (min-aspect-ratio: 3/4) {
+  .settings-modal,
+  .sh-wiz-card,
+  .mreport-card,
+  .toern-dyn-card,
+  .obs-card {
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  /* Team-grid mag 2-3 kolommen (de inline minmax doet dit al; hier als vangnet). */
+  .toern-club-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+}

@@ -27797,6 +27797,7 @@ function _toernFieldLabel(field){
   const f = (field == null) ? '' : String(field).trim();
   if(!f) return '';
   if(f === '0') return 'Hoofdveld';   // 'Veld 0' bestaat niet
+  if(/veld/i.test(f)) return f;    // bevat al "veld" (bv. "Hoofdveld") — niet dubbel
   return 'Veld ' + f;
 }
 function _toernMatchClock(m){

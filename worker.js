@@ -577,6 +577,24 @@ function enrichFirestoreMatches(result) {
 
   const poulesById = nameMapFrom(result.standings);
   const fieldsById = nameMapFrom(result.fields);
+  // FIX veldnaam: het toernooi-doc heeft een `fields`-map (key = veld-index) met de
+  // echte labels ("Veld 1A - ..."). match.field is die index -> bouw index -> naam.
+  const tdocFieldName = new Map();
+  const _tdf = result._tdocFields;
+  if (_tdf && typeof _tdf === 'object') {
+    for (const _fk of Object.keys(_tdf)) {
+      const _fe = _tdf[_fk];
+      if (!_fe || typeof _fe !== 'object') continue;
+      const _fnm = S(firstNonEmpty(_fe.label, _fe.name)).trim();
+      if (!_fnm) continue;
+      // kort tot alleen de veldcode: "Veld 1A - De Hypotheekshop (Amersfoort)" -> "1A"
+      let _code = _fnm.replace(/^veld\s*/i, '').split(/\s+-\s+/)[0].trim();
+      if (!_code) _code = _fnm;
+      tdocFieldName.set(String(_fk), _code);
+      if (_fe.num != null) tdocFieldName.set(String(_fe.num), _code);
+      if (_fe.id != null) tdocFieldName.set(String(_fe.id), _code);
+    }
+  }
   // FIX poule-letter: volledig poule-label (naam + letter) per poule-id. Tournify
   // geeft per poule een `name` ("1e Klasse (Middag)") EN een `letter` ("C"); zonder
   // de letter vallen alle sub-poules met dezelfde naam samen tot één lijst.
@@ -587,7 +605,7 @@ function enrichFirestoreMatches(result) {
     if (!_ppid) continue;
     const _pnm = S(firstNonEmpty(p.name, p.title, p.naam)).trim();
     const _plt = S(firstNonEmpty(p.letter, p.pouleLetter, p.poule_letter)).trim();
-    const _label = (_pnm && _plt) ? (_pnm + ' - Poule ' + _plt) : (_pnm || (_plt ? ('Poule ' + _plt) : ''));
+    const _label = !_pnm ? (_plt ? ('Poule ' + _plt) : '') : ((!_plt || /poule/i.test(_pnm)) ? _pnm : (_pnm + ' - Poule ' + _plt));
     if (_label) pouleLabelById.set(String(_ppid), _label);
   }
   const resolveRef = (ref, map) => {              // generiek (poule/veld)
@@ -652,16 +670,21 @@ function enrichFirestoreMatches(result) {
     }
     // 4. stage uit `round`
     if (m.stage == null && m.round != null) m.stage = m.round;
-    // 5. veld: `field` (referentie → naam, anders directe waarde), val terug op numInField
-    if (m.field != null) {
-      const fn = resolveRef(m.field, fieldsById);
-      m.field = SorNull(fn) || (typeof m.field === 'object' ? null : SorNull(m.field));
+    // 5. veld: eerst de ECHTE naam uit het toernooi-doc (`fields`-map, key = index);
+    //    anders referentie-resolutie / directe waarde / numInField (met inkorting).
+    let _fieldResolved = false;
+    if (m.field != null && typeof m.field !== 'object') {
+      const _tn = tdocFieldName.get(String(m.field));
+      if (_tn) { m.field = _tn; _fieldResolved = true; }
     }
-    if (m.field == null && m.numInField != null) m.field = SorNull(m.numInField);
-    // Lange veld-/sportpark-namen ("Veld SO Soest, Bosstraat, Soest, NL") inkorten:
-    // >20 tekens → gebruik het nummer (numInField of eerste getal), anders het
-    // eerste segment vóór de komma. Korte waarden ("1", "SEC") blijven ongemoeid.
-    if (m.field != null) m.field = SorNull(shortenFieldName(m.field, m.numInField));
+    if (!_fieldResolved) {
+      if (m.field != null) {
+        const fn = resolveRef(m.field, fieldsById);
+        m.field = SorNull(fn) || (typeof m.field === 'object' ? null : SorNull(m.field));
+      }
+      if (m.field == null && m.numInField != null) m.field = SorNull(m.numInField);
+      if (m.field != null) m.field = SorNull(shortenFieldName(m.field, m.numInField));
+    }
     // 6. scores: score1/score2 (of scores1/scores2)
     if (m.scoreHome == null) m.scoreHome = numOrNull(firstNonEmpty(m.score1, m.scores1));
     if (m.scoreAway == null) m.scoreAway = numOrNull(firstNonEmpty(m.score2, m.scores2));
@@ -708,6 +731,8 @@ async function fetchFromFirestore(id, warnings, debug, timeLeft) {
   }
   debug.firestoreDoc = tpath;
   const result = { ...tdoc };
+  try { debug.tdocKeys = Object.keys(tdoc); const _cand = {}; for (const _k of ['fields','velden','courts','locations','fieldNames','veldnamen','pitches','veldNamen']) { if (tdoc[_k] != null) _cand[_k] = JSON.stringify(tdoc[_k]).slice(0, 600); } debug.tdocFieldCandidate = _cand; } catch (_) {}
+  result._tdocFields = (tdoc && tdoc.fields && typeof tdoc.fields === 'object') ? tdoc.fields : null;
   // 3. echte subcollecties ontdekken
   let subs = [];
   if (timeLeft() > 4000) { subs = await fsListCollectionIds(tpath, token, debug); debug.firestoreSubcollections = subs; }
@@ -756,7 +781,7 @@ async function fetchFromFirestore(id, warnings, debug, timeLeft) {
   // zien of de echte veldnaam ("2C") leesbaar is en hoe match.field ("9") koppelt.
   if (Array.isArray(result.fields) && result.fields.length) {
     debug.fieldsCount = result.fields.length;
-    debug.fieldsSampleRaw = result.fields.slice(0, 5).map(f => JSON.stringify(f).slice(0, 400));
+    debug.fieldsSampleRaw = result.fields.slice(0, 12).map(f => (f && typeof f === 'object') ? { name: f.name, secondaryName: f.secondaryName, num: f.num, indexNum: f.indexNum, letter: f.letter, id: (f.id || f._id) } : f);
   } else { debug.fieldsCount = 0; }
   if (Array.isArray(result.matches) && result.matches.length) {
     const m0 = result.matches[0];
@@ -1186,3 +1211,4 @@ export default {
     }
   }
 };
+;

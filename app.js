@@ -25474,17 +25474,17 @@ async function renderSpelersTab(tid){
 
   const teamCard = (t) => {
     const n = (realByTeam[t.id] || []).length;
-    const sub = n ? `${n} speler${n!==1?'s':''} gekoppeld` : 'Nog geen spelers gekoppeld';
     const following = t.priority === true;
     const follow = `<button onclick="event.stopPropagation();toggleClubPriority('${tid}','${t.id}',${!following})" title="${following?'Gevolgd — klik om te ontvolgen':'Volg dit team'}" style="border:1px solid ${following?'#eb1f37':'rgba(255,255,255,.18)'};background:${following?'rgba(235,31,55,.15)':'transparent'};color:${following?'#ff6b7d':'#cfd8e6'};border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">${following?'★ Gevolgd':'☆ Volgen'}</button>`;
-    return `<div class="toern-club-card ${following?'is-followed':''}" data-team-name="${escapeHtml(String(t.name||'').toLowerCase())}" data-followed="${following?'1':'0'}" onclick="openTournamentTeamDetail('${tid}','${t.id}')">
-      <div class="toern-club-avatar">${initials(t.name||'?')}</div>
-      <div class="toern-club-info">
-        <div class="toern-club-name">${escapeHtml(t.name||'?')}</div>
-        <div class="toern-club-meta">${sub}</div>
+    return `<div data-team-name="${escapeHtml(String(t.name||'').toLowerCase())}" data-followed="${following?'1':'0'}" onclick="openTournamentTeamDetail('${tid}','${t.id}')" style="background:rgba(255,255,255,.04);border:1px solid ${following?'#eb1f37':'rgba(255,255,255,.08)'};border-radius:12px;padding:10px 12px;cursor:pointer;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:34px;height:34px;flex:0 0 auto;border-radius:8px;background:rgba(255,255,255,.08);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#cfd8e6;">${initials(t.name||'?')}</div>
+        <div style="flex:1;min-width:0;font-size:14px;font-weight:600;color:#e8edf5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml(t.name||'?')}</div>
       </div>
-      ${follow}
-      <span class="toern-club-arrow" aria-hidden="true">›</span>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:8px;">
+        <span style="font-size:12px;color:#9aa8bd;">Spelers (${n})</span>
+        ${follow}
+      </div>
     </div>`;
   };
 
@@ -25500,7 +25500,7 @@ async function renderSpelersTab(tid){
         <span style="flex:1;">${escapeHtml(label)}</span>
         <span style="font-weight:500;font-size:12px;color:#9aa8bd;">${groups[lab].length} team${groups[lab].length!==1?'s':''}${fc?` · ${fc} gevolgd`:''}</span>
       </button>
-      <div class="toern-club-grid" style="${collapsed?'display:none;':''}">${cards}</div>
+      <div class="toern-club-grid" style="${collapsed?'display:none':'display:grid'};grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;">${cards}</div>
     </div>`;
   }).join('');
 
@@ -25758,7 +25758,8 @@ async function renderTijdlijnTab(tid){
   const f = _progWatchFilter;
   const filterBtn = (val, label, cls) =>
     `<button class="toern-prio-btn ${cls||''} ${f===val?'active':''}" onclick="setProgWatchFilter('${tid}','${val}')">${label}</button>`;
-  let html = `<div class="toern-prog-filterbar">
+  let html = `<div style="margin-bottom:8px;"><input type="search" placeholder="🔍 Zoek wedstrijd of team…" oninput="_progFilter(this.value)" style="width:100%;box-sizing:border-box;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:9px 12px;color:#e8edf5;font-size:14px;" /></div>
+    <div class="toern-prog-filterbar">
       <div class="toern-prog-filters">
         ${filterBtn('all','Alle','')}
         ${filterBtn('watch','🟢 Bekijken','prio-watch')}
@@ -27961,6 +27962,12 @@ async function toggleMatchInMyProgram(tid, matchId, val){
   } catch(e){
     console.error('toggleMatchInMyProgram error:', e);
     toast('Opslaan mislukt', true);
+    return;
+  }
+  toast(val ? 'In Mijn programma ✓' : 'Verwijderd uit Mijn programma');
+  if(_currentTournamentId === tid){
+    if(_toernTab === 'tijdlijn' && typeof renderTijdlijnTab === 'function') renderTijdlijnTab(tid);
+    if(_toernTab === 'mijn-programma' && typeof renderMijnProgrammaTab === 'function') renderMijnProgrammaTab(tid);
   }
 }
 window.toggleMatchInMyProgram = toggleMatchInMyProgram;
@@ -28080,13 +28087,17 @@ function _progRowHtml(tid, m, playersByTeam){
   const dot = _mpDot(ws);
   const sub = _toernLinkedPlayersSub(m, playersByTeam);
   const note = m.matchNote ? `<span class="tp-note">📝 ${escapeHtml(m.matchNote)}</span>` : '';
-  return `<div class="toern-prog-row toern-watch-${ws}" onclick="openMatchDetail('${tid}','${m.id}',{fromToernooi:true})">
+  const inProg = m.inMyProgram === true;
+  const mineBtn = `<button onclick="event.stopPropagation();toggleMatchInMyProgram('${tid}','${m.id}',${!inProg})" title="${inProg?'Staat in Mijn programma — klik om te verwijderen':'Toevoegen aan Mijn programma'}" style="margin-top:4px;border:1px solid ${inProg?'#22c55e':'rgba(255,255,255,.18)'};background:${inProg?'rgba(34,197,94,.15)':'transparent'};color:${inProg?'#4ade80':'#cfd8e6'};border-radius:999px;padding:3px 9px;font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">${inProg?'✓ In programma':'+ Mijn programma'}</button>`;
+  const _pname = escapeHtml((String(m.teamAName||'')+' '+String(m.teamBName||'')).toLowerCase());
+  return `<div class="toern-prog-row toern-watch-${ws}" data-prog-name="${_pname}" onclick="openMatchDetail('${tid}','${m.id}',{fromToernooi:true})">
     <span class="tp-ind">${dot}</span>
     <span class="tp-time" data-col="Tijd">${escapeHtml(timeLabel)}</span>
     <span class="tp-match" data-col="Wedstrijd">
       <span class="tp-teams">${_toernMustStar(m)}${escapeHtml(m.teamAName||'?')} – ${escapeHtml(m.teamBName||'?')}</span>
       <span class="tp-score" onclick="event.stopPropagation();promptManualScore('${tid}','${m.id}')" title="Uitslag invoeren/bewerken">${scoreBadge}</span>
       ${sub}${note}
+      <div>${mineBtn}</div>
     </span>
     <span class="tp-field" data-col="Veld">${escapeHtml(field)}</span>
     <span class="tp-poule" data-col="Poule">${escapeHtml(poule)}</span>
@@ -28097,6 +28108,17 @@ function toggleTimeBlock(btn){
   if(block) block.classList.toggle('collapsed');
 }
 window.toggleTimeBlock = toggleTimeBlock;
+// Zoekfilter voor de Programma-tab: verberg wedstrijdrijen die niet matchen.
+function _progFilter(q){
+  q = String(q==null?'':q).trim().toLowerCase();
+  const wrap = document.getElementById('toern-tijdlijn-wrap');
+  if(!wrap) return;
+  wrap.querySelectorAll('.toern-prog-row').forEach(r => {
+    const nm = r.getAttribute('data-prog-name') || '';
+    r.style.display = (!q || nm.indexOf(q) !== -1) ? '' : 'none';
+  });
+}
+window._progFilter = _progFilter;
 
 
 /* BUG 2 — standaard veldposities voor de toernooi-dropdowns */
@@ -28810,7 +28832,17 @@ window.onAfrondActieClick = onAfrondActieClick;
 async function markTournamentClosing(tid){
   tid = tid || _currentTournamentId;
   const { entries } = await _collectTournamentExportData(tid);
-  if(!entries.length){ toast('Nog geen geobserveerde spelers om af te ronden', true); return; }
+  if(!entries.length){
+    // Geen data: afronden mag, maar met een nette bevestiging i.p.v. een foutmelding.
+    _toernOpenOverlay(`
+      <h3 style="margin:0 0 8px;">⚠️ Let op</h3>
+      <p style="margin:0 0 14px;font-size:14px;line-height:1.5;">Er zijn nog <strong>geen spelers en wedstrijden gerapporteerd</strong> in dit toernooi. Weet je zeker dat je het wilt afronden? Daarna staat het op slot (wel heropenbaar).</p>
+      <div style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;">
+        <button type="button" class="btn btn-sm" onclick="_toernCloseOverlay()">Annuleren</button>
+        <button type="button" class="btn btn-sm btn-primary" onclick="_toernCloseOverlay();finalizeTournament('${tid}')">Toch afronden</button>
+      </div>`);
+    return;
+  }
   try { await setDoc(tournDoc(tid), { status: 'closing' }, { merge: true }); } catch(_){}
   const t = tourmCache.find(x => x.id === tid); if(t){ t.status = 'closing'; delete t.finishedAt; }
   toast('Toernooi afgelopen — bundel en dien de spelers in');

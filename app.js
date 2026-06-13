@@ -27845,7 +27845,7 @@ function _mpRowHtml(tid, m, conflict, playersByTeam){
   const endTime = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
   const timeLabel = endTime ? `${time}–${endTime}` : time;
   const field = _toernFieldLabel(m.field);
-  const poule = m.categoryId || '';
+  const poule = _pouleShort(m.categoryId || '');
   const ws = _mpWsOf(m);
   const flag = conflict ? '<span class="mp-conflict-flag">⚠️ tegelijk!</span>' : '';
   const sub = _toernLinkedPlayersSub(m, playersByTeam);
@@ -28068,7 +28068,7 @@ function _progRowHtml(tid, m, playersByTeam){
   const endTime = (typeof tournamentMatchEndTime === 'function') ? tournamentMatchEndTime(tid, m) : '';
   const timeLabel = endTime ? `${time}–${endTime}` : time;
   const field = _toernFieldLabel(m.field);
-  const poule = m.categoryId || '';
+  const poule = _pouleShort(m.categoryId || '');
   const scoreBadge = (typeof tournamentScoreBadge === 'function') ? tournamentScoreBadge(m) : '';
   const ws = _mpWsOf(m);
   const dot = _mpDot(ws);

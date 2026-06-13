@@ -13515,3 +13515,10 @@ textarea.sh-grow-note{
   /* Team-grid mag 2-3 kolommen (de inline minmax doet dit al; hier als vangnet). */
   .toern-club-grid { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
 }
+
+/* Foldable scroll-fix: schakel de mobiele body-zoom (0.92) uit op het brede
+   bijna-vierkante binnenscherm. `zoom` breekt daar de verticale scroll-hoogte
+   (je moest kantelen om te kunnen scrollen). Op gewone telefoons blijft 0.92. */
+@media (min-width: 650px) and (max-width: 800px) and (min-aspect-ratio: 3/4) {
+  body { zoom: 1; }
+}

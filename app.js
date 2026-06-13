@@ -25521,7 +25521,7 @@ function _spelersFilter(q){
   let anyVisible = false;
   document.querySelectorAll('#sp-poule-wrap [data-sp-sec]').forEach(sec => {
     let secVisible = 0;
-    sec.querySelectorAll('.toern-club-card').forEach(c => {
+    sec.querySelectorAll('[data-team-name]').forEach(c => {
       const nm = c.getAttribute('data-team-name') || '';
       const okName = !q || nm.indexOf(q) !== -1;
       const okFollow = !followOnly || c.getAttribute('data-followed') === '1';

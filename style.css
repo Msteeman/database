@@ -13523,10 +13523,13 @@ textarea.sh-grow-note{
   body { zoom: 1; }
 }
 
-/* Foldable scroll-vangnet: forceer dat de hele pagina kan scrollen op het
-   bijna-vierkante binnenscherm (geen per ongeluk afgeknelde verticale scroll). */
+/* Foldable scroll-FIX: de mobiele layout (<=768px) zet body op overflow:hidden en
+   laat main.content scrollen met height:calc(100% - 52px). Die 100%-keten rekent op
+   het bijna-vierkante binnenscherm verkeerd (100vh-foldable-bug) -> main.content wordt
+   te hoog, de onderkant valt buiten beeld en je moest kantelen. Door html op 100dvh te
+   forceren klopt de hele keten en kun je tot onderaan scrollen. */
 @media (min-width: 650px) and (max-width: 800px) and (min-aspect-ratio: 3/4) {
-  html, body { overflow-y: auto; height: auto; min-height: 100dvh; }
+  html { height: 100vh; height: 100dvh; }
 }
 
 /* Linkermenu volledig zichtbaar: compacter op kortere/laptop-schermen (en het

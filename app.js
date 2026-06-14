@@ -31344,7 +31344,7 @@ async function renderBeheer(){
         var tab = t.dataset.bhTab;
         document.querySelectorAll('.bh-tab').forEach(function(x){ x.classList.toggle('active', x===t); });
         document.querySelectorAll('.bh-section').forEach(function(sec){ sec.classList.toggle('active', sec.id==='bh-section-'+tab); });
-        if(tab==='gebruikers') _bhLoadUsers(); else if(tab==='logboek') _bhLoadAudit(); else _bhLoadAanvragen();
+        if(tab==='gebruikers') _bhLoadUsers(); else if(tab==='logboek') _bhLoadAudit(); else if(tab==='organogram') _bhLoadOrg(); else _bhLoadAanvragen();
       });
     });
     document.querySelectorAll('#bh-aanvr-filters .bh-filter').forEach(function(f){
@@ -31357,8 +31357,68 @@ async function renderBeheer(){
     var us = document.getElementById('bh-user-search'); if(us) us.addEventListener('input', _bhRenderUsers);
     var ur = document.getElementById('bh-user-role'); if(ur) ur.addEventListener('change', _bhRenderUsers);
     var usort = document.getElementById('bh-user-sort'); if(usort) usort.addEventListener('change', _bhRenderUsers);
+    var ust = document.getElementById('bh-user-status'); if(ust) ust.addEventListener('change', _bhRenderUsers);
+    var utm = document.getElementById('bh-user-team'); if(utm) utm.addEventListener('change', _bhRenderUsers);
   }
   _bhLoadAanvragen();
+}
+async function _bhLoadOrg(){
+  var el = document.getElementById('bh-org');
+  if(el) el.innerHTML = '<div class="bh-empty">Laden…</div>';
+  try {
+    var snap = await getDocs(collection(db,'users'));
+    _bhUserCache = [];
+    snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhUserCache.push(x); });
+    _bhRenderOrg();
+  } catch(e){
+    if(el) el.innerHTML = '<div class="bh-empty">Kon het organogram niet laden.</div>';
+  }
+}
+function _orgNode(u){
+  var nm = _bhEsc(u.displayName||u.email||'—');
+  var raw = String(u.displayName||u.email||'').trim();
+  var initials = raw.split(/\s+/).map(function(w){ return w.charAt(0)||''; }).join('').slice(0,2).toUpperCase() || '?';
+  var inactive = (u.isActive===false);
+  var role = u.role||'scout';
+  var rl = role==='coordinator' ? 'Coördinator' : (role==='admin' ? 'Admin' : 'Scout');
+  var cls = role==='coordinator' ? ' is-coord' : (role==='admin' ? ' is-admin' : '');
+  return '<div class="bh-org-node'+cls+(inactive?' bh-org-inactive':'')+'">'
+    + '<div class="bh-org-av">'+_bhEsc(initials)+'</div>'
+    + '<div class="bh-org-nm">'+nm+'</div>'
+    + '<div class="bh-org-rl">'+rl+(inactive?' · gedeactiveerd':'')+'</div></div>';
+}
+function _bhRenderOrg(){
+  var el = document.getElementById('bh-org'); if(!el) return;
+  var users = (_bhUserCache||[]).filter(function(u){ return (u.status||'')!=='deleted'; });
+  var teams = {}; var noTeam = []; var admins = [];
+  users.forEach(function(u){
+    var role = u.role||'scout';
+    if(role==='admin'){ admins.push(u); return; }
+    var tid = u.teamId||'';
+    if(!tid){ noTeam.push(u); return; }
+    if(!teams[tid]) teams[tid] = { name: u.teamName||tid, coords:[], scouts:[] };
+    if(role==='coordinator') teams[tid].coords.push(u); else teams[tid].scouts.push(u);
+  });
+  var html = '';
+  var tids = Object.keys(teams).sort(function(a,b){ return String(teams[a].name).localeCompare(String(teams[b].name)); });
+  tids.forEach(function(tid){
+    var t = teams[tid];
+    var coordsHtml = t.coords.length ? t.coords.map(_orgNode).join('') : '<div class="bh-org-node bh-org-empty">Geen coördinator</div>';
+    var scoutsHtml = t.scouts.length ? t.scouts.map(_orgNode).join('') : '<div class="bh-org-node bh-org-empty">Nog geen scouts</div>';
+    html += '<div class="bh-org-group">'
+      + '<div class="bh-org-team">'+_bhEsc(t.name)+' <span class="bh-org-count">'+(t.coords.length+t.scouts.length)+'</span></div>'
+      + '<div class="bh-org-row">'+coordsHtml+'</div>'
+      + '<div class="bh-org-line"></div>'
+      + '<div class="bh-org-row">'+scoutsHtml+'</div>'
+      + '</div>';
+  });
+  if(noTeam.length){
+    html += '<div class="bh-org-group"><div class="bh-org-team">Individuele scouts <span class="bh-org-count">'+noTeam.length+'</span></div><div class="bh-org-row">'+noTeam.map(_orgNode).join('')+'</div></div>';
+  }
+  if(admins.length){
+    html += '<div class="bh-org-group"><div class="bh-org-team">Beheerders <span class="bh-org-count">'+admins.length+'</span></div><div class="bh-org-row">'+admins.map(_orgNode).join('')+'</div></div>';
+  }
+  el.innerHTML = html || '<div class="bh-empty">Nog geen gebruikers om te tonen</div>';
 }
 window.renderBeheer = renderBeheer;
 
@@ -31630,10 +31690,24 @@ function _bhRenderUsers(){
   var qel = document.getElementById('bh-user-search');
   var q = (qel && qel.value || '').toLowerCase().trim();
   var rfEl = document.getElementById('bh-user-role'); var rf = rfEl && rfEl.value || '';
+  var stEl = document.getElementById('bh-user-status'); var stf = stEl && stEl.value || '';
+  var tmEl = document.getElementById('bh-user-team'); var tmf = tmEl && tmEl.value || '';
   var sortEl = document.getElementById('bh-user-sort'); var sort = sortEl && sortEl.value || 'name';
+  // team-filter opties (her)opbouwen uit alle gebruikers, met behoud van selectie
+  if(tmEl){
+    var _seenT = {}; var _opts = '<option value="">Alle teams</option>';
+    _bhUserCache.forEach(function(u){ var tid=u.teamId||''; if(tid && !_seenT[tid]){ _seenT[tid]=1; _opts += '<option value="'+_bhEsc(tid)+'">'+_bhEsc(u.teamName||tid)+'</option>'; } });
+    _opts += '<option value="__none__">Zonder team</option>';
+    tmEl.innerHTML = _opts; if(tmf) tmEl.value = tmf;
+  }
   var rows = _bhUserCache.slice();
   // verwijderde/gedeactiveerde accounts blijven zichtbaar (met badge) voor overzicht/audit
   if(rf) rows = rows.filter(function(u){ return (u.role||'scout')===rf; });
+  if(stf==='active') rows = rows.filter(function(u){ return (u.status||'')!=='deleted' && u.isActive!==false; });
+  else if(stf==='inactive') rows = rows.filter(function(u){ return (u.status||'')!=='deleted' && u.isActive===false; });
+  else if(stf==='deleted') rows = rows.filter(function(u){ return (u.status||'')==='deleted'; });
+  if(tmf==='__none__') rows = rows.filter(function(u){ return !(u.teamId||''); });
+  else if(tmf) rows = rows.filter(function(u){ return (u.teamId||'')===tmf; });
   if(q) rows = rows.filter(function(u){ return ((u.displayName||'')+' '+(u.email||'')).toLowerCase().indexOf(q) !== -1; });
   rows.sort(function(a,b){
     var da=((a.status||'')==='deleted')?1:0, db=((b.status||'')==='deleted')?1:0;
@@ -31760,11 +31834,18 @@ async function _bhToggleActive(uid, makeActive){
   if((u.role||'scout')==='admin'){ if(typeof toast==='function') toast('Admin-accounts kun je niet deactiveren', true); return; }
   var naam = u.displayName || u.email || 'gebruiker';
   try {
-    await updateDoc(doc(db,'users',uid), { isActive: !!makeActive });
-    if(typeof toast==='function') toast('Account van '+naam+(makeActive ? ' is gereactiveerd' : ' is gedeactiveerd'));
-    _bhLoadUsers();
+    var idToken = '';
+    try { if(typeof auth!=='undefined' && auth.currentUser) idToken = await auth.currentUser.getIdToken(true); } catch(_){}
+    var base = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE) ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
+    var r = await fetch(base + '/api/set-active', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+      body: JSON.stringify({ idToken: idToken, uid: uid, active: !!makeActive })
+    });
+    var j = {}; try { j = await r.json(); } catch(_){}
+    if(r.ok && j && j.ok){ if(typeof toast==='function') toast('Account van '+naam+(makeActive ? ' is gereactiveerd' : ' is gedeactiveerd')+(j.mailSent?' · mail verstuurd':'')); _bhLoadUsers(); }
+    else { if(typeof toast==='function') toast((j && j.error) || 'Kon de status niet wijzigen', true); }
   } catch(e){
-    if(typeof toast==='function') toast('Kon de status niet wijzigen', true);
+    if(typeof toast==='function') toast('Geen verbinding met de server', true);
   }
 }
 

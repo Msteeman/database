@@ -2361,6 +2361,7 @@ algemeen:</textarea>
             <button class="bh-tab active" data-bh-tab="aanvragen">Toegangsaanvragen</button>
             <button class="bh-tab" data-bh-tab="gebruikers">Gebruikers</button>
             <button class="bh-tab" data-bh-tab="logboek">Logboek</button>
+            <button class="bh-tab" data-bh-tab="organogram">Organogram</button>
           </div>
 
           <div class="bh-section active" id="bh-section-aanvragen">
@@ -2382,12 +2383,26 @@ algemeen:</textarea>
                 <option value="coordinator">Coördinator</option>
                 <option value="admin">Admin</option>
               </select>
+              <select id="bh-user-status" class="bh-select" aria-label="Filter op status">
+                <option value="">Alle statussen</option>
+                <option value="active">Actief</option>
+                <option value="inactive">Gedeactiveerd</option>
+                <option value="deleted">Verwijderd</option>
+              </select>
+              <select id="bh-user-team" class="bh-select" aria-label="Filter op team">
+                <option value="">Alle teams</option>
+              </select>
               <select id="bh-user-sort" class="bh-select" aria-label="Sortering">
                 <option value="name">Naam A–Z</option>
                 <option value="created">Nieuwste eerst</option>
               </select>
             </div>
             <div id="bh-user-list"><div class="bh-empty">Laden…</div></div>
+          </div>
+
+          <div class="bh-section" id="bh-section-organogram">
+            <div class="bh-toolbar"><span class="bh-org-hint">Coördinator bovenaan, scouts eronder. Individuele scouts en beheerders staan apart.</span></div>
+            <div id="bh-org"><div class="bh-empty">Laden…</div></div>
           </div>
 
           <div class="bh-section" id="bh-section-logboek">

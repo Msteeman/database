@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ScoutingHub — Volledig handboek</title>
+<style>
+:root{
+  --ink:#0f172a; --ink-2:#334155; --muted:#64748b; --line:#e6eaf0;
+  --bg:#ffffff; --bg-soft:#f6f8fb; --accent:#e30613; --accent-2:#2563eb;
+  --accent-soft:#fff1f1; --blue-soft:#eef4ff;
+  --doel:#1e40af; --doel-bg:#eef4ff; --doel-line:#c7dbff;
+  --flow:#0f172a; --acties:#166534; --acties-bg:#f0fdf4; --acties-line:#bbf7d0;
+  --koppel:#7c3aed; --navy:#10151e;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%; scroll-behavior:smooth}
+body{margin:0; background:var(--bg-soft); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  line-height:1.62; font-size:16px}
+main{max-width:960px; margin:0 auto; padding:0 18px 100px; background:var(--bg)}
+@media(min-width:760px){ main{padding:0 52px 110px} }
+
+.cover{ background:linear-gradient(135deg,#06080d 0%,#10151e 45%,#231018 100%);
+  color:#fff; margin:0 -18px 30px; padding:54px 22px 46px; border-radius:0 0 20px 20px; position:relative; overflow:hidden }
+@media(min-width:760px){ .cover{margin:0 -52px 40px; padding:68px 52px 54px} }
+.cover::after{ content:""; position:absolute; inset:-40% -10% auto auto; width:520px; height:520px; border-radius:50%;
+  background:radial-gradient(circle, rgba(227,6,19,.36), rgba(78,161,255,.10) 55%, transparent 72%); pointer-events:none }
+.cover .kicker{ text-transform:uppercase; letter-spacing:.18em; font-size:12px; font-weight:800; color:#ff8189; margin:0 0 14px; position:relative }
+.cover h1{ font-size:34px; line-height:1.1; margin:0 0 14px; font-weight:850; letter-spacing:-.02em; position:relative }
+@media(min-width:760px){ .cover h1{font-size:46px} }
+.cover .lead{ font-size:17px; color:#d7e0f2; max-width:680px; margin:0; position:relative }
+.cover .meta{ margin-top:24px; display:flex; flex-wrap:wrap; gap:10px; position:relative }
+.cover .pill{ background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.20); color:#eaf1ff; font-size:13px; padding:6px 13px; border-radius:999px }
+
+.howto{ display:flex; gap:12px; align-items:flex-start; background:var(--blue-soft); border:1px solid var(--doel-line);
+  border-radius:12px; padding:14px 16px; margin:0 0 26px; font-size:14.5px; color:var(--ink-2) }
+.howto .i{ font-size:20px; line-height:1 }
+
+h2{ font-size:13px; text-transform:uppercase; letter-spacing:.12em; color:var(--accent); margin:50px 0 6px; font-weight:850 }
+.h2sub{ color:var(--muted); margin:0 0 20px; font-size:15px }
+h3{ font-size:21px; margin:6px 0 4px; font-weight:780; letter-spacing:-.01em }
+p{margin:0 0 12px}
+a{color:var(--accent-2)}
+code{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12.5px; background:#0f172a; color:#e2e8f0; padding:2px 6px; border-radius:5px }
+
+.toc{ background:var(--bg-soft); border:1px solid var(--line); border-radius:14px; padding:18px 22px; margin:0 0 8px }
+.toc h4{ margin:14px 0 8px; font-size:12px; text-transform:uppercase; letter-spacing:.09em; color:var(--accent); font-weight:800 }
+.toc h4:first-child{margin-top:0}
+.toc ul{ margin:0 0 4px; padding-left:20px; list-style:none }
+.toc li{ margin:0 0 6px }
+.toc li::before{ content:"›"; color:var(--muted); margin-left:-16px; margin-right:8px }
+.toc a{ text-decoration:none; color:var(--ink-2) }
+.toc a:hover{ color:var(--accent) }
+
+details.cmp{ border:1px solid var(--line); border-radius:14px; margin:0 0 12px; background:#fff; overflow:hidden; box-shadow:0 1px 2px rgba(15,23,42,.04) }
+details.cmp[open]{ box-shadow:0 8px 26px rgba(15,23,42,.08) }
+summary{ list-style:none; cursor:pointer; padding:16px 18px; display:flex; align-items:center; gap:13px; user-select:none }
+summary::-webkit-details-marker{ display:none }
+summary:hover{ background:var(--bg-soft) }
+.sm-ic{ flex:0 0 auto; width:42px; height:42px; border-radius:11px; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; font-size:21px }
+.sm-txt{ flex:1 1 auto; min-width:0 }
+.sm-txt .t{ font-size:17px; font-weight:750; letter-spacing:-.01em }
+.sm-txt .s{ font-size:13px; color:var(--muted); margin-top:1px }
+.sm-arrow{ flex:0 0 auto; color:var(--muted); font-size:14px; transition:transform .2s ease }
+details.cmp[open] .sm-arrow{ transform:rotate(90deg) }
+.tag{ display:inline-block; font-size:10.5px; font-weight:800; padding:3px 8px; border-radius:999px; letter-spacing:.03em; margin-left:8px; vertical-align:middle }
+.tag-open{ background:#fff7ed; color:#9a3412; border:1px solid #fed7aa }
+.cmp-body{ padding:4px 18px 16px; border-top:1px solid var(--line) }
+
+.hb-lbl{ font-size:11px; font-weight:850; text-transform:uppercase; letter-spacing:.07em; margin:16px 0 6px; display:flex; align-items:center; gap:7px }
+.hb-lbl.doel{ color:var(--doel) } .hb-lbl.flow{ color:var(--ink) } .hb-lbl.acties{ color:var(--acties) } .hb-lbl.koppel{ color:var(--koppel) }
+.cmp-body p{ font-size:15px } .cmp-body ul,.cmp-body ol{ margin:4px 0 8px; padding-left:20px } .cmp-body li{ margin:0 0 5px; font-size:15px }
+.doelbox{ background:var(--doel-bg); border:1px solid var(--doel-line); border-radius:10px; padding:10px 14px; margin:8px 0 4px; font-size:15px }
+.note{ background:#fff7ed; border:1px solid #fed7aa; border-radius:10px; padding:10px 14px; margin:10px 0; font-size:14px; color:#7c2d12 }
+.chip{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:11.5px; background:#0f172a; color:#e2e8f0; padding:2px 8px; border-radius:6px }
+
+.subcmp{ border:1px solid var(--line); border-radius:11px; margin:10px 0; background:var(--bg-soft); overflow:hidden }
+.subcmp summary{ padding:12px 15px; font-weight:700; font-size:15px }
+.subcmp .cmp-body{ background:#fff }
+
+.swatch-grid{ display:grid; grid-template-columns:1fr; gap:10px; margin:14px 0 22px }
+@media(min-width:680px){ .swatch-grid{ grid-template-columns:1fr 1fr } }
+.sw{ display:flex; gap:13px; align-items:flex-start; border:1px solid var(--line); border-radius:12px; padding:11px 13px; background:#fff }
+.sw .dot{ flex:0 0 auto; width:44px; height:44px; border-radius:10px; border:1px solid rgba(0,0,0,.12) }
+.sw .nm{ font-weight:750; font-size:15px; display:flex; align-items:center; gap:8px; flex-wrap:wrap }
+.sw .hex{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; color:var(--muted); background:var(--bg-soft); padding:1px 7px; border-radius:5px }
+.sw .use{ font-size:13.5px; color:var(--ink-2); margin-top:4px }
+.palette-band{ display:flex; height:44px; border-radius:10px; overflow:hidden; margin:8px 0 20px; border:1px solid var(--line) }
+.palette-band span{ flex:1 }
+.idot{ display:inline-block; width:18px; height:18px; border-radius:5px; vertical-align:middle }
+
+table{ width:100%; border-collapse:collapse; margin:12px 0 22px; font-size:14.5px }
+th,td{ text-align:left; padding:9px 11px; border-bottom:1px solid var(--line); vertical-align:top }
+th{ font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); background:var(--bg-soft) }
+tr:last-child td{ border-bottom:none }
+.callout{ border-left:4px solid var(--accent-2); background:var(--blue-soft); padding:13px 17px; border-radius:0 12px 12px 0; margin:16px 0 } .callout p:last-child{margin:0}
+.cl-was{ background:#fef2f2; border:1px solid #fecaca; border-radius:10px; padding:9px 13px; margin:8px 0; font-size:14.5px }
+.cl-nu{ background:#f0fdf4; border:1px solid #bbf7d0; border-radius:10px; padding:9px 13px; margin:8px 0; font-size:14.5px }
+.cl-lbl{ font-size:10.5px; font-weight:850; text-transform:uppercase; letter-spacing:.07em; margin:0 0 3px }
+.cl-was .cl-lbl{ color:#991b1b } .cl-nu .cl-lbl{ color:#166534 }
+.cl-keuze{ font-size:14.5px; margin:8px 0 2px } .cl-keuze b{ color:var(--koppel) }
+.datebadge{ display:inline-block; font-size:10.5px; font-weight:700; color:var(--muted); background:var(--bg-soft); border:1px solid var(--line); border-radius:999px; padding:2px 8px; margin-left:8px; vertical-align:middle }
+.foot{ margin-top:54px; padding-top:18px; border-top:1px solid var(--line); color:var(--muted); font-size:13px }
+</style>
+</head>
+<body>
+<main>
+
+<header class="cover">
+  <p class="kicker">ScoutingHub · Volledig handboek</p>
+  <h1>Hoe de hele app werkt</h1>
+  <p class="lead">Elke pagina, elke flow — klikbaar en gedetailleerd. Van inloggen tot toernooi afronden, van spelersrapport tot kilometerdeclaratie. Per onderdeel: het doel, de stap-voor-stap werking, de belangrijkste knoppen en hoe het met andere pagina's samenhangt. Met een hoofdstuk over de kleuren en een blik onder de motorkap.</p>
+  <div class="meta">
+    <span class="pill">19 pagina's &amp; flows</span>
+    <span class="pill">Kleuren + architectuur</span>
+    <span class="pill">Wijzigingslog inbegrepen</span>
+    <span class="pill">Laatst bijgewerkt: 14 juni 2026</span>
+  </div>
+</header>
+
+<div class="howto"><span class="i">&#128073;</span><div><strong>Lezen:</strong> klik op een onderdeel om het uit te klappen. Elk onderdeel heeft <span style="color:var(--doel);font-weight:700">Doel</span>, <span style="font-weight:700">Hoe het werkt</span> (de flow), <span style="color:var(--acties);font-weight:700">Belangrijkste acties</span> en <span style="color:var(--koppel);font-weight:700">Koppelingen</span>. De navigatie hieronder volgt het menu van de app.</div></div>
+
+<div class="callout"><p><strong>Over dit document.</strong> Dit is één levend handboek van de hele app, met onderaan een <a href="#changelog">Wijzigingslog</a>. Het is een losstaand HTML-bestand zonder externe afhankelijkheden — het mag gewoon mee in de GitHub-repo en kan via GitHub&nbsp;Pages geopend worden (bijv. <code>scoutinghub.nl/handboek.html</code>). <strong>Let op:</strong> alles wat GitHub&nbsp;Pages serveert is via de URL openbaar leesbaar, ook al is de repo privé. Wil je het intern houden, zet het dan in de repo maar link het niet vanuit de site (dan is het alleen bereikbaar voor wie de map kent), of bewaar het buiten de Pages-map. <em>Bijwerken:</em> elke pagina is een <code>&lt;details&gt;</code>-blok; pas de tekst aan en voeg bij een wijziging een nieuw item bovenaan de Wijzigingslog toe met datum.</p></div>
+
+<nav class="toc">
+  <h4>Toegang &amp; start</h4>
+  <ul>
+    <li><a href="#p-login">Inloggen &amp; toegang aanvragen</a></li>
+    <li><a href="#p-dashboard">Dashboard</a></li>
+    <li><a href="#p-settings">Instellingen</a></li>
+  </ul>
+  <h4>Scouten</h4>
+  <ul>
+    <li><a href="#p-database">Spelersdatabase</a></li>
+    <li><a href="#p-player">Speler-detail (profiel)</a></li>
+    <li><a href="#p-report">Rapport- &amp; observatie-flow</a></li>
+    <li><a href="#p-programma">Programma</a></li>
+    <li><a href="#p-agenda">Agenda</a></li>
+    <li><a href="#p-matches">Wedstrijden</a></li>
+  </ul>
+  <h4>Toernooien</h4>
+  <ul>
+    <li><a href="#p-toernooien">Toernooien (import, subtabs, afronden)</a></li>
+  </ul>
+  <h4>Analyse</h4>
+  <ul>
+    <li><a href="#p-elftallen">Gescoute teams</a></li>
+    <li><a href="#p-compare">Vergelijken</a></li>
+    <li><a href="#p-pitch">Elftal analyse</a></li>
+    <li><a href="#p-teamoverzicht">Team-overzicht</a></li>
+  </ul>
+  <h4>Relaties &amp; overig</h4>
+  <ul>
+    <li><a href="#p-adresboek">Clubs &amp; locaties</a></li>
+    <li><a href="#p-contacts">Contactpersonen</a></li>
+    <li><a href="#p-ritten">Ritten &amp; declaraties</a></li>
+    <li><a href="#p-tips">Getipte spelers</a></li>
+  </ul>
+  <h4>Beheer &amp; achtergrond</h4>
+  <ul>
+    <li><a href="#p-admin">Beheer (admin)</a></li>
+    <li><a href="#kleuren">Kleurgebruik</a></li>
+    <li><a href="#architectuur">Onder de motorkap (architectuur &amp; deploy)</a></li>
+    <li><a href="#changelog">Wijzigingslog — wat is er aangepast</a></li>
+  </ul>
+</nav>
+
+<!-- ===================== TOEGANG & START ===================== -->
+<h2>Hoofdstuk 1 — Toegang &amp; start</h2>
+<p class="h2sub">Inloggen, het startscherm en je persoonlijke instellingen.</p>
+
+<details class="cmp" id="p-login" open>
+  <summary><span class="sm-ic">&#128273;</span><span class="sm-txt"><span class="t">Inloggen &amp; toegang aanvragen</span><span class="s">Besloten platform — aanvragen kan, de beheerder laat toe.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">ScoutingHub is <strong>invite-only</strong>: alleen door de beheerder aangemaakte accounts kunnen inloggen. Deze flow regelt inloggen, wachtwoord-herstel en het aanvragen van toegang door nieuwe gebruikers.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li>Bij opstart bepaalt de app of er een sessie is. Geen sessie → <strong>als geïnstalleerde PWA</strong> verschijnt direct het inlogscherm; <strong>in een browser</strong> eerst de marketing-landingspagina, en pas na "Inloggen" het formulier. Een vangnet-timer toont het login-scherm alsnog als de app traag laadt.</li>
+      <li><strong>Inloggen:</strong> e-mail + wachtwoord (Firebase Authentication). Lege velden worden lokaal afgevangen; foutmeldingen zijn vertaald naar het Nederlands. Een oog-knop toont/verbergt het wachtwoord.</li>
+      <li><strong>Wachtwoord vergeten:</strong> stuurt een herstel-link. De melding is bewust neutraal ("als er een account bestaat…") zodat onbekende adressen niet te raden zijn.</li>
+      <li><strong>Toegang aanvragen:</strong> opent een formulier met Naam, E-mail, Club/organisatie, Functie (Scout / Coördinator / Technisch directeur / Anders) en optioneel een motivatie. Akkoord met voorwaarden + privacy is verplicht (verzendknop blijft uit tot aangevinkt). Verzenden doet een aanvraag naar de backend; er wordt géén account aangemaakt — de aanvraag belandt in de beheer-wachtrij.</li>
+    </ol>
+    <h5 class="hb-lbl acties">Belangrijkste acties</h5>
+    <ul><li>Inloggen · oog-knop · "Wachtwoord vergeten?" · "Toegang aanvragen" (op landing én inlogscherm) · in de modal "Aanvraag versturen"/"Annuleren".</li></ul>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>Aanvragen worden goedgekeurd in het <a href="#p-admin">Beheer-paneel</a>. Onderaan staan links naar Privacy en Voorwaarden.</p>
+  </div>
+</details>
+
+<details class="cmp" id="p-dashboard">
+  <summary><span class="sm-ic">&#128202;</span><span class="sm-txt"><span class="t">Dashboard</span><span class="s">Het startscherm: agenda van vandaag + kerncijfers + analyses.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">In één oogopslag je scouting-agenda (live/vandaag/aankomend), kerncijfers over de database en visuele analyses van je gescoute spelers.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li><strong>Agenda-zone</strong> bovenaan, met widgets die zichzelf tonen/verbergen: <em>Actieve scouting</em> (gele tegel voor een wedstrijd die nu loopt), <em>Volgende wedstrijd</em> (grote hero met teams, dag/tijd, countdown, klikbare locatie → navigatie), <em>Toernooi-dashboard</em>, <em>Wedstrijden vandaag</em> (inklapbaar, gesplitst in komend/gespeeld, per kaart uitklapbaar met snelnotitie en gekoppelde spelers) en <em>Aankomende wedstrijden</em>.</li>
+      <li><strong>KPI-tegels</strong> (count-up): Totaal spelers · Deze week · Toptalenten (potentieel A) · Direct contracteren (advies 4). Klikken springt naar de Spelersdatabase met het filter al ingevuld.</li>
+      <li><strong>Analysepanelen</strong>: Recente rapporten, Niveau-verdeling, Elftal-analyse-gaps, Te volgen talenten, Club-overzicht, Positiedekking, Advies-verdeling, Gemiddelde per categorie en een niveau-donut.</li>
+      <li><strong>Overzichtsmap</strong> onderaan: een kaart met de geografische spreiding van gescoute spelers/clubs (op kleine schermen verborgen).</li>
+      <li>Zonder spelers: lege staat met "+ Eerste rapport maken".</li>
+    </ol>
+    <h5 class="hb-lbl acties">Belangrijkste acties</h5>
+    <ul><li>KPI-tegels (voorgefilterd naar database) · wedstrijdkaart uitklappen/snelnotitie/"Open speler"/"+ Speler toevoegen" · locatie → Google Maps · recent rapport → spelerprofiel.</li></ul>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p><a href="#p-database">Spelersdatabase</a>, <a href="#p-player">speler-detail</a>, <a href="#p-report">rapport-flow</a>, <a href="#p-toernooien">toernooien/programma</a> en externe navigatie.</p>
+  </div>
+</details>
+
+<details class="cmp" id="p-settings">
+  <summary><span class="sm-ic">&#9881;&#65039;</span><span class="sm-txt"><span class="t">Instellingen</span><span class="s">Account, profielfoto, km-tarief, notificaties — en demo-knoppen.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">Een modaal venster (via de instellingen-knop in de zijbalk) met account-info, profiel, app-voorkeuren en — alleen voor het demo-account — knoppen om demo-data te beheren.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li><strong>Account:</strong> e-mailadres, rol en team (alleen-lezen). <strong>Beheer:</strong> "Open admin-paneel" (alleen voor admins).</li>
+      <li><strong>App installeren</strong> (PWA toevoegen aan startscherm).</li>
+      <li><strong>Profielfoto:</strong> foto kiezen → client-side bijgesneden tot 200×200 JPEG, opgeslagen in je gebruikersdocument zodat hij op al je apparaten verschijnt (zijbalk + rapporten). "Standaard" zet 'm terug.</li>
+      <li><strong>Persoonsgegevens:</strong> telefoon, adres, voorkeuren en <strong>km-vergoeding (€/km)</strong> — stuurt de berekening in Ritten aan.</li>
+      <li><strong>App-instellingen:</strong> cache wissen; <em>herinnering vóór prio-wedstrijden</em> (aan/uit + 5/10/15 min, vraagt notificatie-toestemming); demo-rondleiding.</li>
+      <li><strong>Demo-knoppen</strong> (alleen <code>demo@scoutinghub.nl</code>, standaard verborgen): "Demo vullen", "Toernooi seeden", en rode "Reset &amp; herlaad" (wist alles en seedt opnieuw, met bevestiging).</li>
+      <li><strong>Voettekst:</strong> versie/kanaal en links naar Privacy en Voorwaarden.</li>
+    </ol>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p><a href="#p-admin">Beheer-paneel</a>, <a href="#p-ritten">Ritten</a> (km-tarief), <a href="#p-toernooien">Toernooien</a> (demo-seed) en de PWA-installatie.</p>
+  </div>
+</details>
+
+<!-- ===================== SCOUTEN ===================== -->
+<h2>Hoofdstuk 2 — Scouten</h2>
+<p class="h2sub">De kern: spelers vastleggen, beoordelen en je wedstrijden plannen.</p>
+
+<details class="cmp" id="p-database">
+  <summary><span class="sm-ic">&#128202;</span><span class="sm-txt"><span class="t">Spelersdatabase</span><span class="s">Het centrale overzicht van alle gescoute spelers.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">Een doorzoekbare, filterbare en sorteerbare tabel met alle gescoute spelers. Elke ingediende observatie of elk rapport komt hier automatisch terecht.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li>Alle <strong>concept-records worden weggelaten</strong> — alleen ingediende records staan in de tabel; concepten staan apart bovenin als "ga hier verder"-kaarten.</li>
+      <li><strong>Kolommen:</strong> selectie, uitklap, Speler, Positie, Club, Elftal, Huidig, Potentieel, Advies, Datum. Kolomkoppen sorteren.</li>
+      <li>Meerdere records van dezelfde persoon worden tot één rij <strong>gebundeld met een telgetal</strong>; uitklappen toont de losse records. Paginatie 25/50/75/100.</li>
+      <li><strong>Drie rij-typen</strong> (zie kleuren-hoofdstuk): <span class="idot" style="background:#22c55e"></span> <strong>rapport</strong> (groenige gloed, echte A–D-cijfers + advies), <span class="idot" style="background:#a855f7"></span> <strong>observatie</strong> (OBS-badge, paarse avatar, géén cijfers — alleen waarneming), en <strong>🏆 toernooi</strong> (badge bij toernooi-records).</li>
+    </ol>
+    <h5 class="hb-lbl acties">Belangrijkste acties</h5>
+    <ul><li>Zoeken (fuzzy, met "bedoelde je…?") · filters positie/huidig/potentieel/advies/periode · toggles 📋 Rapporten en 👁 Observaties · "+ Nieuw spelersrapport" · rij → profiel · selecties → Vergelijken (min. 2).</li></ul>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p><a href="#p-player">Speler-detail</a>, <a href="#p-report">rapport-flow</a>, <a href="#p-compare">Vergelijken</a>.</p>
+  </div>
+</details>
+
+<details class="cmp" id="p-player">
+  <summary><span class="sm-ic">&#128100;</span><span class="sm-txt"><span class="t">Speler-detail (profiel)</span><span class="s">Het volledige profiel van één speler met alle visualisaties.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">Alle vastgelegde gegevens, beoordelingen en visualisaties van één speler. Bij meerdere rapporten ook een gemiddelde plus de historie.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li>Een observatie-record opent een <strong>observatie-overzicht</strong> (wedstrijdcontext + gekleurde chips per categorie). Een rapport-record opent het <strong>volledige rapport</strong>.</li>
+      <li>Bij <strong>1 rapport</strong> direct het volledige rapport; bij <strong>≥2 rapporten</strong> een gemiddelde-overzicht met een dropdown naar de losse rapporten.</li>
+      <li>Bovenin: gegevens-header (avatar/foto, naam + leeftijd, positie · club · elftal · rugnummer · been), en de grade-rij <strong>Huidig / Potentieel / Advies</strong>.</li>
+      <li>Blokken: KPI's, scout-samenvatting, vormtrend, "Sterktes &amp; ontwikkelpunten" (7 criteria), totaalindruk-gauges, een FM-stijl <strong>radar</strong> en klikbare criterium-kaarten. Bij ≥2 rapporten een gemiddelde-kaart per criterium.</li>
+    </ol>
+    <h5 class="hb-lbl acties">Belangrijkste acties</h5>
+    <ul><li>Terug · "+ Vergelijk" · Bekijk volledig/alle rapport(en) · Bewerken · Download als PDF · Verwijderen · per rapport openen.</li></ul>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>← <a href="#p-database">Database</a>/Dashboard/Vergelijken · → <a href="#p-report">rapport bewerken</a> · → <a href="#p-compare">Vergelijken</a>.</p>
+  </div>
+</details>
+
+<details class="cmp" id="p-report">
+  <summary><span class="sm-ic">&#128221;</span><span class="sm-txt"><span class="t">Rapport- &amp; observatie-flow</span><span class="s">Live observeren met chips, en het volledige spelersrapport.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">Twee manieren om een speler vast te leggen: snel <strong>live observeren</strong> met trefwoord-chips (een concept), en een volwaardig <strong>spelersrapport</strong> met beoordelingen per categorie en een eindbeoordeling. Een concept groeit uit tot een ingediend rapport.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li><strong>Live observeren:</strong> per aspect (techniek, inzicht, mentaliteit, explosiviteit, sprinten, duelleren, wendbaarheid, algemeen) tik je <strong>trefwoord-chips</strong>. Elke tik loopt door <strong>groen → oranje → rood → uit</strong>. Plus voorkeursbeen, rugnummer, positie, een ⭐ "Opvallend"-markering en vrije notities. Alles wordt automatisch zacht opgeslagen als <strong>concept-snelnotitie</strong>.</li>
+      <li><strong>Van concept naar rapport:</strong> de snelnotitie wordt een concept-record met chips en notities. Het verschijnt als kaart in de database met "→ Indienen". De concept-editor toont dezelfde chip-cyclus; "Indienen" maakt er een ingediende observatie van.</li>
+      <li><strong>Volledig rapport:</strong> een concept-banner met autosave. Een opklapbaar "Snel notitie"-paneel parset regels (<code>term a/b/c/d: opmerking</code>) naar de velden. Secties: Speler-info, Wedstrijd (met autofill uit programma), Positie, <strong>Beoordeling per categorie</strong> (A/B/C/D-pickers + chips + toelichting), en de <strong>Eindbeoordeling</strong> (verplicht Huidig + Potentieel niveau + Advies, plus "Persoonlijk wapen").</li>
+      <li><strong>Opslaan vs. Indienen:</strong> "Opslaan" bewaart als concept; "Indienen" dwingt de verplichte velden af (anders rode markering + "Je moet nog invullen: …"). Een optie "Niet gerapporteerd" (met reden) laat de verplichtingen vervallen.</li>
+    </ol>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>← Live wedstrijd/Programma/Wedstrijden · → <a href="#p-database">Database</a> (ingediende records) en <a href="#p-player">speler-detail</a> (voedt het profiel/gemiddelde).</p>
+  </div>
+</details>
+
+<details class="cmp" id="p-programma">
+  <summary><span class="sm-ic">&#128197;</span><span class="sm-txt"><span class="t">Programma</span><span class="s">Je scoutingweek plannen — maandag t/m zondag.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">Een weekplanner die per dag laat zien welke wedstrijden, trainingen en vergaderingen ingepland staan, met snelle acties om live te scouten, te verwerken of een afspraak in te plannen.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li>Weekraster MA–ZO met weeknummer en datumrange; navigeren met ‹ / › / Vandaag.</li>
+      <li>Per dag de afspraken, op drukke dagen gegroepeerd per dagdeel (Ochtend/Middag/Avond). Elke kaart: type-icoon (⚽/🏃/💬/📅), tijd, titel, chips voor leeftijd, aantal spelers, locatie (met Google-Maps-route) en een ✓ bij "verwerkt".</li>
+      <li>Statuskleur per kaart: komend / bezig / afgelopen. Onder elke dag "+ Inplannen".</li>
+      <li>Boven het raster verschijnen <strong>toernooikaarten</strong> voor toernooien in die week (klik → Toernooien).</li>
+      <li>Mobiel: een horizontale dag-strip toont één dag tegelijk.</li>
+    </ol>
+    <h5 class="hb-lbl acties">Belangrijkste acties</h5>
+    <ul><li>"+ Afspraak inplannen" · ✏ bewerken · ● Live (binnen wedstrijdvenster) · ✓ Verwerk (verleden wedstrijd) · kaart → detail.</li></ul>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>Deelt databron met <a href="#p-agenda">Agenda</a>; verleden items vloeien door naar <a href="#p-matches">Wedstrijden</a>; Live/Verwerk leiden naar de <a href="#p-report">rapport-flow</a>.</p>
+  </div>
+</details>
+
+<details class="cmp" id="p-agenda">
+  <summary><span class="sm-ic">&#128336;</span><span class="sm-txt"><span class="t">Agenda</span><span class="s">Uur-voor-uur overzicht langs de lijn.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">Een uur-voor-uur "sideline-overzicht" van wedstrijden, met een instelbaar venster van 1 dag, 3 dagen of een week.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li>Per dag een kolom met uur-rijen. De ochtend (06:00–17:00) staat open; de avond is ingeklapt tenzij er een avondwedstrijd is.</li>
+      <li>Elke wedstrijd toont tijd · thuis — uit (leeftijd), met locatie, leeftijd-kleur en statuskleur (komend/bezig/afgelopen).</li>
+      <li>Mobiel: dagdeel-blokken (vroege ochtend t/m avond) plus een apart blok "⏱ Tijd nog onbekend".</li>
+    </ol>
+    <h5 class="hb-lbl acties">Belangrijkste acties</h5>
+    <ul><li>Vandaag · ‹ / › · span-toggle 1 dag / 3 dagen / Week · avond uitklappen · wedstrijd → detail.</li></ul>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>Leest dezelfde databron als <a href="#p-programma">Programma</a> (waar je nieuwe items toevoegt).</p>
+  </div>
+</details>
+
+<details class="cmp" id="p-matches">
+  <summary><span class="sm-ic">&#9917;</span><span class="sm-txt"><span class="t">Wedstrijden</span><span class="s">Alle gescoute wedstrijden, met verwerkt-status.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">Een overzicht van alle gescoute wedstrijden met telling van totaal, verwerkt en nog te verwerken. Wedstrijden ontstaan automatisch zodra een rapport met thuis- én uitploeg wordt opgeslagen.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li>De lijst is <strong>afgeleid uit de spelersrapporten</strong>; daarnaast worden recente, voorbije programma-items meegenomen (zonder dubbelen).</li>
+      <li>Statistiekbalk: Totaal / Verwerkt / Nog te verwerken.</li>
+      <li>Filters: zoeken, sorteren (nieuwste/oudste), leeftijd-chips, status-chips en een ⭐ Opgevallen-filter. Gegroepeerd per maand.</li>
+      <li>Wedstrijdkaarten klappen <strong>inline</strong> uit met spelers-chips en per-speler-rijen.</li>
+    </ol>
+    <div class="note">De knoppen Importeren / Nieuw wedstrijdrapport in de topbar zijn in deze build gedeactiveerd; de subview-toggle bevat nog één actieve weergave ("Wedstrijden"). Functioneel is dat geen probleem — het is een restant van een eerder meervoudig systeem.</div>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>Volledig afgeleid van de <a href="#p-report">rapporten</a>; speler-chip → <a href="#p-player">profiel</a>; deelt de verwerkt-status met <a href="#p-programma">Programma</a>/<a href="#p-agenda">Agenda</a>.</p>
+  </div>
+</details>
+
+<!-- ===================== TOERNOOIEN ===================== -->
+<h2>Hoofdstuk 3 — Toernooien</h2>
+<p class="h2sub">Een toernooi importeren of aanmaken, scouten en netjes afronden.</p>
+
+<details class="cmp" id="p-toernooien" open>
+  <summary><span class="sm-ic">&#127942;</span><span class="sm-txt"><span class="t">Toernooien</span><span class="s">Import via Tournify, 5 subtabs, sync en afronden.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">De toernooimodule heeft een lijst-pane ("+ Nieuw toernooi") en een detail-pane met toernooi-acties (Wedstrijdduur, Synchroniseren, Statistieken, Afronden, Verwijderen) en vijf subtabs. De status doorloopt <strong>voorbereiding → actief → afsluiting → afgerond</strong>.</div>
+
+    <details class="subcmp"><summary>🔗 Importeren vanuit een Tournify-URL</summary><div class="cmp-body">
+      <p><strong>Doel:</strong> een compleet toernooi (poules, teams, dagen, wedstrijden, veldcodes, spelers) in één link inladen.</p>
+      <p><strong>Flow:</strong> "+ Nieuw toernooi" → toggle "🔗 Tournify URL" → plak de link → "Importeer via Tournify". De app haalt de data op via een aparte server (Cloudflare-worker), controleert op dubbele import, mapt alles naar het interne model, valideert (geen stille lege import) en bouwt teams/dagen/wedstrijden/spelers op. Met wedstrijden wordt de status <strong>actief</strong>.</p>
+      <p><strong>Wat de worker oplost:</strong> poules krijgen <strong>naam + letter</strong> (zodat gelijknamige poules niet samenvallen), teams worden via hun poule-positie herleid, en veldlabels worden ingekort tot de <strong>code</strong> ("Veld 1A - …" → "1A"). Ook de echte Tournify-standings worden bewaard.</p>
+    </div></details>
+
+    <details class="subcmp"><summary>✏️ Handmatig een toernooi aanmaken</summary><div class="cmp-body">
+      <p><strong>Doel:</strong> een toernooi opzetten dat niet op Tournify staat.</p>
+      <p><strong>Flow:</strong> "+ Nieuw toernooi" → "✏️ Handmatig" → Naam (verplicht), locatie, start/eind, categorieën (bv. "O12, O14"), info → "Aanmaken". Daarna voeg je zelf dagen en wedstrijden toe. Uitslagen voer je handmatig in (tik op de score).</p>
+    </div></details>
+
+    <details class="subcmp"><summary>📋 Subtab Programma (tijdlijn)</summary><div class="cmp-body">
+      <p><strong>Doel:</strong> het volledige wedstrijdprogramma per dag, met een kijk-prioriteit per wedstrijd.</p>
+      <p><strong>Flow:</strong> wedstrijden per dag, binnen een dag per starttijd in inklapbare tijdsblokken (met "▶ NU BEZIG"/"▶ STRAKS"). Een <strong>zoekveld</strong> verbergt niet-matchende rijen én lege tijd-/dagblokken. Een <strong>filterbalk</strong> Alle / 🟢 Bekijken / 🟠 Optioneel / 🔴 Niet haalbaar met tellers. De poule-kolom toont kort "Poule X". Per wedstrijd een <strong>"+ Mijn programma"</strong>-knop (wordt groen "✓ In programma"). Dagen kun je afsluiten/heropenen.</p>
+    </div></details>
+
+    <details class="subcmp"><summary>⭐ Subtab Mijn programma</summary><div class="cmp-body">
+      <p><strong>Doel:</strong> je persoonlijke planning van alleen de wedstrijden die je wilt zien, met conflicten en pauzes.</p>
+      <p><strong>Flow:</strong> een wedstrijd telt mee als hij in jouw programma staat óf als het thuis-/uitteam een <strong>gevolgde club</strong> is. Wedstrijden worden per tijdslot gegroepeerd; meerdere in één slot = een <strong>tijdsconflict</strong>, met "── X min pauze ──" tussen sloten. "+ Wedstrijd toevoegen" via een modal per dag.</p>
+    </div></details>
+
+    <details class="subcmp"><summary>👥 Subtab Teams</summary><div class="cmp-body">
+      <p><strong>Doel:</strong> alle teams per poule tonen, teams volgen, en per team de spelers beheren.</p>
+      <p><strong>Flow:</strong> teams gegroepeerd per poule (dezelfde poule-indeling als de standen). Elke teamkaart toont initialen, naam, aantal spelers en een <strong>☆ Volgen / ★ Gevolgd</strong>-knop. Een <strong>zoekveld</strong> en een <strong>Alle / Gevolgd</strong>-filter. Een team openen toont de roster met must-scout-markering (⭐) en "+ Speler koppelen". In een afgerond toernooi staat volgen op slot.</p>
+    </div></details>
+
+    <details class="subcmp"><summary>📊 Subtab Standen</summary><div class="cmp-body">
+      <p><strong>Doel:</strong> de poule-standen — vanaf import alle teams op 0, bijwerkend zodra uitslagen binnenkomen.</p>
+      <p><strong>Flow:</strong> bij voorkeur de gesynchroniseerde Tournify-standings, anders zelf berekend uit de wedstrijden. Alleen <strong>groepswedstrijden</strong> tellen (knock-outs uitgesloten), gegroepeerd op de echte poule, alle teams op 0, en alleen <strong>afgespeelde</strong> wedstrijden meegeteld (3 punten winst, 1 gelijk). Kolommen: # · Team · G · W · GL · V · Doelp. · DS · Ptn. Een bronregel meldt of het uit Tournify of uit het programma komt.</p>
+    </div></details>
+
+    <details class="subcmp"><summary>🏁 Subtab Afronden (bundeling)</summary><div class="cmp-body">
+      <p><strong>Doel:</strong> per geobserveerde speler een gebundeld concept (rapport of observatie) samenstellen en indienen — binnen het toernooi, niets gaat automatisch naar de database.</p>
+      <p><strong>Flow:</strong> alleen zichtbaar vanaf de afsluit-status. Spelers worden gesplitst in <em>gekoppeld → rapport</em> en <em>opgevallen → observatie</em>. Een voortgangsbalk toont ingediend/totaal. Per kaart open je het gebundelde concept (niveau, been, positie, trefwoord-blok voor-ingevuld uit alle observaties). "Indienen" bewaart de bundel op het toernooi-speler-document. Zijn alle spelers ingediend, dan verschijnt "🏆 Toernooi afronden".</p>
+    </div></details>
+
+    <details class="subcmp"><summary>🔄 Synchroniseren van uitslagen</summary><div class="cmp-body">
+      <p><strong>Doel:</strong> scores en standen automatisch ophalen bij Tournify, zonder scout-data te raken.</p>
+      <p><strong>Flow:</strong> "🔄 Uitslagen synchroniseren" koppelt lokale wedstrijden op genormaliseerde teamnamen (ook omgedraaide thuis/uit-volgorde). Alleen wedstrijden mét uitslag worden geschreven (een 0-0 zonder "finished" telt niet als gelijkspel). Er wordt uitsluitend score/status/standen weggeschreven — nooit observaties of rapporten. In een afgerond toernooi staat sync op slot.</p>
+    </div></details>
+
+    <details class="subcmp"><summary>✅ Afronden &amp; exporteren</summary><div class="cmp-body">
+      <p><strong>Doel:</strong> een toernooi netjes afsluiten en geobserveerde spelers desgewenst exporteren naar reguliere rapporten/observaties.</p>
+      <p><strong>Flow:</strong> de actieknop is contextgevoelig: <em>actief</em> → "🏁 Toernooi afgelopen" (status afsluiting); <em>afsluiting</em> → "🏆 Toernooi afronden" (uitgegrijsd tot alles is ingediend); <em>afgerond</em> → "✅ Afgerond". Zijn er nog geen gerapporteerde spelers, dan verschijnt een <strong>nette bevestig-popup</strong> (geen foutmelding) met Annuleren / Toch afronden. Bij afronden: status "afgerond" + bevestiging dat alles in het toernooi bewaard blijft (alleen-lezen, heropenbaar) en dat er <strong>niets naar de database</strong> is geschreven. Exporteren kan per speler of in bulk: een gekoppelde speler wordt een rapport-concept (scores leeg, scout vult zelf in), een opgevallen speler een observatie.</p>
+    </div></details>
+
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>Gevolgde clubs voeden "Mijn programma"; standen worden gevoed door programma + sync; export schrijft (als concept) naar de <a href="#p-database">spelersdatabase</a> met behoud van de toernooi-bron.</p>
+  </div>
+</details>
+
+<!-- ===================== ANALYSE ===================== -->
+<h2>Hoofdstuk 4 — Analyse</h2>
+<p class="h2sub">Van losse rapporten naar inzicht: teams, vergelijkingen en opstellingen.</p>
+
+<details class="cmp" id="p-elftallen">
+  <summary><span class="sm-ic">&#129529;</span><span class="sm-txt"><span class="t">Gescoute teams</span><span class="s">Doorklikken: club → elftal → speler.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">Een doorklikbaar overzicht van alle teams/clubs waarvan je spelers hebt gezien — afgeleid uit je eigen database, niet uit een externe clubdatabase.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li>Spelers worden gegroepeerd per club en elftal. <strong>Zonder zoekterm</strong> zie je clubtegels (met aantal teams, geziene spelers, en badges rapporten/observaties); <strong>met zoekterm</strong> een platte lijst elftaltegels.</li>
+      <li>Inzoomen: club → elftal (gekleurd per leeftijdscategorie) → spelers (met positie, type en huidig→potentieel niveau). Klik op een speler opent het profiel.</li>
+    </ol>
+    <h5 class="hb-lbl acties">Belangrijkste acties</h5>
+    <ul><li>Zoeken/wissen · in-/uitzoomen · "📊 Analyseer dit team" (neemt alle spelers mee naar Elftal analyse).</li></ul>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>→ <a href="#p-player">Speler-detail</a> · → <a href="#p-pitch">Elftal analyse</a> (met preselectie).</p>
+  </div>
+</details>
+
+<details class="cmp" id="p-compare">
+  <summary><span class="sm-ic">&#9878;&#65039;</span><span class="sm-txt"><span class="t">Vergelijken</span><span class="s">2 tot 6 spelers naast elkaar, met PDF-export.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">2 tot 6 spelers naast elkaar zetten en visueel vergelijken via radar, balken, gauges, head-to-head, percentielen, advies en een detailtabel — inclusief PDF-export en delen.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li>Spelers kiezen via zoeken (live suggesties) of vanuit de database met checkboxen (max 6). Per speler een omklapbare hero-kaart (voorkant gegevens, achterkant advies/niveau/laatste scoutdatum/wapen).</li>
+      <li>De resultaten verschijnen vanaf 2 spelers: gauges, scatter, head-to-head, radar, balken, notities, heatmap, percentielen, advies en sterke punten, op basis van 7 criteria (A=4…D=1).</li>
+    </ol>
+    <h5 class="hb-lbl acties">Belangrijkste acties</h5>
+    <ul><li>📄 PDF (printpagina met radar-snapshot, trend ↗/↘/→, advies en criteria-tabel) · ↗ Delen · Wissen · "➕ Voeg toe aan opstelling".</li></ul>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>← <a href="#p-database">Database</a> · → <a href="#p-player">profiel</a> · → <a href="#p-pitch">Elftal analyse</a> (preselectie).</p>
+  </div>
+</details>
+
+<details class="cmp" id="p-pitch">
+  <summary><span class="sm-ic">&#128204;</span><span class="sm-txt"><span class="t">Elftal analyse</span><span class="s">Een opstelling op het veld, met gaps en gekoppelde spelers.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">Per team een opstelling op een veld analyseren: per positie het huidige en gewenste niveau vastleggen, open posities ("gaps") markeren, profieltekst invullen en spelersrapporten koppelen (huidige spelers én kandidaten). Analyses worden opgeslagen.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li>Een lijst van bestaande analyses (met formatie, datum, aantal rapporten en aantal open posities) of "+ Eerste analyse maken".</li>
+      <li>In het detail: kopvelden (club, leeftijd, seizoen, datum, opstelling). De gekozen <strong>formatie</strong> bepaalt de posities op het veld; elke positie heeft chips voor huidig en gewenst niveau, met een heatmap-overlay.</li>
+      <li>Klik op een positie → paneel met "open positie"-vinkje, grade-pickers, drie profielteksten en twee koppelblokken (huidige spelers / potentiële kandidaten), inclusief automatische kandidaten-suggesties.</li>
+    </ol>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>← <a href="#p-elftallen">Gescoute teams</a> en <a href="#p-compare">Vergelijken</a> leveren preselecties · → <a href="#p-player">Speler-detail</a>.</p>
+  </div>
+</details>
+
+<details class="cmp" id="p-teamoverzicht">
+  <summary><span class="sm-ic">&#128101;</span><span class="sm-txt"><span class="t">Team-overzicht <span class="tag tag-open">Voorbereid · nog niet actief</span></span><span class="s">Bedoeld voor coördinatoren: rapporten van alle scouts.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">Bedoeld als overzicht voor coördinatoren/admin: de rapporten van álle scouts in het team, verdeeld over wedstrijdrapporten, spelersrapporten en de scouts zelf.</div>
+    <div class="note"><strong>Eerlijke status:</strong> dit onderdeel is in de huidige build een <strong>voorbereide placeholder</strong>. De schermopzet (drie tabs) en de styling bestaan, maar er is nog geen data-loading, geen tab-logica en het menu-item wordt nog niet geactiveerd voor de coördinator-rol. Functioneel is het dus nog niet bruikbaar — het skelet staat klaar voor later.</div>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>Hangt conceptueel samen met de rollen/rechten (coördinator/admin) en de rapporten van andere scouts.</p>
+  </div>
+</details>
+
+<!-- ===================== RELATIES & OVERIG ===================== -->
+<h2>Hoofdstuk 5 — Relaties &amp; overig</h2>
+<p class="h2sub">Adresboeken, contacten, kilometers en tips.</p>
+
+<details class="cmp" id="p-adresboek">
+  <summary><span class="sm-ic">&#128205;</span><span class="sm-txt"><span class="t">Clubs &amp; locaties</span><span class="s">Doorzoekbaar adresboek van clubs en sportparken.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">Een doorzoekbaar adresboek van alle clubs/sportparken in de databank, zodat je snel een adres vindt en met één tik een route in Google Maps opent.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li>Per club: naam, plaats, automatisch afgeleide <strong>provincie</strong> (uit de postcode), sportparknaam, adres en een <strong>Route</strong>-knop.</li>
+      <li>Filteren via een <strong>alfabetbalk</strong> (A–Z) en een <strong>provinciebalk</strong> (12 provincies, met tellingen; lege opties uitgeschakeld). Zoeken filtert bewust alleen op <strong>clubnaam</strong>. Sorteren op club / plaats / provincie.</li>
+    </ol>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>Dezelfde clubdatabank vult plaats/adres automatisch in bij het <a href="#p-report">wedstrijdrapport</a> en levert adressen/coördinaten aan <a href="#p-ritten">Ritten</a>.</p>
+  </div>
+</details>
+
+<details class="cmp" id="p-contacts">
+  <summary><span class="sm-ic">&#128100;</span><span class="sm-txt"><span class="t">Contactpersonen</span><span class="s">Je persoonlijke adresboek van mensen.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">Een persoonlijk adresboek van trainers, scouts, ouders en andere contacten.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li>Elk contact is een kaart met initialen, naam, functie, club-badge en klikbare tel-/e-mailregels (tap-to-call / tap-to-mail).</li>
+      <li>Zoeken (naam/club/functie/e-mail/telefoon) en sorteren (naam/club/functie/nieuwste). Toevoegen/bewerken via een modal; telefoon wordt als NL-mobiel geformatteerd. <strong>Naam is verplicht.</strong></li>
+    </ol>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>Het veld "Tipgever-contact" in <a href="#p-tips">Getipte spelers</a> verwijst naar deze contacten.</p>
+  </div>
+</details>
+
+<details class="cmp" id="p-ritten">
+  <summary><span class="sm-ic">&#128663;</span><span class="sm-txt"><span class="t">Ritten &amp; declaraties</span><span class="s">Kilometers registreren, automatisch berekenen, exporteren.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">Kilometerregistratie van scoutingsritten met automatische afstand en bedrag, plus export als CSV en als printbare PDF-declaratie.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li>KPI-balk: aantal ritten, totaal km, periode en totaalbedrag (km × tarief; standaard € 0,23/km, instelbaar in Instellingen). Maand-subtotalen in een inklapblok.</li>
+      <li>Een rit toevoegen: datum/tijd, vertrekadres (met auto-GPS + "📍 huidige locatie"), aankomst (adres-suggesties uit clubadresboek, je rithistorie en live kaartzoeken), kilometers en doel. <strong>Automatische km</strong> via routeberekening zodra beide adressen bekend zijn; "⟳ Herbereken" forceert opnieuw. "📅 Kies uit programma" vult aankomst/datum/tijd in.</li>
+      <li>Per rit: bewerken of "↩ Terug" (maakt direct de retourrit). Favoriete routes opslaan en met één klik invullen.</li>
+    </ol>
+    <h5 class="hb-lbl acties">Belangrijkste acties</h5>
+    <ul><li>Nieuwe rit · ⭐ Routes · filter Van/Tot · CSV-export · PDF-declaratie · per rit Bewerken/↩ Terug.</li></ul>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p><a href="#p-programma">Programma</a> (aankomst/doel), <a href="#p-adresboek">Clubs &amp; locaties</a> (adressen) en <a href="#p-settings">Instellingen</a> (km-tarief).</p>
+  </div>
+</details>
+
+<details class="cmp" id="p-tips">
+  <summary><span class="sm-ic">&#128161;</span><span class="sm-txt"><span class="t">Getipte spelers</span><span class="s">Tips bijhouden met prioriteit en opvolgstatus.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">Een lijst van spelers die getipt zijn (door coaches, ouders, scouts), met prioriteit en opvolgstatus, zodat tips niet verloren gaan en kunnen doorstromen naar een wedstrijd of rapport.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li>Elke tip is een kaart met spelernaam, <strong>prioriteit</strong>-badge (Hoog/Midden/Laag) en <strong>status</strong>-badge (Nog te bekijken → Wedstrijd ingepland → Bekeken → Gerapporteerd → Afgevallen), plus elftal/leeftijd/positie, tipgever, regio en bijzonderheden.</li>
+      <li>Zoeken, statusfilter en sorteren (datum/prioriteit/status/naam/leeftijd). Toevoegen via een modal — verplicht zijn tipgever, speler en bijzonderheden.</li>
+    </ol>
+    <h5 class="hb-lbl acties">Belangrijkste acties</h5>
+    <ul><li>Nieuwe tip · per kaart "📅 Plan wedstrijd" (→ Programma) en "📋 Maak rapport" (→ rapport-flow, voor-ingevuld vanuit de tip).</li></ul>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>→ <a href="#p-programma">Programma</a> en de <a href="#p-report">rapport-flow</a>.</p>
+  </div>
+</details>
+
+<!-- ===================== BEHEER ===================== -->
+<h2>Hoofdstuk 6 — Beheer &amp; toegang</h2>
+<p class="h2sub">De adminmodule om gebruikers en aanvragen te beheren.</p>
+
+<details class="cmp" id="p-admin">
+  <summary><span class="sm-ic">&#128737;</span><span class="sm-txt"><span class="t">Beheer (admin)</span><span class="s">Alleen voor beheerders: aanvragen, gebruikers, logboek.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="doelbox">De adminmodule (alleen voor beheerders) om nieuwe gebruikers toe te laten, gebruikers en rollen te beheren, tijdelijke supporttoegang te regelen en support-acties na te lezen.</div>
+    <h5 class="hb-lbl flow">Hoe het werkt</h5>
+    <ol>
+      <li><strong>Toegangsaanvragen:</strong> de wachtrij van publieke aanvragen, met filters (open/alle/goedgekeurd/afgewezen). Per aanvraag: <em>Goedkeuren als scout</em>, <em>Goedkeuren als coördinator</em> (maakt een account aan, eventueel met welkomstmail) of <em>Afwijzen</em>.</li>
+      <li><strong>Gebruikers:</strong> zoeken/filteren/sorteren. Per gebruiker: Details, Rol wijzigen (scout/coördinator/admin), Supporttoegang, Deactiveren/Reactiveren en Verwijderen (soft-delete; vereist het exact typen van "VERWIJDEREN"; scout-data blijft behouden; eigen account en admins zijn beschermd).</li>
+      <li><strong>Logboek:</strong> een tijdlijn van supportsessies (verzoek → toegestaan/geweigerd → gestart/beëindigd/verlopen), volledig auditbaar.</li>
+      <li><strong>Gedelegeerde supporttoegang:</strong> read-only, tijdelijk (30/60 min), met verplichte reden; de gebruiker moet het zelf in-app toestaan; geen impersonatie.</li>
+    </ol>
+    <h5 class="hb-lbl koppel">Koppelingen</h5>
+    <p>Verwerkt de aanvragen uit de <a href="#p-login">toegang-aanvragen-flow</a>. Rolwijzigingen werken door na opnieuw inloggen. Zie ook <a href="#architectuur">Onder de motorkap</a>.</p>
+  </div>
+</details>
+
+<!-- ===================== KLEUREN ===================== -->
+<h2 id="kleuren">Hoofdstuk 7 — Kleurgebruik</h2>
+<p class="h2sub">Welke kleuren, waar en waarom. Codes komen rechtstreeks uit de stylesheet.</p>
+<p>ScoutingHub is een <strong>donker thema</strong> met een marineblauwe basis en rood als merk-accent — rustig op de ogen langs de lijn, met een herkenbare merkkleur. Alle kleuren staan als variabelen bovenaan <code>style.css</code>, dus de huisstijl pas je op één plek aan.</p>
+<div class="palette-band">
+  <span style="background:#10151e"></span><span style="background:#161e2a"></span><span style="background:#1a2230"></span><span style="background:#202b3a"></span><span style="background:#e30613"></span><span style="background:#f5c518"></span><span style="background:#4ea1ff"></span><span style="background:#22c55e"></span><span style="background:#f59e0b"></span><span style="background:#ef4444"></span>
+</div>
+
+<h3>Achtergronden &amp; structuur</h3>
+<div class="swatch-grid">
+  <div class="sw"><span class="dot" style="background:#10151e"></span><div><div class="nm">Hoofdachtergrond <span class="hex">#10151e</span></div><div class="use">De basis van elk scherm — diep marineblauw.</div></div></div>
+  <div class="sw"><span class="dot" style="background:#161e2a"></span><div><div class="nm">Achtergrond 2 <span class="hex">#161e2a</span></div><div class="use">Tweede laag / secties die opvallen.</div></div></div>
+  <div class="sw"><span class="dot" style="background:#1a2230"></span><div><div class="nm">Paneel <span class="hex">#1a2230</span></div><div class="use">Kaarten en panelen.</div></div></div>
+  <div class="sw"><span class="dot" style="background:#202b3a"></span><div><div class="nm">Achtergrond 3 <span class="hex">#202b3a</span></div><div class="use">Hover-vlakken, actieve rijen.</div></div></div>
+  <div class="sw"><span class="dot" style="background:#2b374c"></span><div><div class="nm">Rand <span class="hex">#2b374c</span></div><div class="use">Lijnen tussen kaarten en rijen.</div></div></div>
+  <div class="sw"><span class="dot" style="background:#2f3b52"></span><div><div class="nm">Rand 2 <span class="hex">#2f3b52</span></div><div class="use">Invoervelden en knopranden.</div></div></div>
+</div>
+
+<h3>Tekstkleuren</h3>
+<div class="swatch-grid">
+  <div class="sw"><span class="dot" style="background:#e8edf5"></span><div><div class="nm">Tekst primair <span class="hex">#e8edf5</span></div><div class="use">Koppen en belangrijke tekst.</div></div></div>
+  <div class="sw"><span class="dot" style="background:#aab6c9"></span><div><div class="nm">Tekst secundair <span class="hex">#aab6c9</span></div><div class="use">Labels en metagegevens.</div></div></div>
+  <div class="sw"><span class="dot" style="background:#9aa6ba"></span><div><div class="nm">Tekst tertiair <span class="hex">#9aa6ba</span></div><div class="use">Hints/tijdstempels — bewust lichter voor contrast (WCAG&nbsp;AA).</div></div></div>
+</div>
+
+<h3>Merk- &amp; accentkleuren</h3>
+<div class="swatch-grid">
+  <div class="sw"><span class="dot" style="background:#e30613"></span><div><div class="nm">Primair rood <span class="hex">#e30613</span></div><div class="use">De merkkleur. Hoofdaccenten, titels, intro-gloed.</div></div></div>
+  <div class="sw"><span class="dot" style="background:#f5c518"></span><div><div class="nm">Secundair geel <span class="hex">#f5c518</span></div><div class="use">Tweede merkkleur — accenten en gradient.</div></div></div>
+  <div class="sw"><span class="dot" style="background:#4ea1ff"></span><div><div class="nm">Accent blauw <span class="hex">#4ea1ff</span></div><div class="use">Links, focus en interactieve knoppen.</div></div></div>
+  <div class="sw"><span class="dot" style="background:#9aa6ba"></span><div><div class="nm">Observatie paars <span class="hex">#a855f7</span></div><div class="use">Observatie-accent in de database (OBS).</div></div></div>
+</div>
+
+<h3>Status- &amp; niveaukleuren</h3>
+<table>
+  <thead><tr><th>Kleur</th><th>Code</th><th>Betekenis &amp; waar</th></tr></thead>
+  <tbody>
+    <tr><td><span class="idot" style="background:#22c55e"></span> Groen</td><td><code>#22c55e</code></td><td>Goed / positief / compleet — chip "goed", rapport-gloed, niveau A.</td></tr>
+    <tr><td><span class="idot" style="background:#84cc16"></span> Lime</td><td><code>#84cc16</code></td><td>Niveau B (goed).</td></tr>
+    <tr><td><span class="idot" style="background:#f59e0b"></span> Oranje</td><td><code>#f59e0b</code></td><td>Gemiddeld / let-op — chip "gemiddeld", niveau C, waarschuwingen.</td></tr>
+    <tr><td><span class="idot" style="background:#ef4444"></span> Rood</td><td><code>#ef4444</code></td><td>Onvoldoende / fout — chip "ondermaats", niveau D, foutmeldingen.</td></tr>
+  </tbody>
+</table>
+<div class="callout"><p><strong>Eén bron van waarheid:</strong> al deze kleuren staan als variabelen in <code>:root</code> in <code>style.css</code>. Pas je ze daar aan, dan verandert de hele app mee.</p></div>
+
+<!-- ===================== ARCHITECTUUR ===================== -->
+<h2 id="architectuur">Hoofdstuk 8 — Onder de motorkap</h2>
+<p class="h2sub">Hoe de site technisch in elkaar zit en hoe je hem uitrolt.</p>
+<table>
+  <thead><tr><th>Onderdeel</th><th>Wat het is</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Frontend</strong></td><td>Eén pagina-app in pure JavaScript (geen build-stap): <code>index.html</code> laadt <code>app.js</code> direct. Opmaak in <code>style.css</code>, clubdata in <code>clubs-data.js</code>.</td></tr>
+    <tr><td><strong>Database &amp; login</strong></td><td>Firebase (Authentication + Firestore). Per gebruiker eigen scout-data; toegang geregeld via Firestore-regels en rollen (scout/coördinator/admin).</td></tr>
+    <tr><td><strong>Toernooi-server</strong></td><td>Een aparte Cloudflare-worker (<code>worker.js</code>) die Tournify importeert/synct en de toegangsaanvragen verwerkt. Deze draait los van de site en wordt apart uitgerold.</td></tr>
+    <tr><td><strong>PWA &amp; offline</strong></td><td>Service worker (<code>sw.js</code>) voor offline gebruik en installatie op het startscherm. De <code>CACHE_VERSION</code> wordt bij elke deploy opgehoogd zodat gebruikers de nieuwste versie krijgen.</td></tr>
+    <tr><td><strong>Externe diensten</strong></td><td>Google Maps (navigatie), Nominatim (adres → coördinaten) en OSRM (route-afstand voor de kilometerregistratie).</td></tr>
+  </tbody>
+</table>
+<h3>Uitrollen</h3>
+<table>
+  <thead><tr><th>Bestand</th><th>Waar</th></tr></thead>
+  <tbody>
+    <tr><td><span class="chip">app.js</span> <span class="chip">index.html</span> <span class="chip">style.css</span> <span class="chip">handleiding.html</span> <span class="chip">sw.js</span></td><td>GitHub Pages (serveert de site)</td></tr>
+    <tr><td><span class="chip">worker.js</span></td><td>Cloudflare (apart uitrollen — gaat niet mee met een GitHub-upload)</td></tr>
+  </tbody>
+</table>
+<div class="callout"><p><strong>Na elke deploy:</strong> <code>CACHE_VERSION</code> in <code>sw.js</code> ophogen, en in Cloudflare "Purge Everything" zodat de nieuwe versie meteen laadt.</p></div>
+
+<!-- ===================== WIJZIGINGSLOG ===================== -->
+<h2 id="changelog">Hoofdstuk 9 — Wijzigingslog</h2>
+<p class="h2sub">Wat is er aangepast, en waarom we dat zo kozen. Nieuwste bovenaan.</p>
+<div class="callout"><p><strong>Bijwerken:</strong> voeg bij elke nieuwe wijziging een <code>&lt;details class="cmp"&gt;</code>-blok bovenaan deze lijst toe met de datum in de <code>datebadge</code>, een <span style="color:#991b1b;font-weight:700">Was</span>-blok, een <span style="color:#166534;font-weight:700">Nu</span>-blok en een <span style="color:var(--koppel);font-weight:700">Keuze</span>-regel. Werk daarna ook de betreffende pagina hierboven bij.</p></div>
+
+<details class="cmp" open>
+  <summary><span class="sm-ic">&#127942;</span><span class="sm-txt"><span class="t">1. Tournify-import: poules &amp; veldnamen <span class="datebadge">juni 2026</span></span><span class="s">Link plakken en alles klopt.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Alle teams in één lijst, gelijknamige poules vielen samen, ongespeelde wedstrijden telden als 0-0, en de velden ontbraken (403 op de directe bron).</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Elke poule apart met naam + letter, echte veldcodes ("1A", "2C"), juiste thuis/uit-teams en uitslagen; ongespeelde wedstrijden tellen niet als gelijkspel.</div>
+    <p class="cl-keuze"><b>Keuze:</b> veldnamen alleen uit een legale, leesbare bron; teams herleiden via poule-positie en bij twijfel de wedstrijd weglaten (liever niets dan iets fouts). <span class="chip">worker.js</span> <span class="chip">app.js</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#128202;</span><span class="sm-txt"><span class="t">2. Toernooi-standen per poule <span class="datebadge">juni 2026</span></span><span class="s">Vanaf import alle teams op 0.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Eén grote lijst die soms verkeerd opbrak; de tab verborg zichzelf zolang er niets gespeeld was.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Per poule, alle teams op 0 vanaf import, alleen afgespeelde groepswedstrijden tellen, en de stand schuift mee bij sync.</div>
+    <p class="cl-keuze"><b>Keuze:</b> groeperen op de echte poule i.p.v. reconstrueren, knock-outs uitsluiten, en altijd tonen (ook leeg). <span class="chip">app.js</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#128295;</span><span class="sm-txt"><span class="t">3. Herstel-functie voor standen <span class="datebadge">juni 2026</span></span><span class="s">Vangnet bij een foute stand.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Een foute stand kon alleen via opnieuw importeren hersteld worden.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Een herstel-/diagnosefunctie die de opgeslagen Tournify-data opnieuw verwerkt, met preview en alleen-samenvoegen.</div>
+    <p class="cl-keuze"><b>Keuze:</b> preview-eerst en nooit blind overschrijven, zodat handmatige gegevens veilig blijven. <span class="chip">app.js</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#128101;</span><span class="sm-txt"><span class="t">4. Teams-tab (voorheen "Spelers") <span class="datebadge">juni 2026</span></span><span class="s">Per poule, zoek + Gevolgd-filter.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Toonde "klassen", kapte teamnamen af, lijnde niet uit, en de Gevolgd-filter werkte niet.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Hernoemd naar Teams, per poule, met zoekveld, werkende Alle/Gevolgd-filter, Volgen-knop en "Spelers (N)".</div>
+    <p class="cl-keuze"><b>Keuze:</b> filter koppelen aan het nieuwe teamkaart-kenmerk en een flexibel raster voor volledige namen. <span class="chip">app.js</span> <span class="chip">index.html</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#128197;</span><span class="sm-txt"><span class="t">5. Programma: zoeken &amp; snelknop <span class="datebadge">juni 2026</span></span><span class="s">Sneller de juiste wedstrijd oppakken.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Geen zoeken; de poule-kolom toonde de klasse.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Zoekvenster dat lege tijd-/dagblokken verbergt, "+ Mijn programma"-snelknop per wedstrijd, en poule-kolom "Poule X".</div>
+    <p class="cl-keuze"><b>Keuze:</b> zoeken dat lege blokken wegfiltert en één-tik oppakken, want dat doe je het vaakst. <span class="chip">app.js</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#9989;</span><span class="sm-txt"><span class="t">6. Toernooi afronden <span class="datebadge">juni 2026</span></span><span class="s">Nette popup i.p.v. foutmelding.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Afronden zonder data gaf een kale foutmelding.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Een nette bevestig-popup met Annuleren / Toch afronden.</div>
+    <p class="cl-keuze"><b>Keuze:</b> bevestigen i.p.v. blokkeren — je houdt de controle. <span class="chip">app.js</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#11014;</span><span class="sm-txt"><span class="t">7. Scroll-naar-boven knop <span class="datebadge">juni 2026</span></span><span class="s">Eén globale ↑-knop.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Op lange lijsten handmatig terugscrollen.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Eén globale ↑-knop rechtsonder op alle schermen.</div>
+    <p class="cl-keuze"><b>Keuze:</b> één globale knop i.p.v. per scherm — consistent en minder onderhoud. <span class="chip">app.js</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#127760;</span><span class="sm-txt"><span class="t">8. Landingspagina <span class="datebadge">juni 2026</span></span><span class="s">Redesign + "Beslis" + komma's.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Oudere opzet; stap 4 was "Exporteren"; lange streepjes (—) in de teksten.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Herzien (header, hero, features, CTA); stap 4 is "Beslis — objectieve keuzes op basis van data"; streepjes vervangen door komma's.</div>
+    <p class="cl-keuze"><b>Keuze:</b> "Beslis" als slotstap (de échte waarde), en komma's voor rustiger lezen; app-interface-streepjes bleven staan. <span class="chip">index.html</span> <span class="chip">style.css</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#128247;</span><span class="sm-txt"><span class="t">9. Afbeelding vergroten (lightbox) <span class="datebadge">juni 2026</span></span><span class="s">Strakke cursor + klik-sluit.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Pixelige vergrootglas-cursor; sluiten kon alleen via achtergrond/kruisje.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Strakke cursor, en een klik op de afbeelding zelf sluit de weergave.</div>
+    <p class="cl-keuze"><b>Keuze:</b> gewone pointer (bitmap-zoomcursor wordt korrelig op foldable/hoge-resolutie) en klik = sluiten overal. <span class="chip">index.html</span> <span class="chip">handleiding.html</span> <span class="chip">style.css</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#127912;</span><span class="sm-txt"><span class="t">10. Kleurstelling lichter <span class="datebadge">juni 2026</span></span><span class="s">Een fractie lichter.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Vrij donker.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Een fractie lichter (o.a. lichtere tertiaire tekst voor contrast), navy + rood behouden.</div>
+    <p class="cl-keuze"><b>Keuze:</b> tinten optillen zonder de identiteit los te laten. Zie <a href="#kleuren">kleur-hoofdstuk</a>. <span class="chip">style.css</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#129529;</span><span class="sm-txt"><span class="t">11. Demo-data overhaul <span class="datebadge">juni 2026</span></span><span class="s">±72% rapporten / 28% observaties.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Bijna alles observaties bovenaan; scheef en eentonig.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>±72/28 rapporten/observaties, gemengd, 100% gevuld, enkele spelers met meerdere rapporten, alle wedstrijden verwerkt op 2 na.</div>
+    <p class="cl-keuze"><b>Keuze:</b> rapporten als kern, 2 wedstrijden bewust onverwerkt om het verschil te tonen. <span class="chip">app.js</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#128154;</span><span class="sm-txt"><span class="t">12. Rapport-gloed in database <span class="datebadge">juni 2026</span></span><span class="s">Rapporten net zo herkenbaar als obs.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Observaties gekleurd, rapporten zonder accent — vielen weg.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Rapportregels krijgen een subtiele groenige gloed.</div>
+    <p class="cl-keuze"><b>Keuze:</b> groen, passend bij de "positief/compleet"-betekenis elders. <span class="chip">app.js</span> <span class="chip">style.css</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#128272;</span><span class="sm-txt"><span class="t">13. Demo-knoppen alleen voor demo <span class="datebadge">juni 2026</span></span><span class="s">Echte scouts zien ze niet.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>De seed-knoppen waren breder zichtbaar dan nodig.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Alleen zichtbaar voor <code>demo@scoutinghub.nl</code>.</div>
+    <p class="cl-keuze"><b>Keuze:</b> zichtbaarheid aan exact één account koppelen — veilig en voorspelbaar. <span class="chip">app.js</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#128214;</span><span class="sm-txt"><span class="t">14. Handleiding herschreven <span class="datebadge">juni 2026</span></span><span class="s">Sluit weer aan op de schermen.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Beschreef oudere flows en miste nieuwe schermen.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Herschreven naar de huidige flows, goede screenshots behouden, plus de lightbox-fix.</div>
+    <p class="cl-keuze"><b>Keuze:</b> tekst vernieuwen maar screenshots behouden (herkenbaar). <span class="chip">handleiding.html</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#128737;</span><span class="sm-txt"><span class="t">15. Security &amp; toegang uitgelegd <span class="datebadge">juni 2026</span></span><span class="s">Open aanvraag, jij beslist.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Onduidelijkheid over de aanvraagflow en of er een service-account nodig was.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Invite-only met open aanvraag; jij beslist. Service-account bewust uitgesteld en gedocumenteerd.</div>
+    <p class="cl-keuze"><b>Keuze:</b> open deur, jij beslist; complexiteit uitstellen, geen geheimen in de repo. <span class="chip">SECURITY_ROADMAP.md</span></p>
+  </div>
+</details>
+
+<details class="cmp">
+  <summary><span class="sm-ic">&#128241;</span><span class="sm-txt"><span class="t">16. Foldable-optimalisatie <span class="datebadge">juni 2026</span> <span class="tag tag-open">scroll geparkeerd</span></span><span class="s">Honor Magic V5 binnenscherm.</span></span><span class="sm-arrow">&#9654;</span></summary>
+  <div class="cmp-body">
+    <div class="cl-was"><div class="cl-lbl">Was</div>Lay-out sloot niet aan; je kon niet helemaal naar beneden scrollen tenzij je kantelde.</div>
+    <div class="cl-nu"><div class="cl-lbl">Nu</div>Veilige-zone-marges, aparte schermregel en compactere navigatie toegevoegd. De scroll-bug is op jouw verzoek geparkeerd.</div>
+    <p class="cl-keuze"><b>Keuze:</b> alleen veilige, additieve CSS (geen JS-trucs); de scroll-bug laten rusten tot je 'm weer wilt oppakken. <span class="chip">style.css</span> <span class="chip">index.html</span></p>
+  </div>
+</details>
+
+<p class="foot">ScoutingHub — volledig handboek · klikbaar per onderdeel · opgesteld op basis van de code (<code>index.html</code>, <code>app.js</code>, <code>worker.js</code>, <code>style.css</code>). De enige bewust onvolledige functie is Team-overzicht (voorbereide placeholder).</p>
+
+</main>
+</body>
+</html>

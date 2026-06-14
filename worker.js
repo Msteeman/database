@@ -1121,6 +1121,7 @@ function contactFrom(env){ return cfg(env, 'CONTACT_FROM', 'ScoutingHub <contact
 function adminFrom(env){ return cfg(env, 'ADMIN_FROM', 'ScoutingHub Beheer <admin@scoutinghub.nl>'); }
 function adminNotifyTo(env){ return cfg(env, 'ADMIN_NOTIFY_TO', '').split(',').map(s=>s.trim()).filter(Boolean); }
 function contactEmail(env){ return cfg(env, 'CONTACT_EMAIL', 'contact@scoutinghub.nl'); }
+function feedbackNotifyTo(env){ const v = cfg(env, 'FEEDBACK_NOTIFY_TO', ''); return v || contactEmail(env); }
 function fbApiKey(env){ return cfg(env, 'FB_API_KEY', ''); }
 function adminEmails(env){ return cfg(env, 'ADMIN_EMAILS', '').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean); }
 
@@ -1296,6 +1297,7 @@ async function sendMail(env, opts){
     const payload = { from: opts.from, to: Array.isArray(opts.to)?opts.to:[opts.to], subject: opts.subject, html: opts.html };
     if(opts.text) payload.text = opts.text;
     if(opts.replyTo) payload.reply_to = opts.replyTo;
+    if(opts.attachments) payload.attachments = opts.attachments;
     const r = await fetchWithTimeout('https://api.resend.com/emails', { method:'POST', headers:{ Authorization:'Bearer '+env.RESEND_API_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
     return r.ok;
   } catch(_){ return false; }
@@ -1329,9 +1331,8 @@ async function sendAdminNotifyMail(env, d){
 async function sendWelcomeMail(env, d){
   const base = appBaseUrl(env);
   const roleLabel = d.role === 'coordinator' ? 'Coördinator' : 'Scout';
-  const cta = d.resetLink
-    ? '<p style="'+MAIL_P+'">Stel eerst je wachtwoord in en log daarna direct in:</p>' + ctaButton('Wachtwoord instellen & inloggen', d.resetLink)
-    : ctaButton('Inloggen', base);
+  const cta = ctaButton('Naar de inlogpagina', base)
+    + '<div style="margin:0 0 16px;padding:14px 16px;background:#f6f8fb;border:1px solid #e2e8f0;border-radius:10px;font-size:14px;line-height:1.7;color:#334155;"><strong style="color:#0f172a;">Je wachtwoord instellen (eerste keer)</strong><br>Klik op de inlogpagina op <strong>&ldquo;Wachtwoord vergeten?&rdquo;</strong>, vul je e-mailadres in en volg de link in de mail die je dan ontvangt. Klik die link <strong>meteen</strong> &mdash; hij is eenmalig en verloopt.</div>';
   const teamLine = d.teamName
     ? '<p style="'+MAIL_P+'">Je rol: <strong>'+roleLabel+'</strong> &middot; Team: <strong>'+shEsc(d.teamName)+'</strong></p>'
     : '<p style="'+MAIL_P+'">Je rol: <strong>'+roleLabel+'</strong> &middot; je werkt als <strong>individuele scout</strong> (geen team).</p>';
@@ -1348,7 +1349,7 @@ async function sendWelcomeMail(env, d){
     + '<p style="'+MAIL_P+'">Je toegang tot ScoutingHub is goedgekeurd en je account staat klaar.</p>'
     + cta + teamLine + steps + tips
     + '<p style="'+MAIL_MUTED+'">Meer weten? Bekijk de <a href="'+base+'/handleiding.html" style="color:#2563eb;">handleiding</a>. Vragen? Mail <a href="mailto:'+contactEmail(env)+'" style="color:#2563eb;">'+contactEmail(env)+'</a>.</p>';
-  const text = 'Welkom '+(d.name||'')+',\n\nJe toegang tot ScoutingHub is goedgekeurd. Rol: '+roleLabel+(d.teamName?(' / Team: '+d.teamName):' (individuele scout)')+'.\n\n'+(d.resetLink?('Stel je wachtwoord in en log in: '+d.resetLink):('Inloggen: '+base))+'\n\nHandleiding: '+base+'/handleiding.html\nVragen? '+contactEmail(env);
+  const text = 'Welkom '+(d.name||'')+',\n\nJe toegang tot ScoutingHub is goedgekeurd. Rol: '+roleLabel+(d.teamName?(' / Team: '+d.teamName):' (individuele scout)')+'.\n\n'+('Wachtwoord instellen: ga naar '+base+', klik op "Wachtwoord vergeten?", vul je e-mail in en volg de link.')+'\n\nHandleiding: '+base+'/handleiding.html\nVragen? '+contactEmail(env);
   return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Welkom bij ScoutingHub — je account is klaar', html: mailShell(env,'Welkom bij ScoutingHub',body), text });
 }
 async function sendRejectMail(env, d){
@@ -1472,8 +1473,7 @@ async function handleCreateAccount(body, env, request){
   if(!ok1){ if(_fresh) await deleteAuthUser(saToken, uid); return json({ ok:false, error:'Profiel aanmaken mislukt' + (_fresh?' \u2014 account teruggedraaid':'') }, 500); }
   const ok2 = await saFsPatch(saToken, 'access_requests/'+reqId, { status:'approved', authUid: uid, assignedRole: role, teamId, teamName, reviewedAt: TS(nowIso), reviewedBy: caller.uid, approvedAt: TS(nowIso), approvedBy: caller.uid });
   // welkomstmail (account bestaat al; mailfout draait niets terug)
-  const resetLink = await genResetLink(saToken, email);
-  const mailSent = await sendWelcomeMail(env, { email, name: nm, role, teamName, resetLink });
+  const mailSent = await sendWelcomeMail(env, { email, name: nm, role, teamName });
   return json({ ok:true, uid, role, requestUpdated: !!ok2, mailSent });
 }
 
@@ -1551,6 +1551,52 @@ async function handleSetActive(body, env, request){
   return json({ ok:true, mailSent });
 }
 
+async function sendFeedbackMail(env, d){
+  const body = '<p style="'+MAIL_P+'">Er is nieuwe feedback binnengekomen via ScoutingHub.</p>'
+    + '<div style="margin:2px 0 14px;padding:14px 16px;background:#f6f8fb;border:1px solid #e2e8f0;border-radius:10px;font-size:14px;line-height:1.8;color:#0f172a;">'
+    + '<span style="color:#64748b;">Naam</span> &nbsp; '+shEsc(d.name||'—')+'<br>'
+    + '<span style="color:#64748b;">E-mail</span> &nbsp; '+shEsc(d.email||'—')+'<br>'
+    + '<span style="color:#64748b;">Rol</span> &nbsp; '+shEsc(d.role||'—')+(d.teamName?(' &middot; '+shEsc(d.teamName)):'')+'<br>'
+    + '<span style="color:#64748b;">Pagina</span> &nbsp; '+shEsc(d.route||'—')+'<br>'
+    + '<span style="color:#64748b;">UID</span> &nbsp; '+shEsc(d.uid||'—')+'</div>'
+    + '<p style="'+MAIL_H+'">Feedback</p>'
+    + '<div style="margin:0 0 12px;padding:14px 16px;background:#ffffff;border:1px solid #e2e8f0;border-left:3px solid #e30613;border-radius:0 10px 10px 0;font-size:15px;line-height:1.6;color:#334155;white-space:pre-wrap;">'+shEsc(d.text||'')+'</div>'
+    + (d.ua ? ('<p style="'+MAIL_MUTED+'">Browser: '+shEsc(d.ua)+'</p>') : '');
+  const opts = { from: contactFrom(env), to: feedbackNotifyTo(env), replyTo: (d.email && shValidEmail(d.email)) ? d.email : contactEmail(env), subject:'Nieuwe feedback — ScoutingHub', html: mailShell(env,'Nieuwe feedback',body) };
+  if(d.attachment && d.attachment.content) opts.attachments = [{ filename: d.attachment.filename || 'bijlage', content: d.attachment.content }];
+  return sendMail(env, opts);
+}
+async function handleFeedback(body, env, request){
+  const ip = (request && request.headers && request.headers.get('CF-Connecting-IP')) || '0.0.0.0';
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  const rl1 = await rateLimit(env, 'fb-uid:'+caller.uid, 8, 3600);
+  const rl2 = await rateLimit(env, 'fb-ip:'+ip, 15, 3600);
+  if(!rl1.ok || !rl2.ok) return json({ ok:false, error:'Je hebt recent al feedback gestuurd. Probeer het later opnieuw.' }, 429);
+  const text = clip(body.text, 4000);
+  if(!text) return json({ ok:false, error:'Feedback is leeg' }, 400);
+  const route = clip(body.route, 200);
+  const ua = clip(body.userAgent, 300);
+  let attachment = null;
+  if(body.attachment && body.attachment.contentBase64){
+    const okTypes = ['image/png','image/jpeg','image/webp','application/pdf'];
+    const type = String(body.attachment.type||'');
+    if(okTypes.indexOf(type)===-1) return json({ ok:false, error:'Bijlage-type niet toegestaan' }, 400);
+    const b64 = String(body.attachment.contentBase64||'');
+    const approxBytes = Math.floor(b64.length * 3 / 4);
+    if(approxBytes > 5*1024*1024) return json({ ok:false, error:'Bijlage te groot (max 5 MB)' }, 400);
+    attachment = { filename: clip(body.attachment.filename, 160) || 'bijlage', content: b64 };
+  }
+  let name = '', role = '', teamName = '';
+  let saToken; try { saToken = await getServiceAccountToken(env); } catch(_){ saToken = null; }
+  if(saToken){ try { const u = await saFsGet(saToken, 'users/'+caller.uid); if(u){ name = u.displayName||u.name||''; role = u.role||''; teamName = u.teamName||''; } } catch(_){} }
+  const mailSent = await sendFeedbackMail(env, { name, email: caller.email, uid: caller.uid, role, teamName, route, ua, text, attachment });
+  return json({ ok:true, mailSent });
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') return new Response('', { status: 204, headers: CORS });
@@ -1584,6 +1630,12 @@ export default {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/set-active' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
       try { return await handleSetActive((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+    if (path.endsWith('/api/feedback-submit') || path.endsWith('/feedback-submit')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/feedback-submit' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleFeedback((b && typeof b==='object') ? b : {}, env, request); }
       catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
     }
 

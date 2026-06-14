@@ -1878,7 +1878,7 @@ a { color: var(--accent); text-decoration: none; }
 .nav::-webkit-scrollbar { width: 0; height: 0; display: none; }
 .nav-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 6px 10px; border-radius: 7px; /* s35bn: 7->6px voor 100% zoom */
+  padding: 5px 10px; border-radius: 7px; /* compacter: meer nav-items in beeld */
   color: var(--text-2); border: 1px solid transparent;
   background: transparent;
   text-align: left; width: 100%;
@@ -1913,19 +1913,20 @@ a { color: var(--accent); text-decoration: none; }
   line-height: 1.2; word-break: break-word;
 }
 .scout-profile-actions {
-  display: flex; gap: 8px; margin-top: 10px;
+  display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px;
 }
 .scout-icon-btn {
-  flex: 1; min-width: 0; height: 34px;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
+  flex: 1 1 calc(50% - 4px); min-width: 0; height: 34px;
+  display: flex; align-items: center; justify-content: center; gap: 5px;
   background: transparent; border: 1px solid var(--border-2);
   border-radius: 8px; color: var(--text-3); cursor: pointer;
-  font-size: 12.5px; font-weight: 600; font-family: inherit;
+  font-size: 12px; font-weight: 600; font-family: inherit;
   transition: all .15s;
 }
 .scout-icon-btn-label { white-space: nowrap; }
 .scout-icon-btn:hover { color: var(--text); border-color: var(--primary); background: var(--bg-2, #11151c); }
 .scout-icon-btn svg { flex-shrink: 0; }
+#sidebar-feedback-btn { order: 3; }
 /* v70h-s30: subtiele scheidingslijn tussen nav-Tips en profielblok */
 .scout-profile::before {
   content: '';
@@ -12110,7 +12111,7 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 /* M1 — sidebar sectiekoppen */
 .nav-section-label {
   font-size: 10px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase;
-  color: var(--text-3, #8b97ad); padding: 13px 14px 4px; opacity: .7;
+  color: var(--text-3, #8b97ad); padding: 8px 14px 3px; opacity: .7;
   pointer-events: none; user-select: none;
 }
 .nav-section-label:first-child { padding-top: 4px; }

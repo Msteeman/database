@@ -31815,6 +31815,7 @@ function _bhRenderUsers(){
       : ('<div class="bh-actions">' +
           '<button class="bh-btn" data-bh-userdetail="'+id+'">Details</button>' +
           '<button class="bh-btn bh-btn-blue" data-bh-userrole="'+id+'">Rol wijzigen</button>' +
+          '<button class="bh-btn" data-bh-pwreset="'+id+'">Wachtwoord reset</button>' +
           ((u._id !== _myUid) ? '<button class="bh-btn bh-btn-amber" data-bh-support="'+id+'">Supporttoegang</button>' : '') +
           ((role !== 'admin' && u._id !== _myUid)
              ? (u.isActive===false
@@ -31833,6 +31834,7 @@ function _bhRenderUsers(){
   }).join('');
   list.querySelectorAll('[data-bh-userdetail]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserDetail(b.getAttribute('data-bh-userdetail')); }); });
   list.querySelectorAll('[data-bh-userrole]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserRole(b.getAttribute('data-bh-userrole')); }); });
+  list.querySelectorAll('[data-bh-pwreset]').forEach(function(b){ b.addEventListener('click', function(){ _bhPasswordReset(b.getAttribute('data-bh-pwreset')); }); });
   list.querySelectorAll('[data-bh-support]').forEach(function(b){ b.addEventListener('click', function(){ _suRequestAccess(b.getAttribute('data-bh-support')); }); });
   list.querySelectorAll('[data-bh-userdelete]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserDelete(b.getAttribute('data-bh-userdelete')); }); });
   list.querySelectorAll('[data-bh-deactivate]').forEach(function(b){ b.addEventListener('click', function(){ _bhToggleActive(b.getAttribute('data-bh-deactivate'), false); }); });
@@ -31931,6 +31933,24 @@ async function _bhToggleActive(uid, makeActive){
 }
 
 
+function _bhPasswordReset(uid){
+  if(!_shIsAdmin()) return;
+  var u = _bhUserCache.find(function(x){ return x._id===uid; });
+  if(!u || !u.email){ if(typeof toast==='function') toast('Geen e-mailadres bekend voor deze gebruiker', true); return; }
+  var email = u.email;
+  var naam = u.displayName || u.email || 'deze gebruiker';
+  _bhModal('Wachtwoord-reset versturen?', '<p style="margin:0;color:#9aa8bd;font-size:14px;line-height:1.5;">Er wordt een <b>wachtwoord-reset-mail</b> gestuurd naar <b>'+_bhEsc(email)+'</b>. '+_bhEsc(naam)+' kan daarmee zelf een nieuw wachtwoord instellen. Deze mail komt van ScoutingHub/Firebase \u2014 vraag de gebruiker ook in de spam-map te kijken.</p>', {
+    confirmLabel: 'Reset versturen', confirmClass: 'bh-btn-blue',
+    onConfirm: async function(){
+      try {
+        await sendPasswordResetEmail(auth, email);
+        if(typeof toast==='function') toast('Wachtwoord-reset verstuurd naar '+email);
+      } catch(e){
+        if(typeof toast==='function') toast('Kon de reset-mail niet versturen', true);
+      }
+    }
+  });
+}
 function _bhUserDetail(uid){
   var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;
   var rows = [

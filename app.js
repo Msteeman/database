@@ -31568,7 +31568,15 @@ async function _admRenderSupport(el){
     +'<div class="bh-kpi-grid">'+_admKpi('Verzoeken',reqs.length,'')+_admKpi('Actieve sessies',activeGrants.length,'read-only')+_admKpi('Totaal grants',grants.length,'')+'</div>'
     +'<div class="bh-stat-hd">Supportverzoeken</div>'
     +(reqs.length?('<div class="bh-tbl-wrap"><table class="bh-tbl"><thead><tr><th>Gebruiker</th><th>Status</th><th>Aangevraagd</th></tr></thead><tbody>'+reqRows+'</tbody></table></div>'):'<div class="bh-empty">Nog geen supportverzoeken.</div>')
-    +'<div class="adm-stub-card" style="text-align:left;margin-top:16px"><h3>Meekijken / co-browsing — Fase E</h3><p>De echte meekijk-/cursorfunctie (admin ziet de gebruikersomgeving + aanwijzen) wordt apart gebouwd na jouw akkoord. De onderliggende rechten (support_requests/grants/audit) bestaan al en zijn read-only, tijdelijk en auditbaar.</p></div>';
+    +'<div class="bh-stat-hd">Hoe ondersteuning werkt</div>'
+    +'<div class="adm-settings-card" style="max-width:none">'
+      +'<div class="bh-card-row"><span>1. Aanvragen</span><b>Gebruikers → knop "Supporttoegang" (reden + duur 15/30/60 min)</b></div>'
+      +'<div class="bh-card-row"><span>2. Toestemming</span><b>Gebruiker ziet realtime een verzoek en kiest Toestaan/Weigeren</b></div>'
+      +'<div class="bh-card-row"><span>3. Sessie</span><b>Zichtbare banner bij beide partijen · alleen-lezen · verloopt automatisch</b></div>'
+      +'<div class="bh-card-row"><span>4. Beëindigen</span><b>Gebruiker én admin kunnen direct stoppen; alles wordt geaudit</b></div>'
+    +'</div>'
+    +'<div class="adm-quick" style="margin-top:12px"><button class="adm-btn-ghost" onclick="_admNav(\'gebruikers\')">👥 Naar Gebruikers — support aanvragen</button></div>'
+    +'<div class="bh-stat-note">Meekijken is <b>read-only</b> en werkt nu (Fase E + read-only weergave). Live <b>cursor/aanwijzen</b> (Fase G) is bewust nog niet gebouwd — dat vereist een realtime kanaal en apart akkoord.</div>';
 }
 
 async function _admRenderSettings(el){
@@ -32655,13 +32663,13 @@ function _suRequestAccess(uid){
     '<textarea id="su-reason" class="sh-req-i" rows="3" placeholder="Bijv. bug onderzoeken in rapportoverzicht"></textarea>' +
     '<div id="su-reason-err" class="su-field-err" role="alert"></div>' +
     '<label class="sh-req-l" for="su-duration">Duur</label>' +
-    '<select id="su-duration" class="bh-select" style="width:100%;"><option value="30">30 minuten</option><option value="60">60 minuten</option></select>';
+    '<select id="su-duration" class="bh-select" style="width:100%;"><option value="15">15 minuten</option><option value="30" selected>30 minuten</option><option value="60">60 minuten</option></select>';
   _bhModal('Supporttoegang vragen', body, {
     confirmLabel: 'Verstuur verzoek', confirmClass: 'bh-btn-blue',
     onConfirm: async function(){
       var reason = (document.getElementById('su-reason') && document.getElementById('su-reason').value || '').trim();
       var minutes = parseInt((document.getElementById('su-duration') && document.getElementById('su-duration').value) || '30', 10);
-      if(minutes!==30 && minutes!==60) minutes = 30;
+      if([15,30,60].indexOf(minutes)===-1) minutes = 30;
       var _errEl = document.getElementById('su-reason-err');
       var _ta = document.getElementById('su-reason');
       if(!reason){ if(_errEl){ _errEl.textContent='Reden is verplicht'; _errEl.style.display='block'; } if(_ta) _ta.classList.add('su-input-err'); var _re = new Error('no-reason'); _re._handled = true; throw _re; }

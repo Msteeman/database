@@ -29591,22 +29591,19 @@ async function _shForgotPassword(){
   const email = (document.getElementById('login-email') && document.getElementById('login-email').value || '').trim();
   _shLoginMsg('', null);
   if(!email){ _shLoginMsg('Vul eerst je e-mailadres in voordat je een herstel-link aanvraagt.', 'error'); return; }
-  /* BEVEILIGINGSNOOT: staat Firebase 'Email enumeration protection' AAN, dan geeft
-     sendPasswordResetEmail ALTIJD success terug (ook bij een onbekend e-mailadres),
-     zodat aanvallers geen accounts kunnen raden — auth/user-not-found komt dan niet
-     voor en we tonen gewoon de succes-melding (veiliger). Staat de bescherming UIT,
-     dan vangt de catch hieronder auth/user-not-found af met de beheerder-melding. */
+  /* Self-service reset loopt nu via de Worker -> branded Resend-mail (huisstijl),
+     met link naar wachtwoord.html — dezelfde flow als de welkomst-/adminreset.
+     De server geeft ALTIJD een neutrale respons, zodat niemand kan afleiden of
+     een e-mailadres een account heeft (geen e-mail-enumeratie). */
   try {
-    await sendPasswordResetEmail(auth, email);
+    const base = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE) ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
+    await fetch(base + '/api/request-password-reset', {
+      method:'POST', headers:{ 'Content-Type':'application/json' },
+      body: JSON.stringify({ email: email })
+    });
     _shLoginMsg('Als er een account bestaat met dit e-mailadres, ontvang je een herstel-link. Check ook je spam-map.', 'success');
   } catch(e){
-    const code = e && e.code;
-    const map = {
-      'auth/user-not-found': 'Er bestaat geen account met dit e-mailadres. Neem contact op met de beheerder om een account aan te vragen.',
-      'auth/invalid-email': 'Dit is geen geldig e-mailadres.',
-      'auth/too-many-requests': 'Te veel pogingen. Wacht even en probeer het later opnieuw.'
-    };
-    _shLoginMsg(map[code] || 'Er ging iets mis. Probeer het later opnieuw.', 'error');
+    _shLoginMsg('Er ging iets mis bij het versturen. Controleer je verbinding en probeer het later opnieuw.', 'error');
   }
 }
 window._shForgotPassword = _shForgotPassword;

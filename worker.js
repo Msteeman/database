@@ -1239,7 +1239,7 @@ async function isCallerAdmin(env, saToken, caller){
   if(caller.emailVerified && adminEmails(env).includes(caller.email)) return true;
   try { const u = await saFsGet(saToken, 'users/'+caller.uid); return !!(u && u.role==='admin'); } catch(_){ return false; }
 }
-function _genPassword(){ const a=new Uint8Array(24); crypto.getRandomValues(a.buffer); return 'Sh!'+_b64urlBytes(a.buffer).slice(0,28)+'7'; }
+function _genPassword(){ const a=new Uint8Array(24); crypto.getRandomValues(a); return 'Sh!'+_b64urlBytes(a.buffer).slice(0,28)+'7'; }
 async function createAuthUser(env, email){
   const apiKey = fbApiKey(env);
   const r = await fetchWithTimeout('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key='+apiKey, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, password:_genPassword(), returnSecureToken:true }) });
@@ -1255,6 +1255,16 @@ async function genResetLink(saToken, email){
     const r = await fetchWithTimeout('https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode', { method:'POST', headers:{ Authorization:'Bearer '+saToken, 'Content-Type':'application/json' }, body: JSON.stringify({ requestType:'PASSWORD_RESET', email, returnOobLink:true }) });
     if(!r.ok) return null; const j = await r.json(); return (j && j.oobLink) ? j.oobLink : null;
   } catch(_){ return null; }
+}
+
+async function lookupUidByEmail(saToken, email){
+  try {
+    const r = await fetchWithTimeout('https://identitytoolkit.googleapis.com/v1/accounts:lookup', { method:'POST', headers:{ Authorization:'Bearer '+saToken, 'Content-Type':'application/json' }, body: JSON.stringify({ email:[email] }) });
+    if(!r.ok) return null; const j = await r.json(); const u = j && j.users && j.users[0]; return (u && u.localId) ? u.localId : null;
+  } catch(_){ return null; }
+}
+async function enableAuthUser(saToken, uid){
+  try { await fetchWithTimeout('https://identitytoolkit.googleapis.com/v1/accounts:update', { method:'POST', headers:{ Authorization:'Bearer '+saToken, 'Content-Type':'application/json' }, body: JSON.stringify({ localId: uid, disableUser:false }) }); } catch(_){}
 }
 
 /* ---- Mailmodule (huisstijl) ---- */
@@ -1406,14 +1416,28 @@ async function handleCreateAccount(body, env, request){
   if(reqDoc.status !== 'pending') return json({ ok:false, error:'Aanvraag is al verwerkt' }, 409);
   const email = String(reqDoc.email||'').toLowerCase();
   if(!shValidEmail(email)) return json({ ok:false, error:'Aanvraag heeft geen geldig e-mailadres' }, 400);
-  // account aanmaken
+  // account aanmaken — of een bestaand VERWIJDERD/inactief account hergebruiken
+  let uid, _fresh = true;
   const created = await createAuthUser(env, email);
-  if(created.error){ const dup = /EMAIL_EXISTS/.test(created.error); return json({ ok:false, error: dup ? 'Er bestaat al een account met dit e-mailadres' : 'Account aanmaken mislukt' }, dup?409:500); }
-  const uid = created.uid;
+  if(created.error){
+    if(/EMAIL_EXISTS/.test(created.error)){
+      const existingUid = await lookupUidByEmail(saToken, email);
+      if(!existingUid) return json({ ok:false, error:'Er bestaat al een account met dit e-mailadres' }, 409);
+      const existingProfile = await saFsGet(saToken, 'users/'+existingUid);
+      const profileActive = existingProfile && existingProfile.status !== 'deleted' && existingProfile.isActive !== false;
+      if(profileActive) return json({ ok:false, error:'Er bestaat al een actief account met dit e-mailadres' }, 409);
+      await enableAuthUser(saToken, existingUid);
+      uid = existingUid; _fresh = false;
+    } else {
+      return json({ ok:false, error:'Account aanmaken mislukt' }, 500);
+    }
+  } else {
+    uid = created.uid;
+  }
   const nowIso = new Date().toISOString();
   const nm = clip(reqDoc.name, 120) || '';
-  const ok1 = await saFsPatch(saToken, 'users/'+uid, { uid, email, name: nm, displayName: nm, role, teamId, teamName, isActive:true, status:'active', createdAt: TS(nowIso), createdBy: caller.uid, source:'access_request', accessRequestId: reqId });
-  if(!ok1){ await deleteAuthUser(saToken, uid); return json({ ok:false, error:'Profiel aanmaken mislukt — account teruggedraaid' }, 500); }
+  const ok1 = await saFsPatch(saToken, 'users/'+uid, { uid, email, name: nm, displayName: nm, role, teamId, teamName, isActive:true, status:'active', createdAt: TS(nowIso), createdBy: caller.uid, source:'access_request', accessRequestId: reqId, deletedAt:null, deletedBy:null });
+  if(!ok1){ if(_fresh) await deleteAuthUser(saToken, uid); return json({ ok:false, error:'Profiel aanmaken mislukt' + (_fresh?' \u2014 account teruggedraaid':'') }, 500); }
   const ok2 = await saFsPatch(saToken, 'access_requests/'+reqId, { status:'approved', authUid: uid, assignedRole: role, teamId, teamName, reviewedAt: TS(nowIso), reviewedBy: caller.uid, approvedAt: TS(nowIso), approvedBy: caller.uid });
   // welkomstmail (account bestaat al; mailfout draait niets terug)
   const resetLink = await genResetLink(saToken, email);
@@ -1448,6 +1472,25 @@ async function handleRejectRequest(body, env, request){
   return json({ ok:true, mailSent });
 }
 
+async function handleDeleteAccount(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken; try { saToken = await getServiceAccountToken(env); } catch(_){ return json({ ok:false, error:'Serverconfiguratie ontbreekt' }, 500); }
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  const uid = clip(body.uid, 200);
+  if(!uid) return json({ ok:false, error:'Gebruiker-id ontbreekt' }, 400);
+  if(uid === caller.uid) return json({ ok:false, error:'Je kunt je eigen account niet verwijderen' }, 400);
+  const prof = await saFsGet(saToken, 'users/'+uid);
+  if(prof && prof.role === 'admin') return json({ ok:false, error:'Admin-accounts kunnen niet verwijderd worden' }, 400);
+  await deleteAuthUser(saToken, uid);
+  const nowIso = new Date().toISOString();
+  await saFsPatch(saToken, 'users/'+uid, { status:'deleted', isActive:false, deletedAt: TS(nowIso), deletedBy: caller.uid });
+  return json({ ok:true });
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') return new Response('', { status: 204, headers: CORS });
@@ -1469,6 +1512,12 @@ export default {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/reject-request' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
       try { return await handleRejectRequest((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+    if (path.endsWith('/api/delete-account') || path.endsWith('/delete-account')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/delete-account' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleDeleteAccount((b && typeof b==='object') ? b : {}, env, request); }
       catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
     }
 

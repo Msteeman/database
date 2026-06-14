@@ -31460,7 +31460,7 @@ async function _bhLoadOrg(){
     snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhUserCache.push(x); });
     _bhRenderOrg();
   } catch(e){
-    if(el) el.innerHTML = '<div class="bh-empty">Kon het organogram niet laden.</div>';
+    if(el) el.innerHTML = '<div class="bh-empty">Kon het organigram niet laden.</div>';
   }
 }
 function _orgNode(u){
@@ -31485,21 +31485,30 @@ function _bhRenderOrg(){
     if(role==='admin'){ admins.push(u); return; }
     var tid = u.teamId||'';
     if(!tid){ noTeam.push(u); return; }
-    if(!teams[tid]) teams[tid] = { name: u.teamName||tid, coords:[], scouts:[] };
+    if(!teams[tid]) teams[tid] = { name: u.teamName||tid, club: (u.clubName||''), coords:[], scouts:[] };
+    if(u.clubName && !teams[tid].club) teams[tid].club = u.clubName;
     if(role==='coordinator') teams[tid].coords.push(u); else teams[tid].scouts.push(u);
   });
   var html = '';
-  var tids = Object.keys(teams).sort(function(a,b){ return String(teams[a].name).localeCompare(String(teams[b].name)); });
-  tids.forEach(function(tid){
-    var t = teams[tid];
-    var coordsHtml = t.coords.length ? t.coords.map(_orgNode).join('') : '<div class="bh-org-node bh-org-empty">Geen coördinator</div>';
-    var scoutsHtml = t.scouts.length ? t.scouts.map(_orgNode).join('') : '<div class="bh-org-node bh-org-empty">Nog geen scouts</div>';
-    html += '<div class="bh-org-group">'
-      + '<div class="bh-org-team">'+_bhEsc(t.name)+' <span class="bh-org-count">'+(t.coords.length+t.scouts.length)+'</span></div>'
-      + '<div class="bh-org-row">'+coordsHtml+'</div>'
-      + '<div class="bh-org-line"></div>'
-      + '<div class="bh-org-row">'+scoutsHtml+'</div>'
-      + '</div>';
+  var DEFAULT_CLUB = 'ScoutingHub (organisatie)';
+  var clubs = {};
+  Object.keys(teams).forEach(function(tid){ var c = teams[tid].club || DEFAULT_CLUB; (clubs[c] = clubs[c] || []).push(tid); });
+  Object.keys(clubs).sort(function(a,b){ return a.localeCompare(b); }).forEach(function(cn){
+    var tids = clubs[cn].sort(function(a,b){ return String(teams[a].name).localeCompare(String(teams[b].name)); });
+    var teamCards = tids.map(function(tid){
+      var t = teams[tid];
+      var warn = (t.coords.length===0 ? '<span class="bh-org-badge bh-b-amber">Geen coördinator — actie nodig</span>' : '')
+               + (t.scouts.length===0 ? '<span class="bh-org-badge bh-b-amber">Nog geen scouts</span>' : '');
+      var coordsHtml = t.coords.length ? t.coords.map(_orgNode).join('') : '<div class="bh-org-node bh-org-empty">Geen coördinator</div>';
+      var scoutsHtml = t.scouts.length ? t.scouts.map(_orgNode).join('') : '<div class="bh-org-node bh-org-empty">Nog geen scouts</div>';
+      return '<div class="bh-org-group">'
+        + '<div class="bh-org-team">'+_bhEsc(t.name)+' <span class="bh-org-count">'+(t.coords.length+t.scouts.length)+'</span>'+warn+'</div>'
+        + '<div class="bh-org-sub">Coördinatoren</div><div class="bh-org-row">'+coordsHtml+'</div>'
+        + '<div class="bh-org-line"></div>'
+        + '<div class="bh-org-sub">Scouts</div><div class="bh-org-row">'+scoutsHtml+'</div>'
+        + '</div>';
+    }).join('');
+    html += '<div class="bh-org-club"><div class="bh-org-clubhd">🏢 '+_bhEsc(cn)+' <span class="bh-org-count">'+tids.length+' team'+(tids.length===1?'':'s')+'</span></div>'+teamCards+'</div>';
   });
   if(noTeam.length){
     html += '<div class="bh-org-group"><div class="bh-org-team">Individuele scouts <span class="bh-org-count">'+noTeam.length+'</span></div><div class="bh-org-row">'+noTeam.map(_orgNode).join('')+'</div></div>';
@@ -31510,6 +31519,248 @@ function _bhRenderOrg(){
   el.innerHTML = html || '<div class="bh-empty">Nog geen gebruikers om te tonen</div>';
 }
 window.renderBeheer = renderBeheer;
+
+/* ============================================================
+   FASE 7 — BEHEER-DASHBOARD / STATISTIEKEN (admin-only).
+   Privacy: uitsluitend METADATA en AANTALLEN, nooit inhoud van
+   scoutdata. Metadata komt client-side uit 'users' + 'access_requests'
+   (+ support_*); moduletellingen via de worker /api/admin-stats
+   (service-account, alleen counts). Scoutdata blijft eigenaar-only.
+   ============================================================ */
+var _bhStatReqs = [];
+var _bhStatSupport = { grantsActive:0, grantsExpired:0, reqPending:0 };
+var _bhStatTotals = null;
+var _bhStatCounts = {};
+var _bhStatRole = '', _bhStatStatus = '', _bhStatActivity = '';
+
+function _bhFmtDateTime(v){
+  try{
+    var ms = (typeof _suMs==='function') ? _suMs(v) : 0;
+    if(!ms && typeof v==='string'){ var d0=new Date(v); if(!isNaN(d0.getTime())) ms=d0.getTime(); }
+    if(!ms && typeof v==='number') ms=v;
+    if(!ms) return '—';
+    var d=new Date(ms); if(isNaN(d.getTime())) return '—';
+    function p(n){ return (n<10?'0':'')+n; }
+    return p(d.getDate())+'-'+p(d.getMonth()+1)+'-'+d.getFullYear()+' '+p(d.getHours())+':'+p(d.getMinutes());
+  }catch(_){ return '—'; }
+}
+function _bhStatMs(v){ try{ return (typeof _suMs==='function')?_suMs(v):0; }catch(_){ return 0; } }
+function _bhStatActiveU(u){ return u.isActive!==false && (u.status||'')!=='deleted'; }
+function _bhStatDeletedU(u){ return (u.status||'')==='deleted'; }
+
+function _bhDonut(segs, center){
+  var list = segs.filter(function(s){ return (s.value||0)>0; });
+  var total = list.reduce(function(s,x){ return s+(x.value||0); },0) || 1;
+  var R=42, C=2*Math.PI*R, off=0;
+  var arcs = list.map(function(s){
+    var len = (s.value/total)*C;
+    var el = '<circle cx="60" cy="60" r="'+R+'" fill="none" stroke="'+s.color+'" stroke-width="15" stroke-dasharray="'+len.toFixed(2)+' '+(C-len).toFixed(2)+'" stroke-dashoffset="'+(-off).toFixed(2)+'" transform="rotate(-90 60 60)"><title>'+_bhEsc(s.label)+': '+s.value+' ('+Math.round(s.value/total*100)+'%)</title></circle>';
+    off += len; return el;
+  }).join('');
+  if(!list.length) arcs = '<circle cx="60" cy="60" r="42" fill="none" stroke="#243044" stroke-width="15"></circle>';
+  return '<svg viewBox="0 0 120 120" class="bh-donut" role="img">'+arcs
+    + '<text x="60" y="57" text-anchor="middle" class="bh-donut-c">'+_bhEsc(String(center.value))+'</text>'
+    + '<text x="60" y="75" text-anchor="middle" class="bh-donut-l">'+_bhEsc(center.label)+'</text></svg>';
+}
+function _bhLegend(segs){
+  return '<div class="bh-legend">'+segs.map(function(s){
+    return '<div class="bh-leg-item"><span class="bh-leg-dot" style="background:'+s.color+'"></span>'+_bhEsc(s.label)+' <b>'+(s.value||0)+'</b></div>';
+  }).join('')+'</div>';
+}
+function _bhStatsSkeleton(){
+  var t=''; for(var i=0;i<8;i++) t+='<div class="bh-kpi bh-skel"></div>';
+  return '<div class="bh-stat-banner">Statistieken laden…</div><div class="bh-kpi-grid">'+t+'</div>';
+}
+
+async function _bhLoadStats(){
+  var body=document.getElementById('bh-stat-body'); if(!body) return;
+  if(!(typeof _shIsAdmin==='function' && _shIsAdmin())){ body.innerHTML='<div class="bh-empty">Geen toegang tot beheerstatistieken.</div>'; return; }
+  body.innerHTML=_bhStatsSkeleton();
+  try{
+    var usnap=await getDocs(collection(db,'users'));
+    _bhUserCache=[]; usnap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhUserCache.push(x); });
+    _bhStatReqs=[]; try{ var asnap=await getDocs(collection(db,'access_requests')); asnap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhStatReqs.push(x); }); }catch(_){}
+    _bhStatSupport={ grantsActive:0, grantsExpired:0, reqPending:0 };
+    try{ var gsnap=await getDocs(collection(db,'support_grants')); gsnap.forEach(function(d){ var x=d.data()||{}; var exp=_bhStatMs(x.expiresAt); if((x.status==='active')&&exp>Date.now()) _bhStatSupport.grantsActive++; else _bhStatSupport.grantsExpired++; }); }catch(_){}
+    try{ var rsnap=await getDocs(collection(db,'support_requests')); rsnap.forEach(function(d){ if(((d.data()||{}).status)==='pending') _bhStatSupport.reqPending++; }); }catch(_){}
+    _bhStatCounts={}; _bhStatTotals=null;
+    _bhRenderStats();
+    _bhFetchStatModuleData();
+  }catch(e){
+    body.innerHTML='<div class="bh-stat-errbox"><p>Statistieken konden niet worden geladen.</p><button class="bh-btn bh-btn-blue" data-bh-stat-retry="1">Opnieuw proberen</button></div>';
+    var rb=body.querySelector('[data-bh-stat-retry]'); if(rb) rb.addEventListener('click', _bhLoadStats);
+  }
+}
+
+async function _bhFetchStatModuleData(){
+  var idToken=''; try{ if(typeof auth!=='undefined' && auth.currentUser) idToken=await auth.currentUser.getIdToken(true); }catch(_){}
+  if(!idToken) return;
+  var base=(typeof TOERNOOI_API_BASE!=='undefined'&&TOERNOOI_API_BASE)?TOERNOOI_API_BASE:'https://scoutinghub-api.marcelsteeman1.workers.dev';
+  try{
+    var r=await fetch(base+'/api/admin-stats',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+idToken},body:JSON.stringify({idToken:idToken})});
+    var j={}; try{ j=await r.json(); }catch(_){}
+    if(r.ok&&j&&j.ok&&j.totals){ _bhStatTotals=j.totals; _bhRenderStats(); }
+  }catch(_){}
+  var users=(_bhUserCache||[]).slice(); var i=0;
+  async function wk(){ while(i<users.length){ var u=users[i++]; if(!u||!u._id||_bhStatCounts[u._id])continue; try{ var rr=await fetch(base+'/api/admin-stats',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+idToken},body:JSON.stringify({idToken:idToken,uid:u._id})}); var jj={};try{jj=await rr.json();}catch(_){} if(rr.ok&&jj&&jj.ok&&jj.counts)_bhStatCounts[u._id]=jj.counts; }catch(_){} } }
+  var pool=[]; for(var k=0;k<5;k++) pool.push(wk()); await Promise.all(pool);
+  _bhRenderStats();
+}
+
+window._bhStatChip=function(kind,val){
+  if(kind==='role') _bhStatRole=(_bhStatRole===val?'':val);
+  else if(kind==='status') _bhStatStatus=(_bhStatStatus===val?'':val);
+  else if(kind==='activity') _bhStatActivity=(_bhStatActivity===val?'':val);
+  _bhRenderStats();
+};
+
+function _bhRenderStats(){
+  var body=document.getElementById('bh-stat-body'); if(!body) return;
+  var users=(_bhUserCache||[]);
+  if(!users.length){ body.innerHTML='<div class="bh-empty">Nog geen statistieken beschikbaar.</div>'; return; }
+  var now=Date.now(), D7=now-7*864e5, D30=now-30*864e5;
+  var total=users.length;
+  var active=users.filter(_bhStatActiveU).length;
+  var deleted=users.filter(_bhStatDeletedU).length;
+  var inactive=users.filter(function(u){ return u.isActive===false && !_bhStatDeletedU(u); }).length;
+  var scouts=users.filter(function(u){ return (u.role||'scout')==='scout'; }).length;
+  var coords=users.filter(function(u){ return u.role==='coordinator'; }).length;
+  var admins=users.filter(function(u){ return u.role==='admin'; }).length;
+  var indiv=users.filter(function(u){ return (u.role||'scout')!=='admin' && !(u.teamId||''); }).length;
+  var totalLogins=users.reduce(function(s,u){ return s+(Number(u.loginCount)||0); },0);
+  var login7=users.filter(function(u){ var m=_bhStatMs(u.lastLoginAt); return m&&m>=D7; }).length;
+  var login30=users.filter(function(u){ var m=_bhStatMs(u.lastLoginAt); return m&&m>=D30; }).length;
+  var neverLogin=users.filter(function(u){ return !(Number(u.loginCount)>0) && !_bhStatMs(u.lastLoginAt); }).length;
+  var teams={};
+  users.forEach(function(u){ if((u.role||'scout')==='admin')return; var tid=u.teamId||''; if(!tid)return; if(!teams[tid])teams[tid]={id:tid,name:u.teamName||tid,club:u.clubName||'',coords:0,scouts:0,active:0,inactive:0,users:[]}; if(u.clubName&&!teams[tid].club)teams[tid].club=u.clubName; if(u.role==='coordinator')teams[tid].coords++;else teams[tid].scouts++; if(_bhStatActiveU(u))teams[tid].active++;else teams[tid].inactive++; teams[tid].users.push(u); });
+  var teamArr=Object.keys(teams).map(function(k){return teams[k];});
+  var teamsCount=teamArr.length;
+  var clubsCount=(function(){ var s={}; teamArr.forEach(function(t){ s[t.club||'—']=1; }); return Object.keys(s).length; })();
+  var teamsNoCoord=teamArr.filter(function(t){return t.coords===0;}).length;
+  var teamsNoScout=teamArr.filter(function(t){return t.scouts===0;}).length;
+  var reqP=_bhStatReqs.filter(function(r){return (r.status||'')==='pending';}).length;
+  var reqA=_bhStatReqs.filter(function(r){return (r.status||'')==='approved';}).length;
+  var reqR=_bhStatReqs.filter(function(r){return (r.status||'')==='rejected';}).length;
+
+  function kpi(lab,val,sub,tone){ return '<div class="bh-kpi'+(tone?(' bh-kpi-'+tone):'')+'"><div class="bh-kpi-val">'+val+'</div><div class="bh-kpi-lab">'+lab+'</div>'+(sub?'<div class="bh-kpi-sub">'+sub+'</div>':'')+'</div>'; }
+  function mt(k){ return _bhStatTotals ? (_bhStatTotals[k]!=null?_bhStatTotals[k]:0) : '—'; }
+  var kpis='<div class="bh-kpi-grid">'
+    + kpi('Gebruikers', total, active+' actief · '+inactive+' inactief'+(deleted?(' · '+deleted+' verwijderd'):''))
+    + kpi('Scouts', scouts, coords+' coördinatoren · '+admins+' admins')
+    + kpi('Individuele scouts', indiv, indiv?'zonder team':'iedereen in een team', indiv?'warn':'ok')
+    + kpi('Teams', teamsCount, clubsCount+' club'+(clubsCount===1?'':'s'))
+    + kpi('Teams z. coördinator', teamsNoCoord, teamsNoCoord?'actie nodig':'alles gedekt', teamsNoCoord?'bad':'ok')
+    + kpi('Open aanvragen', reqP, reqP?'wacht op beoordeling':(reqA+reqR)+' verwerkt', reqP?'warn':'ok')
+    + kpi('Logins (totaal)', totalLogins, login7+' actief (7d) · '+login30+' (30d)')
+    + kpi('Nooit ingelogd', neverLogin, neverLogin?'onboarding opvolgen':'iedereen gestart', neverLogin?'warn':'ok')
+    + kpi('Spelers', mt('players'), 'geobserveerd')
+    + kpi('Wedstrijdrapporten', mt('matchReports'), '')
+    + kpi('Toernooien', mt('tournaments'), '')
+    + kpi('Tips', mt('tips'), '')
+    + '</div>';
+
+  var roleSegs=[{label:'Scouts',value:scouts,color:'#6b7280'},{label:'Coördinatoren',value:coords,color:'#4ea1ff'},{label:'Admins',value:admins,color:'#a855f7'}];
+  var statusSegs=[{label:'Actief',value:active,color:'#22c55e'},{label:'Inactief',value:inactive,color:'#f59e0b'},{label:'Verwijderd',value:deleted,color:'#ef4444'}];
+  var moduleRows=[['Spelers','players'],['Rapporten','matchReports'],['Toernooien','tournaments'],['Programma','programma'],['Tips','tips'],['Ritten','ritten'],['Analyses','analyses'],['Contacten','contacts']];
+  var modMax=1; if(_bhStatTotals){ moduleRows.forEach(function(r){ var v=Number(_bhStatTotals[r[1]])||0; if(v>modMax)modMax=v; }); }
+  var moduleBars=moduleRows.map(function(r){ var v=_bhStatTotals?(Number(_bhStatTotals[r[1]])||0):null; var w=(v!=null&&modMax>0)?Math.round(v/modMax*100):0; return '<div class="bh-bar-row"><div class="bh-bar-lab">'+r[0]+'</div><div class="bh-bar-track"><div class="bh-bar-fill" style="width:'+w+'%"></div></div><div class="bh-bar-val">'+(v!=null?v:'…')+'</div></div>'; }).join('');
+  var charts='<div class="bh-chart-grid">'
+    + '<div class="bh-chart-card"><div class="bh-chart-hd">Rollenverdeling</div><div class="bh-chart-body">'+_bhDonut(roleSegs,{value:total,label:'totaal'})+_bhLegend(roleSegs)+'</div></div>'
+    + '<div class="bh-chart-card"><div class="bh-chart-hd">Actief vs. inactief</div><div class="bh-chart-body">'+_bhDonut(statusSegs,{value:active,label:'actief'})+_bhLegend(statusSegs)+'</div></div>'
+    + '<div class="bh-chart-card"><div class="bh-chart-hd">Modulegebruik'+(_bhStatTotals?'':' <span class="bh-chart-load">laden…</span>')+'</div><div class="bh-chart-body bh-bars">'+moduleBars+'</div></div>'
+    + '</div>';
+
+  var coordNoTeam=users.filter(function(u){ return u.role==='coordinator' && !(u.teamId||''); }).length;
+  var att=[];
+  if(reqP) att.push(['warn',reqP+' open toegangsaanvraag'+(reqP===1?'':'en'),'wacht op beoordeling']);
+  if(neverLogin) att.push(['warn',neverLogin+' gebruiker(s) zonder eerste login','onboarding opvolgen']);
+  if(teamsNoCoord) att.push(['bad',teamsNoCoord+' team(s) zonder coördinator','actie nodig']);
+  if(teamsNoScout) att.push(['warn',teamsNoScout+' team(s) zonder scouts','controleren']);
+  if(coordNoTeam) att.push(['bad',coordNoTeam+' coördinator(en) zonder team','datafout — actie nodig']);
+  if(inactive) att.push(['warn',inactive+' gedeactiveerde account(s)','controleren']);
+  if(_bhStatSupport.reqPending) att.push(['warn',_bhStatSupport.reqPending+' support-verzoek(en) open','beoordelen']);
+  if(_bhStatSupport.grantsActive) att.push(['ok',_bhStatSupport.grantsActive+' actieve support-sessie(s)','read-only/tijdelijk']);
+  var attHtml = att.length
+    ? '<div class="bh-att-grid">'+att.map(function(a){ return '<div class="bh-att-card bh-att-'+a[0]+'"><div class="bh-att-t">'+_bhEsc(a[1])+'</div><div class="bh-att-s">'+_bhEsc(a[2])+'</div></div>'; }).join('')+'</div>'
+    : '<div class="bh-att-card bh-att-ok"><div class="bh-att-t">Alles in orde</div><div class="bh-att-s">Geen openstaande aandachtspunten</div></div>';
+
+  var metric=((document.getElementById('bh-stat-metric')||{}).value)||'players';
+  var q=(((document.getElementById('bh-stat-search')||{}).value)||'').toLowerCase().trim();
+  var tmf=((document.getElementById('bh-stat-team')||{}).value)||'';
+  function chip(kind,val,lab,cur){ return '<button class="bh-chip'+(cur===val?' active':'')+'" onclick="_bhStatChip(\''+kind+'\',\''+val+'\')">'+lab+'</button>'; }
+  var chips='<div class="bh-chips"><span class="bh-chips-l">Rol</span>'
+    + chip('role','scout','Scout',_bhStatRole)+chip('role','coordinator','Coördinator',_bhStatRole)+chip('role','admin','Admin',_bhStatRole)
+    + '<span class="bh-chips-l">Status</span>'+chip('status','active','Actief',_bhStatStatus)+chip('status','inactive','Inactief',_bhStatStatus)+chip('status','deleted','Verwijderd',_bhStatStatus)
+    + '<span class="bh-chips-l">Login</span>'+chip('activity','7','7 dagen',_bhStatActivity)+chip('activity','30','30 dagen',_bhStatActivity)+chip('activity','never','Nooit',_bhStatActivity)
+    + '</div>';
+
+  var rows=users.slice();
+  if(_bhStatRole) rows=rows.filter(function(u){ return (u.role||'scout')===_bhStatRole; });
+  if(_bhStatStatus==='active') rows=rows.filter(_bhStatActiveU);
+  else if(_bhStatStatus==='inactive') rows=rows.filter(function(u){ return u.isActive===false && !_bhStatDeletedU(u); });
+  else if(_bhStatStatus==='deleted') rows=rows.filter(_bhStatDeletedU);
+  if(_bhStatActivity==='7') rows=rows.filter(function(u){ var m=_bhStatMs(u.lastLoginAt); return m&&m>=D7; });
+  else if(_bhStatActivity==='30') rows=rows.filter(function(u){ var m=_bhStatMs(u.lastLoginAt); return m&&m>=D30; });
+  else if(_bhStatActivity==='never') rows=rows.filter(function(u){ return !(Number(u.loginCount)>0)&&!_bhStatMs(u.lastLoginAt); });
+  if(tmf==='__none__') rows=rows.filter(function(u){ return !(u.teamId||''); });
+  else if(tmf) rows=rows.filter(function(u){ return (u.teamId||'')===tmf; });
+  if(q) rows=rows.filter(function(u){ return ((u.displayName||'')+' '+(u.email||'')+' '+(u.teamName||'')).toLowerCase().indexOf(q)!==-1; });
+  function mval(u){ if(metric==='loginCount')return Number(u.loginCount)||0; var c=_bhStatCounts[u._id]; return c?(Number(c[metric])||0):-1; }
+  rows.sort(function(a,b){ return mval(b)-mval(a); });
+  var loadingCounts=(Object.keys(_bhStatCounts).length<users.length);
+  function cnt(u,k){ var c=_bhStatCounts[u._id]; if(c&&c[k]!=null)return c[k]; return loadingCounts?'…':0; }
+  function urow(u){
+    var role=u.role||'scout'; var rl=role==='coordinator'?'Coördinator':(role==='admin'?'Admin':'Scout');
+    var rcl=role==='admin'?'bh-b-purple':(role==='coordinator'?'bh-b-blue':'bh-b-grey');
+    var st=_bhStatDeletedU(u)?'<span class="bh-badge bh-b-red">Verwijderd</span>':((u.isActive===false)?'<span class="bh-badge bh-b-amber">Inactief</span>':'<span class="bh-badge bh-b-green">Actief</span>');
+    return '<tr>'
+      +'<td><div class="bh-tb-nm">'+(_bhEsc(u.displayName)||_bhEsc(u.email)||'—')+'</div><div class="bh-tb-em">'+(_bhEsc(u.email)||'')+'</div></td>'
+      +'<td><span class="bh-badge '+rcl+'">'+rl+'</span></td>'
+      +'<td>'+(_bhEsc(u.teamName)||'—')+'</td>'
+      +'<td>'+(_bhEsc(u.clubName)||'—')+'</td>'
+      +'<td>'+st+'</td>'
+      +'<td class="bh-tb-dt">'+_bhFmtDateTime(u.createdAt)+'</td>'
+      +'<td class="bh-tb-dt">'+_bhFmtDateTime(u.lastLoginAt)+'</td>'
+      +'<td class="bh-tb-n">'+(Number(u.loginCount)||0)+'</td>'
+      +'<td class="bh-tb-n">'+cnt(u,'players')+'</td>'
+      +'<td class="bh-tb-n">'+cnt(u,'matchReports')+'</td>'
+      +'<td class="bh-tb-n">'+cnt(u,'tournaments')+'</td>'
+      +'<td class="bh-tb-n">'+cnt(u,'tips')+'</td>'
+      +'</tr>';
+  }
+  var utable='<div class="bh-tbl-wrap"><table class="bh-tbl"><thead><tr>'
+    +'<th>Gebruiker</th><th>Rol</th><th>Team</th><th>Club</th><th>Status</th><th>Aangemaakt</th><th>Laatste login</th><th>Logins</th><th>Spelers</th><th>Rapporten</th><th>Toern.</th><th>Tips</th>'
+    +'</tr></thead><tbody>'
+    +(rows.length?rows.map(urow).join(''):'<tr><td colspan="12" class="bh-empty">Geen gebruikers met deze filters</td></tr>')
+    +'</tbody></table></div>';
+
+  teamArr.sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+  function tStatus(t){ if(t.coords===0)return ['bad','Geen coördinator']; if(t.scouts===0)return['warn','Geen scouts']; if(t.active===0)return['warn','Alleen inactief']; return['ok','OK']; }
+  function tsum(t,k){ var s=0,seen=false; t.users.forEach(function(u){ var c=_bhStatCounts[u._id]; if(c&&c[k]!=null){ s+=Number(c[k])||0; seen=true; } }); return seen?s:(loadingCounts?'…':0); }
+  function trow(t){ var ts=tStatus(t); return '<tr>'
+    +'<td><b>'+_bhEsc(t.name)+'</b></td><td>'+(_bhEsc(t.club)||'—')+'</td>'
+    +'<td class="bh-tb-n">'+t.coords+'</td><td class="bh-tb-n">'+t.scouts+'</td>'
+    +'<td class="bh-tb-n">'+t.active+'</td><td class="bh-tb-n">'+t.inactive+'</td>'
+    +'<td class="bh-tb-n">'+tsum(t,'players')+'</td><td class="bh-tb-n">'+tsum(t,'matchReports')+'</td><td class="bh-tb-n">'+tsum(t,'tips')+'</td>'
+    +'<td><span class="bh-badge bh-b-'+(ts[0]==='ok'?'green':(ts[0]==='bad'?'red':'amber'))+'">'+ts[1]+'</span></td></tr>'; }
+  var ttable=teamArr.length?('<div class="bh-tbl-wrap"><table class="bh-tbl"><thead><tr><th>Team</th><th>Club</th><th>Coörd.</th><th>Scouts</th><th>Actief</th><th>Inactief</th><th>Spelers</th><th>Rapporten</th><th>Tips</th><th>Status</th></tr></thead><tbody>'+teamArr.map(trow).join('')+'</tbody></table></div>'):'<div class="bh-empty">Er zijn nog geen teams.</div>';
+
+  var topLab=(metric==='loginCount'?'logins':(metric==='matchReports'?'rapporten':(metric==='tournaments'?'toernooien':(metric==='tips'?'tips':'spelers'))));
+  var topRows=users.slice().filter(function(u){ return mval(u)>0; }).sort(function(a,b){ return mval(b)-mval(a); }).slice(0,10);
+  var topMax=topRows.length?mval(topRows[0]):1;
+  var topHtml=topRows.length?topRows.map(function(u){ var v=mval(u); var w=topMax>0?Math.round(v/topMax*100):0; return '<div class="bh-rank-row"><div class="bh-rank-nm">'+(_bhEsc(u.displayName)||_bhEsc(u.email)||'—')+'<span class="bh-rank-meta">'+(u.role==='coordinator'?'Coörd.':(u.role==='admin'?'Admin':'Scout'))+(u.teamName?(' · '+_bhEsc(u.teamName)):'')+'</span></div><div class="bh-bar-track"><div class="bh-bar-fill" style="width:'+w+'%"></div></div><div class="bh-rank-v">'+v+'</div></div>'; }).join(''):'<div class="bh-empty">Nog geen activiteit'+(loadingCounts?' — laden…':'')+'</div>';
+
+  body.innerHTML=
+     '<div class="bh-stat-banner">🔒 Dit dashboard toont alleen <b>metadata en aantallen</b>. Inhoudelijke scoutdata blijft privé.</div>'
+   + kpis
+   + '<div class="bh-stat-hd">Aandacht nodig</div>'+attHtml
+   + charts
+   + '<div class="bh-stat-hd">Top gebruikers — '+topLab+' <span class="bh-stat-sub2">(kies metric rechtsboven)</span></div><div class="bh-rank-card">'+topHtml+'</div>'
+   + '<div class="bh-stat-hd">Teams</div>'+ttable
+   + '<div class="bh-stat-hd">Gebruikersactiviteit</div>'+chips+utable
+   + (loadingCounts?'<div class="bh-stat-note">Activiteit per gebruiker wordt geladen…</div>':'');
+}
+window._bhLoadStats=_bhLoadStats; window._bhRenderStats=_bhRenderStats;
 
 /* FASE 4 — Supportlogboek in Beheer (leesbaar audit-overzicht). */
 function _bhDateTime(v){ try { var ms=_suMs(v); if(!ms) return '—'; var d=new Date(ms); return d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}); } catch(_){ return '—'; } }

@@ -31705,12 +31705,12 @@ async function renderBeheer(){
         _bhRenderAanvragen();
       });
     });
-    var us = document.getElementById('bh-user-search'); if(us) us.addEventListener('input', _bhRenderUsers);
-    var ur = document.getElementById('bh-user-role'); if(ur) ur.addEventListener('change', _bhRenderUsers);
-    var usort = document.getElementById('bh-user-sort'); if(usort) usort.addEventListener('change', _bhRenderUsers);
-    var ust = document.getElementById('bh-user-status'); if(ust) ust.addEventListener('change', _bhRenderUsers);
-    var utm = document.getElementById('bh-user-team'); if(utm) utm.addEventListener('change', _bhRenderUsers);
-    var ss = document.getElementById('bh-stat-search'); if(ss) ss.addEventListener('input', _bhRenderStats);
+    var us = document.getElementById('bh-user-search'); if(us) us.addEventListener('input', _bhDebounce(_bhUserResetPage));
+    var ur = document.getElementById('bh-user-role'); if(ur) ur.addEventListener('change', _bhUserResetPage);
+    var usort = document.getElementById('bh-user-sort'); if(usort) usort.addEventListener('change', _bhUserResetPage);
+    var ust = document.getElementById('bh-user-status'); if(ust) ust.addEventListener('change', _bhUserResetPage);
+    var utm = document.getElementById('bh-user-team'); if(utm) utm.addEventListener('change', _bhUserResetPage);
+    var ss = document.getElementById('bh-stat-search'); if(ss) ss.addEventListener('input', _bhDebounce(_bhRenderStats));
     var stm = document.getElementById('bh-stat-team'); if(stm) stm.addEventListener('change', _bhRenderStats);
     var smt = document.getElementById('bh-stat-metric'); if(smt) smt.addEventListener('change', _bhRenderStats);
   }
@@ -31866,7 +31866,10 @@ async function _bhFetchStatModuleData(){
     var j={}; try{ j=await r.json(); }catch(_){}
     if(r.ok&&j&&j.ok&&j.totals){ _bhStatTotals=j.totals; _bhRenderStats(); }
   }catch(_){}
-  var users=(_bhUserCache||[]).slice(); var i=0;
+  // Performance: bij heel veel gebruikers niet voor iedereen drill-down ophalen
+  // (1 worker-call p.p.). Cap op de eerste N; volledige per-user activiteit op
+  // schaal vraagt aggregatievelden (zie advies). Throttled op 5 gelijktijdig.
+  var users=(_bhUserCache||[]).slice(0, 200); var i=0;
   async function wk(){ while(i<users.length){ var u=users[i++]; if(!u||!u._id||_bhStatCounts[u._id])continue; try{ var rr=await fetch(base+'/api/admin-stats',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+idToken},body:JSON.stringify({idToken:idToken,uid:u._id})}); var jj={};try{jj=await rr.json();}catch(_){} if(rr.ok&&jj&&jj.ok&&jj.counts)_bhStatCounts[u._id]=jj.counts; }catch(_){} } }
   var pool=[]; for(var k=0;k<5;k++) pool.push(wk()); await Promise.all(pool);
   _bhRenderStats();
@@ -31996,8 +31999,9 @@ function _bhRenderStats(){
   var utable='<div class="bh-tbl-wrap"><table class="bh-tbl"><thead><tr>'
     +'<th>Gebruiker</th><th>Rol</th><th>Team</th><th>Club</th><th>Status</th><th>Aangemaakt</th><th>Laatste login</th><th>Logins</th><th>Spelers</th><th>Rapporten</th><th>Toern.</th><th>Tips</th>'
     +'</tr></thead><tbody>'
-    +(rows.length?rows.map(urow).join(''):'<tr><td colspan="12" class="bh-empty">Geen gebruikers met deze filters</td></tr>')
-    +'</tbody></table></div>';
+    +(rows.length?rows.slice(0,_BH_STAT_CAP).map(urow).join(''):'<tr><td colspan="12" class="bh-empty">Geen gebruikers met deze filters</td></tr>')
+    +'</tbody></table></div>'
+    +((rows.length>_BH_STAT_CAP)?('<div class="bh-stat-note">Top '+_BH_STAT_CAP+' van '+rows.length+' getoond — verfijn met zoeken/filters of een andere metric.</div>'):'');
 
   teamArr.sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
   function tStatus(t){ if(t.coords===0)return ['bad','Geen coördinator']; if(t.scouts===0)return['warn','Geen scouts']; if(t.active===0)return['warn','Alleen inactief']; return['ok','OK']; }
@@ -32290,6 +32294,12 @@ async function _bhLoadUsers(){
   }
 }
 
+/* Performance (richting 2.500 gebruikers): paginering + zoek-debounce.
+   Lijst rendert per pagina i.p.v. alles tegelijk; stats-counts cappen we. */
+var _bhUserPageSize = 50, _bhUserShown = 50, _bhSearchT = null, _BH_STAT_CAP = 100;
+function _bhUserMore(){ _bhUserShown = (typeof _bhUserShown==='number'?_bhUserShown:_bhUserPageSize) + _bhUserPageSize; _bhRenderUsers(); }
+function _bhUserResetPage(){ _bhUserShown = _bhUserPageSize; _bhRenderUsers(); }
+function _bhDebounce(fn){ return function(){ if(_bhSearchT) clearTimeout(_bhSearchT); _bhSearchT = setTimeout(fn, 220); }; }
 function _bhRenderUsers(){
   var list = document.getElementById('bh-user-list'); if(!list) return;
   var qel = document.getElementById('bh-user-search');
@@ -32322,7 +32332,10 @@ function _bhRenderUsers(){
       : (a.displayName||a.email||'').localeCompare(b.displayName||b.email||'');
   });
   if(!rows.length){ list.innerHTML = '<div class="bh-empty">Geen gebruikers gevonden</div>'; return; }
-  list.innerHTML = rows.map(function(u){
+  if(typeof _bhUserShown!=='number' || _bhUserShown < _bhUserPageSize) _bhUserShown = _bhUserPageSize;
+  var _uTotal = rows.length;
+  var _uPage = rows.slice(0, _bhUserShown);
+  list.innerHTML = '<div class="bh-list-count">'+_uPage.length+' van '+_uTotal+' getoond</div>' + _uPage.map(function(u){
     var id = _bhEsc(u._id); var role = u.role || 'scout';
     var rcl = role==='admin' ? 'bh-b-purple' : (role==='coordinator' ? 'bh-b-blue' : 'bh-b-grey');
     var roleBadge = '<span class="bh-badge '+rcl+'">'+_bhEsc(role)+'</span>';
@@ -32355,7 +32368,8 @@ function _bhRenderUsers(){
       statusRow +
       actionsHtml +
     '</div>';
-  }).join('');
+  }).join('') + ((_uTotal>_uPage.length)?('<div class="bh-more-wrap"><button class="bh-btn bh-btn-blue" id="bh-user-more">Toon meer ('+(_uTotal-_uPage.length)+' resterend)</button></div>'):'');
+  var _umb=document.getElementById('bh-user-more'); if(_umb) _umb.addEventListener('click', _bhUserMore);
   list.querySelectorAll('[data-bh-userdetail]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserDetail(b.getAttribute('data-bh-userdetail')); }); });
   list.querySelectorAll('[data-bh-userrole]').forEach(function(b){ b.addEventListener('click', function(){ _bhUserRole(b.getAttribute('data-bh-userrole')); }); });
   list.querySelectorAll('[data-bh-pwreset]').forEach(function(b){ b.addEventListener('click', function(){ _bhPasswordReset(b.getAttribute('data-bh-pwreset')); }); });

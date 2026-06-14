@@ -5557,6 +5557,7 @@ function showLogin(){
   const _ap = document.getElementById('app');
   if(_ld) _ld.style.display = 'none';
   if(_ap) _ap.style.display = 'none';
+  try{ document.body.classList.remove('admin-console'); }catch(_){}
   const _land = document.getElementById('landing-overlay');
   // PWA (geïnstalleerd) → direct het login-formulier, géén landingspagina.
   // Browser (desktop/mobiel) → eerst de landingspagina; "Inloggen" onthult login.
@@ -6003,7 +6004,7 @@ function go(view){
   if(view === 'tips')      renderTips();
   if(view === 'ritten')    renderRitten();
   if(view === 'toernooien') renderToernooien();
-  if(view === 'admin')      { if(typeof renderBeheer === 'function') renderBeheer(); }
+  if(view === 'admin')      { if(typeof _shIsAdmin==='function' && _shIsAdmin() && typeof _admActivate==='function'){ _admActivate(); } else if(typeof renderBeheer === 'function'){ renderBeheer(); } }
   if(view === 'player')    renderPlayer();
   // s35cr: privacy + voorwaarden zijn statische views — geen render-functie nodig
   window.scrollTo({top:0});
@@ -27684,7 +27685,7 @@ async function loadUserRole(){
     const snap = await getDoc(doc(db, 'users', currentUser.uid));
     const role = snap.exists() ? (snap.data().role || 'scout') : 'scout';
     window._shUserRole = role;
-    try { document.body.classList.toggle('role-admin', (role==='admin') || (currentUser && currentUser.email && ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1)); } catch(_){}
+    try { document.body.classList.toggle('role-admin', (role==='admin') || (currentUser && currentUser.email && ['admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1)); } catch(_){}
     try { if(snap.exists() && snap.data().onboardingCompleted === false && typeof _obStart==='function'){ _obStart(role, snap.data()); } } catch(_){}
     // Coordinator-features tonen/verbergen
     document.querySelectorAll('[data-role-min="coordinator"]').forEach(el => {
@@ -27693,8 +27694,10 @@ async function loadUserRole(){
   } catch(_){
     // Geen rol-data beschikbaar — geen probleem, app werkt als standaard scout
     window._shUserRole = 'scout';
-    try { document.body.classList.toggle('role-admin', currentUser && currentUser.email && ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1); } catch(_){}
+    try { document.body.classList.toggle('role-admin', currentUser && currentUser.email && ['admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1); } catch(_){}
   }
+  // FASE A: admin → eigen console-overlay; scout/coördinator → normale app.
+  try { if(typeof _shIsAdmin==='function' && _shIsAdmin()){ if(typeof _admActivate==='function') _admActivate(); } else { if(typeof _admDeactivate==='function') _admDeactivate(); } } catch(_){}
 }
 window.loadUserRole = loadUserRole;
 
@@ -27708,7 +27711,7 @@ async function _shAccountGate(uid, email){
     const snap = await getDoc(doc(_db, 'users', uid));
     if(!snap.exists()) return { blocked: false, reason: null };   // geen user-doc → bestaand gedrag behouden
     const d = snap.data() || {};
-    const adminEmails = ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'];
+    const adminEmails = ['admin@scoutinghub.nl'];
     const isAdminAcc = (d.role === 'admin') || (email && adminEmails.indexOf(String(email).toLowerCase()) !== -1);
     if(isAdminAcc) return { blocked: false, reason: null };        // admin-accounts nooit blokkeren
     // 'deleted' gaat vóór 'inactive' (een verwijderd account heeft ook isActive:false).
@@ -31341,11 +31344,83 @@ window._shSubmitAccessRequest = _shSubmitAccessRequest;
 function _shIsAdmin(){
   try {
     if(window._shUserRole === 'admin') return true;
-    if(currentUser && currentUser.email && ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1) return true;
+    if(currentUser && currentUser.email && ['admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1) return true;
   } catch(_){}
   return false;
 }
 window._shIsAdmin = _shIsAdmin;
+
+/* ============================================================
+   FASE A — ADMIN CONSOLE SHELL (aparte beheeromgeving).
+   Een admin landt in een eigen console-overlay en ziet NIET
+   standaard de scout-website. Scout/coördinator houden de normale
+   ScoutingHub-app. De echte admincontrole gebeurt server-side in
+   de worker; _shIsAdmin is alleen UI. Inhoudelijke scoutdata blijft
+   privé — admin ziet standaard alleen metadata/aantallen.
+   ============================================================ */
+var _admSection = '';
+function _admStubHtml(key){
+  var map = {
+    overzicht: ['Overzicht', 'Welkom in de ScoutingHub Beheerconsole. Het volledige KPI-overzicht met aandachtspunten en snelacties komt in Fase B. Gebruik voorlopig de secties hieronder.', true],
+    feedback:  ['Feedbackcentrum', 'Beheer van binnengekomen feedback (status, detail, bijlage) komt in Fase C. Feedback wordt nu per mail naar contact@scoutinghub.nl gestuurd.', false],
+    mail:      ['Mailcentrum', 'Overzicht van admin@ / contact@ / info@ met testmail-knoppen komt in Fase C.', false],
+    support:   ['Support / Meekijken', 'Tijdelijke, zichtbare meekijksessies met expliciete toestemming van de gebruiker komen in Fase E. Geen stille inzage.', false],
+    instellingen: ['Instellingen', 'App-/cacheversie, mailflow-status en env-status (zonder waarden) komen in Fase H.', false]
+  };
+  var m = map[key] || ['Binnenkort', 'Dit onderdeel volgt in een latere fase.', false];
+  var quick = m[2] ? '<div class="adm-quick">'
+      + '<button class="adm-btn-ghost" onclick="_admNav(\'toegang\')">📨 Toegang</button>'
+      + '<button class="adm-btn-ghost" onclick="_admNav(\'gebruikers\')">👥 Gebruikers</button>'
+      + '<button class="adm-btn-ghost" onclick="_admNav(\'teams\')">🏢 Teams &amp; Organigram</button>'
+      + '<button class="adm-btn-ghost" onclick="_admNav(\'statistieken\')">📈 Statistieken</button>'
+      + '</div>' : '';
+  return '<div class="adm-stub-card"><h3>'+m[0]+'</h3><p>'+m[1]+'</p>'+quick+'</div>';
+}
+function _admBuildShell(){
+  if(document.getElementById('admin-console')) return;
+  var email=''; try{ email=(typeof currentUser!=='undefined'&&currentUser&&currentUser.email)||''; }catch(_){}
+  var nav=[['overzicht','Overzicht','📊'],['toegang','Toegang','📨'],['gebruikers','Gebruikers','👥'],['teams','Teams & Organigram','🏢'],['statistieken','Statistieken','📈'],['feedback','Feedback','💬'],['mail','Mailcentrum','✉️'],['security','Security & Audit','🛡️'],['support','Support','🤝'],['instellingen','Instellingen','⚙️']];
+  var navHtml=nav.map(function(n){ return '<button class="adm-nav-item" data-adm="'+n[0]+'" onclick="_admNav(\''+n[0]+'\')"><span class="adm-ic">'+n[2]+'</span>'+n[1]+'</button>'; }).join('');
+  var el=document.createElement('div'); el.id='admin-console';
+  el.innerHTML=
+     '<div id="adm-top"><div class="adm-brand">Scouting<span>Hub</span><span class="adm-tag">Beheer</span></div>'
+   + '<div class="adm-top-right"><span class="adm-email">'+_bhEsc(email)+'</span>'
+   + '<button class="adm-btn-ghost" onclick="_admOpenScout()" title="Bewust de scout-app openen">Scout-app</button>'
+   + '<button class="adm-btn-ghost" onclick="_admLogout()">Uitloggen</button></div></div>'
+   + '<div class="adm-privacy">🔒 Beheer toont standaard alleen <b>metadata en aantallen</b>. Inhoudelijke scoutdata blijft privé. Alleen bij expliciete tijdelijke supporttoestemming kan een admin meekijken.</div>'
+   + '<div id="adm-main"><nav id="adm-nav" aria-label="Beheernavigatie">'+navHtml+'</nav><div id="adm-content"><div id="adm-stub"></div></div></div>';
+  document.body.appendChild(el);
+  try{ var vAdmin=document.getElementById('view-admin'); var content=el.querySelector('#adm-content'); if(vAdmin && content) content.appendChild(vAdmin); }catch(_){}
+}
+function _admShowSection(key){
+  _admSection=key;
+  try{ document.querySelectorAll('#adm-nav .adm-nav-item').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-adm')===key); }); }catch(_){}
+  var vAdmin=document.getElementById('view-admin');
+  var stub=document.getElementById('adm-stub');
+  var map={ toegang:'aanvragen', gebruikers:'gebruikers', teams:'organogram', statistieken:'statistieken', security:'logboek' };
+  if(map[key]){
+    if(stub) stub.style.display='none';
+    if(vAdmin) vAdmin.style.display='block';
+    try{ if(typeof renderBeheer==='function') renderBeheer(); }catch(_){}
+    setTimeout(function(){ try{ var t=document.querySelector('.bh-tab[data-bh-tab="'+map[key]+'"]'); if(t) t.click(); }catch(_){} },0);
+  } else {
+    if(vAdmin) vAdmin.style.display='none';
+    if(stub){ stub.style.display='block'; stub.innerHTML=_admStubHtml(key); }
+  }
+}
+window._admNav=_admShowSection;
+function _admActivate(){
+  if(!(typeof _shIsAdmin==='function' && _shIsAdmin())) return;
+  _admBuildShell();
+  document.body.classList.add('admin-console');
+  if(!_admSection) _admShowSection('overzicht');
+}
+function _admDeactivate(){ try{ document.body.classList.remove('admin-console'); }catch(_){} }
+window._admActivate=_admActivate; window._admDeactivate=_admDeactivate;
+function _admOpenScout(){ _admDeactivate(); try{ if(typeof go==='function') go('dashboard'); }catch(_){} }
+window._admOpenScout=_admOpenScout;
+function _admLogout(){ try{ if(typeof doLogout==='function'){ doLogout(); return; } }catch(_){} try{ if(typeof signOut==='function') signOut(auth); }catch(_){} }
+window._admLogout=_admLogout;
 
 let _bhAanvrFilter = 'pending';
 let _bhAanvrCache = [];
@@ -31854,7 +31929,7 @@ async function _bhMaybeVerifyBanner(wrap){
     // Verse verificatie-status ophalen; auth.currentUser.emailVerified is anders gecachet.
     try { await reload(auth.currentUser); } catch(_){}
     var _em = (auth.currentUser.email||'').toLowerCase();
-    var _isAdminEmail = ['marcelsteeman1@gmail.com','admin@scoutinghub.nl'].indexOf(_em) !== -1;
+    var _isAdminEmail = ['admin@scoutinghub.nl'].indexOf(_em) !== -1;
     var needV = (auth.currentUser.emailVerified === false) && (window._shUserRole !== 'admin') && !_isAdminEmail;
     var existing = document.getElementById('bh-verify');
     if(needV && !existing && wrap){

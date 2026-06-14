@@ -1214,6 +1214,40 @@ async function saFsGet(token, path){
   if(!r.ok) return null;
   const j = await r.json(); return (j && j.fields) ? fsFields(j.fields) : null;
 }
+async function saFsList(token, collectionPath, pageSize){
+  const out = []; let pageToken = '';
+  for(let i=0;i<10;i++){
+    const url = _fsBase()+'/'+collectionPath+'?pageSize='+(pageSize||300)+(pageToken?('&pageToken='+encodeURIComponent(pageToken)):'');
+    try {
+      const r = await fetchWithTimeout(url, { headers:{ Authorization:'Bearer '+token } });
+      if(!r.ok) break;
+      const j = await r.json();
+      for(const d of (j.documents||[])){ const o = fsFields(d.fields||{}); if(d.name){ o.id = d.name.split('/').pop(); } out.push(o); }
+      pageToken = j.nextPageToken||''; if(!pageToken) break;
+    } catch(_){ break; }
+  }
+  return out;
+}
+async function saFsCount(token, parentPath, collectionId){
+  const url = _fsBase()+(parentPath?('/'+parentPath):'')+':runAggregationQuery';
+  const body = { structuredAggregationQuery: { structuredQuery: { from: [{ collectionId }] }, aggregations: [{ alias:'c', count:{} }] } };
+  try {
+    const r = await fetchWithTimeout(url, { method:'POST', headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+    if(!r.ok) return 0; const j = await r.json();
+    for(const row of (Array.isArray(j)?j:[])){ const af = row && row.result && row.result.aggregateFields; if(af && af.c) return Number(af.c.integerValue||0); }
+    return 0;
+  } catch(_){ return 0; }
+}
+async function saFsCountGroup(token, collectionId){
+  const url = _fsBase()+':runAggregationQuery';
+  const body = { structuredAggregationQuery: { structuredQuery: { from: [{ collectionId, allDescendants: true }] }, aggregations: [{ alias:'c', count:{} }] } };
+  try {
+    const r = await fetchWithTimeout(url, { method:'POST', headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+    if(!r.ok) return 0; const j = await r.json();
+    for(const row of (Array.isArray(j)?j:[])){ const af = row && row.result && row.result.aggregateFields; if(af && af.c) return Number(af.c.integerValue||0); }
+    return 0;
+  } catch(_){ return 0; }
+}
 async function saFsPendingExists(token, email){
   const body = { structuredQuery:{ from:[{collectionId:'access_requests'}], where:{ compositeFilter:{ op:'AND', filters:[
     { fieldFilter:{ field:{fieldPath:'email'}, op:'EQUAL', value:{stringValue:email} } },
@@ -1256,6 +1290,11 @@ async function genResetLink(saToken, email){
     const r = await fetchWithTimeout('https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode', { method:'POST', headers:{ Authorization:'Bearer '+saToken, 'Content-Type':'application/json' }, body: JSON.stringify({ requestType:'PASSWORD_RESET', email, returnOobLink:true }) });
     if(!r.ok) return null; const j = await r.json(); return (j && j.oobLink) ? j.oobLink : null;
   } catch(_){ return null; }
+}
+function _resetUrl(env, oobLink){
+  if(!oobLink) return '';
+  try { const u = new URL(oobLink); const code = u.searchParams.get('oobCode'); const mode = u.searchParams.get('mode') || 'resetPassword'; if(code) return appBaseUrl(env) + '/wachtwoord.html?mode=' + encodeURIComponent(mode) + '&oobCode=' + encodeURIComponent(code); } catch(_){}
+  return oobLink;
 }
 
 async function lookupUidByEmail(saToken, email){
@@ -1331,8 +1370,7 @@ async function sendAdminNotifyMail(env, d){
 async function sendWelcomeMail(env, d){
   const base = appBaseUrl(env);
   const roleLabel = d.role === 'coordinator' ? 'Coördinator' : 'Scout';
-  const cta = ctaButton('Naar de inlogpagina', base)
-    + '<div style="margin:0 0 16px;padding:14px 16px;background:#f6f8fb;border:1px solid #e2e8f0;border-radius:10px;font-size:14px;line-height:1.7;color:#334155;"><strong style="color:#0f172a;">Je wachtwoord instellen (eerste keer)</strong><br>Klik op de inlogpagina op <strong>&ldquo;Wachtwoord vergeten?&rdquo;</strong>, vul je e-mailadres in en volg de link in de mail die je dan ontvangt. Klik die link <strong>meteen</strong> &mdash; hij is eenmalig en verloopt.</div>';
+  const cta = '<p style="'+MAIL_P+'">Stel eerst je wachtwoord in en log daarna direct in:</p>' + ctaButton('Wachtwoord instellen & inloggen', d.resetUrl || base);
   const teamLine = d.teamName
     ? '<p style="'+MAIL_P+'">Je rol: <strong>'+roleLabel+'</strong> &middot; Team: <strong>'+shEsc(d.teamName)+'</strong></p>'
     : '<p style="'+MAIL_P+'">Je rol: <strong>'+roleLabel+'</strong> &middot; je werkt als <strong>individuele scout</strong> (geen team).</p>';
@@ -1349,7 +1387,7 @@ async function sendWelcomeMail(env, d){
     + '<p style="'+MAIL_P+'">Je toegang tot ScoutingHub is goedgekeurd en je account staat klaar.</p>'
     + cta + teamLine + steps + tips
     + '<p style="'+MAIL_MUTED+'">Meer weten? Bekijk de <a href="'+base+'/handleiding.html" style="color:#2563eb;">handleiding</a>. Vragen? Mail <a href="mailto:'+contactEmail(env)+'" style="color:#2563eb;">'+contactEmail(env)+'</a>.</p>';
-  const text = 'Welkom '+(d.name||'')+',\n\nJe toegang tot ScoutingHub is goedgekeurd. Rol: '+roleLabel+(d.teamName?(' / Team: '+d.teamName):' (individuele scout)')+'.\n\n'+('Wachtwoord instellen: ga naar '+base+', klik op "Wachtwoord vergeten?", vul je e-mail in en volg de link.')+'\n\nHandleiding: '+base+'/handleiding.html\nVragen? '+contactEmail(env);
+  const text = 'Welkom '+(d.name||'')+',\n\nJe toegang tot ScoutingHub is goedgekeurd. Rol: '+roleLabel+(d.teamName?(' / Team: '+d.teamName):' (individuele scout)')+'.\n\n'+('Stel je wachtwoord in: '+(d.resetUrl||base))+'\n\nHandleiding: '+base+'/handleiding.html\nVragen? '+contactEmail(env);
   return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Welkom bij ScoutingHub — je account is klaar', html: mailShell(env,'Welkom bij ScoutingHub',body), text });
 }
 async function sendRejectMail(env, d){
@@ -1473,7 +1511,9 @@ async function handleCreateAccount(body, env, request){
   if(!ok1){ if(_fresh) await deleteAuthUser(saToken, uid); return json({ ok:false, error:'Profiel aanmaken mislukt' + (_fresh?' \u2014 account teruggedraaid':'') }, 500); }
   const ok2 = await saFsPatch(saToken, 'access_requests/'+reqId, { status:'approved', authUid: uid, assignedRole: role, teamId, teamName, reviewedAt: TS(nowIso), reviewedBy: caller.uid, approvedAt: TS(nowIso), approvedBy: caller.uid });
   // welkomstmail (account bestaat al; mailfout draait niets terug)
-  const mailSent = await sendWelcomeMail(env, { email, name: nm, role, teamName });
+  let resetUrl = '';
+  try { const _ob = await genResetLink(saToken, email); resetUrl = _resetUrl(env, _ob); } catch(_){}
+  const mailSent = await sendWelcomeMail(env, { email, name: nm, role, teamName, resetUrl });
   return json({ ok:true, uid, role, requestUpdated: !!ok2, mailSent });
 }
 
@@ -1597,6 +1637,101 @@ async function handleFeedback(body, env, request){
   return json({ ok:true, mailSent });
 }
 
+async function sendPasswordResetMail(env, d){
+  const body = '<p style="'+MAIL_P+'">Hallo '+shEsc(d.name||'')+',</p>'
+    + '<p style="'+MAIL_P+'">Er is een wachtwoord-reset voor je ScoutingHub-account aangevraagd. Klik hieronder om een nieuw wachtwoord in te stellen:</p>'
+    + ctaButton('Wachtwoord instellen', d.link)
+    + '<p style="'+MAIL_MUTED+'">Heb je dit niet aangevraagd? Dan kun je deze mail negeren. De link is eenmalig en verloopt.</p>';
+  const text = 'Hallo '+(d.name||'')+',\n\nEr is een wachtwoord-reset voor je ScoutingHub-account aangevraagd. Stel je wachtwoord in via deze link:\n'+d.link+'\n\nHeb je dit niet aangevraagd? Dan kun je deze mail negeren.';
+  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Stel je ScoutingHub-wachtwoord in', html: mailShell(env,'Wachtwoord instellen',body), text });
+}
+async function handleSendPasswordReset(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken; try { saToken = await getServiceAccountToken(env); } catch(_){ return json({ ok:false, error:'Serverconfiguratie ontbreekt' }, 500); }
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  const uid = clip(body.uid, 200);
+  let email = clip(body.email, 200), name = '';
+  if(uid){ try { const u = await saFsGet(saToken, 'users/'+uid); if(u){ if(!email) email = String(u.email||''); name = u.displayName||u.name||''; } } catch(_){} }
+  email = String(email||'').toLowerCase();
+  if(!shValidEmail(email)) return json({ ok:false, error:'Geen geldig e-mailadres' }, 400);
+  let link = ''; try { const _ob = await genResetLink(saToken, email); link = _resetUrl(env, _ob); } catch(_){}
+  if(!link) return json({ ok:false, error:'Kon geen reset-link genereren' }, 500);
+  const mailSent = await sendPasswordResetMail(env, { email, name, link });
+  return json({ ok:true, mailSent });
+}
+
+/* ============================================================ *
+ * HANDLER — request-password-reset (PUBLIEK, self-service)
+ * Geen auth: een UITGELOGDE gebruiker vraagt zelf een reset aan
+ * vanaf het inlogscherm ("Wachtwoord vergeten?").
+ * Beveiliging: honeypot + optionele Turnstile + KV-rate-limit
+ * (per e-mail EN per IP) + ALTIJD neutrale respons (geen e-mail-
+ * enumeratie). Branded Resend-mail (contact@) met link naar
+ * wachtwoord.html — dezelfde flow als de welkomst-/adminreset.
+ * Geen tokens/secrets gelogd; alleen de eenmalige link gaat per mail.
+ * ============================================================ */
+async function handlePublicPasswordReset(body, env, request){
+  // Neutrale standaardrespons — onthult nooit of een account bestaat.
+  const neutral = json({ ok:true, message:'Als er een account bestaat met dit e-mailadres, ontvang je een herstel-link.' });
+  try {
+    // 1) honeypot: gevuld = bot -> neutraal afdoen, niets doen
+    if(body && body.company) return neutral;
+    const email = String((body && body.email) || '').trim().toLowerCase();
+    if(!shValidEmail(email)) return neutral;
+    const ip = (request && request.headers && (request.headers.get('CF-Connecting-IP') || request.headers.get('X-Forwarded-For'))) || '';
+    // 2) optionele Turnstile (alleen verifieren als de client een token meestuurt)
+    if(body && body.turnstileToken){
+      const ts = await verifyTurnstile(env, body.turnstileToken, ip);
+      if(!ts.ok) return neutral;
+    }
+    // 3) rate-limit: max 3/uur per e-mail, max 10/uur per IP
+    const rlMail = await rateLimit(env, 'pwr:mail:'+email, 3, 3600);
+    if(!rlMail.ok) return neutral;
+    if(ip){ const rlIp = await rateLimit(env, 'pwr:ip:'+ip, 10, 3600); if(!rlIp.ok) return neutral; }
+    // 4) service-account -> reset-link -> branded mail (alleen als account bestaat)
+    let saToken; try { saToken = await getServiceAccountToken(env); } catch(_){ return neutral; }
+    let link = ''; try { const _ob = await genResetLink(saToken, email); link = _resetUrl(env, _ob); } catch(_){}
+    if(link){
+      let name = '';
+      try { const uid = await lookupUidByEmail(saToken, email); if(uid){ const u = await saFsGet(saToken, 'users/'+uid); if(u) name = u.displayName || u.name || ''; } } catch(_){}
+      await sendPasswordResetMail(env, { email, name, link });
+    }
+  } catch(_){}
+  return neutral;
+}
+
+async function handleAdminStats(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken; try { saToken = await getServiceAccountToken(env); } catch(_){ return json({ ok:false, error:'Serverconfiguratie ontbreekt' }, 500); }
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  const COLS = { players:'players', matchReports:'match_reports', programma:'programma', tips:'tips', ritten:'ritten', analyses:'analyses', contacts:'contacts', tournaments:'tournaments' };
+  const keys = Object.keys(COLS);
+  // Per-gebruiker telling (drill-down)
+  const uid = clip(body.uid, 200);
+  if(uid){
+    const vals = await Promise.all(keys.map(k => saFsCount(saToken, 'users/'+uid, COLS[k])));
+    const counts = {}; keys.forEach((k,i)=>{ counts[k]=vals[i]; });
+    return json({ ok:true, uid, counts });
+  }
+  // Overzicht: gebruikers-metadata + totalen (collection-group)
+  const users = (await saFsList(saToken, 'users', 300)).map(u => ({
+    uid: u.id, name: u.displayName||u.name||'', email: u.email||'', role: u.role||'scout',
+    teamId: u.teamId||'', teamName: u.teamName||'', isActive: u.isActive!==false, status: u.status||'active',
+    createdAt: u.createdAt||null, lastLoginAt: u.lastLoginAt||null, loginCount: Number(u.loginCount||0)
+  }));
+  const totalsArr = await Promise.all(keys.map(k => saFsCountGroup(saToken, COLS[k])));
+  const totals = {}; keys.forEach((k,i)=>{ totals[k]=totalsArr[i]; });
+  return json({ ok:true, users, totals, generatedAt: new Date().toISOString() });
+}
+
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') return new Response('', { status: 204, headers: CORS });
@@ -1636,6 +1771,24 @@ export default {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/feedback-submit' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
       try { return await handleFeedback((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+    if (path.endsWith('/api/send-password-reset') || path.endsWith('/send-password-reset')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/send-password-reset' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleSendPasswordReset((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+    if (path.endsWith('/api/request-password-reset') || path.endsWith('/request-password-reset')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/request-password-reset' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handlePublicPasswordReset((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:true, message:'Als er een account bestaat met dit e-mailadres, ontvang je een herstel-link.' }); }
+    }
+    if (path.endsWith('/api/admin-stats') || path.endsWith('/admin-stats')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-stats' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminStats((b && typeof b==='object') ? b : {}, env, request); }
       catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
     }
 

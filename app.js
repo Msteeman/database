@@ -32485,15 +32485,45 @@ function _bhPasswordReset(uid){
 }
 function _bhUserDetail(uid){
   var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;
+  var isDel = (typeof _bhStatDeletedU==='function') ? _bhStatDeletedU(u) : ((u.status||'')==='deleted');
+  var fdt = (typeof _bhFmtDateTime==='function') ? _bhFmtDateTime : function(v){ return _bhDateShort(v); };
   var rows = [
-    ['Naam', u.displayName||'—'], ['E-mail', u.email||'—'], ['Rol', u.role||'scout'],
-    ['Team', u.teamId||'—'], ['Aangemaakt', _bhDateShort(u.createdAt)], ['UID', u._id],
-    ['Status', u.isActive===false ? 'Gedeactiveerd' : 'Actief']
+    ['Naam', u.displayName||u.name||'—'],
+    ['E-mail', u.email||'—'],
+    ['Rol', u.role||'scout'],
+    ['Team', u.teamName||u.teamId||'—'],
+    ['Club', u.clubName||'—'],
+    ['Status', isDel ? 'Verwijderd' : (u.isActive===false ? 'Gedeactiveerd' : 'Actief')],
+    ['Aangemaakt', fdt(u.createdAt)],
+    ['Laatste login', fdt(u.lastLoginAt)],
+    ['Aantal logins', String(Number(u.loginCount)||0)],
+    ['Bron', u.source||u.accessRequestId||'—'],
+    ['UID', u._id]
   ];
   var body = '<div class="bh-detail">' +
     rows.map(function(r){ return '<div class="bh-card-row"><span>'+_bhEsc(r[0])+'</span><b>'+_bhEsc(r[1])+'</b></div>'; }).join('') +
-    '<div class="bh-modal-note">Alleen metadata. De scoutdata van deze gebruiker (spelers, rapporten, toernooien) is niet zichtbaar — die blijft eigenaar-only.</div></div>';
+    '<div class="bh-stat-hd" style="margin:16px 0 6px;font-size:13px;">Statistieken — aantallen per module</div>' +
+    '<div id="bh-ud-counts" class="bh-ud-counts"><div class="bh-empty">Laden…</div></div>' +
+    '<div class="bh-modal-note">Alleen aantallen en metadata. De <b>inhoud</b> van de scoutdata (rapporten, observaties, tips, contacten) blijft eigenaar-only en is niet zichtbaar.</div></div>';
   _bhModal('Gebruiker', body, {});
+  _bhUserDetailCounts(uid);
+}
+async function _bhUserDetailCounts(uid){
+  var box = document.getElementById('bh-ud-counts'); if(!box) return;
+  try {
+    var tk=''; try{ if(typeof auth!=='undefined' && auth.currentUser) tk=await auth.currentUser.getIdToken(true); }catch(_){}
+    if(!tk){ box.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
+    var base=(typeof TOERNOOI_API_BASE!=='undefined'&&TOERNOOI_API_BASE)?TOERNOOI_API_BASE:'https://scoutinghub-api.marcelsteeman1.workers.dev';
+    var r=await fetch(base+'/api/admin-stats',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({ uid: uid })});
+    var j={}; try{ j=await r.json(); }catch(_){}
+    box = document.getElementById('bh-ud-counts'); if(!box) return;
+    if(!(r.ok && j && j.ok && j.counts)){ box.innerHTML='<div class="bh-empty">Tellingen niet beschikbaar — staat de nieuwe worker live?</div>'; return; }
+    var c=j.counts;
+    var defs=[['Spelers','players'],['Wedstrijdrapporten','matchReports'],['Toernooien','tournaments'],['Programma-items','programma'],['Tips','tips'],['Ritten','ritten'],['Analyses','analyses'],['Contacten','contacts']];
+    var total=defs.reduce(function(s,d){ return s+(Number(c[d[1]])||0); },0);
+    box.innerHTML = defs.map(function(d){ return '<div class="bh-card-row"><span>'+d[0]+'</span><b>'+(c[d[1]]!=null?c[d[1]]:0)+'</b></div>'; }).join('')
+      + '<div class="bh-card-row" style="border-top:1px solid #243044;"><span><b>Totaal</b></span><b>'+total+'</b></div>';
+  } catch(_){ try{ box=document.getElementById('bh-ud-counts'); if(box) box.innerHTML='<div class="bh-empty">Tellingen niet beschikbaar.</div>'; }catch(_2){} }
 }
 
 function _bhUserRole(uid){

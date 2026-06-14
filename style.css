@@ -12720,6 +12720,10 @@ a.adm-btn-ghost{ text-decoration:none; display:inline-block; }
 .adm-settings-card .bh-card-row span{ color:var(--text-2,#9aa8bd); }
 .adm-settings-card .bh-card-row b{ color:var(--text,#e8edf5); text-align:right; }
 @media(max-width:900px){ .adm-mailgrid{ grid-template-columns:1fr; } }
+.bh-ud-counts{ margin:2px 0 6px; }
+.bh-ud-counts .bh-card-row{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:7px 0; font-size:13px; }
+.bh-ud-counts .bh-card-row span{ color:var(--text-2,#9aa8bd); }
+.bh-ud-counts .bh-card-row b{ color:var(--text,#e8edf5); font-variant-numeric:tabular-nums; }
 .sh-req-msg{ display:none; font-size:13px; margin:4px 0 8px; padding:8px 11px; border-radius:0 8px 8px 0; line-height:1.4; }
 .sh-req-msg.show{ display:block; }
 .sh-req-msg.error{ background:rgba(248,113,113,.12); border-left:3px solid var(--bad,#f87171); color:#fca5a5; }

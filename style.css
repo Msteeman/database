@@ -13554,3 +13554,10 @@ textarea.sh-grow-note{
 tr.db-row-report { background: linear-gradient(90deg, rgba(34,197,94,0.07) 0%, transparent 60%); }
 tr.db-row-report:hover { background: linear-gradient(90deg, rgba(34,197,94,0.14) 0%, rgba(34,197,94,0.04) 100%) !important; }
 tr.db-row-report td:first-child { border-left: 2px solid rgba(34,197,94,0.55); }
+
+
+/* v6 toegang — teamkeuze bij goedkeuren in Beheer */
+.bh-teampick{ display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:8px 0 4px; }
+.bh-teampick-l{ font-size:12px; color:var(--text-3,#9aa6ba); text-transform:uppercase; letter-spacing:.05em; }
+.bh-team-sel, .bh-team-new{ background:var(--bg-2,#161e2a); color:var(--text,#e8edf5); border:1px solid var(--border-2,#2f3b52); border-radius:8px; padding:7px 10px; font-size:14px; min-height:38px; }
+.bh-team-new{ flex:1 1 160px; min-width:140px; }

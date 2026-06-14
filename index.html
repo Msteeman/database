@@ -3799,6 +3799,8 @@ algemeen:</textarea>
 <!-- Main application -->
 <!-- PRODUCTIE: draai eerst ./build.sh, zet daarna de app.min.js-regel AAN en de app.js-regel UIT.
      <script type="module" src="app.min.js"></script> -->
+<!-- Cloudflare Turnstile — PUBLIEKE sitekey (geen secret). Vervang de placeholder hieronder door je eigen Turnstile sitekey. -->
+<script>window.SH_TURNSTILE_SITEKEY = '0x4AAAAAADkhQSxtHWHwoP1Q';</script>
 <script type="module" src="app.js"></script>
 <script>
 (function(){function init(){var lb=document.getElementById("sh-lightbox");if(!lb){lb=document.createElement("div");lb.id="sh-lightbox";lb.className="sh-lb";lb.setAttribute("role","dialog");lb.setAttribute("aria-modal","true");lb.setAttribute("aria-label","Afbeelding vergroten");lb.innerHTML='<button class="sh-lb-close" aria-label="Sluiten">\u00d7</button><img class="sh-lb-img" src="" alt="">';document.body.appendChild(lb);}var img=lb.querySelector(".sh-lb-img");var closeBtn=lb.querySelector(".sh-lb-close");function openLb(src,alt){if(!src)return;img.src=src;img.alt=alt||"";lb.classList.add("open");document.body.style.overflow="hidden";}function closeLb(){lb.classList.remove("open");img.src="";document.body.style.overflow="";}lb.addEventListener("click",function(e){closeLb();});document.addEventListener("keydown",function(e){if(e.key==="Escape"&&lb.classList.contains("open"))closeLb();});document.addEventListener("click",function(e){var t=e.target;if(!t||t.tagName!=="IMG"||!t.closest)return;if(t.closest("#sh-lightbox"))return;if(t.closest(".hb-shot.has-img")||t.closest("#landing-overlay")){e.preventDefault();openLb(t.currentSrc||t.src,t.alt);}});}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();})();

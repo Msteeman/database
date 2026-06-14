@@ -31126,8 +31126,18 @@ function _shReqMsg(text, type){
   el.textContent = text || '';
   el.className = 'sh-req-msg' + (text ? (' show ' + (type || 'error')) : '');
 }
+var SH_TURNSTILE_SITEKEY = (typeof window!=='undefined' && window.SH_TURNSTILE_SITEKEY) ? window.SH_TURNSTILE_SITEKEY : '0x4AAAAAADkhQSxtHWHwoP1Q';
+function _shLoadTurnstile(){
+  if(document.getElementById('cf-turnstile-api')) return;
+  var s = document.createElement('script');
+  s.id = 'cf-turnstile-api';
+  s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+  s.async = true; s.defer = true;
+  document.head.appendChild(s);
+}
 function _shRequestAccess(){
   if(document.getElementById('sh-req-access')) return;
+  _shLoadTurnstile();
   var bd = document.createElement('div');
   bd.id = 'sh-req-access'; bd.className = 'sh-photo-menu-bd';
   bd.innerHTML =
@@ -31154,6 +31164,8 @@ function _shRequestAccess(){
       '<textarea id="sh-req-message" class="sh-req-i" rows="3" placeholder="Waarom wil je ScoutingHub gebruiken?"></textarea>' +
       '<label class="sh-req-check"><input type="checkbox" id="sh-req-terms"><span>Ik ga akkoord met de <a href="voorwaarden.html" target="_blank" rel="noopener">Algemene Voorwaarden</a> en het <a href="privacy.html" target="_blank" rel="noopener">Privacybeleid</a> van ScoutingHub.</span></label>' +
       '<label class="sh-req-check"><input type="checkbox" id="sh-req-news" checked><span>Ik ontvang graag de ScoutingHub nieuwsbrief (max. 1x per maand).</span></label>' +
+      '<input type="text" id="sh-req-website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">' +
+      '<div class="cf-turnstile" id="sh-req-turnstile" data-sitekey="'+SH_TURNSTILE_SITEKEY+'" data-theme="dark" style="margin:10px 0;"></div>' +
       '<div class="sh-req-actions">' +
         '<button type="button" class="settings-btn ghost" data-close="1">Annuleren</button>' +
         '<button type="button" class="settings-btn sh-req-send is-disabled" id="sh-req-send">Aanvraag versturen</button>' +
@@ -31193,6 +31205,11 @@ async function _shSubmitAccessRequest(closeFn){
   if(!club){ _shReqMsg('Vul je club of organisatie in.', 'error'); return; }
   if(!functie){ _shReqMsg('Kies je functie.', 'error'); return; }
   if(!acceptedTerms){ _shReqMsg('Accepteer eerst de voorwaarden.', 'error'); return; }
+  var _tsToken = '';
+  try { if(window.turnstile && typeof window.turnstile.getResponse === 'function') _tsToken = window.turnstile.getResponse() || ''; } catch(_){}
+  if(!_tsToken){ var _tsEl = document.querySelector('#sh-req-turnstile [name="cf-turnstile-response"]'); _tsToken = _tsEl ? _tsEl.value : ''; }
+  if(!_tsToken){ _shReqMsg('Bevestig even dat je geen robot bent.', 'error'); return; }
+  var _hp = (document.getElementById('sh-req-website') || {}).value || '';
   var btn = document.getElementById('sh-req-send');
   if(btn){ btn.disabled = true; btn.textContent = 'Versturen\u2026'; }
   try {
@@ -31200,7 +31217,7 @@ async function _shSubmitAccessRequest(closeFn){
       ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
     var r = await fetch(_apiBase + '/api/request-access', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email, name: name, club: club, message: message, functie: functie, acceptedTerms: acceptedTerms, newsletterOptIn: newsletterOptIn })
+      body: JSON.stringify({ email: email, name: name, club: club, message: message, functie: functie, acceptedTerms: acceptedTerms, newsletterOptIn: newsletterOptIn, turnstileToken: _tsToken, website: _hp })
     });
     var j = {}; try { j = await r.json(); } catch(_){}
     if(r.ok && j && j.ok){
@@ -31246,6 +31263,7 @@ window._shIsAdmin = _shIsAdmin;
 
 let _bhAanvrFilter = 'pending';
 let _bhAanvrCache = [];
+let _bhTeamsCache = [];
 let _bhUserCache = [];
 let _bhAuditCache = [];
 
@@ -31461,6 +31479,7 @@ async function _bhLoadAanvragen(){
     _bhAanvrCache = [];
     snap.forEach(function(d){ var x = d.data()||{}; x._id = d.id; _bhAanvrCache.push(x); });
     _bhAanvrCache.sort(function(a,b){ return String(b.requestedAt||'').localeCompare(String(a.requestedAt||'')); });
+    try { var tsnap = await getDocs(collection(db,'teams')); _bhTeamsCache = []; tsnap.forEach(function(d){ var x = d.data()||{}; x._id = d.id; _bhTeamsCache.push(x); }); _bhTeamsCache.sort(function(a,b){ return String(a.name||'').localeCompare(String(b.name||'')); }); } catch(_){ }
     _bhRenderAanvragen();
   } catch(e){
     if(list) list.innerHTML = '<div class="bh-empty">Kon aanvragen niet laden. Probeer het later opnieuw.</div>';
@@ -31479,8 +31498,17 @@ function _bhRenderAanvragen(){
   list.innerHTML = rows.map(function(r){
     var id = _bhEsc(r._id);
     var status = r.status || 'pending';
+    var teamOpts = _bhTeamsCache.map(function(t){ return '<option value="'+_bhEsc(t._id)+'" data-name="'+_bhEsc(t.name||t._id)+'">'+_bhEsc(t.name||t._id)+'</option>'; }).join('');
     var actions = (status==='pending')
-      ? '<div class="bh-actions">' +
+      ? '<div class="bh-teampick">' +
+          '<label class="bh-teampick-l">Team *</label>' +
+          '<select class="bh-team-sel" data-for="'+id+'">' +
+            '<option value="">\u2014 Geen team / individuele scout \u2014</option>' + teamOpts +
+            '<option value="__new__">+ Nieuw team\u2026</option>' +
+          '</select>' +
+          '<input type="text" class="bh-team-new" data-for="'+id+'" placeholder="Naam nieuw team" style="display:none;">' +
+        '</div>' +
+        '<div class="bh-actions">' +
           '<button class="bh-btn bh-btn-green" data-bh-approve="'+id+'" data-role="scout">Goedkeuren als scout</button>' +
           '<button class="bh-btn bh-btn-blue" data-bh-approve="'+id+'" data-role="coordinator">Goedkeuren als coördinator</button>' +
           '<button class="bh-btn bh-btn-red" data-bh-reject="'+id+'">Afwijzen</button>' +
@@ -31504,6 +31532,12 @@ function _bhRenderAanvragen(){
   list.querySelectorAll('[data-bh-reject]').forEach(function(b){
     b.addEventListener('click', function(){ _bhConfirmReject(b.getAttribute('data-bh-reject')); });
   });
+  list.querySelectorAll('.bh-team-sel').forEach(function(sel){
+    sel.addEventListener('change', function(){
+      var inp = list.querySelector('.bh-team-new[data-for="'+sel.getAttribute('data-for')+'"]');
+      if(inp) inp.style.display = (sel.value === '__new__') ? '' : 'none';
+    });
+  });
 }
 
 async function _bhApprove(id, role, btn){
@@ -31512,17 +31546,32 @@ async function _bhApprove(id, role, btn){
   var req = _bhAanvrCache.find(function(x){ return x._id===id; });
   if(!req || !req.email){ if(typeof toast==='function') toast('Aanvraag niet gevonden', true); return; }
   var card = btn && btn.closest ? btn.closest('.bh-card') : null;
-  if(card) card.querySelectorAll('button').forEach(function(x){ x.disabled=true; });
-  // FASE 3: account aanmaken via de worker (admin-idToken-gated accounts:signUp).
+  var teamId = '', teamName = '', _isNewTeam = false;
   try {
+    var sel = card ? card.querySelector('.bh-team-sel') : null;
+    if(sel && sel.value === '__new__'){
+      _isNewTeam = true;
+      var inp = card ? card.querySelector('.bh-team-new') : null;
+      teamName = inp ? String(inp.value||'').trim() : '';
+      teamId = teamName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40);
+    } else if(sel && sel.value){
+      teamId = sel.value;
+      var opt = sel.options[sel.selectedIndex];
+      teamName = opt ? (opt.getAttribute('data-name')||opt.textContent||'') : '';
+    }
+  } catch(_){}
+  if(role === 'coordinator' && (!teamName || !teamId)){ if(typeof toast==='function') toast('Een coördinator moet een team hebben — kies of maak een team', true); return; }
+  if(card) card.querySelectorAll('button').forEach(function(x){ x.disabled=true; });
+  try {
+    if(_isNewTeam){ try { await setDoc(doc(db,'teams',teamId), { name: teamName, createdAt: new Date().toISOString(), createdBy: (currentUser && currentUser.uid) || null }, { merge:true }); } catch(_){} }
     var idToken = '';
     try { if(typeof auth!=='undefined' && auth.currentUser) idToken = await auth.currentUser.getIdToken(true); } catch(_){}
     if(!idToken) throw new Error('no-token');
     var base = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE)
       ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
     var r = await fetch(base + '/api/create-account', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ idToken: idToken, email: req.email, displayName: req.name || '', role: role, club: req.club || '', accessRequestId: id })
+      method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+      body: JSON.stringify({ idToken: idToken, email: req.email, displayName: req.name || '', role: role, club: req.club || '', accessRequestId: id, teamId: teamId, teamName: teamName })
     });
     var j = {}; try { j = await r.json(); } catch(_){}
     if(r.ok && j && j.ok){
@@ -31540,15 +31589,23 @@ async function _bhApprove(id, role, btn){
 
 function _bhConfirmReject(id){
   if(!id) return;
-  _bhModal('Aanvraag afwijzen?', '<p style="margin:0;color:#9aa8bd;font-size:14px;line-height:1.5;">De aanvraag wordt op <b>afgewezen</b> gezet. De aanvrager wordt niet automatisch geïnformeerd.</p>', {
+  _bhModal('Aanvraag afwijzen?', '<p style="margin:0 0 10px;color:#9aa8bd;font-size:14px;line-height:1.5;">De aanvraag wordt op <b>afgewezen</b> gezet.</p><label style="display:flex;gap:8px;align-items:center;font-size:14px;color:#cbd5e1;"><input type="checkbox" id="bh-reject-notify"><span>Aanvrager per mail informeren (neutrale afwijzing)</span></label>', {
     confirmLabel: 'Afwijzen', confirmClass: 'bh-btn-red',
     onConfirm: async function(){
       if(!_shIsAdmin()) return;
-      await updateDoc(doc(db,'access_requests',id), {
-        status: 'rejected', reviewedAt: new Date().toISOString(),
-        reviewedBy: (currentUser && currentUser.uid) || null
-      });
-      if(typeof toast==='function') toast('Aanvraag afgewezen');
+      var notify = !!(document.getElementById('bh-reject-notify') && document.getElementById('bh-reject-notify').checked);
+      try {
+        var idToken = '';
+        try { if(typeof auth!=='undefined' && auth.currentUser) idToken = await auth.currentUser.getIdToken(true); } catch(_){}
+        var base = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE) ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
+        var r = await fetch(base + '/api/reject-request', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + idToken },
+          body: JSON.stringify({ idToken: idToken, accessRequestId: id, notify: notify })
+        });
+        var j = {}; try { j = await r.json(); } catch(_){}
+        if(r.ok && j && j.ok){ if(typeof toast==='function') toast('Aanvraag afgewezen' + (j.mailSent ? ' \u00b7 mail verstuurd' : '')); }
+        else { if(typeof toast==='function') toast((j && j.error) || 'Afwijzen mislukt', true); }
+      } catch(_){ if(typeof toast==='function') toast('Geen verbinding met de server', true); }
       _bhLoadAanvragen();
     }
   });

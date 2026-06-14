@@ -31187,6 +31187,87 @@ function _shRequestAccess(){
   setTimeout(function(){ try { document.getElementById('sh-req-name').focus(); } catch(_){} }, 60);
 }
 window._shRequestAccess = _shRequestAccess;
+function _shFbFileToB64(file){ return new Promise(function(res, rej){ var rd = new FileReader(); rd.onload=function(){ var s=String(rd.result||''); var i=s.indexOf(','); res(i>=0?s.slice(i+1):s); }; rd.onerror=function(){ rej(new Error('read')); }; rd.readAsDataURL(file); }); }
+function _shFeedback(){
+  if(document.getElementById('sh-fb')) return;
+  var bd = document.createElement('div');
+  bd.id='sh-fb'; bd.className='sh-photo-menu-bd';
+  bd.innerHTML =
+    '<div class="sh-photo-menu sh-req-card" role="dialog" aria-modal="true" aria-label="Feedback">' +
+      '<button type="button" class="sh-req-x" data-close="1" aria-label="Sluiten">×</button>' +
+      '<div class="sh-pm-title">Feedback</div>' +
+      '<div class="sh-req-sub">Beschrijf kort wat je ziet, mist of wilt verbeteren. Je naam en e-mail zijn al bekend en worden automatisch meegestuurd.</div>' +
+      '<div class="sh-req-msg" id="sh-fb-msg" role="alert" aria-live="polite"></div>' +
+      '<textarea id="sh-fb-text" class="sh-req-i" rows="5" placeholder="Beschrijf kort wat je ziet, mist of wilt verbeteren…"></textarea>' +
+      '<label class="sh-req-l" for="sh-fb-file" style="margin-top:10px;">Screenshot of bijlage toevoegen (optioneel)</label>' +
+      '<input type="file" id="sh-fb-file" class="sh-req-i" accept="image/png,image/jpeg,image/webp,application/pdf">' +
+      '<div class="sh-req-sub" style="margin-top:4px;">Tip: voeg indien mogelijk een screenshot toe van wat je ziet. Max 5 MB.</div>' +
+      '<div class="sh-req-actions">' +
+        '<button type="button" class="settings-btn ghost" data-close="1">Annuleren</button>' +
+        '<button type="button" class="settings-btn sh-req-send" id="sh-fb-send">Feedback versturen</button>' +
+      '</div>' +
+    '</div>';
+  document.body.appendChild(bd);
+  var onKey = function(e){ if(e.key==='Escape') closeFb(); };
+  function closeFb(){ try { bd.remove(); } catch(_){} document.removeEventListener('keydown', onKey); }
+  document.addEventListener('keydown', onKey);
+  bd.addEventListener('click', function(e){ if(e.target===bd || (e.target.closest && e.target.closest('[data-close]'))) closeFb(); });
+  var send = document.getElementById('sh-fb-send');
+  if(send) send.addEventListener('click', function(){ _shSubmitFeedback(bd); });
+  setTimeout(function(){ try { document.getElementById('sh-fb-text').focus(); } catch(_){} }, 60);
+}
+window._shFeedback = _shFeedback;
+async function _shSubmitFeedback(bd){
+  var msg = document.getElementById('sh-fb-msg');
+  function setMsg(t, cls){ if(msg){ msg.textContent = t||''; msg.className = 'sh-req-msg' + (cls?(' '+cls):'') + (t?' show':''); } }
+  var text = ((document.getElementById('sh-fb-text')||{}).value || '').trim();
+  if(!text){ setMsg('Vul je feedback in.', 'error'); return; }
+  var fileEl = document.getElementById('sh-fb-file'); var file = fileEl && fileEl.files && fileEl.files[0];
+  var att = null;
+  if(file){
+    var okTypes = ['image/png','image/jpeg','image/webp','application/pdf'];
+    if(okTypes.indexOf(file.type) === -1){ setMsg('Alleen PNG, JPG, WEBP of PDF toegestaan.', 'error'); return; }
+    if(file.size > 5*1024*1024){ setMsg('Bestand is te groot (max 5 MB).', 'error'); return; }
+    try { att = { filename: file.name, type: file.type, contentBase64: await _shFbFileToB64(file) }; }
+    catch(_){ setMsg('De bijlage kon niet worden gelezen.', 'error'); return; }
+  }
+  var btn = document.getElementById('sh-fb-send'); if(btn){ btn.disabled = true; btn.textContent = 'Versturen…'; }
+  try {
+    var idToken = '';
+    try { if(typeof auth!=='undefined' && auth.currentUser) idToken = await auth.currentUser.getIdToken(true); } catch(_){}
+    if(!idToken){ setMsg('Je bent niet (meer) ingelogd.', 'error'); if(btn){ btn.disabled=false; btn.textContent='Feedback versturen'; } return; }
+    var base = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE) ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
+    var r = await fetch(base + '/api/feedback-submit', {
+      method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+idToken },
+      body: JSON.stringify({ idToken: idToken, text: text, route: (location.hash||location.pathname||''), userAgent: (navigator.userAgent||'').slice(0,300), attachment: att })
+    });
+    var j = {}; try { j = await r.json(); } catch(_){}
+    if(r.ok && j && j.ok){
+      var nm = ((document.getElementById('scout-name')||{}).textContent || '').trim();
+      if(nm === '—') nm = '';
+      if(!nm){ try { nm = (auth.currentUser && auth.currentUser.displayName) || ''; } catch(_){} }
+      var voor = (nm ? nm.split(/\s+/)[0] : '').replace(/[<>&"]/g,'');
+      var card = bd.querySelector('.sh-req-card');
+      if(card){
+        card.innerHTML =
+          '<button type="button" class="sh-req-x" data-close="1" aria-label="Sluiten">×</button>' +
+          '<div style="text-align:center; padding:10px 4px;">' +
+            '<div style="font-size:40px; line-height:1; margin-bottom:8px;">🙏</div>' +
+            '<div class="sh-pm-title">Bedankt'+(voor?(', '+voor):'')+'!</div>' +
+            '<div class="sh-req-sub">Je feedback is verzonden. We hechten echt waarde aan je input en nemen het mee om ScoutingHub beter te maken.</div>' +
+            '<button type="button" class="settings-btn sh-req-send" data-close="1" style="margin-top:12px; width:100%;">Sluiten</button>' +
+          '</div>';
+      }
+    } else {
+      setMsg((j && j.error) || 'Versturen mislukt. Probeer het later opnieuw.', 'error');
+      if(btn){ btn.disabled=false; btn.textContent='Feedback versturen'; }
+    }
+  } catch(e){
+    setMsg('Geen verbinding. Controleer je internet en probeer het opnieuw.', 'error');
+    if(btn){ btn.disabled=false; btn.textContent='Feedback versturen'; }
+  }
+}
+window._shSubmitFeedback = _shSubmitFeedback;
 async function _shSubmitAccessRequest(closeFn){
   var gv = function(id){ var el = document.getElementById(id); return el ? (el.value || '') : ''; };
   var email = gv('sh-req-email').trim();

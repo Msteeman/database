@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wachtwoord instellen — ScoutingHub</title>
+<style>
+  :root{ --navy:#10151e; --red:#e30613; --line:#2b374c; --text:#e8edf5; --muted:#9aa6ba; }
+  *{box-sizing:border-box}
+  body{ margin:0; min-height:100vh; background:#0c1119; color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    display:flex; align-items:center; justify-content:center; padding:20px; }
+  .wrap{ width:100%; max-width:420px; }
+  .card{ background:#141b27; border:1px solid var(--line); border-radius:16px; padding:28px 26px; box-shadow:0 18px 50px rgba(0,0,0,.5); }
+  .logo{ text-align:center; font-size:24px; font-weight:850; letter-spacing:-.01em; margin:0 0 18px; }
+  .logo span{ color:var(--red); }
+  h1{ font-size:20px; margin:0 0 6px; }
+  p{ font-size:14.5px; line-height:1.6; color:#cbd5e1; margin:0 0 14px; }
+  input{ width:100%; background:#0e1626; border:1px solid var(--line); color:var(--text);
+    border-radius:10px; padding:12px 14px; font-size:15px; margin:0 0 10px; }
+  input:focus{ outline:none; border-color:#4ea1ff; }
+  .btn{ display:inline-block; width:100%; text-align:center; background:var(--red); color:#fff;
+    border:none; border-radius:10px; padding:13px 18px; font-size:15px; font-weight:700; cursor:pointer; text-decoration:none; }
+  .btn:disabled{ opacity:.6; cursor:default; }
+  .msg{ font-size:13.5px; color:#fca5a5; min-height:18px; margin:2px 0 8px; }
+  .ok{ font-size:46px; text-align:center; margin:0 0 6px; }
+  .center{ text-align:center; }
+  .foot{ text-align:center; color:var(--muted); font-size:12px; margin-top:16px; }
+  .foot a{ color:#4ea1ff; text-decoration:none; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <div class="logo">Scouting<span>Hub</span></div>
+      <div id="content"><p class="center">Even laden…</p></div>
+    </div>
+    <div class="foot">ScoutingHub · <a href="https://www.scoutinghub.nl">scoutinghub.nl</a></div>
+  </div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script>
+(function(){
+  var LOGIN = 'https://www.scoutinghub.nl/';
+  firebase.initializeApp({
+    apiKey: "AIzaSyBDeLaGfzM1PN8Cl8E6nlIe8FxxxXLwRyY",
+    authDomain: "database-scouting.firebaseapp.com",
+    projectId: "database-scouting"
+  });
+  var auth = firebase.auth();
+  var q = new URLSearchParams(location.search);
+  var mode = q.get('mode'); var code = q.get('oobCode');
+  var content = document.getElementById('content');
+  function esc(s){ return String(s==null?'':s).replace(/[<>&]/g, function(c){ return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c]; }); }
+  function loginBtn(){ return '<a class="btn" href="'+LOGIN+'">Naar inloggen</a>'; }
+  function expired(){ content.innerHTML = '<h1>Link verlopen</h1><p>Deze link is verlopen of is al gebruikt. Ga naar de inlogpagina en kies <strong>“Wachtwoord vergeten?”</strong> om een nieuwe aan te vragen, of vraag je beheerder om een nieuwe link.</p>'+loginBtn(); }
+
+  if(!code){
+    content.innerHTML = '<h1>Open via je e-mail</h1><p>Open deze pagina via de link in je ScoutingHub-mail.</p>'+loginBtn();
+    return;
+  }
+
+  if(mode === 'verifyEmail'){
+    auth.applyActionCode(code).then(function(){
+      content.innerHTML = '<div class="ok">✅</div><h1 class="center">E-mail bevestigd</h1><p class="center">Je kunt nu inloggen op ScoutingHub.</p>'+loginBtn();
+    }).catch(expired);
+    return;
+  }
+
+  // standaard: wachtwoord instellen / resetten
+  auth.verifyPasswordResetCode(code).then(function(email){
+    content.innerHTML =
+      '<h1>Stel je wachtwoord in</h1>' +
+      '<p>Voor <strong>'+esc(email)+'</strong>. Kies een nieuw wachtwoord van minimaal 6 tekens.</p>' +
+      '<input id="pw" type="password" placeholder="Nieuw wachtwoord" autocomplete="new-password">' +
+      '<input id="pw2" type="password" placeholder="Herhaal wachtwoord" autocomplete="new-password">' +
+      '<div id="msg" class="msg"></div>' +
+      '<button class="btn" id="save">Wachtwoord opslaan</button>';
+    var save = document.getElementById('save');
+    var msg = document.getElementById('msg');
+    function submit(){
+      var pw = document.getElementById('pw').value || '';
+      var pw2 = document.getElementById('pw2').value || '';
+      if(pw.length < 6){ msg.textContent = 'Minimaal 6 tekens.'; return; }
+      if(pw !== pw2){ msg.textContent = 'De wachtwoorden komen niet overeen.'; return; }
+      msg.textContent = ''; save.disabled = true; save.textContent = 'Opslaan…';
+      auth.confirmPasswordReset(code, pw).then(function(){
+        content.innerHTML = '<div class="ok">✅</div><h1 class="center">Gelukt!</h1><p class="center">Je wachtwoord is ingesteld. Je kunt nu inloggen op ScoutingHub.</p>'+loginBtn();
+      }).catch(function(){
+        msg.textContent = 'Er ging iets mis — de link is mogelijk verlopen. Vraag een nieuwe aan.';
+        save.disabled = false; save.textContent = 'Wachtwoord opslaan';
+      });
+    }
+    save.addEventListener('click', submit);
+    document.getElementById('pw2').addEventListener('keydown', function(e){ if(e.key === 'Enter') submit(); });
+  }).catch(expired);
+})();
+</script>
+</body>
+</html>

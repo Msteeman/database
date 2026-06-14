@@ -31600,16 +31600,68 @@ async function _admRenderSettings(el){
     +'</div>';
 }
 
-function _admRenderFeedback(el){
-  el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Feedback</div>'
-    +'<div class="bh-stat-note">Ingelogde gebruikers sturen feedback via de feedbackknop; deze gaat per mail naar <b>FEEDBACK_NOTIFY_TO</b> (contact@scoutinghub.nl), met naam/rol/team/pagina/tijd en optionele bijlage (max 5 MB).</div>'
-    +'<div class="adm-settings-card">'
-    +'<div class="bh-card-row"><span>Bestemming</span><b>contact@scoutinghub.nl (FEEDBACK_NOTIFY_TO)</b></div>'
-    +'<div class="bh-card-row"><span>Bijlagen</span><b>PNG/JPG/WEBP/PDF · max 5 MB</b></div>'
-    +'<div class="bh-card-row"><span>Opslag</span><b><span class="bh-badge bh-b-amber">alleen mail</span></b></div>'
-    +'</div>'
-    +'<div class="adm-quick" style="margin-top:12px"><button class="adm-btn-ghost" onclick="(window._shFeedback&&_shFeedback())">Feedbackformulier openen</button></div>'
-    +'<div class="adm-stub-card" style="text-align:left;margin-top:16px"><h3>Feedbackcentrum — voorstel</h3><p>Feedback wordt nu niet opgeslagen (alleen gemaild), dus statusbeheer (nieuw/in behandeling/opgelost) vereist opslag. Voorstel voor later (na akkoord): een Firestore-collectie <code>feedback</code> met alleen metadata + status, admin-only leesbaar. Geen Firebase Storage zonder akkoord.</p></div>';
+var _admFbCache=[], _admFbStatus='';
+var _ADM_FB_LABELS={ new:['Nieuw','bh-b-blue'], in_progress:['In behandeling','bh-b-amber'], resolved:['Opgelost','bh-b-green'], no_action:['Geen actie','bh-b-grey'] };
+async function _admRenderFeedback(el){
+  el.innerHTML='<div class="adm-loading">Feedback laden…</div>';
+  try{
+    var s=await getDocs(collection(db,'feedback'));
+    _admFbCache=[]; s.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _admFbCache.push(x); });
+  }catch(e){
+    el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Feedbackcentrum</div><div class="bh-empty">Kon feedback niet laden. Is de feedback-rules-patch gepubliceerd én de nieuwe worker live (die feedback opslaat)?</div>';
+    return;
+  }
+  _admFbCache.sort(function(a,b){ return _bhStatMs(b.createdAt)-_bhStatMs(a.createdAt); });
+  _admFbRenderList(el);
+}
+function _admFbRenderList(el){
+  var all=_admFbCache||[];
+  function cnt(st){ return all.filter(function(f){return (f.status||'new')===st;}).length; }
+  function chip(val,lab){ return '<button class="bh-chip'+((_admFbStatus===val)?' active':'')+'" onclick="_admFbFilter(\''+val+'\')">'+lab+'</button>'; }
+  var chips='<div class="bh-chips"><span class="bh-chips-l">Status</span>'
+    +'<button class="bh-chip'+(_admFbStatus===''?' active':'')+'" onclick="_admFbFilter(\'\')">Alle ('+all.length+')</button>'
+    +chip('new','Nieuw ('+cnt('new')+')')+chip('in_progress','In behandeling ('+cnt('in_progress')+')')
+    +chip('resolved','Opgelost ('+cnt('resolved')+')')+chip('no_action','Geen actie ('+cnt('no_action')+')')+'</div>';
+  var rows=all.filter(function(f){ return !_admFbStatus || (f.status||'new')===_admFbStatus; });
+  var capped=rows.slice(0,100);
+  var cards=capped.map(function(f){
+    var lab=_ADM_FB_LABELS[f.status||'new']||_ADM_FB_LABELS.new;
+    var opts=['new','in_progress','resolved','no_action'].map(function(s){ return '<option value="'+s+'"'+(((f.status||'new')===s)?' selected':'')+'>'+_ADM_FB_LABELS[s][0]+'</option>'; }).join('');
+    return '<div class="adm-fb-card">'
+      +'<div class="adm-fb-top"><div><b>'+(_bhEsc(f.name)||_bhEsc(f.email)||'—')+'</b> <span class="adm-fb-meta">'+(_bhEsc(f.email)||'')+(f.role?(' · '+_bhEsc(f.role)):'')+(f.teamName?(' · '+_bhEsc(f.teamName)):'')+'</span></div>'
+        +'<span class="bh-badge '+lab[1]+'">'+lab[0]+'</span></div>'
+      +'<div class="adm-fb-meta">'+_bhFmtDateTime(f.createdAt)+(f.route?(' · pagina: '+_bhEsc(f.route)):'')+(f.hasAttachment?' · <span class="bh-badge bh-b-grey">bijlage in mail</span>':'')+'</div>'
+      +'<div class="adm-fb-text">'+_bhEsc(String(f.text||''))+'</div>'
+      +(f.adminNote?('<div class="adm-fb-note">Notitie: '+_bhEsc(f.adminNote)+'</div>'):'')
+      +'<div class="adm-fb-act"><select class="bh-select adm-fb-status" data-fb="'+_bhEsc(f._id)+'">'+opts+'</select>'
+        +'<button class="adm-btn-ghost" data-fbnote="'+_bhEsc(f._id)+'">Notitie</button></div>'
+      +'</div>';
+  }).join('');
+  el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Feedbackcentrum</div>'
+    +'<div class="bh-stat-note">Opgeslagen als <b>metadata + tekst + status</b> — géén bijlage-binary (die zit alleen in de mail). Geen scoutdata-inhoud.</div>'
+    +chips
+    +(capped.length?('<div class="adm-fb-list">'+cards+'</div>'+((rows.length>100)?'<div class="bh-stat-note">100 van '+rows.length+' getoond — verfijn met status.</div>':'')):'<div class="bh-empty">Geen feedback'+(_admFbStatus?' met deze status':'')+'.</div>');
+  el.querySelectorAll('.adm-fb-status').forEach(function(sel){ sel.addEventListener('change', function(){ _admFbSetStatus(sel.getAttribute('data-fb'), sel.value); }); });
+  el.querySelectorAll('[data-fbnote]').forEach(function(b){ b.addEventListener('click', function(){ _admFbNote(b.getAttribute('data-fbnote')); }); });
+}
+window._admFbFilter=function(v){ _admFbStatus=v; var el=document.getElementById('adm-stub'); if(el) _admFbRenderList(el); };
+async function _admFbSetStatus(id, status){
+  try{
+    await updateDoc(doc(db,'feedback',id), { status: status, reviewedAt: new Date(), reviewedBy: (typeof currentUser!=='undefined'&&currentUser)?currentUser.uid:'' });
+    var f=(_admFbCache||[]).find(function(x){return x._id===id;}); if(f) f.status=status;
+    if(typeof toast==='function') toast('Status bijgewerkt ✓');
+    var el=document.getElementById('adm-stub'); if(el) _admFbRenderList(el);
+  }catch(e){ if(typeof toast==='function') toast('Kon status niet bijwerken — is de feedback-rules-patch gepubliceerd?',true); }
+}
+function _admFbNote(id){
+  var f=(_admFbCache||[]).find(function(x){return x._id===id;}); if(!f) return;
+  var body='<textarea id="adm-fb-note-in" class="sh-req-i" rows="3" placeholder="Interne notitie (alleen admin)">'+_bhEsc(f.adminNote||'')+'</textarea>';
+  var m=_bhModal('Interne notitie', body, { confirmLabel:'Opslaan', onConfirm: async function(){
+    var inp=m.root.querySelector('#adm-fb-note-in'); var v=(inp&&inp.value)||'';
+    await updateDoc(doc(db,'feedback',id), { adminNote: String(v).slice(0,2000), reviewedAt: new Date(), reviewedBy:(typeof currentUser!=='undefined'&&currentUser)?currentUser.uid:'' });
+    f.adminNote=String(v).slice(0,2000);
+    var el=document.getElementById('adm-stub'); if(el) _admFbRenderList(el);
+  }});
 }
 
 let _bhAanvrFilter = 'pending';

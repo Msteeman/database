@@ -12726,6 +12726,14 @@ a.adm-btn-ghost{ text-decoration:none; display:inline-block; }
 .bh-ud-counts .bh-card-row b{ color:var(--text,#e8edf5); font-variant-numeric:tabular-nums; }
 .bh-list-count{ font-size:12px; color:var(--text-3,#8b97ad); margin:0 0 8px; }
 .bh-more-wrap{ text-align:center; margin:12px 0 4px; }
+.adm-fb-list{ display:flex; flex-direction:column; gap:10px; margin-top:10px; }
+.adm-fb-card{ background:var(--panel,#0b1220); border:1px solid var(--border,#1f2937); border-radius:12px; padding:14px 16px; }
+.adm-fb-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+.adm-fb-meta{ font-size:11.5px; color:var(--text-3,#8b97ad); }
+.adm-fb-text{ font-size:14px; line-height:1.55; color:var(--text,#e8edf5); white-space:pre-wrap; margin:8px 0; }
+.adm-fb-note{ font-size:12.5px; color:#f4c66a; background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.2); border-radius:8px; padding:7px 10px; margin:0 0 8px; }
+.adm-fb-act{ display:flex; gap:8px; align-items:center; }
+.adm-fb-status{ max-width:170px; }
 .sh-req-msg{ display:none; font-size:13px; margin:4px 0 8px; padding:8px 11px; border-radius:0 8px 8px 0; line-height:1.4; }
 .sh-req-msg.show{ display:block; }
 .sh-req-msg.error{ background:rgba(248,113,113,.12); border-left:3px solid var(--bad,#f87171); color:#fca5a5; }

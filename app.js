@@ -31394,19 +31394,29 @@ function _admBuildShell(){
 }
 function _admShowSection(key){
   _admSection=key;
-  try{ document.querySelectorAll('#adm-nav .adm-nav-item').forEach(function(b){ b.classList.toggle('active', b.getAttribute('data-adm')===key); }); }catch(_){}
+  try{ document.querySelectorAll('#adm-nav .adm-nav-item').forEach(function(b){ var k=b.getAttribute('data-adm'); b.classList.toggle('active', k===key || (key==='logboek' && k==='security')); }); }catch(_){}
   var vAdmin=document.getElementById('view-admin');
   var stub=document.getElementById('adm-stub');
-  var map={ toegang:'aanvragen', gebruikers:'gebruikers', teams:'organogram', statistieken:'statistieken', security:'logboek' };
+  // Bestaande Beheer-onderdelen (tabs) — getoond binnen de shell.
+  var map={ toegang:'aanvragen', gebruikers:'gebruikers', teams:'organogram', statistieken:'statistieken', logboek:'logboek' };
   if(map[key]){
     if(stub) stub.style.display='none';
     if(vAdmin) vAdmin.style.display='block';
     try{ if(typeof renderBeheer==='function') renderBeheer(); }catch(_){}
     setTimeout(function(){ try{ var t=document.querySelector('.bh-tab[data-bh-tab="'+map[key]+'"]'); if(t) t.click(); }catch(_){} },0);
-  } else {
-    if(vAdmin) vAdmin.style.display='none';
-    if(stub){ stub.style.display='block'; stub.innerHTML=_admStubHtml(key); }
+    return;
   }
+  // Eigen adminconsole-panels.
+  if(vAdmin) vAdmin.style.display='none';
+  if(!stub) return;
+  stub.style.display='block';
+  if(key==='overzicht')        _admRenderOverview(stub);
+  else if(key==='mail')        _admRenderMail(stub);
+  else if(key==='security')    _admRenderSecurity(stub);
+  else if(key==='support')     _admRenderSupport(stub);
+  else if(key==='instellingen')_admRenderSettings(stub);
+  else if(key==='feedback')    _admRenderFeedback(stub);
+  else stub.innerHTML=_admStubHtml(key);
 }
 window._admNav=_admShowSection;
 function _admActivate(){
@@ -31421,6 +31431,186 @@ function _admOpenScout(){ _admDeactivate(); try{ if(typeof go==='function') go('
 window._admOpenScout=_admOpenScout;
 function _admLogout(){ try{ if(typeof doLogout==='function'){ doLogout(); return; } }catch(_){} try{ if(typeof signOut==='function') signOut(auth); }catch(_){} }
 window._admLogout=_admLogout;
+
+/* ============================================================
+   ADMINCONSOLE-PANELS — Overzicht, Mailcentrum, Security & Audit,
+   Support, Instellingen, Feedback. Uitsluitend METADATA/AANTALLEN
+   (client-side users/access_requests/support_* + worker-counts).
+   Geen scoutdata-inhoud. Admin-only (shell wordt alleen voor admin
+   geactiveerd; worker-routes verifiëren server-side).
+   ============================================================ */
+var ADM_APP_VERSION = 'sh-v440-adminconsole';
+function _admBase(){ return (typeof TOERNOOI_API_BASE!=='undefined'&&TOERNOOI_API_BASE)?TOERNOOI_API_BASE:'https://scoutinghub-api.marcelsteeman1.workers.dev'; }
+async function _admToken(){ try{ if(typeof auth!=='undefined'&&auth.currentUser) return await auth.currentUser.getIdToken(true); }catch(_){} return ''; }
+function _admKpi(lab,val,sub,tone){ return '<div class="bh-kpi'+(tone?(' bh-kpi-'+tone):'')+'"><div class="bh-kpi-val">'+val+'</div><div class="bh-kpi-lab">'+lab+'</div>'+(sub?'<div class="bh-kpi-sub">'+sub+'</div>':'')+'</div>'; }
+
+async function _admEnsureCore(force){
+  if(!force && _bhUserCache && _bhUserCache.length) return;
+  try{ var us=await getDocs(collection(db,'users')); _bhUserCache=[]; us.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhUserCache.push(x); }); }catch(_){}
+  try{ _bhStatReqs=[]; var as=await getDocs(collection(db,'access_requests')); as.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhStatReqs.push(x); }); }catch(_){}
+  _bhStatSupport={grantsActive:0,grantsExpired:0,reqPending:0};
+  try{ var gs=await getDocs(collection(db,'support_grants')); gs.forEach(function(d){ var x=d.data()||{}; var e=_bhStatMs(x.expiresAt); if(x.status==='active'&&e>Date.now())_bhStatSupport.grantsActive++; else _bhStatSupport.grantsExpired++; }); }catch(_){}
+  try{ var rs=await getDocs(collection(db,'support_requests')); rs.forEach(function(d){ if(((d.data()||{}).status)==='pending')_bhStatSupport.reqPending++; }); }catch(_){}
+}
+
+async function _admRenderOverview(el){
+  el.innerHTML='<div class="adm-loading">Overzicht laden…</div>';
+  await _admEnsureCore();
+  var u=_bhUserCache||[];
+  var total=u.length;
+  var active=u.filter(function(x){return x.isActive!==false&&(x.status||'')!=='deleted';}).length;
+  var scouts=u.filter(function(x){return (x.role||'scout')==='scout';}).length;
+  var coords=u.filter(function(x){return x.role==='coordinator';}).length;
+  var admins=u.filter(function(x){return x.role==='admin';}).length;
+  var indiv=u.filter(function(x){return (x.role||'scout')!=='admin'&&!(x.teamId||'');}).length;
+  var never=u.filter(function(x){return !(Number(x.loginCount)>0)&&!_bhStatMs(x.lastLoginAt);}).length;
+  var teams={}; u.forEach(function(x){ if((x.role||'scout')==='admin')return; var t=x.teamId||''; if(!t)return; if(!teams[t])teams[t]={c:0,s:0}; if(x.role==='coordinator')teams[t].c++;else teams[t].s++; });
+  var tArr=Object.keys(teams).map(function(k){return teams[k];});
+  var tNoCoord=tArr.filter(function(t){return t.c===0;}).length;
+  var tNoScout=tArr.filter(function(t){return t.s===0;}).length;
+  var coordNoTeam=u.filter(function(x){return x.role==='coordinator'&&!(x.teamId||'');}).length;
+  var reqP=_bhStatReqs.filter(function(r){return (r.status||'')==='pending';}).length;
+  var kpis='<div class="bh-kpi-grid">'
+    +_admKpi('Gebruikers',total,active+' actief')
+    +_admKpi('Scouts',scouts,coords+' coörd. · '+admins+' admin')
+    +_admKpi('Teams',tArr.length,indiv+' individuele scouts')
+    +_admKpi('Open aanvragen',reqP,reqP?'beoordelen':'niets open',reqP?'warn':'ok')
+    +_admKpi('Nooit ingelogd',never,never?'onboarding':'iedereen gestart',never?'warn':'ok')
+    +_admKpi('Teams z. coörd.',tNoCoord,tNoCoord?'actie nodig':'gedekt',tNoCoord?'bad':'ok')
+    +_admKpi('Support actief',_bhStatSupport.grantsActive,_bhStatSupport.reqPending+' pending')
+    +_admKpi('Teams z. scouts',tNoScout,tNoScout?'controleren':'gedekt',tNoScout?'warn':'ok')
+    +'</div>';
+  var att=[];
+  if(reqP) att.push(['warn',reqP+' open toegangsaanvraag'+(reqP===1?'':'en'),'beoordelen','toegang']);
+  if(never) att.push(['warn',never+' zonder eerste login','onboarding opvolgen','gebruikers']);
+  if(tNoCoord) att.push(['bad',tNoCoord+' team(s) zonder coördinator','actie nodig','teams']);
+  if(coordNoTeam) att.push(['bad',coordNoTeam+' coördinator(en) zonder team','datafout','teams']);
+  if(_bhStatSupport.reqPending) att.push(['warn',_bhStatSupport.reqPending+' support-verzoek(en)','beoordelen','support']);
+  if(_bhStatSupport.grantsActive) att.push(['ok',_bhStatSupport.grantsActive+' actieve support-sessie(s)','read-only','security']);
+  var attHtml=att.length?('<div class="bh-att-grid">'+att.map(function(a){return '<button class="bh-att-card bh-att-'+a[0]+' adm-att-btn" onclick="_admNav(\''+a[3]+'\')"><div class="bh-att-t">'+_bhEsc(a[1])+'</div><div class="bh-att-s">'+_bhEsc(a[2])+'</div></button>';}).join('')+'</div>'):'<div class="bh-att-card bh-att-ok"><div class="bh-att-t">Alles in orde</div><div class="bh-att-s">Geen openstaande aandachtspunten</div></div>';
+  var quick='<div class="adm-quick adm-quick-left">'
+    +'<button class="adm-btn-ghost" onclick="_admNav(\'toegang\')">📨 Aanvragen bekijken</button>'
+    +'<button class="adm-btn-ghost" onclick="_admNav(\'gebruikers\')">👥 Gebruiker zoeken</button>'
+    +'<button class="adm-btn-ghost" onclick="_admNav(\'teams\')">🏢 Teams &amp; organigram</button>'
+    +'<button class="adm-btn-ghost" onclick="_admNav(\'statistieken\')">📈 Statistieken</button>'
+    +'<button class="adm-btn-ghost" onclick="_admNav(\'feedback\')">💬 Feedback</button>'
+    +'<button class="adm-btn-ghost" onclick="_admNav(\'mail\')">✉️ Testmail</button>'
+    +'</div>';
+  el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Overzicht</div>'+kpis
+    +'<div class="bh-stat-hd">Aandacht nodig</div>'+attHtml
+    +'<div class="bh-stat-hd">Snelle acties</div>'+quick
+    +'<div class="bh-stat-note">Module-totalen (spelers/rapporten/…) staan onder <b>Statistieken</b> — die worden via de worker geteld.</div>';
+}
+
+function _admRenderMail(el){
+  function card(addr,fn,envs,flow,type){
+    return '<div class="adm-mailcard"><div class="adm-mailhd"><span class="adm-mailaddr">'+addr+'</span><span class="bh-badge bh-b-blue">'+type+'</span></div>'
+      +'<div class="adm-mailfn">'+fn+'</div>'
+      +'<div class="adm-mailenv">'+envs+'</div>'
+      +(flow?'<div class="adm-mailflow">'+flow+'</div>':'')
+      +'<div class="adm-mailact"><button class="adm-btn-ghost" onclick="_admTestMail(\''+type+'\',this)">Test '+type+'-mail sturen</button>'
+      +'<a class="adm-btn-ghost" href="https://webmail.transip.email/" target="_blank" rel="noopener">Open webmail</a></div></div>';
+  }
+  el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Mailcentrum</div>'
+    +'<div class="bh-stat-note">De drie mailboxen + testmail. Geen inbox-integratie, geen mailboxwachtwoorden. App-mail loopt via Resend; doorsturen naar Gmail gebeurt bij TransIP.</div>'
+    +'<div class="adm-mailgrid">'
+    +card('admin@scoutinghub.nl','Beheer · account · security · toegangsaanvragen · adminmeldingen','env: ADMIN_FROM · ADMIN_NOTIFY_TO','Resend → admin@ → TransIP forward/kopie → Gmail','admin')
+    +card('contact@scoutinghub.nl','Gebruikerscommunicatie · aanvraagbevestiging · welkomst · reset · afwijzing · feedback','env: CONTACT_FROM · CONTACT_EMAIL · FEEDBACK_NOTIFY_TO','Resend → contact@ (gebruiker) · TransIP-kopie naar Gmail mogelijk','contact')
+    +card('info@scoutinghub.nl','Algemeen informatieadres','env: (geen kritieke systeemflow)','','info')
+    +'</div>';
+}
+async function _admTestMail(type, btn){
+  var _o='';
+  if(btn){ btn.disabled=true; _o=btn.textContent; btn.textContent='Versturen…'; }
+  try{
+    var tk=await _admToken(); if(!tk){ if(typeof toast==='function')toast('Niet ingelogd',true); return; }
+    var r=await fetch(_admBase()+'/api/admin-mail-test',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(r.ok&&j&&j.ok&&j.sent){ if(typeof toast==='function')toast('Testmail ('+type+') verstuurd ✓'); }
+    else { if(typeof toast==='function')toast('Testmail mislukt'+((j&&j.error)?(': '+j.error):'')+' — staat de nieuwe worker live?',true); }
+  }catch(_){ if(typeof toast==='function')toast('Testmail mislukt',true); }
+  finally{ if(btn){ btn.disabled=false; btn.textContent=_o; } }
+}
+window._admTestMail=_admTestMail;
+
+async function _admRenderSecurity(el){
+  el.innerHTML='<div class="adm-loading">Security &amp; audit laden…</div>';
+  await _admEnsureCore();
+  var audit=[];
+  try{ var s=await getDocs(collection(db,'support_audit')); s.forEach(function(d){ var x=d.data()||{}; audit.push(x); }); }catch(_){}
+  audit.sort(function(a,b){ return _bhStatMs(b.timestamp)-_bhStatMs(a.timestamp); });
+  var kpis='<div class="bh-kpi-grid">'
+    +_admKpi('Support pending',_bhStatSupport.reqPending,_bhStatSupport.reqPending?'beoordelen':'geen',_bhStatSupport.reqPending?'warn':'ok')
+    +_admKpi('Support actief',_bhStatSupport.grantsActive,'read-only sessies')
+    +_admKpi('Support verlopen',_bhStatSupport.grantsExpired,'historie')
+    +_admKpi('Auditregels',audit.length,'support-logboek')
+    +'</div>';
+  var L={request_created:'Verzoek aangemaakt',request_approved:'Toegestaan',request_rejected:'Geweigerd',grant_started:'Sessie gestart',session_opened:'Omgeving geopend',session_ended_by_admin:'Beëindigd (admin)',session_ended_by_user:'Beëindigd (gebruiker)',session_expired:'Verlopen'};
+  var recent=audit.slice(0,15).map(function(a){ return '<tr><td class="bh-tb-dt">'+_bhFmtDateTime(a.timestamp)+'</td><td>'+_bhEsc(L[a.action]||a.action||'—')+'</td><td>'+_bhEsc(String(a.reason||'').slice(0,60)||'—')+'</td></tr>'; }).join('');
+  var table=audit.length?('<div class="bh-tbl-wrap"><table class="bh-tbl"><thead><tr><th>Tijd</th><th>Gebeurtenis</th><th>Reden</th></tr></thead><tbody>'+recent+'</tbody></table></div>'):'<div class="bh-empty">Nog geen auditregels.</div>';
+  el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Security &amp; Audit</div>'
+    +'<div class="bh-stat-banner">🔒 Alleen metadata — geen tokens, secrets of scoutdata-inhoud.</div>'
+    +kpis
+    +'<div class="bh-stat-hd">Recente auditgebeurtenissen</div>'+table
+    +'<div class="adm-quick" style="margin-top:12px"><button class="adm-btn-ghost" onclick="_admNav(\'logboek\')">Volledig supportlogboek openen</button></div>';
+}
+
+async function _admRenderSupport(el){
+  el.innerHTML='<div class="adm-loading">Support laden…</div>';
+  await _admEnsureCore();
+  var reqs=[]; try{ var s=await getDocs(collection(db,'support_requests')); s.forEach(function(d){ var x=d.data()||{}; x._id=d.id; reqs.push(x); }); }catch(_){}
+  var grants=[]; try{ var g=await getDocs(collection(db,'support_grants')); g.forEach(function(d){ var x=d.data()||{}; x._id=d.id; grants.push(x); }); }catch(_){}
+  function uLabel(uid){ var x=(_bhUserCache||[]).find(function(y){return y._id===uid;}); return x?(_bhEsc(x.displayName)||_bhEsc(x.email)||String(uid||'').slice(0,6)):String(uid||'').slice(0,6); }
+  var reqRows=reqs.slice(0,20).map(function(r){ return '<tr><td>'+uLabel(r.targetUid)+'</td><td>'+_bhEsc(r.status||'—')+'</td><td class="bh-tb-dt">'+_bhFmtDateTime(r.requestedAt||r.createdAt)+'</td></tr>'; }).join('');
+  var activeGrants=grants.filter(function(g){ return g.status==='active' && _bhStatMs(g.expiresAt)>Date.now(); });
+  el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Support / Meekijken</div>'
+    +'<div class="bh-stat-banner">🔒 Geen stille inzage. Meekijken kan alleen met expliciete toestemming, zichtbare banner, tijdslimiet, auditlog en directe intrekbaarheid.</div>'
+    +'<div class="bh-kpi-grid">'+_admKpi('Verzoeken',reqs.length,'')+_admKpi('Actieve sessies',activeGrants.length,'read-only')+_admKpi('Totaal grants',grants.length,'')+'</div>'
+    +'<div class="bh-stat-hd">Supportverzoeken</div>'
+    +(reqs.length?('<div class="bh-tbl-wrap"><table class="bh-tbl"><thead><tr><th>Gebruiker</th><th>Status</th><th>Aangevraagd</th></tr></thead><tbody>'+reqRows+'</tbody></table></div>'):'<div class="bh-empty">Nog geen supportverzoeken.</div>')
+    +'<div class="adm-stub-card" style="text-align:left;margin-top:16px"><h3>Meekijken / co-browsing — Fase E</h3><p>De echte meekijk-/cursorfunctie (admin ziet de gebruikersomgeving + aanwijzen) wordt apart gebouwd na jouw akkoord. De onderliggende rechten (support_requests/grants/audit) bestaan al en zijn read-only, tijdelijk en auditbaar.</p></div>';
+}
+
+async function _admRenderSettings(el){
+  el.innerHTML='<div class="adm-loading">Instellingen laden…</div>';
+  var st=null;
+  try{ var tk=await _admToken(); if(tk){ var r=await fetch(_admBase()+'/api/admin-status',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({})}); var j={};try{j=await r.json();}catch(_){} if(r.ok&&j&&j.ok)st=j.status; } }catch(_){}
+  function badge(ok){ return (ok===true)?'<span class="bh-badge bh-b-green">aanwezig</span>':((ok===false)?'<span class="bh-badge bh-b-red">ontbreekt</span>':''); }
+  function row(lab,ok,val){ return '<div class="bh-card-row"><span>'+lab+'</span><b>'+(val!=null?(_bhEsc(String(val))+' '):'')+badge(ok)+'</b></div>'; }
+  var sitekeyPresent = (typeof SH_TURNSTILE_SITEKEY!=='undefined' && SH_TURNSTILE_SITEKEY && String(SH_TURNSTILE_SITEKEY).toUpperCase().indexOf('PLACEHOLDER')===-1);
+  var cfg = st ? (
+      row('Site-URL',null,st.siteUrl)
+    + row('Turnstile (secret)',!!st.turnstile)
+    + row('Resend',!!st.resend)
+    + row('Service-account',!!st.serviceAccount)
+    + row('Rate-limit (KV)',!!st.rateLimit)
+    + row('Firebase API-key',!!st.fbApiKey)
+    + row('Admin-allowlist',st.adminEmailsCount>0,st.adminEmailsCount+' adres(sen)')
+    + row('Admin-notify',st.adminNotifyCount>0,st.adminNotifyCount+' ontvanger(s)')
+    + row('Contactadres',null,st.contactEmail)
+    + row('Feedback-ontvanger',null,st.feedbackNotifyTo)
+  ) : '<div class="bh-empty">Worker-status niet beschikbaar — staat de nieuwe worker (/api/admin-status) live?</div>';
+  el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Instellingen &amp; status</div>'
+    +'<div class="bh-stat-note">Alleen aanwezig-ja/nee en publieke adressen — nooit secret-waarden of sleutels.</div>'
+    +'<div class="adm-settings-card">'
+    +'<div class="bh-card-row"><span>Frontend-versie</span><b>'+_bhEsc(ADM_APP_VERSION)+'</b></div>'
+    +'<div class="bh-card-row"><span>Turnstile-sitekey (frontend)</span><b>'+(sitekeyPresent?'<span class="bh-badge bh-b-green">ingesteld</span>':'<span class="bh-badge bh-b-amber">controleren</span>')+'</b></div>'
+    +'<div class="bh-card-row"><span>Adminbeleid</span><b>admin@scoutinghub.nl = enige admin-login</b></div>'
+    +cfg
+    +'</div>';
+}
+
+function _admRenderFeedback(el){
+  el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Feedback</div>'
+    +'<div class="bh-stat-note">Ingelogde gebruikers sturen feedback via de feedbackknop; deze gaat per mail naar <b>FEEDBACK_NOTIFY_TO</b> (contact@scoutinghub.nl), met naam/rol/team/pagina/tijd en optionele bijlage (max 5 MB).</div>'
+    +'<div class="adm-settings-card">'
+    +'<div class="bh-card-row"><span>Bestemming</span><b>contact@scoutinghub.nl (FEEDBACK_NOTIFY_TO)</b></div>'
+    +'<div class="bh-card-row"><span>Bijlagen</span><b>PNG/JPG/WEBP/PDF · max 5 MB</b></div>'
+    +'<div class="bh-card-row"><span>Opslag</span><b><span class="bh-badge bh-b-amber">alleen mail</span></b></div>'
+    +'</div>'
+    +'<div class="adm-quick" style="margin-top:12px"><button class="adm-btn-ghost" onclick="(window._shFeedback&&_shFeedback())">Feedbackformulier openen</button></div>'
+    +'<div class="adm-stub-card" style="text-align:left;margin-top:16px"><h3>Feedbackcentrum — voorstel</h3><p>Feedback wordt nu niet opgeslagen (alleen gemaild), dus statusbeheer (nieuw/in behandeling/opgelost) vereist opslag. Voorstel voor later (na akkoord): een Firestore-collectie <code>feedback</code> met alleen metadata + status, admin-only leesbaar. Geen Firebase Storage zonder akkoord.</p></div>';
+}
 
 let _bhAanvrFilter = 'pending';
 let _bhAanvrCache = [];

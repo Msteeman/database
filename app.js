@@ -5517,6 +5517,14 @@ window.tryLogin = async function tryLogin(){
   try {
     await signInWithEmailAndPassword(auth, email, pw);
     _shLoginMsg('', null);   // succes — geen melding laten staan
+    try {
+      var _lu = auth.currentUser;
+      if(_lu){
+        var _ud = await getDoc(doc(db,'users',_lu.uid));
+        var _cur = (_ud && _ud.exists && _ud.exists() && _ud.data() && _ud.data().loginCount) ? Number(_ud.data().loginCount) : 0;
+        await updateDoc(doc(db,'users',_lu.uid), { lastLoginAt: new Date().toISOString(), loginCount: _cur + 1 });
+      }
+    } catch(_){}
   } catch(e){
     _shLoginMsg(authErrorNL(e && e.code), 'error');
     $('#login-pw').value = '';
@@ -31425,7 +31433,7 @@ async function renderBeheer(){
         var tab = t.dataset.bhTab;
         document.querySelectorAll('.bh-tab').forEach(function(x){ x.classList.toggle('active', x===t); });
         document.querySelectorAll('.bh-section').forEach(function(sec){ sec.classList.toggle('active', sec.id==='bh-section-'+tab); });
-        if(tab==='gebruikers') _bhLoadUsers(); else if(tab==='logboek') _bhLoadAudit(); else if(tab==='organogram') _bhLoadOrg(); else _bhLoadAanvragen();
+        if(tab==='gebruikers') _bhLoadUsers(); else if(tab==='logboek') _bhLoadAudit(); else if(tab==='organogram') _bhLoadOrg(); else if(tab==='statistieken') _bhLoadStats(); else _bhLoadAanvragen();
       });
     });
     document.querySelectorAll('#bh-aanvr-filters .bh-filter').forEach(function(f){
@@ -31440,6 +31448,9 @@ async function renderBeheer(){
     var usort = document.getElementById('bh-user-sort'); if(usort) usort.addEventListener('change', _bhRenderUsers);
     var ust = document.getElementById('bh-user-status'); if(ust) ust.addEventListener('change', _bhRenderUsers);
     var utm = document.getElementById('bh-user-team'); if(utm) utm.addEventListener('change', _bhRenderUsers);
+    var ss = document.getElementById('bh-stat-search'); if(ss) ss.addEventListener('input', _bhRenderStats);
+    var stm = document.getElementById('bh-stat-team'); if(stm) stm.addEventListener('change', _bhRenderStats);
+    var smt = document.getElementById('bh-stat-metric'); if(smt) smt.addEventListener('change', _bhRenderStats);
   }
   _bhLoadAanvragen();
 }
@@ -31939,14 +31950,22 @@ function _bhPasswordReset(uid){
   if(!u || !u.email){ if(typeof toast==='function') toast('Geen e-mailadres bekend voor deze gebruiker', true); return; }
   var email = u.email;
   var naam = u.displayName || u.email || 'deze gebruiker';
-  _bhModal('Wachtwoord-reset versturen?', '<p style="margin:0;color:#9aa8bd;font-size:14px;line-height:1.5;">Er wordt een <b>wachtwoord-reset-mail</b> gestuurd naar <b>'+_bhEsc(email)+'</b>. '+_bhEsc(naam)+' kan daarmee zelf een nieuw wachtwoord instellen. Deze mail komt van ScoutingHub/Firebase \u2014 vraag de gebruiker ook in de spam-map te kijken.</p>', {
+  _bhModal('Wachtwoord-reset versturen?', '<p style="margin:0;color:#9aa8bd;font-size:14px;line-height:1.5;">Er wordt een <b>wachtwoord-reset-mail</b> gestuurd naar <b>'+_bhEsc(email)+'</b>. '+_bhEsc(naam)+' kan daarmee zelf een nieuw wachtwoord instellen. De mail komt van ScoutingHub (contact@), in nette huisstijl.</p>', {
     confirmLabel: 'Reset versturen', confirmClass: 'bh-btn-blue',
     onConfirm: async function(){
       try {
-        await sendPasswordResetEmail(auth, email);
-        if(typeof toast==='function') toast('Wachtwoord-reset verstuurd naar '+email);
+        var idToken = '';
+        try { if(typeof auth!=='undefined' && auth.currentUser) idToken = await auth.currentUser.getIdToken(true); } catch(_){}
+        var base = (typeof TOERNOOI_API_BASE !== 'undefined' && TOERNOOI_API_BASE) ? TOERNOOI_API_BASE : 'https://scoutinghub-api.marcelsteeman1.workers.dev';
+        var r = await fetch(base + '/api/send-password-reset', {
+          method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer '+idToken },
+          body: JSON.stringify({ idToken: idToken, uid: uid, email: email })
+        });
+        var j = {}; try { j = await r.json(); } catch(_){}
+        if(r.ok && j && j.ok){ if(typeof toast==='function') toast('Wachtwoord-reset verstuurd naar '+email); }
+        else { if(typeof toast==='function') toast((j && j.error) || 'Kon de reset-mail niet versturen', true); }
       } catch(e){
-        if(typeof toast==='function') toast('Kon de reset-mail niet versturen', true);
+        if(typeof toast==='function') toast('Geen verbinding met de server', true);
       }
     }
   });

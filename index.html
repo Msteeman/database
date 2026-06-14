@@ -2366,6 +2366,7 @@ algemeen:</textarea>
             <button class="bh-tab" data-bh-tab="gebruikers">Gebruikers</button>
             <button class="bh-tab" data-bh-tab="logboek">Logboek</button>
             <button class="bh-tab" data-bh-tab="organogram">Organogram</button>
+            <button class="bh-tab" data-bh-tab="statistieken">Statistieken</button>
           </div>
 
           <div class="bh-section active" id="bh-section-aanvragen">
@@ -2407,6 +2408,21 @@ algemeen:</textarea>
           <div class="bh-section" id="bh-section-organogram">
             <div class="bh-toolbar"><span class="bh-org-hint">Coördinator bovenaan, scouts eronder. Individuele scouts en beheerders staan apart.</span></div>
             <div id="bh-org"><div class="bh-empty">Laden…</div></div>
+          </div>
+
+          <div class="bh-section" id="bh-section-statistieken">
+            <div class="bh-toolbar">
+              <input type="search" id="bh-stat-search" class="bh-search" placeholder="Zoek op naam of e-mail…" aria-label="Zoek gebruiker">
+              <select id="bh-stat-team" class="bh-select" aria-label="Filter op team"><option value="">Alle teams</option></select>
+              <select id="bh-stat-metric" class="bh-select" aria-label="Metric voor grafiek">
+                <option value="players">Spelers</option>
+                <option value="matchReports">Wedstrijdrapporten</option>
+                <option value="tournaments">Toernooien</option>
+                <option value="tips">Tips</option>
+                <option value="loginCount">Logins</option>
+              </select>
+            </div>
+            <div id="bh-stat-body"><div class="bh-empty">Laden…</div></div>
           </div>
 
           <div class="bh-section" id="bh-section-logboek">

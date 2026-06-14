@@ -12572,12 +12572,12 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 
 
 /* Lightbox voor screenshots (landingspagina) */
-.sh-lb{ display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.85); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:center; justify-content:center; cursor:zoom-out; }
+.sh-lb{ display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.85); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:center; justify-content:center; cursor:pointer; }
 .sh-lb.open{ display:flex; }
 .sh-lb-img{ max-width:90vw; max-height:90vh; object-fit:contain; border-radius:8px; box-shadow:0 12px 60px rgba(0,0,0,.6); }
 .sh-lb-close{ position:fixed; top:max(16px, env(safe-area-inset-top, 0px)); right:16px; background:rgba(255,255,255,.15); border:none; color:#fff; font-size:28px; width:44px; height:44px; border-radius:50%; cursor:pointer; z-index:10000; display:flex; align-items:center; justify-content:center; line-height:1; }
 .sh-lb-close:hover{ background:rgba(255,255,255,.3); }
-#landing-overlay .lp-visual img{ cursor:zoom-in; transition:transform .15s ease; }
+#landing-overlay .lp-visual img{ cursor:pointer; transition:transform .15s ease; }
 #landing-overlay .lp-visual img:hover{ transform:scale(1.02); }
 
 
@@ -13117,7 +13117,7 @@ body.sh-onb-open{ overflow:hidden; }
 #landing-overlay .lp-media > img,
 #landing-overlay .lp-media > .lp-vidcrop{
   position:relative; z-index:1; display:block; width:100%; border-radius:8px;
-  box-shadow:0 20px 55px rgba(0,0,0,.55); cursor:zoom-in;
+  box-shadow:0 20px 55px rgba(0,0,0,.55); cursor:pointer;
 }
 /* zachte rood/blauwe glow achter de media */
 #landing-overlay .lp-media::before{

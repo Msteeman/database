@@ -1095,112 +1095,392 @@ async function handleParseToernooiReglement(body) {
 const ROUTES = '/parse | /sync | /reglement';
 
 /* ============================================================ *
- * FASE 1 — Toegangsaanvraag (invite-only). Additief.
- * Schrijft naar Firestore-collectie access_requests (publieke create,
- * strikt gevalideerd in de Security Rules) en stuurt twee mails via
- * Resend. FROM = admin@scoutinghub.nl (auth/aanvragen-mailbox).
- * Geen bestaande data aangeraakt; geen secrets in de frontend.
+ * FASE 1+ — Toegang aanvragen · account aanmaken · mailing.
+ * Beveiligd: Cloudflare Turnstile, honeypot, rate-limit (KV),
+ * dedup, server-side validatie. Accountcreatie via service-account
+ * (vertrouwd serverpad). ALLE config via env — geen secrets in code.
+ *
+ * Benodigde env/secrets (zet via `wrangler secret` / dashboard):
+ *   SERVICE_ACCOUNT_JSON  (secret)  service-account JSON, project database-scouting
+ *   FB_API_KEY            (secret)  web-apiKey database-scouting (Identity Toolkit)
+ *   TURNSTILE_SECRET      (secret)  Cloudflare Turnstile secret
+ *   RESEND_API_KEY        (secret)  Resend API key
+ *   RATE_LIMIT            (KV)      KV-namespace voor rate-limit
+ *   CONTACT_FROM, ADMIN_FROM, ADMIN_NOTIFY_TO, CONTACT_EMAIL,
+ *   APP_URL, ADMIN_EMAILS (vars)
+ *
+ * LET OP: deploy deze worker pas nadat bovenstaande env/secrets staan.
+ * Zonder TURNSTILE_SECRET/SERVICE_ACCOUNT_JSON faalt request-access
+ * bewust (fail-closed) — houd de huidige worker live tot alles staat.
  * ============================================================ */
-const SH_FB = { projectId: 'database-scouting', apiKey: 'AIzaSyBDeLaGfzM1PN8Cl8E6nlIe8FxxxXLwRyY' };
-const SH_MAIL_FROM = 'ScoutingHub <admin@scoutinghub.nl>';
-const SH_MAIL_ADMIN_TO = 'marcelsteeman1@gmail.com';
+const SH_FB = { projectId: 'database-scouting' };
 
-function shValidEmail(e) {
-  return typeof e === 'string' && e.length > 3 && e.length < 200 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
+function cfg(env, key, fb){ return (env && env[key] != null && String(env[key]).length) ? String(env[key]) : fb; }
+function appBaseUrl(env){ return cfg(env, 'SITE_URL', cfg(env, 'APP_ORIGIN', cfg(env, 'APP_URL', 'https://www.scoutinghub.nl'))).replace(/\/+$/, ''); }
+function contactFrom(env){ return cfg(env, 'CONTACT_FROM', 'ScoutingHub <contact@scoutinghub.nl>'); }
+function adminFrom(env){ return cfg(env, 'ADMIN_FROM', 'ScoutingHub Beheer <admin@scoutinghub.nl>'); }
+function adminNotifyTo(env){ return cfg(env, 'ADMIN_NOTIFY_TO', ''); }
+function contactEmail(env){ return cfg(env, 'CONTACT_EMAIL', 'contact@scoutinghub.nl'); }
+function fbApiKey(env){ return cfg(env, 'FB_API_KEY', ''); }
+function adminEmails(env){ return cfg(env, 'ADMIN_EMAILS', '').split(',').map(s=>s.trim().toLowerCase()).filter(Boolean); }
+
+/* ---- validatie / escaping ---- */
+function shValidEmail(e){ return typeof e==='string' && e.length>3 && e.length<200 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+function shEsc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function clip(s, n){ return String(s==null?'':s).trim().slice(0, n); }
+
+/* ---- Cloudflare Turnstile (fail-closed) ---- */
+async function verifyTurnstile(env, token, ip){
+  const secret = env && env.TURNSTILE_SECRET;
+  if(!secret) return { ok:false, reason:'no-secret' };
+  if(!token) return { ok:false, reason:'no-token' };
+  try{
+    const form = new URLSearchParams();
+    form.set('secret', secret); form.set('response', String(token)); if(ip) form.set('remoteip', ip);
+    const r = await fetchWithTimeout('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method:'POST', body: form });
+    const j = await r.json();
+    return { ok: !!(j && j.success) };
+  } catch(_){ return { ok:false, reason:'verify-error' }; }
 }
-function shEsc(s) {
-  return String(s == null ? '' : s).replace(/[&<>]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]; });
+
+/* ---- rate-limit (KV, best-effort) ---- */
+async function rateLimit(env, key, limit, windowSec){
+  const kv = env && env.RATE_LIMIT;
+  if(!kv) return { ok:true, skipped:true };
+  try{
+    const k = 'rl:'+key;
+    const cur = await kv.get(k);
+    const n = cur ? parseInt(cur,10) : 0;
+    if(n >= limit) return { ok:false };
+    await kv.put(k, String(n+1), { expirationTtl: windowSec });
+    return { ok:true };
+  } catch(_){ return { ok:true, error:true }; }
 }
-async function shWriteAccessRequest(doc) {
-  const url = `https://firestore.googleapis.com/v1/projects/${SH_FB.projectId}/databases/(default)/documents/access_requests?key=${SH_FB.apiKey}`;
-  const fields = {
-    email:        { stringValue: doc.email },
-    name:         { stringValue: doc.name || '' },
-    club:         { stringValue: doc.club || '' },
-    message:      { stringValue: doc.message || '' },
-    status:       { stringValue: 'pending' },
-    requestedAt:  { timestampValue: new Date().toISOString() },
-    reviewedAt:   { nullValue: null },
-    reviewedBy:   { nullValue: null },
-    assignedRole: { nullValue: null },
-    authUid:      { nullValue: null },
-    source:       { stringValue: 'public_request_form' }
-  };
+
+/* ---- service-account OAuth2 (RS256 JWT -> access token) ---- */
+let _saTokenCache = null;
+function _pemToBuf(pem){
+  const b64 = pem.replace(/-----BEGIN [^-]+-----/,'').replace(/-----END [^-]+-----/,'').replace(/\s+/g,'');
+  const bin = atob(b64); const buf = new ArrayBuffer(bin.length); const v = new Uint8Array(buf);
+  for(let i=0;i<bin.length;i++) v[i] = bin.charCodeAt(i);
+  return buf;
+}
+function _b64urlBytes(buf){ let s=''; const v=new Uint8Array(buf); for(let i=0;i<v.length;i++) s+=String.fromCharCode(v[i]); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+function _b64urlStr(str){ return btoa(unescape(encodeURIComponent(str))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+async function getServiceAccountToken(env){
+  const nowSec = Math.floor(Date.now()/1000);
+  if(_saTokenCache && _saTokenCache.exp - 60 > nowSec) return _saTokenCache.token;
+  const raw = env && env.SERVICE_ACCOUNT_JSON;
+  if(!raw) throw new Error('sa-missing');
+  const sa = JSON.parse(raw);
+  const scope = 'https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/identitytoolkit https://www.googleapis.com/auth/firebase';
+  const header = { alg:'RS256', typ:'JWT' };
+  const claim = { iss: sa.client_email, scope, aud:'https://oauth2.googleapis.com/token', iat: nowSec, exp: nowSec+3600 };
+  const unsigned = _b64urlStr(JSON.stringify(header)) + '.' + _b64urlStr(JSON.stringify(claim));
+  const key = await crypto.subtle.importKey('pkcs8', _pemToBuf(sa.private_key), { name:'RSASSA-PKCS1-v1_5', hash:'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(unsigned));
+  const jwt = unsigned + '.' + _b64urlBytes(sig);
+  const res = await fetchWithTimeout('https://oauth2.googleapis.com/token', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion='+encodeURIComponent(jwt) });
+  const j = await res.json();
+  if(!j || !j.access_token) throw new Error('sa-token-failed');
+  _saTokenCache = { token: j.access_token, exp: nowSec + (j.expires_in||3600) };
+  return _saTokenCache.token;
+}
+
+/* ---- Firestore REST met service-account Bearer ---- */
+function _fsv(v){
+  if(v===null || v===undefined) return { nullValue:null };
+  if(v && v.__ts) return { timestampValue: v.__ts };
+  if(typeof v==='boolean') return { booleanValue: v };
+  if(typeof v==='number') return Number.isInteger(v) ? { integerValue:String(v) } : { doubleValue:v };
+  return { stringValue:String(v) };
+}
+function _fsFieldsOut(obj){ const f={}; for(const k of Object.keys(obj)) f[k]=_fsv(obj[k]); return { fields:f }; }
+function TS(iso){ return { __ts: iso }; }
+function _fsBase(){ return 'https://firestore.googleapis.com/v1/projects/'+SH_FB.projectId+'/databases/(default)/documents'; }
+async function saFsCreate(token, collection, obj){
+  const r = await fetchWithTimeout(_fsBase()+'/'+collection, { method:'POST', headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' }, body: JSON.stringify(_fsFieldsOut(obj)) });
+  if(!r.ok) return null;
+  const j = await r.json(); return (j && j.name) ? j.name.split('/').pop() : null;
+}
+async function saFsPatch(token, path, obj){
+  const mask = Object.keys(obj).map(k=>'updateMask.fieldPaths='+encodeURIComponent(k)).join('&');
+  const r = await fetchWithTimeout(_fsBase()+'/'+path+'?'+mask, { method:'PATCH', headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' }, body: JSON.stringify(_fsFieldsOut(obj)) });
+  return r.ok;
+}
+async function saFsGet(token, path){
+  const r = await fetchWithTimeout(_fsBase()+'/'+path, { headers:{ Authorization:'Bearer '+token } });
+  if(!r.ok) return null;
+  const j = await r.json(); return (j && j.fields) ? fsFields(j.fields) : null;
+}
+async function saFsPendingExists(token, email){
+  const body = { structuredQuery:{ from:[{collectionId:'access_requests'}], where:{ compositeFilter:{ op:'AND', filters:[
+    { fieldFilter:{ field:{fieldPath:'email'}, op:'EQUAL', value:{stringValue:email} } },
+    { fieldFilter:{ field:{fieldPath:'status'}, op:'EQUAL', value:{stringValue:'pending'} } }
+  ]}}, limit:1 } };
+  const r = await fetchWithTimeout(_fsBase()+':runQuery', { method:'POST', headers:{ Authorization:'Bearer '+token, 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+  if(!r.ok) return false;
+  const j = await r.json();
+  return Array.isArray(j) && j.some(row=>row && row.document);
+}
+
+/* ---- Identity Toolkit (token-verificatie + account aanmaken) ---- */
+async function verifyCallerToken(env, idToken){
+  const apiKey = fbApiKey(env);
+  if(!apiKey || !idToken) return null;
+  const r = await fetchWithTimeout('https://identitytoolkit.googleapis.com/v1/accounts:lookup?key='+apiKey, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ idToken }) });
+  if(!r.ok) return null;
+  const j = await r.json(); const u = j && j.users && j.users[0];
+  if(!u || !u.localId) return null;
+  return { uid: u.localId, email: String(u.email||'').toLowerCase(), emailVerified: !!u.emailVerified };
+}
+async function isCallerAdmin(env, saToken, caller){
+  if(!caller) return false;
+  if(caller.emailVerified && adminEmails(env).includes(caller.email)) return true;
+  try { const u = await saFsGet(saToken, 'users/'+caller.uid); return !!(u && u.role==='admin'); } catch(_){ return false; }
+}
+function _genPassword(){ const a=new Uint8Array(24); crypto.getRandomValues(a.buffer); return 'Sh!'+_b64urlBytes(a.buffer).slice(0,28)+'7'; }
+async function createAuthUser(env, email){
+  const apiKey = fbApiKey(env);
+  const r = await fetchWithTimeout('https://identitytoolkit.googleapis.com/v1/accounts:signUp?key='+apiKey, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email, password:_genPassword(), returnSecureToken:true }) });
+  const j = await r.json();
+  if(!r.ok) return { error: (j && j.error && j.error.message) || 'signup-failed' };
+  return { uid: j.localId };
+}
+async function deleteAuthUser(saToken, uid){
+  try { await fetchWithTimeout('https://identitytoolkit.googleapis.com/v1/projects/'+SH_FB.projectId+'/accounts:delete', { method:'POST', headers:{ Authorization:'Bearer '+saToken, 'Content-Type':'application/json' }, body: JSON.stringify({ localId: uid }) }); } catch(_){}
+}
+async function genResetLink(saToken, email){
   try {
-    const r = await fetchWithTimeout(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fields }) });
-    return r.ok;
-  } catch (_) { return false; }
+    const r = await fetchWithTimeout('https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode', { method:'POST', headers:{ Authorization:'Bearer '+saToken, 'Content-Type':'application/json' }, body: JSON.stringify({ requestType:'PASSWORD_RESET', email, returnOobLink:true }) });
+    if(!r.ok) return null; const j = await r.json(); return (j && j.oobLink) ? j.oobLink : null;
+  } catch(_){ return null; }
 }
-async function shSendMail(env, to, subject, html) {
-  if (!env || !env.RESEND_API_KEY) return false;
+
+/* ---- Mailmodule (huisstijl) ---- */
+function mailShell(env, opts){
+  const base = appBaseUrl(env); const ce = contactEmail(env); const host = base.replace(/^https?:\/\//,'');
+  const cta = opts.ctaUrl ? '<div style="margin:22px 0 6px;"><a href="'+opts.ctaUrl+'" style="display:inline-block;background:#e30613;color:#ffffff;text-decoration:none;font-weight:700;padding:12px 22px;border-radius:8px;">'+(opts.ctaText||'Openen')+'</a></div>' : '';
+  return '<!doctype html><html><body style="margin:0;background:#f4f6f9;font-family:Arial,Helvetica,sans-serif;color:#0f172a;">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f4f6f9;padding:24px 0;"><tr><td align="center">'
+    + '<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:12px;overflow:hidden;border:1px solid #e6eaf0;">'
+    + '<tr><td style="background:#10151e;padding:20px 28px;"><span style="color:#ffffff;font-size:20px;font-weight:800;">Scouting<span style="color:#e30613;">Hub</span></span></td></tr>'
+    + '<tr><td style="padding:26px 28px 6px;"><h1 style="margin:0 0 12px;font-size:20px;color:#0f172a;">'+opts.title+'</h1>'+opts.bodyHtml+cta+'</td></tr>'
+    + '<tr><td style="padding:16px 28px 24px;border-top:1px solid #eef1f5;color:#64748b;font-size:12px;line-height:1.6;">'
+    + 'ScoutingHub &middot; <a href="'+base+'" style="color:#2563eb;">'+host+'</a> &middot; <a href="mailto:'+ce+'" style="color:#2563eb;">'+ce+'</a><br>'
+    + '<a href="'+base+'/privacy.html" style="color:#64748b;">Privacy</a> &middot; <a href="'+base+'/voorwaarden.html" style="color:#64748b;">Voorwaarden</a></td></tr>'
+    + '</table></td></tr></table></body></html>';
+}
+async function sendMail(env, opts){
+  if(!env || !env.RESEND_API_KEY) return false;
   try {
-    const r = await fetchWithTimeout('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + env.RESEND_API_KEY, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ from: SH_MAIL_FROM, to: [to], subject, html })
-    });
+    const payload = { from: opts.from, to: Array.isArray(opts.to)?opts.to:[opts.to], subject: opts.subject, html: opts.html };
+    if(opts.text) payload.text = opts.text;
+    if(opts.replyTo) payload.reply_to = opts.replyTo;
+    const r = await fetchWithTimeout('https://api.resend.com/emails', { method:'POST', headers:{ Authorization:'Bearer '+env.RESEND_API_KEY, 'Content-Type':'application/json' }, body: JSON.stringify(payload) });
     return r.ok;
-  } catch (_) { return false; }
+  } catch(_){ return false; }
 }
-async function handleRequestAccess(body, env) {
-  const email = (body && body.email ? String(body.email) : '').trim();
-  const name = (body && body.name ? String(body.name) : '').trim().slice(0, 120);
-  const club = (body && body.club ? String(body.club) : '').trim().slice(0, 160);
-  const message = (body && body.message ? String(body.message) : '').trim().slice(0, 1000);
-  if (!email) return json({ ok: false, error: 'E-mailadres is verplicht.' }, 200);
-  if (!shValidEmail(email)) return json({ ok: false, error: 'Dit is geen geldig e-mailadres.' }, 200);
 
-  const saved = await shWriteAccessRequest({ email, name, club, message });
+/* ---- Mail-builders ---- */
+async function sendConfirmationMail(env, d){
+  const body = '<p style="font-size:15px;line-height:1.6;">Hallo '+shEsc(d.name||'')+',</p>'
+    + '<p style="font-size:15px;line-height:1.6;">Bedankt voor je interesse in ScoutingHub. We hebben je aanvraag ontvangen en beoordelen elke aanvraag handmatig. Je hoort van ons zodra deze is verwerkt.</p>'
+    + '<p style="font-size:14px;line-height:1.6;color:#334155;"><strong>Je gegevens</strong><br>Naam: '+shEsc(d.name||'')+'<br>E-mail: '+shEsc(d.email||'')+'<br>Club: '+shEsc(d.club||'')+'<br>Functie: '+shEsc(d.functie||'')+'</p>'
+    + '<p style="font-size:14px;line-height:1.6;color:#334155;">Vragen? Mail ons via <a href="mailto:'+contactEmail(env)+'" style="color:#2563eb;">'+contactEmail(env)+'</a>.</p>';
+  const html = mailShell(env, { title:'Je aanvraag is ontvangen', bodyHtml: body, ctaText:'Naar ScoutingHub', ctaUrl: appBaseUrl(env) });
+  const text = 'Hallo '+(d.name||'')+',\n\nBedankt voor je interesse in ScoutingHub. We hebben je aanvraag ontvangen en beoordelen deze handmatig. Je hoort van ons zodra deze is verwerkt.\n\nGegevens: '+(d.name||'')+' / '+(d.email||'')+' / '+(d.club||'')+' / '+(d.functie||'')+'\n\nVragen? '+contactEmail(env)+'\n'+appBaseUrl(env);
+  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Je aanvraag voor ScoutingHub is ontvangen', html, text });
+}
+async function sendAdminNotifyMail(env, d){
+  const to = adminNotifyTo(env); if(!to) return false;
+  const base = appBaseUrl(env);
+  const body = '<p style="font-size:15px;line-height:1.6;">Er is een nieuwe toegangsaanvraag binnengekomen.</p>'
+    + '<table style="font-size:14px;line-height:1.7;color:#0f172a;border-collapse:collapse;">'
+    + '<tr><td style="padding:2px 10px 2px 0;color:#64748b;">Naam</td><td>'+shEsc(d.name||'')+'</td></tr>'
+    + '<tr><td style="padding:2px 10px 2px 0;color:#64748b;">E-mail</td><td>'+shEsc(d.email||'')+'</td></tr>'
+    + '<tr><td style="padding:2px 10px 2px 0;color:#64748b;">Club</td><td>'+shEsc(d.club||'')+'</td></tr>'
+    + '<tr><td style="padding:2px 10px 2px 0;color:#64748b;">Functie</td><td>'+shEsc(d.functie||'')+'</td></tr>'
+    + '<tr><td style="padding:2px 10px 2px 0;color:#64748b;vertical-align:top;">Motivatie</td><td>'+shEsc(d.message||'—')+'</td></tr>'
+    + '<tr><td style="padding:2px 10px 2px 0;color:#64748b;">Aangevraagd</td><td>'+shEsc(d.requestedAt||'')+'</td></tr>'
+    + '<tr><td style="padding:2px 10px 2px 0;color:#64748b;">Aanvraag-id</td><td>'+shEsc(d.requestId||'')+'</td></tr>'
+    + '</table>'
+    + '<p style="font-size:13px;line-height:1.6;color:#64748b;margin-top:14px;">Beoordeel in Beheer: kies rol en team, en keur goed of wijs af.</p>';
+  const html = mailShell(env, { title:'Nieuwe toegangsaanvraag', bodyHtml: body, ctaText:'Open Beheer', ctaUrl: base });
+  return sendMail(env, { from: adminFrom(env), to, replyTo: contactEmail(env), subject:'Nieuwe toegangsaanvraag — ScoutingHub', html });
+}
+async function sendWelcomeMail(env, d){
+  const base = appBaseUrl(env);
+  const loginUrl = d.resetLink || base;
+  const roleLabel = d.role === 'coordinator' ? 'Coördinator' : 'Scout';
+  const steps = '<ol style="font-size:14px;line-height:1.7;color:#334155;padding-left:20px;margin:6px 0 14px;">'
+    + '<li>Log in op ScoutingHub'+(d.resetLink?' (stel eerst je wachtwoord in via de knop hierboven)':'')+'</li>'
+    + '<li>Controleer je profiel</li><li>Voeg je eerste speler toe</li><li>Zet een wedstrijd in je programma</li><li>Gebruik het live-dashboard tijdens de wedstrijd</li></ol>';
+  const tips = '<p style="font-size:14px;line-height:1.6;color:#334155;margin:8px 0 4px;"><strong>Tips</strong></p>'
+    + '<ul style="font-size:14px;line-height:1.7;color:#334155;padding-left:20px;margin:0 0 12px;">'
+    + '<li>Observeer kort en concreet; werk met live-aantekeningen tijdens de wedstrijd.</li>'
+    + '<li>Rond rapporten direct na de wedstrijd af.</li>'
+    + '<li>Gebruik het programma voor overzicht en installeer ScoutingHub als app (PWA) op je telefoon/tablet.</li>'
+    + '<li>Houd persoonsgegevens en notities zorgvuldig en relevant.</li></ul>';
+  const body = '<p style="font-size:15px;line-height:1.6;">Welkom '+shEsc(d.name||'')+',</p>'
+    + '<p style="font-size:15px;line-height:1.6;">Je toegang tot ScoutingHub is goedgekeurd. Je account is aangemaakt.</p>'
+    + '<p style="font-size:14px;line-height:1.6;color:#334155;">Rol: <strong>'+roleLabel+'</strong>'+(d.teamName?'<br>Team: <strong>'+shEsc(d.teamName)+'</strong>':'')+'</p>'
+    + (d.teamName ? '' : '<p style="font-size:14px;line-height:1.6;color:#334155;">Je account is geactiveerd als individuele scout.</p>')
+    + '<p style="font-size:14px;line-height:1.6;color:#334155;"><strong>Zo start je</strong></p>'+steps+tips
+    + '<p style="font-size:14px;line-height:1.6;color:#334155;">Handleiding: <a href="'+base+'/handleiding.html" style="color:#2563eb;">'+base+'/handleiding.html</a><br>Support: <a href="mailto:'+contactEmail(env)+'" style="color:#2563eb;">'+contactEmail(env)+'</a></p>';
+  const html = mailShell(env, { title:'Welkom bij ScoutingHub', bodyHtml: body, ctaText: d.resetLink?'Wachtwoord instellen & inloggen':'Inloggen', ctaUrl: loginUrl });
+  const text = 'Welkom '+(d.name||'')+',\n\nJe toegang tot ScoutingHub is goedgekeurd. Rol: '+roleLabel+(d.teamName?(' / Team: '+d.teamName):'')+'.\n\n'+(d.resetLink?('Stel je wachtwoord in en log in: '+d.resetLink):('Inloggen: '+base))+'\n\nHandleiding: '+base+'/handleiding.html\nSupport: '+contactEmail(env);
+  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Welkom bij ScoutingHub — je account is aangemaakt', html, text });
+}
+async function sendRejectMail(env, d){
+  const body = '<p style="font-size:15px;line-height:1.6;">Hallo '+shEsc(d.name||'')+',</p>'
+    + '<p style="font-size:15px;line-height:1.6;">Bedankt voor je interesse in ScoutingHub. We kunnen je aanvraag op dit moment helaas niet goedkeuren.</p>'
+    + '<p style="font-size:14px;line-height:1.6;color:#334155;">Heb je vragen? Je kunt ons bereiken via <a href="mailto:'+contactEmail(env)+'" style="color:#2563eb;">'+contactEmail(env)+'</a>.</p>'
+    + '<p style="font-size:15px;line-height:1.6;">Met vriendelijke groet,<br>ScoutingHub</p>';
+  const html = mailShell(env, { title:'Je aanvraag voor ScoutingHub', bodyHtml: body });
+  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Je aanvraag voor ScoutingHub', html });
+}
 
-  const intern =
-    '<h2 style="margin:0 0 10px">Nieuwe toegangsaanvraag — ScoutingHub</h2>' +
-    '<p style="font-size:14px;line-height:1.6">' +
-    '<strong>E-mail:</strong> ' + shEsc(email) + '<br>' +
-    '<strong>Naam:</strong> ' + (shEsc(name) || '\u2014') + '<br>' +
-    '<strong>Club/organisatie:</strong> ' + (shEsc(club) || '\u2014') + '<br>' +
-    '<strong>Bericht:</strong> ' + (shEsc(message) || '\u2014') + '</p>' +
-    '<p style="font-size:12px;color:#888">Status: pending \u00b7 bron: public_request_form</p>';
-  const m1 = await shSendMail(env, SH_MAIL_ADMIN_TO, 'Nieuwe toegang aanvraag — ScoutingHub', intern);
+/* ============================================================ *
+ * HANDLER — request-access (beveiligd)
+ * ============================================================ */
+async function handleRequestAccess(body, env, request){
+  const ip = (request && request.headers && request.headers.get('CF-Connecting-IP')) || '0.0.0.0';
+  // 1) honeypot: stil slikken met neutrale respons
+  if(clip(body.website || body.companyUrl || '', 200)) return json({ ok:true });
+  // 2) Turnstile
+  const ts = await verifyTurnstile(env, body.turnstileToken || body.cfTurnstileToken, ip);
+  if(!ts.ok) return json({ ok:false, error:'Verificatie mislukt. Vernieuw de pagina en probeer het opnieuw.' });
+  // 3) validatie (server-side; frontend nooit vertrouwen)
+  const email = clip(String(body.email||'').toLowerCase(), 200);
+  const name = clip(body.name, 120), club = clip(body.club, 160), functie = clip(body.functie, 80), message = clip(body.message, 1000);
+  const acceptedTerms = body.acceptedTerms === true || body.acceptedTerms === 'true';
+  const newsletterOptIn = body.newsletterOptIn === true || body.newsletterOptIn === 'true';
+  if(!name) return json({ ok:false, error:'Vul je naam in.' });
+  if(!shValidEmail(email)) return json({ ok:false, error:'Dit is geen geldig e-mailadres.' });
+  if(!club) return json({ ok:false, error:'Vul je club of organisatie in.' });
+  if(!functie) return json({ ok:false, error:'Kies je functie.' });
+  if(!acceptedTerms) return json({ ok:false, error:'Accepteer eerst de voorwaarden.' });
+  // 4) rate-limit per IP en per e-mail
+  const rlIp = await rateLimit(env, 'ip:'+ip, 5, 3600);
+  const rlEmail = await rateLimit(env, 'em:'+email, 3, 86400);
+  if(!rlIp.ok || !rlEmail.ok) return json({ ok:false, error:'Er zijn al meerdere aanvragen ontvangen. Probeer het later opnieuw.' });
+  // 5) service-account (vertrouwd schrijfpad — blijft werken na rules-flip)
+  let saToken; try { saToken = await getServiceAccountToken(env); } catch(_){ saToken = null; }
+  if(!saToken) return json({ ok:false, error:'De server is even niet beschikbaar. Probeer het later opnieuw.' });
+  // 6) dedup
+  try { if(await saFsPendingExists(saToken, email)) return json({ ok:true, deduped:true, message:'Er is al een aanvraag ontvangen of recent ingediend. Je ontvangt bericht zodra deze is verwerkt.' }); } catch(_){}
+  // 7) schrijven
+  const nowIso = new Date().toISOString();
+  const docObj = { email, name, club, functie, message, acceptedTerms:true, acceptedTermsAt: TS(nowIso), newsletterOptIn,
+    status:'pending', source:'public_request_form', requestedAt: TS(nowIso),
+    reviewedAt:null, reviewedBy:null, approvedAt:null, approvedBy:null, rejectedAt:null, rejectedBy:null,
+    assignedRole:null, authUid:null, teamId:null, teamName:null };
+  const reqId = await saFsCreate(saToken, 'access_requests', docObj);
+  if(!reqId) return json({ ok:false, error:'Er ging iets mis bij het opslaan. Probeer het later opnieuw.' });
+  // 8) mails (pas na succesvolle write)
+  const m1 = await sendConfirmationMail(env, { name, email, club, functie });
+  const m2 = await sendAdminNotifyMail(env, { name, email, club, functie, message, requestedAt: nowIso, requestId: reqId });
+  return json({ ok:true, saved:true, mailSent: !!m1, adminNotified: !!m2 });
+}
 
-  const conf =
-    '<p style="font-size:14px;line-height:1.6">Bedankt voor je aanvraag voor ScoutingHub.</p>' +
-    '<p style="font-size:14px;line-height:1.6">We hebben je aanvraag ontvangen en nemen binnen 24 uur contact met je op. Check ook je spam-map.</p>' +
-    '<p style="font-size:14px;line-height:1.6">Groet,<br>ScoutingHub</p>';
-  const m2 = await shSendMail(env, email, 'Aanvraag ontvangen — ScoutingHub', conf);
+/* ============================================================ *
+ * HANDLER — create-account (admin, service-account)
+ * ============================================================ */
+async function handleCreateAccount(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken; try { saToken = await getServiceAccountToken(env); } catch(_){ return json({ ok:false, error:'Serverconfiguratie ontbreekt' }, 500); }
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  const role = String(body.role||'');
+  if(role!=='scout' && role!=='coordinator') return json({ ok:false, error:'Ongeldige rol' }, 400);
+  const reqId = clip(body.accessRequestId, 200);
+  if(!reqId) return json({ ok:false, error:'Aanvraag-id ontbreekt' }, 400);
+  const teamId = clip(body.teamId, 120), teamName = clip(body.teamName, 160);
+  if(role === 'coordinator' && (!teamId || !teamName)) return json({ ok:false, error:'Een co\u00f6rdinator moet aan een team gekoppeld worden' }, 400);
+  const reqDoc = await saFsGet(saToken, 'access_requests/'+reqId);
+  if(!reqDoc) return json({ ok:false, error:'Aanvraag niet gevonden' }, 404);
+  if(reqDoc.status !== 'pending') return json({ ok:false, error:'Aanvraag is al verwerkt' }, 409);
+  const email = String(reqDoc.email||'').toLowerCase();
+  if(!shValidEmail(email)) return json({ ok:false, error:'Aanvraag heeft geen geldig e-mailadres' }, 400);
+  // account aanmaken
+  const created = await createAuthUser(env, email);
+  if(created.error){ const dup = /EMAIL_EXISTS/.test(created.error); return json({ ok:false, error: dup ? 'Er bestaat al een account met dit e-mailadres' : 'Account aanmaken mislukt' }, dup?409:500); }
+  const uid = created.uid;
+  const nowIso = new Date().toISOString();
+  const nm = clip(reqDoc.name, 120) || '';
+  const ok1 = await saFsPatch(saToken, 'users/'+uid, { uid, email, name: nm, displayName: nm, role, teamId, teamName, isActive:true, status:'active', createdAt: TS(nowIso), createdBy: caller.uid, source:'access_request', accessRequestId: reqId });
+  if(!ok1){ await deleteAuthUser(saToken, uid); return json({ ok:false, error:'Profiel aanmaken mislukt — account teruggedraaid' }, 500); }
+  const ok2 = await saFsPatch(saToken, 'access_requests/'+reqId, { status:'approved', authUid: uid, assignedRole: role, teamId, teamName, reviewedAt: TS(nowIso), reviewedBy: caller.uid, approvedAt: TS(nowIso), approvedBy: caller.uid });
+  // welkomstmail (account bestaat al; mailfout draait niets terug)
+  const resetLink = await genResetLink(saToken, email);
+  const mailSent = await sendWelcomeMail(env, { email, name: nm, role, teamName, resetLink });
+  return json({ ok:true, uid, role, requestUpdated: !!ok2, mailSent });
+}
 
-  return json({ ok: true, saved: saved, mailSent: (m1 && m2), mailConfigured: !!(env && env.RESEND_API_KEY) }, 200);
+/* ============================================================ *
+ * HANDLER — reject-request (admin, optionele mail)
+ * ============================================================ */
+async function handleRejectRequest(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken; try { saToken = await getServiceAccountToken(env); } catch(_){ return json({ ok:false, error:'Serverconfiguratie ontbreekt' }, 500); }
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  const reqId = clip(body.accessRequestId, 200);
+  if(!reqId) return json({ ok:false, error:'Aanvraag-id ontbreekt' }, 400);
+  const reqDoc = await saFsGet(saToken, 'access_requests/'+reqId);
+  if(!reqDoc) return json({ ok:false, error:'Aanvraag niet gevonden' }, 404);
+  if(reqDoc.status !== 'pending') return json({ ok:false, error:'Aanvraag is al verwerkt' }, 409);
+  const nowIso = new Date().toISOString();
+  const ok = await saFsPatch(saToken, 'access_requests/'+reqId, { status:'rejected', reviewedAt: TS(nowIso), reviewedBy: caller.uid, rejectedAt: TS(nowIso), rejectedBy: caller.uid });
+  if(!ok) return json({ ok:false, error:'Bijwerken mislukt' }, 500);
+  let mailSent = false;
+  if(body.notify === true || body.notify === 'true'){
+    const email = String(reqDoc.email||'').toLowerCase();
+    if(shValidEmail(email)) mailSent = await sendRejectMail(env, { email, name: clip(reqDoc.name,120) });
+  }
+  return json({ ok:true, mailSent });
 }
 
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') return new Response('', { status: 204, headers: CORS });
-
     const path = new URL(request.url).pathname.replace(/\/+$/, '');
 
-    // FASE 1 — expliciete API-route VÓÓR de generieke afhandeling, zodat
-    // /api/request-access altijd wordt geraakt (en zichtbaar bestaat).
     if (path.endsWith('/api/request-access') || path.endsWith('/request-access')) {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/request-access' }, 405);
-      let rbody = {};
-      try { rbody = await request.json(); } catch (_) { rbody = {}; }
-      if (!rbody || typeof rbody !== 'object') rbody = {};
-      try { return await handleRequestAccess(rbody, env); }
-      catch (err) { return json({ ok: false, error: 'Onverwachte fout', message: err && err.message ? err.message : String(err) }, 200); }
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleRequestAccess((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 200); }
+    }
+    if (path.endsWith('/api/create-account') || path.endsWith('/create-account')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/create-account' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleCreateAccount((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+    if (path.endsWith('/api/reject-request') || path.endsWith('/reject-request')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/reject-request' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleRejectRequest((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
     }
 
-    // GET → vriendelijke status (handig in de Preview-balk van Cloudflare)
     if (request.method === 'GET') {
-      return json({ status: 'ok', service: 'ScoutingHub toernooi-API', routes: ['/parse', '/sync', '/reglement', '/api/request-access'], hint: 'Gebruik POST met JSON-body' });
+      return json({ status: 'ok', service: 'ScoutingHub API', routes: ['/parse','/sync','/reglement','/api/request-access','/api/create-account','/api/reject-request'], hint: 'Gebruik POST met JSON-body' });
     }
     if (request.method !== 'POST') return json({ error: 'Gebruik POST', routes: ROUTES }, 405);
 
     let body = {};
     try { body = await request.json(); } catch (_) { body = {}; }
     if (!body || typeof body !== 'object') body = {};
-
-    // Beide naamschema's werken: kort (/parse) én lang (/parseToernooiUrl)
     const is = (...names) => names.some(n => path.endsWith(n));
-
     try {
       if (is('/parse', '/parseToernooiUrl')) return await handleParseToernooiUrl(body);
       if (is('/sync', '/syncTournamentResults')) return await handleSyncTournamentResults(body);
@@ -1211,4 +1491,3 @@ export default {
     }
   }
 };
-;

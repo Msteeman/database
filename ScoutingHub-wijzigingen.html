@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ScoutingHub — Wat we hebben gebouwd</title>
+<style>
+:root{
+  --ink:#0f172a; --ink-2:#334155; --muted:#64748b; --line:#e2e8f0;
+  --bg:#ffffff; --bg-soft:#f8fafc; --accent:#2563eb; --accent-soft:#eff6ff;
+  --was-bg:#fef2f2; --was-line:#fecaca; --was-ink:#991b1b;
+  --nu-bg:#f0fdf4; --nu-line:#bbf7d0; --nu-ink:#166534;
+  --navy:#10151e;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg-soft); color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  line-height:1.6; font-size:16px;
+}
+main{max-width:920px; margin:0 auto; padding:0 20px 80px; background:var(--bg)}
+@media(min-width:720px){ main{padding:0 48px 90px} }
+
+/* ---- Cover ---- */
+.cover{
+  background:linear-gradient(135deg,#10151e 0%,#1b2740 55%,#2a3a5e 100%);
+  color:#fff; margin:0 -20px 40px; padding:54px 24px 46px; border-radius:0 0 18px 18px;
+}
+@media(min-width:720px){ .cover{margin:0 -48px 48px; padding:64px 48px 52px} }
+.cover .kicker{ text-transform:uppercase; letter-spacing:.16em; font-size:12px; font-weight:700; color:#9bb4e6; margin:0 0 14px }
+.cover h1{ font-size:34px; line-height:1.15; margin:0 0 14px; font-weight:800; letter-spacing:-.02em }
+@media(min-width:720px){ .cover h1{font-size:44px} }
+.cover .lead{ font-size:17px; color:#d7e0f2; max-width:640px; margin:0 }
+.cover .meta{ margin-top:26px; display:flex; flex-wrap:wrap; gap:10px }
+.cover .pill{ background:rgba(255,255,255,.10); border:1px solid rgba(255,255,255,.18); color:#eaf1ff; font-size:13px; padding:6px 13px; border-radius:999px }
+
+/* ---- Typography ---- */
+h2{ font-size:15px; text-transform:uppercase; letter-spacing:.1em; color:var(--accent); margin:48px 0 6px; font-weight:800 }
+h3{ font-size:23px; margin:6px 0 4px; font-weight:750; letter-spacing:-.01em; color:var(--ink) }
+.sub{ color:var(--muted); margin:0 0 18px; font-size:15px }
+p{margin:0 0 14px}
+a{color:var(--accent)}
+.section-num{ color:var(--accent); font-weight:800; margin-right:8px }
+
+/* ---- TOC ---- */
+.toc{ background:var(--bg-soft); border:1px solid var(--line); border-radius:14px; padding:20px 22px; margin:0 0 8px }
+.toc h4{ margin:0 0 12px; font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted) }
+.toc ol{ margin:0; padding-left:20px; columns:2; column-gap:32px }
+@media(max-width:600px){ .toc ol{columns:1} }
+.toc li{ margin:0 0 7px; break-inside:avoid }
+.toc a{ text-decoration:none; color:var(--ink-2) }
+.toc a:hover{ color:var(--accent) }
+
+/* ---- Component card ---- */
+.cmp{ border:1px solid var(--line); border-radius:16px; padding:24px 24px 8px; margin:0 0 26px; background:#fff; box-shadow:0 1px 2px rgba(15,23,42,.04) }
+.cmp-head{ display:flex; align-items:flex-start; gap:14px; margin-bottom:6px }
+.cmp-ic{ flex:0 0 auto; width:42px; height:42px; border-radius:11px; background:var(--accent-soft); color:var(--accent);
+  display:flex; align-items:center; justify-content:center; font-size:21px }
+.tag{ display:inline-block; font-size:11px; font-weight:700; padding:3px 9px; border-radius:999px; letter-spacing:.03em; vertical-align:middle }
+.tag-done{ background:var(--nu-bg); color:var(--nu-ink); border:1px solid var(--nu-line) }
+.tag-open{ background:#fffbeb; color:#92400e; border:1px solid #fde68a }
+
+/* ---- Was/Nu ---- */
+.ba{ display:grid; grid-template-columns:1fr; gap:12px; margin:16px 0 6px }
+@media(min-width:640px){ .ba{ grid-template-columns:1fr 1fr } }
+.ba .box{ border-radius:12px; padding:14px 16px; font-size:15px }
+.ba .was{ background:var(--was-bg); border:1px solid var(--was-line) }
+.ba .nu{ background:var(--nu-bg); border:1px solid var(--nu-line) }
+.ba .lbl{ font-size:11px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; margin:0 0 6px }
+.ba .was .lbl{ color:var(--was-ink) }
+.ba .nu .lbl{ color:var(--nu-ink) }
+.ba .box p{ margin:0 0 8px } .ba .box p:last-child{margin:0}
+
+.detail{ margin:6px 0 10px }
+.detail h5{ margin:14px 0 6px; font-size:13px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted) }
+.detail ul{ margin:0 0 10px; padding-left:20px }
+.detail li{ margin:0 0 6px }
+.files{ margin:10px 0 18px; display:flex; flex-wrap:wrap; gap:7px; align-items:center }
+.files .flbl{ font-size:12px; color:var(--muted); margin-right:2px }
+.chip{ font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace; font-size:12px; background:#0f172a; color:#e2e8f0; padding:3px 9px; border-radius:7px }
+.chip.soft{ background:#eef2ff; color:#3730a3 }
+
+/* ---- Callouts ---- */
+.callout{ border-left:4px solid var(--accent); background:var(--accent-soft); padding:14px 18px; border-radius:0 12px 12px 0; margin:18px 0 }
+.callout.warn{ border-color:#f59e0b; background:#fffbeb }
+.callout.warn strong{ color:#92400e }
+.callout p:last-child{margin:0}
+
+table{ width:100%; border-collapse:collapse; margin:14px 0 22px; font-size:14.5px }
+th,td{ text-align:left; padding:10px 12px; border-bottom:1px solid var(--line); vertical-align:top }
+th{ font-size:12px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); background:var(--bg-soft) }
+tr:last-child td{border-bottom:none}
+
+.foot{ margin-top:54px; padding-top:18px; border-top:1px solid var(--line); color:var(--muted); font-size:13px }
+</style>
+</head>
+<body class="theme-professional">
+<main>
+
+  <header class="cover">
+    <p class="kicker">ScoutingHub · Wijzigingsoverzicht</p>
+    <h1>Wat we hebben gebouwd</h1>
+    <p class="lead">Een volledig, per onderdeel uitgeschreven overzicht van alle verbeteringen aan ScoutingHub — de jeugdvoetbal-scouting-PWA. Voor elk onderdeel staat hier hoe het wás, hoe het nú werkt, en wat er onder de motorkap is veranderd.</p>
+    <div class="meta">
+      <span class="pill">16 onderdelen aangepakt</span>
+      <span class="pill">15 opgeleverd · 1 geparkeerd</span>
+      <span class="pill">Cache-versie sh-v428</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <h4>Inhoud</h4>
+    <ol>
+      <li><a href="#c1">Tournify-import: poules &amp; veldnamen</a></li>
+      <li><a href="#c2">Toernooi-standen per poule</a></li>
+      <li><a href="#c3">Herstel-functie voor standen</a></li>
+      <li><a href="#c4">Teams-tab (voorheen Spelers)</a></li>
+      <li><a href="#c5">Programma-tab: zoeken &amp; snelknop</a></li>
+      <li><a href="#c6">Toernooi afronden</a></li>
+      <li><a href="#c7">Scroll-naar-boven knop</a></li>
+      <li><a href="#c8">Landingspagina</a></li>
+      <li><a href="#c9">Afbeelding vergroten (lightbox)</a></li>
+      <li><a href="#c10">Kleurstelling</a></li>
+      <li><a href="#c11">Demo-data overhaul</a></li>
+      <li><a href="#c12">Rapport-gloed in database</a></li>
+      <li><a href="#c13">Demo-knoppen alleen voor demo</a></li>
+      <li><a href="#c14">Handleiding herschreven</a></li>
+      <li><a href="#c15">Security &amp; open punten</a></li>
+      <li><a href="#c16">Foldable-optimalisatie</a></li>
+    </ol>
+  </nav>
+
+  <h2>Overzicht</h2>
+  <h3>Van losse bugs naar een afgeronde scout-ervaring</h3>
+  <p class="sub">Hieronder elk onderdeel apart, met een rood "Was"-vlak en een groen "Nu"-vlak.</p>
+  <p>De rode draad door al deze wijzigingen: de <strong>Tournify-import</strong> betrouwbaar maken (poules, standen, velden), de schermen die een scout langs de lijn gebruikt <strong>rustiger en sneller</strong> maken (Teams, Programma, standen, afronden), en de <strong>demo</strong> zó vullen dat een nieuwe gebruiker meteen een compleet, realistisch beeld krijgt. Daarnaast de publieke <strong>landingspagina</strong> en de eerste indruk opgepoetst.</p>
+
+  <!-- 1 -->
+  <article class="cmp" id="c1">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#127942;</div>
+      <div><h3>1. Tournify-import: poules &amp; veldnamen <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">De kern van het toernooi-onderdeel: een link plakken en alles klopt.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>Bij het importeren van een Tournify-link kwamen <strong>alle teams in één grote lijst</strong>. Sub-poules met dezelfde naam (A/B/C) vielen samen tot één geheel. Ongespeelde wedstrijden werden geteld als <strong>0-0 gelijkspel</strong>, en de <strong>velden</strong> waar teams speelden ontbraken — de directe veld-bron gaf een 403 (geen toegang).</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Elke poule wordt apart herkend met een <strong>volledig label</strong> (naam + letter, bijv. "1e Klasse (Middag) · Poule C"). De <strong>echte veldcodes</strong> ("1A", "2C", "3B") komen mee. Wedstrijden krijgen de juiste thuis/uit-teams en de echte uitslagen; nog niet gespeelde wedstrijden tellen niet als gelijkspel.</p></div>
+    </div>
+    <div class="detail">
+      <h5>Wat er onder de motorkap is veranderd</h5>
+      <ul>
+        <li><strong>Poule-labels:</strong> Tournify levert per poule een naam én een losse letter. Die worden nu samengevoegd tot één uniek label, zodat poules met dezelfde naam niet meer op één hoop belanden.</li>
+        <li><strong>Veldnamen — legaal opgelost:</strong> de afgeschermde veld-bron (403) wordt links gelaten. De echte veldnamen blijken te staan in een wél-leesbare lijst op het toernooi-document zelf; daaruit halen we de korte code en niets anders (geen handmatige koppeling nodig).</li>
+        <li><strong>Teams herleiden:</strong> in de ruwe data zijn de teams per wedstrijd opgeslagen als posities binnen een poule. Die posities worden nu vertaald naar de juiste teamnaam; lukt dat niet, dan wordt de wedstrijd weggelaten i.p.v. een nummer te tonen.</li>
+      </ul>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">worker.js</span><span class="chip">app.js</span></div>
+  </article>
+
+  <!-- 2 -->
+  <article class="cmp" id="c2">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#128202;</div>
+      <div><h3>2. Toernooi-standen per poule <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">Van import tot live-update: de stand klopt per poule.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>Eén grote ranglijst die soms verkeerd opbrak in mini-groepjes. Zolang er nog niets gespeeld was, <strong>verborg de standen-tab zichzelf</strong> — je zag dus niets na een verse import.</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Elke poule heeft zijn eigen ranglijst, met <strong>alle teams op 0 vanaf de import</strong>. Bij elke synchronisatie schuift de stand mee met de gespeelde uitslagen. De poules staan netjes gesorteerd op leeftijd en letter (U9-A … U12-D).</p></div>
+    </div>
+    <div class="detail">
+      <h5>Wat er onder de motorkap is veranderd</h5>
+      <ul>
+        <li>De stand wordt nu opgebouwd door op de <strong>echte poule</strong> te groeperen, in plaats van te proberen poules te reconstrueren uit losse wedstrijden (dat veroorzaakte de mini-groepjes).</li>
+        <li>Alleen <strong>afgespeelde groepswedstrijden</strong> tellen mee; knock-outwedstrijden worden uitgesloten van de poulestand.</li>
+        <li>De "geen wedstrijden gespeeld"-blokkade is verwijderd, en de kolombreedtes zijn vastgezet zodat de cijfers netjes rechts uitlijnen.</li>
+      </ul>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">app.js</span><span class="chip soft">computeStandingsFromMatches</span><span class="chip soft">renderStandenTab</span></div>
+  </article>
+
+  <!-- 3 -->
+  <article class="cmp" id="c3">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#128295;</div>
+      <div><h3>3. Herstel-functie voor standen <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">Een vangnet als een stand ooit fout staat.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>Als een stand of poule-indeling eenmaal verkeerd in de database stond, was er <strong>geen manier</strong> om die te herstellen zonder opnieuw te importeren.</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Er is een <strong>herstel- en diagnosefunctie</strong> die de opgeslagen Tournify-data opnieuw verwerkt. Hij toont eerst een <strong>preview</strong> en voegt alleen samen — hij overschrijft nooit blind bestaande gegevens.</p></div>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">app.js</span><span class="chip soft">_toernRepairFromTournify()</span></div>
+  </article>
+
+  <!-- 4 -->
+  <article class="cmp" id="c4">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#128101;</div>
+      <div><h3>4. Teams-tab (voorheen "Spelers") <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">Het overzicht van gescoute teams, helemaal opnieuw ingedeeld.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>De tab toonde "klassen" in plaats van poules, <strong>teamnamen werden afgekapt</strong>, de rechterkant lijnde niet uit, en de Gevolgd-filter deed niets — je kon na "Gevolgd" niet terug naar "Alle".</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Hernoemd naar <strong>Teams</strong>, gegroepeerd <strong>per poule</strong>, met een <strong>zoekveld</strong> en een werkende <strong>Alle / Gevolgd-filter</strong>. Elke teamkaart heeft een Volgen-knop, toont de volledige naam en het aantal "Spelers (N)", netjes in een raster.</p></div>
+    </div>
+    <div class="detail">
+      <h5>Detail</h5>
+      <ul>
+        <li>De filter-bug kwam doordat de zoek/filter-code zocht op een oude kaart-stijl; dat is omgezet naar het nieuwe teamkaart-kenmerk, waardoor Alle/Gevolgd weer werkt.</li>
+        <li>Sortering van de poules op leeftijd, dan letter; teamkaarten in een flexibel raster zodat lange namen volledig passen.</li>
+      </ul>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">app.js</span><span class="chip soft">renderSpelersTab</span><span class="chip">index.html</span></div>
+  </article>
+
+  <!-- 5 -->
+  <article class="cmp" id="c5">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#128197;</div>
+      <div><h3>5. Programma-tab: zoeken &amp; snelknop <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">Sneller de juiste wedstrijd vinden en oppakken.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>Geen manier om in het programma te zoeken; je scrolde door alle tijd- en dagblokken. De poule-kolom toonde de <strong>klasse</strong> in plaats van de poule.</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Een <strong>zoekvenster</strong> dat lege tijd- en dagblokken automatisch verbergt, een "<strong>+ Mijn programma</strong>"-snelknop per wedstrijd om 'm direct op te pakken, en de poule-kolom toont nu netjes "Poule X".</p></div>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">app.js</span><span class="chip soft">_progRowHtml</span><span class="chip soft">_progFilter</span></div>
+  </article>
+
+  <!-- 6 -->
+  <article class="cmp" id="c6">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#9989;</div>
+      <div><h3>6. Toernooi afronden <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">Een vriendelijke afsluiting in plaats van een foutmelding.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>Probeerde je een toernooi af te ronden zonder data, dan kreeg je een <strong>kale foutmelding</strong>.</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Een nette <strong>bevestig-popup</strong> in de huisstijl met twee duidelijke keuzes: <em>Annuleren</em> of <em>Toch afronden</em>.</p></div>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">app.js</span><span class="chip soft">markTournamentClosing</span></div>
+  </article>
+
+  <!-- 7 -->
+  <article class="cmp" id="c7">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#11014;</div>
+      <div><h3>7. Scroll-naar-boven knop <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">Op lange lijsten in één tik terug naar boven.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>Op lange lijsten (database, programma) moest je handmatig helemaal terug naar boven scrollen.</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Eén globale <strong>↑-knop rechtsonder</strong> die op elk scherm verschijnt zodra je naar beneden scrolt.</p></div>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">app.js</span><span class="chip soft">_shScrollTopInit</span></div>
+  </article>
+
+  <!-- 8 -->
+  <article class="cmp" id="c8">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#127760;</div>
+      <div><h3>8. Landingspagina <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">De publieke eerste indruk opnieuw vormgegeven.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>Oudere opzet van header, hero en features. De 4-stappen-flow eindigde droog op "<strong>Exporteren</strong>". In de bodyteksten stond overal een lang streepje (—) als scheidingsteken.</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Volledig herzien (header, hero, feature-koppen met vetgedrukte kernwoorden, extra sectie, CTA). Stap 4 is nu "<strong>Beslis</strong> — objectieve, onderbouwde keuzes op basis van data, niet op onderbuikgevoel". En het lange streepje is in alle landingsteksten vervangen door een <strong>komma</strong>, zodat het rustiger leest.</p></div>
+    </div>
+    <div class="detail">
+      <h5>Detail</h5>
+      <ul>
+        <li>Ongeveer 18 concrete wijzigingen aan koppen, accenten, een nieuwe sectie en de call-to-action.</li>
+        <li>9 streepjes in de landingsteksten omgezet naar komma's; de streepjes in de app-interface (instellingen, export-placeholders) bleven bewust ongemoeid.</li>
+      </ul>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">index.html</span><span class="chip">style.css</span></div>
+  </article>
+
+  <!-- 9 -->
+  <article class="cmp" id="c9">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#128247;</div>
+      <div><h3>9. Afbeelding vergroten (lightbox) <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">Screenshots uitvergroten zonder rare cursor of gedoe.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>De vergrootglas-cursor was <strong>pixelig</strong> op het foldable-scherm en suggereerde "kleiner maken". Je kon de vergrote afbeelding alleen sluiten via de donkere achtergrond of het kruisje — <strong>niet door op de afbeelding te klikken</strong>.</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Een strakke, scherpe cursor (geen korrel meer), en een <strong>klik op de afbeelding zelf sluit</strong> de weergave — net als op de achtergrond of het kruisje.</p></div>
+    </div>
+    <div class="detail">
+      <h5>Detail</h5>
+      <ul>
+        <li>De pixelige cursor was een bitmap-vergrootglas dat op hoge-resolutie/foldable-schermen korrelig wordt; vervangen door een gewone pointer.</li>
+        <li>De sluit-logica sluit nu bij elke klik binnen de vergroot-weergave, inclusief de afbeelding.</li>
+      </ul>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">index.html</span><span class="chip">handleiding.html</span><span class="chip">style.css</span></div>
+  </article>
+
+  <!-- 10 -->
+  <article class="cmp" id="c10">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#127912;</div>
+      <div><h3>10. Kleurstelling <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">Een fractie lichter, zonder de identiteit los te laten.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>De interface was vrij donker.</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Een fractie <strong>lichter</strong> — net genoeg om rustiger te ogen, maar zeker niet "licht". Het marineblauw met rood blijft behouden (en bevestigd als mooie combinatie).</p></div>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">style.css</span><span class="chip soft">:root kleurvariabelen</span></div>
+  </article>
+
+  <!-- 11 -->
+  <article class="cmp" id="c11">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#129529;</div>
+      <div><h3>11. Demo-data overhaul <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">Een nieuwe gebruiker ziet meteen een vol, realistisch account.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>Vrijwel alle eerste records waren <strong>observaties</strong>; de verhouding voelde scheef en eentonig. Niet elke wedstrijd had een duidelijke status.</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Verhouding <strong>±72% rapporten / 28% observaties</strong>, door elkaar gemengd, <strong>100% ingevuld</strong> (chips, notities, niveau, advies, wapen). Enkele spelers hebben <strong>meerdere rapporten</strong>. Alle wedstrijden zijn verwerkt <strong>op 2 na</strong> — die blijven bewust "nog te verwerken" met conceptobservaties, zodat je het verschil ziet.</p></div>
+    </div>
+    <div class="detail">
+      <h5>Detail</h5>
+      <ul>
+        <li>31 vaste rapporten; de verwerkte wedstrijden leveren afwisselend 2 of 1 ingediende observatie op (12 totaal) i.p.v. 3 per wedstrijd — dat brengt de verhouding op ~72/28.</li>
+        <li>Elke observatie pakt een andere speler en een ander tekst-sjabloon, dus alles staat gevarieerd door elkaar en is volledig gevuld.</li>
+      </ul>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">app.js</span><span class="chip soft">buildObsRecord</span><span class="chip soft">__shEnrichDemoReports</span></div>
+  </article>
+
+  <!-- 12 -->
+  <article class="cmp" id="c12">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#128154;</div>
+      <div><h3>12. Rapport-gloed in de database <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">Rapporten net zo herkenbaar als observaties.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>Observaties waren duidelijk gekleurd in de spelersdatabase, maar <strong>rapporten kregen geen accent</strong> en vielen visueel weg.</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Rapportregels krijgen nu een subtiele <strong>groenige gloed</strong>, in dezelfde stijl als de observatie-accenten — zo zie je in één oogopslag het type record.</p></div>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">app.js</span><span class="chip">style.css</span><span class="chip soft">.db-row-report</span></div>
+  </article>
+
+  <!-- 13 -->
+  <article class="cmp" id="c13">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#128272;</div>
+      <div><h3>13. Demo-knoppen alleen voor het demo-account <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">Echte scouts zien geen "data inladen"-knoppen.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>De knoppen om demo-data te seeden waren breder zichtbaar dan nodig.</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>De demo-/seed-knoppen verschijnen <strong>uitsluitend</strong> voor het account <code>demo@scoutinghub.nl</code>. Echte gebruikers krijgen ze niet te zien.</p></div>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">app.js</span><span class="chip soft">__shIsDemoUser</span></div>
+  </article>
+
+  <!-- 14 -->
+  <article class="cmp" id="c14">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#128214;</div>
+      <div><h3>14. Handleiding herschreven <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">De uitleg sluit weer aan op de echte schermen.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>De handleiding beschreef oudere flows en miste een deel van de nieuwe schermen.</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Herschreven naar de <strong>huidige flows</strong> — chips, handmatige én Tournify-toernooien, standen, mijn programma — met behoud van de goede screenshots.</p></div>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">handleiding.html</span></div>
+  </article>
+
+  <!-- 15 -->
+  <article class="cmp" id="c15">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#128737;</div>
+      <div><h3>15. Security &amp; open punten uitgelegd <span class="tag tag-done">Opgeleverd</span></h3>
+      <p class="sub">Heldere keuzes over toegang en wat (nog) niet nodig is.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>Onduidelijkheid over de toegang-/aanvraagflow en of er een apart service-account nodig was.</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Concreet uitgelegd: iedereen mag toegang <strong>aanvragen</strong>, jij bepaalt wie erin komt. De aanvraagflow blijft staan; het service-account is <strong>bewust uitgesteld</strong> en vastgelegd in een security-roadmap.</p></div>
+    </div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">SECURITY_ROADMAP.md</span><span class="chip">worker.js</span></div>
+  </article>
+
+  <!-- 16 -->
+  <article class="cmp" id="c16">
+    <div class="cmp-head">
+      <div class="cmp-ic">&#128241;</div>
+      <div><h3>16. Foldable-optimalisatie (Honor Magic V5) <span class="tag tag-open">Deels · geparkeerd</span></h3>
+      <p class="sub">Geoptimaliseerd voor het bijna-vierkante binnenscherm.</p></div>
+    </div>
+    <div class="ba">
+      <div class="box was"><p class="lbl">Hoe het was</p>
+        <p>Op het uitgevouwen binnenscherm sloot de lay-out niet goed aan en was er een <strong>scroll-probleem</strong>: je kon niet helemaal naar beneden tenzij je het toestel kantelde.</p></div>
+      <div class="box nu"><p class="lbl">Hoe het nu is</p>
+        <p>Veilige-zone-marges, een aparte schermregel voor het foldable-formaat en een compactere navigatie zijn toegevoegd (alleen PWA-/CSS-aanpassingen, additief). De <strong>scroll-bug is op jouw verzoek geparkeerd</strong> — we laten die voorlopig rusten.</p></div>
+    </div>
+    <div class="callout warn"><p><strong>Geparkeerd op jouw verzoek.</strong> De toegevoegde foldable-verbeteringen blijven staan; aan de resterende scroll-bug werken we niet verder, tenzij je 'm later weer wilt oppakken.</p></div>
+    <div class="files"><span class="flbl">Geraakt:</span><span class="chip">style.css</span><span class="chip">index.html</span></div>
+  </article>
+
+  <h2>Uitrollen</h2>
+  <h3>Welke bestanden naar GitHub, en de cache</h3>
+  <p class="sub">Twee plekken: GitHub Pages serveert de site, de worker draait apart op Cloudflare.</p>
+  <table>
+    <thead><tr><th>Bestand</th><th>Waar</th><th>Waarom</th></tr></thead>
+    <tbody>
+      <tr><td><span class="chip">app.js</span></td><td>GitHub</td><td>Standen, Teams, Programma, demo-data, scroll-knop, herstel-functie</td></tr>
+      <tr><td><span class="chip">index.html</span></td><td>GitHub</td><td>Landingspagina, Teams-label, lightbox-sluiten, komma-teksten</td></tr>
+      <tr><td><span class="chip">handleiding.html</span></td><td>GitHub</td><td>Herschreven handleiding + lightbox-fix</td></tr>
+      <tr><td><span class="chip">style.css</span></td><td>GitHub</td><td>Kleur, rapport-gloed, foldable, cursor-fix</td></tr>
+      <tr><td><span class="chip">sw.js</span></td><td>GitHub</td><td>Cache-versie <strong>sh-v428</strong> — altijd bumpen per deploy</td></tr>
+      <tr><td><span class="chip">worker.js</span></td><td>Cloudflare</td><td>Tournify-import/sync — gaat <strong>niet</strong> mee met een GitHub-upload</td></tr>
+    </tbody>
+  </table>
+  <div class="callout"><p><strong>Na het uploaden:</strong> in Cloudflare "Purge Everything", daarna in het demo-account "Demo vullen" om de nieuwe data te zien. Tip: breid de Cloudflare-cacheregel nog uit met <code>app.js</code> en <code>style.css</code>, dan is purgen na elke deploy niet meer nodig.</p></div>
+
+  <h2>Nog open</h2>
+  <h3>Eerlijk: dit staat nog op de lijst</h3>
+  <ul>
+    <li><strong>Foldable scroll-bug</strong> (Honor Magic V5 binnenscherm) — <strong>geparkeerd op jouw verzoek</strong>; we laten die rusten.</li>
+    <li><strong>Cloudflare-cacheregel</strong> uitbreiden met <code>app.js</code> + <code>style.css</code>, zodat "Purge Everything" niet meer nodig is.</li>
+    <li>Fijn-afstemmen van de exacte 70/30-verhouding en eventueel méér rapporten per individuele speler, na een testronde.</li>
+  </ul>
+
+  <p class="foot">ScoutingHub — wijzigingsoverzicht. Opgesteld op basis van de uitgevoerde werkzaamheden; cache-versie sh-v428-landingtekst.</p>
+
+  </main>
+</body>
+</html>

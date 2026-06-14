@@ -13549,3 +13549,8 @@ textarea.sh-grow-note{
 .lp-row-s { font-size: 15px; color: #c7d2e0; }
 .lp-why { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 6px; }
 @media (max-width: 760px) { .lp-why { grid-template-columns: 1fr; } }
+
+/* Rapport-rij in spelersdatabase: groene gloed (zelfde stijl als de obs-rij, maar groen) */
+tr.db-row-report { background: linear-gradient(90deg, rgba(34,197,94,0.07) 0%, transparent 60%); }
+tr.db-row-report:hover { background: linear-gradient(90deg, rgba(34,197,94,0.14) 0%, rgba(34,197,94,0.04) 100%) !important; }
+tr.db-row-report td:first-child { border-left: 2px solid rgba(34,197,94,0.55); }

@@ -2882,20 +2882,22 @@ function __shEnrichDemoMatches(){
       };
     }
     const matches = (typeof __SH_DEMO_MATCHES !== 'undefined' ? __SH_DEMO_MATCHES : []);
-    matches.forEach(m => {
+    matches.forEach((m, idx) => {
       if(!m) return;
       // Reset roster/notities die een vorige (oude) enrichment kan hebben gezet.
       if(m.snelnotities) delete m.snelnotities;
       if(m.id === 'demo_m009' || m.id === 'demo_m010'){
         // Laatste 2 wedstrijden: recent gespeeld, scout heeft CONCEPT-observaties
         // (nog niet ingediend) -> wedstrijd blijft "nog te verwerken".
-        for(let i=0;i<3;i++) __SH_DEMO_OBS.push(buildObsRecord(m, true));
+        for(let i=0;i<2;i++) __SH_DEMO_OBS.push(buildObsRecord(m, true));
         m.spelers = []; m.status = 'gepland';
         if(m.wedstrijdrapport) delete m.wedstrijdrapport;
         return;
       }
-      // Alle overige wedstrijden: volledig verwerkt met 3 ingediende observaties.
-      const recs = [buildObsRecord(m, false), buildObsRecord(m, false), buildObsRecord(m, false)];
+      // Alle overige wedstrijden: volledig verwerkt. Wissel 2 of 1 ingediende
+      // observatie(s) af, zodat rapporten/observaties ~70/30 verdeeld zijn.
+      const _nObs = (idx % 2 === 0) ? 2 : 1;
+      const recs = []; for(let i=0;i<_nObs;i++) recs.push(buildObsRecord(m, false));
       if(!recs.length) return;
       recs.forEach(r => __SH_DEMO_OBS.push(r));
       const opvallend = recs.filter(r => r.is_opvallend).map(r => r.naam);
@@ -11532,7 +11534,7 @@ function applyFilters(){
             ? `<button type="button" class="db-expand-btn" data-id="${escapeAttr(p.id)}" ${_dupCount >= 2 ? 'data-dup="1"' : ''} aria-label="Toon ${_badgeCount} records" aria-expanded="false" title="${_badgeCount} records"><span class="db-expand-chev">▸</span><span class="db-expand-count">${_badgeCount}</span></button>`
             : '';
           return `
-          <tr data-id="${p.id}" class="${dbCheckedIds.includes(p.id)?'db-row-checked':''} ${p.rapport_type==='observatie'?'db-row-obs':''} ${_isTourn?'db-row-tournament':''}">
+          <tr data-id="${p.id}" class="${dbCheckedIds.includes(p.id)?'db-row-checked':''} ${p.rapport_type==='observatie'?'db-row-obs':'db-row-report'} ${_isTourn?'db-row-tournament':''}">
             <td class="db-check-col"><input type="checkbox" class="db-check" data-id="${escapeAttr(p.id)}" ${dbCheckedIds.includes(p.id)?'checked':''} aria-label="Selecteer ${escapeAttr(p.naam||'speler')}"/></td>
             <td class="db-expand-col">${_expandCell}</td>
             <td>

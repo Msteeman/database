@@ -1997,7 +1997,33 @@ async function handleAdminMailInbox(body, env, request){
 export default {
   async fetch(request, env, ctx) {
     if (request.method === 'OPTIONS') return new Response('', { status: 204, headers: CORS });
-    const path = new URL(request.url).pathname.replace(/\/+$/, '');
+    const reqUrl = new URL(request.url);
+    const path = reqUrl.pathname.replace(/\/+$/, '');
+
+    /* ---- admin.scoutinghub.nl: proxy naar /admin/-pad op hoofdsite ---- */
+    const ADMIN_HOST = cfg(env, 'ADMIN_SITE_HOST', 'admin.scoutinghub.nl');
+    const reqHost = (request.headers.get('host') || reqUrl.hostname || '').toLowerCase();
+    if (reqHost === ADMIN_HOST && !reqUrl.pathname.startsWith('/api/') && path !== '/api') {
+      const mainHost = appBaseUrl(env).replace(/^https?:\/\//, '').replace(/\/+$/, '');
+      const target = new URL(request.url);
+      target.protocol = 'https:';
+      target.hostname = mainHost;
+      target.port = '';
+      if (target.pathname === '/' || target.pathname === '') target.pathname = '/admin/';
+      const fwdHeaders = new Headers(request.headers);
+      fwdHeaders.delete('host');
+      try {
+        const upstream = await fetch(target.toString(), {
+          method: request.method,
+          headers: fwdHeaders,
+          body: (request.method === 'GET' || request.method === 'HEAD') ? undefined : request.body,
+          redirect: 'follow'
+        });
+        return new Response(upstream.body, upstream);
+      } catch (_) {
+        return new Response('Admin-site tijdelijk niet bereikbaar', { status: 502 });
+      }
+    }
 
     if (path.endsWith('/api/request-access') || path.endsWith('/request-access')) {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/request-access' }, 405);

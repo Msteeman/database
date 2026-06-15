@@ -32887,8 +32887,26 @@ async function _suSendAction(g, actionType, params){
 function _suHighlightNav(view){
   try{ var el=document.querySelector('.nav-item[data-view="'+view+'"]')||document.querySelector('[data-view="'+view+'"]'); if(el){ el.classList.add('su-nav-flash'); setTimeout(function(){ try{el.classList.remove('su-nav-flash');}catch(_){} }, 1800); } }catch(_){}
 }
+function _suReqSave(g, d, p){
+  // E4c — PER-ACTIE bevestiging door de gebruiker; pas bij OK de EIGEN opslagknop klikken.
+  if(document.getElementById('su-reqsave')) return;
+  var bd=document.createElement('div'); bd.id='su-reqsave'; bd.className='sh-photo-menu-bd';
+  bd.innerHTML='<div class="sh-photo-menu bh-modal-card" role="dialog" aria-modal="true" aria-label="Opslaan toestaan"><div class="sh-pm-title">Opslaan toestaan?</div><div class="bh-modal-body">'
+    +'<p style="margin:0 0 12px;color:#cdd6e4;font-size:14px;line-height:1.5;">De beheerder wil het <b>rapportformulier opslaan</b> (als concept). Wil je dit toestaan? Je kunt het daarna zelf nog aanpassen.</p>'
+    +'<div class="bh-modal-actions"><button type="button" class="bh-btn bh-btn-ghost" id="su-rs-no">Annuleren</button><button type="button" class="bh-btn bh-btn-green" id="su-rs-yes">Opslaan toestaan</button></div></div></div>';
+  document.body.appendChild(bd);
+  function fin(result){ try{bd.remove();}catch(_){} try{ _suAudit('action_executed', { adminUid:g.adminUid, targetUid:g.targetUid, sessionId:(g.sessionId||''), details:'type=request_save;form='+(p.formId||'')+';result='+result }); }catch(_){} }
+  var yes=document.getElementById('su-rs-yes'); if(yes) yes.addEventListener('click', function(){
+    var btn=document.getElementById('report-save-draft-btn'); var ok=false;
+    try{ if(btn){ btn.click(); ok=true; } }catch(_){}
+    if(typeof toast==='function') toast(ok?'Opgeslagen (concept)':'Kon niet opslaan — formulier niet open');
+    fin(ok?'confirmed':'failed');
+  });
+  var no=document.getElementById('su-rs-no'); if(no) no.addEventListener('click', function(){ if(typeof toast==='function') toast('Opslaan geweigerd'); fin('cancelled'); });
+}
 function _suExecAction(g, d){
   var t=d.actionType, p=d.params||{}, label='', result='executed';
+  if(t==='request_save'){ _suReqSave(g, d, p); return; }
   try{
     if(t==='navigate' && _SU_ACT_VIEWS.indexOf(p.view)!==-1){ if(typeof go==='function') go(p.view); label='ging naar '+p.view; }
     else if(t==='open_player' && p.playerId){ if(typeof window.openDetail==='function'){ window.openDetail(p.playerId); label='opende een speler'; } else { if(typeof go==='function') go('database'); label='opende spelers'; } }
@@ -32993,12 +33011,14 @@ async function _suOpenEnvPanel(g, asUser){
         + '<button type="button" class="su-act-btn" data-form="report">Open rapportformulier</button>'
         + '<select id="su-sg-field" class="su-act-sel">'+(_SU_FORM_FIELDS.report||[]).map(function(f){ return '<option value="'+f[0]+'">'+_bhEsc(f[1])+'</option>'; }).join('')+'</select>'
         + '<input id="su-sg-val" class="su-act-in" placeholder="Voorstel-waarde">'
-        + '<button type="button" class="su-act-btn" data-suggest="1">Stel voor (geen opslag)</button></div>';
+        + '<button type="button" class="su-act-btn" data-suggest="1">Stel voor (geen opslag)</button>'
+        + '<button type="button" class="su-act-btn" data-reqsave="1">Vraag opslaan</button></div>';
       actEl.querySelectorAll('[data-nav]').forEach(function(b){ b.addEventListener('click', function(){ _suSendAction(g,'navigate',{view:b.getAttribute('data-nav')}); if(typeof toast==='function') toast('Verstuurd: ga naar '+b.textContent); }); });
       actEl.querySelectorAll('[data-hl]').forEach(function(b){ b.addEventListener('click', function(){ _suSendAction(g,'highlight',{view:b.getAttribute('data-hl')}); if(typeof toast==='function') toast('Verstuurd: wijs '+b.textContent+' aan'); }); });
       var sc=actEl.querySelector('[data-scroll]'); if(sc) sc.addEventListener('click', function(){ _suSendAction(g,'scroll_to',{}); if(typeof toast==='function') toast('Verstuurd: scroll naar boven'); });
       var of=actEl.querySelector('[data-form]'); if(of) of.addEventListener('click', function(){ _suSendAction(g,'open_form',{formId:'report'}); if(typeof toast==='function') toast('Verstuurd: open rapportformulier'); });
       var sg=actEl.querySelector('[data-suggest]'); if(sg) sg.addEventListener('click', function(){ var fid=((document.getElementById('su-sg-field')||{}).value)||''; var val=((document.getElementById('su-sg-val')||{}).value)||''; if(fid){ _suSendAction(g,'suggest_field',{formId:'report',fieldId:fid,value:val}); if(typeof toast==='function') toast('Verstuurd: voorstel voor veld (niet opgeslagen)'); } });
+      var rqs=actEl.querySelector('[data-reqsave]'); if(rqs) rqs.addEventListener('click', function(){ _suSendAction(g,'request_save',{formId:'report'}); if(typeof toast==='function') toast('Verstuurd: vraag om opslaan (gebruiker bevestigt)'); });
     }
     var beBody=document.getElementById('su-env-body');
     if(beBody) beBody.addEventListener('click', function(e){ var rr=(e.target&&e.target.closest)?e.target.closest('[data-supid]'):null; if(rr){ var pid=rr.getAttribute('data-supid'); if(pid){ _suSendAction(g,'open_player',{playerId:pid}); if(typeof toast==='function') toast('Verstuurd: open speler bij gebruiker'); } } });

@@ -31632,14 +31632,51 @@ async function _admMbLoadFolder(main, type, folder){
     var rows=msgs.map(function(m){
       var dt=m.date||''; try{ var d=new Date(m.date); if(!isNaN(d.getTime())) dt=d.toLocaleString('nl-NL'); }catch(_){}
       var who=(folder==='sent')?('Aan: '+(m.to||'—')):(m.from||'—');
-      return '<div class="adm-mail-row adm-mail-row-lg'+(m.seen?'':' adm-mail-unread')+'">'
+      return '<div class="adm-mail-row adm-mail-row-lg'+(m.seen?'':' adm-mail-unread')+' adm-mail-row-clickable" onclick="_admMbOpenMail(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\','+m.seq+',this)">'
         +'<div class="adm-mail-from">'+_bhEsc(who)+'</div>'
         +'<div class="adm-mail-subj">'+_bhEsc(m.subject||'(geen onderwerp)')+'</div>'
         +'<div class="adm-mail-date">'+_bhEsc(dt)+'</div></div>';
     }).join('');
-    main.innerHTML='<div class="bh-stat-note" style="margin:8px 0">Laatste '+msgs.length+' van '+(j.count||0)+' berichten in '+fLabel+' — alleen-lezen.</div><div class="adm-mailinbox adm-mailinbox-lg">'+rows+'</div>';
+    main.innerHTML='<div class="bh-stat-note" style="margin:8px 0">Laatste '+msgs.length+' van '+(j.count||0)+' berichten in '+fLabel+' — klik om te openen.</div>'
+      +'<div class="adm-mailinbox adm-mailinbox-lg" id="adm-mb-list">'+rows+'</div>'
+      +'<div id="adm-mb-detail"></div>';
   }catch(_){ main.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt.</div>'; }
 }
+
+async function _admMbOpenMail(type, folder, seq, rowEl){
+  // Markeer actieve rij
+  var list=document.getElementById('adm-mb-list');
+  if(list) list.querySelectorAll('.adm-mail-row-active').forEach(function(r){ r.classList.remove('adm-mail-row-active'); });
+  if(rowEl) rowEl.classList.add('adm-mail-row-active');
+
+  var detail=document.getElementById('adm-mb-detail');
+  if(!detail) return;
+  detail.innerHTML='<div class="adm-mail-detail"><div class="adm-loading">Bericht laden…</div></div>';
+  try{
+    var tk=await _admToken(); if(!tk){ detail.innerHTML='<div class="adm-mail-detail"><div class="bh-empty">Niet ingelogd.</div></div>'; return; }
+    var r=await fetch(_admBase()+'/api/admin-mail-read',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,folder:folder,seq:seq})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(!(r.ok&&j&&j.ok)){
+      detail.innerHTML='<div class="adm-mail-detail"><div class="bh-empty">Bericht laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div></div>';
+      return;
+    }
+    var dt=''; try{ var d=new Date(j.date); if(!isNaN(d.getTime())) dt=d.toLocaleString('nl-NL'); }catch(_){ dt=j.date||''; }
+    detail.innerHTML='<div class="adm-mail-detail">'
+      +'<div class="adm-mail-detail-hd">'
+        +'<div class="adm-mail-detail-subj">'+_bhEsc(j.subject||'(geen onderwerp)')+'</div>'
+        +'<div class="adm-mail-detail-meta">'
+          +(j.from?'<span><b>Van:</b> '+_bhEsc(j.from)+'</span>':'')
+          +(j.to?'<span><b>Aan:</b> '+_bhEsc(j.to)+'</span>':'')
+          +(dt?'<span><b>Datum:</b> '+_bhEsc(dt)+'</span>':'')
+        +'</div>'
+        +'<button class="adm-btn-ghost" style="margin-top:8px;font-size:12px" onclick="document.getElementById(\'adm-mb-detail\').innerHTML=\'\'">✕ Sluiten</button>'
+      +'</div>'
+      +'<pre class="adm-mail-detail-body">'+_bhEsc(j.text||'(leeg bericht)')+'</pre>'
+    +'</div>';
+    detail.scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(_){ detail.innerHTML='<div class="adm-mail-detail"><div class="bh-empty">Bericht laden mislukt.</div></div>'; }
+}
+window._admMbOpenMail=_admMbOpenMail;
 
 async function _admTestMail(type, btn){
   var _o='';

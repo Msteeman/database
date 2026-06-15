@@ -1992,7 +1992,7 @@ function imapHeaderField(header, name){
 async function imapFetchFolder(env, type, folderKey, limit){
   const m = imapMailboxCfg(env, type);
   if(!m) return { ok:false, error:'Onbekend mailtype' };
-  if(!m.pass) return { ok:false, error:'Geen IMAP-wachtwoord ingesteld voor '+m.label+' (secret ontbreekt, type='+(typeof m.pass)+', len='+((m.pass||'').length)+')' };
+  if(!m.pass) return { ok:false, error:'Geen IMAP-wachtwoord ingesteld voor '+m.label+' (secret ontbreekt)' };
   const FOLDER_LABELS = { inbox:'Inbox', sent:'Verzonden', trash:'Verwijderd' };
   const key = ['inbox','sent','trash'].includes(folderKey) ? folderKey : 'inbox';
   const max = Math.max(1, Math.min(20, Number(limit)||10));
@@ -2058,6 +2058,142 @@ async function imapFetchFolder(env, type, folderKey, limit){
     try{ if(socket) socket.close(); }catch(_){}
     return { ok:false, error:'IMAP-verbinding mislukt: '+(err && err.message ? err.message : 'onbekende fout') };
   }
+}
+
+// Decodeert Quoted-Printable encoding.
+function imapDecodeQP(str){
+  return str.replace(/=\r\n/g,'').replace(/=([0-9A-Fa-f]{2})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));
+}
+
+// Strips HTML tags naar leesbare platte tekst.
+function imapStripHtml(html){
+  return html
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi,'')
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi,'')
+    .replace(/<br\s*\/?>/gi,'\n').replace(/<\/p>/gi,'\n\n').replace(/<\/div>/gi,'\n')
+    .replace(/<[^>]+>/g,'')
+    .replace(/&nbsp;/g,' ').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/&quot;/g,'"')
+    .replace(/\r\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+// Extraheert leesbare tekst uit een mail-body (plain / html / multipart).
+function imapExtractText(body, contentType){
+  const ct = (contentType||'').toLowerCase();
+  if(ct.includes('multipart/')){
+    const bm = ct.match(/boundary=["']?([^"';\s\r\n]+)["']?/i);
+    if(bm){
+      const boundary = '--' + bm[1];
+      const parts = body.split(new RegExp(boundary.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?:--)?'));
+      let textPart='', htmlPart='';
+      for(const part of parts){
+        const hdrEnd = part.indexOf('\r\n\r\n');
+        if(hdrEnd < 0) continue;
+        const phdr = part.slice(0, hdrEnd);
+        const pbody = part.slice(hdrEnd + 4);
+        const pct = (imapHeaderField(phdr,'Content-Type')||'').toLowerCase();
+        const penc = (imapHeaderField(phdr,'Content-Transfer-Encoding')||'').toLowerCase().trim();
+        let decoded = pbody;
+        try{
+          if(penc==='quoted-printable') decoded = imapDecodeQP(pbody);
+          else if(penc==='base64') decoded = atob(pbody.replace(/\s/g,''));
+        }catch(_){}
+        if(pct.includes('text/plain') && !textPart) textPart = decoded;
+        if(pct.includes('text/html') && !htmlPart) htmlPart = decoded;
+      }
+      if(textPart) return textPart;
+      if(htmlPart) return imapStripHtml(htmlPart);
+    }
+  }
+  if(ct.includes('text/html')) return imapStripHtml(body);
+  return body; // text/plain of onbekend
+}
+
+// Haalt de volledige body van één bericht op via IMAP FETCH <seq> BODY.PEEK[].
+async function imapFetchBody(env, type, folderKey, seq){
+  const m = imapMailboxCfg(env, type);
+  if(!m) return { ok:false, error:'Onbekend mailtype' };
+  if(!m.pass) return { ok:false, error:'Geen IMAP-wachtwoord ingesteld voor '+m.label+' (secret ontbreekt)' };
+  const key = ['inbox','sent','trash'].includes(folderKey) ? folderKey : 'inbox';
+  let socket;
+  try {
+    socket = connect({ hostname: m.host, port: m.port }, { secureTransport: 'on', allowHalfOpen: false });
+    const writer = socket.writable.getWriter();
+    const reader = socket.readable.getReader();
+    const enc = new TextEncoder();
+    const send = (s) => writer.write(enc.encode(s + '\r\n'));
+    const q = (s) => '"' + String(s).replace(/([\\"])/g,'\\$1') + '"';
+
+    await reader.read().catch(()=>{});
+    await send('A1 LOGIN ' + q(m.user) + ' ' + q(m.pass));
+    let resp = await imapReadUntilTagged(reader, 'A1 ', 8192);
+    if(!/A1 OK/i.test(resp)){ try{ writer.close(); }catch(_){} return { ok:false, error:'IMAP-login mislukt voor '+m.label }; }
+
+    let folder = 'INBOX';
+    if(key !== 'inbox'){
+      let names = [];
+      try{ await send('AL LIST "" "*"'); const lr = await imapReadUntilTagged(reader,'AL ',32768); names = imapParseFolderNames(lr); }catch(_){}
+      const found = imapPickFolder(names, key);
+      if(!found){ try{ await send('A9 LOGOUT'); }catch(_){} try{ writer.close(); }catch(_){} return { ok:false, error:'Map niet gevonden' }; }
+      folder = found;
+    }
+
+    await send('A2 SELECT ' + q(folder));
+    resp = await imapReadUntilTagged(reader, 'A2 ', 8192);
+    if(!/A2 OK/i.test(resp)){ try{ await send('A9 LOGOUT'); }catch(_){} try{ writer.close(); }catch(_){} return { ok:false, error:'Kan map niet openen' }; }
+
+    await send('A3 FETCH ' + seq + ' (BODY.PEEK[])');
+    resp = await imapReadUntilTagged(reader, 'A3 ', 800000);
+    try{ await send('A9 LOGOUT'); }catch(_){}
+    try{ writer.close(); }catch(_){}
+
+    const bm = resp.match(/\* \d+ FETCH \(BODY\[\] \{(\d+)\}\r\n([\s\S]*)/i);
+    if(!bm) return { ok:false, error:'Bericht niet gevonden of leeg' };
+    const raw = bm[2].slice(0, parseInt(bm[1],10));
+    const splitIdx = raw.indexOf('\r\n\r\n');
+    const headerPart = splitIdx >= 0 ? raw.slice(0, splitIdx) : raw;
+    const bodyPart   = splitIdx >= 0 ? raw.slice(splitIdx + 4) : '';
+    const contentType = imapHeaderField(headerPart,'Content-Type');
+    const cte = (imapHeaderField(headerPart,'Content-Transfer-Encoding')||'').toLowerCase().trim();
+    let bodyDecoded = bodyPart;
+    try{
+      if(cte==='quoted-printable') bodyDecoded = imapDecodeQP(bodyPart);
+      else if(cte==='base64') bodyDecoded = atob(bodyPart.replace(/\s/g,''));
+    }catch(_){}
+    const text = clip(imapExtractText(bodyDecoded, contentType), 60000);
+    return {
+      ok:true,
+      from: imapHeaderField(headerPart,'From'),
+      to:   imapHeaderField(headerPart,'To'),
+      subject: imapHeaderField(headerPart,'Subject'),
+      date: imapHeaderField(headerPart,'Date'),
+      text
+    };
+  } catch(err){
+    try{ if(socket) socket.close(); }catch(_){}
+    return { ok:false, error:'IMAP-verbinding mislukt: '+(err&&err.message?err.message:'onbekende fout') };
+  }
+}
+
+/* ============================================================ *
+ * HANDLER — admin-mail-read (open volledig bericht)
+ * ============================================================ */
+async function handleAdminMailRead(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  const type = String(body.type||'');
+  if(!['admin','contact','info'].includes(type)) return json({ ok:false, error:'Onbekend mailtype' }, 400);
+  const folder = String(body.folder||'inbox').toLowerCase();
+  if(!['inbox','sent','trash'].includes(folder)) return json({ ok:false, error:'Onbekende map' }, 400);
+  const seq = parseInt(body.seq, 10);
+  if(!seq || seq < 1) return json({ ok:false, error:'Ongeldig berichtnummer' }, 400);
+  const result = await imapFetchBody(env, type, folder, seq);
+  if(!result.ok) return json({ ok:false, error: result.error || 'Bericht ophalen mislukt' });
+  return json({ ok:true, from:result.from, to:result.to, subject:result.subject, date:result.date, text:result.text });
 }
 
 /* ============================================================ *
@@ -2187,6 +2323,13 @@ export default {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-mail-send' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
       try { return await handleAdminMailSend((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/admin-mail-read') || path.endsWith('/admin-mail-read')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-mail-read' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminMailRead((b && typeof b==='object') ? b : {}, env, request); }
       catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
     }
 

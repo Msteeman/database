@@ -31532,7 +31532,17 @@ function _admRenderMail(el){
       +'<div class="adm-mailenv">'+envs+'</div>'
       +(flow?'<div class="adm-mailflow">'+flow+'</div>':'')
       +'<div class="adm-mailact"><button class="adm-btn-ghost" onclick="_admTestMail(\''+type+'\',this)">Test '+type+'-mail sturen</button>'
+      +'<button class="adm-btn-ghost" onclick="_admToggleCompose(\''+type+'\')">✉️ Nieuwe mail</button>'
       +'<a class="adm-btn-ghost" href="https://webmail.transip.email/" target="_blank" rel="noopener">Open webmail</a></div>'
+      +'<div class="adm-compose" id="adm-compose-'+type+'" style="display:none">'
+        +'<input type="email" class="adm-compose-input" id="adm-compose-to-'+type+'" placeholder="Aan (e-mailadres)">'
+        +'<input type="text" class="adm-compose-input" id="adm-compose-subj-'+type+'" placeholder="Onderwerp">'
+        +'<textarea class="adm-compose-input adm-compose-msg" id="adm-compose-msg-'+type+'" placeholder="Bericht…" rows="5"></textarea>'
+        +'<div class="adm-mailenv">Verstuurd vanaf '+addr+' in ScoutingHub-huisstijl, met automatische ondertekening "Team ScoutingHub — '+addr+'".</div>'
+        +'<div class="adm-mailact"><button class="adm-btn-ghost adm-btn-primary" onclick="_admSendMail(\''+type+'\',this)">Versturen</button>'
+        +'<button class="adm-btn-ghost" onclick="_admToggleCompose(\''+type+'\')">Annuleren</button></div>'
+        +'<div id="adm-compose-res-'+type+'"></div>'
+      +'</div>'
       +'<div class="adm-mailtabs" id="adm-tabs-'+type+'">'
       +'<button class="adm-tab" data-folder="inbox" onclick="_admLoadInbox(\''+type+'\',\'inbox\',this)">📥 Inbox</button>'
       +'<button class="adm-tab" data-folder="sent" onclick="_admLoadInbox(\''+type+'\',\'sent\',this)">📤 Verstuurd</button>'
@@ -31595,6 +31605,44 @@ async function _admTestMail(type, btn){
   finally{ if(btn){ btn.disabled=false; btn.textContent=_o; } }
 }
 window._admTestMail=_admTestMail;
+
+function _admToggleCompose(type){
+  var box=document.getElementById('adm-compose-'+type);
+  if(!box) return;
+  var show=box.style.display==='none';
+  box.style.display=show?'flex':'none';
+  if(show){
+    var res=document.getElementById('adm-compose-res-'+type); if(res) res.innerHTML='';
+    var toEl=document.getElementById('adm-compose-to-'+type); if(toEl) toEl.focus();
+  }
+}
+window._admToggleCompose=_admToggleCompose;
+
+async function _admSendMail(type, btn){
+  var res=document.getElementById('adm-compose-res-'+type);
+  var to=(document.getElementById('adm-compose-to-'+type)||{}).value||'';
+  var subj=(document.getElementById('adm-compose-subj-'+type)||{}).value||'';
+  var msg=(document.getElementById('adm-compose-msg-'+type)||{}).value||'';
+  to=to.trim(); subj=subj.trim(); msg=msg.trim();
+  if(!to||!subj||!msg){ if(res) res.innerHTML='<div class="bh-empty">Vul Aan, Onderwerp en Bericht in.</div>'; return; }
+  var _o=''; if(btn){ _o=btn.textContent; btn.disabled=true; btn.textContent='Versturen…'; }
+  if(res) res.innerHTML='';
+  try{
+    var tk=await _admToken(); if(!tk){ if(res) res.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
+    var r=await fetch(_admBase()+'/api/admin-mail-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,to:to,subject:subj,message:msg})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(r.ok&&j&&j.ok&&j.sent){
+      if(res) res.innerHTML='<div class="bh-stat-note" style="margin:6px 0">Verstuurd ✓ naar '+_bhEsc(to)+'</div>';
+      if(typeof toast==='function')toast('Mail verstuurd ✓');
+      ['adm-compose-to-','adm-compose-subj-','adm-compose-msg-'].forEach(function(p){ var e=document.getElementById(p+type); if(e) e.value=''; });
+      _admLoadInbox(type,'sent',(document.getElementById('adm-tabs-'+type)||{}).querySelector?document.getElementById('adm-tabs-'+type).querySelector('[data-folder="sent"]'):null);
+    } else {
+      if(res) res.innerHTML='<div class="bh-empty">Versturen mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
+    }
+  }catch(_){ if(res) res.innerHTML='<div class="bh-empty">Versturen mislukt.</div>'; }
+  finally{ if(btn){ btn.disabled=false; btn.textContent=_o; } }
+}
+window._admSendMail=_admSendMail;
 
 async function _admRenderSecurity(el){
   el.innerHTML='<div class="adm-loading">Security &amp; audit laden…</div>';

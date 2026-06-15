@@ -1794,6 +1794,48 @@ async function handleAdminMailTest(body, env, request){
 }
 
 /* ============================================================ *
+ * HANDLER — admin-mail-send (admin, Mailcentrum)
+ * Verstuurt een mail vanuit admin@/contact@/info@ via Resend,
+ * in de ScoutingHub-huisstijl (mailShell) met automatische
+ * ondertekening. Alleen voor beheerders.
+ * ============================================================ */
+async function handleAdminMailSend(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+
+  const type = String(body.type||'');
+  const FROM_MAP = {
+    admin:   { from: adminFrom(env),   label:'admin@scoutinghub.nl' },
+    contact: { from: contactFrom(env), label:'contact@scoutinghub.nl' },
+    info:    { from: 'ScoutingHub <info@scoutinghub.nl>', label:'info@scoutinghub.nl' }
+  };
+  const m = FROM_MAP[type];
+  if(!m) return json({ ok:false, error:'Onbekend mailtype' }, 400);
+
+  const to = String(body.to||'').trim();
+  if(!to || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) return json({ ok:false, error:'Ongeldig e-mailadres bij "Aan"' }, 400);
+  const subject = clip(String(body.subject||'').trim(), 200);
+  if(!subject) return json({ ok:false, error:'Onderwerp ontbreekt' }, 400);
+  const message = clip(String(body.message||'').trim(), 10000);
+  if(!message) return json({ ok:false, error:'Bericht is leeg' }, 400);
+
+  // Vrije tekst -> alinea's (huisstijl), met automatische handtekening.
+  const paragraphs = message.split(/\n{2,}/).map(p => '<p style="'+MAIL_P+'">'+shEsc(p).replace(/\n/g,'<br>')+'</p>').join('');
+  const html = paragraphs
+    + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub<br><span style="color:#64748b;">'+shEsc(m.label)+'</span></p>';
+  const text = message + '\n\nMet vriendelijke groet,\nTeam ScoutingHub\n' + m.label;
+
+  const sent = await sendMail(env, { from: m.from, to, subject, html: mailShell(env, subject, html), text, replyTo: m.from });
+  if(!sent) return json({ ok:false, error:'Verzenden via Resend mislukt' });
+  return json({ ok:true, sent:true });
+}
+
+/* ============================================================ *
  * HANDLER — support-notify (admin, Support/meekijken)
  * Stuurt e-mail naar gebruiker: admin vraagt tijdelijke
  * supporttoegang ("meekijken") aan.
@@ -2138,6 +2180,13 @@ export default {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-mail-test' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
       try { return await handleAdminMailTest((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/admin-mail-send') || path.endsWith('/admin-mail-send')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-mail-send' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminMailSend((b && typeof b==='object') ? b : {}, env, request); }
       catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
     }
 

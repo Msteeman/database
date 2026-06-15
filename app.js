@@ -32663,7 +32663,13 @@ function _suRequestAccess(uid){
     '<textarea id="su-reason" class="sh-req-i" rows="3" placeholder="Bijv. bug onderzoeken in rapportoverzicht"></textarea>' +
     '<div id="su-reason-err" class="su-field-err" role="alert"></div>' +
     '<label class="sh-req-l" for="su-duration">Duur</label>' +
-    '<select id="su-duration" class="bh-select" style="width:100%;"><option value="15">15 minuten</option><option value="30" selected>30 minuten</option><option value="60">60 minuten</option></select>';
+    '<select id="su-duration" class="bh-select" style="width:100%;"><option value="15">15 minuten</option><option value="30" selected>30 minuten</option><option value="60">60 minuten</option></select>' +
+    '<label class="sh-req-l" for="su-scope">Scope</label>' +
+    '<select id="su-scope" class="bh-select" style="width:100%;">' +
+      '<option value="support_view_only" selected>Alleen meekijken (alleen-lezen)</option>' +
+      '<option value="support_pointer">Meekijken + aanwijzen (cursor)</option>' +
+      '<option value="support_full_control" disabled>Volledige bediening — komt in E4</option>' +
+    '</select>';
   _bhModal('Supporttoegang vragen', body, {
     confirmLabel: 'Verstuur verzoek', confirmClass: 'bh-btn-blue',
     onConfirm: async function(){
@@ -32675,9 +32681,11 @@ function _suRequestAccess(uid){
       if(!reason){ if(_errEl){ _errEl.textContent='Reden is verplicht'; _errEl.style.display='block'; } if(_ta) _ta.classList.add('su-input-err'); var _re = new Error('no-reason'); _re._handled = true; throw _re; }
       if(_errEl){ _errEl.textContent=''; _errEl.style.display='none'; } if(_ta) _ta.classList.remove('su-input-err');
       var sessionId = currentUser.uid + '_' + uid + '_' + Date.now();
+      var scope = ((document.getElementById('su-scope')||{}).value)||'support_view_only';
+      if(['support_view_only','support_pointer'].indexOf(scope)===-1) scope='support_view_only';
       var payload = {
         targetUid: uid, requestedByUid: currentUser.uid, reason: reason,
-        durationMinutes: minutes, status: 'pending', sessionId: sessionId,
+        durationMinutes: minutes, scope: scope, status: 'pending', sessionId: sessionId,
         requestedAt: new Date(), approvedAt: null, rejectedAt: null, expiresAt: null
       };
       // TIJDELIJKE DEBUG-LOGS (Fase 4): payload + exacte fout in de console.
@@ -32706,52 +32714,65 @@ function _suRequestAccess(uid){
 window._suRequestAccess = _suRequestAccess;
 
 /* ---- GEBRUIKER: in-app consent-modal ---- */
+/* E3b — support-scopes: alleen meekijken (view_only) of meekijken + aanwijzen
+   (pointer). Beide ALLEEN-LEZEN. Volledige bediening (full_control) = E4. */
+function _suScopeLabel(scope){
+  if(scope==='support_pointer') return 'meekijken + aanwijzen';
+  if(scope==='support_full_control') return 'volledige bediening';
+  return 'alleen meekijken';
+}
+async function _suGrant(req, scope){
+  var minutes = req.durationMinutes || 30;
+  var expires = new Date(Date.now() + minutes*60000);
+  var gid = _suGrantId(req.requestedByUid, currentUser.uid);
+  await setDoc(doc(db,'support_grants',gid), {
+    targetUid: currentUser.uid, targetEmail: (currentUser.email||''), targetName: (currentUser.displayName||''),
+    adminUid: req.requestedByUid, status: 'active', scope: scope,
+    sessionId: (req.sessionId||''), reason: (req.reason||''),
+    approvedAt: new Date(), expiresAt: expires, endedAt: null, endedBy: null
+  });
+  await updateDoc(doc(db,'support_requests',req._id), { status:'approved', approvedAt: new Date(), expiresAt: expires });
+  await _suAudit('request_approved', { adminUid: req.requestedByUid, targetUid: currentUser.uid, sessionId:(req.sessionId||''), reason:(req.reason||''), details:'scope='+scope });
+  await _suAudit('grant_started', { adminUid: req.requestedByUid, targetUid: currentUser.uid, details:'min='+minutes+';scope='+scope, sessionId:(req.sessionId||''), reason:(req.reason||'') });
+}
 function _suShowConsent(req){
   if(document.getElementById('su-consent')) return;
   var minutes = req.durationMinutes || 30;
+  var pointer = (req.scope === 'support_pointer');
+  var accessTxt = pointer ? 'Meekijken + aanwijzen (alleen-lezen — geen wijzigingen)' : 'Alleen meekijken (alleen-lezen)';
+  var actions = '<div class="bh-modal-actions">' +
+    '<button type="button" class="bh-btn bh-btn-ghost" id="su-deny">Weigeren</button>' +
+    '<button type="button" class="bh-btn bh-btn-green" id="su-allow-view">Alleen meekijken toestaan</button>' +
+    (pointer ? '<button type="button" class="bh-btn bh-btn-blue" id="su-allow-ptr">Meekijken + aanwijzen toestaan</button>' : '') +
+    '</div>';
   var body =
     '<p style="margin:0 0 12px;color:#cdd6e4;font-size:14px;line-height:1.5;">Een beheerder van ScoutingHub vraagt <b>tijdelijke, alleen-lezen</b> toegang tot jouw account om je te helpen of een probleem te onderzoeken.</p>' +
     '<div class="bh-card-row"><span>Reden</span><b>'+(_bhEsc(req.reason)||'—')+'</b></div>' +
     '<div class="bh-card-row"><span>Duur</span><b>'+minutes+' minuten</b></div>' +
-    '<div class="bh-card-row"><span>Toegang</span><b>Alleen lezen</b></div>' +
+    '<div class="bh-card-row"><span>Gevraagd</span><b>'+accessTxt+'</b></div>' +
+    (pointer ? '<div class="bh-modal-note">Bij <b>aanwijzen</b> kan de beheerder een cursor/markering tonen om iets aan te wijzen. Er worden <b>geen</b> wijzigingen gemaakt. Je mag ook kiezen voor alleen meekijken.</div>' : '') +
     '<div class="bh-modal-note">Zonder jouw toestemming krijgt niemand toegang. Je kunt de ondersteuning op elk moment beëindigen; ze verloopt sowieso automatisch.</div>' +
-    '<div class="bh-modal-actions"><button type="button" class="bh-btn bh-btn-ghost" id="su-deny">Weigeren</button><button type="button" class="bh-btn bh-btn-green" id="su-allow">Toestaan</button></div>';
+    actions;
   var bd = document.createElement('div');
   bd.id='su-consent'; bd.className='sh-photo-menu-bd';
   bd.innerHTML='<div class="sh-photo-menu bh-modal-card" role="dialog" aria-modal="true" aria-label="Supportverzoek"><div class="sh-pm-title">Verzoek om ondersteuningstoegang</div><div class="bh-modal-body">'+body+'</div></div>';
   document.body.appendChild(bd);
   function close(){ try { bd.remove(); } catch(_){} }
-  var allow = document.getElementById('su-allow');
-  var deny = document.getElementById('su-deny');
-  if(allow) allow.addEventListener('click', async function(){
-    allow.disabled=true; if(deny) deny.disabled=true;
-    try {
-      var expires = new Date(Date.now() + minutes*60000);
-      var gid = _suGrantId(req.requestedByUid, currentUser.uid);
-      await setDoc(doc(db,'support_grants',gid), {
-        targetUid: currentUser.uid, targetEmail: (currentUser.email||''), targetName: (currentUser.displayName||''),
-        adminUid: req.requestedByUid, status: 'active', scope: 'read_only',
-        sessionId: (req.sessionId||''), reason: (req.reason||''),
-        approvedAt: new Date(), expiresAt: expires, endedAt: null, endedBy: null
-      });
-      await updateDoc(doc(db,'support_requests',req._id), { status:'approved', approvedAt: new Date(), expiresAt: expires });
-      await _suAudit('request_approved', { adminUid: req.requestedByUid, targetUid: currentUser.uid, sessionId: (req.sessionId||''), reason: (req.reason||'') });
-      await _suAudit('grant_started', { adminUid: req.requestedByUid, targetUid: currentUser.uid, details:'min='+minutes, sessionId: (req.sessionId||''), reason: (req.reason||'') });
-      if(typeof toast==='function') toast('Toegang verleend tot '+_suTime(expires));
-      close();
-    } catch(e){
-      if(typeof toast==='function') toast('Kon toestemming niet opslaan', true);
-      allow.disabled=false; if(deny) deny.disabled=false;
-    }
-  });
-  if(deny) deny.addEventListener('click', async function(){
-    deny.disabled=true; if(allow) allow.disabled=true;
+  function _dis(v){ ['su-deny','su-allow-view','su-allow-ptr'].forEach(function(id){ var e=document.getElementById(id); if(e) e.disabled=v; }); }
+  async function _approve(scope){
+    _dis(true);
+    try { await _suGrant(req, scope); if(typeof toast==='function') toast('Toegang verleend ('+_suScopeLabel(scope)+')'); close(); }
+    catch(e){ if(typeof toast==='function') toast('Kon toestemming niet opslaan', true); _dis(false); }
+  }
+  var av=document.getElementById('su-allow-view'); if(av) av.addEventListener('click', function(){ _approve('support_view_only'); });
+  var ap=document.getElementById('su-allow-ptr'); if(ap) ap.addEventListener('click', function(){ _approve('support_pointer'); });
+  var deny=document.getElementById('su-deny'); if(deny) deny.addEventListener('click', async function(){
+    _dis(true);
     try {
       await updateDoc(doc(db,'support_requests',req._id), { status:'rejected', rejectedAt: new Date() });
-      await _suAudit('request_rejected', { adminUid: req.requestedByUid, targetUid: currentUser.uid, sessionId: (req.sessionId||''), reason: (req.reason||'') });
-      if(typeof toast==='function') toast('Verzoek geweigerd');
-      close();
-    } catch(e){ if(typeof toast==='function') toast('Kon niet opslaan', true); deny.disabled=false; if(allow) allow.disabled=false; }
+      await _suAudit('request_rejected', { adminUid: req.requestedByUid, targetUid: currentUser.uid, sessionId:(req.sessionId||''), reason:(req.reason||'') });
+      if(typeof toast==='function') toast('Verzoek geweigerd'); close();
+    } catch(e){ if(typeof toast==='function') toast('Kon niet opslaan', true); _dis(false); }
   });
 }
 
@@ -32801,7 +32822,7 @@ function _suRenderAdminBanner(g){
   var ex=document.getElementById('su-banner');
   if(!g){ if(ex) ex.remove(); if(window.__suCtx){ window.__suCtx=null; document.body.classList.remove('support-mode'); var pe=document.getElementById('su-env'); if(pe) pe.remove(); } return; }
   var html='<span class="su-banner-ic">🔒</span>' +
-    '<span class="su-banner-txt"><b>ONDERSTEUNINGSMODUS ACTIEF</b> — je kijkt mee in: '+(_bhEsc(g.targetEmail)||_bhEsc(g.targetName)||'gebruiker')+' · geldig tot '+_suTime(g.expiresAt)+' · alleen-lezen</span>' +
+    '<span class="su-banner-txt"><b>ONDERSTEUNINGSMODUS ACTIEF</b> — je kijkt mee in: '+(_bhEsc(g.targetEmail)||_bhEsc(g.targetName)||'gebruiker')+' · geldig tot '+_suTime(g.expiresAt)+' · '+_suScopeLabel(g.scope)+' · alleen-lezen</span>' +
     '<span class="su-banner-actions"><button type="button" class="su-banner-btn" id="su-view">Bekijk omgeving</button><button type="button" class="su-banner-btn ghost" id="su-end">Beëindig sessie</button></span>';
   _suMountBanner('su-banner','', html);
   var vb=document.getElementById('su-view'); if(vb) vb.onclick=function(){ _suOpenEnvPanel(g); };
@@ -32811,7 +32832,7 @@ function _suRenderUserBanner(g){
   var ex=document.getElementById('su-ubanner');
   if(!g){ if(ex) ex.remove(); return; }
   var html='<span class="su-banner-ic">🔒</span>' +
-    '<span class="su-banner-txt"><b>ONDERSTEUNING ACTIEF</b> — een beheerder kijkt tijdelijk mee in jouw account · geldig tot '+_suTime(g.expiresAt)+' · alleen-lezen</span>' +
+    '<span class="su-banner-txt"><b>ONDERSTEUNING ACTIEF</b> — een beheerder kijkt tijdelijk mee in jouw account · geldig tot '+_suTime(g.expiresAt)+' · '+_suScopeLabel(g.scope)+' · alleen-lezen</span>' +
     '<span class="su-banner-actions"><button type="button" class="su-banner-btn ghost" id="su-uend">Ondersteuning beëindigen</button></span>';
   _suMountBanner('su-ubanner','su-banner-user', html);
   var eb=document.getElementById('su-uend'); if(eb) eb.onclick=function(){ _suEndGrant(g,'user'); };
@@ -32822,7 +32843,7 @@ async function _suEndGrant(g, endedBy){
   try {
     var now=new Date();
     await updateDoc(doc(db,'support_grants',g._id), {
-      targetUid:g.targetUid, adminUid:g.adminUid, scope:'read_only',
+      targetUid:g.targetUid, adminUid:g.adminUid, scope:(g.scope||'support_view_only'),
       status:'ended', expiresAt: now, endedAt: now, endedBy: endedBy
     });
     await _suAudit(endedBy==='admin'?'session_ended_by_admin':'session_ended_by_user', { adminUid:g.adminUid, targetUid:g.targetUid, details:'endedBy='+endedBy, sessionId: (g.sessionId||''), reason: (g.reason||'') });

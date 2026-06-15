@@ -1992,7 +1992,7 @@ function imapHeaderField(header, name){
 async function imapFetchFolder(env, type, folderKey, limit){
   const m = imapMailboxCfg(env, type);
   if(!m) return { ok:false, error:'Onbekend mailtype' };
-  if(!m.pass) return { ok:false, error:'Geen IMAP-wachtwoord ingesteld voor '+m.label+' (secret ontbreekt)' };
+  if(!m.pass) return { ok:false, error:'Geen IMAP-wachtwoord ingesteld voor '+m.label+' (secret ontbreekt, type='+(typeof m.pass)+', len='+((m.pass||'').length)+')' };
   const FOLDER_LABELS = { inbox:'Inbox', sent:'Verzonden', trash:'Verwijderd' };
   const key = ['inbox','sent','trash'].includes(folderKey) ? folderKey : 'inbox';
   const max = Math.max(1, Math.min(20, Number(limit)||10));

@@ -27709,16 +27709,17 @@ async function _shAccountGate(uid, email){
     const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const _db = getFirestore();
     const snap = await getDoc(doc(_db, 'users', uid));
-    if(!snap.exists()) return { blocked: false, reason: null };   // geen user-doc → bestaand gedrag behouden
-    const d = snap.data() || {};
     const adminEmails = ['admin@scoutinghub.nl'];
-    const isAdminAcc = (d.role === 'admin') || (email && adminEmails.indexOf(String(email).toLowerCase()) !== -1);
-    if(isAdminAcc) return { blocked: false, reason: null };        // admin-accounts nooit blokkeren
+    const emailIsAdmin = !!(email && adminEmails.indexOf(String(email).toLowerCase()) !== -1);
+    if(!snap.exists()) return { blocked: false, reason: null, role: emailIsAdmin ? 'admin' : 'scout' };   // geen user-doc → bestaand gedrag behouden
+    const d = snap.data() || {};
+    const isAdminAcc = (d.role === 'admin') || emailIsAdmin;
+    if(isAdminAcc) return { blocked: false, reason: null, role: 'admin' };        // admin-accounts nooit blokkeren
     // 'deleted' gaat vóór 'inactive' (een verwijderd account heeft ook isActive:false).
-    if(d.status === 'deleted') return { blocked: true, reason: 'deleted' };
-    if(d.isActive === false)   return { blocked: true, reason: 'inactive' };
-    return { blocked: false, reason: null };
-  } catch(_){ return { blocked: false, reason: null }; }           // bij twijfel niet blokkeren
+    if(d.status === 'deleted') return { blocked: true, reason: 'deleted', role: d.role || 'scout' };
+    if(d.isActive === false)   return { blocked: true, reason: 'inactive', role: d.role || 'scout' };
+    return { blocked: false, reason: null, role: d.role || 'scout' };
+  } catch(_){ return { blocked: false, reason: null, role: 'scout' }; }           // bij twijfel niet blokkeren
 }
 
 onAuthStateChanged(auth, async (user) => {
@@ -27752,6 +27753,13 @@ onAuthStateChanged(auth, async (user) => {
         currentUser = null;
         try { await signOut(auth); } catch(_){}
         return;   // de null-branch toont het loginscherm met de melding
+      }
+      // ADMIN-PWA: deze app (admin/) is uitsluitend voor beheerders.
+      if(window.SH_ADMIN_PWA && _gate && _gate.role !== 'admin'){
+        _shGatedMsg = 'Dit is de ScoutingHub Beheer-app, uitsluitend voor beheerders. Log in met je beheeraccount, of gebruik de gewone ScoutingHub-app om als scout in te loggen.';
+        currentUser = null;
+        try { await signOut(auth); } catch(_){}
+        return;
       }
     } catch(_){}
     try {
@@ -31379,13 +31387,23 @@ function _admStubHtml(key){
 function _admBuildShell(){
   if(document.getElementById('admin-console')) return;
   var email=''; try{ email=(typeof currentUser!=='undefined'&&currentUser&&currentUser.email)||''; }catch(_){}
-  var nav=[['overzicht','Overzicht','📊'],['toegang','Toegang','📨'],['gebruikers','Gebruikers','👥'],['teams','Teams & Organigram','🏢'],['statistieken','Statistieken','📈'],['feedback','Feedback','💬'],['mail','Mailcentrum','✉️'],['security','Security & Audit','🛡️'],['support','Support','🤝'],['instellingen','Instellingen','⚙️']];
-  var navHtml=nav.map(function(n){ return '<button class="adm-nav-item" data-adm="'+n[0]+'" onclick="_admNav(\''+n[0]+'\')"><span class="adm-ic">'+n[2]+'</span>'+n[1]+'</button>'; }).join('');
+  var navGroups=[
+    {label:'', items:[['overzicht','Overzicht','📊']]},
+    {label:'Gebruikers', items:[['toegang','Toegang','📨'],['gebruikers','Gebruikers','👥'],['teams','Teams & Organigram','🏢']]},
+    {label:'Inzicht & communicatie', items:[['statistieken','Statistieken','📈'],['feedback','Feedback','💬'],['mail','Mailcentrum','✉️']]},
+    {label:'Beveiliging', items:[['security','Security & Audit','🛡️'],['support','Support','🤝']]},
+    {label:'Systeem', items:[['instellingen','Instellingen','⚙️']]}
+  ];
+  var navHtml=navGroups.map(function(g){
+    var head=g.label?('<div class="adm-nav-group-label">'+_bhEsc(g.label)+'</div>'):'';
+    var items=g.items.map(function(n){ return '<button class="adm-nav-item" data-adm="'+n[0]+'" onclick="_admNav(\''+n[0]+'\')"><span class="adm-ic">'+n[2]+'</span>'+n[1]+'</button>'; }).join('');
+    return head+items;
+  }).join('');
   var el=document.createElement('div'); el.id='admin-console';
   el.innerHTML=
-     '<div id="adm-top"><div class="adm-brand">Scouting<span>Hub</span><span class="adm-tag">Beheer</span></div>'
+     '<div id="adm-top"><div class="adm-brand"><img class="adm-brand-icon" src="/admin/icon-192.png" alt="" onerror="this.style.display=\'none\'">Scouting<span>Hub</span><span class="adm-tag">Beheer</span></div>'
    + '<div class="adm-top-right"><span class="adm-email">'+_bhEsc(email)+'</span>'
-   + '<button class="adm-btn-ghost" onclick="_admOpenScout()" title="Bewust de scout-app openen">Scout-app</button>'
+   + (window.SH_ADMIN_PWA ? '' : '<button class="adm-btn-ghost" onclick="_admOpenScout()" title="Bewust de scout-app openen">Scout-app</button>')
    + '<button class="adm-btn-ghost" onclick="_admLogout()">Uitloggen</button></div></div>'
    + '<div class="adm-privacy">🔒 Beheer toont standaard alleen <b>metadata en aantallen</b>. Inhoudelijke scoutdata blijft privé. Alleen bij expliciete tijdelijke supporttoestemming kan een admin meekijken.</div>'
    + '<div id="adm-main"><nav id="adm-nav" aria-label="Beheernavigatie">'+navHtml+'</nav><div id="adm-content"><div id="adm-stub"></div></div></div>';
@@ -31395,6 +31413,7 @@ function _admBuildShell(){
 function _admShowSection(key){
   _admSection=key;
   try{ document.querySelectorAll('#adm-nav .adm-nav-item').forEach(function(b){ var k=b.getAttribute('data-adm'); b.classList.toggle('active', k===key || (key==='logboek' && k==='security')); }); }catch(_){}
+  try{ var _ac=document.getElementById('adm-content'); if(_ac){ _ac.classList.remove('adm-fade-in'); void _ac.offsetWidth; _ac.classList.add('adm-fade-in'); } }catch(_){}
   var vAdmin=document.getElementById('view-admin');
   var stub=document.getElementById('adm-stub');
   // Bestaande Beheer-onderdelen (tabs) — getoond binnen de shell.
@@ -31509,16 +31528,45 @@ function _admRenderMail(el){
       +'<div class="adm-mailenv">'+envs+'</div>'
       +(flow?'<div class="adm-mailflow">'+flow+'</div>':'')
       +'<div class="adm-mailact"><button class="adm-btn-ghost" onclick="_admTestMail(\''+type+'\',this)">Test '+type+'-mail sturen</button>'
-      +'<a class="adm-btn-ghost" href="https://webmail.transip.email/" target="_blank" rel="noopener">Open webmail</a></div></div>';
+      +'<button class="adm-btn-ghost" onclick="_admLoadInbox(\''+type+'\',this)">📥 Inbox laden</button>'
+      +'<a class="adm-btn-ghost" href="https://webmail.transip.email/" target="_blank" rel="noopener">Open webmail</a></div>'
+      +'<div class="adm-mailinbox" id="adm-inbox-'+type+'"></div></div>';
   }
   el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Mailcentrum</div>'
-    +'<div class="bh-stat-note">De drie mailboxen + testmail. Geen inbox-integratie, geen mailboxwachtwoorden. App-mail loopt via Resend; doorsturen naar Gmail gebeurt bij TransIP.</div>'
+    +'<div class="bh-stat-note">De drie mailboxen + testmail + inbox (via IMAP, alleen-lezen — niets wordt verstuurd, verwijderd of als gelezen gemarkeerd). Vereist server-secrets IMAP_PASS_ADMIN/IMAP_PASS_CONTACT/IMAP_PASS_INFO.</div>'
     +'<div class="adm-mailgrid">'
     +card('admin@scoutinghub.nl','Beheer · account · security · toegangsaanvragen · adminmeldingen','env: ADMIN_FROM · ADMIN_NOTIFY_TO','Resend → admin@ → TransIP forward/kopie → Gmail','admin')
     +card('contact@scoutinghub.nl','Gebruikerscommunicatie · aanvraagbevestiging · welkomst · reset · afwijzing · feedback','env: CONTACT_FROM · CONTACT_EMAIL · FEEDBACK_NOTIFY_TO','Resend → contact@ (gebruiker) · TransIP-kopie naar Gmail mogelijk','contact')
     +card('info@scoutinghub.nl','Algemeen informatieadres','env: (geen kritieke systeemflow)','','info')
     +'</div>';
 }
+async function _admLoadInbox(type, btn){
+  var box=document.getElementById('adm-inbox-'+type);
+  if(!box) return;
+  var _o=''; if(btn){ _o=btn.textContent; btn.disabled=true; btn.textContent='Laden…'; }
+  box.innerHTML='<div class="adm-loading">Inbox laden…</div>';
+  try{
+    var tk=await _admToken(); if(!tk){ box.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
+    var r=await fetch(_admBase()+'/api/admin-mail-inbox',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,limit:10})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(!(r.ok&&j&&j.ok)){
+      box.innerHTML='<div class="bh-empty">Inbox laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
+      return;
+    }
+    var msgs=j.messages||[];
+    if(!msgs.length){ box.innerHTML='<div class="bh-empty">Inbox is leeg (totaal: '+(j.count||0)+').</div>'; return; }
+    var rows=msgs.map(function(m){
+      var dt=m.date||''; try{ var d=new Date(m.date); if(!isNaN(d.getTime())) dt=d.toLocaleString('nl-NL'); }catch(_){}
+      return '<div class="adm-mail-row'+(m.seen?'':' adm-mail-unread')+'">'
+        +'<div class="adm-mail-from">'+_bhEsc(m.from||'—')+'</div>'
+        +'<div class="adm-mail-subj">'+_bhEsc(m.subject||'(geen onderwerp)')+'</div>'
+        +'<div class="adm-mail-date">'+_bhEsc(dt)+'</div></div>';
+    }).join('');
+    box.innerHTML='<div class="bh-stat-note" style="margin:8px 0">Laatste '+msgs.length+' van '+(j.count||0)+' berichten — alleen-lezen.</div>'+rows;
+  }catch(_){ box.innerHTML='<div class="bh-empty">Inbox laden mislukt.</div>'; }
+  finally{ if(btn){ btn.disabled=false; btn.textContent=_o; } }
+}
+window._admLoadInbox=_admLoadInbox;
 async function _admTestMail(type, btn){
   var _o='';
   if(btn){ btn.disabled=true; _o=btn.textContent; btn.textContent='Versturen…'; }
@@ -31576,7 +31624,7 @@ async function _admRenderSupport(el){
       +'<div class="bh-card-row"><span>4. Beëindigen</span><b>Gebruiker én admin kunnen direct stoppen; alles wordt geaudit</b></div>'
     +'</div>'
     +'<div class="adm-quick" style="margin-top:12px"><button class="adm-btn-ghost" onclick="_admNav(\'gebruikers\')">👥 Naar Gebruikers — support aanvragen</button></div>'
-    +'<div class="bh-stat-note">Meekijken is <b>read-only</b> en werkt nu (Fase E + read-only weergave). Live <b>cursor/aanwijzen</b> (Fase G) is bewust nog niet gebouwd — dat vereist een realtime kanaal en apart akkoord.</div>';
+    +'<div class="bh-stat-note">Drie niveaus, altijd met toestemming, banner en auditlog: <b>alleen meekijken</b> (read-only), <b>meekijken + aanwijzen</b> (live cursor/klik-aanwijzingen, realtime) en <b>volledige bediening</b> (admin kan navigeren, aanwijzen, formulieren openen en velden voorstellen — gebruiker ziet dit live op eigen scherm en bevestigt opslaan apart). <b>Verwijderen, account- en instellingenwijzigingen kunnen nooit</b>, ook niet met volledige bediening.</div>';
 }
 
 async function _admRenderSettings(el){
@@ -31857,6 +31905,7 @@ var _bhStatSupport = { grantsActive:0, grantsExpired:0, reqPending:0 };
 var _bhStatTotals = null;
 var _bhStatCounts = {};
 var _bhStatRole = '', _bhStatStatus = '', _bhStatActivity = '';
+var _bhStatRows = [];
 
 function _bhFmtDateTime(v){
   try{
@@ -31992,10 +32041,20 @@ function _bhRenderStats(){
   var moduleRows=[['Spelers','players'],['Rapporten','matchReports'],['Toernooien','tournaments'],['Programma','programma'],['Tips','tips'],['Ritten','ritten'],['Analyses','analyses'],['Contacten','contacts']];
   var modMax=1; if(_bhStatTotals){ moduleRows.forEach(function(r){ var v=Number(_bhStatTotals[r[1]])||0; if(v>modMax)modMax=v; }); }
   var moduleBars=moduleRows.map(function(r){ var v=_bhStatTotals?(Number(_bhStatTotals[r[1]])||0):null; var w=(v!=null&&modMax>0)?Math.round(v/modMax*100):0; return '<div class="bh-bar-row"><div class="bh-bar-lab">'+r[0]+'</div><div class="bh-bar-track"><div class="bh-bar-fill" style="width:'+w+'%"></div></div><div class="bh-bar-val">'+(v!=null?v:'…')+'</div></div>'; }).join('');
+  var growth=(function(){
+    var now=new Date(), months=[];
+    for(var i=5;i>=0;i--){ var d=new Date(now.getFullYear(), now.getMonth()-i, 1); months.push({ key:d.getFullYear()+'-'+(d.getMonth()+1), label:d.toLocaleDateString('nl-NL',{month:'short'}), count:0 }); }
+    users.forEach(function(u){ var ms=_bhStatMs(u.createdAt); if(!ms) return; var d=new Date(ms); var key=d.getFullYear()+'-'+(d.getMonth()+1); for(var j=0;j<months.length;j++){ if(months[j].key===key){ months[j].count++; break; } } });
+    return months;
+  })();
+  var gMax=1; growth.forEach(function(g){ if(g.count>gMax) gMax=g.count; });
+  var growthBars=growth.map(function(g){ var w=Math.round(g.count/gMax*100); return '<div class="bh-bar-row"><div class="bh-bar-lab">'+g.label+'</div><div class="bh-bar-track"><div class="bh-bar-fill" style="width:'+w+'%"></div></div><div class="bh-bar-val">'+g.count+'</div></div>'; }).join('');
+
   var charts='<div class="bh-chart-grid">'
     + '<div class="bh-chart-card"><div class="bh-chart-hd">Rollenverdeling</div><div class="bh-chart-body">'+_bhDonut(roleSegs,{value:total,label:'totaal'})+_bhLegend(roleSegs)+'</div></div>'
     + '<div class="bh-chart-card"><div class="bh-chart-hd">Actief vs. inactief</div><div class="bh-chart-body">'+_bhDonut(statusSegs,{value:active,label:'actief'})+_bhLegend(statusSegs)+'</div></div>'
     + '<div class="bh-chart-card"><div class="bh-chart-hd">Modulegebruik'+(_bhStatTotals?'':' <span class="bh-chart-load">laden…</span>')+'</div><div class="bh-chart-body bh-bars">'+moduleBars+'</div></div>'
+    + '<div class="bh-chart-card"><div class="bh-chart-hd">Groei — nieuwe gebruikers per maand</div><div class="bh-chart-body bh-bars">'+growthBars+'</div></div>'
     + '</div>';
 
   var coordNoTeam=users.filter(function(u){ return u.role==='coordinator' && !(u.teamId||''); }).length;
@@ -32035,6 +32094,7 @@ function _bhRenderStats(){
   if(q) rows=rows.filter(function(u){ return ((u.displayName||'')+' '+(u.email||'')+' '+(u.teamName||'')).toLowerCase().indexOf(q)!==-1; });
   function mval(u){ if(metric==='loginCount')return Number(u.loginCount)||0; var c=_bhStatCounts[u._id]; return c?(Number(c[metric])||0):-1; }
   rows.sort(function(a,b){ return mval(b)-mval(a); });
+  _bhStatRows=rows;
   var loadingCounts=(Object.keys(_bhStatCounts).length<users.length);
   function cnt(u,k){ var c=_bhStatCounts[u._id]; if(c&&c[k]!=null)return c[k]; return loadingCounts?'…':0; }
   function urow(u){
@@ -32086,9 +32146,34 @@ function _bhRenderStats(){
    + charts
    + '<div class="bh-stat-hd">Top gebruikers — '+topLab+' <span class="bh-stat-sub2">(kies metric rechtsboven)</span></div><div class="bh-rank-card">'+topHtml+'</div>'
    + '<div class="bh-stat-hd">Teams</div>'+ttable
-   + '<div class="bh-stat-hd">Gebruikersactiviteit</div>'+chips+utable
+   + '<div class="bh-stat-hd bh-stat-hd-row"><span>Gebruikersactiviteit</span><button type="button" class="adm-btn-ghost" onclick="_bhExportStatsCsv()">⬇️ Exporteer CSV</button></div>'+chips+utable
    + (loadingCounts?'<div class="bh-stat-note">Activiteit per gebruiker wordt geladen…</div>':'');
 }
+function _bhExportStatsCsv(){
+  var rows=_bhStatRows||[];
+  if(!rows.length){ if(typeof toast==='function') toast('Niets om te exporteren', true); return; }
+  function esc(v){ v=(v==null?'':String(v)); if(/[";\n]/.test(v)) v='"'+v.replace(/"/g,'""')+'"'; return v; }
+  var head=['Naam','E-mail','Rol','Team','Club','Status','Aangemaakt','Laatste login','Logins','Spelers','Rapporten','Toernooien','Tips'];
+  var lines=[head.map(esc).join(';')];
+  rows.forEach(function(u){
+    var role=u.role||'scout'; var rl=role==='coordinator'?'Coördinator':(role==='admin'?'Admin':'Scout');
+    var st=_bhStatDeletedU(u)?'Verwijderd':((u.isActive===false)?'Inactief':'Actief');
+    var c=_bhStatCounts[u._id]||{};
+    lines.push([
+      u.displayName||u.email||'', u.email||'', rl, u.teamName||'', u.clubName||'', st,
+      _bhFmtDateTime(u.createdAt), _bhFmtDateTime(u.lastLoginAt), Number(u.loginCount)||0,
+      Number(c.players)||0, Number(c.matchReports)||0, Number(c.tournaments)||0, Number(c.tips)||0
+    ].map(esc).join(';'));
+  });
+  var csv='﻿'+lines.join('\r\n');
+  var blob=new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download='scoutinghub-statistieken-'+new Date().toISOString().slice(0,10)+'.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+  if(typeof toast==='function') toast('CSV gedownload ✓');
+}
+window._bhExportStatsCsv=_bhExportStatsCsv;
 window._bhLoadStats=_bhLoadStats; window._bhRenderStats=_bhRenderStats;
 
 /* FASE 4 — Supportlogboek in Beheer (leesbaar audit-overzicht). */
@@ -32875,7 +32960,18 @@ function _suRipple(parent, x, y){
 var _suActSeq = 0, __suUnsubAct = null, _suLastActSeq = 0;
 var _SU_ACT_VIEWS = ['dashboard','database','compare','elftallen','matches','programma','agenda','pitch','contacts','adresboek','tips','ritten','toernooien'];
 /* E4b — gewhiteliste formuliervelden voor suggest_field (voorinvullen, GEEN opslag). */
-var _SU_FORM_FIELDS = { report: [['f-naam','Naam'],['f-club','Club'],['f-positie','Positie'],['f-elftal','Elftal'],['f-tekst-techniek','Techniek'],['f-tekst-inzicht','Inzicht']] };
+var _SU_FORM_FIELDS = {
+  report:  [['f-naam','Naam'],['f-club','Club'],['f-positie','Positie'],['f-elftal','Elftal'],['f-tekst-techniek','Techniek'],['f-tekst-inzicht','Inzicht']],
+  contact: [['c-naam','Naam'],['c-tel','Telefoon'],['c-email','E-mail'],['c-club','Club'],['c-functie','Functie']],
+  tip:     [['t-tipgever','Tip van'],['t-speler','Spelernaam'],['t-elftal','Elftal/Club'],['t-bijzonderheden','Bijzonderheden']],
+  rit:     [['rit-vertrek','Vertrek'],['rit-aankomst','Aankomst'],['rit-doel','Doel']]
+};
+/* E4d — uitgebreide formulieren: welk formulier hoort bij welke view/openknop,
+   en welke opslagknop mag (met per-actie bevestiging, zie _suReqSave) geklikt worden.
+   Geen delete-knoppen, geen account/rol/team/mail/admin-acties — zie security-afspraken. */
+var _SU_FORM_LIST = [['report','Rapport'],['contact','Contact'],['tip','Tip'],['rit','Rit'],['programma','Programma-item']];
+var _SU_FORM_OPEN = { report:{view:'report'}, contact:{view:'contacts', btnId:'contact-new-btn'}, tip:{view:'tips', btnId:'tip-new-btn'}, rit:{view:'ritten', btnId:'rit-new-btn'}, programma:{view:'programma', btnId:'programma-new-btn'} };
+var _SU_SAVE_MAP = { report:{ btnId:'report-save-draft-btn', label:'rapport (concept)' }, rit:{ btnId:'rit-save-btn', label:'rit' }, tip:{ selector:'#tip-form button[type="submit"]', label:'tip' } };
 async function _suSendAction(g, actionType, params){
   if(!g || g.scope!=='support_full_control') return;
   _suActSeq = Math.max(_suActSeq+1, Date.now());
@@ -32890,16 +32986,21 @@ function _suHighlightNav(view){
 function _suReqSave(g, d, p){
   // E4c — PER-ACTIE bevestiging door de gebruiker; pas bij OK de EIGEN opslagknop klikken.
   if(document.getElementById('su-reqsave')) return;
+  var sv = _SU_SAVE_MAP[p.formId] || _SU_SAVE_MAP.report;
+  var fLabel = sv.label || 'formulier';
   var bd=document.createElement('div'); bd.id='su-reqsave'; bd.className='sh-photo-menu-bd';
   bd.innerHTML='<div class="sh-photo-menu bh-modal-card" role="dialog" aria-modal="true" aria-label="Opslaan toestaan"><div class="sh-pm-title">Opslaan toestaan?</div><div class="bh-modal-body">'
-    +'<p style="margin:0 0 12px;color:#cdd6e4;font-size:14px;line-height:1.5;">De beheerder wil het <b>rapportformulier opslaan</b> (als concept). Wil je dit toestaan? Je kunt het daarna zelf nog aanpassen.</p>'
+    +'<p style="margin:0 0 12px;color:#cdd6e4;font-size:14px;line-height:1.5;">De beheerder wil <b>'+_bhEsc(fLabel)+'</b> opslaan. Wil je dit toestaan? Je kunt het daarna zelf nog aanpassen.</p>'
     +'<div class="bh-modal-actions"><button type="button" class="bh-btn bh-btn-ghost" id="su-rs-no">Annuleren</button><button type="button" class="bh-btn bh-btn-green" id="su-rs-yes">Opslaan toestaan</button></div></div></div>';
   document.body.appendChild(bd);
   function fin(result){ try{bd.remove();}catch(_){} try{ _suAudit('action_executed', { adminUid:g.adminUid, targetUid:g.targetUid, sessionId:(g.sessionId||''), details:'type=request_save;form='+(p.formId||'')+';result='+result }); }catch(_){} }
   var yes=document.getElementById('su-rs-yes'); if(yes) yes.addEventListener('click', function(){
-    var btn=document.getElementById('report-save-draft-btn'); var ok=false;
-    try{ if(btn){ btn.click(); ok=true; } }catch(_){}
-    if(typeof toast==='function') toast(ok?'Opgeslagen (concept)':'Kon niet opslaan — formulier niet open');
+    var ok=false;
+    try{
+      var btn = sv.selector ? document.querySelector(sv.selector) : document.getElementById(sv.btnId);
+      if(btn){ btn.click(); ok=true; }
+    }catch(_){}
+    if(typeof toast==='function') toast(ok?('Opgeslagen ('+fLabel+')'):'Kon niet opslaan — formulier niet open');
     fin(ok?'confirmed':'failed');
   });
   var no=document.getElementById('su-rs-no'); if(no) no.addEventListener('click', function(){ if(typeof toast==='function') toast('Opslaan geweigerd'); fin('cancelled'); });
@@ -32914,7 +33015,12 @@ function _suExecAction(g, d){
     else if(t==='open_tournament'){ if(typeof go==='function') go('toernooien'); label='opende toernooien'; }
     else if(t==='scroll_to'){ try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(_){ try{window.scrollTo(0,0);}catch(_2){} } label='scrolde naar boven'; }
     else if(t==='highlight' && _SU_ACT_VIEWS.indexOf(p.view)!==-1){ _suHighlightNav(p.view); label='wees '+p.view+' aan'; }
-    else if(t==='open_form' && p.formId==='report'){ if(typeof go==='function') go('report'); label='opende het rapportformulier'; }
+    else if(t==='open_form' && _SU_FORM_OPEN[p.formId]){
+      var _fo=_SU_FORM_OPEN[p.formId];
+      if(typeof go==='function') go(_fo.view);
+      if(_fo.btnId){ setTimeout(function(){ try{ var _b=document.getElementById(_fo.btnId); if(_b) _b.click(); }catch(_){} }, 250); }
+      label='opende het '+(p.formId==='report'?'rapport':p.formId)+'-formulier';
+    }
     else if(t==='suggest_field' && p.formId && p.fieldId && (_SU_FORM_FIELDS[p.formId]||[]).some(function(f){ return f[0]===p.fieldId; })){
       var _el=document.getElementById(p.fieldId);
       if(_el){ _el.value=String(p.value==null?'':p.value).slice(0,1000); _el.classList.add('su-suggest-flash'); setTimeout(function(){ try{_el.classList.remove('su-suggest-flash');}catch(_){} },1500); label='deed een voorstel (niet opgeslagen)'; }
@@ -33001,24 +33107,37 @@ async function _suOpenEnvPanel(g, asUser){
   if(!asUser && g.scope==='support_full_control'){
     var actEl=document.getElementById('su-act');
     if(actEl){
-      var navList=[['dashboard','Overzicht'],['database','Spelers'],['programma','Programma'],['toernooien','Toernooien'],['ritten','Ritten'],['tips','Tips']];
+      var _SU_VIEW_LABELS={dashboard:'Overzicht',database:'Spelers',compare:'Vergelijken',elftallen:'Elftallen',matches:'Wedstrijden',programma:'Programma',agenda:'Agenda',pitch:'Veld',contacts:'Contacten',adresboek:'Adresboek',tips:'Tips',ritten:'Ritten',toernooien:'Toernooien'};
+      var navList=_SU_ACT_VIEWS.map(function(v){ return [v, _SU_VIEW_LABELS[v]||v]; });
       actEl.innerHTML='<span class="su-act-l">Stuur naar</span>'
         + navList.map(function(v){ return '<button type="button" class="su-act-btn" data-nav="'+v[0]+'">'+v[1]+'</button>'; }).join('')
         + '<span class="su-act-l">Wijs aan</span>'
         + navList.map(function(v){ return '<button type="button" class="su-act-btn ghost" data-hl="'+v[0]+'">'+v[1]+'</button>'; }).join('')
         + '<button type="button" class="su-act-btn" data-scroll="1">↑ Boven</button>'
         + '<div class="su-act-row2"><span class="su-act-l">Formulier</span>'
-        + '<button type="button" class="su-act-btn" data-form="report">Open rapportformulier</button>'
-        + '<select id="su-sg-field" class="su-act-sel">'+(_SU_FORM_FIELDS.report||[]).map(function(f){ return '<option value="'+f[0]+'">'+_bhEsc(f[1])+'</option>'; }).join('')+'</select>'
+        + '<select id="su-form-pick" class="su-act-sel">'+_SU_FORM_LIST.map(function(f){ return '<option value="'+f[0]+'">'+f[1]+'</option>'; }).join('')+'</select>'
+        + '<button type="button" class="su-act-btn" data-form="1">Open formulier</button>'
+        + '<select id="su-sg-field" class="su-act-sel"></select>'
         + '<input id="su-sg-val" class="su-act-in" placeholder="Voorstel-waarde">'
         + '<button type="button" class="su-act-btn" data-suggest="1">Stel voor (geen opslag)</button>'
         + '<button type="button" class="su-act-btn" data-reqsave="1">Vraag opslaan</button></div>';
+      function _fillFieldSelect(formId){
+        var sel=document.getElementById('su-sg-field'); if(!sel) return;
+        var fields=_SU_FORM_FIELDS[formId]||[];
+        sel.innerHTML=fields.map(function(f){ return '<option value="'+f[0]+'">'+_bhEsc(f[1])+'</option>'; }).join('');
+        sel.disabled = !fields.length;
+        var sg=actEl.querySelector('[data-suggest]'); if(sg) sg.disabled = !fields.length;
+        var valI=document.getElementById('su-sg-val'); if(valI) valI.disabled = !fields.length;
+        var rqs=actEl.querySelector('[data-reqsave]'); if(rqs) rqs.disabled = !_SU_SAVE_MAP[formId];
+      }
       actEl.querySelectorAll('[data-nav]').forEach(function(b){ b.addEventListener('click', function(){ _suSendAction(g,'navigate',{view:b.getAttribute('data-nav')}); if(typeof toast==='function') toast('Verstuurd: ga naar '+b.textContent); }); });
       actEl.querySelectorAll('[data-hl]').forEach(function(b){ b.addEventListener('click', function(){ _suSendAction(g,'highlight',{view:b.getAttribute('data-hl')}); if(typeof toast==='function') toast('Verstuurd: wijs '+b.textContent+' aan'); }); });
       var sc=actEl.querySelector('[data-scroll]'); if(sc) sc.addEventListener('click', function(){ _suSendAction(g,'scroll_to',{}); if(typeof toast==='function') toast('Verstuurd: scroll naar boven'); });
-      var of=actEl.querySelector('[data-form]'); if(of) of.addEventListener('click', function(){ _suSendAction(g,'open_form',{formId:'report'}); if(typeof toast==='function') toast('Verstuurd: open rapportformulier'); });
-      var sg=actEl.querySelector('[data-suggest]'); if(sg) sg.addEventListener('click', function(){ var fid=((document.getElementById('su-sg-field')||{}).value)||''; var val=((document.getElementById('su-sg-val')||{}).value)||''; if(fid){ _suSendAction(g,'suggest_field',{formId:'report',fieldId:fid,value:val}); if(typeof toast==='function') toast('Verstuurd: voorstel voor veld (niet opgeslagen)'); } });
-      var rqs=actEl.querySelector('[data-reqsave]'); if(rqs) rqs.addEventListener('click', function(){ _suSendAction(g,'request_save',{formId:'report'}); if(typeof toast==='function') toast('Verstuurd: vraag om opslaan (gebruiker bevestigt)'); });
+      var fp=document.getElementById('su-form-pick'); if(fp) fp.addEventListener('change', function(){ _fillFieldSelect(fp.value); });
+      var of=actEl.querySelector('[data-form]'); if(of) of.addEventListener('click', function(){ var fid=(fp&&fp.value)||'report'; _suSendAction(g,'open_form',{formId:fid}); if(typeof toast==='function') toast('Verstuurd: open '+fid+'-formulier'); });
+      var sg=actEl.querySelector('[data-suggest]'); if(sg) sg.addEventListener('click', function(){ var fid=(fp&&fp.value)||'report'; var fieldEl=document.getElementById('su-sg-field'); var valEl=document.getElementById('su-sg-val'); var fidF=(fieldEl&&fieldEl.value)||''; var val=(valEl&&valEl.value)||''; if(fidF){ _suSendAction(g,'suggest_field',{formId:fid,fieldId:fidF,value:val}); if(typeof toast==='function') toast('Verstuurd: voorstel voor veld (niet opgeslagen)'); } });
+      var rqs=actEl.querySelector('[data-reqsave]'); if(rqs) rqs.addEventListener('click', function(){ var fid=(fp&&fp.value)||'report'; _suSendAction(g,'request_save',{formId:fid}); if(typeof toast==='function') toast('Verstuurd: vraag om opslaan (gebruiker bevestigt)'); });
+      _fillFieldSelect('report');
     }
     var beBody=document.getElementById('su-env-body');
     if(beBody) beBody.addEventListener('click', function(e){ var rr=(e.target&&e.target.closest)?e.target.closest('[data-supid]'):null; if(rr){ var pid=rr.getAttribute('data-supid'); if(pid){ _suSendAction(g,'open_player',{playerId:pid}); if(typeof toast==='function') toast('Verstuurd: open speler bij gebruiker'); } } });

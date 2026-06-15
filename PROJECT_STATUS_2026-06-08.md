@@ -24,6 +24,12 @@ ontwikkeling, zodat keuzes en context niet verloren gaan.
 - **Auth/data:** Firebase Authentication + Firestore.
 - **Mail:** Resend (transactionele e-mails).
 - **Hostingdomein:** `scoutinghub.nl` (custom domain op GitHub Pages).
+- **Admin-PWA:** `/admin/` is een apart installeerbare PWA ("ScoutingHub Beheer",
+  eigen manifest/icoon/service-worker, scope `/admin/`). Draait dezelfde
+  `app.js`/`style.css`/`clubs-data.js` (via `<base href="/">`). Alleen
+  beheerders mogen hierin inloggen (`window.SH_ADMIN_PWA`-gate); landt direct
+  in de Beheerconsole zonder "Scout-app"-knop. Placeholder-iconen, later te
+  vervangen.
 - **Geen secrets in frontend of in de GitHub-repo.** Gevoelige waarden staan
   uitsluitend als Cloudflare Worker Secrets.
 
@@ -79,6 +85,28 @@ ontwikkeling, zodat keuzes en context niet verloren gaan.
 
 ---
 
+## 5b. Mailcentrum-inbox (IMAP, alleen-lezen)
+
+- Beheer → Mailcentrum toont nu per mailbox (admin@/contact@/info@scoutinghub.nl)
+  een **"Inbox laden"**-knop met de laatste ~10 berichten (van/onderwerp/datum,
+  ongelezen gemarkeerd).
+- **Werking:** de Worker (`/api/admin-mail-inbox`, admin-only) verbindt direct via
+  **IMAP over TLS** (`cloudflare:sockets`) met de mailbox-provider, doet
+  `LOGIN` → `SELECT INBOX` → `FETCH ... BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)]`
+  → `LOGOUT`. `BODY.PEEK` zodat niets als gelezen wordt gemarkeerd; er wordt niets
+  verstuurd, verwijderd of gewijzigd.
+- **Vereiste Cloudflare Secrets** (nog instellen, anders meldt de knop "secret
+  ontbreekt"):
+  - `IMAP_PASS_ADMIN`, `IMAP_PASS_CONTACT`, `IMAP_PASS_INFO` — mailbox-wachtwoorden
+    (gebruikersnaam = het mailadres zelf, bijv. `admin@scoutinghub.nl`).
+  - Optioneel (hebben standaardwaarden): `IMAP_HOST` (default `imap.transip.email`),
+    `IMAP_PORT` (default `993`), `IMAP_USER_ADMIN`/`IMAP_USER_CONTACT`/`IMAP_USER_INFO`
+    (default = de mailadressen zelf).
+- **Geen DNS/MX-wijzigingen, geen impact op bestaande mailflow** (Resend-verzending
+  en TransIP-forwarding blijven ongewijzigd).
+
+---
+
 ## 6. Admin-goedkeuring: probleem en oplossing
 
 - **Probleem:** goedkeuren faalde met 403, door een combinatie van de
@@ -97,18 +125,26 @@ ontwikkeling, zodat keuzes en context niet verloren gaan.
 
 ## 7. Roadmap: Firebase Admin SDK / service-account
 
-Nodig om het platform veiliger te maken:
+> **Update 13 juni 2026 (zie `SECURITY_ROADMAP.md`):** het service-account is er
+> inmiddels (`SERVICE_ACCOUNT_JSON` Cloudflare Secret) en wordt al gebruikt voor
+> account-creatie/hard-delete/(de)activeren en de Beheer-statusendpoints. De
+> **resterende** stappen hieronder (recursieve data-delete/anonymize en "Enable
+> sign-up" uitzetten) zijn bewust **UITGESTELD/OPTIONEEL** — pas oppakken bij
+> concrete trigger (junk-accounts of een AVG-verwijderverzoek). Geen actie nodig
+> tot dan.
 
-- **Account-creatie zonder publieke sign-up:** via Admin SDK / service-account in
-  de Worker of een Cloud Function.
-- **Echte Auth hard-delete:** een ander Auth-account verwijderen kan niet met
-  alleen de web-key; vereist admin-credentials.
+- ~~**Account-creatie zonder publieke sign-up:** via Admin SDK / service-account in
+  de Worker of een Cloud Function.~~ — service-account is aanwezig; "Enable
+  sign-up" staat nog AAN (zie §6), uitzetten is uitgesteld.
+- ~~**Echte Auth hard-delete:**~~ — **gereed**: `/api/delete-account` verwijdert het
+  Firebase Auth-account via het service-account.
 - **Recursieve data-delete / anonymize:** alle subcollecties onder `users/{uid}`
-  + de bijbehorende `access_request` opruimen (kan niet client-side, want admin
-  mag subcollecties niet listen).
-- **Daarna kan "Enable sign-up" weer UIT** → vervuilingsrisico verdwijnt.
-- De **service-account-sleutel** wordt een Cloudflare Secret en hoort **nooit** in
-  GitHub.
+  + de bijbehorende `access_request` opruimen — **uitgesteld/optioneel**, zie
+  `SECURITY_ROADMAP.md` §0/§3.
+- **"Enable sign-up" weer UIT** → vervuilingsrisico verdwijnt — **uitgesteld**,
+  hangt samen met bovenstaand punt.
+- De **service-account-sleutel** staat als Cloudflare Secret (`SERVICE_ACCOUNT_JSON`)
+  en hoort **nooit** in GitHub.
 
 ---
 
@@ -214,9 +250,19 @@ geblokkeerd; bij twijfel/leesfout wordt **niet** geblokkeerd (fail-open).
 
 ## 13. Openstaande punten / roadmap
 
-- [ ] Service-account / Admin SDK voor account-creatie (zonder publieke sign-up).
-- [ ] Echte Auth hard-delete + recursieve data-delete/anonymize-fase.
-- [ ] Firebase Auth "Enable sign-up" weer **uit** zodra bovenstaande er is.
+- [x] Service-account / Admin SDK aanwezig (account-creatie, hard-delete, (de)activeren).
+- [x] `/api/admin-status` en `/api/admin-mail-test` endpoints gebouwd (Beheer:
+      Instellingen + Mailcentrum).
+- [x] `/api/admin-mail-inbox` (IMAP, alleen-lezen) gebouwd — zie §5b. Werkt pas
+      zodra `IMAP_PASS_ADMIN`/`IMAP_PASS_CONTACT`/`IMAP_PASS_INFO` secrets gezet zijn.
+- [x] Support "volledige bediening" (E4d) uitgebreid: alle 14 views (navigeren +
+      aanwijzen) en 4 formulieren (rapport/contact/tip/rit) voor openen/voorstellen,
+      met opslag-bevestiging voor rapport/rit/tip. Verwijderen/account/instellingen/
+      mail/admin blijven uitgesloten.
+- [ ] Recursieve data-delete/anonymize-fase — **uitgesteld/optioneel**, zie
+      `SECURITY_ROADMAP.md` §0/§3 (alleen bij concrete trigger).
+- [ ] Firebase Auth "Enable sign-up" weer **uit** — **uitgesteld**, hangt samen
+      met vorig punt.
 - [ ] Landingspagina live testen op desktop én mobiel (geen horizontale scroll,
       carousel-hoogte, entrance).
 - [ ] PWA/cache/manifest testen (oude installatie verwijderen + opnieuw installeren).

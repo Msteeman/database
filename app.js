@@ -31525,73 +31525,122 @@ async function _admRenderOverview(el){
     +'<div class="bh-stat-note">Module-totalen (spelers/rapporten/…) staan onder <b>Statistieken</b> — die worden via de worker geteld.</div>';
 }
 
-function _admRenderMail(el){
-  function card(addr,fn,envs,flow,type){
-    return '<div class="adm-mailcard"><div class="adm-mailhd"><span class="adm-mailaddr">'+addr+'</span><span class="bh-badge bh-b-blue">'+type+'</span></div>'
-      +'<div class="adm-mailfn">'+fn+'</div>'
-      +'<div class="adm-mailenv">'+envs+'</div>'
-      +(flow?'<div class="adm-mailflow">'+flow+'</div>':'')
-      +'<div class="adm-mailact"><button class="adm-btn-ghost" onclick="_admTestMail(\''+type+'\',this)">Test '+type+'-mail sturen</button>'
-      +'<button class="adm-btn-ghost" onclick="_admToggleCompose(\''+type+'\')">✉️ Nieuwe mail</button>'
-      +'<a class="adm-btn-ghost" href="https://webmail.transip.email/" target="_blank" rel="noopener">Open webmail</a></div>'
-      +'<div class="adm-compose" id="adm-compose-'+type+'" style="display:none">'
-        +'<input type="email" class="adm-compose-input" id="adm-compose-to-'+type+'" placeholder="Aan (e-mailadres)">'
-        +'<input type="text" class="adm-compose-input" id="adm-compose-subj-'+type+'" placeholder="Onderwerp">'
-        +'<textarea class="adm-compose-input adm-compose-msg" id="adm-compose-msg-'+type+'" placeholder="Bericht…" rows="5"></textarea>'
-        +'<div class="adm-mailenv">Verstuurd vanaf '+addr+' in ScoutingHub-huisstijl, met automatische ondertekening "Team ScoutingHub — '+addr+'".</div>'
-        +'<div class="adm-mailact"><button class="adm-btn-ghost adm-btn-primary" onclick="_admSendMail(\''+type+'\',this)">Versturen</button>'
-        +'<button class="adm-btn-ghost" onclick="_admToggleCompose(\''+type+'\')">Annuleren</button></div>'
-        +'<div id="adm-compose-res-'+type+'"></div>'
-      +'</div>'
-      +'<div class="adm-mailtabs" id="adm-tabs-'+type+'">'
-      +'<button class="adm-tab" data-folder="inbox" onclick="_admLoadInbox(\''+type+'\',\'inbox\',this)">📥 Inbox</button>'
-      +'<button class="adm-tab" data-folder="sent" onclick="_admLoadInbox(\''+type+'\',\'sent\',this)">📤 Verstuurd</button>'
-      +'<button class="adm-tab" data-folder="trash" onclick="_admLoadInbox(\''+type+'\',\'trash\',this)">🗑️ Verwijderd</button>'
-      +'</div>'
-      +'<div class="adm-mailinbox" id="adm-inbox-'+type+'"></div></div>';
-  }
-  el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Mailcentrum</div>'
-    +'<div class="bh-stat-note">De drie mailboxen + testmail + inbox (via IMAP, alleen-lezen — niets wordt verstuurd, verwijderd of als gelezen gemarkeerd). Vereist server-secrets IMAP_PASS_ADMIN/IMAP_PASS_CONTACT/IMAP_PASS_INFO.</div>'
-    +'<div class="adm-mailgrid">'
-    +card('admin@scoutinghub.nl','Beheer · account · security · toegangsaanvragen · adminmeldingen','env: ADMIN_FROM · ADMIN_NOTIFY_TO','Resend → admin@ → TransIP forward/kopie → Gmail','admin')
-    +card('contact@scoutinghub.nl','Gebruikerscommunicatie · aanvraagbevestiging · welkomst · reset · afwijzing · feedback','env: CONTACT_FROM · CONTACT_EMAIL · FEEDBACK_NOTIFY_TO','Resend → contact@ (gebruiker) · TransIP-kopie naar Gmail mogelijk','contact')
-    +card('info@scoutinghub.nl','Algemeen informatieadres','env: (geen kritieke systeemflow)','','info')
-    +'</div>';
-}
 var _ADM_MAILLABELS={inbox:'Inbox',sent:'Verzonden',trash:'Verwijderd'};
-async function _admLoadInbox(type, folder, btn){
-  var box=document.getElementById('adm-inbox-'+type);
-  if(!box) return;
-  folder = folder||'inbox';
-  var tabs=document.getElementById('adm-tabs-'+type);
-  if(tabs){ Array.prototype.forEach.call(tabs.querySelectorAll('.adm-tab'),function(b){b.classList.remove('adm-tab-active');}); if(btn) btn.classList.add('adm-tab-active'); }
-  var lbl=_ADM_MAILLABELS[folder]||'Map';
-  if(btn) btn.disabled=true;
-  box.innerHTML='<div class="adm-loading">'+lbl+' laden…</div>';
+var _ADM_MB_ADDR={admin:'admin@scoutinghub.nl',contact:'contact@scoutinghub.nl',info:'info@scoutinghub.nl'};
+var _admMb={type:'admin',folder:'inbox'};
+var _admMbEl=null;
+
+async function _admRenderMail(el){
+  _admMbEl=el;
+  el.innerHTML='<div class="adm-loading">Mailcentrum laden…</div>';
+  await _admEnsureCore();
+  var tabs=Object.keys(_ADM_MB_ADDR).map(function(k){
+    return '<button class="adm-mb-tab'+(k===_admMb.type?' adm-mb-tab-active':'')+'" onclick="_admMbSwitch(\''+k+'\')">'+_ADM_MB_ADDR[k]+'</button>';
+  }).join('');
+  var sideItems=[['new','✉️ Nieuw'],['inbox','📥 Inbox'],['sent','📤 Verstuurd'],['trash','🗑️ Verwijderd']];
+  var side=sideItems.map(function(s){
+    return '<button class="adm-mb-side'+(s[0]===_admMb.folder?' adm-mb-side-active':'')+'" onclick="_admMbNav(\''+s[0]+'\')">'+s[1]+'</button>';
+  }).join('')
+    +'<button class="adm-mb-side" onclick="_admTestMail(\''+_admMb.type+'\',this)">🧪 Testmail</button>'
+    +'<a class="adm-mb-side" href="https://webmail.transip.email/" target="_blank" rel="noopener">🌐 Webmail</a>';
+  el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Mailcentrum</div>'
+    +'<div class="bh-stat-note">Inbox/Verstuurd/Verwijderd via IMAP (alleen-lezen). Versturen via Resend in ScoutingHub-huisstijl, met automatische ondertekening. Vereist server-secrets IMAP_PASS_ADMIN/IMAP_PASS_CONTACT/IMAP_PASS_INFO.</div>'
+    +'<div class="adm-mailbox-app">'
+      +'<div class="adm-mailbox-tabs">'+tabs+'</div>'
+      +'<div class="adm-mailbox-body">'
+        +'<div class="adm-mailbox-side">'+side+'</div>'
+        +'<div class="adm-mailbox-main" id="adm-mb-main"></div>'
+      +'</div>'
+    +'</div>'
+    +'<datalist id="adm-mb-contacts">'+_admMbContactOptions()+'</datalist>';
+  _admMbRenderMain();
+}
+window._admRenderMail=_admRenderMail;
+
+function _admMbContactOptions(){
+  var set={};
+  (_bhUserCache||[]).forEach(function(x){ var e=(x.email||'').trim(); if(e) set[e.toLowerCase()]=e; });
+  (_bhStatReqs||[]).forEach(function(x){ var e=(x.email||'').trim(); if(e) set[e.toLowerCase()]=e; });
+  return Object.keys(set).sort().map(function(k){ return '<option value="'+_bhEsc(set[k])+'">'; }).join('');
+}
+
+function _admMbSwitch(type){ _admMb.type=type; _admMb.folder='inbox'; if(_admMbEl) _admRenderMail(_admMbEl); }
+window._admMbSwitch=_admMbSwitch;
+
+function _admMbNav(folder){ _admMb.folder=folder; if(_admMbEl) _admRenderMail(_admMbEl); }
+window._admMbNav=_admMbNav;
+
+function _admMbRenderMain(){
+  var main=document.getElementById('adm-mb-main');
+  if(!main) return;
+  if(_admMb.folder==='new'){ _admMbRenderCompose(main); return; }
+  _admMbLoadFolder(main,_admMb.type,_admMb.folder);
+}
+
+function _admMbRenderCompose(main){
+  var type=_admMb.type, addr=_ADM_MB_ADDR[type];
+  main.innerHTML='<div class="adm-compose adm-compose-lg">'
+    +'<input type="email" class="adm-compose-input" id="adm-mb-to" list="adm-mb-contacts" placeholder="Aan (e-mailadres)">'
+    +'<input type="text" class="adm-compose-input" id="adm-mb-subj" placeholder="Onderwerp">'
+    +'<textarea class="adm-compose-input adm-compose-msg" id="adm-mb-msg" placeholder="Bericht…" rows="12"></textarea>'
+    +'<div class="adm-mailenv">Verstuurd vanaf '+addr+' in ScoutingHub-huisstijl, met automatische ondertekening "Team ScoutingHub — '+addr+'".</div>'
+    +'<div class="adm-mailact"><button class="adm-btn-ghost adm-btn-primary" onclick="_admMbSend(this)">Versturen</button>'
+    +'<button class="adm-btn-ghost" onclick="_admMbNav(\'inbox\')">Annuleren</button></div>'
+    +'<div id="adm-mb-res"></div>'
+  +'</div>';
+}
+
+async function _admMbSend(btn){
+  var res=document.getElementById('adm-mb-res');
+  var to=(document.getElementById('adm-mb-to')||{}).value||'';
+  var subj=(document.getElementById('adm-mb-subj')||{}).value||'';
+  var msg=(document.getElementById('adm-mb-msg')||{}).value||'';
+  to=to.trim(); subj=subj.trim(); msg=msg.trim();
+  if(!to||!subj||!msg){ if(res) res.innerHTML='<div class="bh-empty">Vul Aan, Onderwerp en Bericht in.</div>'; return; }
+  var _o=''; if(btn){ _o=btn.textContent; btn.disabled=true; btn.textContent='Versturen…'; }
+  if(res) res.innerHTML='';
   try{
-    var tk=await _admToken(); if(!tk){ box.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
-    var r=await fetch(_admBase()+'/api/admin-mail-inbox',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,folder:folder,limit:10})});
+    var tk=await _admToken(); if(!tk){ if(res) res.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
+    var r=await fetch(_admBase()+'/api/admin-mail-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:_admMb.type,to:to,subject:subj,message:msg})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(r.ok&&j&&j.ok&&j.sent){
+      if(typeof toast==='function')toast('Mail verstuurd ✓');
+      _admMb.folder='sent';
+      if(_admMbEl) _admRenderMail(_admMbEl);
+    } else {
+      if(res) res.innerHTML='<div class="bh-empty">Versturen mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
+      if(btn){ btn.disabled=false; btn.textContent=_o; }
+    }
+  }catch(_){ if(res) res.innerHTML='<div class="bh-empty">Versturen mislukt.</div>'; if(btn){ btn.disabled=false; btn.textContent=_o; } }
+}
+window._admMbSend=_admMbSend;
+
+async function _admMbLoadFolder(main, type, folder){
+  var lbl=_ADM_MAILLABELS[folder]||'Map';
+  main.innerHTML='<div class="adm-loading">'+lbl+' laden…</div>';
+  try{
+    var tk=await _admToken(); if(!tk){ main.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
+    var r=await fetch(_admBase()+'/api/admin-mail-inbox',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,folder:folder,limit:20})});
     var j={};try{j=await r.json();}catch(_){}
     if(!(r.ok&&j&&j.ok)){
-      box.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
+      main.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
       return;
     }
     var msgs=j.messages||[];
     var fLabel=j.folder||lbl;
-    if(!msgs.length){ box.innerHTML='<div class="bh-empty">'+fLabel+' is leeg (totaal: '+(j.count||0)+').</div>'; return; }
+    if(!msgs.length){ main.innerHTML='<div class="bh-empty">'+fLabel+' is leeg (totaal: '+(j.count||0)+').</div>'; return; }
     var rows=msgs.map(function(m){
       var dt=m.date||''; try{ var d=new Date(m.date); if(!isNaN(d.getTime())) dt=d.toLocaleString('nl-NL'); }catch(_){}
       var who=(folder==='sent')?('Aan: '+(m.to||'—')):(m.from||'—');
-      return '<div class="adm-mail-row'+(m.seen?'':' adm-mail-unread')+'">'
+      return '<div class="adm-mail-row adm-mail-row-lg'+(m.seen?'':' adm-mail-unread')+'">'
         +'<div class="adm-mail-from">'+_bhEsc(who)+'</div>'
         +'<div class="adm-mail-subj">'+_bhEsc(m.subject||'(geen onderwerp)')+'</div>'
         +'<div class="adm-mail-date">'+_bhEsc(dt)+'</div></div>';
     }).join('');
-    box.innerHTML='<div class="bh-stat-note" style="margin:8px 0">Laatste '+msgs.length+' van '+(j.count||0)+' berichten in '+fLabel+' — alleen-lezen.</div>'+rows;
-  }catch(_){ box.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt.</div>'; }
-  finally{ if(btn){ btn.disabled=false; } }
+    main.innerHTML='<div class="bh-stat-note" style="margin:8px 0">Laatste '+msgs.length+' van '+(j.count||0)+' berichten in '+fLabel+' — alleen-lezen.</div><div class="adm-mailinbox adm-mailinbox-lg">'+rows+'</div>';
+  }catch(_){ main.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt.</div>'; }
 }
-window._admLoadInbox=_admLoadInbox;
+
 async function _admTestMail(type, btn){
   var _o='';
   if(btn){ btn.disabled=true; _o=btn.textContent; btn.textContent='Versturen…'; }
@@ -31605,44 +31654,6 @@ async function _admTestMail(type, btn){
   finally{ if(btn){ btn.disabled=false; btn.textContent=_o; } }
 }
 window._admTestMail=_admTestMail;
-
-function _admToggleCompose(type){
-  var box=document.getElementById('adm-compose-'+type);
-  if(!box) return;
-  var show=box.style.display==='none';
-  box.style.display=show?'flex':'none';
-  if(show){
-    var res=document.getElementById('adm-compose-res-'+type); if(res) res.innerHTML='';
-    var toEl=document.getElementById('adm-compose-to-'+type); if(toEl) toEl.focus();
-  }
-}
-window._admToggleCompose=_admToggleCompose;
-
-async function _admSendMail(type, btn){
-  var res=document.getElementById('adm-compose-res-'+type);
-  var to=(document.getElementById('adm-compose-to-'+type)||{}).value||'';
-  var subj=(document.getElementById('adm-compose-subj-'+type)||{}).value||'';
-  var msg=(document.getElementById('adm-compose-msg-'+type)||{}).value||'';
-  to=to.trim(); subj=subj.trim(); msg=msg.trim();
-  if(!to||!subj||!msg){ if(res) res.innerHTML='<div class="bh-empty">Vul Aan, Onderwerp en Bericht in.</div>'; return; }
-  var _o=''; if(btn){ _o=btn.textContent; btn.disabled=true; btn.textContent='Versturen…'; }
-  if(res) res.innerHTML='';
-  try{
-    var tk=await _admToken(); if(!tk){ if(res) res.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
-    var r=await fetch(_admBase()+'/api/admin-mail-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,to:to,subject:subj,message:msg})});
-    var j={};try{j=await r.json();}catch(_){}
-    if(r.ok&&j&&j.ok&&j.sent){
-      if(res) res.innerHTML='<div class="bh-stat-note" style="margin:6px 0">Verstuurd ✓ naar '+_bhEsc(to)+'</div>';
-      if(typeof toast==='function')toast('Mail verstuurd ✓');
-      ['adm-compose-to-','adm-compose-subj-','adm-compose-msg-'].forEach(function(p){ var e=document.getElementById(p+type); if(e) e.value=''; });
-      _admLoadInbox(type,'sent',(document.getElementById('adm-tabs-'+type)||{}).querySelector?document.getElementById('adm-tabs-'+type).querySelector('[data-folder="sent"]'):null);
-    } else {
-      if(res) res.innerHTML='<div class="bh-empty">Versturen mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
-    }
-  }catch(_){ if(res) res.innerHTML='<div class="bh-empty">Versturen mislukt.</div>'; }
-  finally{ if(btn){ btn.disabled=false; btn.textContent=_o; } }
-}
-window._admSendMail=_admSendMail;
 
 async function _admRenderSecurity(el){
   el.innerHTML='<div class="adm-loading">Security &amp; audit laden…</div>';

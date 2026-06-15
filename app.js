@@ -32668,7 +32668,7 @@ function _suRequestAccess(uid){
     '<select id="su-scope" class="bh-select" style="width:100%;">' +
       '<option value="support_view_only" selected>Alleen meekijken (alleen-lezen)</option>' +
       '<option value="support_pointer">Meekijken + aanwijzen (cursor)</option>' +
-      '<option value="support_full_control" disabled>Volledige bediening — komt in E4</option>' +
+      '<option value="support_full_control">Volledige bediening (Tier 1: navigeren/aanwijzen)</option>' +
     '</select>';
   _bhModal('Supporttoegang vragen', body, {
     confirmLabel: 'Verstuur verzoek', confirmClass: 'bh-btn-blue',
@@ -32682,7 +32682,7 @@ function _suRequestAccess(uid){
       if(_errEl){ _errEl.textContent=''; _errEl.style.display='none'; } if(_ta) _ta.classList.remove('su-input-err');
       var sessionId = currentUser.uid + '_' + uid + '_' + Date.now();
       var scope = ((document.getElementById('su-scope')||{}).value)||'support_view_only';
-      if(['support_view_only','support_pointer'].indexOf(scope)===-1) scope='support_view_only';
+      if(['support_view_only','support_pointer','support_full_control'].indexOf(scope)===-1) scope='support_view_only';
       var payload = {
         targetUid: uid, requestedByUid: currentUser.uid, reason: reason,
         durationMinutes: minutes, scope: scope, status: 'pending', sessionId: sessionId,
@@ -32738,19 +32738,22 @@ async function _suGrant(req, scope){
 function _suShowConsent(req){
   if(document.getElementById('su-consent')) return;
   var minutes = req.durationMinutes || 30;
-  var pointer = (req.scope === 'support_pointer');
-  var accessTxt = pointer ? 'Meekijken + aanwijzen (alleen-lezen — geen wijzigingen)' : 'Alleen meekijken (alleen-lezen)';
+  var fc = (req.scope === 'support_full_control');
+  var pointer = (req.scope === 'support_pointer') || fc;
+  var accessTxt = fc ? 'Volledige bediening (admin kan toegestane handelingen uitvoeren — jij ziet alles en kunt stoppen)' : ((req.scope==='support_pointer') ? 'Meekijken + aanwijzen (alleen-lezen — geen wijzigingen)' : 'Alleen meekijken (alleen-lezen)');
   var actions = '<div class="bh-modal-actions">' +
     '<button type="button" class="bh-btn bh-btn-ghost" id="su-deny">Weigeren</button>' +
     '<button type="button" class="bh-btn bh-btn-green" id="su-allow-view">Alleen meekijken toestaan</button>' +
     (pointer ? '<button type="button" class="bh-btn bh-btn-blue" id="su-allow-ptr">Meekijken + aanwijzen toestaan</button>' : '') +
+    (fc ? '<button type="button" class="bh-btn bh-btn-amber" id="su-allow-fc">Meekijken + bediening toestaan</button>' : '') +
     '</div>';
   var body =
     '<p style="margin:0 0 12px;color:#cdd6e4;font-size:14px;line-height:1.5;">Een beheerder van ScoutingHub vraagt <b>tijdelijke, alleen-lezen</b> toegang tot jouw account om je te helpen of een probleem te onderzoeken.</p>' +
     '<div class="bh-card-row"><span>Reden</span><b>'+(_bhEsc(req.reason)||'—')+'</b></div>' +
     '<div class="bh-card-row"><span>Duur</span><b>'+minutes+' minuten</b></div>' +
     '<div class="bh-card-row"><span>Gevraagd</span><b>'+accessTxt+'</b></div>' +
-    (pointer ? '<div class="bh-modal-note">Bij <b>aanwijzen</b> kan de beheerder een cursor/markering tonen om iets aan te wijzen. Er worden <b>geen</b> wijzigingen gemaakt. Je mag ook kiezen voor alleen meekijken.</div>' : '') +
+    ((req.scope==='support_pointer') ? '<div class="bh-modal-note">Bij <b>aanwijzen</b> kan de beheerder een cursor/markering tonen om iets aan te wijzen. Er worden <b>geen</b> wijzigingen gemaakt. Je mag ook kiezen voor alleen meekijken.</div>' : '') +
+    (fc ? '<div class="bh-modal-note" style="color:#f4c66a">Bij <b>bediening</b> kan de beheerder toegestane handelingen uitvoeren (navigeren, een record openen, iets aanwijzen). <b>Verwijderen en account-/instellingenwijzigingen kunnen nooit.</b> Je ziet elke handeling live en kunt de sessie direct stoppen. Je mag ook kiezen voor alleen meekijken.</div>' : '') +
     '<div class="bh-modal-note">Zonder jouw toestemming krijgt niemand toegang. Je kunt de ondersteuning op elk moment beëindigen; ze verloopt sowieso automatisch.</div>' +
     actions;
   var bd = document.createElement('div');
@@ -32766,6 +32769,7 @@ function _suShowConsent(req){
   }
   var av=document.getElementById('su-allow-view'); if(av) av.addEventListener('click', function(){ _approve('support_view_only'); });
   var ap=document.getElementById('su-allow-ptr'); if(ap) ap.addEventListener('click', function(){ _approve('support_pointer'); });
+  var af=document.getElementById('su-allow-fc'); if(af) af.addEventListener('click', function(){ _approve('support_full_control'); });
   var deny=document.getElementById('su-deny'); if(deny) deny.addEventListener('click', async function(){
     _dis(true);
     try {
@@ -32781,6 +32785,7 @@ function _suStopSubs(){
   ['__suUnsubReq','__suUnsubGrantT','__suUnsubGrantA'].forEach(function(k){
     try { if(window[k]){ window[k](); window[k]=null; } } catch(_){}
   });
+  try { if(__suUnsubAct){ __suUnsubAct(); __suUnsubAct=null; } } catch(_){}
 }
 function _suInit(){
   if(!currentUser) return;
@@ -32799,6 +32804,7 @@ function _suInit(){
       var now=Date.now(), active=null;
       snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; if(x.status==='active' && _suMs(x.expiresAt)>now) active=x; });
       _suRenderUserBanner(active);
+      _suWireActionListener(active);
     }, function(){});
   } catch(_){}
   // (c) grants waar IK admin ben -> admin-banner realtime
@@ -32860,6 +32866,49 @@ function _suCursorId(g){ return (g.adminUid||'') + '_' + (g.targetUid||''); }
 function _suRipple(parent, x, y){
   try{ var r=document.createElement('div'); r.className='su-ripple'; r.style.left=x+'px'; r.style.top=y+'px'; parent.appendChild(r); setTimeout(function(){ try{r.remove();}catch(_){} }, 650); }catch(_){}
 }
+
+/* E4a — full-control ACTION-RELAY (Tier 1: navigeren/aanwijzen, GEEN writes).
+   Admin zendt gewhiteliste acties via support_action; de client van de gebruiker
+   voert ze ZICHTBAAR uit binnen eigen rechten. Geen scoutdata-writes; geen deletes;
+   geen account/rol/team/mail/admin-acties. Listener bestaat alléén tijdens een
+   actieve support_full_control-grant -> geen sessie/verlopen/ingetrokken = geen actie. */
+var _suActSeq = 0, __suUnsubAct = null, _suLastActSeq = 0;
+var _SU_ACT_VIEWS = ['dashboard','database','compare','elftallen','matches','programma','agenda','pitch','contacts','adresboek','tips','ritten','toernooien'];
+async function _suSendAction(g, actionType, params){
+  if(!g || g.scope!=='support_full_control') return;
+  _suActSeq = Math.max(_suActSeq+1, Date.now());
+  try{
+    await setDoc(doc(db,'support_action',_suCursorId(g)), { adminUid:g.adminUid, targetUid:g.targetUid, seq:_suActSeq, actionType:actionType, params:(params||{}), createdAt:Date.now() }, {merge:true});
+    await _suAudit('action_sent', { adminUid:g.adminUid, targetUid:g.targetUid, sessionId:(g.sessionId||''), details:'type='+actionType+(params&&params.view?(';view='+params.view):'') });
+  }catch(_){}
+}
+function _suHighlightNav(view){
+  try{ var el=document.querySelector('.nav-item[data-view="'+view+'"]')||document.querySelector('[data-view="'+view+'"]'); if(el){ el.classList.add('su-nav-flash'); setTimeout(function(){ try{el.classList.remove('su-nav-flash');}catch(_){} }, 1800); } }catch(_){}
+}
+function _suExecAction(g, d){
+  var t=d.actionType, p=d.params||{}, label='', result='executed';
+  try{
+    if(t==='navigate' && _SU_ACT_VIEWS.indexOf(p.view)!==-1){ if(typeof go==='function') go(p.view); label='ging naar '+p.view; }
+    else if(t==='open_player' && p.playerId){ if(typeof window.openDetail==='function'){ window.openDetail(p.playerId); label='opende een speler'; } else { if(typeof go==='function') go('database'); label='opende spelers'; } }
+    else if(t==='open_report' && p.playerId){ if(typeof window.openDetail==='function'){ window.openDetail(p.playerId, { reportId:p.reportId, full:true }); label='opende een rapport'; } else { result='rejected'; } }
+    else if(t==='open_tournament'){ if(typeof go==='function') go('toernooien'); label='opende toernooien'; }
+    else if(t==='scroll_to'){ try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(_){ try{window.scrollTo(0,0);}catch(_2){} } label='scrolde naar boven'; }
+    else if(t==='highlight' && _SU_ACT_VIEWS.indexOf(p.view)!==-1){ _suHighlightNav(p.view); label='wees '+p.view+' aan'; }
+    else { result='rejected'; label='geweigerd'; }
+  }catch(_){ result='rejected'; }
+  if(result==='executed' && typeof toast==='function') toast('Beheerder: '+label);
+  try{ _suAudit('action_executed', { adminUid:g.adminUid, targetUid:g.targetUid, sessionId:(g.sessionId||''), details:'type='+t+';result='+result+(p.view?(';view='+p.view):'') }); }catch(_){}
+}
+function _suWireActionListener(g){
+  if(__suUnsubAct){ try{__suUnsubAct();}catch(_){} __suUnsubAct=null; }
+  if(!g || g.scope!=='support_full_control') return;
+  try{
+    __suUnsubAct = onSnapshot(doc(db,'support_action',_suCursorId(g)), function(snap){
+      var d=snap.data(); if(!d || !d.seq || d.seq<=_suLastActSeq) return;
+      _suLastActSeq=d.seq; _suExecAction(g, d);
+    }, function(){});
+  }catch(_){}
+}
 /* E3c — gedeeld paneel met live admin-cursor + klik-highlights via
    support_cursor (Firestore). asUser=true => gebruiker volgt (leest eigen
    data, rendert admin-cursor). Alleen bij scope pointer/full_control.
@@ -32874,7 +32923,7 @@ async function _suOpenEnvPanel(g, asUser){
   var ov=document.createElement('div'); ov.id='su-env'; ov.className='su-env'+(asUser?' su-env-user':'');
   ov.innerHTML='<div class="su-env-card" id="su-env-card">' +
     '<div class="su-env-top"><div class="su-env-title">🔒 '+title+' <span class="su-env-ro">alleen-lezen</span></div><button type="button" class="bh-btn bh-btn-ghost" id="su-env-close">Sluiten</button></div>' +
-    '<div class="su-env-tabs" id="su-env-tabs"></div><div class="su-env-body" id="su-env-body"><div class="bh-empty">Laden…</div></div>' +
+    '<div class="su-env-tabs" id="su-env-tabs"></div><div id="su-act" class="su-act"></div><div class="su-env-body" id="su-env-body"><div class="bh-empty">Laden…</div></div>' +
     '<div id="su-ptr" class="su-ptr" style="display:none"><span class="su-ptr-dot"></span><span class="su-ptr-lbl">Admin</span></div></div>';
   document.body.appendChild(ov);
   var card=document.getElementById('su-env-card');
@@ -32894,7 +32943,7 @@ async function _suOpenEnvPanel(g, asUser){
       getDocs(collection(db,'users',ownerUid,'programma')),
       getDocs(collection(db,'users',ownerUid,'tournaments'))
     ]);
-    r[0].forEach(function(d){ data.players.push(d.data()||{}); });
+    r[0].forEach(function(d){ var x=d.data()||{}; x._id=d.id; data.players.push(x); });
     r[1].forEach(function(d){ data.reports.push(d.data()||{}); });
     r[2].forEach(function(d){ data.programma.push(d.data()||{}); });
     r[3].forEach(function(d){ data.tournaments.push(d.data()||{}); });
@@ -32911,7 +32960,7 @@ async function _suOpenEnvPanel(g, asUser){
         '<div class="su-ro-stat"><b>'+data.programma.length+'</b><span>programma</span></div>' +
         '<div class="su-ro-stat"><b>'+data.tournaments.length+'</b><span>toernooien</span></div></div>';
     } else if(which==='spelers'){
-      b.innerHTML = data.players.length ? ('<div class="su-ro-list">'+data.players.slice(0,200).map(function(pl){ var nm=pl.naam||[pl.voornaam,pl.achternaam].filter(Boolean).join(' ')||'—'; return row(_bhEsc(nm), (_bhEsc(pl.club)||'')+(pl.positie?(' · '+_bhEsc(pl.positie)):'')); }).join('')+'</div>') : '<div class="bh-empty">Geen spelers</div>';
+      b.innerHTML = data.players.length ? ('<div class="su-ro-list">'+data.players.slice(0,200).map(function(pl){ var nm=pl.naam||[pl.voornaam,pl.achternaam].filter(Boolean).join(' ')||'—'; var pid=_bhEsc(pl.id||pl._id||''); return '<div class="su-ro-row'+((!asUser && g.scope==='support_full_control' && pid)?' su-ro-click':'')+'"'+(pid?(' data-supid="'+pid+'"'):'')+'><b>'+_bhEsc(nm)+'</b><span>'+((_bhEsc(pl.club)||'')+(pl.positie?(' · '+_bhEsc(pl.positie)):''))+'</span></div>'; }).join('')+'</div>') : '<div class="bh-empty">Geen spelers</div>';
     } else if(which==='programma'){
       b.innerHTML = data.programma.length ? ('<div class="su-ro-list">'+data.programma.slice(0,200).map(function(m){ return row(_bhEsc(m.thuis||m.home||'')+' - '+_bhEsc(m.uit||m.away||''), _bhEsc(m.datum||m.date||'')); }).join('')+'</div>') : '<div class="bh-empty">Geen programma</div>';
     } else if(which==='rapporten'){
@@ -32922,6 +32971,23 @@ async function _suOpenEnvPanel(g, asUser){
   }
   tabsEl.querySelectorAll('[data-et]').forEach(function(tb){ tb.addEventListener('click', function(){ var et=tb.getAttribute('data-et'); setTab(et); if(!asUser && isPtr) _ptrSend({tab:et}); }); });
   setTab('dashboard');
+  // ===== E4a — admin action-bar (alleen full_control) =====
+  if(!asUser && g.scope==='support_full_control'){
+    var actEl=document.getElementById('su-act');
+    if(actEl){
+      var navList=[['dashboard','Overzicht'],['database','Spelers'],['programma','Programma'],['toernooien','Toernooien'],['ritten','Ritten'],['tips','Tips']];
+      actEl.innerHTML='<span class="su-act-l">Stuur naar</span>'
+        + navList.map(function(v){ return '<button type="button" class="su-act-btn" data-nav="'+v[0]+'">'+v[1]+'</button>'; }).join('')
+        + '<span class="su-act-l">Wijs aan</span>'
+        + navList.map(function(v){ return '<button type="button" class="su-act-btn ghost" data-hl="'+v[0]+'">'+v[1]+'</button>'; }).join('')
+        + '<button type="button" class="su-act-btn" data-scroll="1">↑ Boven</button>';
+      actEl.querySelectorAll('[data-nav]').forEach(function(b){ b.addEventListener('click', function(){ _suSendAction(g,'navigate',{view:b.getAttribute('data-nav')}); if(typeof toast==='function') toast('Verstuurd: ga naar '+b.textContent); }); });
+      actEl.querySelectorAll('[data-hl]').forEach(function(b){ b.addEventListener('click', function(){ _suSendAction(g,'highlight',{view:b.getAttribute('data-hl')}); if(typeof toast==='function') toast('Verstuurd: wijs '+b.textContent+' aan'); }); });
+      var sc=actEl.querySelector('[data-scroll]'); if(sc) sc.addEventListener('click', function(){ _suSendAction(g,'scroll_to',{}); if(typeof toast==='function') toast('Verstuurd: scroll naar boven'); });
+    }
+    var beBody=document.getElementById('su-env-body');
+    if(beBody) beBody.addEventListener('click', function(e){ var rr=(e.target&&e.target.closest)?e.target.closest('[data-supid]'):null; if(rr){ var pid=rr.getAttribute('data-supid'); if(pid){ _suSendAction(g,'open_player',{playerId:pid}); if(typeof toast==='function') toast('Verstuurd: open speler bij gebruiker'); } } });
+  }
   // ===== E3c — pointer-kanaal (support_cursor, throttled) =====
   if(isPtr){
     var cid=_suCursorId(g);

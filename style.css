@@ -12741,6 +12741,17 @@ a.adm-btn-ghost{ text-decoration:none; display:inline-block; }
 .su-ptr-lbl{ position:absolute; left:17px; top:-1px; font-size:10px; font-weight:800; color:#fff; background:#e30613; border-radius:4px; padding:1px 5px; white-space:nowrap; }
 .su-ripple{ position:absolute; z-index:4; width:12px; height:12px; margin:-6px 0 0 -6px; border-radius:50%; background:rgba(227,6,19,.5); pointer-events:none; animation:su-rip .6s ease-out forwards; }
 @keyframes su-rip{ 0%{ transform:scale(1); opacity:.75; } 100%{ transform:scale(5); opacity:0; } }
+/* E4a — action-bar (full_control) + nav-flash */
+.su-act{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; padding:8px 12px; border-bottom:1px solid var(--border,#1f2937); background:rgba(245,158,11,.06); }
+.su-act:empty{ display:none; }
+.su-act-l{ font-size:11px; color:var(--text-3,#8b97ad); text-transform:uppercase; letter-spacing:.04em; margin:0 2px 0 6px; }
+.su-act-btn{ background:#1a2436; border:1px solid var(--border,#1f2937); color:var(--text,#e8edf5); border-radius:7px; padding:5px 10px; font-size:12px; cursor:pointer; font-family:inherit; }
+.su-act-btn:hover{ border-color:#f59e0b; }
+.su-act-btn.ghost{ background:none; color:var(--text-2,#9aa8bd); }
+.su-ro-click{ cursor:pointer; }
+.su-ro-click:hover{ background:rgba(245,158,11,.1); }
+.su-nav-flash{ border-radius:8px; animation:su-flash 1.8s ease-out; }
+@keyframes su-flash{ 0%,100%{ box-shadow:none; } 20%,60%{ box-shadow:0 0 0 3px rgba(227,6,19,.6); background:rgba(227,6,19,.12); } }
 .sh-req-msg{ display:none; font-size:13px; margin:4px 0 8px; padding:8px 11px; border-radius:0 8px 8px 0; line-height:1.4; }
 .sh-req-msg.show{ display:block; }
 .sh-req-msg.error{ background:rgba(248,113,113,.12); border-left:3px solid var(--bad,#f87171); color:#fca5a5; }

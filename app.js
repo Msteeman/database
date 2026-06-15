@@ -27719,7 +27719,11 @@ async function _shAccountGate(uid, email){
     if(d.status === 'deleted') return { blocked: true, reason: 'deleted', role: d.role || 'scout' };
     if(d.isActive === false)   return { blocked: true, reason: 'inactive', role: d.role || 'scout' };
     return { blocked: false, reason: null, role: d.role || 'scout' };
-  } catch(_){ return { blocked: false, reason: null, role: 'scout' }; }           // bij twijfel niet blokkeren
+  } catch(_){
+    const adminEmails = ['admin@scoutinghub.nl'];
+    const emailIsAdmin = !!(email && adminEmails.indexOf(String(email).toLowerCase()) !== -1);
+    return { blocked: false, reason: null, role: emailIsAdmin ? 'admin' : 'scout' }; // bij twijfel niet blokkeren; admin-mail blijft admin
+  }
 }
 
 onAuthStateChanged(auth, async (user) => {

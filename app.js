@@ -31532,8 +31532,12 @@ function _admRenderMail(el){
       +'<div class="adm-mailenv">'+envs+'</div>'
       +(flow?'<div class="adm-mailflow">'+flow+'</div>':'')
       +'<div class="adm-mailact"><button class="adm-btn-ghost" onclick="_admTestMail(\''+type+'\',this)">Test '+type+'-mail sturen</button>'
-      +'<button class="adm-btn-ghost" onclick="_admLoadInbox(\''+type+'\',this)">📥 Inbox laden</button>'
       +'<a class="adm-btn-ghost" href="https://webmail.transip.email/" target="_blank" rel="noopener">Open webmail</a></div>'
+      +'<div class="adm-mailtabs" id="adm-tabs-'+type+'">'
+      +'<button class="adm-tab" data-folder="inbox" onclick="_admLoadInbox(\''+type+'\',\'inbox\',this)">📥 Inbox</button>'
+      +'<button class="adm-tab" data-folder="sent" onclick="_admLoadInbox(\''+type+'\',\'sent\',this)">📤 Verstuurd</button>'
+      +'<button class="adm-tab" data-folder="trash" onclick="_admLoadInbox(\''+type+'\',\'trash\',this)">🗑️ Verwijderd</button>'
+      +'</div>'
       +'<div class="adm-mailinbox" id="adm-inbox-'+type+'"></div></div>';
   }
   el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Mailcentrum</div>'
@@ -31544,31 +31548,38 @@ function _admRenderMail(el){
     +card('info@scoutinghub.nl','Algemeen informatieadres','env: (geen kritieke systeemflow)','','info')
     +'</div>';
 }
-async function _admLoadInbox(type, btn){
+var _ADM_MAILLABELS={inbox:'Inbox',sent:'Verzonden',trash:'Verwijderd'};
+async function _admLoadInbox(type, folder, btn){
   var box=document.getElementById('adm-inbox-'+type);
   if(!box) return;
-  var _o=''; if(btn){ _o=btn.textContent; btn.disabled=true; btn.textContent='Laden…'; }
-  box.innerHTML='<div class="adm-loading">Inbox laden…</div>';
+  folder = folder||'inbox';
+  var tabs=document.getElementById('adm-tabs-'+type);
+  if(tabs){ Array.prototype.forEach.call(tabs.querySelectorAll('.adm-tab'),function(b){b.classList.remove('adm-tab-active');}); if(btn) btn.classList.add('adm-tab-active'); }
+  var lbl=_ADM_MAILLABELS[folder]||'Map';
+  if(btn) btn.disabled=true;
+  box.innerHTML='<div class="adm-loading">'+lbl+' laden…</div>';
   try{
     var tk=await _admToken(); if(!tk){ box.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
-    var r=await fetch(_admBase()+'/api/admin-mail-inbox',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,limit:10})});
+    var r=await fetch(_admBase()+'/api/admin-mail-inbox',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,folder:folder,limit:10})});
     var j={};try{j=await r.json();}catch(_){}
     if(!(r.ok&&j&&j.ok)){
-      box.innerHTML='<div class="bh-empty">Inbox laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
+      box.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
       return;
     }
     var msgs=j.messages||[];
-    if(!msgs.length){ box.innerHTML='<div class="bh-empty">Inbox is leeg (totaal: '+(j.count||0)+').</div>'; return; }
+    var fLabel=j.folder||lbl;
+    if(!msgs.length){ box.innerHTML='<div class="bh-empty">'+fLabel+' is leeg (totaal: '+(j.count||0)+').</div>'; return; }
     var rows=msgs.map(function(m){
       var dt=m.date||''; try{ var d=new Date(m.date); if(!isNaN(d.getTime())) dt=d.toLocaleString('nl-NL'); }catch(_){}
+      var who=(folder==='sent')?('Aan: '+(m.to||'—')):(m.from||'—');
       return '<div class="adm-mail-row'+(m.seen?'':' adm-mail-unread')+'">'
-        +'<div class="adm-mail-from">'+_bhEsc(m.from||'—')+'</div>'
+        +'<div class="adm-mail-from">'+_bhEsc(who)+'</div>'
         +'<div class="adm-mail-subj">'+_bhEsc(m.subject||'(geen onderwerp)')+'</div>'
         +'<div class="adm-mail-date">'+_bhEsc(dt)+'</div></div>';
     }).join('');
-    box.innerHTML='<div class="bh-stat-note" style="margin:8px 0">Laatste '+msgs.length+' van '+(j.count||0)+' berichten — alleen-lezen.</div>'+rows;
-  }catch(_){ box.innerHTML='<div class="bh-empty">Inbox laden mislukt.</div>'; }
-  finally{ if(btn){ btn.disabled=false; btn.textContent=_o; } }
+    box.innerHTML='<div class="bh-stat-note" style="margin:8px 0">Laatste '+msgs.length+' van '+(j.count||0)+' berichten in '+fLabel+' — alleen-lezen.</div>'+rows;
+  }catch(_){ box.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt.</div>'; }
+  finally{ if(btn){ btn.disabled=false; } }
 }
 window._admLoadInbox=_admLoadInbox;
 async function _admTestMail(type, btn){

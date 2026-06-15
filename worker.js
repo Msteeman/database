@@ -1891,9 +1891,34 @@ function imapParseFetchHeaders(raw){
     const start = re.lastIndex;
     const header = raw.slice(start, start + len);
     re.lastIndex = start + len;
-    out.push({ seq, seen: /\\Seen/i.test(meta), from: imapHeaderField(header,'From'), subject: imapHeaderField(header,'Subject'), date: imapHeaderField(header,'Date') });
+    out.push({ seq, seen: /\\Seen/i.test(meta), from: imapHeaderField(header,'From'), to: imapHeaderField(header,'To'), subject: imapHeaderField(header,'Subject'), date: imapHeaderField(header,'Date') });
   }
   return out;
+}
+
+// Parseert "* LIST (\Flags) "/" "Mapnaam"" regels uit een IMAP LIST-response.
+function imapParseFolderNames(raw){
+  const out = [];
+  const re = /\*\s+LIST\s+\([^)]*\)\s+(?:"[^"]*"|NIL)\s+(.+?)\r\n/g;
+  let m;
+  while((m = re.exec(raw))){
+    let name = m[1].trim();
+    if(name.startsWith('"') && name.endsWith('"')) name = name.slice(1, -1).replace(/\\"/g, '"');
+    if(name) out.push(name);
+  }
+  return out;
+}
+
+// Kiest de map voor 'sent' / 'trash' uit een lijst mapnamen (best-effort, taalonafhankelijk).
+function imapPickFolder(names, kind){
+  const pats = kind === 'sent'
+    ? [/^sent$/i, /sent items/i, /sent mail/i, /verzonden items/i, /verzonden/i, /sent/i]
+    : [/^trash$/i, /deleted items/i, /deleted/i, /prullenbak/i, /verwijderde items/i, /^bin$/i, /trash/i];
+  for(const p of pats){
+    const f = names.find(n => p.test(n));
+    if(f) return f;
+  }
+  return null;
 }
 
 // Pakt één header-veld en decodeert best-effort mime-encoded-words (=?UTF-8?Q/B?...?=).
@@ -1921,10 +1946,13 @@ function imapHeaderField(header, name){
   return clip(val, 300);
 }
 
-async function imapFetchInbox(env, type, limit){
+// folderKey: 'inbox' | 'sent' | 'trash'
+async function imapFetchFolder(env, type, folderKey, limit){
   const m = imapMailboxCfg(env, type);
   if(!m) return { ok:false, error:'Onbekend mailtype' };
   if(!m.pass) return { ok:false, error:'Geen IMAP-wachtwoord ingesteld voor '+m.label+' (secret ontbreekt)' };
+  const FOLDER_LABELS = { inbox:'Inbox', sent:'Verzonden', trash:'Verwijderd' };
+  const key = ['inbox','sent','trash'].includes(folderKey) ? folderKey : 'inbox';
   const max = Math.max(1, Math.min(20, Number(limit)||10));
   let socket;
   try {
@@ -1944,12 +1972,29 @@ async function imapFetchInbox(env, type, limit){
       return { ok:false, error:'IMAP-login mislukt voor '+m.label };
     }
 
-    await send('A2 SELECT INBOX');
+    let folder = 'INBOX';
+    if(key !== 'inbox'){
+      let names = [];
+      try {
+        await send('AL LIST "" "*"');
+        const lresp = await imapReadUntilTagged(reader, 'AL ', 32768);
+        names = imapParseFolderNames(lresp);
+      } catch(_){}
+      const found = imapPickFolder(names, key);
+      if(!found){
+        try{ await send('A9 LOGOUT'); }catch(_){}
+        try{ writer.close(); }catch(_){}
+        return { ok:false, error:'Map "'+FOLDER_LABELS[key]+'" niet gevonden voor '+m.label };
+      }
+      folder = found;
+    }
+
+    await send('A2 SELECT ' + q(folder));
     resp = await imapReadUntilTagged(reader, 'A2 ', 8192);
     if(!/A2 OK/i.test(resp)){
       try{ await send('A9 LOGOUT'); }catch(_){}
       try{ writer.close(); }catch(_){}
-      return { ok:false, error:'Kan INBOX niet openen voor '+m.label };
+      return { ok:false, error:'Kan map "'+folder+'" niet openen voor '+m.label };
     }
     const existsM = resp.match(/\*\s+(\d+)\s+EXISTS/i);
     const exists = existsM ? parseInt(existsM[1], 10) : 0;
@@ -1957,7 +2002,7 @@ async function imapFetchInbox(env, type, limit){
     let messages = [];
     if(exists > 0){
       const lo = Math.max(1, exists - max + 1);
-      await send('A3 FETCH ' + lo + ':' + exists + ' (FLAGS BODY.PEEK[HEADER.FIELDS (FROM SUBJECT DATE)])');
+      await send('A3 FETCH ' + lo + ':' + exists + ' (FLAGS BODY.PEEK[HEADER.FIELDS (FROM TO SUBJECT DATE)])');
       resp = await imapReadUntilTagged(reader, 'A3 ', 200000);
       messages = imapParseFetchHeaders(resp);
     }
@@ -1966,7 +2011,7 @@ async function imapFetchInbox(env, type, limit){
     try{ writer.close(); }catch(_){}
 
     messages.sort((a,b) => (b.seq||0) - (a.seq||0));
-    return { ok:true, label:m.label, count:exists, messages };
+    return { ok:true, label:m.label, folder:FOLDER_LABELS[key], count:exists, messages };
   } catch(err){
     try{ if(socket) socket.close(); }catch(_){}
     return { ok:false, error:'IMAP-verbinding mislukt: '+(err && err.message ? err.message : 'onbekende fout') };
@@ -1989,9 +2034,11 @@ async function handleAdminMailInbox(body, env, request){
   if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
   const type = String(body.type||'');
   if(!['admin','contact','info'].includes(type)) return json({ ok:false, error:'Onbekend mailtype' }, 400);
-  const result = await imapFetchInbox(env, type, body.limit);
-  if(!result.ok) return json({ ok:false, error: result.error || 'Inbox ophalen mislukt' });
-  return json({ ok:true, label:result.label, count:result.count, messages:result.messages });
+  const folder = String(body.folder||'inbox').toLowerCase();
+  if(!['inbox','sent','trash'].includes(folder)) return json({ ok:false, error:'Onbekende map' }, 400);
+  const result = await imapFetchFolder(env, type, folder, body.limit);
+  if(!result.ok) return json({ ok:false, error: result.error || 'Map ophalen mislukt' });
+  return json({ ok:true, label:result.label, folder:result.folder, count:result.count, messages:result.messages });
 }
 
 export default {

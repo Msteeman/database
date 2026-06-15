@@ -12734,6 +12734,13 @@ a.adm-btn-ghost{ text-decoration:none; display:inline-block; }
 .adm-fb-note{ font-size:12.5px; color:#f4c66a; background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.2); border-radius:8px; padding:7px 10px; margin:0 0 8px; }
 .adm-fb-act{ display:flex; gap:8px; align-items:center; }
 .adm-fb-status{ max-width:170px; }
+/* E3c — support pointer (live aanwijzen) */
+#su-env-card{ position:relative; }
+.su-ptr{ position:absolute; z-index:5; pointer-events:none; transition:left .08s linear, top .08s linear; }
+.su-ptr-dot{ display:block; width:14px; height:14px; border-radius:50%; background:#e30613; border:2px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.55); }
+.su-ptr-lbl{ position:absolute; left:17px; top:-1px; font-size:10px; font-weight:800; color:#fff; background:#e30613; border-radius:4px; padding:1px 5px; white-space:nowrap; }
+.su-ripple{ position:absolute; z-index:4; width:12px; height:12px; margin:-6px 0 0 -6px; border-radius:50%; background:rgba(227,6,19,.5); pointer-events:none; animation:su-rip .6s ease-out forwards; }
+@keyframes su-rip{ 0%{ transform:scale(1); opacity:.75; } 100%{ transform:scale(5); opacity:0; } }
 .sh-req-msg{ display:none; font-size:13px; margin:4px 0 8px; padding:8px 11px; border-radius:0 8px 8px 0; line-height:1.4; }
 .sh-req-msg.show{ display:block; }
 .sh-req-msg.error{ background:rgba(248,113,113,.12); border-left:3px solid var(--bad,#f87171); color:#fca5a5; }

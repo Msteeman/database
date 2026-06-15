@@ -32833,9 +32833,10 @@ function _suRenderUserBanner(g){
   if(!g){ if(ex) ex.remove(); return; }
   var html='<span class="su-banner-ic">🔒</span>' +
     '<span class="su-banner-txt"><b>ONDERSTEUNING ACTIEF</b> — een beheerder kijkt tijdelijk mee in jouw account · geldig tot '+_suTime(g.expiresAt)+' · '+_suScopeLabel(g.scope)+' · alleen-lezen</span>' +
-    '<span class="su-banner-actions"><button type="button" class="su-banner-btn ghost" id="su-uend">Ondersteuning beëindigen</button></span>';
+    '<span class="su-banner-actions">'+(((g.scope==='support_pointer')||(g.scope==='support_full_control'))?'<button type="button" class="su-banner-btn" id="su-uview">Bekijk aanwijzingen</button>':'')+'<button type="button" class="su-banner-btn ghost" id="su-uend">Ondersteuning beëindigen</button></span>';
   _suMountBanner('su-ubanner','su-banner-user', html);
   var eb=document.getElementById('su-uend'); if(eb) eb.onclick=function(){ _suEndGrant(g,'user'); };
+  var uvb=document.getElementById('su-uview'); if(uvb) uvb.onclick=function(){ _suOpenEnvPanel(g, true); };
 }
 
 /* ---- SESSIE BEËINDIGEN (admin OF gebruiker) ---- */
@@ -32855,27 +32856,43 @@ async function _suEndGrant(g, endedBy){
 }
 
 /* ---- READ-ONLY: volledige omgeving van de gebruiker (apart paneel) ---- */
-async function _suOpenEnvPanel(g){
+function _suCursorId(g){ return (g.adminUid||'') + '_' + (g.targetUid||''); }
+function _suRipple(parent, x, y){
+  try{ var r=document.createElement('div'); r.className='su-ripple'; r.style.left=x+'px'; r.style.top=y+'px'; parent.appendChild(r); setTimeout(function(){ try{r.remove();}catch(_){} }, 650); }catch(_){}
+}
+/* E3c — gedeeld paneel met live admin-cursor + klik-highlights via
+   support_cursor (Firestore). asUser=true => gebruiker volgt (leest eigen
+   data, rendert admin-cursor). Alleen bij scope pointer/full_control.
+   Geen writes op scoutdata; pointer is puur aanwijzen. */
+async function _suOpenEnvPanel(g, asUser){
   if(document.getElementById('su-env')) return;
-  window.__suCtx = g.targetUid; document.body.classList.add('support-mode');
-  try { await _suAudit('session_opened', { adminUid:g.adminUid, targetUid:g.targetUid, sessionId: (g.sessionId||''), reason: (g.reason||'') }); } catch(_){}
+  var isPtr = (g.scope==='support_pointer' || g.scope==='support_full_control');
+  if(!asUser){ window.__suCtx = g.targetUid; document.body.classList.add('support-mode'); }
+  if(!asUser){ try { await _suAudit('session_opened', { adminUid:g.adminUid, targetUid:g.targetUid, sessionId: (g.sessionId||''), reason: (g.reason||'') }); } catch(_){} }
   var who=_bhEsc(g.targetEmail)||_bhEsc(g.targetName)||'gebruiker';
-  var ov=document.createElement('div'); ov.id='su-env'; ov.className='su-env';
-  ov.innerHTML='<div class="su-env-card">' +
-    '<div class="su-env-top"><div class="su-env-title">🔒 Omgeving van '+who+' <span class="su-env-ro">alleen-lezen</span></div><button type="button" class="bh-btn bh-btn-ghost" id="su-env-close">Sluiten</button></div>' +
-    '<div class="su-env-tabs" id="su-env-tabs"></div><div class="su-env-body" id="su-env-body"><div class="bh-empty">Laden…</div></div></div>';
+  var title=asUser ? 'Beheerder wijst aan in jouw omgeving' : ('Omgeving van '+who);
+  var ov=document.createElement('div'); ov.id='su-env'; ov.className='su-env'+(asUser?' su-env-user':'');
+  ov.innerHTML='<div class="su-env-card" id="su-env-card">' +
+    '<div class="su-env-top"><div class="su-env-title">🔒 '+title+' <span class="su-env-ro">alleen-lezen</span></div><button type="button" class="bh-btn bh-btn-ghost" id="su-env-close">Sluiten</button></div>' +
+    '<div class="su-env-tabs" id="su-env-tabs"></div><div class="su-env-body" id="su-env-body"><div class="bh-empty">Laden…</div></div>' +
+    '<div id="su-ptr" class="su-ptr" style="display:none"><span class="su-ptr-dot"></span><span class="su-ptr-lbl">Admin</span></div></div>';
   document.body.appendChild(ov);
-  document.getElementById('su-env-close').onclick=function(){ ov.remove(); window.__suCtx=null; document.body.classList.remove('support-mode'); };
+  var card=document.getElementById('su-env-card');
+  var _cleanup=[];
+  function _closePanel(){ _cleanup.forEach(function(fn){ try{fn();}catch(_){} }); try{ov.remove();}catch(_){} if(!asUser){ window.__suCtx=null; document.body.classList.remove('support-mode'); } }
+  document.getElementById('su-env-close').onclick=_closePanel;
   var tabs=[['dashboard','Overzicht'],['spelers','Spelers'],['programma','Programma'],['rapporten','Rapporten'],['toernooien','Toernooien']];
   var tabsEl=document.getElementById('su-env-tabs');
   tabsEl.innerHTML=tabs.map(function(t,k){ return '<button type="button" class="su-env-tab'+(k===0?' active':'')+'" data-et="'+t[0]+'">'+t[1]+'</button>'; }).join('');
+  var ownerUid = asUser ? currentUser.uid : g.targetUid;
+  var _ptrSend = function(){};
   var data={ players:[], reports:[], programma:[], tournaments:[] };
   try {
     var r=await Promise.all([
-      getDocs(collection(db,'users',g.targetUid,'players')),
-      getDocs(collection(db,'users',g.targetUid,'match_reports')),
-      getDocs(collection(db,'users',g.targetUid,'programma')),
-      getDocs(collection(db,'users',g.targetUid,'tournaments'))
+      getDocs(collection(db,'users',ownerUid,'players')),
+      getDocs(collection(db,'users',ownerUid,'match_reports')),
+      getDocs(collection(db,'users',ownerUid,'programma')),
+      getDocs(collection(db,'users',ownerUid,'tournaments'))
     ]);
     r[0].forEach(function(d){ data.players.push(d.data()||{}); });
     r[1].forEach(function(d){ data.reports.push(d.data()||{}); });
@@ -32883,6 +32900,8 @@ async function _suOpenEnvPanel(g){
     r[3].forEach(function(d){ data.tournaments.push(d.data()||{}); });
   } catch(e){ var b0=document.getElementById('su-env-body'); if(b0) b0.innerHTML='<div class="bh-empty">Kon data niet laden (grant verlopen of ingetrokken?).</div>'; return; }
   function row(a,c){ return '<div class="su-ro-row"><b>'+a+'</b><span>'+c+'</span></div>'; }
+  var _curTab='dashboard';
+  function setTab(which){ _curTab=which; tabsEl.querySelectorAll('.su-env-tab').forEach(function(x){ x.classList.toggle('active', x.getAttribute('data-et')===which); }); renderTab(which); }
   function renderTab(which){
     var b=document.getElementById('su-env-body'); if(!b) return;
     if(which==='dashboard'){
@@ -32901,8 +32920,37 @@ async function _suOpenEnvPanel(g){
       b.innerHTML = data.tournaments.length ? ('<div class="su-ro-list">'+data.tournaments.slice(0,100).map(function(t){ return row(_bhEsc(t.naam||t.name||'—'), _bhEsc(t.datum||t.date||'')); }).join('')+'</div>') : '<div class="bh-empty">Geen toernooien</div>';
     }
   }
-  tabsEl.querySelectorAll('[data-et]').forEach(function(tb){ tb.addEventListener('click', function(){ tabsEl.querySelectorAll('.su-env-tab').forEach(function(x){ x.classList.toggle('active', x===tb); }); renderTab(tb.getAttribute('data-et')); }); });
-  renderTab('dashboard');
+  tabsEl.querySelectorAll('[data-et]').forEach(function(tb){ tb.addEventListener('click', function(){ var et=tb.getAttribute('data-et'); setTab(et); if(!asUser && isPtr) _ptrSend({tab:et}); }); });
+  setTab('dashboard');
+  // ===== E3c — pointer-kanaal (support_cursor, throttled) =====
+  if(isPtr){
+    var cid=_suCursorId(g);
+    if(!asUser){
+      // ADMIN zendt cursor/klik/tab/scroll uit
+      var _ptrState={}, _ptrT=null, _ptrDirty=false, _clickN=0;
+      function _ptrFlush(){ _ptrT=null; if(!_ptrDirty) return; _ptrDirty=false; try{ setDoc(doc(db,'support_cursor',cid), Object.assign({adminUid:g.adminUid,targetUid:g.targetUid,updatedAt:Date.now()}, _ptrState), {merge:true}); }catch(_){} }
+      _ptrSend=function(extra){ if(extra){ for(var k in extra){ if(Object.prototype.hasOwnProperty.call(extra,k)) _ptrState[k]=extra[k]; } } _ptrDirty=true; if(_ptrT) return; _ptrFlush(); _ptrT=setTimeout(_ptrFlush,90); };
+      function _onMove(e){ var rc=card.getBoundingClientRect(); if(!rc.width) return; _ptrSend({ x:Math.max(0,Math.min(1,(e.clientX-rc.left)/rc.width)), y:Math.max(0,Math.min(1,(e.clientY-rc.top)/rc.height)) }); }
+      function _onClick(e){ var rc=card.getBoundingClientRect(); if(!rc.width) return; _clickN++; _ptrSend({ clickX:(e.clientX-rc.left)/rc.width, clickY:(e.clientY-rc.top)/rc.height, clickN:_clickN }); }
+      function _onScroll(){ var b=document.getElementById('su-env-body'); if(b){ var sh=(b.scrollHeight-b.clientHeight)||1; _ptrSend({ scroll:b.scrollTop/sh }); } }
+      card.addEventListener('mousemove',_onMove); card.addEventListener('click',_onClick);
+      var bEl=document.getElementById('su-env-body'); if(bEl) bEl.addEventListener('scroll',_onScroll);
+      _cleanup.push(function(){ try{ card.removeEventListener('mousemove',_onMove); card.removeEventListener('click',_onClick); if(bEl) bEl.removeEventListener('scroll',_onScroll); }catch(_){} try{ setDoc(doc(db,'support_cursor',cid), {adminUid:g.adminUid,targetUid:g.targetUid,x:-1,y:-1,updatedAt:Date.now()}, {merge:true}); }catch(_){} });
+    } else {
+      // GEBRUIKER volgt de admin-cursor live
+      var ptr=document.getElementById('su-ptr'); var _lastN=0;
+      var unsub=onSnapshot(doc(db,'support_cursor',cid), function(snap){
+        var d=snap.data(); if(!d){ if(ptr) ptr.style.display='none'; return; }
+        if(d.tab && d.tab!==_curTab) setTab(d.tab);
+        if(typeof d.scroll==='number'){ var b=document.getElementById('su-env-body'); if(b){ var sh=(b.scrollHeight-b.clientHeight)||1; b.scrollTop=d.scroll*sh; } }
+        var rc=card.getBoundingClientRect();
+        if(typeof d.x==='number' && d.x>=0 && typeof d.y==='number'){ if(ptr){ ptr.style.display='block'; ptr.style.left=(d.x*rc.width)+'px'; ptr.style.top=(d.y*rc.height)+'px'; } }
+        else if(ptr){ ptr.style.display='none'; }
+        if(d.clickN && d.clickN!==_lastN){ _lastN=d.clickN; if(typeof d.clickX==='number') _suRipple(card, d.clickX*rc.width, d.clickY*rc.height); }
+      }, function(){});
+      _cleanup.push(function(){ try{ unsub(); }catch(_){} });
+    }
+  }
 }
 
 

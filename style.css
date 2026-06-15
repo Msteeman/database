@@ -12752,6 +12752,11 @@ a.adm-btn-ghost{ text-decoration:none; display:inline-block; }
 .su-ro-click:hover{ background:rgba(245,158,11,.1); }
 .su-nav-flash{ border-radius:8px; animation:su-flash 1.8s ease-out; }
 @keyframes su-flash{ 0%,100%{ box-shadow:none; } 20%,60%{ box-shadow:0 0 0 3px rgba(227,6,19,.6); background:rgba(227,6,19,.12); } }
+/* E4b — formulier-voorstel controls */
+.su-act-row2{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; width:100%; margin-top:6px; padding-top:6px; border-top:1px dashed var(--border,#1f2937); }
+.su-act-sel,.su-act-in{ background:#0e1626; border:1px solid var(--border,#1f2937); color:var(--text,#e8edf5); border-radius:7px; padding:5px 9px; font-size:12px; font-family:inherit; }
+.su-act-in{ min-width:160px; }
+.su-suggest-flash{ box-shadow:0 0 0 2px rgba(245,158,11,.8) !important; transition:box-shadow .3s; }
 .sh-req-msg{ display:none; font-size:13px; margin:4px 0 8px; padding:8px 11px; border-radius:0 8px 8px 0; line-height:1.4; }
 .sh-req-msg.show{ display:block; }
 .sh-req-msg.error{ background:rgba(248,113,113,.12); border-left:3px solid var(--bad,#f87171); color:#fca5a5; }

@@ -32874,12 +32874,14 @@ function _suRipple(parent, x, y){
    actieve support_full_control-grant -> geen sessie/verlopen/ingetrokken = geen actie. */
 var _suActSeq = 0, __suUnsubAct = null, _suLastActSeq = 0;
 var _SU_ACT_VIEWS = ['dashboard','database','compare','elftallen','matches','programma','agenda','pitch','contacts','adresboek','tips','ritten','toernooien'];
+/* E4b — gewhiteliste formuliervelden voor suggest_field (voorinvullen, GEEN opslag). */
+var _SU_FORM_FIELDS = { report: [['f-naam','Naam'],['f-club','Club'],['f-positie','Positie'],['f-elftal','Elftal'],['f-tekst-techniek','Techniek'],['f-tekst-inzicht','Inzicht']] };
 async function _suSendAction(g, actionType, params){
   if(!g || g.scope!=='support_full_control') return;
   _suActSeq = Math.max(_suActSeq+1, Date.now());
   try{
     await setDoc(doc(db,'support_action',_suCursorId(g)), { adminUid:g.adminUid, targetUid:g.targetUid, seq:_suActSeq, actionType:actionType, params:(params||{}), createdAt:Date.now() }, {merge:true});
-    await _suAudit('action_sent', { adminUid:g.adminUid, targetUid:g.targetUid, sessionId:(g.sessionId||''), details:'type='+actionType+(params&&params.view?(';view='+params.view):'') });
+    await _suAudit('action_sent', { adminUid:g.adminUid, targetUid:g.targetUid, sessionId:(g.sessionId||''), details:'type='+actionType+(params&&params.view?(';view='+params.view):'')+(params&&params.formId?(';form='+params.formId):'')+(params&&params.fieldId?(';field='+params.fieldId):'') });
   }catch(_){}
 }
 function _suHighlightNav(view){
@@ -32894,10 +32896,16 @@ function _suExecAction(g, d){
     else if(t==='open_tournament'){ if(typeof go==='function') go('toernooien'); label='opende toernooien'; }
     else if(t==='scroll_to'){ try{ window.scrollTo({top:0,behavior:'smooth'}); }catch(_){ try{window.scrollTo(0,0);}catch(_2){} } label='scrolde naar boven'; }
     else if(t==='highlight' && _SU_ACT_VIEWS.indexOf(p.view)!==-1){ _suHighlightNav(p.view); label='wees '+p.view+' aan'; }
+    else if(t==='open_form' && p.formId==='report'){ if(typeof go==='function') go('report'); label='opende het rapportformulier'; }
+    else if(t==='suggest_field' && p.formId && p.fieldId && (_SU_FORM_FIELDS[p.formId]||[]).some(function(f){ return f[0]===p.fieldId; })){
+      var _el=document.getElementById(p.fieldId);
+      if(_el){ _el.value=String(p.value==null?'':p.value).slice(0,1000); _el.classList.add('su-suggest-flash'); setTimeout(function(){ try{_el.classList.remove('su-suggest-flash');}catch(_){} },1500); label='deed een voorstel (niet opgeslagen)'; }
+      else { result='rejected'; }
+    }
     else { result='rejected'; label='geweigerd'; }
   }catch(_){ result='rejected'; }
   if(result==='executed' && typeof toast==='function') toast('Beheerder: '+label);
-  try{ _suAudit('action_executed', { adminUid:g.adminUid, targetUid:g.targetUid, sessionId:(g.sessionId||''), details:'type='+t+';result='+result+(p.view?(';view='+p.view):'') }); }catch(_){}
+  try{ _suAudit('action_executed', { adminUid:g.adminUid, targetUid:g.targetUid, sessionId:(g.sessionId||''), details:'type='+t+';result='+result+(p.view?(';view='+p.view):'')+(p.formId?(';form='+p.formId):'')+(p.fieldId?(';field='+p.fieldId):'') }); }catch(_){}
 }
 function _suWireActionListener(g){
   if(__suUnsubAct){ try{__suUnsubAct();}catch(_){} __suUnsubAct=null; }
@@ -32980,10 +32988,17 @@ async function _suOpenEnvPanel(g, asUser){
         + navList.map(function(v){ return '<button type="button" class="su-act-btn" data-nav="'+v[0]+'">'+v[1]+'</button>'; }).join('')
         + '<span class="su-act-l">Wijs aan</span>'
         + navList.map(function(v){ return '<button type="button" class="su-act-btn ghost" data-hl="'+v[0]+'">'+v[1]+'</button>'; }).join('')
-        + '<button type="button" class="su-act-btn" data-scroll="1">↑ Boven</button>';
+        + '<button type="button" class="su-act-btn" data-scroll="1">↑ Boven</button>'
+        + '<div class="su-act-row2"><span class="su-act-l">Formulier</span>'
+        + '<button type="button" class="su-act-btn" data-form="report">Open rapportformulier</button>'
+        + '<select id="su-sg-field" class="su-act-sel">'+(_SU_FORM_FIELDS.report||[]).map(function(f){ return '<option value="'+f[0]+'">'+_bhEsc(f[1])+'</option>'; }).join('')+'</select>'
+        + '<input id="su-sg-val" class="su-act-in" placeholder="Voorstel-waarde">'
+        + '<button type="button" class="su-act-btn" data-suggest="1">Stel voor (geen opslag)</button></div>';
       actEl.querySelectorAll('[data-nav]').forEach(function(b){ b.addEventListener('click', function(){ _suSendAction(g,'navigate',{view:b.getAttribute('data-nav')}); if(typeof toast==='function') toast('Verstuurd: ga naar '+b.textContent); }); });
       actEl.querySelectorAll('[data-hl]').forEach(function(b){ b.addEventListener('click', function(){ _suSendAction(g,'highlight',{view:b.getAttribute('data-hl')}); if(typeof toast==='function') toast('Verstuurd: wijs '+b.textContent+' aan'); }); });
       var sc=actEl.querySelector('[data-scroll]'); if(sc) sc.addEventListener('click', function(){ _suSendAction(g,'scroll_to',{}); if(typeof toast==='function') toast('Verstuurd: scroll naar boven'); });
+      var of=actEl.querySelector('[data-form]'); if(of) of.addEventListener('click', function(){ _suSendAction(g,'open_form',{formId:'report'}); if(typeof toast==='function') toast('Verstuurd: open rapportformulier'); });
+      var sg=actEl.querySelector('[data-suggest]'); if(sg) sg.addEventListener('click', function(){ var fid=((document.getElementById('su-sg-field')||{}).value)||''; var val=((document.getElementById('su-sg-val')||{}).value)||''; if(fid){ _suSendAction(g,'suggest_field',{formId:'report',fieldId:fid,value:val}); if(typeof toast==='function') toast('Verstuurd: voorstel voor veld (niet opgeslagen)'); } });
     }
     var beBody=document.getElementById('su-env-body');
     if(beBody) beBody.addEventListener('click', function(e){ var rr=(e.target&&e.target.closest)?e.target.closest('[data-supid]'):null; if(rr){ var pid=rr.getAttribute('data-supid'); if(pid){ _suSendAction(g,'open_player',{playerId:pid}); if(typeof toast==='function') toast('Verstuurd: open speler bij gebruiker'); } } });

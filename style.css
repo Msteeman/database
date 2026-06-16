@@ -2142,7 +2142,7 @@ a { color: var(--accent); text-decoration: none; }
 .view.active > *:nth-child(7) { opacity: 0; animation: appleChildIn .5s cubic-bezier(.16,1,.3,1) .37s both; }
 @keyframes appleChildIn {
   0%   { opacity: 0; transform: translateY(28px); filter: blur(8px); }
-  100% { opacity: 1; transform: translateY(0);    filter: blur(0); }
+  100% { opacity: 1; transform: none;             filter: none; }
 }
 
 /* Tabellen — rij-voor-rij cascade-in */
@@ -2174,7 +2174,7 @@ a { color: var(--accent); text-decoration: none; }
 @keyframes appleRowIn {
   0%   { opacity: 0; transform: translateX(-18px) translateY(10px); filter: blur(6px); }
   60%  { opacity: 1; }
-  100% { opacity: 1; transform: translateX(0) translateY(0);        filter: blur(0); }
+  100% { opacity: 1; transform: none;                               filter: none; }
 }
 
 /* Wedstrijdkaarten / dashboard cards — cascade-in */
@@ -2224,7 +2224,7 @@ a { color: var(--accent); text-decoration: none; }
 @keyframes appleCardCascade {
   0%   { opacity: 0; transform: translateY(34px) scale(.94); filter: blur(10px); }
   60%  { opacity: 1; }
-  100% { opacity: 1; transform: translateY(0)    scale(1);   filter: blur(0); }
+  100% { opacity: 1; transform: none;                        filter: none; }
 }
 
 /* Shimmer-band over view bij activatie — geeft een 'video'-gevoel */
@@ -2275,7 +2275,7 @@ a { color: var(--accent); text-decoration: none; }
 }
 @keyframes appleToolbarIn {
   0%   { opacity: 0; transform: translateY(-12px); filter: blur(6px); }
-  100% { opacity: 1; transform: translateY(0);     filter: blur(0); }
+  100% { opacity: 1; transform: none;              filter: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -11098,7 +11098,7 @@ tr.db-row-obs td:first-child {
     height: calc(100% - 60px - env(safe-area-inset-top));
     min-height: 0;
   }
-  main.content { 
+  main.main {
     height: calc(100% - 52px);
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;

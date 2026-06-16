@@ -31181,7 +31181,7 @@ function _shRequestAccess(){
         '<option value="anders">Anders</option>' +
       '</select>' +
       '<label class="sh-req-l" for="sh-req-message">Reden / motivatie</label>' +
-      '<textarea id="sh-req-message" class="sh-req-i" rows="3" placeholder="Waarom wil je ScoutingHub gebruiken?"></textarea>' +
+      '<textarea id="sh-req-message" class="sh-req-i" rows="2" placeholder="Waarom wil je ScoutingHub gebruiken?"></textarea>' +
       '<label class="sh-req-check"><input type="checkbox" id="sh-req-terms"><span>Ik ga akkoord met de <a href="voorwaarden.html" target="_blank" rel="noopener">Algemene Voorwaarden</a> en het <a href="privacy.html" target="_blank" rel="noopener">Privacybeleid</a> van ScoutingHub.</span></label>' +
       '<label class="sh-req-check"><input type="checkbox" id="sh-req-news" checked><span>Ik ontvang graag de ScoutingHub nieuwsbrief (max. 1x per maand).</span></label>' +
       '<input type="text" id="sh-req-website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">' +

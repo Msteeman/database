@@ -12592,14 +12592,14 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 /* Fase 1 — Toegang aanvragen */
 .login-req-btn{ background:none; border:1px solid var(--border,#1f2937); color:var(--text-2,#9aa8bd); border-radius:8px; padding:9px 16px; font-size:13px; cursor:pointer; min-height:40px; }
 .login-req-btn:hover{ border-color:var(--accent,#4ea1ff); color:var(--text,#e8edf5); }
-.sh-req-card{ max-width:340px; width:100%; text-align:left; position:relative; padding:16px; max-height:calc(100vh - 40px); overflow-y:auto; overscroll-behavior:contain; }
-.sh-req-x{ position:absolute; top:max(8px, env(safe-area-inset-top,0px)); right:8px; background:none; border:none; color:var(--text-2,#9aa8bd); font-size:22px; cursor:pointer; line-height:1; width:44px; height:44px; }
-.sh-req-sub{ font-size:13px; color:var(--text-2,#9aa8bd); margin:2px 0 12px; line-height:1.5; }
-.sh-req-l{ display:block; font-size:12px; color:var(--text-3,#8b97ad); margin:8px 0 3px; }
-.sh-req-i{ width:100%; background:var(--bg-2,#0e1626); border:1px solid var(--border,#1f2937); color:var(--text,#e8edf5); border-radius:8px; padding:8px 11px; font-size:13.5px; box-sizing:border-box; font-family:inherit; }
+.sh-req-card{ max-width:320px; width:100%; text-align:left; position:relative; padding:12px 14px; max-height:min(560px, calc(100vh - 40px)); overflow-y:auto; overscroll-behavior:contain; }
+.sh-req-x{ position:absolute; top:4px; right:4px; background:none; border:none; color:var(--text-2,#9aa8bd); font-size:20px; cursor:pointer; line-height:1; width:36px; height:36px; }
+.sh-req-sub{ font-size:12px; color:var(--text-2,#9aa8bd); margin:2px 0 8px; line-height:1.4; }
+.sh-req-l{ display:block; font-size:11.5px; color:var(--text-3,#8b97ad); margin:5px 0 2px; }
+.sh-req-i{ width:100%; background:var(--bg-2,#0e1626); border:1px solid var(--border,#1f2937); color:var(--text,#e8edf5); border-radius:7px; padding:6px 9px; font-size:13px; box-sizing:border-box; font-family:inherit; }
 .sh-req-i:focus{ outline:none; border-color:var(--accent,#4ea1ff); }
-.sh-req-actions{ display:flex; gap:8px; margin-top:14px; }
-.sh-req-actions .settings-btn{ flex:1; min-height:44px; }
+.sh-req-actions{ display:flex; gap:8px; margin-top:10px; }
+.sh-req-actions .settings-btn{ flex:1; min-height:38px; }
 .sh-req-send{ background:var(--accent,#4ea1ff); color:#06223f; border-color:var(--accent,#4ea1ff); font-weight:700; }
 
 /* ===== FASE 7 — Beheer-dashboard / statistieken ===== */

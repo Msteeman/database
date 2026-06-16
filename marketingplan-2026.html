@@ -1,0 +1,1136 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ScoutingHub — Marketingplan 2026</title>
+<script>
+  (() => {
+    const param = new URLSearchParams(window.location.search).get("scoutTheme");
+    const theme = param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.documentElement.setAttribute("data-theme", theme);
+  })();
+</script>
+<style>
+:root {
+  color-scheme: light;
+  --cp-bg: #f7f4ef; --cp-bg-elevated: #fcfbf8; --cp-surface: #ffffff; --cp-surface-soft: #f5f5f5;
+  --cp-border: #dedede; --cp-border-strong: #919191; --cp-text: #242424; --cp-text-muted: #5c5c5c;
+  --cp-text-soft: #6f6f6f; --cp-accent: #b11f4b; --cp-accent-hover: #9a1a41; --cp-accent-soft: rgba(177,31,75,0.08);
+  --cp-accent-fg: #ffffff; --cp-success: #16a34a; --cp-danger: #dc2626; --cp-warning: #f59e0b; --cp-link: #0078d4;
+  --cp-shadow: 0 18px 48px rgba(0,0,0,0.12); --cp-overlay: rgba(255,255,255,0.8); --cp-panel: rgba(255,255,255,0.86);
+  --cp-panel-strong: rgba(255,255,255,0.96); --cp-sheen: rgba(255,255,255,0.55); --cp-highlight: rgba(177,31,75,0.12);
+  --ig:#d6296b; --li:#0a66c2;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --cp-bg: #3d3b3a; --cp-bg-elevated: #343231; --cp-surface: #292929; --cp-surface-soft: #2e2e2e;
+  --cp-border: #474747; --cp-border-strong: #5f5f5f; --cp-text: #dedede; --cp-text-muted: #919191;
+  --cp-text-soft: #b0b0b0; --cp-accent: #fd8ea1; --cp-accent-hover: #fb7b91; --cp-accent-soft: rgba(253,142,161,0.14);
+  --cp-accent-fg: #1a1a1a; --cp-success: #4ade80; --cp-danger: #f87171; --cp-warning: #fbbf24; --cp-link: #4da6ff;
+  --cp-shadow: 0 18px 48px rgba(0,0,0,0.32); --cp-overlay: rgba(41,41,41,0.88); --cp-panel: rgba(41,41,41,0.72);
+  --cp-panel-strong: rgba(41,41,41,0.96); --cp-sheen: rgba(255,255,255,0.04); --cp-highlight: rgba(253,142,161,0.12);
+  --ig:#fd8ea1; --li:#4da6ff;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--cp-bg); color: var(--cp-text);
+  font-family: "Segoe UI", Aptos, Calibri, -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.55; -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px 80px; }
+
+/* Header */
+header.hero {
+  background: linear-gradient(135deg, var(--cp-accent), var(--cp-accent-hover));
+  color: var(--cp-accent-fg); padding: 48px 20px 40px; text-align: center; position: relative;
+}
+header.hero h1 { margin: 0 0 8px; font-size: clamp(28px, 5vw, 44px); font-weight: 800; letter-spacing: -0.5px; }
+header.hero p { margin: 4px 0; font-size: clamp(15px, 2.2vw, 18px); opacity: 0.95; }
+.hero-badge { display:inline-block; background: rgba(255,255,255,0.18); padding: 4px 14px; border-radius: 999px; font-size: 13px; font-weight:600; margin-bottom: 14px; }
+.theme-toggle {
+  position: absolute; top: 16px; right: 16px; background: rgba(255,255,255,0.2); border: none;
+  color: var(--cp-accent-fg); padding: 8px 14px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 600;
+}
+.theme-toggle:hover { background: rgba(255,255,255,0.32); }
+
+/* Nav tabs */
+nav.tabs {
+  position: sticky; top: 0; z-index: 50; background: var(--cp-bg-elevated);
+  border-bottom: 1px solid var(--cp-border); display: flex; gap: 4px; padding: 8px 12px; overflow-x: auto;
+  justify-content: center; flex-wrap: wrap;
+}
+nav.tabs button {
+  background: transparent; border: 1px solid transparent; color: var(--cp-text-muted);
+  padding: 8px 16px; border-radius: 999px; cursor: pointer; font-size: 14px; font-weight: 600; white-space: nowrap;
+}
+nav.tabs button:hover { background: var(--cp-surface-soft); color: var(--cp-text); }
+nav.tabs button.active { background: var(--cp-accent); color: var(--cp-accent-fg); }
+
+section.panel { display: none; padding-top: 32px; }
+section.panel.active { display: block; }
+
+h2.sec { font-size: 24px; font-weight: 800; margin: 8px 0 6px; letter-spacing: -0.3px; }
+h2.sec .emoji { margin-right: 8px; }
+p.lead { color: var(--cp-text-muted); margin: 0 0 24px; max-width: 70ch; }
+
+.card {
+  background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 16px;
+  padding: 22px; margin-bottom: 18px; box-shadow: 0 0 2px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.14);
+}
+.card h3 { margin: 0 0 12px; font-size: 18px; font-weight: 700; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 720px){ .grid2 { grid-template-columns: 1fr; } }
+
+.codebox {
+  background: var(--cp-surface-soft); border: 1px solid var(--cp-border); border-radius: 10px;
+  padding: 14px 16px; font-family: Consolas, "Courier New", monospace; font-size: 13.5px;
+  white-space: pre-wrap; position: relative; color: var(--cp-text);
+}
+.copybtn {
+  background: var(--cp-accent); color: var(--cp-accent-fg); border: none; border-radius: 8px;
+  padding: 6px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; margin-top: 10px;
+}
+.copybtn:hover { background: var(--cp-accent-hover); }
+.copybtn.ok { background: var(--cp-success); }
+
+ul.clean { padding-left: 20px; margin: 8px 0; }
+ul.clean li { margin: 6px 0; }
+.pill { display:inline-block; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+.pill.ig { background: var(--ig); color: #fff; }
+.pill.li { background: var(--li); color: #fff; }
+.pill.cat { background: var(--cp-accent-soft); color: var(--cp-accent); border:1px solid var(--cp-accent); }
+html[data-theme="dark"] .pill.ig, html[data-theme="dark"] .pill.li { color: #1a1a1a; }
+
+.hashtag { color: var(--cp-link); font-weight: 600; }
+
+/* Week ritme table */
+table.ritme { width: 100%; border-collapse: collapse; }
+table.ritme th, table.ritme td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--cp-border); font-size: 14.5px; }
+table.ritme th { color: var(--cp-text-muted); font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.4px; }
+
+/* Phase banner */
+.phase {
+  border-left: 5px solid var(--cp-accent); background: var(--cp-accent-soft);
+  padding: 14px 18px; border-radius: 10px; margin: 28px 0 16px;
+}
+.phase h3 { margin: 0 0 4px; font-size: 18px; font-weight: 800; }
+.phase p { margin: 0; color: var(--cp-text-muted); font-size: 14px; }
+.phase.star { border-left-color: var(--cp-warning); }
+
+/* Week card */
+.week {
+  background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: 14px;
+  margin-bottom: 12px; overflow: hidden; box-shadow: 0 0 2px rgba(0,0,0,0.10);
+}
+.week-head {
+  display: flex; align-items: center; gap: 12px; padding: 14px 18px; cursor: pointer; user-select: none;
+}
+.week-head:hover { background: var(--cp-surface-soft); }
+.week-num { background: var(--cp-accent); color: var(--cp-accent-fg); width: 34px; height: 34px; border-radius: 9px; display:flex; align-items:center; justify-content:center; font-weight: 800; font-size: 15px; flex-shrink: 0; }
+.week-title { font-weight: 700; font-size: 15.5px; }
+.week-dates { color: var(--cp-text-muted); font-size: 13.5px; }
+.week-chev { margin-left: auto; color: var(--cp-text-muted); transition: transform 0.2s; font-size: 18px; }
+.week.open .week-chev { transform: rotate(90deg); }
+.week-body { display: none; padding: 4px 18px 16px; }
+.week.open .week-body { display: block; }
+
+.day {
+  display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: 10px;
+  border: 1px solid var(--cp-border); margin-bottom: 8px; cursor: pointer; background: var(--cp-bg-elevated);
+}
+.day:hover { border-color: var(--cp-accent); background: var(--cp-accent-soft); }
+.day-when { display:flex; flex-direction: column; min-width: 78px; }
+.day-d { font-weight: 700; font-size: 14px; }
+.day-t { color: var(--cp-text-muted); font-size: 12.5px; }
+.day-post { flex: 1; }
+.day-post .pt { font-weight: 600; font-size: 14.5px; }
+.day-post .pmeta { color: var(--cp-text-muted); font-size: 12.5px; margin-top: 2px; }
+.day-type { font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: var(--cp-highlight); color: var(--cp-accent); white-space: nowrap; }
+
+/* Modal */
+.modal-bg {
+  display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100;
+  align-items: center; justify-content: center; padding: 20px;
+}
+.modal-bg.show { display: flex; }
+.modal {
+  background: var(--cp-surface); border-radius: 16px; max-width: 560px; width: 100%; max-height: 88vh;
+  overflow-y: auto; padding: 26px; box-shadow: var(--cp-shadow); border: 1px solid var(--cp-border);
+}
+.modal h3 { margin: 0 0 4px; font-size: 20px; }
+.modal .mtags { display:flex; gap: 8px; flex-wrap: wrap; margin: 10px 0 16px; }
+.modal .mlabel { font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--cp-text-muted); font-weight: 700; margin: 18px 0 6px; }
+.modal .mbody { background: var(--cp-surface-soft); border-radius: 10px; padding: 14px 16px; white-space: pre-wrap; font-size: 14.5px; border: 1px solid var(--cp-border); }
+.modal .film { background: var(--cp-accent-soft); border-left: 4px solid var(--cp-accent); border-radius: 8px; padding: 12px 14px; font-size: 14px; }
+.modal .htags { color: var(--cp-link); font-weight: 600; font-size: 14px; word-spacing: 4px; }
+.modal-close { float: right; background: var(--cp-surface-soft); border: 1px solid var(--cp-border); border-radius: 8px; width: 34px; height: 34px; cursor: pointer; font-size: 18px; color: var(--cp-text); }
+.dur { display:inline-block; background: var(--cp-warning); color:#1a1a1a; font-weight:700; font-size:12px; padding:2px 9px; border-radius:999px; margin-left:6px; }
+
+.tip { background: var(--cp-surface-soft); border: 1px dashed var(--cp-border-strong); border-radius: 10px; padding: 12px 16px; font-size: 14px; margin: 14px 0; }
+.tip b { color: var(--cp-accent); }
+.golden { counter-reset: g; }
+.golden .g-item { display:flex; gap: 14px; align-items:flex-start; padding: 12px 0; border-bottom: 1px solid var(--cp-border); }
+.golden .g-item:last-child { border-bottom: none; }
+.golden .g-num { counter-increment: g; background: var(--cp-accent); color: var(--cp-accent-fg); min-width: 30px; height: 30px; border-radius: 8px; display:flex; align-items:center; justify-content:center; font-weight: 800; }
+.golden .g-num::before { content: counter(g); }
+.footer-note { text-align: center; color: var(--cp-text-muted); font-size: 13px; margin-top: 30px; }
+.kpi-row { display:flex; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
+.kpi { background: var(--cp-surface-soft); border:1px solid var(--cp-border); border-radius: 10px; padding: 10px 16px; flex:1; min-width: 140px; text-align:center; }
+.kpi b { display:block; font-size: 22px; color: var(--cp-accent); }
+.kpi span { font-size: 12.5px; color: var(--cp-text-muted); }
+
+/* Afvinken + voortgang + agenda */
+.cal-controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:14px; }
+.btn-soft { background:var(--cp-surface-soft); color:var(--cp-text); border:1px solid var(--cp-border); border-radius:8px; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; }
+.btn-soft:hover { border-color:var(--cp-accent); }
+.btn-accent2 { background:var(--cp-accent); color:var(--cp-accent-fg); border:none; border-radius:8px; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; }
+.btn-accent2:hover { background:var(--cp-accent-hover); }
+.progwrap { margin: 2px 0 18px; }
+.progtext { font-size:13px; color:var(--cp-text-muted); font-weight:700; margin-bottom:6px; }
+.progbar { height:12px; background:var(--cp-surface-soft); border:1px solid var(--cp-border); border-radius:999px; overflow:hidden; }
+.progbar > i { display:block; height:100%; width:0; background:var(--cp-success); transition:width .3s ease; }
+.wkprog { font-size:12px; font-weight:800; color:var(--cp-text-muted); background:var(--cp-surface-soft); border:1px solid var(--cp-border); border-radius:999px; padding:2px 9px; margin-left:auto; flex-shrink:0; }
+.wkprog.full { color:var(--cp-success); border-color:var(--cp-success); }
+.chk { background:transparent; border:none; font-size:20px; cursor:pointer; padding:0 2px; line-height:1; flex-shrink:0; }
+.chk:hover { transform:scale(1.15); }
+.day.done { opacity:0.6; border-color:var(--cp-success); background:var(--cp-surface-soft); }
+.day.done .pt { text-decoration:line-through; }
+.wktoday { background:var(--cp-warning); color:#1a1a1a; font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px; margin-left:8px; white-space:nowrap; }
+.week.flash { animation:wkflash 1.3s ease; }
+@keyframes wkflash { 0%,100%{ box-shadow:0 0 2px rgba(0,0,0,0.10);} 25%,75%{ box-shadow:0 0 0 3px var(--cp-accent);} }
+/* week-head: badge moet ruimte laten voor chevron */
+.week-head .wkprog { margin-left:auto; }
+.week-head .week-chev { margin-left:10px; }
+
+/* Bereiken-tab */
+.lbl { font-size:12px; text-transform:uppercase; letter-spacing:0.5px; color:var(--cp-text-muted); font-weight:800; margin:18px 0 6px; }
+.lbl:first-child { margin-top:0; }
+.persona { display:flex; gap:14px; align-items:flex-start; padding:14px 0; border-bottom:1px solid var(--cp-border); }
+.persona:last-child { border-bottom:none; }
+.persona .pic { font-size:30px; flex-shrink:0; line-height:1; }
+.persona .pwho { font-weight:800; font-size:15.5px; margin-bottom:2px; }
+.persona .ppain { color:var(--cp-text-muted); font-size:13.5px; margin:2px 0 6px; }
+.persona .psay { font-size:14px; }
+.persona .psay b { color:var(--cp-accent); }
+.dodont { display:grid; grid-template-columns:1fr 1fr; gap:18px; }
+@media (max-width:720px){ .dodont { grid-template-columns:1fr; } }
+.dodont .do, .dodont .dont { border-radius:12px; padding:14px 16px; border:1px solid var(--cp-border); }
+.dodont .do { background:rgba(22,163,74,0.06); }
+.dodont .dont { background:rgba(220,38,38,0.05); }
+.dodont h4 { margin:0 0 8px; font-size:15px; }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <button class="theme-toggle" onclick="toggleTheme()">🌓 Thema</button>
+  <div class="hero-badge">⚽ Marketingplan · 16 juni → 31 december 2026</div>
+  <h1>ScoutingHub — Zichtbaar worden</h1>
+  <p>Je complete contentkalender voor Instagram &amp; LinkedIn</p>
+  <p style="font-size:14px;opacity:0.85">Klik op elke dag voor de kant-en-klare tekst, hashtags &amp; film-tip</p>
+</header>
+
+<nav class="tabs" id="tabs">
+  <button class="active" data-tab="start">🚀 Start hier</button>
+  <button data-tab="profiel">👤 Profielen</button>
+  <button data-tab="volgen">🔍 Wie volgen</button>
+  <button data-tab="kalender">📅 Kalender</button>
+  <button data-tab="postbank">📝 Postbank</button>
+  <button data-tab="groei">📈 Groei &amp; regels</button>
+  <button data-tab="bereiken">🤝 Mensen bereiken</button>
+</nav>
+
+<div class="wrap">
+
+  <!-- START -->
+  <section class="panel active" id="start">
+    <h2 class="sec"><span class="emoji">🚀</span>Zo werkt dit plan</h2>
+    <p class="lead">Je hoeft nooit meer te bedenken "wat zal ik posten". Alles is af. Volg dit ritme en je bent het hele jaar zichtbaar.</p>
+
+    <div class="card" style="border:2px solid var(--cp-accent); background:var(--cp-accent-soft)">
+      <h3 style="font-size:19px">⚖️ De 50/50-regel — lees dit eerst</h3>
+      <p style="margin:0 0 12px">Posten maakt je <b>zichtbaar</b>. Mensen bereiken levert je <b>gebruikers</b>. Het zijn er twee, en ze zijn even belangrijk. Verdeel je tijd half-om-half:</p>
+      <div class="grid2" style="gap:12px">
+        <div style="background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:12px;padding:14px 16px">
+          <div style="font-size:15px;font-weight:800;margin-bottom:4px">📅 50% — Posten</div>
+          <div style="font-size:13.5px;color:var(--cp-text-muted)">Volg de <b>Kalender</b>: 5 kant-en-klare posts per week. Zichtbaarheid &amp; vertrouwen opbouwen.</div>
+        </div>
+        <div style="background:var(--cp-surface);border:1px solid var(--cp-border);border-radius:12px;padding:14px 16px">
+          <div style="font-size:15px;font-weight:800;margin-bottom:4px">🤝 50% — Bereiken</div>
+          <div style="font-size:13.5px;color:var(--cp-text-muted)">Volg <b>Mensen bereiken</b>: DM's, reageren, communities. Hier komen je échte gebruikers vandaan.</div>
+        </div>
+      </div>
+      <div class="tip" style="margin:14px 0 0;background:var(--cp-surface)">💡 <b>Onthoud:</b> alleen posten = een mooi maar stil dagboek. De groei zit in het contact.</div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi"><b>5×</b><span>posts per week</span></div>
+      <div class="kpi"><b>~35</b><span>kant-en-klare teksten</span></div>
+      <div class="kpi"><b>29</b><span>weken uitgewerkt</span></div>
+      <div class="kpi"><b>1 take</b><span>per filmpje, geen montage</span></div>
+    </div>
+
+    <div class="card" style="margin-top:20px">
+      <h3>📋 Je wekelijkse routine (≈ 1 uur)</h3>
+      <ul class="clean">
+        <li><b>Elke zondag, 1 uur:</b> open de tab <b>Kalender</b>, kijk wat er die week op de planning staat.</li>
+        <li>Klik op elke dag → kopieer de tekst, lees de film-tip.</li>
+        <li>Film de 1-take filmpjes (scrollen door de app = genoeg) en maak de screenshots.</li>
+        <li>Plan alles vooruit in via <b>Meta Business Suite</b> (gratis) voor Instagram. LinkedIn handmatig.</li>
+        <li>Klaar — de hele week staat geregeld. ✅</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>🗓️ Het vaste ritme</h3>
+      <table class="ritme">
+        <tr><th>Dag</th><th>Tijd</th><th>Kanaal</th><th>Type</th></tr>
+        <tr><td>Maandag</td><td>19:00</td><td><span class="pill ig">Instagram</span></td><td>🎬 Reel (belangrijkste bereik)</td></tr>
+        <tr><td>Dinsdag</td><td>08:00</td><td><span class="pill li">LinkedIn</span></td><td>✍️ Verhaal / inzicht</td></tr>
+        <tr><td>Woensdag</td><td>19:00</td><td><span class="pill ig">Instagram</span></td><td>📲 Carrousel (swipen)</td></tr>
+        <tr><td>Donderdag</td><td>08:00</td><td><span class="pill li">LinkedIn</span></td><td>💡 Waarde / vraag</td></tr>
+        <tr><td>Vrijdag</td><td>19:00</td><td><span class="pill ig">Instagram</span></td><td>📸 Lichte post of Reel</td></tr>
+        <tr><td>Elke dag</td><td>wisselend</td><td><span class="pill ig">Stories</span></td><td>📱 1–3 (poll, screenshot, wist-je-dat)</td></tr>
+      </table>
+      <div class="tip">💡 <b>Beste tijden:</b> Instagram werkt 's avonds (18:00–21:00). LinkedIn juist 's ochtends vroeg (07:30–09:00) op werkdagen.</div>
+    </div>
+  </section>
+
+  <!-- PROFIEL -->
+  <section class="panel" id="profiel">
+    <h2 class="sec"><span class="emoji">👤</span>Je profielen op orde</h2>
+    <p class="lead">Doe dit als allereerste — dit is je digitale visitekaartje. Zelfde logo en naam op beide kanalen.</p>
+
+    <div class="grid2">
+      <div class="card">
+        <h3><span class="pill ig">Instagram</span> Bio</h3>
+        <div class="codebox" id="bio-ig">ScoutingHub ⚽
+Slimmer scouten in jeugdvoetbal
+📊 Observaties · rapporten · vergelijken in 1 app
+👇 Gratis proberen
+scoutinghub.nl</div>
+        <button class="copybtn" onclick="copyEl('bio-ig', this)">📋 Kopieer bio</button>
+        <div class="tip" style="margin-top:14px">🔎 <b>Zoektruc:</b> zet in het <b>naam-veld</b> (niet de bio) → <i>"ScoutingHub | Jeugdvoetbal scouting"</i>. Instagram doorzoekt dat veld, dus daar je belangrijkste zoekwoorden.</div>
+        <div class="tip">⭐ <b>Highlights</b> (vaste story-bubbels): maak er 4 → "Wat is het?", "Functies", "Demo", "Reviews".</div>
+      </div>
+
+      <div class="card">
+        <h3><span class="pill li">LinkedIn</span> Persoonlijk profiel</h3>
+        <div class="mlabel" style="margin-top:0">Kopregel (headline)</div>
+        <div class="codebox" id="li-head">Oprichter ScoutingHub | Scoutingplatform voor jeugdvoetbal | Talent objectief beoordelen van observatie tot advies</div>
+        <button class="copybtn" onclick="copyEl('li-head', this)">📋 Kopieer headline</button>
+        <div class="mlabel">Over (samenvatting)</div>
+        <div class="codebox" id="li-about">Ik bouwde ScoutingHub omdat jeugdscouting te vaak op papiertjes en uit het hoofd gebeurt — onnauwkeurig en niet te vergelijken.
+
+ScoutingHub brengt het samen: observaties met één tik langs de lijn, automatisch een onderbouwd rapport, en spelers objectief naast elkaar. Voor clubs, scouts en jeugdtrainers.
+
+Van eerste observatie tot advies dat hout snijdt. ⚽
+
+👉 scoutinghub.nl</div>
+        <button class="copybtn" onclick="copyEl('li-about', this)">📋 Kopieer 'Over'</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>🏢 Maak ook een LinkedIn-bedrijfspagina</h3>
+      <p style="margin:0;color:var(--cp-text-muted)">Maak naast je persoonlijke profiel een <b>Bedrijfspagina "ScoutingHub"</b> aan. Je <b>post vanaf je persoonlijke profiel</b> (meer bereik), maar de bedrijfspagina geeft geloofwaardigheid en een plek om naartoe te linken.</p>
+    </div>
+  </section>
+
+  <!-- VOLGEN -->
+  <section class="panel" id="volgen">
+    <h2 class="sec"><span class="emoji">🔍</span>Wie &amp; wat volgen</h2>
+    <p class="lead">Volgen is niet alleen kijken. Het doel: zichtbaar worden bij de juiste mensen door op hun posts te <b>reageren</b> (zie het 10-10-10 ritueel onder "Groei").</p>
+
+    <div class="grid2">
+      <div class="card">
+        <h3><span class="pill ig">Instagram</span> Volg deze types</h3>
+        <p style="margin:0 0 6px;font-weight:700">⚽ Profclub-jeugdopleidingen (inspiratie + reageren)</p>
+        <ul class="clean"><li>Ajax, PSV, Feyenoord, AZ, FC Twente, FC Utrecht — zoek hun jeugd/academy-accounts</li><li>Buitenlandse academies (Barça La Masia, Benfica)</li></ul>
+        <p style="margin:8px 0 6px;font-weight:700">🎯 Trainers- &amp; scoutingcontent</p>
+        <ul class="clean"><li>Zoek op: "voetbaltrainer", "jeugdtrainer", "voetbalcoach", "football scouting", "talent ID"</li></ul>
+        <p style="margin:8px 0 6px;font-weight:700">🏟️ Amateur- &amp; regionale clubs</p>
+        <ul class="clean"><li>Volg 20–30 jeugdafdelingen in jouw regio — dit zijn je <b>potentiële gebruikers</b>. Reageer oprecht op hun wedstrijdposts.</li></ul>
+        <p style="margin:8px 0 6px;font-weight:700"># Volg deze hashtags</p>
+        <p class="htags hashtag">#jeugdvoetbal #voetbaltrainer #jeugdopleiding #voetbalcoach #talentscouting #voetbalscouting #jeugdtrainer #amateurvoetbal</p>
+      </div>
+
+      <div class="card">
+        <h3><span class="pill li">LinkedIn</span> Volg &amp; connect</h3>
+        <ul class="clean">
+          <li><b>Hoofd Jeugdopleiding / Technisch Coördinator / Technisch Manager</b> van clubs</li>
+          <li><b>KNVB-medewerkers</b> rond opleiden &amp; talentontwikkeling</li>
+          <li><b>Scouts</b> (zoek "scout" + "voetbal")</li>
+          <li><b>Sporttech-oprichters</b> (leren van hun aanpak)</li>
+          <li><b>Voetbal- &amp; data-analisten</b></li>
+          <li>Word lid van <b>groepen</b>: jeugdvoetbal, voetbalcoaches, sportmanagement</li>
+        </ul>
+        <div class="tip">🤝 <b>Connectieregel:</b> stuur 10–15 persoonlijke verzoeken per week. Kort bericht: <i>"Hoi [naam], ik bouw een scoutingplatform voor jeugdvoetbal en volg graag mensen uit het vak. Leuk om te connecten!"</i></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- KALENDER -->
+  <section class="panel" id="kalender">
+    <h2 class="sec"><span class="emoji">📅</span>Contentkalender</h2>
+    <p class="lead">29 weken, dag voor dag. <b>Klik op een dag</b> voor de volledige tekst, hashtags en film-tip. <b>Vink af</b> wat je gepost hebt. Klik op een week om hem open/dicht te klappen.</p>
+    <div class="cal-controls">
+      <button class="btn-accent2" onclick="goThisWeek()">📍 Deze week</button>
+      <button class="btn-soft" onclick="toggleAll(true)">⊕ Alles open</button>
+      <button class="btn-soft" onclick="toggleAll(false)">⊖ Alles dicht</button>
+      <button class="btn-soft" onclick="downloadICS()">⤓ Zet in mijn agenda (.ics)</button>
+      <button class="btn-soft" onclick="resetDone()">↺ Reset vinkjes</button>
+    </div>
+    <div class="progwrap">
+      <div class="progtext" id="progText">0 / 0 posts geplaatst</div>
+      <div class="progbar"><i id="progFill"></i></div>
+    </div>
+    <div class="tip" style="margin-top:0">✅ <b>Vink af</b> wat je gepost hebt — dit wordt onthouden op dit apparaat (je browser). &nbsp;📍 <b>Deze week</b> springt naar de juiste week. &nbsp;⤓ <b>Agenda</b> downloadt een <code>.ics</code>-bestand dat je in <b>Outlook, Google Agenda of Apple Agenda</b> importeert — elke post wordt dan een afspraak mét herinnering (30 min van tevoren).</div>
+    <div id="calendar"></div>
+  </section>
+
+  <!-- POSTBANK -->
+  <section class="panel" id="postbank">
+    <h2 class="sec"><span class="emoji">📝</span>De postbank</h2>
+    <p class="lead">Alle ~35 posts op een rij, per categorie. Klik er een aan voor de volledige tekst + film-tip. Deze nummers gebruikt de kalender.</p>
+    <div id="postbank-list"></div>
+  </section>
+
+  <!-- GROEI -->
+  <section class="panel" id="groei">
+    <h2 class="sec"><span class="emoji">📈</span>Groei, gesprekken &amp; regels</h2>
+
+    <div class="card">
+      <h3>🎯 Het 10-10-10 ritueel (je geheime wapen)</h3>
+      <p style="margin:0 0 10px;color:var(--cp-text-muted)">Posten alleen is niet genoeg. <b>Interactie</b> maakt je zichtbaar. Doe dit <b>elke dag, 15 minuten</b> (bv. 's avonds op de bank):</p>
+      <ul class="clean">
+        <li><b>10 likes</b> op posts van je doelgroep (jeugdclubs, trainers, scouts)</li>
+        <li><b>10 reacties</b> — geen "mooi!" maar een echte zin ("Sterke actie van die spits, mooi getimed.")</li>
+        <li><b>10 nieuwe volgers/connecties</b> uit je doelgroep</li>
+      </ul>
+      <div class="tip">Na 1 reactie op hún post, kijken zij naar jou. Mensen volgen mensen die zij zien — niet alleen accounts die posten.</div>
+    </div>
+
+    <div class="card">
+      <h3>💬 Het echte werk: je eerste gebruikers</h3>
+      <p style="margin:0 0 10px;color:var(--cp-text-muted)">Social media bouwt bekendheid, maar je <b>eerste echte gebruikers</b> komen meestal uit direct contact. Doe dit naast de posts:</p>
+      <ul class="clean">
+        <li><b>Benader deze zomer 10 clubs persoonlijk.</b> Niet pitchen — vraag of ze 15 min willen praten over hoe zij nu scouten.</li>
+        <li><b>Vraag elke tevreden gebruiker om 1 ding:</b> een korte quote die je mag plaatsen, óf een introductie bij een andere club.</li>
+        <li><b>Ga naar 1 toernooi of clubdag.</b> Eén persoonlijk gesprek &gt; 50 posts.</li>
+        <li><b>Maak een demo-video van 1 minuut</b> die je 1-op-1 kunt sturen.</li>
+      </ul>
+      <p style="margin:12px 0 6px;font-weight:700">Slimme openingsvragen:</p>
+      <ul class="clean">
+        <li>"Hoe houd je nu bij welke spelers je hebt gezien?"</li>
+        <li>"Wat doe je met die info na afloop?"</li>
+        <li>"Wat is het irritantste aan hoe het nu gaat?"</li>
+        <li>"Als je één ding aan je scouting kon veranderen, wat zou het zijn?"</li>
+      </ul>
+      <div class="tip">Luister meer dan je praat. Hun antwoorden zijn goud — voor je product én je posts.</div>
+    </div>
+
+    <div class="card">
+      <h3>📊 Maandelijkse check (15 min, eind van de maand)</h3>
+      <p style="margin:0 0 8px;color:var(--cp-text-muted)">Kijk niet dagelijks naar cijfers (dat ontmoedigt). Kijk 1× per maand naar:</p>
+      <ul class="clean">
+        <li>Aantal volgers erbij (IG + LI)</li>
+        <li>Welke 2 posts deden het 't best? → <b>maak daar meer van</b></li>
+        <li>Welke deden het slecht? → <b>stop ermee</b></li>
+        <li>Hoeveel mensen reageerden of stuurden een bericht?</li>
+        <li><b>Heb je nieuwe gebruikers/testclubs?</b> (Het enige cijfer dat écht telt.)</li>
+      </ul>
+    </div>
+
+    <div class="card golden">
+      <h3>🏆 De 7 gouden regels</h3>
+      <div class="g-item"><div class="g-num"></div><div><b>Consistentie wint.</b> 5 posts/week een half jaar lang verslaat een sprint van 2 weken.</div></div>
+      <div class="g-item"><div class="g-num"></div><div><b>Reels eerst.</b> Op Instagram geven Reels veruit het meeste bereik.</div></div>
+      <div class="g-item"><div class="g-num"></div><div><b>1 take is genoeg.</b> Scrollen door de app, een tik laten zien — geen montage. Done &gt; perfect.</div></div>
+      <div class="g-item"><div class="g-num"></div><div><b>Geef 70% waarde, verkoop 30%.</b> Niemand volgt een reclamezuil.</div></div>
+      <div class="g-item"><div class="g-num"></div><div><b>Haak in 2 seconden.</b> Begin met het resultaat ("Dit kost 5 seconden"), niet de aanloop.</div></div>
+      <div class="g-item"><div class="g-num"></div><div><b>Reageer méér dan je post.</b> Het 10-10-10 ritueel is je groeimotor.</div></div>
+      <div class="g-item"><div class="g-num"></div><div><b>Je eerste 10 gebruikers komen uit gesprekken</b>, niet uit likes.</div></div>
+    </div>
+  </section>
+
+  <!-- BEREIKEN -->
+  <section class="panel" id="bereiken">
+    <h2 class="sec"><span class="emoji">🤝</span>Mensen bereiken — de echte groeimotor</h2>
+    <p class="lead">Posten is de helft. De andere helft — en waar je eerste gebruikers écht vandaan komen — is persoonlijk contact: reageren, DM'en, in communities zitten. Hier staat precies wat je doet, tegen wie, en wat je zegt. <b>Regel nummer 1: open nooit met een pitch, altijd met een vraag.</b></p>
+
+    <div class="card">
+      <h3>🧠 Drie waarheden (lees dit eerst)</h3>
+      <ul class="clean">
+        <li><b>Het doel van elk gesprek is een gesprek</b> — niet een verkoop. Mensen kopen van wie ze vertrouwen. Vertrouwen komt uit oprechte interesse.</li>
+        <li><b>Laat de ander 80% praten.</b> Jij stelt vragen en luistert. Hun antwoorden zijn goud — voor je product én je volgende posts.</li>
+        <li><b>Eén echt gesprek &gt; 50 posts.</b> Reken niet op de feed voor je eerste gebruikers. Reken op je DM en op communities waar je doelgroep al zit.</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>🔁 Je wekelijkse bereik-ritme (≈ 20–30 min per dag)</h3>
+      <p style="margin:0 0 8px;color:var(--cp-text-muted)">Maak hier net zo'n vaste gewoonte van als je posts. Dit is het ritme dat groei oplevert:</p>
+      <table class="ritme">
+        <tr><th>Hoe vaak</th><th>Wat</th><th>Doel</th></tr>
+        <tr><td>Elke dag · 15 min</td><td>Reageer waardevol op 5–10 posts van trainers, clubs, KNVB</td><td>Zichtbaar worden bij hun publiek</td></tr>
+        <tr><td>3× per week</td><td>Stuur 3 persoonlijke DM's naar nieuwe mensen (≈ 9/week)</td><td>Echte 1-op-1 gesprekken starten</td></tr>
+        <tr><td>Binnen 24 uur</td><td>Iedereen die volgt/reageert → persoonlijk bedankje + 1 vraag</td><td>Warm contact terwijl het nog warm is</td></tr>
+        <tr><td>1× per week</td><td>Deel een inzicht of vraag in een community/groep (géén reclame)</td><td>Autoriteit in de niche</td></tr>
+        <tr><td>1× per maand</td><td>1 offline moment (toernooi/clubdag) óf 1 demo-videocall</td><td>De sprong van praatje naar gebruiker</td></tr>
+      </table>
+      <div class="tip">🎯 <b>Je maand is geslaagd</b> als je 3–5 echte gesprekken had die ergens heen gingen — niet bij een aantal likes.</div>
+    </div>
+
+    <div class="card">
+      <h3>👥 Met wie praat je — en waarover</h3>
+      <p style="margin:0 0 6px;color:var(--cp-text-muted)">Drie types mensen, elk met een andere pijn. Pas je insteek aan:</p>
+      <div class="persona">
+        <div class="pic">🧤</div>
+        <div>
+          <div class="pwho">Jeugdtrainer / coach</div>
+          <div class="ppain">Pijn: geen tijd, overzicht raakt kwijt, doet het uit het hoofd.</div>
+          <div class="psay">Praat over: <b>tijd besparen</b> en <b>makkelijk vastleggen langs de lijn</b>. "Eén tik tijdens de wedstrijd, klaar." Niet over dashboards of data.</div>
+        </div>
+      </div>
+      <div class="persona">
+        <div class="pic">🔍</div>
+        <div>
+          <div class="pwho">Scout / technisch jeugdcoördinator (TJC)</div>
+          <div class="ppain">Pijn: spelers objectief vergelijken, beslissingen onderbouwen, overdracht.</div>
+          <div class="psay">Praat over: <b>objectief vergelijken</b>, <b>onderbouwde rapporten</b> en <b>dossier opbouwen</b>. Dit is je meest kansrijke gesprekspartner.</div>
+        </div>
+      </div>
+      <div class="persona">
+        <div class="pic">🏛️</div>
+        <div>
+          <div class="pwho">Bestuur / hoofd opleiding</div>
+          <div class="ppain">Pijn: continuïteit — kennis verdwijnt als iemand de club verlaat.</div>
+          <div class="psay">Praat over: <b>clubbreed werken</b>, <b>kennis borgen</b> en <b>professionaliseren</b>. Denkt in seizoenen en structuur, niet in losse wedstrijden.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>💬 Goede openingszinnen (kant-en-klaar)</h3>
+      <p style="margin:0 0 4px;color:var(--cp-text-muted)">Vervang <b>[naam]</b> en <b>[club]</b>. Elke opener stelt een vraag en verkoopt niets.</p>
+
+      <div class="lbl">1 · Iemand volgde / likete / reageerde net</div>
+      <div class="codebox" id="g-dm1">Hé [naam], dank voor het volgen! 🙌 Even uit nieuwsgierigheid — jij zit in het jeugdvoetbal: hoe houd je nu bij welke spelers je hebt gezien? Nog op papier, in je hoofd, of gebruik je iets?</div>
+      <button class="copybtn" onclick="copyEl('g-dm1', this)">📋 Kopieer</button>
+
+      <div class="lbl">2 · Koud — jeugdtrainer</div>
+      <div class="codebox" id="g-dm2">Hoi [naam], ik zie dat je jeugdtrainer bent bij [club]. Geen verkooppraatje 🙂 — ik bouw zelf iets rond scouting en ben benieuwd: wat is voor jou het lastigste aan spelers volgen en beoordelen door het seizoen heen?</div>
+      <button class="copybtn" onclick="copyEl('g-dm2', this)">📋 Kopieer</button>
+
+      <div class="lbl">3 · Koud — scout / jeugdcoördinator</div>
+      <div class="codebox" id="g-dm3">Hoi [naam], ik zie dat je als scout/jeugdcoördinator werkt. Ik verdiep me in hoe clubs spelers objectief vergelijken en vastleggen. Mag ik je iets vragen: hoe doen jullie dat nu — losse documenten, een systeem, of vooral op gevoel?</div>
+      <button class="copybtn" onclick="copyEl('g-dm3', this)">📋 Kopieer</button>
+
+      <div class="lbl">4 · Ze gaven een goede reactie op jouw post</div>
+      <div class="codebox" id="g-dm4">Goeie reactie [naam], precies dit! Hoe los jij dat nu zelf op in de praktijk?</div>
+      <button class="copybtn" onclick="copyEl('g-dm4', this)">📋 Kopieer</button>
+
+      <div class="lbl">5 · Waarde eerst (verwijs naar je eigen post)</div>
+      <div class="codebox" id="g-dm5">Hé [naam], ik schreef pas iets over hoe rommelig scouting vaak gaat, omdat ik het zelf zo onhandig vond. Herken jij dat ook bij [club]?</div>
+      <button class="copybtn" onclick="copyEl('g-dm5', this)">📋 Kopieer</button>
+
+      <div class="tip">⏳ <b>Geduld:</b> stuur de opener, krijg antwoord, stel een vervolgvraag. Pas ná 2–3 berichten heen-en-weer noem je je product — en alleen als het past.</div>
+    </div>
+
+    <div class="card">
+      <h3>🗣️ Waarover praten — de beste vragen</h3>
+      <p style="margin:0 0 6px;color:var(--cp-text-muted)">Stel deze en laat ze praten. Elk antwoord opent het volgende gesprek (en levert je inzicht voor je product):</p>
+      <div class="codebox" id="g-vragen">• Hoe houd je nu bij welke spelers je hebt gezien?
+• Wat doe je met die info ná de wedstrijd?
+• Hoe vergelijk je twee spelers met elkaar?
+• Wat gebeurt er met die kennis als een trainer of scout weggaat?
+• Wat is het irritantste aan hoe scouting nu bij jullie gaat?
+• Als je één ding aan jullie scouting kon veranderen — wat zou het zijn?
+• Hoe bereiden jullie een selectiegesprek of overdracht voor?</div>
+      <button class="copybtn" onclick="copyEl('g-vragen', this)">📋 Kopieer alle vragen</button>
+      <div class="tip">💡 De zin die je vaak terughoort, is je beste volgende post én je beste verkoopargument. Schrijf antwoorden op.</div>
+    </div>
+
+    <div class="card">
+      <h3>❤️ Reageren in andermans publiek (je grootste gratis bereik)</h3>
+      <p style="margin:0 0 8px;color:var(--cp-text-muted)">Een goede reactie onder een post van een trainer of club zet jou voor hun hele publiek. Maar "Mooi! 👍" doet niets. Een goede reactie <b>voegt iets toe en stelt een vraag</b>:</p>
+      <div class="codebox" id="g-react">Sterk punt over [onderwerp]. Wat mij opvalt is [jouw mini-inzicht in 1 zin]. Hoe gaan jullie om met [vervolgvraag]?</div>
+      <button class="copybtn" onclick="copyEl('g-react', this)">📋 Kopieer template</button>
+      <ul class="clean" style="margin-top:12px">
+        <li>Reageer als <b>jezelf/persoon</b>, niet als merk. Geen link, geen plug.</li>
+        <li>3–5 zinvolle reacties per dag &gt; 50 lege likes.</li>
+        <li>Mensen klikken op je profiel ná een goede reactie — zorg dat je bio top is (tab Profielen).</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>🌍 Waar zit je doelgroep?</h3>
+      <div class="lbl">Facebook-groepen (hier zit je goud)</div>
+      <p style="margin:0 0 8px">Zoek op groepen rond <b>"jeugdvoetbal"</b>, <b>"voetbaltrainers"</b>, <b>"voetbal jeugdopleiding"</b> en <b>"[jouw regio] voetbal"</b>. Word lid, lees mee, geef waarde, stel af en toe een vraag. Pas posten als je een bekend gezicht bent.</p>
+      <div class="lbl">Instagram</div>
+      <p style="margin:0 0 8px">Volg + reageer bij de KNVB, voetbaltrainer-coaches, en de jeugdopleidingen van clubs. Hashtags om in mee te doen: <span class="hashtag">#jeugdvoetbal #voetbaltrainer #jeugdopleiding #scouting #voetbaljeugd</span></p>
+      <div class="lbl">LinkedIn</div>
+      <p style="margin:0 0 8px">Zoek op functietitels: <b>"technisch jeugdcoördinator"</b>, <b>"hoofd jeugdopleiding"</b>, <b>"jeugdscout"</b>, <b>"voetbalscout"</b>. Connect met een persoonlijk berichtje (opener 3). Volg jeugdopleidingen van BVO's.</p>
+      <div class="lbl">WhatsApp &amp; offline (onderschat dit niet)</div>
+      <p style="margin:0">Trainersgroepen van je eigen club, toernooien, clubdagen, en KNVB-trainerscursussen (TC II/III) zitten vol met precies jouw doelgroep. Eén gesprek bij de koffie doet meer dan een week posten.</p>
+    </div>
+
+    <div class="card">
+      <h3>🌉 Van gesprek naar gebruiker (de zachte brug)</h3>
+      <p style="margin:0 0 4px;color:var(--cp-text-muted)">Als iemand zijn pijn deelt, is dit je moment — vraag toestemming, push niet:</p>
+      <div class="codebox" id="g-brug">Wat je beschrijft is precies waarvoor ik ScoutingHub bouw. Zou ik je in 5 minuten mogen laten zien hoe ik dit zou aanpakken? Geen verkoop — ik ben juist benieuwd of het klopt met jouw praktijk.</div>
+      <button class="copybtn" onclick="copyEl('g-brug', this)">📋 Kopieer</button>
+
+      <div class="lbl">Vraag om je eerste testgebruikers</div>
+      <div class="codebox" id="g-test">Ik zoek een paar trainers die het gratis willen proberen en eerlijk durven zeggen wat waardeloos is. Lijkt je dat wat?</div>
+      <button class="copybtn" onclick="copyEl('g-test', this)">📋 Kopieer</button>
+
+      <div class="lbl">Follow-up na stilte (na 4–7 dagen, 1× — niet vaker)</div>
+      <div class="codebox" id="g-follow">Hé [naam], geen haast — wilde alleen even checken of mijn vorige berichtje handig was. Zo niet, ook helemaal prima! 🙂</div>
+      <button class="copybtn" onclick="copyEl('g-follow', this)">📋 Kopieer</button>
+    </div>
+
+    <div class="card">
+      <h3>✅ Do &amp; ❌ Don't</h3>
+      <div class="dodont">
+        <div class="do">
+          <h4>✅ Wél doen</h4>
+          <ul class="clean" style="margin:0">
+            <li>Open met een vraag, niet een pitch</li>
+            <li>Oprecht nieuwsgierig zijn, écht luisteren</li>
+            <li>Binnen 24u persoonlijk bedanken</li>
+            <li>Waarde geven vóór je iets vraagt</li>
+            <li>Eén keer netjes opvolgen</li>
+            <li>Antwoorden opschrijven en hergebruiken</li>
+          </ul>
+        </div>
+        <div class="dont">
+          <h4>❌ Niet doen</h4>
+          <ul class="clean" style="margin:0">
+            <li>Pitchen in de eerste zin</li>
+            <li>Dezelfde tekst copy-pasten naar iedereen</li>
+            <li>Een link droppen zonder context</li>
+            <li>In elke reactie je product noemen</li>
+            <li>Blijven pushen na 2× stilte</li>
+            <li>Alleen op likes letten</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <p class="footer-note">ScoutingHub Marketingplan 2026 · Eén bestand, werkt offline op elke computer of telefoon · Veel succes! ⚽</p>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="modalBg" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<script>
+/* ---------- DATA: POSTBANK ---------- */
+const POSTS = {
+  V1: { cat:'Verhaal', plat:'LinkedIn', type:'Tekstpost', title:'Oprichtersverhaal',
+    text:`Twee jaar geleden stond ik langs een jeugdwedstrijd met een notitieblokje vol onleesbare krabbels.
+
+Welke speler was nou die linksback? Wat vond ik ook alweer van zijn eerste helft?
+
+Jeugdscouting gebeurt nog te vaak op papier of uit het hoofd. Onnauwkeurig, niet te vergelijken, zo weg.
+
+Daarom bouwde ik ScoutingHub: observaties met één tik, automatisch een onderbouwd rapport, spelers objectief naast elkaar.
+
+Van langs de lijn tot een advies dat hout snijdt. ⚽
+
+👉 scoutinghub.nl`,
+    tags:'#jeugdvoetbal #scouting #voetbal', film:'Geen beeld nodig (tekstpost), of 1 foto van jou langs een veld.', dur:'' },
+  V2: { cat:'Verhaal', plat:'LinkedIn', type:'Tekstpost', title:'Waarom ik dit bouw (missie)',
+    text:`Talent zit overal. Het wordt alleen niet overal gezien.
+
+Een kind dat bij een kleine club speelt verdient dezelfde objectieve blik als een talent bij een topopleiding. Het verschil zit nu vaak in toeval: wie keek er, en onthield die het?
+
+ScoutingHub maakt scouten gestructureerd en eerlijk. Niet om de mens te vervangen, maar om de scout beter te maken.
+
+Daar doe ik het voor.`,
+    tags:'#jeugdopleiding #talentontwikkeling #voetbal', film:'Geen, of een rustige foto van een leeg jeugdveld.', dur:'' },
+  V3: { cat:'Verhaal', plat:'LinkedIn', type:'Tekstpost', title:'Eénpersoonsproject achter de schermen',
+    text:`Een platform bouwen in je eentje betekent: elke dag keuzes maken.
+
+Deze week koos ik bewust om toernooi-data gescheiden te houden van de hoofddatabase. Waarom? Ruwe waarnemingen op een toernooi mogen je zorgvuldig opgebouwde spelersdossiers niet vervuilen.
+
+Kleine beslissing. Groot verschil in bruikbaarheid.
+
+Bouwen is 10% code en 90% de juiste keuzes maken. 🛠️`,
+    tags:'#buildinpublic #sporttech #voetbal', film:'1 foto van je werkplek/laptop met de app open.', dur:'' },
+  V4: { cat:'Verhaal', plat:'LinkedIn', type:'Tekstpost', title:'Wat ik leerde van praten met scouts',
+    text:`Ik sprak deze week een paar jeugdscouts. Eén zin bleef hangen:
+
+"Ik weet wel wat ik zie, maar ik kan het achteraf nooit goed uitleggen."
+
+Precies dáár zit het probleem. Niet in de blik van de scout — die is goud. Maar in het vastleggen en overdraagbaar maken ervan.
+
+Daar bouw ik ScoutingHub voor.
+
+Welke clubs herkennen dit? 👇`,
+    tags:'#scouting #jeugdvoetbal', film:'Geen beeld nodig.', dur:'' },
+
+  P1: { cat:'Probleem', plat:'Instagram', type:'Reel', title:'Papiertjes',
+    text:`Noteer jij spelers nog op een papiertje? 📝
+
+Drie weken later: onleesbaar, kwijt, of "wie was dat ook alweer?".
+
+Er is een betere manier. 👉 link in bio`,
+    tags:'#jeugdvoetbal #scouting #voetbaltrainer', film:'REEL — film in 1 take een rommelig notitieblok/los papiertje, draai dan je telefoon naar de app.', dur:'10 sec' },
+  P2: { cat:'Probleem', plat:'Beide', type:'Tekst / Carrousel', title:'3 problemen',
+    text:`3 problemen met hoe jeugdscouting nu vaak gaat:
+
+1️⃣ Notities verdwijnen in mappen, appjes en hoofden.
+2️⃣ Iedereen beoordeelt anders → niet te vergelijken.
+3️⃣ Een goed onderbouwd advies kost uren achteraf.
+
+De data ís er. Ze is alleen versnipperd.
+
+Hoe lossen jullie dit nu op? 👇`,
+    tags:'#scouting #jeugdopleiding', film:'Geen (LinkedIn) of carrousel van 3 schermen (Instagram).', dur:'' },
+  P3: { cat:'Probleem', plat:'Instagram', type:'Reel', title:'Het geheugen-probleem',
+    text:`Een scout ziet 4 wedstrijden op een zaterdag.
+
+Tegen wedstrijd 4 zijn de details van wedstrijd 1 al vervaagd. Dat is geen slechte scout — dat is een normaal brein.
+
+Leg vast op het moment zelf. Eén tik, klaar.`,
+    tags:'#voetbalscouting #jeugdvoetbal', film:'REEL — film jezelf die in 5 sec 3 spelers achter elkaar noteert in de app.', dur:'10 sec' },
+
+  C1: { cat:'Product', plat:'Instagram', type:'Reel', title:'5 seconden om te beoordelen',
+    text:`Een speler beoordelen? 5 seconden. Geen toetsenbord nodig. 👆
+
+Groen, oranje, rood — tik en klaar.`,
+    tags:'#jeugdvoetbal #scouting #voetbaltrainer #talentscouting', film:'REEL 1 take — schermopname: tik door de trefwoord-chips, laat de kleuren wisselen.', dur:'10–15 sec' },
+  C2: { cat:'Product', plat:'Instagram', type:'Carrousel', title:'Van observatie naar rapport',
+    text:`Swipe → zo wordt een snelle observatie automatisch een compleet rapport. 📊
+
+Jij beoordeelt langs de lijn. De app maakt het af.
+
+Probeer gratis 👉 link in bio`,
+    tags:'#voetbal #jeugdopleiding #scout', film:'CARROUSEL — 3 screenshots: (1) observatie met chips, (2) concept-rapport, (3) ingediend rapport.', dur:'3 beelden' },
+  C3: { cat:'Product', plat:'Instagram', type:'Reel', title:'Spelers vergelijken',
+    text:`Twee talenten, één blik. Wie past beter? Laat de data praten. 📈`,
+    tags:'#voetbalscouting #jeugdvoetbal #datadriven', film:'REEL 1 take — schermopname van de vergelijk-view met de radar-chart van 2 spelers.', dur:'10 sec' },
+  C4: { cat:'Product', plat:'Instagram', type:'Reel', title:'Je hele selectie in beeld',
+    text:`Al je gescoute spelers in één database. Filter, zoek, vind het talent. ⚽`,
+    tags:'#jeugdvoetbal #spelersdatabase #scouting', film:'REEL 1 take — scroll rustig door de spelersdatabase. Je makkelijkste Reel: gewoon scrollen.', dur:'10 sec' },
+  C5: { cat:'Product', plat:'Instagram', type:'Reel / Carrousel', title:'Toernooidag',
+    text:`Vijf wedstrijden tegelijk op een toernooi? Geen probleem. ⏱️
+
+Live-klok, per speler, alles automatisch bewaard.`,
+    tags:'#jeugdvoetbal #voetbaltoernooi #scouting', film:'REEL 1 take — toon het toernooi-dashboard met de live-stack. Of film een echt toernooi + de app ernaast.', dur:'10–15 sec' },
+  C6: { cat:'Product', plat:'Instagram', type:'Reel', title:'Het dashboard',
+    text:`Je scout-dag in één scherm: wie speelt nu, wie is straks, wat komt eraan. 📅`,
+    tags:'#voetbaltrainer #jeugdvoetbal #scouting', film:'REEL 1 take — scroll door het 3-zone dashboard (Live / Volgende / Aankomend).', dur:'10 sec' },
+  C7: { cat:'Product', plat:'Instagram', type:'Reel', title:'Gescoute teams drill-down',
+    text:`Van club → team → speler in drie tikken. Overzicht over je hele scoutingnetwerk. 🔍`,
+    tags:'#scouting #jeugdopleiding', film:'REEL 1 take — tik door clubs → teams → spelers.', dur:'10 sec' },
+  C8: { cat:'Product', plat:'Instagram', type:'Reel', title:'Vormtrend',
+    text:`Hoe ontwikkelt een talent zich over de tijd? De vormtrend laat het zien. 📈
+
+Scouten is niet één moment. Het is een lijn.`,
+    tags:'#talentontwikkeling #jeugdvoetbal', film:'REEL 1 take — open een spelersprofiel, scroll naar de vormtrend-grafiek.', dur:'10 sec' },
+
+  W1: { cat:'Waarde', plat:'Beide', type:'Tekst / Carrousel', title:'Waar een scout op let',
+    text:`3 dingen waar een sterke jeugdscout altijd op let:
+
+⚡ Snelheid van handelen — niet hoe hard, maar hoe slim.
+🧠 Spelinzicht — staat hij goed vóór de bal er is?
+💪 Reactie na een fout — kop omhoog of omlaag?
+
+Techniek zie je zo. Deze drie maken het verschil op lange termijn.
+
+Wat zou jij toevoegen? 👇`,
+    tags:'#scouting #jeugdvoetbal #voetbaltrainer', film:'Geen, of carrousel van 3 tekstschermen.', dur:'' },
+  W2: { cat:'Waarde', plat:'Beide', type:'Tekst + screenshot', title:'Objectief beoordelen',
+    text:`Waarom kleurcodering werkt bij beoordelen:
+
+🟢 Groen = sterk
+🟠 Oranje = aandachtspunt
+🔴 Rood = zorg
+
+Geen lange teksten, geen interpretatieverschil. Iedereen in je staf leest hetzelfde.
+
+Consistentie = eerlijker scouten.`,
+    tags:'#voetbalscouting #jeugdopleiding', film:'Screenshot van de gekleurde chips.', dur:'1 beeld' },
+  W3: { cat:'Waarde', plat:'LinkedIn', type:'Tekstpost', title:'Talent vs. ontwikkeling',
+    text:`De beste speler nu is niet altijd het grootste talent.
+
+Een laatbloeier met de juiste mentaliteit haalt de vroege piek vaak in. Daarom scout je niet alleen wat je ziet, maar ook de richting.
+
+Leg vast. Volg de lijn. Oordeel later.`,
+    tags:'#talentontwikkeling #jeugdvoetbal', film:'Geen beeld nodig.', dur:'' },
+  W4: { cat:'Waarde', plat:'LinkedIn', type:'Tekstpost', title:'Voor trainers',
+    text:`Tip voor jeugdtrainers: noteer ná elke wedstrijd 1 ding per speler.
+
+Niet 10. Eén. Dat houd je vol. En na 10 wedstrijden heb je een schat aan informatie waar je écht iets aan hebt.
+
+Klein en consistent wint van groot en eenmalig.`,
+    tags:'#voetbaltrainer #jeugdopleiding', film:'Geen beeld nodig.', dur:'' },
+  W5: { cat:'Waarde', plat:'Beide', type:'Vraag-post', title:'De vraag-post (betrokkenheid)',
+    text:`Even een vraag aan de scouts en trainers hier:
+
+Wat is jouw grootste frustratie bij het bijhouden van spelers? 👇
+
+Papierwerk? Onthouden? Overdracht naar collega's? Iets anders?
+
+Ik bouw mijn platform op basis van échte antwoorden — dus ik ben oprecht benieuwd.`,
+    tags:'#jeugdvoetbal #scouting', film:'Geen beeld nodig — de vraag doet het werk.', dur:'' },
+
+  E1: { cat:'Actie', plat:'Beide', type:'Reel', title:'Probeer gratis',
+    text:`ScoutingHub is live en gratis te proberen.
+
+Ben je scout, jeugdtrainer of technisch coördinator? Ik zoek clubs die het willen testen en eerlijke feedback geven.
+
+Stuur me een bericht of kijk op scoutinghub.nl. Ik bouw dit mét de mensen die het gebruiken. 🙌`,
+    tags:'#jeugdvoetbal #scouting', film:'REEL 1 take — korte rondleiding (scroll dashboard → database → 1 rapport openen).', dur:'20 sec' },
+  E2: { cat:'Actie', plat:'Instagram', type:'Carrousel', title:'Start in 3 stappen',
+    text:`Beginnen met ScoutingHub:
+
+1️⃣ Ga naar scoutinghub.nl
+2️⃣ Maak gratis een account
+3️⃣ Noteer je eerste speler binnen 2 minuten
+
+Dat is alles. 👇 link in bio`,
+    tags:'#jeugdvoetbal #scouting', film:'CARROUSEL — 3 schermen voor de 3 stappen.', dur:'3 beelden' },
+  E3: { cat:'Actie', plat:'LinkedIn', type:'Tekstpost', title:'Oproep om te testen',
+    text:`Ik zoek 3 clubs die ScoutingHub een seizoen lang willen gebruiken.
+
+Gratis. In ruil vraag ik alleen je eerlijke feedback, zodat ik het beter maak voor de praktijk.
+
+Hoofd jeugdopleiding of scout? Stuur me een bericht. 🤝`,
+    tags:'#jeugdopleiding #scouting #voetbal', film:'Geen beeld nodig.', dur:'' },
+
+  F1: { cat:'Seizoen', plat:'Instagram', type:'Reel', title:'Seizoensstart',
+    text:`Het nieuwe seizoen begint. Dé tijd om je scouting op orde te brengen.
+
+Begin dit jaar gestructureerd in plaats van met losse briefjes. 👇`,
+    tags:'#jeugdvoetbal #nieuwseizoen #scouting', film:'REEL 1 take — leeg veld / eerste training, dan de lege database die zich gaat vullen.', dur:'10–15 sec' },
+  F2: { cat:'Seizoen', plat:'Beide', type:'Mijlpaal', title:'Mijlpaal delen (vul cijfer in)',
+    text:`Kleine mijlpaal: [X] scouts/clubs gebruiken ScoutingHub inmiddels. 🎉
+
+Dank aan iedereen die meedenkt en feedback geeft. Dit bouw ik samen met jullie.
+
+Op naar de volgende. 👇`,
+    tags:'#buildinpublic #jeugdvoetbal', film:'1 foto/screenshot van een mooi moment of cijfer.', dur:'1 beeld' },
+  F3: { cat:'Seizoen', plat:'Beide', type:'Carrousel', title:'Jaaroverzicht (december)',
+    text:`2026 in het kort: van een idee met een notitieblok naar een werkend platform dat scouts echt gebruiken.
+
+Dank aan iedereen die meekeek, testte en feedback gaf. 2027 wordt groter. ⚽`,
+    tags:'#buildinpublic #jeugdvoetbal #scouting', film:'CARROUSEL — 3–4 hoogtepunten van het jaar.', dur:'3–4 beelden' },
+};
+
+/* ---------- DATA: WEKEN ---------- */
+const PHASES = {
+  1: { title:'FASE 1 — Lancering & kennismaking', sub:'Doel: je bestaan aankondigen, vertellen wie je bent en wat het is.', star:false },
+  2: { title:'FASE 2 — Zomer & opbouw', sub:'Doel: rustig doorbouwen in de off-season, waarde geven, voorbereiden op seizoensstart. Tempo mag iets lager bij vakantie — herhaal dan sterke posts.', star:false },
+  3: { title:'FASE 3 — Seizoensstart ⭐ BELANGRIJKSTE PERIODE', sub:'Doel: maximaal zichtbaar als het voetbal weer begint. Scouts zijn nu het meest actief. Zet hier je beste energie in.', star:true },
+  4: { title:'FASE 4 — Najaar & verdieping', sub:'Doel: autoriteit opbouwen met inhoud, social proof verzamelen, gestaag groeien.', star:false },
+  5: { title:'FASE 5 — Afsluiting & vooruitblik', sub:'Doel: het jaar mooi afronden, terugblikken, vertrouwen oogsten. Rond de feestdagen mag het tempo omlaag.', star:false },
+};
+
+const WEEKS = [
+  { n:1, phase:1, dates:'16–20 jun', title:'Introductie — wie ben ik', days:[
+    ['Ma 16/6','19:00','IG','P1'],['Di 17/6','08:00','LI','V1'],['Wo 18/6','19:00','IG','C2'],['Do 19/6','08:00','LI','P2'],['Vr 20/6','19:00','IG','C4'] ]},
+  { n:2, phase:1, dates:'23–27 jun', title:'Wat is het & waarom', days:[
+    ['Ma 23/6','19:00','IG','C1'],['Di 24/6','08:00','LI','V2'],['Wo 25/6','19:00','IG','E2'],['Do 26/6','08:00','LI','W5'],['Vr 27/6','19:00','IG','C6'] ]},
+  { n:3, phase:1, dates:'30 jun–4 jul', title:'Probleem & waarde', days:[
+    ['Ma 30/6','19:00','IG','P3'],['Di 1/7','08:00','LI','W1'],['Wo 2/7','19:00','IG','C3'],['Do 3/7','08:00','LI','V4'],['Vr 4/7','19:00','IG','E1'] ]},
+  { n:4, phase:1, dates:'7–11 jul', title:'Teams, toernooi & oproep', days:[
+    ['Ma 7/7','19:00','IG','C7'],['Di 8/7','08:00','LI','W2'],['Wo 9/7','19:00','IG','C5'],['Do 10/7','08:00','LI','E3'],['Vr 11/7','19:00','IG','C8'] ]},
+  { n:5, phase:2, dates:'14–18 jul', title:'Zomer doorbouwen', days:[
+    ['Ma 14/7','19:00','IG','P1'],['Di 15/7','08:00','LI','W3'],['Wo 16/7','19:00','IG','C2'],['Do 17/7','08:00','LI','W5'],['Vr 18/7','19:00','IG','C4'] ]},
+  { n:6, phase:2, dates:'21–25 jul', title:'Waarde geven', days:[
+    ['Ma 21/7','19:00','IG','C1'],['Di 22/7','08:00','LI','V3'],['Wo 23/7','19:00','IG','E2'],['Do 24/7','08:00','LI','W4'],['Vr 25/7','19:00','IG','C6'] ]},
+  { n:7, phase:2, dates:'28 jul–1 aug', title:'Product diep', days:[
+    ['Ma 28/7','19:00','IG','P3'],['Di 29/7','08:00','LI','W1'],['Wo 30/7','19:00','IG','C3'],['Do 31/7','08:00','LI','V4'],['Vr 1/8','19:00','IG','E1'] ]},
+  { n:8, phase:2, dates:'4–8 aug', title:'Functies uitlichten', days:[
+    ['Ma 4/8','19:00','IG','C7'],['Di 5/8','08:00','LI','W2'],['Wo 6/8','19:00','IG','C5'],['Do 7/8','08:00','LI','E3'],['Vr 8/8','19:00','IG','C8'] ]},
+  { n:9, phase:2, dates:'11–15 aug', title:'Herhaal sterke posts', days:[
+    ['Ma 11/8','19:00','IG','P2'],['Di 12/8','08:00','LI','V2'],['Wo 13/8','19:00','IG','C2'],['Do 14/8','08:00','LI','W5'],['Vr 15/8','19:00','IG','C4'] ]},
+  { n:10, phase:2, dates:'18–22 aug', title:'Seizoen komt eraan', days:[
+    ['Ma 18/8','19:00','IG','C1'],['Di 19/8','08:00','LI','W3'],['Wo 20/8','19:00','IG','E2'],['Do 21/8','08:00','LI','V1'],['Vr 22/8','19:00','IG','F1'] ]},
+  { n:11, phase:3, dates:'24–28 aug', title:'Seizoensstart!', days:[
+    ['Ma 24/8','19:00','IG','F1'],['Di 25/8','08:00','LI','V1'],['Wo 26/8','19:00','IG','C2'],['Do 27/8','08:00','LI','E3'],['Vr 28/8','19:00','IG','E1'] ]},
+  { n:12, phase:3, dates:'31 aug–4 sep', title:'Maximaal zichtbaar', days:[
+    ['Ma 31/8','19:00','IG','C1'],['Di 1/9','08:00','LI','W1'],['Wo 2/9','19:00','IG','E2'],['Do 3/9','08:00','LI','W5'],['Vr 4/9','19:00','IG','C4'] ]},
+  { n:13, phase:3, dates:'7–11 sep', title:'Product & oproep', days:[
+    ['Ma 7/9','19:00','IG','C5'],['Di 8/9','08:00','LI','V4'],['Wo 9/9','19:00','IG','C3'],['Do 10/9','08:00','LI','E3'],['Vr 11/9','19:00','IG','C6'] ]},
+  { n:14, phase:3, dates:'14–18 sep', title:'Diepe content', days:[
+    ['Ma 14/9','19:00','IG','P3'],['Di 15/9','08:00','LI','W2'],['Wo 16/9','19:00','IG','C7'],['Do 17/9','08:00','LI','V2'],['Vr 18/9','19:00','IG','E1'] ]},
+  { n:15, phase:3, dates:'21–25 sep', title:'Vormtrend & vergelijken', days:[
+    ['Ma 21/9','19:00','IG','C8'],['Di 22/9','08:00','LI','W3'],['Wo 23/9','19:00','IG','C2'],['Do 24/9','08:00','LI','W5'],['Vr 25/9','19:00','IG','C4'] ]},
+  { n:16, phase:3, dates:'28 sep–2 okt', title:'Deel een mijlpaal', days:[
+    ['Ma 28/9','19:00','IG','C1'],['Di 29/9','08:00','LI','V3'],['Wo 30/9','19:00','IG','E2'],['Do 1/10','08:00','LI','E3'],['Vr 2/10','19:00','IG','F2'] ]},
+  { n:17, phase:4, dates:'5–9 okt', title:'Autoriteit opbouwen', days:[
+    ['Ma 5/10','19:00','IG','P1'],['Di 6/10','08:00','LI','W1'],['Wo 7/10','19:00','IG','C3'],['Do 8/10','08:00','LI','V4'],['Vr 9/10','19:00','IG','E1'] ]},
+  { n:18, phase:4, dates:'12–16 okt', title:'Tips voor trainers', days:[
+    ['Ma 12/10','19:00','IG','C6'],['Di 13/10','08:00','LI','W4'],['Wo 14/10','19:00','IG','E2'],['Do 15/10','08:00','LI','W5'],['Vr 16/10','19:00','IG','C4'] ]},
+  { n:19, phase:4, dates:'19–23 okt', title:'Functies & verhaal', days:[
+    ['Ma 19/10','19:00','IG','C1'],['Di 20/10','08:00','LI','V2'],['Wo 21/10','19:00','IG','C7'],['Do 22/10','08:00','LI','E3'],['Vr 23/10','19:00','IG','C8'] ]},
+  { n:20, phase:4, dates:'26–30 okt', title:'Probleem & toernooi', days:[
+    ['Ma 26/10','19:00','IG','P3'],['Di 27/10','08:00','LI','W2'],['Wo 28/10','19:00','IG','C2'],['Do 29/10','08:00','LI','V1'],['Vr 30/10','19:00','IG','C5'] ]},
+  { n:21, phase:4, dates:'2–6 nov', title:'Database & waarde', days:[
+    ['Ma 2/11','19:00','IG','C4'],['Di 3/11','08:00','LI','W3'],['Wo 4/11','19:00','IG','E2'],['Do 5/11','08:00','LI','W5'],['Vr 6/11','19:00','IG','E1'] ]},
+  { n:22, phase:4, dates:'9–13 nov', title:'Vergelijken & dashboard', days:[
+    ['Ma 9/11','19:00','IG','C1'],['Di 10/11','08:00','LI','V3'],['Wo 11/11','19:00','IG','C3'],['Do 12/11','08:00','LI','E3'],['Vr 13/11','19:00','IG','C6'] ]},
+  { n:23, phase:4, dates:'16–20 nov', title:'Teams & verhaal', days:[
+    ['Ma 16/11','19:00','IG','P1'],['Di 17/11','08:00','LI','W1'],['Wo 18/11','19:00','IG','C7'],['Do 19/11','08:00','LI','V4'],['Vr 20/11','19:00','IG','C4'] ]},
+  { n:24, phase:4, dates:'23–27 nov', title:'Toernooi & mijlpaal', days:[
+    ['Ma 23/11','19:00','IG','C5'],['Di 24/11','08:00','LI','W4'],['Wo 25/11','19:00','IG','E2'],['Do 26/11','08:00','LI','F2'],['Vr 27/11','19:00','IG','C8'] ]},
+  { n:25, phase:5, dates:'30 nov–4 dec', title:'Jaar afronden', days:[
+    ['Ma 30/11','19:00','IG','C1'],['Di 1/12','08:00','LI','V2'],['Wo 2/12','19:00','IG','C2'],['Do 3/12','08:00','LI','W5'],['Vr 4/12','19:00','IG','E1'] ]},
+  { n:26, phase:5, dates:'7–11 dec', title:'Vertrouwen oogsten', days:[
+    ['Ma 7/12','19:00','IG','C4'],['Di 8/12','08:00','LI','W1'],['Wo 9/12','19:00','IG','E2'],['Do 10/12','08:00','LI','E3'],['Vr 11/12','19:00','IG','C6'] ]},
+  { n:27, phase:5, dates:'14–18 dec', title:'Laatste volle week', days:[
+    ['Ma 14/12','19:00','IG','P3'],['Di 15/12','08:00','LI','V4'],['Wo 16/12','19:00','IG','C3'],['Do 17/12','08:00','LI','W3'],['Vr 18/12','19:00','IG','C8'] ]},
+  { n:28, phase:5, dates:'21–25 dec · Kerst (rustig)', title:'Kerstweek — laag tempo', days:[
+    ['Wo 23/12','19:00','IG','C4'],['Do 24/12','08:00','LI','KERST'] ]},
+  { n:29, phase:5, dates:'28–31 dec · Jaarafsluiting', title:'Terugblik 2026', days:[
+    ['Ma 28/12','19:00','IG','C1'],['Di 29/12','08:00','LI','F3'],['Wo 30/12','19:00','IG','F3'],['Do 31/12','08:00','LI','NJ'] ]},
+];
+
+/* Special "posts" for kerst/nieuwjaar */
+const SPECIAL = {
+  KERST: { cat:'Seizoen', plat:'LinkedIn', type:'Tekstpost', title:'Korte kerstgroet (eigen woorden)',
+    text:`Schrijf 2–3 zinnen in je eigen woorden. Bv:
+
+"Fijne kerstdagen aan alle scouts, trainers en clubs. Dank voor het meekijken dit jaar. Rust lekker uit — in 2027 gaan we weer talent ontdekken. ⚽"`,
+    tags:'#kerst #jeugdvoetbal', film:'Geen, of een warme/sfeervolle foto.', dur:'' },
+  NJ: { cat:'Seizoen', plat:'LinkedIn', type:'Tekstpost', title:'Nieuwjaarswens + vooruitblik (eigen woorden)',
+    text:`Schrijf 3 zinnen in je eigen woorden. Bv:
+
+"2026 was het jaar dat ScoutingHub echt ging leven. In 2027 wil ik [doel]. Dank aan iedereen die meebouwt — en een gezond, sportief nieuwjaar! 🎆⚽"`,
+    tags:'#nieuwjaar #buildinpublic #voetbal', film:'Geen beeld nodig.', dur:'' },
+};
+
+function getPost(id){ return POSTS[id] || SPECIAL[id]; }
+
+/* ---------- AFVINKEN + DATUMS ---------- */
+const STORAGE_KEY = 'mp_done_2026';
+function loadDone(){ try { return JSON.parse(localStorage.getItem(STORAGE_KEY)) || {}; } catch(e){ return {}; } }
+function saveDone(o){ try { localStorage.setItem(STORAGE_KEY, JSON.stringify(o)); } catch(e){} }
+let DONE = loadDone();
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function parseDate(day, time){
+  const dm = (day.split(' ')[1] || day);
+  const [d,m] = dm.split('/').map(Number);
+  const [hh,mm] = (time||'00:00').split(':').map(Number);
+  return new Date(2026, m-1, d, hh||0, mm||0, 0);
+}
+function isoKey(dt){ return dt.getFullYear()+'-'+pad(dt.getMonth()+1)+'-'+pad(dt.getDate()); }
+function weekRange(w){
+  const ds = w.days.map(d=>parseDate(d[0],d[1]).getTime());
+  return { min:new Date(Math.min(...ds)), max:new Date(Math.max(...ds)) };
+}
+function currentWeekNum(){
+  const now = new Date(); now.setHours(12,0,0,0);
+  for(const w of WEEKS){ const r=weekRange(w); const min=new Date(r.min); min.setHours(0,0,0,0); const max=new Date(r.max); max.setHours(23,59,59,0); if(now>=min && now<=max) return w.n; }
+  for(const w of WEEKS){ const r=weekRange(w); const min=new Date(r.min); min.setHours(0,0,0,0); if(now<min) return w.n; }
+  return WEEKS[WEEKS.length-1].n;
+}
+
+/* ---------- RENDER KALENDER ---------- */
+function platPill(p){
+  if(p==='IG') return '<span class="pill ig">IG</span>';
+  if(p==='LI') return '<span class="pill li">LI</span>';
+  return '<span class="pill cat">'+p+'</span>';
+}
+function renderCalendar(){
+  const root = document.getElementById('calendar');
+  const curWk = currentWeekNum();
+  let html = '';
+  let lastPhase = 0;
+  WEEKS.forEach(w => {
+    if(w.phase !== lastPhase){
+      const ph = PHASES[w.phase];
+      html += `<div class="phase ${ph.star?'star':''}"><h3>${ph.title}</h3><p>${ph.sub}</p></div>`;
+      lastPhase = w.phase;
+    }
+    const openCls = w.n===curWk ? 'open' : '';
+    const todayBadge = w.n===curWk ? '<span class="wktoday">📍 deze week</span>' : '';
+    html += `<div class="week ${openCls}" id="week${w.n}">
+      <div class="week-head" onclick="toggleWeek(${w.n})">
+        <div class="week-num">${w.n}</div>
+        <div><div class="week-title">${w.title}${todayBadge}</div><div class="week-dates">${w.dates}</div></div>
+        <span class="wkprog" id="wkprog${w.n}"></span>
+        <div class="week-chev">▸</div>
+      </div>
+      <div class="week-body">`;
+    w.days.forEach(d => {
+      const [day,time,plat,pid] = d;
+      const post = getPost(pid);
+      const tType = post ? post.type : '';
+      const key = isoKey(parseDate(day,time));
+      const done = !!DONE[key];
+      html += `<div class="day ${done?'done':''}" data-key="${key}" onclick="openModal('${pid}','${day} · ${time}')">
+        <button class="chk" title="Afvinken als geplaatst" onclick="event.stopPropagation();toggleDone('${key}',this)">${done?'✅':'⬜'}</button>
+        <div class="day-when"><span class="day-d">${day}</span><span class="day-t">${time} ${platPill(plat)}</span></div>
+        <div class="day-post"><div class="pt">${post?post.title:pid}</div><div class="pmeta">${pid} · ${post?post.cat:''}</div></div>
+        <div class="day-type">${tType}</div>
+      </div>`;
+    });
+    html += `</div></div>`;
+  });
+  root.innerHTML = html;
+  updateProgress();
+}
+
+/* ---------- RENDER POSTBANK ---------- */
+function renderPostbank(){
+  const root = document.getElementById('postbank-list');
+  const cats = ['Verhaal','Probleem','Product','Waarde','Actie','Seizoen'];
+  const icons = {Verhaal:'📖',Probleem:'⚠️',Product:'⚽',Waarde:'💡',Actie:'🎯',Seizoen:'🗓️'};
+  let html='';
+  cats.forEach(cat=>{
+    const ids = Object.keys(POSTS).filter(id=>POSTS[id].cat===cat);
+    html += `<div class="card"><h3>${icons[cat]} ${cat}</h3>`;
+    ids.forEach(id=>{
+      const p = POSTS[id];
+      html += `<div class="day" onclick="openModal('${id}','Postbank')">
+        <div class="day-when"><span class="day-d">${id}</span><span class="day-t">${platPill(p.plat==='Instagram'?'IG':p.plat==='LinkedIn'?'LI':'Beide')}</span></div>
+        <div class="day-post"><div class="pt">${p.title}</div><div class="pmeta">${p.type}</div></div>
+        <div class="day-type">${p.dur||'tekst'}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  root.innerHTML = html;
+}
+
+/* ---------- MODAL ---------- */
+function openModal(pid, when){
+  const p = getPost(pid);
+  if(!p) return;
+  const platLabel = p.plat==='Beide' ? '<span class="pill ig">IG</span> <span class="pill li">LI</span>' : (p.plat==='Instagram'?'<span class="pill ig">Instagram</span>':'<span class="pill li">LinkedIn</span>');
+  const durHtml = p.dur ? `<span class="dur">⏱️ ${p.dur}</span>` : '';
+  const box = document.getElementById('modalBox');
+  box.innerHTML = `
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <h3>${p.title}</h3>
+    <div class="mtags"><span class="pill cat">${pid} · ${p.cat}</span> ${platLabel} <span class="day-type">${p.type}</span></div>
+    <div style="color:var(--cp-text-muted);font-size:13px">${when}</div>
+    <div class="mlabel">📝 Posttekst</div>
+    <div class="mbody" id="modalText">${escapeHtml(p.text)}</div>
+    <button class="copybtn" onclick="copyText(\`${p.text.replace(/`/g,'\\`')}\`, this)">📋 Kopieer tekst</button>
+    <div class="mlabel"># Hashtags</div>
+    <div class="htags">${p.tags}</div>
+    <button class="copybtn" style="background:var(--cp-surface-soft);color:var(--cp-text);border:1px solid var(--cp-border)" onclick="copyText('${p.tags}', this)">📋 Kopieer hashtags</button>
+    <div class="mlabel">🎬 Beeld / film-tip ${durHtml}</div>
+    <div class="film">${p.film}</div>
+  `;
+  document.getElementById('modalBg').classList.add('show');
+}
+function closeModal(){ document.getElementById('modalBg').classList.remove('show'); }
+function escapeHtml(s){ return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+/* ---------- HELPERS ---------- */
+function toggleWeek(n){ document.getElementById('week'+n).classList.toggle('open'); }
+function toggleAll(open){ document.querySelectorAll('.week').forEach(w=>{ w.classList.toggle('open', open); }); }
+
+function toggleDone(key, btn){
+  if(DONE[key]) delete DONE[key]; else DONE[key]=true;
+  saveDone(DONE);
+  const on = !!DONE[key];
+  const row = btn.closest('.day');
+  if(row) row.classList.toggle('done', on);
+  btn.textContent = on ? '✅' : '⬜';
+  updateProgress();
+}
+function updateProgress(){
+  let total=0, done=0;
+  WEEKS.forEach(w=>{
+    let wt=0, wd=0;
+    w.days.forEach(d=>{ const key=isoKey(parseDate(d[0],d[1])); wt++; total++; if(DONE[key]){ wd++; done++; } });
+    const el=document.getElementById('wkprog'+w.n);
+    if(el){ el.textContent=wd+'/'+wt; el.classList.toggle('full', wd===wt && wt>0); }
+  });
+  const pf=document.getElementById('progFill'); const pt=document.getElementById('progText');
+  if(pf) pf.style.width = (total ? (done/total*100) : 0) + '%';
+  if(pt) pt.textContent = done + ' / ' + total + ' posts geplaatst';
+}
+function goThisWeek(){
+  const n = currentWeekNum();
+  document.querySelectorAll('.week').forEach(w=>w.classList.remove('open'));
+  const el = document.getElementById('week'+n);
+  if(!el) return;
+  el.classList.add('open');
+  el.scrollIntoView({behavior:'smooth', block:'center'});
+  el.classList.remove('flash'); void el.offsetWidth; el.classList.add('flash');
+}
+function resetDone(){
+  if(confirm('Alle vinkjes wissen? Dit kan niet ongedaan worden gemaakt.')){
+    DONE = {}; saveDone(DONE); renderCalendar();
+  }
+}
+
+/* ---------- AGENDA-EXPORT (.ics) ---------- */
+function icsEsc(s){ return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n'); }
+function icsLocal(dt){ return dt.getFullYear()+pad(dt.getMonth()+1)+pad(dt.getDate())+'T'+pad(dt.getHours())+pad(dt.getMinutes())+'00'; }
+function buildICS(){
+  const now = new Date();
+  const stamp = now.getUTCFullYear()+pad(now.getUTCMonth()+1)+pad(now.getUTCDate())+'T'+pad(now.getUTCHours())+pad(now.getUTCMinutes())+pad(now.getUTCSeconds())+'Z';
+  let L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//ScoutingHub//Marketingplan 2026//NL','CALSCALE:GREGORIAN','METHOD:PUBLISH','X-WR-CALNAME:ScoutingHub Marketingplan 2026'];
+  WEEKS.forEach(w => w.days.forEach(d => {
+    const [day,time,plat,pid] = d;
+    const post = getPost(pid);
+    if(!post) return;
+    const dt = parseDate(day,time);
+    const end = new Date(dt.getTime() + 15*60000);
+    const platName = plat==='IG' ? 'Instagram' : plat==='LI' ? 'LinkedIn' : plat;
+    const summary = '📣 '+platName+': '+post.title;
+    const desc = post.text + '\n\n# Hashtags:\n' + post.tags + '\n\n🎬 Beeld/film:\n' + post.film;
+    L.push('BEGIN:VEVENT');
+    L.push('UID:'+pid+'-'+icsLocal(dt)+'@scoutinghub');
+    L.push('DTSTAMP:'+stamp);
+    L.push('DTSTART:'+icsLocal(dt));
+    L.push('DTEND:'+icsLocal(end));
+    L.push('SUMMARY:'+icsEsc(summary));
+    L.push('DESCRIPTION:'+icsEsc(desc));
+    L.push('BEGIN:VALARM','TRIGGER:-PT30M','ACTION:DISPLAY','DESCRIPTION:'+icsEsc('Tijd om te posten: '+summary),'END:VALARM');
+    L.push('END:VEVENT');
+  }));
+  L.push('END:VCALENDAR');
+  return L.join('\r\n');
+}
+function downloadICS(){
+  const blob = new Blob([buildICS()], {type:'text/calendar;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'scoutinghub-marketingplan-2026.ics';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
+function toggleTheme(){
+  const cur = document.documentElement.getAttribute('data-theme');
+  document.documentElement.setAttribute('data-theme', cur==='dark'?'light':'dark');
+}
+function copyText(txt, btn){
+  navigator.clipboard.writeText(txt).then(()=>{ const o=btn.textContent; btn.textContent='✅ Gekopieerd!'; btn.classList.add('ok'); setTimeout(()=>{btn.textContent=o;btn.classList.remove('ok');},1500); });
+}
+function copyEl(id, btn){ copyText(document.getElementById(id).textContent, btn); }
+
+/* Tabs */
+document.querySelectorAll('#tabs button').forEach(b=>{
+  b.addEventListener('click',()=>{
+    document.querySelectorAll('#tabs button').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('section.panel').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById(b.dataset.tab).classList.add('active');
+    window.scrollTo({top:0,behavior:'smooth'});
+  });
+});
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+
+renderCalendar();
+renderPostbank();
+</script>
+</body>
+</html>

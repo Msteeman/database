@@ -1579,7 +1579,7 @@ a { color: var(--accent); text-decoration: none; }
   display: flex; gap: 5px; flex-wrap: nowrap;
 }
 .sa-header-acts-row {
-  margin-top: 10px; flex-wrap: wrap; gap: 8px;
+  display: flex; margin-top: 10px; flex-wrap: wrap; gap: 8px;
 }
 @media (max-width: 600px){
   .sa-header-acts-row { gap: 6px; }
@@ -12497,9 +12497,6 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
   .panel:has(#dist-current),
   .panel:has(#dash-gaps),
   .panel:has(#dash-clubs),
-  .panel:has(#dash-positions),
-  .panel:has(#dash-advies2),
-  .panel:has(#dash-categories),
   #dash-overzichtsmap-panel{ display:none !important; }
 }
 

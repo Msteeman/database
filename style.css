@@ -360,7 +360,7 @@ html, body {
   font-size: 14px;
   -webkit-font-smoothing: antialiased;
   min-height: 100vh;
-  overflow-x: hidden;
+  overflow-x: clip;
   max-width: 100vw;
 }
 body {
@@ -6109,7 +6109,7 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
     /* Reserve space for fixed bottom-nav (52px + safe-area + breathing room) */
     padding-bottom: calc(84px + env(safe-area-inset-bottom));
     max-width: 100vw;
-    overflow-x: hidden;
+    overflow-x: clip;
     /* sh-v363: sidebar is een fixed drawer in mobiele modus, dus app-grid is
        1 kolom. .main heeft op desktop grid-column:2 (naast sidebar); dat moet
        hier terug naar kolom 1, anders ontstaat een lege spookkolom links en
@@ -6117,7 +6117,7 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
     grid-column: 1;
   }
 
-  .view { max-width: 100%; overflow-x: hidden; }
+  .view { max-width: 100%; overflow-x: clip; }
   .panel, .card { max-width: 100%; }
 
   .topbar {

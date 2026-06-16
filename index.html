@@ -3831,6 +3831,28 @@ algemeen:</textarea>
 <script>window.SH_TURNSTILE_SITEKEY = '0x4AAAAAADkhQSxtHWHwoP1Q';</script>
 <script type="module" src="app.js"></script>
 <script>
+(function(){
+  var _pwaDeferred = null;
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    _pwaDeferred = e;
+    var btn = document.getElementById('install-btn');
+    if(btn){ btn.style.display = ''; btn.disabled = false; }
+  });
+  window.addEventListener('appinstalled', function(){
+    _pwaDeferred = null;
+    var btn = document.getElementById('install-btn');
+    if(btn){ btn.textContent = '✓ Geïnstalleerd'; btn.disabled = true; }
+  });
+  document.addEventListener('click', function(e){
+    if(e.target && e.target.id === 'install-btn' && _pwaDeferred){
+      _pwaDeferred.prompt();
+      _pwaDeferred.userChoice.then(function(){ _pwaDeferred = null; });
+    }
+  });
+})();
+</script>
+<script>
 (function(){function init(){var lb=document.getElementById("sh-lightbox");if(!lb){lb=document.createElement("div");lb.id="sh-lightbox";lb.className="sh-lb";lb.setAttribute("role","dialog");lb.setAttribute("aria-modal","true");lb.setAttribute("aria-label","Afbeelding vergroten");lb.innerHTML='<button class="sh-lb-close" aria-label="Sluiten">\u00d7</button><img class="sh-lb-img" src="" alt="">';document.body.appendChild(lb);}var img=lb.querySelector(".sh-lb-img");var closeBtn=lb.querySelector(".sh-lb-close");function openLb(src,alt){if(!src)return;img.src=src;img.alt=alt||"";lb.classList.add("open");document.body.style.overflow="hidden";}function closeLb(){lb.classList.remove("open");img.src="";document.body.style.overflow="";}lb.addEventListener("click",function(e){closeLb();});document.addEventListener("keydown",function(e){if(e.key==="Escape"&&lb.classList.contains("open"))closeLb();});document.addEventListener("click",function(e){var t=e.target;if(!t||t.tagName!=="IMG"||!t.closest)return;if(t.closest("#sh-lightbox"))return;if(t.closest(".hb-shot.has-img")||t.closest("#landing-overlay")){e.preventDefault();openLb(t.currentSrc||t.src,t.alt);}});}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();})();
 </script>
 

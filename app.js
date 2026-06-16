@@ -732,6 +732,7 @@ let matchReportsCache = [];
 let tipsCache = [];
 let programmaCache = [];
 let unsubProgramma = null;
+let unsubLiveMatchNotes = null;
 let rittenCache = [];
 let unsubRitten = null;
 
@@ -3580,6 +3581,31 @@ function subscribeData(){
     setSync('offline');
   });
 
+  // live_match_notes onSnapshot — cross-device sync voor live wedstrijd notities
+  unsubLiveMatchNotes = onSnapshot(
+    collection(db, 'users', currentUser.uid, 'live_match_notes'),
+    snap => {
+      snap.docChanges().forEach(ch => {
+        if(ch.type === 'removed') return;
+        const d = {...ch.doc.data(), _lmnId: ch.doc.id};
+        const prog = programmaCache.find(p => p.id === d.matchId);
+        if(!prog || !d.playerId) return;
+        if(!Array.isArray(prog.snelnotities)) prog.snelnotities = [];
+        const sn = prog.snelnotities.find(s => s && s.spelerKey === d.playerId);
+        if(sn){
+          if(d.fields) sn.fields = {...(sn.fields||{}), ...d.fields};
+          if(d.tags)   sn.tags  = d.tags;
+          if(typeof d.is_opvallend !== 'undefined') sn.is_opvallend = d.is_opvallend;
+        }
+      });
+      if(currentView === 'actief' && typeof renderActiveScouting === 'function'){
+        const busy = !!document.querySelector('.sa-snel-form[style*="display: block"], .sa-snel-wstr-form[style*="display: block"]');
+        if(!busy) requestAnimationFrame(() => { try{ renderActiveScouting(); }catch(_){} });
+      }
+    },
+    err => { console.warn('live_match_notes sync error:', err); }
+  );
+
 }
 
 function unsubscribeData(){
@@ -3589,6 +3615,7 @@ function unsubscribeData(){
   if(unsubMatchReports){ unsubMatchReports(); unsubMatchReports = null; }
   if(unsubTips){ unsubTips(); unsubTips = null; }
   if(unsubProgramma){ unsubProgramma(); unsubProgramma = null; }
+  if(unsubLiveMatchNotes){ unsubLiveMatchNotes(); unsubLiveMatchNotes = null; }
   if(unsubRitten){ unsubRitten(); unsubRitten = null; }
   playersCache = [];
   analysesCache = [];
@@ -15230,11 +15257,13 @@ function renderDetailObsOverview(p){
   document.getElementById('dtl-back-prev')?.addEventListener('click', ()=>go(previousViewBeforePlayer||'database'));
   document.getElementById('dtl-del-obs')?.addEventListener('click', ()=>{
     // BATCH 1 / 1C — site-stijl popup i.p.v. browser-confirm
-    _shStyledConfirm({
+    showTypedDeleteConfirm({
       title: 'Observatie verwijderen?',
-      msg: 'De observatie van ' + (p.naam || 'deze speler') + ' wordt definitief verwijderd.',
-      yes: '🗑️ Ja, verwijderen'
-    }, async ()=>{
+      body: 'De observatie van <b>'+(p.naam||'deze speler').replace(/</g,'&lt;')+'</b> wordt definitief verwijderd — onomkeerbaar.',
+      confirmWord: 'VERWIJDEREN',
+      label: 'Type om te bevestigen'
+    }).then(async ok => {
+      if(!ok) return;
       try{ await deletePlayer(p.id); go(previousViewBeforePlayer||'database'); if(typeof toast==='function') toast('Observatie verwijderd'); }
       catch(_){ if(typeof toast==='function') toast('Verwijderen mislukt',true); }
     });
@@ -21441,13 +21470,27 @@ async function saveProgMatchFromForm(e){
 async function deleteProgMatchFromForm(){
   const id = $('#pm-id').value;
   if(!id) return;
-  if(!confirm('Geplande wedstrijd verwijderen? Eventuele spelers in dit plan gaan ook weg.')) return;
+  const prog = programmaCache.find(p => p.id === id);
+  const label = prog ? ((prog.thuis||'?')+' – '+(prog.uit||'?')) : 'deze wedstrijd';
+  const ok = await showTypedDeleteConfirm({
+    title: 'Wedstrijd verwijderen?',
+    body: `<b>${label}</b> wordt permanent verwijderd.<br><br>Alle gekoppelde speler-notities, opgevallen spelers en wedstrijdnotities verdwijnen ook — onomkeerbaar.`,
+    confirmWord: 'VERWIJDEREN',
+    label: 'Type om te bevestigen'
+  });
+  if(!ok) return;
   try {
+    // Cascade: verwijder alle live_match_notes voor dit match-id
+    const lmnSnap = await getDocs(query(
+      collection(db, 'users', currentUser.uid, 'live_match_notes'),
+      where('matchId', '==', id)
+    ));
+    await Promise.all(lmnSnap.docs.map(d => deleteDoc(d.ref)));
     await deleteProgrammaItem(id);
     closeProgMatchModal();
     if(progExpandedId === id) progExpandedId = null;
-    toast('Verwijderd');
-  } catch(e){}
+    toast('Wedstrijd + notities verwijderd');
+  } catch(e){ toast('Verwijderen mislukt', true); }
 }
 
 /* ------------- Plan player modal ------------- */
@@ -27639,7 +27682,7 @@ function shWireClubAC(input){
   input.addEventListener('blur', () => setTimeout(() => window.shAC?.close(), 150));
 }
 function shUpgradeSelectToAC(id){ /* no-op */ }
-const _SH_ELFTALLEN = (function(){ const out = []; for(let age=8;age<=23;age++){ const max=10; for(let nr=1;nr<=max;nr++) out.push('O.'+age+'-'+nr); } return out; })();
+const _SH_ELFTALLEN = (function(){ const out = []; for(let age=8;age<=23;age++){ const max=10; for(let nr=1;nr<=max;nr++) out.push('O.'+age+'-'+nr); } for(let age=14;age<=23;age++){ for(let nr=1;nr<=4;nr++) out.push('JONG O.'+age+'-'+nr); } return out; })();
 function shWireLeeftijdAC(input){
   if(!input) return;
   input.setAttribute('autocomplete','off');

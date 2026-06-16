@@ -11054,6 +11054,9 @@ tr.db-row-obs td:first-child {
 }
 
 .recent-item-obs{ border-left:2px solid rgba(168,85,247,.5) !important; background:rgba(168,85,247,.04); }
+.recent-item:not(.recent-item-obs){ border-left:2px solid rgba(16,185,129,.45); background:rgba(16,185,129,.04); }
+.recent-item:not(.recent-item-obs):hover{ border-color:rgba(16,185,129,.75); background:rgba(16,185,129,.09); }
+.recent-avatar:not(.avatar-obs){ background:linear-gradient(135deg,#10b981 0%,#059669 100%) !important; color:#fff !important; }
 .recent-wstr{ font-size:10.5px;color:var(--text-3);margin-top:1px; }
 
 /* iPhone safe area voor modals die fullscreen openen op PWA */

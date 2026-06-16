@@ -2728,10 +2728,8 @@ algemeen:</textarea>
             <input id="pm-uit-elftal" type="text" placeholder="bv. O.16-2" autocomplete="off" maxlength="20" data-picker="elftal" />
           </div>
         </div>
-        <!-- sh-v352: secundaire velden achter "Meer details" — sneller inplannen op mobiel.
-             Plaats/locatie vullen automatisch vanuit de thuisclub, methode = Live default. -->
-        <details class="pm-more" id="pm-more-details">
-          <summary>Meer details <span class="pm-more-hint">— methode, type, locatie, veld</span></summary>
+        <!-- sh-v352: secundaire velden — altijd zichtbaar -->
+        <div class="pm-more" id="pm-more-details">
           <div class="field" style="margin-top:12px;">
             <label>Scoutingmethode</label>
             <select id="pm-methode">
@@ -2770,7 +2768,7 @@ algemeen:</textarea>
             <label>Veld (optioneel)</label>
             <input id="pm-veld" type="text" placeholder="bv. 2, 3, 4a, 5b, 1b" maxlength="8" />
           </div>
-        </details>
+        </div><!-- /pm-more-details -->
         </div><!-- /pm-wedstrijd-fields -->
         <div class="field" style="margin-top:12px;">
           <label>Notities (optioneel)</label>

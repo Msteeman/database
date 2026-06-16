@@ -9842,6 +9842,9 @@ function renderNextMatchHero(){
   };
   const heroEl = wrap.querySelector('.dash-hero');
   if(heroEl){ heroEl.style.cursor = 'pointer'; heroEl.addEventListener('click', goToProg); }
+  // Knop → wedstrijden tab (niet programma)
+  const ctaBtn = wrap.querySelector('.dash-hero-cta');
+  if(ctaBtn){ ctaBtn.addEventListener('click', e => { e.stopPropagation(); if(typeof go==='function') go('wedstrijden'); }); }
 }
 window.renderNextMatchHero = renderNextMatchHero;
 
@@ -21236,19 +21239,8 @@ function openProgMatchModal(progId, defaultDate){
   if($('#pm-veld')) $('#pm-veld').value = it ? (it.veld||'') : '';
   $('#pm-notities').value = it ? (it.notities||'') : '';
   $('#pm-delete').style.display = it ? '' : 'none';
-  // sh-v352: "Meer details" standaard dicht bij nieuw; open bij bewerken als er
-  // niet-default secundaire info is (methode≠Live, type gekozen, of veld ingevuld).
-  try {
-    const moreEl = document.getElementById('pm-more-details');
-    if(moreEl){
-      const hasExtra = !!it && (
-        (it.methode && it.methode !== 'Live') ||
-        (it.info && String(it.info).trim()) ||
-        (it.veld && String(it.veld).trim())
-      );
-      moreEl.open = !!hasExtra;
-    }
-  } catch(_){}
+  // Meer details altijd open
+  try { const moreEl = document.getElementById('pm-more-details'); if(moreEl) moreEl.open = true; } catch(_){}
   /* s35cg: vul scout-dropdown als je coordinator/admin bent */
   try {
     if(typeof populateScoutDropdown === 'function'){
@@ -31172,13 +31164,12 @@ function _shRequestAccess(){
       '<input type="email" id="sh-req-email" class="sh-req-i" placeholder="je@email.com" autocomplete="email">' +
       '<label class="sh-req-l" for="sh-req-club">Club / organisatie *</label>' +
       '<input type="text" id="sh-req-club" class="sh-req-i" placeholder="Naam van je club of organisatie">' +
-      '<label class="sh-req-l" for="sh-req-func">Functie *</label>' +
+      '<label class="sh-req-l" for="sh-req-func">Gewenste rol *</label>' +
       '<select id="sh-req-func" class="sh-req-i sh-req-select">' +
-        '<option value="">Kies je functie\u2026</option>' +
-        '<option value="scout">Scout</option>' +
-        '<option value="coordinator">Co\u00f6rdinator</option>' +
-        '<option value="td">Technisch directeur</option>' +
-        '<option value="anders">Anders</option>' +
+        '<option value="">Kies je rol\u2026</option>' +
+        '<option value="scout">Scout \u2014 eigen rapporten</option>' +
+        '<option value="coordinator">Co\u00f6rdinator \u2014 eigen afdeling</option>' +
+        '<option value="hoofdcoordinator">Hoofd jeugdopleiding / Hoofdco\u00f6rdinator \u2014 alles lezen</option>' +
       '</select>' +
       '<label class="sh-req-l" for="sh-req-message">Reden / motivatie</label>' +
       '<textarea id="sh-req-message" class="sh-req-i" rows="2" placeholder="Waarom wil je ScoutingHub gebruiken?"></textarea>' +

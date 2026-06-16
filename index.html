@@ -497,7 +497,7 @@
                 <button type="button" class="settings-btn" id="settings-photo-pick">Foto kiezen</button>
                 <button type="button" class="settings-btn ghost" id="settings-photo-reset">Standaard</button>
               </div>
-              <div class="settings-photo-hint">JPG of PNG. Wordt veilig opgeslagen — zichtbaar op al je apparaten.</div>
+              <div class="settings-photo-hint">JPG of PNG. Wordt veilig opgeslagen — zichtbaar in de zijbalk.</div>
             </div>
           </div>
         </div>
@@ -562,16 +562,9 @@
           </div>
           <div class="settings-row">
             <span class="settings-row-label">Herinnering vóór prio-wedstrijden</span>
-            <label class="sh-switch"><input type="checkbox" id="settings-reminders-toggle"><span class="sh-switch-slider"></span></label>
+            <button type="button" class="settings-btn ghost" style="font-size:11px;opacity:.6;cursor:default;" onclick="alert('Komt in de volgende versie.')">Volgende fase 🔒</button>
           </div>
-          <div class="settings-row" id="settings-reminder-min-row">
-            <span class="settings-row-label">Herinner me van tevoren</span>
-            <select class="settings-btn" id="settings-reminder-minutes" style="cursor:pointer;">
-              <option value="5">5 minuten</option>
-              <option value="10">10 minuten</option>
-              <option value="15">15 minuten</option>
-            </select>
-          </div>
+          <div class="settings-row" id="settings-reminder-min-row"><span class="settings-row-label">Herinner me van tevoren</span><button type="button" class="settings-btn ghost" style="font-size:11px;opacity:.6;cursor:default;" onclick="alert('Komt in de volgende versie.')">Volgende fase 🔒</button></div>
           <div class="settings-row">
             <span class="settings-row-label">Demo-rondleiding bekijken (wat is nieuw)</span>
             <button type="button" class="settings-btn" id="settings-open-tour">Rondleiding starten</button>
@@ -590,7 +583,7 @@
           </div>
         </div>
 
-        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; <select id="version-channel-pick" style="background:transparent;border:1px solid var(--border);color:inherit;font:inherit;padding:2px 6px;border-radius:6px;cursor:pointer;"><option value="stable" selected>v70h-s35dj (stabiel)</option><option value="preview">v71 — preview (binnenkort)</option><option value="beta">v72 — beta (concept)</option></select></div>
+        <div class="settings-meta" id="settings-version-meta">ScoutingHub PWA &middot; v70h-s35dj</div>
         <!-- s35cr: juridische links onderin de Instellingen-modal -->
         <div class="settings-meta" style="margin-top:6px; font-size:11px;">
           <a href="#" onclick="event.preventDefault(); document.getElementById('settings-modal-backdrop')?.classList.remove('show'); window.go && window.go('privacy');" style="color:var(--text-3, #9aa3b7); text-decoration:none;">Privacyverklaring</a>

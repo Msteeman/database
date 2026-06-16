@@ -12592,7 +12592,9 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 /* Fase 1 — Toegang aanvragen */
 .login-req-btn{ background:none; border:1px solid var(--border,#1f2937); color:var(--text-2,#9aa8bd); border-radius:8px; padding:9px 16px; font-size:13px; cursor:pointer; min-height:40px; }
 .login-req-btn:hover{ border-color:var(--accent,#4ea1ff); color:var(--text,#e8edf5); }
-.sh-req-card{ max-width:320px; width:100%; text-align:left; position:relative; padding:12px 14px; max-height:min(560px, calc(100vh - 40px)); overflow-y:auto; overscroll-behavior:contain; }
+.sh-req-card{ max-width:340px; width:100%; text-align:left; position:relative; padding:12px 14px; max-height:calc(100vh - 40px); overflow-y:auto; overscroll-behavior:contain; }
+.sh-req-role-info{ font-size:12px; color:var(--text-3,#8b97ad); background:var(--bg-2,#0e1626); border:1px solid var(--border,#1f2937); border-radius:7px; padding:7px 10px; margin:4px 0; line-height:1.4; }
+.sh-req-role-info strong{ color:var(--text-2,#9aa8bd); }
 .sh-req-x{ position:absolute; top:4px; right:4px; background:none; border:none; color:var(--text-2,#9aa8bd); font-size:20px; cursor:pointer; line-height:1; width:36px; height:36px; }
 .sh-req-sub{ font-size:12px; color:var(--text-2,#9aa8bd); margin:2px 0 8px; line-height:1.4; }
 .sh-req-l{ display:block; font-size:11.5px; color:var(--text-3,#8b97ad); margin:5px 0 2px; }

@@ -31186,8 +31186,8 @@ function _shRequestAccess(){
       '<label class="sh-req-l" for="sh-req-club">Club / organisatie *</label>' +
       '<input type="text" id="sh-req-club" class="sh-req-i" placeholder="Naam van je club of organisatie">' +
       '<input type="hidden" id="sh-req-func" value="scout">' +
-      '<label class="sh-req-l" for="sh-req-message">Reden / motivatie</label>' +
-      '<textarea id="sh-req-message" class="sh-req-i" rows="2" placeholder="Waarom wil je ScoutingHub gebruiken?"></textarea>' +
+      '<input type="hidden" id="sh-req-message" value="">' +
+      '<div class="sh-req-role-info">Je start als <strong>scout</strong> — je ziet alleen je eigen gegevens.</div>' +
       '<label class="sh-req-check"><input type="checkbox" id="sh-req-terms"><span>Ik ga akkoord met de <a href="voorwaarden.html" target="_blank" rel="noopener">Algemene Voorwaarden</a> en het <a href="privacy.html" target="_blank" rel="noopener">Privacybeleid</a> van ScoutingHub.</span></label>' +
       '<label class="sh-req-check"><input type="checkbox" id="sh-req-news" checked><span>Ik ontvang graag de ScoutingHub nieuwsbrief (max. 1x per maand).</span></label>' +
       '<input type="text" id="sh-req-website" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;">' +

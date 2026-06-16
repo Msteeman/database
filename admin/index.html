@@ -2350,6 +2350,7 @@ algemeen:</textarea>
           <div class="bh-tabs">
             <button class="bh-tab active" data-bh-tab="aanvragen">Toegangsaanvragen</button>
             <button class="bh-tab" data-bh-tab="gebruikers">Gebruikers</button>
+            <button class="bh-tab" data-bh-tab="organisaties">Organisaties</button>
             <button class="bh-tab" data-bh-tab="logboek">Logboek</button>
             <button class="bh-tab" data-bh-tab="organogram">Organigram</button>
             <button class="bh-tab" data-bh-tab="statistieken">Statistieken</button>
@@ -2372,6 +2373,7 @@ algemeen:</textarea>
                 <option value="">Alle rollen</option>
                 <option value="scout">Scout</option>
                 <option value="coordinator">Coördinator</option>
+                <option value="hoofdcoordinator">Hoofdcoördinator</option>
                 <option value="admin">Admin</option>
               </select>
               <select id="bh-user-status" class="bh-select" aria-label="Filter op status">
@@ -2389,6 +2391,14 @@ algemeen:</textarea>
               </select>
             </div>
             <div id="bh-user-list"><div class="bh-empty">Laden…</div></div>
+          </div>
+
+          <div class="bh-section" id="bh-section-organisaties">
+            <div class="bh-toolbar">
+              <span style="font-size:13px;color:var(--text-3,#9aa8bd);">Organisaties bepalen wie bij welke club hoort en welke afdelingen er zijn.</span>
+              <button class="bh-btn bh-btn-blue" id="bh-org-new-btn" style="margin-left:auto;">+ Nieuwe organisatie</button>
+            </div>
+            <div id="bh-org-list"><div class="bh-empty">Laden…</div></div>
           </div>
 
           <div class="bh-section" id="bh-section-organogram">

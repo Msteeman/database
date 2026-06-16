@@ -8742,6 +8742,19 @@ function renderActiveScouting(){
     });
   });
 
+  // Sluit obs/gk menus bij klik buiten (eenmalig registreren)
+  if(!document._shSaMenuOutside){
+    document._shSaMenuOutside = true;
+    document.addEventListener('click', function(ev){
+      if(!ev.target.closest('.sa-obs-wrap') && !ev.target.closest('.sa-obs-menu')){
+        document.querySelectorAll('.sa-obs-menu').forEach(function(m){ m.style.display='none'; });
+      }
+      if(!ev.target.closest('.sa-gk-wrap') && !ev.target.closest('.sa-gk-menu')){
+        document.querySelectorAll('.sa-gk-menu').forEach(function(m){ m.style.display='none'; });
+      }
+    }, true);
+  }
+
   // Wedstrijd-actie buttons
   wrap.querySelectorAll('[data-sa-act]').forEach(btn => {
     btn.addEventListener('click', async e => {
@@ -9008,7 +9021,11 @@ function renderActiveScouting(){
         if(naamIn) naamIn.focus();
       } else if(act === 'toggle-gk'){
         const wrap2 = btn.closest('.sa-gk-wrap');
-        if(wrap2){ const menu = wrap2.querySelector('.sa-gk-menu'); if(menu) menu.style.display = (menu.style.display === 'block' ? 'none' : 'block'); }
+        if(wrap2){ const menu = wrap2.querySelector('.sa-gk-menu'); if(menu){
+          const isOpen = menu.style.display === 'block';
+          if(!isOpen){ const r = btn.getBoundingClientRect(); menu.style.position='fixed'; menu.style.top=(r.bottom+4)+'px'; menu.style.left=r.left+'px'; menu.style.zIndex='9999'; }
+          menu.style.display = isOpen ? 'none' : 'block';
+        }}
       } else if(act === 'open-gk'){
         try {
           const _gkProg = programmaCache.find(p => p.id === progId);
@@ -9020,7 +9037,11 @@ function renderActiveScouting(){
         } catch(_){}
       } else if(act === 'toggle-obs'){
         const wrap2 = btn.closest('.sa-obs-wrap');
-        if(wrap2){ const menu = wrap2.querySelector('.sa-obs-menu'); if(menu) menu.style.display = (menu.style.display === 'block' ? 'none' : 'block'); }
+        if(wrap2){ const menu = wrap2.querySelector('.sa-obs-menu'); if(menu){
+          const isOpen = menu.style.display === 'block';
+          if(!isOpen){ const r = btn.getBoundingClientRect(); menu.style.position='fixed'; menu.style.top=(r.bottom+4)+'px'; menu.style.left=r.left+'px'; menu.style.zIndex='9999'; }
+          menu.style.display = isOpen ? 'none' : 'block';
+        }}
       } else if(act === 'open-obs-draft'){
         try {
           const _odProg = programmaCache && programmaCache.find(p => p && p.id === progId);
@@ -31898,7 +31919,7 @@ async function renderBeheer(){
         var tab = t.dataset.bhTab;
         document.querySelectorAll('.bh-tab').forEach(function(x){ x.classList.toggle('active', x===t); });
         document.querySelectorAll('.bh-section').forEach(function(sec){ sec.classList.toggle('active', sec.id==='bh-section-'+tab); });
-        if(tab==='gebruikers') _bhLoadUsers(); else if(tab==='logboek') _bhLoadAudit(); else if(tab==='organogram') _bhLoadOrg(); else if(tab==='statistieken') _bhLoadStats(); else _bhLoadAanvragen();
+        if(tab==='gebruikers') _bhLoadUsers(); else if(tab==='logboek') _bhLoadAudit(); else if(tab==='organogram') _bhLoadOrg(); else if(tab==='statistieken') _bhLoadStats(); else if(tab==='organisaties'){ _bhLoadOrganisaties(); } else _bhLoadAanvragen();
       });
     });
     document.querySelectorAll('#bh-aanvr-filters .bh-filter').forEach(function(f){
@@ -31918,6 +31939,8 @@ async function renderBeheer(){
     var smt = document.getElementById('bh-stat-metric'); if(smt) smt.addEventListener('change', _bhRenderStats);
   }
   _bhLoadAanvragen();
+  // Laad org-cache alvast zodat rol-picker ze heeft
+  try { _bhLoadOrganisaties(); } catch(_){}
 }
 async function _bhLoadOrg(){
   var el = document.getElementById('bh-org');
@@ -32577,8 +32600,9 @@ function _bhRenderUsers(){
   var _uPage = rows.slice(0, _bhUserShown);
   list.innerHTML = '<div class="bh-list-count">'+_uPage.length+' van '+_uTotal+' getoond</div>' + _uPage.map(function(u){
     var id = _bhEsc(u._id); var role = u.role || 'scout';
-    var rcl = role==='admin' ? 'bh-b-purple' : (role==='coordinator' ? 'bh-b-blue' : 'bh-b-grey');
-    var roleBadge = '<span class="bh-badge '+rcl+'">'+_bhEsc(role)+'</span>';
+    var rcl = role==='admin' ? 'bh-b-purple' : (role==='hoofdcoordinator' ? 'bh-b-green' : (role==='coordinator' ? 'bh-b-blue' : 'bh-b-grey'));
+    var roleLabel = role==='hoofdcoordinator' ? 'Hoofdcoörd.' : role;
+    var roleBadge = '<span class="bh-badge '+rcl+'">'+_bhEsc(roleLabel)+'</span>';
     var _myUid = ((typeof currentUser!=='undefined'&&currentUser)?currentUser.uid:'');
     var _canDelete = (u._id !== _myUid) && (role !== 'admin');
     var _isDeleted = (u.status||'')==='deleted';
@@ -32604,6 +32628,7 @@ function _bhRenderUsers(){
     return '<div class="bh-card'+((_isDeleted||_isInactive)?' bh-card-dim':'')+'">' +
       '<div class="bh-card-top"><div class="bh-card-name">'+(_bhEsc(u.displayName)||_bhEsc(u.email)||'—')+'</div>'+roleBadge+statusBadge+'</div>' +
       '<div class="bh-card-row"><span>E-mail</span><b>'+(_bhEsc(u.email)||'—')+'</b></div>' +
+      (u.organisatieNaam ? '<div class="bh-card-row"><span>Organisatie</span><b>'+_bhEsc(u.organisatieNaam)+(u.afdelingNaam?' · '+_bhEsc(u.afdelingNaam):'')+'</b></div>' : '') +
       '<div class="bh-card-row"><span>Aangemaakt</span><b>'+_bhDateShort(u.createdAt)+'</b></div>' +
       statusRow +
       actionsHtml +
@@ -32783,30 +32808,229 @@ async function _bhUserDetailCounts(uid){
 function _bhUserRole(uid){
   var u = _bhUserCache.find(function(x){ return x._id===uid; }); if(!u) return;
   var cur = u.role || 'scout';
-  var body = '<div class="bh-role-pick">' +
-    ['scout','coordinator','admin'].map(function(r){
-      return '<button type="button" class="bh-btn '+(r===cur?'bh-btn-active':'')+'" data-pick-role="'+r+'">'+r+(r===cur?' (huidig)':'')+'</button>';
-    }).join('') +
-  '</div><div class="bh-modal-note">Wijziging is direct actief; de gebruiker moet opnieuw inloggen om het zelf te zien.</div>';
-  var m = _bhModal('Rol wijzigen — '+(_bhEsc(u.displayName)||_bhEsc(u.email)||''), body, {});
-  m.root.querySelectorAll('[data-pick-role]').forEach(function(b){
-    b.addEventListener('click', async function(){
-      var role = b.getAttribute('data-pick-role');
-      if(role===cur){ m.close(); return; }
-      if(!_shIsAdmin()) return;
-      m.root.querySelectorAll('[data-pick-role]').forEach(function(x){ x.disabled=true; });
+  var curOrg = u.organisatieId || '';
+  var curAfd = u.afdelingId || '';
+  var curAfdNaam = u.afdelingNaam || '';
+
+  var roleLabels = {
+    scout: 'Scout — alleen eigen rapporten',
+    coordinator: 'Coördinator — eigen afdeling lezen',
+    hoofdcoordinator: 'Hoofdcoördinator — alles lezen (read-only)',
+    admin: 'Admin — volledige toegang'
+  };
+
+  // Bouw org-opties
+  var orgOpts = '<option value="">— geen organisatie —</option>';
+  if(window._bhOrgCache) {
+    window._bhOrgCache.forEach(function(o){
+      orgOpts += '<option value="'+_bhEsc(o.id)+'"'+(o.id===curOrg?' selected':'')+'>'+_bhEsc(o.naam)+'</option>';
+    });
+  }
+
+  var body =
+    '<div class="bh-role-pick">' +
+      ['scout','coordinator','hoofdcoordinator','admin'].map(function(r){
+        return '<button type="button" class="bh-btn '+(r===cur?'bh-btn-active':'')+'" data-pick-role="'+r+'" title="'+roleLabels[r]+'">'+
+          (r==='hoofdcoordinator'?'Hoofdcoördinator':r.charAt(0).toUpperCase()+r.slice(1))+
+          (r===cur?' ✓':'')+
+        '</button>';
+      }).join('') +
+    '</div>' +
+    '<div style="margin-top:14px;">' +
+      '<label class="sh-req-l" for="bh-org-sel">Organisatie</label>' +
+      '<select id="bh-org-sel" class="bh-select" style="width:100%;margin-bottom:10px;">'+orgOpts+'</select>' +
+      '<label class="sh-req-l" for="bh-afd-sel">Afdeling</label>' +
+      '<select id="bh-afd-sel" class="bh-select" style="width:100%;margin-bottom:4px;"><option value="">— geen afdeling —</option></select>' +
+    '</div>' +
+    '<div class="bh-modal-note">Wijziging direct actief; gebruiker moet opnieuw inloggen.</div>';
+
+  var m = _bhModal('Rol & organisatie — '+(_bhEsc(u.displayName)||_bhEsc(u.email)||''), body, {
+    confirmLabel: 'Opslaan',
+    onConfirm: async function(){
+      var newRole = m.root.querySelector('[data-pick-role].bh-btn-active') ?
+        m.root.querySelector('[data-pick-role].bh-btn-active').getAttribute('data-pick-role') : cur;
+      var orgSel = m.root.querySelector('#bh-org-sel');
+      var afdSel = m.root.querySelector('#bh-afd-sel');
+      var newOrgId = orgSel ? orgSel.value : '';
+      var newOrgNaam = orgSel && orgSel.selectedOptions[0] ? orgSel.selectedOptions[0].textContent.trim() : '';
+      var newAfdId = afdSel ? afdSel.value : '';
+      var newAfdNaam = afdSel && afdSel.selectedOptions[0] && afdSel.value ? afdSel.selectedOptions[0].textContent.trim() : '';
+      if(newOrgNaam.startsWith('—')) newOrgNaam = '';
+      if(newAfdNaam.startsWith('—')) newAfdNaam = '';
       try {
-        await updateDoc(doc(db,'users',uid), { role: role });
-        if(typeof toast==='function') toast('Rol gewijzigd naar '+role+' ✓');
-        m.close(); _bhLoadUsers();
+        await updateDoc(doc(db,'users',uid), {
+          role: newRole,
+          organisatieId: newOrgId || null,
+          organisatieNaam: newOrgNaam || null,
+          afdelingId: newAfdId || null,
+          afdelingNaam: newAfdNaam || null
+        });
+        if(typeof toast==='function') toast('Opgeslagen ✓');
+        _bhLoadUsers();
       } catch(e){
-        if(typeof toast==='function') toast('Kon rol niet wijzigen', true);
-        m.root.querySelectorAll('[data-pick-role]').forEach(function(x){ x.disabled=false; });
+        if(typeof toast==='function') toast('Kon niet opslaan', true);
+        throw e;
       }
+    }
+  });
+
+  // Rol-knoppen toggle
+  m.root.querySelectorAll('[data-pick-role]').forEach(function(b){
+    b.addEventListener('click', function(){
+      m.root.querySelectorAll('[data-pick-role]').forEach(function(x){ x.classList.remove('bh-btn-active'); x.textContent = x.textContent.replace(' ✓',''); });
+      b.classList.add('bh-btn-active');
+      b.textContent = b.textContent + ' ✓';
     });
   });
+
+  // Afdeling-dropdown vullen op basis van gekozen organisatie
+  function _fillAfdelingen(orgId){
+    var afdSel = m.root.querySelector('#bh-afd-sel'); if(!afdSel) return;
+    afdSel.innerHTML = '<option value="">— geen afdeling —</option>';
+    if(!orgId || !window._bhOrgCache) return;
+    var org = window._bhOrgCache.find(function(o){ return o.id===orgId; });
+    if(!org || !org.afdelingen) return;
+    org.afdelingen.forEach(function(a){
+      var sel = (a.id===curAfd && orgId===curOrg) ? ' selected' : '';
+      afdSel.innerHTML += '<option value="'+_bhEsc(a.id)+'"'+sel+'>'+_bhEsc(a.naam)+'</option>';
+    });
+  }
+  var orgSel = m.root.querySelector('#bh-org-sel');
+  if(orgSel){
+    _fillAfdelingen(orgSel.value);
+    orgSel.addEventListener('change', function(){ _fillAfdelingen(orgSel.value); });
+  }
 }
 
+
+/* ============================================================
+   ORGANISATIES — Beheer van organisaties + afdelingen.
+   Firestore: organisaties/{orgId} = { naam, afdelingen:[{id,naam}], createdAt }
+   Gebruiker krijgt: organisatieId, organisatieNaam, afdelingId, afdelingNaam
+   ============================================================ */
+window._bhOrgCache = [];
+
+async function _bhLoadOrganisaties(){
+  if(!_shIsAdmin()) return;
+  var list = document.getElementById('bh-org-list'); if(!list) return;
+  list.innerHTML = '<div class="bh-empty">Laden…</div>';
+  try {
+    var snap = await getDocs(collection(db,'organisaties'));
+    window._bhOrgCache = snap.docs.map(function(d){ return Object.assign({id:d.id}, d.data()); });
+    _bhRenderOrganisaties();
+  } catch(e){
+    list.innerHTML = '<div class="bh-empty">Fout bij laden: '+_bhEsc(String(e.message||e))+'</div>';
+  }
+}
+
+function _bhRenderOrganisaties(){
+  var list = document.getElementById('bh-org-list'); if(!list) return;
+  if(!window._bhOrgCache.length){
+    list.innerHTML = '<div class="bh-empty">Nog geen organisaties. Maak er een aan via "+ Nieuwe organisatie".</div>';
+    return;
+  }
+  list.innerHTML = window._bhOrgCache.map(function(org){
+    var afds = (org.afdelingen||[]).map(function(a){
+      return '<span class="bh-badge bh-b-blue" style="margin:2px 4px 2px 0;">'+_bhEsc(a.naam)+
+        ' <button type="button" style="background:none;border:none;color:#9aa8bd;cursor:pointer;font-size:11px;padding:0 0 0 4px;" data-del-afd="'+_bhEsc(org.id)+'" data-afd-id="'+_bhEsc(a.id)+'">✕</button></span>';
+    }).join('');
+    return '<div class="bh-card" style="margin-bottom:12px;">' +
+      '<div class="bh-card-top"><div class="bh-card-name">'+_bhEsc(org.naam)+'</div></div>' +
+      '<div class="bh-card-row"><span>Afdelingen</span><div style="display:flex;flex-wrap:wrap;align-items:center;gap:0;">'+(afds||'<span style="color:#9aa8bd;font-size:12px;">Nog geen afdelingen</span>')+'</div></div>' +
+      '<div class="bh-actions">' +
+        '<button class="bh-btn bh-btn-blue" data-org-add-afd="'+_bhEsc(org.id)+'">+ Afdeling toevoegen</button>' +
+        '<button class="bh-btn" data-org-rename="'+_bhEsc(org.id)+'">Naam wijzigen</button>' +
+        '<button class="bh-btn bh-btn-danger-outline" data-org-delete="'+_bhEsc(org.id)+'">Verwijderen</button>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  list.querySelectorAll('[data-org-add-afd]').forEach(function(b){
+    b.addEventListener('click', function(){ _bhOrgAddAfdeling(b.getAttribute('data-org-add-afd')); });
+  });
+  list.querySelectorAll('[data-del-afd]').forEach(function(b){
+    b.addEventListener('click', function(){ _bhOrgDelAfdeling(b.getAttribute('data-del-afd'), b.getAttribute('data-afd-id')); });
+  });
+  list.querySelectorAll('[data-org-rename]').forEach(function(b){
+    b.addEventListener('click', function(){ _bhOrgRename(b.getAttribute('data-org-rename')); });
+  });
+  list.querySelectorAll('[data-org-delete]').forEach(function(b){
+    b.addEventListener('click', function(){ _bhOrgDelete(b.getAttribute('data-org-delete')); });
+  });
+
+  // Knop bovenaan
+  var btn = document.getElementById('bh-org-new-btn');
+  if(btn && !btn._wired){ btn._wired=true; btn.addEventListener('click', _bhOrgNew); }
+}
+
+async function _bhOrgNew(){
+  var m = _bhModal('Nieuwe organisatie', '<label class="sh-req-l" for="bh-new-org-naam">Naam organisatie *</label><input type="text" id="bh-new-org-naam" class="sh-req-i" placeholder="bv. FC Amsterdam" style="width:100%;">', {
+    confirmLabel: 'Aanmaken',
+    onConfirm: async function(){
+      var naam = (m.root.querySelector('#bh-new-org-naam')||{}).value;
+      if(naam) naam = naam.trim(); if(!naam) throw Object.assign(new Error('Vul een naam in.'),'');
+      await addDoc(collection(db,'organisaties'), { naam: naam, afdelingen: [], createdAt: new Date() });
+      if(typeof toast==='function') toast('Organisatie aangemaakt ✓');
+      await _bhLoadOrganisaties();
+    }
+  });
+  setTimeout(function(){ try { m.root.querySelector('#bh-new-org-naam').focus(); } catch(_){} }, 60);
+}
+
+async function _bhOrgRename(orgId){
+  var org = window._bhOrgCache.find(function(o){ return o.id===orgId; }); if(!org) return;
+  var m = _bhModal('Naam wijzigen', '<label class="sh-req-l" for="bh-rename-org">Nieuwe naam *</label><input type="text" id="bh-rename-org" class="sh-req-i" value="'+_bhEsc(org.naam)+'" style="width:100%;">', {
+    confirmLabel: 'Opslaan',
+    onConfirm: async function(){
+      var naam = (m.root.querySelector('#bh-rename-org')||{}).value;
+      if(naam) naam = naam.trim(); if(!naam) throw new Error('Vul een naam in.');
+      await updateDoc(doc(db,'organisaties',orgId), { naam: naam });
+      if(typeof toast==='function') toast('Naam gewijzigd ✓');
+      await _bhLoadOrganisaties();
+    }
+  });
+  setTimeout(function(){ try { m.root.querySelector('#bh-rename-org').focus(); } catch(_){} }, 60);
+}
+
+async function _bhOrgAddAfdeling(orgId){
+  var org = window._bhOrgCache.find(function(o){ return o.id===orgId; }); if(!org) return;
+  var m = _bhModal('Afdeling toevoegen — '+_bhEsc(org.naam),
+    '<label class="sh-req-l" for="bh-new-afd">Naam afdeling *</label><input type="text" id="bh-new-afd" class="sh-req-i" placeholder="bv. Bovenbouw" style="width:100%;">', {
+    confirmLabel: 'Toevoegen',
+    onConfirm: async function(){
+      var naam = (m.root.querySelector('#bh-new-afd')||{}).value;
+      if(naam) naam = naam.trim(); if(!naam) throw new Error('Vul een naam in.');
+      var id = naam.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || ('afd-'+Date.now());
+      var bestaand = (org.afdelingen||[]);
+      if(bestaand.find(function(a){ return a.id===id; })){
+        throw new Error('Afdeling "'+naam+'" bestaat al.');
+      }
+      var nieuw = bestaand.concat([{ id: id, naam: naam }]);
+      await updateDoc(doc(db,'organisaties',orgId), { afdelingen: nieuw });
+      if(typeof toast==='function') toast('Afdeling toegevoegd ✓');
+      await _bhLoadOrganisaties();
+    }
+  });
+  setTimeout(function(){ try { m.root.querySelector('#bh-new-afd').focus(); } catch(_){} }, 60);
+}
+
+async function _bhOrgDelAfdeling(orgId, afdId){
+  var org = window._bhOrgCache.find(function(o){ return o.id===orgId; }); if(!org) return;
+  var afd = (org.afdelingen||[]).find(function(a){ return a.id===afdId; }); if(!afd) return;
+  if(!confirm('Afdeling "'+afd.naam+'" verwijderen?')) return;
+  var nieuw = (org.afdelingen||[]).filter(function(a){ return a.id!==afdId; });
+  await updateDoc(doc(db,'organisaties',orgId), { afdelingen: nieuw });
+  if(typeof toast==='function') toast('Afdeling verwijderd');
+  await _bhLoadOrganisaties();
+}
+
+async function _bhOrgDelete(orgId){
+  var org = window._bhOrgCache.find(function(o){ return o.id===orgId; }); if(!org) return;
+  if(!confirm('Organisatie "'+org.naam+'" verwijderen? Gebruikers behouden hun koppeling maar verliezen de organisatienaam.')) return;
+  await deleteDoc(doc(db,'organisaties',orgId));
+  if(typeof toast==='function') toast('Organisatie verwijderd');
+  await _bhLoadOrganisaties();
+}
 
 /* ============================================================
    FASE 4 — Delegated support (read-only, tijdelijk, auditbaar).

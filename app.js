@@ -31164,13 +31164,7 @@ function _shRequestAccess(){
       '<input type="email" id="sh-req-email" class="sh-req-i" placeholder="je@email.com" autocomplete="email">' +
       '<label class="sh-req-l" for="sh-req-club">Club / organisatie *</label>' +
       '<input type="text" id="sh-req-club" class="sh-req-i" placeholder="Naam van je club of organisatie">' +
-      '<label class="sh-req-l" for="sh-req-func">Gewenste rol *</label>' +
-      '<select id="sh-req-func" class="sh-req-i sh-req-select">' +
-        '<option value="">Kies je rol\u2026</option>' +
-        '<option value="scout">Scout \u2014 eigen rapporten</option>' +
-        '<option value="coordinator">Co\u00f6rdinator \u2014 eigen afdeling</option>' +
-        '<option value="hoofdcoordinator">Hoofd jeugdopleiding / Hoofdco\u00f6rdinator \u2014 alles lezen</option>' +
-      '</select>' +
+      '<input type="hidden" id="sh-req-func" value="scout">' +
       '<label class="sh-req-l" for="sh-req-message">Reden / motivatie</label>' +
       '<textarea id="sh-req-message" class="sh-req-i" rows="2" placeholder="Waarom wil je ScoutingHub gebruiken?"></textarea>' +
       '<label class="sh-req-check"><input type="checkbox" id="sh-req-terms"><span>Ik ga akkoord met de <a href="voorwaarden.html" target="_blank" rel="noopener">Algemene Voorwaarden</a> en het <a href="privacy.html" target="_blank" rel="noopener">Privacybeleid</a> van ScoutingHub.</span></label>' +
@@ -31295,7 +31289,6 @@ async function _shSubmitAccessRequest(closeFn){
   if(!email){ _shReqMsg('Vul je e-mailadres in.', 'error'); return; }
   if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){ _shReqMsg('Dit is geen geldig e-mailadres.', 'error'); return; }
   if(!club){ _shReqMsg('Vul je club of organisatie in.', 'error'); return; }
-  if(!functie){ _shReqMsg('Kies je functie.', 'error'); return; }
   if(!acceptedTerms){ _shReqMsg('Accepteer eerst de voorwaarden.', 'error'); return; }
   var _tsToken = '';
   try { if(window.turnstile && typeof window.turnstile.getResponse === 'function') _tsToken = window.turnstile.getResponse() || ''; } catch(_){}

@@ -33535,4 +33535,253 @@ async function _suOpenEnvPanel(g, asUser){
     } else if(which==='rapporten'){
       b.innerHTML = data.reports.length ? ('<div class="su-ro-list">'+data.reports.slice(0,200).map(function(rp){ return row(_bhEsc(rp.speler||rp.naam||rp.playerName||'rapport'), _bhEsc(rp.datum||rp.date||'')); }).join('')+'</div>') : '<div class="bh-empty">Geen rapporten</div>';
     } else if(which==='toernooien'){
-      b.innerHTML = data.tournaments.length ? ('<di
+      b.innerHTML = data.tournaments.length ? ('<div class="su-ro-list">'+data.tournaments.slice(0,100).map(function(t){ return row(_bhEsc(t.naam||t.name||'—'), _bhEsc(t.datum||t.date||'')); }).join('')+'</div>') : '<div class="bh-empty">Geen toernooien</div>';
+    }
+  }
+  tabsEl.querySelectorAll('[data-et]').forEach(function(tb){ tb.addEventListener('click', function(){ var et=tb.getAttribute('data-et'); setTab(et); if(!asUser && isPtr) _ptrSend({tab:et}); }); });
+  setTab('dashboard');
+  // ===== E4a — admin action-bar (alleen full_control) =====
+  if(!asUser && g.scope==='support_full_control'){
+    var actEl=document.getElementById('su-act');
+    if(actEl){
+      var _SU_VIEW_LABELS={dashboard:'Overzicht',database:'Spelers',compare:'Vergelijken',elftallen:'Elftallen',matches:'Wedstrijden',programma:'Programma',agenda:'Agenda',pitch:'Veld',contacts:'Contacten',adresboek:'Adresboek',tips:'Tips',ritten:'Ritten',toernooien:'Toernooien'};
+      var navList=_SU_ACT_VIEWS.map(function(v){ return [v, _SU_VIEW_LABELS[v]||v]; });
+      actEl.innerHTML='<span class="su-act-l">Stuur naar</span>'
+        + navList.map(function(v){ return '<button type="button" class="su-act-btn" data-nav="'+v[0]+'">'+v[1]+'</button>'; }).join('')
+        + '<span class="su-act-l">Wijs aan</span>'
+        + navList.map(function(v){ return '<button type="button" class="su-act-btn ghost" data-hl="'+v[0]+'">'+v[1]+'</button>'; }).join('')
+        + '<button type="button" class="su-act-btn" data-scroll="1">↑ Boven</button>'
+        + '<div class="su-act-row2"><span class="su-act-l">Formulier</span>'
+        + '<select id="su-form-pick" class="su-act-sel">'+_SU_FORM_LIST.map(function(f){ return '<option value="'+f[0]+'">'+f[1]+'</option>'; }).join('')+'</select>'
+        + '<button type="button" class="su-act-btn" data-form="1">Open formulier</button>'
+        + '<select id="su-sg-field" class="su-act-sel"></select>'
+        + '<input id="su-sg-val" class="su-act-in" placeholder="Voorstel-waarde">'
+        + '<button type="button" class="su-act-btn" data-suggest="1">Stel voor (geen opslag)</button>'
+        + '<button type="button" class="su-act-btn" data-reqsave="1">Vraag opslaan</button></div>';
+      function _fillFieldSelect(formId){
+        var sel=document.getElementById('su-sg-field'); if(!sel) return;
+        var fields=_SU_FORM_FIELDS[formId]||[];
+        sel.innerHTML=fields.map(function(f){ return '<option value="'+f[0]+'">'+_bhEsc(f[1])+'</option>'; }).join('');
+        sel.disabled = !fields.length;
+        var sg=actEl.querySelector('[data-suggest]'); if(sg) sg.disabled = !fields.length;
+        var valI=document.getElementById('su-sg-val'); if(valI) valI.disabled = !fields.length;
+        var rqs=actEl.querySelector('[data-reqsave]'); if(rqs) rqs.disabled = !_SU_SAVE_MAP[formId];
+      }
+      actEl.querySelectorAll('[data-nav]').forEach(function(b){ b.addEventListener('click', function(){ _suSendAction(g,'navigate',{view:b.getAttribute('data-nav')}); if(typeof toast==='function') toast('Verstuurd: ga naar '+b.textContent); }); });
+      actEl.querySelectorAll('[data-hl]').forEach(function(b){ b.addEventListener('click', function(){ _suSendAction(g,'highlight',{view:b.getAttribute('data-hl')}); if(typeof toast==='function') toast('Verstuurd: wijs '+b.textContent+' aan'); }); });
+      var sc=actEl.querySelector('[data-scroll]'); if(sc) sc.addEventListener('click', function(){ _suSendAction(g,'scroll_to',{}); if(typeof toast==='function') toast('Verstuurd: scroll naar boven'); });
+      var fp=document.getElementById('su-form-pick'); if(fp) fp.addEventListener('change', function(){ _fillFieldSelect(fp.value); });
+      var of=actEl.querySelector('[data-form]'); if(of) of.addEventListener('click', function(){ var fid=(fp&&fp.value)||'report'; _suSendAction(g,'open_form',{formId:fid}); if(typeof toast==='function') toast('Verstuurd: open '+fid+'-formulier'); });
+      var sg=actEl.querySelector('[data-suggest]'); if(sg) sg.addEventListener('click', function(){ var fid=(fp&&fp.value)||'report'; var fieldEl=document.getElementById('su-sg-field'); var valEl=document.getElementById('su-sg-val'); var fidF=(fieldEl&&fieldEl.value)||''; var val=(valEl&&valEl.value)||''; if(fidF){ _suSendAction(g,'suggest_field',{formId:fid,fieldId:fidF,value:val}); if(typeof toast==='function') toast('Verstuurd: voorstel voor veld (niet opgeslagen)'); } });
+      var rqs=actEl.querySelector('[data-reqsave]'); if(rqs) rqs.addEventListener('click', function(){ var fid=(fp&&fp.value)||'report'; _suSendAction(g,'request_save',{formId:fid}); if(typeof toast==='function') toast('Verstuurd: vraag om opslaan (gebruiker bevestigt)'); });
+      _fillFieldSelect('report');
+    }
+    var beBody=document.getElementById('su-env-body');
+    if(beBody) beBody.addEventListener('click', function(e){ var rr=(e.target&&e.target.closest)?e.target.closest('[data-supid]'):null; if(rr){ var pid=rr.getAttribute('data-supid'); if(pid){ _suSendAction(g,'open_player',{playerId:pid}); if(typeof toast==='function') toast('Verstuurd: open speler bij gebruiker'); } } });
+  }
+  // ===== E3c — pointer-kanaal (support_cursor, throttled) =====
+  if(isPtr){
+    var cid=_suCursorId(g);
+    if(!asUser){
+      // ADMIN zendt cursor/klik/tab/scroll uit
+      var _ptrState={}, _ptrT=null, _ptrDirty=false, _clickN=0;
+      function _ptrFlush(){ _ptrT=null; if(!_ptrDirty) return; _ptrDirty=false; try{ setDoc(doc(db,'support_cursor',cid), Object.assign({adminUid:g.adminUid,targetUid:g.targetUid,updatedAt:Date.now()}, _ptrState), {merge:true}); }catch(_){} }
+      _ptrSend=function(extra){ if(extra){ for(var k in extra){ if(Object.prototype.hasOwnProperty.call(extra,k)) _ptrState[k]=extra[k]; } } _ptrDirty=true; if(_ptrT) return; _ptrFlush(); _ptrT=setTimeout(_ptrFlush,90); };
+      function _onMove(e){ var rc=card.getBoundingClientRect(); if(!rc.width) return; _ptrSend({ x:Math.max(0,Math.min(1,(e.clientX-rc.left)/rc.width)), y:Math.max(0,Math.min(1,(e.clientY-rc.top)/rc.height)) }); }
+      function _onClick(e){ var rc=card.getBoundingClientRect(); if(!rc.width) return; _clickN++; _ptrSend({ clickX:(e.clientX-rc.left)/rc.width, clickY:(e.clientY-rc.top)/rc.height, clickN:_clickN }); }
+      function _onScroll(){ var b=document.getElementById('su-env-body'); if(b){ var sh=(b.scrollHeight-b.clientHeight)||1; _ptrSend({ scroll:b.scrollTop/sh }); } }
+      card.addEventListener('mousemove',_onMove); card.addEventListener('click',_onClick);
+      var bEl=document.getElementById('su-env-body'); if(bEl) bEl.addEventListener('scroll',_onScroll);
+      _cleanup.push(function(){ try{ card.removeEventListener('mousemove',_onMove); card.removeEventListener('click',_onClick); if(bEl) bEl.removeEventListener('scroll',_onScroll); }catch(_){} try{ setDoc(doc(db,'support_cursor',cid), {adminUid:g.adminUid,targetUid:g.targetUid,x:-1,y:-1,updatedAt:Date.now()}, {merge:true}); }catch(_){} });
+    } else {
+      // GEBRUIKER volgt de admin-cursor live
+      var ptr=document.getElementById('su-ptr'); var _lastN=0;
+      var unsub=onSnapshot(doc(db,'support_cursor',cid), function(snap){
+        var d=snap.data(); if(!d){ if(ptr) ptr.style.display='none'; return; }
+        if(d.tab && d.tab!==_curTab) setTab(d.tab);
+        if(typeof d.scroll==='number'){ var b=document.getElementById('su-env-body'); if(b){ var sh=(b.scrollHeight-b.clientHeight)||1; b.scrollTop=d.scroll*sh; } }
+        var rc=card.getBoundingClientRect();
+        if(typeof d.x==='number' && d.x>=0 && typeof d.y==='number'){ if(ptr){ ptr.style.display='block'; ptr.style.left=(d.x*rc.width)+'px'; ptr.style.top=(d.y*rc.height)+'px'; } }
+        else if(ptr){ ptr.style.display='none'; }
+        if(d.clickN && d.clickN!==_lastN){ _lastN=d.clickN; if(typeof d.clickX==='number') _suRipple(card, d.clickX*rc.width, d.clickY*rc.height); }
+      }, function(){});
+      _cleanup.push(function(){ try{ unsub(); }catch(_){} });
+    }
+  }
+}
+
+
+/* ============================================================
+   FASE 5 — Role-based onboarding (fullscreen, PWA-first).
+   Triggert wanneer users/{uid}.onboardingCompleted === false
+   (nieuwe, via admin goedgekeurde accounts). 5 stappen, rol-aware.
+   Schrijft alleen onboardingCompleted + onboardingStep (+ optioneel
+   displayName/club). Geen bestaande velden/flows aangeraakt.
+   ============================================================ */
+function _obComplete(uid, state, nav){
+  try {
+    var payload = { onboardingCompleted: true, onboardingStep: 5 };
+    if(state){ if(state.displayName) payload.displayName = state.displayName; if(state.club) payload.club = state.club; }
+    updateDoc(doc(db,'users',uid), payload).catch(function(){});
+  } catch(_){}
+  var ov = document.getElementById('sh-onb'); if(ov){ try { ov.remove(); } catch(_){} }
+  document.body.classList.remove('sh-onb-open');
+  if(nav && typeof go==='function'){ try { go(nav); } catch(_){} }
+}
+function _obStart(role, data){
+  if(document.getElementById('sh-onb')) return;
+  var uid = (currentUser && currentUser.uid) || (typeof auth!=='undefined' && auth.currentUser && auth.currentUser.uid) || '';
+  if(!uid) return;
+  try { if(typeof _shSetOnbDone==='function') _shSetOnbDone(uid); } catch(_){}     // onderdruk losse welkomst-wizard
+  try { var wz=document.getElementById('sh-wiz-backdrop'); if(wz) wz.remove(); } catch(_){}
+  var isCoord = (role === 'coordinator');
+  var roleLabel = isCoord ? 'Coördinator' : 'Scout';
+  var state = { displayName: (data && data.displayName) || (currentUser && currentUser.displayName) || '', club: (data && data.club) || '', role: role };
+  var i = 0; var TOTAL = 5;
+
+  var ov = document.createElement('div');
+  ov.id = 'sh-onb'; ov.className = 'sh-onb';
+  ov.innerHTML = '<div class="sh-onb-card" role="dialog" aria-modal="true" aria-label="Onboarding">' +
+    '<div class="sh-onb-prog" id="ob-prog"></div>' +
+    '<div class="sh-onb-body" id="ob-body"></div>' +
+    '<div class="sh-onb-nav"><button type="button" class="bh-btn bh-btn-ghost" id="ob-back">← Vorige</button><button type="button" class="bh-btn bh-btn-blue" id="ob-next">Start</button></div>' +
+  '</div>';
+  document.body.appendChild(ov);
+  document.body.classList.add('sh-onb-open');
+
+  var body = document.getElementById('ob-body');
+  var prog = document.getElementById('ob-prog');
+  var back = document.getElementById('ob-back');
+  var next = document.getElementById('ob-next');
+
+  function stepHtml(n){
+    if(n===0) return '<div class="sh-onb-ic">👋</div><h2>Welkom bij ScoutingHub</h2><p>We zetten je in een paar korte stappen op weg. Het duurt minder dan een minuut.</p>';
+    if(n===1) return '<h2>Je profiel</h2>' +
+      '<label class="sh-req-l" for="ob-name">Naam *</label>' +
+      '<input type="text" id="ob-name" class="sh-req-i" value="' + _bhEsc(state.displayName) + '" placeholder="Je naam">' +
+      '<label class="sh-req-l" for="ob-club">Club / organisatie</label>' +
+      '<input type="text" id="ob-club" class="sh-req-i" value="' + _bhEsc(state.club) + '" placeholder="Optioneel">' +
+      '<div class="sh-onb-role">Jouw rol: <span class="bh-badge ' + (isCoord?'bh-b-blue':'bh-b-grey') + '">' + roleLabel + '</span></div>';
+    if(n===2) return isCoord
+      ? '<div class="sh-onb-ic">📋</div><h2>Jouw team overzien</h2><p>Als coördinator zie je de rapporten van de scouts in je team en kun je wedstrijden voor hen inplannen — zo houd je grip op alle observaties.</p>'
+      : '<div class="sh-onb-ic">⚽</div><h2>Scouten met chips</h2><p>Beoordeel spelers langs de lijn met één tik: 🟢 goed · 🟠 normaal · 🔴 matig. Promoot een observatie later tot een volledig rapport.</p>';
+    if(n===3) return '<div class="sh-onb-ic">🚀</div><h2>Je eerste actie</h2><p>Begin meteen — je vindt alles later terug in het menu.</p>' +
+      '<div class="sh-onb-actions">' +
+        (isCoord
+          ? '<button type="button" class="bh-btn bh-btn-blue" data-ob-go="programma">Bekijk programma</button><button type="button" class="bh-btn" data-ob-go="database">Bekijk spelers</button>'
+          : '<button type="button" class="bh-btn bh-btn-blue" data-ob-go="database">Voeg eerste speler toe</button><button type="button" class="bh-btn" data-ob-go="programma">Bekijk programma</button>') +
+      '</div><div class="sh-onb-skip-note">Of klik op Volgende om af te ronden.</div>';
+    return '<div class="sh-onb-ic">🎉</div><h2>Je bent klaar!</h2><p>Veel succes met scouten. Deze uitleg vind je later terug in de Handleiding.</p>';
+  }
+  function saveProfile(){
+    var nEl = document.getElementById('ob-name'); var cEl = document.getElementById('ob-club');
+    if(nEl) state.displayName = (nEl.value || '').trim();
+    if(cEl) state.club = (cEl.value || '').trim();
+  }
+  function render(){
+    body.innerHTML = stepHtml(i);
+    prog.innerHTML = 'Stap ' + (i+1) + ' / ' + TOTAL;
+    back.style.visibility = (i===0) ? 'hidden' : '';
+    next.textContent = (i===TOTAL-1) ? 'Naar dashboard' : ((i===0) ? 'Start' : 'Volgende →');
+    body.querySelectorAll('[data-ob-go]').forEach(function(b){
+      b.addEventListener('click', function(){ saveProfile(); _obComplete(uid, state, b.getAttribute('data-ob-go')); });
+    });
+  }
+  back.addEventListener('click', function(){ if(i>0){ if(i===1) saveProfile(); i--; render(); } });
+  next.addEventListener('click', function(){
+    if(i===1){ saveProfile(); if(!state.displayName){ if(typeof toast==='function') toast('Vul je naam in', true); return; } }
+    if(i < TOTAL-1){ i++; render(); }
+    else { _obComplete(uid, state, 'dashboard'); }
+  });
+  render();
+}
+window._obStart = _obStart;
+
+/* ============================================================
+   DEEL 3 — Auto-grow voor meerregelige notitievelden (.sh-grow-note).
+   Eén gedelegeerde listener voor alle textareas met deze klasse, in
+   welke modal dan ook (opgevallen speler, gekoppelde speler,
+   wedstrijdnotitie, conceptrapport). Groeit mee met de inhoud tot de
+   CSS max-height; daarna scrollt het veld. Geen per-component wiring.
+   ============================================================ */
+(function _shGrowNotesInit(){
+  function grow(el){
+    if(!el || !el.classList || !el.classList.contains('sh-grow-note')) return;
+    el.style.height = 'auto';
+    var max = 150; // px — spiegelt CSS max-height, voorkomt exploderende modal
+    el.style.height = Math.min(el.scrollHeight, max) + 'px';
+    el.style.overflowY = (el.scrollHeight > max) ? 'auto' : 'hidden';
+  }
+  // Groeien tijdens typen
+  document.addEventListener('input', function(e){ grow(e.target); }, true);
+  // Bij focus (waarde reeds geprefilld) direct op de juiste hoogte zetten
+  document.addEventListener('focusin', function(e){ grow(e.target); }, true);
+  window._shGrowNote = grow;
+})();
+
+/* ============================================================
+   DEEL 7 — Toetsenbord/scroll-stabilisatie programma "wedstrijd aanmaken".
+   Thuis/uit-ploeg en elftal thuis/uit (+ speler-koppelvelden) centreren
+   zichzelf netjes boven het toetsenbord, net als de wedstrijdnotitie —
+   in plaats van dat het scherm naar beneden schiet. Eén gedelegeerde
+   focusin-listener, alleen actief op de bekende programmavelden.
+   ============================================================ */
+(function _pmKeyboardStabilizeInit(){
+  var IDS = { 'pm-thuis':1, 'pm-uit':1, 'pm-thuis-elftal':1, 'pm-uit-elftal':1,
+              'pmpp-voornaam':1, 'pmpp-achternaam':1, 'pmpp-geboorte':1, 'pmpp-club':1 };
+  document.addEventListener('focusin', function(e){
+    var t = e.target;
+    if(!t || !t.id || !IDS[t.id]) return;
+    if(!/^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName)) return;
+    // Korte delay zodat iOS het toetsenbord eerst opent, dan centreren.
+    setTimeout(function(){ try { t.scrollIntoView({ block:'center', behavior:'smooth' }); } catch(_){} }, 300);
+  }, true);
+})();
+
+/* ============================================================
+   BATCH A — FIX 1/4 — zichtbare veld-validatie (rood + fouttekst).
+   Generieke helper: markeert een veld rood, toont een fouttekst eronder,
+   en wist die zodra de gebruiker het veld aanpast. Geen data-impact.
+   ============================================================ */
+function _shFieldError(id, msg){
+  const el = document.getElementById(id); if(!el) return;
+  el.classList.add('sh-field-error'); el.setAttribute('aria-invalid', 'true');
+  let m = document.getElementById(id + '-err');
+  if(!m){
+    m = document.createElement('div');
+    m.id = id + '-err';
+    m.className = 'sh-field-error-msg';
+    if(el.parentNode) el.parentNode.insertBefore(m, el.nextSibling);
+  }
+  m.textContent = msg;
+  if(!el._shErrWired){
+    el._shErrWired = true;
+    const clear = () => _shClearFieldError(id);
+    el.addEventListener('input', clear);
+    el.addEventListener('change', clear);
+  }
+}
+function _shClearFieldError(id){
+  const el = document.getElementById(id);
+  if(el){ el.classList.remove('sh-field-error'); el.removeAttribute('aria-invalid'); }
+  const m = document.getElementById(id + '-err'); if(m) m.remove();
+}
+window._shFieldError = _shFieldError;
+window._shClearFieldError = _shClearFieldError;
+
+/* ============================================================
+   BATCH 1 / 1A — picker/advies-foutmarkering (rood) bij Indienen.
+   Markeert de niveau-grade-pickers en de advies-chips rood wanneer ze
+   verplicht maar leeg zijn. Wist bij de volgende submit-poging (submitReport
+   reset de markeringen aan het begin) of bij interactie.
+   ============================================================ */
+function _shMarkPickerError(key, on){
+  const p = document.querySelector('.grade-picker[data-key="' + key + '"]');
+  if(p) p.classList.toggle('sh-picker-error', on !== false);
+}
+function _shMarkAdviesError(on){
+  const c = document.getElementById('f-advies') || document.getElementById('f-advies-chips');
+  if(c) c.classList.toggle('sh-picker-error', on !== false);
+}
+window._shMarkPickerError = _shMarkPickerError;
+window._shMarkAdviesError = _shMarkAdviesError;

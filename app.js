@@ -5559,9 +5559,9 @@ function showLogin(){
   if(_ap) _ap.style.display = 'none';
   try{ document.body.classList.remove('admin-console'); }catch(_){}
   const _land = document.getElementById('landing-overlay');
-  // PWA (geïnstalleerd) → direct het login-formulier, géén landingspagina.
-  // Browser (desktop/mobiel) → eerst de landingspagina; "Inloggen" onthult login.
-  if(_shIsStandalone()){
+  // Admin-domein of PWA → altijd direct login, nooit landingspagina.
+  const _isAdmin = window.location.hostname.includes('admin.');
+  if(_isAdmin || _shIsStandalone()){
     if(_land) _land.style.display = 'none';
     if(_lo) _lo.style.display = 'flex';
   } else {

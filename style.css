@@ -1300,7 +1300,7 @@ a { color: var(--accent); text-decoration: none; }
   background: linear-gradient(135deg, rgba(245,197,24,0.12), rgba(245,197,24,0.04));
   border: 1px solid rgba(245,197,24,0.45);
   border-radius: 14px; padding: 14px 16px; margin-bottom: 12px;
-  position: relative;
+  position: relative; overflow: visible;
 }
 .sa-card::before {
   content: ''; position: absolute; top: 12px; left: -1px;
@@ -1393,9 +1393,9 @@ a { color: var(--accent); text-decoration: none; }
 .sa-gk-wrap { position: relative; flex: 1; min-width: 140px; display: flex; }
 .sa-gk-wrap .sa-live-btn-gk { width: 100%; }
 .sa-gk-menu {
-  position: absolute; top: calc(100% + 6px); left: 0; z-index: 60;
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 400;
   min-width: 200px; background: #161b26; border: 1px solid #2a2f45;
-  border-radius: 10px; padding: 6px; box-shadow: 0 8px 28px rgba(0,0,0,.45);
+  border-radius: 10px; padding: 6px; box-shadow: 0 8px 28px rgba(0,0,0,.65);
 }
 .sa-gk-item {
   display: block; width: 100%; text-align: left; background: none; border: none;
@@ -1418,10 +1418,10 @@ a { color: var(--accent); text-decoration: none; }
 .sa-obs-wrap { position: relative; flex: 1; min-width: 140px; display: flex; }
 .sa-obs-wrap .sa-live-btn-obs { width: 100%; }
 .sa-obs-menu {
-  position: absolute; top: calc(100% + 6px); left: 0; right: auto; z-index: 60;
+  position: absolute; top: calc(100% + 6px); left: 0; right: auto; z-index: 400;
   min-width: 210px; max-width: calc(100vw - 28px);
   background: #161b26; border: 1px solid #2a2f45;
-  border-radius: 10px; padding: 6px; box-shadow: 0 8px 28px rgba(0,0,0,.45);
+  border-radius: 10px; padding: 6px; box-shadow: 0 8px 28px rgba(0,0,0,.65);
 }
 .sa-obs-item {
   display: flex; flex-direction: column; gap: 1px; width: 100%; text-align: left;

@@ -5,7 +5,7 @@
   "start_url": "/admin/",
   "scope": "/admin/",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "background_color": "#0c1119",
   "theme_color": "#0c1119",
   "lang": "nl",

@@ -290,18 +290,14 @@
           <path d="M40 4 L70 14 L70 44 Q70 64 40 76 Q10 64 10 44 L10 14 Z"
                 fill="url(#logoGrad)" stroke="rgba(255,255,255,0.9)" stroke-width="1.5"/>
           <text x="40" y="51" text-anchor="middle" font-family="Arial,sans-serif"
-                font-size="26" font-weight="900" fill="white" letter-spacing="-1.5">SH</text>
+                font-size="26" font-weight="900" fill="white" letter-spacing="-1.5">A</text>
           <circle cx="40" cy="13" r="2.8" fill="#f5c518"/>
         </svg>
       </div>
       <div>
-        <div class="login-title"><span class="film-text">Scouting</span><span style="color:#fff;">Hub</span></div>
-        <div class="login-sub">Professional Edition</div>
+        <div class="login-title"><span class="film-text">Admin</span></div>
+        <div class="login-sub">Beheerportaal</div>
       </div>
-    </div>
-
-    <div class="login-card-intro">
-      <div class="lci-pillars"><span>Overzicht</span><i>•</i><span>Inzicht</span><i>•</i><span>Controle</span></div>
     </div>
 
     <!-- Login screen -->
@@ -320,13 +316,6 @@
       </div>
       <button id="login-btn" type="submit" class="login-btn">Inloggen</button>
       <div id="sh-login-msg" class="sh-login-msg" role="alert" aria-live="polite"></div>
-      <div style="text-align:center;margin-top:8px;">
-        <a href="#" id="login-forgot" onclick="event.preventDefault(); window._shForgotPassword && window._shForgotPassword();" style="font-size:12px;color:var(--text-3,#9aa3b7);text-decoration:none;">Wachtwoord vergeten?</a>
-      </div>
-      <div class="login-sep"><span>Nog geen account?</span></div>
-      <div style="text-align:center;margin-top:10px;">
-        <button type="button" class="login-req-btn" onclick="window._shRequestAccess && window._shRequestAccess()">Toegang aanvragen &rarr;</button>
-      </div>
       <div id="login-error" class="login-error"></div>
       <div class="login-legal">
         <a href="voorwaarden.html" target="_blank" rel="noopener">Voorwaarden</a>
@@ -3845,6 +3834,28 @@ if('serviceWorker' in navigator){
     navigator.serviceWorker.register('/admin/sw.js', { scope: '/admin/' }).catch(function(){});
   });
 }
+
+// PWA install prompt — vang op en koppel aan install-btn
+(function(){
+  var _pwaDeferred = null;
+  window.addEventListener('beforeinstallprompt', function(e){
+    e.preventDefault();
+    _pwaDeferred = e;
+    var btn = document.getElementById('install-btn');
+    if(btn){ btn.style.display = ''; btn.disabled = false; }
+  });
+  window.addEventListener('appinstalled', function(){
+    _pwaDeferred = null;
+    var btn = document.getElementById('install-btn');
+    if(btn){ btn.textContent = '✓ Geïnstalleerd'; btn.disabled = true; }
+  });
+  document.addEventListener('click', function(e){
+    if(e.target && e.target.id === 'install-btn' && _pwaDeferred){
+      _pwaDeferred.prompt();
+      _pwaDeferred.userChoice.then(function(){ _pwaDeferred = null; });
+    }
+  });
+})();
 </script>
 <script type="module" src="app.js"></script>
 <script>

@@ -12200,11 +12200,16 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 #landing-overlay {
   position: fixed; inset: 0; z-index: 5000;
   background: var(--bg, #0a0c12); color: var(--text, #e8edf5);
-  overflow-y: auto; -webkit-overflow-scrolling: touch;
-  display: none; flex-direction: column;
+  overflow: hidden;
+  display: none;
   font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
-#landing-overlay > * { flex-shrink: 0; }
+.lp-scroll-wrap {
+  height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  display: flex; flex-direction: column;
+}
+.lp-scroll-wrap > * { flex-shrink: 0; }
 
 .lp-nav {
   position: sticky; top: 0; z-index: 2;
@@ -13345,7 +13350,7 @@ body.sh-onb-open{ overflow:hidden; }
   animation: lpBgShift 22s ease-in-out infinite alternate;
 }
 @keyframes lpBgShift{ from{ background-position:0 0,0 0,0 0,50% 0%; } to{ background-position:0 0,0 0,0 0,50% 100%; } }
-#landing-overlay > *{ position:relative; z-index:1; }
+.lp-scroll-wrap > *{ position:relative; z-index:1; }
 
 /* ---- Video-crop: verbergt sidebar + DEMO-balk (content-only) ---- */
 #landing-overlay .lp-vidcrop{

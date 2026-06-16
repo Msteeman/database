@@ -1582,12 +1582,28 @@ a { color: var(--accent); text-decoration: none; }
   display: flex; margin-top: 10px; flex-wrap: wrap; gap: 8px;
 }
 @media (max-width: 600px){
-  .sa-header-acts-row { gap: 6px; }
-  .sa-header-acts-row .sa-live-btn { flex: 1 1 auto; justify-content: center; }
+  .sa-header-acts-row { gap: 6px; display: grid; grid-template-columns: 1fr 1fr; }
+  .sa-header-acts-row .sa-live-btn { min-width: 0; justify-content: center; flex: unset; }
+  .sa-header-acts-row .sa-live-btn-wstr { grid-column: 1 / -1; }
+  .sa-gk-wrap, .sa-obs-wrap { min-width: 0; }
 }
 .sa-header-acts .btn-ghost {
   font-size: 11px; padding: 4px 9px; white-space: nowrap;
 }
+/* Trash knop in wedstrijd-header */
+.sa-del-prog-btn {
+  background: none; border: none; cursor: pointer; font-size: 16px; line-height: 1;
+  padding: 4px 6px; opacity: .45; flex-shrink: 0; color: #ef4444;
+  transition: opacity .15s;
+}
+.sa-del-prog-btn:hover { opacity: 1; }
+/* Trash kolom in db-tabel */
+.db-del-col { width: 36px; text-align: center; padding: 0 4px !important; }
+.db-del-btn {
+  background: none; border: none; cursor: pointer; font-size: 15px; line-height: 1;
+  padding: 4px 6px; opacity: .3; color: #ef4444; transition: opacity .15s;
+}
+.db-del-btn:hover { opacity: 1; }
 /* s92: vandaag banner collapsible */
 .dvb-header { cursor: pointer; user-select: none; justify-content: space-between; }
 .dvb-collapse-btn {
@@ -2585,6 +2601,7 @@ a { color: var(--accent); text-decoration: none; }
 .advies-count { width: 30px; text-align: right; font-weight: 600; color: var(--text-2); }
 
 .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 600px){ .cat-grid { grid-template-columns: repeat(2, 1fr); } }
 .cat-card {
   background: var(--bg-3); border: 1px solid var(--border); border-radius: 8px;
   padding: 12px 14px;
@@ -13208,6 +13225,10 @@ body.sh-onb-open{ overflow:hidden; }
 
 /* RESET batch 3 — hele rij klikbaar (DEEL 2D), losse open-knoppen weg */
 .pm-item-row .pm-item-acts{ display:none !important; }
+/* Trash-knop in pm-item-acts wél zichtbaar */
+.pm-item-row .pm-item-acts:has(.pm-del-obs-btn){ display:flex !important; gap:5px; align-items:center; flex-shrink:0; }
+.pm-del-obs-btn{ background:none; border:none; cursor:pointer; font-size:15px; line-height:1; padding:4px 6px; opacity:.35; color:#ef4444; transition:opacity .15s; flex-shrink:0; }
+.pm-del-obs-btn:hover{ opacity:1; }
 .pm-row-click{ cursor:pointer; min-height:44px; transition:background .15s ease; border-radius:8px; }
 .pm-row-click:hover{ background:rgba(255,255,255,.05); }
 .pm-row-chev{ margin-left:auto; color:var(--text-3,#8b93a8); font-size:18px; line-height:1; flex-shrink:0; }

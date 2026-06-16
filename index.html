@@ -262,8 +262,18 @@
     if(!standalone){
       var ld = document.getElementById('loader'); if(ld) ld.style.display = 'none';
       var land = document.getElementById('landing-overlay'); if(land) land.style.display = 'flex';
+      // Maak alle lp-reveal secties direct zichtbaar (geen IO-delay)
+      setTimeout(function(){
+        document.querySelectorAll('.lp-reveal:not(.lp-in)').forEach(function(el){ el.classList.add('lp-in'); });
+      }, 80);
     }
   }catch(_){}
+  // Inline fallback zodat Inloggen altijd werkt, ook vóór app.js laadt
+  window._lpLogin = window._lpLogin || function(){
+    var land = document.getElementById('landing-overlay'); if(land) land.style.display = 'none';
+    var lo = document.getElementById('login-overlay'); if(lo) lo.style.display = 'flex';
+    var e = document.getElementById('login-email'); if(e) setTimeout(function(){ try{e.focus();}catch(_){} }, 60);
+  };
 })();
 </script>
 

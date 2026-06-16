@@ -12201,13 +12201,15 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
   position: fixed; inset: 0; z-index: 5000;
   background: var(--bg, #0a0c12); color: var(--text, #e8edf5);
   overflow: hidden;
-  display: none;
+  display: none; flex-direction: column;
   font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 .lp-scroll-wrap {
-  height: 100%; overflow-y: auto; -webkit-overflow-scrolling: touch;
+  flex: 1 1 auto; min-height: 0;
+  overflow-y: auto; -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   display: flex; flex-direction: column;
+  position: relative; z-index: 1;
 }
 .lp-scroll-wrap > * { flex-shrink: 0; }
 

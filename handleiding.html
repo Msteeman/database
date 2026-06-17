@@ -687,6 +687,24 @@
   </footer>
 
   <script>
+  /* ---- hoofdstuk wisselen ---- */
+  (function(){
+    var navLinks = document.querySelectorAll('.hb-ch');
+    var chapters = document.querySelectorAll('.hb-chapter');
+    navLinks.forEach(function(link){
+      link.addEventListener('click', function(){
+        var ch = this.dataset.ch;
+        navLinks.forEach(function(l){ l.classList.remove('active'); });
+        chapters.forEach(function(c){ c.classList.remove('active'); });
+        this.classList.add('active');
+        var target = document.querySelector('.hb-chapter[data-ch="'+ch+'"]');
+        if(target){ target.classList.add('active'); document.getElementById('hb-content').scrollTop=0; }
+        document.getElementById('hb-nav').classList.remove('open');
+        document.getElementById('hb-nav-backdrop').classList.remove('show');
+      });
+    });
+  })();
+
   /* ---- zoekfunctie ---- */
   (function(){
     const inp = document.getElementById('hb-search');

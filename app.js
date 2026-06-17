@@ -31674,9 +31674,7 @@ function _admMbRebuild(){
   var side=sideItems.map(function(s){
     return '<button class="adm-mb-side'+(s[0]===_admMb.folder?' adm-mb-side-active':'')+'" onclick="_admMbNav(\''+s[0]+'\')">'+s[1]+'</button>';
   }).join('')
-    +'<hr style="border:none;border-top:1px solid var(--border,#1f2937);margin:6px 0">'
-    +'<button class="adm-mb-side" onclick="_admTestMail(\''+_admMb.type+'\',this)">🧪 Testmail</button>'
-    +'<a class="adm-mb-side" href="https://webmail.transip.email/" target="_blank" rel="noopener">🌐 Webmail</a>';
+;
   el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Mailcentrum</div>'
     +'<div class="adm-mb3-wrap">'
       +'<div class="adm-mb3-tabs">'+tabs+'</div>'

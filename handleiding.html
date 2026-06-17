@@ -102,15 +102,15 @@
   .hb-shot.has-img img[src*="login"]{ max-width:420px; }
   .hb-shot.has-img img[src*="obs-chips"]{ max-width:480px; }
 
-  /* Lightbox voor screenshots */
-  .sh-lb{ display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.85); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); align-items:center; justify-content:center; cursor:pointer; }
+  /* Lightbox */
+  .sh-lb{ display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.85); backdrop-filter:blur(4px); align-items:center; justify-content:center; cursor:pointer; }
   .sh-lb.open{ display:flex; }
   .sh-lb-img{ max-width:90vw; max-height:90vh; object-fit:contain; border-radius:8px; box-shadow:0 12px 60px rgba(0,0,0,.6); }
-  .sh-lb-close{ position:fixed; top:max(16px, env(safe-area-inset-top, 0px)); right:16px; background:rgba(255,255,255,.15); border:none; color:#fff; font-size:28px; width:44px; height:44px; border-radius:50%; cursor:pointer; z-index:10000; display:flex; align-items:center; justify-content:center; line-height:1; }
+  .sh-lb-close{ position:fixed; top:max(16px, env(safe-area-inset-top, 0px)); right:16px; background:rgba(255,255,255,.15); border:none; color:#fff; font-size:28px; width:44px; height:44px; border-radius:50%; cursor:pointer; z-index:10000; display:flex; align-items:center; justify-content:center; }
   .sh-lb-close:hover{ background:rgba(255,255,255,.3); }
   .hb-shot.has-img img{ cursor:pointer; transition:transform .15s ease; }
   .hb-shot.has-img img:hover{ transform:scale(1.02); }
-  .hb-gif::before{content:"🎬  ";}
+
   .hb-step{counter-reset:hbstep; list-style:none; padding-left:0;}
   .hb-step li{position:relative; padding:6px 0 6px 38px; margin:0;}
   .hb-step li::before{
@@ -127,30 +127,33 @@
   .hb-grade{display:inline-flex; width:26px; height:26px; border-radius:7px; align-items:center; justify-content:center;
     font-weight:800; font-size:13px; margin:1px 2px; background:var(--bg-2); border:1px solid var(--border); color:var(--text-2);}
   .hb-grade.on{background:var(--accent); color:#06223f; border-color:var(--accent);}
+  .hb-grade.b{background:#f59e0b; color:#06223f; border-color:#f59e0b;}
+  .hb-grade.c{background:#64748b; color:#fff; border-color:#64748b;}
+  .hb-grade.d{background:#e30613; color:#fff; border-color:#e30613;}
   .hb-tip{border-left:3px solid var(--accent-2); background:rgba(245,197,24,.07); padding:10px 14px; border-radius:0 8px 8px 0; margin:12px 0; font-size:14px;}
   .hb-tip::before{content:"💡 "; }
   .hb-kbd{display:inline-block; background:var(--bg-2); border:1px solid var(--border); border-bottom-width:2px;
     border-radius:6px; padding:1px 7px; font-size:12.5px; font-family:ui-monospace,monospace;}
   .hb-noresult{display:none; color:var(--text-2); padding:30px; text-align:center;}
+  .hb-next{display:flex; align-items:flex-start; gap:10px; border-left:3px solid var(--good); background:rgba(52,211,153,.08); padding:11px 14px; border-radius:0 8px 8px 0; margin:16px 0 0; font-size:14px; color:var(--text);}
+  .hb-next .hb-next-ic{font-size:16px; line-height:1.5; flex:0 0 auto; color:var(--good);}
+  .hb-next a{font-weight:700;}
 
-  /* ===== Scoutdag-flow overzicht ===== */
-  .hb-flow-sec .hb-flow-head{display:flex; align-items:center; gap:16px; margin:6px 0 16px;}
-  .hb-flow-sec .hb-flow-head img{width:170px; max-width:38%; height:auto; border-radius:10px; border:1px solid var(--border); box-shadow:0 4px 16px rgba(0,0,0,.3); display:block;}
-  .hb-flow-sec .hb-flow-head p{margin:0; color:var(--text-2); font-size:13.5px;}
-  .hb-flow{display:grid; grid-template-columns:repeat(5,1fr); gap:10px;}
+  /* Scoutdag-flow */
+  .hb-flow{display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:14px;}
   .hb-flow-step{display:block; background:var(--bg-2); border:1px solid var(--border); border-radius:10px; padding:12px; color:var(--text); cursor:pointer; transition:border-color .15s ease, transform .15s ease;}
   .hb-flow-step:hover{border-color:var(--accent); text-decoration:none; transform:translateY(-2px);}
   .hb-flow-n{display:inline-flex; width:26px; height:26px; border-radius:50%; align-items:center; justify-content:center; background:var(--accent); color:#06223f; font-weight:800; font-size:13px; margin-bottom:8px;}
   .hb-flow-t{display:block; font-weight:700; font-size:14px; margin-bottom:2px;}
   .hb-flow-d{display:block; color:var(--text-2); font-size:12px; line-height:1.4;}
   .hb-flow-go{display:block; color:var(--accent); font-size:11.5px; font-weight:700; margin-top:7px;}
-  @media (max-width:860px){ .hb-flow{grid-template-columns:1fr 1fr;} }
-  @media (max-width:480px){ .hb-flow{grid-template-columns:1fr;} .hb-flow-sec .hb-flow-head{flex-direction:column; align-items:flex-start;} .hb-flow-sec .hb-flow-head img{max-width:100%; width:100%;} }
 
-  /* ===== Volgende stap ===== */
-  .hb-next{display:flex; align-items:flex-start; gap:10px; border-left:3px solid var(--good); background:rgba(52,211,153,.08); padding:11px 14px; border-radius:0 8px 8px 0; margin:16px 0 0; font-size:14px; color:var(--text);}
-  .hb-next .hb-next-ic{font-size:16px; line-height:1.5; flex:0 0 auto; color:var(--good);}
-  .hb-next a{font-weight:700;}
+  /* Sidebar overzichtstabel */
+  .hb-modules{width:100%; border-collapse:collapse; font-size:14px; margin:10px 0;}
+  .hb-modules th{text-align:left; color:var(--text-3); font-size:12px; font-weight:700; padding:4px 8px; border-bottom:1px solid var(--border);}
+  .hb-modules td{padding:7px 8px; border-bottom:1px solid rgba(31,41,55,.5); vertical-align:top;}
+  .hb-modules tr:last-child td{border-bottom:none;}
+  .hb-modules .hb-mod-ic{font-size:16px; width:28px;}
 
   /* ===== Mobile ===== */
   .hb-nav-backdrop{display:none;}
@@ -167,17 +170,20 @@
     .hb-nav.open{transform:none;}
     .hb-nav-backdrop.show{display:block; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:45;}
     .hb-content{padding:20px 16px 70px;}
-    .hb-actions .hb-btn-label{display:none;}
+    .hb-flow{grid-template-columns:1fr 1fr;}
+  }
+  @media (max-width:480px){
+    .hb-flow{grid-template-columns:1fr;}
   }
 
-  /* ===== Hoofdstuk-tabs (mobiel fallback-navigatie) ===== */
-  .hb-tabs{ display:none; }
-  .hb-tab{ flex:0 0 auto; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; background:var(--bg-2); border:1px solid var(--border); color:var(--text-2); cursor:pointer; touch-action:manipulation; padding:0; }
-  .hb-tab.active{ background:var(--accent); color:#06223f; border-color:var(--accent); }
+  /* Tabs mobiel */
+  .hb-tabs{display:none;}
+  .hb-tab{flex:0 0 auto; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; background:var(--bg-2); border:1px solid var(--border); color:var(--text-2); cursor:pointer; touch-action:manipulation; padding:0;}
+  .hb-tab.active{background:var(--accent); color:#06223f; border-color:var(--accent);}
   @media (max-width:860px){
-    .hb-tabs{ display:flex; gap:8px; padding:10px 16px; overflow-x:auto; -webkit-overflow-scrolling:touch; position:sticky; top:calc(60px + env(safe-area-inset-top, 0px)); z-index:20; background:var(--bg); border-bottom:1px solid var(--border); }
+    .hb-tabs{display:flex; gap:8px; padding:10px 16px; overflow-x:auto; -webkit-overflow-scrolling:touch; position:sticky; top:calc(60px + env(safe-area-inset-top, 0px)); z-index:20; background:var(--bg); border-bottom:1px solid var(--border);}
   }
-  @media print{ .hb-tabs{ display:none !important; } }
+  @media print{.hb-tabs{display:none !important;}}
 </style>
 </head>
 <body>
@@ -211,428 +217,486 @@
   <nav class="hb-nav" id="hb-nav" aria-label="Hoofdstukken">
     <div class="hb-nav-group">
       <a class="hb-ch active" data-ch="1"><span class="hb-ch-n">1</span>Eerste stappen</a>
-      <a class="hb-ch" data-ch="2"><span class="hb-ch-n">2</span>Je eerste wedstrijd</a>
-      <a class="hb-ch" data-ch="3"><span class="hb-ch-n">3</span>Scouten langs de lijn</a>
-      <a class="hb-ch" data-ch="4"><span class="hb-ch-n">4</span>Na de wedstrijd</a>
-      <a class="hb-ch" data-ch="5"><span class="hb-ch-n">5</span>Toernooi-modus</a>
+      <a class="hb-ch" data-ch="2"><span class="hb-ch-n">2</span>Dashboard &amp; menu</a>
+      <a class="hb-ch" data-ch="3"><span class="hb-ch-n">3</span>Programma &amp; wedstrijden</a>
+      <a class="hb-ch" data-ch="4"><span class="hb-ch-n">4</span>Scouten langs de lijn</a>
+      <a class="hb-ch" data-ch="5"><span class="hb-ch-n">5</span>Rapporten</a>
       <a class="hb-ch" data-ch="6"><span class="hb-ch-n">6</span>Spelersdatabase</a>
-      <a class="hb-ch" data-ch="7"><span class="hb-ch-n">7</span>Extra modules</a>
-      <a class="hb-ch" data-ch="8"><span class="hb-ch-n">8</span>Tips &amp; tricks</a>
+      <a class="hb-ch" data-ch="7"><span class="hb-ch-n">7</span>Toernooien</a>
+      <a class="hb-ch" data-ch="8"><span class="hb-ch-n">8</span>Extra modules</a>
     </div>
   </nav>
 
   <main class="hb-content" id="hb-content">
-    <div class="hb-noresult" id="hb-noresult">Geen resultaten voor je zoekopdracht. Probeer een ander trefwoord.</div>
+    <div class="hb-noresult" id="hb-noresult">Geen resultaten gevonden. Probeer een ander trefwoord.</div>
 
     <!-- ============ HOOFDSTUK 1 ============ -->
     <section class="hb-chapter active" data-ch="1">
       <h1 class="hb-h1">1. Eerste stappen</h1>
-      <p class="hb-lead">Welkom bij ScoutingHub. In dit hoofdstuk log je in, leer je het dashboard kennen en installeer je de app op je telefoon.</p>
+      <p class="hb-lead">Welkom bij ScoutingHub — je persoonlijke scoutingstool voor jeugdvoetbal. Dit hoofdstuk laat je inloggen, de app installeren en de dagelijkse flow begrijpen.</p>
 
-      <div class="hb-sec hb-flow-sec" data-kw="scoutdag flow overzicht reis stappen plan observeer rapporteer indienen vergelijken database mentaal model lus">
-        <h3>Zo werkt een scoutdag</h3>
-        <div class="hb-flow-head">
-          <img src="screenshot-dashboard.png" alt="Dashboard als startpunt van de scoutdag" loading="lazy">
-          <p>De hele scout-reis in vijf stappen — van plannen tot vergelijken. De rest van deze handleiding werkt elke stap uit. Tik op een stap om naar het bijbehorende hoofdstuk te springen.</p>
-        </div>
-        <div class="hb-flow">
-          <a class="hb-flow-step" data-goch="2"><span class="hb-flow-n">1</span><span class="hb-flow-t">Plan</span><span class="hb-flow-d">Programma samenstellen &amp; spelers koppelen</span><span class="hb-flow-go">Hoofdstuk 2 →</span></a>
-          <a class="hb-flow-step" data-goch="3"><span class="hb-flow-n">2</span><span class="hb-flow-t">Observeer</span><span class="hb-flow-d">Chips tikken langs de lijn</span><span class="hb-flow-go">Hoofdstuk 3 →</span></a>
-          <a class="hb-flow-step" data-goch="4"><span class="hb-flow-n">3</span><span class="hb-flow-t">Rapporteer</span><span class="hb-flow-d">Observatie → concept-rapport</span><span class="hb-flow-go">Hoofdstuk 4 →</span></a>
-          <a class="hb-flow-step" data-goch="4"><span class="hb-flow-n">4</span><span class="hb-flow-t">Indien</span><span class="hb-flow-d">Rapport definitief indienen</span><span class="hb-flow-go">Hoofdstuk 4 →</span></a>
-          <a class="hb-flow-step" data-goch="6"><span class="hb-flow-n">5</span><span class="hb-flow-t">Vergelijk &amp; Database</span><span class="hb-flow-d">Spelers terugvinden &amp; vergelijken</span><span class="hb-flow-go">Hoofdstuk 6 →</span></a>
-        </div>
-      </div>
-
-      <div class="hb-sec" data-kw="inloggen wachtwoord vergeten reset email login">
+      <div class="hb-sec" data-kw="inloggen wachtwoord reset email login toegang account">
         <h3>1.1 Inloggen</h3>
-        <p>Open ScoutingHub in je browser en log in met je <strong>e-mailadres en wachtwoord</strong>.</p>
+        <p>Open ScoutingHub in je browser (of geïnstalleerde app) en log in met je <strong>e-mailadres en wachtwoord</strong>.</p>
         <ul>
-          <li>Vul je e-mailadres en wachtwoord in en klik op <strong>Inloggen</strong>.</li>
-          <li>Met het oogje in het wachtwoordveld kun je je invoer controleren.</li>
-          <li><strong>Wachtwoord vergeten?</strong> Klik op de link onder het formulier. Je ontvangt een reset-link per e-mail.</li>
+          <li>Tik het oogje om je wachtwoord te controleren.</li>
+          <li><strong>Wachtwoord vergeten?</strong> Klik de link onder het formulier — je krijgt een reset-link per e-mail.</li>
+          <li>Heb je nog geen account? Vraag toegang aan via de knop <strong>Toegang aanvragen</strong>. Een beheerder rondt dit af.</li>
         </ul>
-        <div class="hb-shot has-img"><img src="screenshot-login.png" alt="Loginscherm met e-mailadres, wachtwoord, oog-icoon en Wachtwoord vergeten link" loading="lazy"></div>
+        <div class="hb-shot has-img"><img src="screenshot-login.png" alt="Loginscherm ScoutingHub" loading="lazy"></div>
       </div>
 
-      <div class="hb-sec" data-kw="dashboard kpi agenda live tegels snelknoppen rapport wedstrijd">
-        <h3>1.2 Het dashboard</h3>
-        <p>Na het inloggen kom je op je dashboard — je startpunt voor elke scoutdag.</p>
-        <ul>
-          <li><strong>KPI-tegels:</strong> aantal spelers, wedstrijden en toernooien in één oogopslag.</li>
-          <li><strong>Agenda &amp; live-tegels:</strong> je komende en lopende wedstrijden.</li>
-          <li><strong>Snelknoppen:</strong> <strong>+ Rapport</strong> en <strong>+ Wedstrijd</strong> om meteen aan de slag te gaan.</li>
-        </ul>
-        <div class="hb-shot has-img"><img src="screenshot-dashboard.png" alt="Dashboard met KPI-tegels, agenda, live-tegel, snelknoppen en recente rapporten" loading="lazy"></div>
-      </div>
-
-      <div class="hb-sec" data-kw="sidebar menu modules scouten analyse relaties overig navigatie">
-        <h3>1.3 De sidebar</h3>
-        <p>Aan de linkerkant vind je het menu met alle modules, geordend in vier groepen:</p>
-        <ul>
-          <li><strong>Scouten:</strong> Dashboard, Spelersdatabase, Programma, Wedstrijden.</li>
-          <li><strong>Analyse:</strong> Gescoute teams, Vergelijken, Elftal analyse.</li>
-          <li><strong>Relaties:</strong> Clubs &amp; locaties, Contactpersonen.</li>
-          <li><strong>Overig:</strong> Ritten, Getipte spelers, Toernooien, Handleiding.</li>
-        </ul>
-        <p>Op mobiel klap je het menu in en uit met de menuknop.</p>
-        <div class="hb-shot has-img"><img src="screenshot-sidebar.png" alt="Sidebar met vier menugroepen: Scouten, Analyse, Relaties, Overig" loading="lazy"></div>
-      </div>
-
-      <div class="hb-sec" data-kw="pwa installeren iphone safari android chrome beginscherm offline push notificaties">
-        <h3>1.4 PWA installeren</h3>
-        <p>ScoutingHub werkt als een echte app. Installeer 'm op je beginscherm voor de beste ervaring:</p>
+      <div class="hb-sec" data-kw="pwa installeren iphone safari android chrome beginscherm offline app">
+        <h3>1.2 App installeren (PWA)</h3>
+        <p>ScoutingHub werkt als een echte app op je telefoon — geen App Store nodig.</p>
         <h4>iPhone (Safari)</h4>
-        <ol><li>Tik op de <strong>Deel</strong>-knop.</li><li>Kies <strong>Zet op beginscherm</strong>.</li></ol>
+        <ol class="hb-step">
+          <li>Tik op de <strong>Deel</strong>-knop (□↑).</li>
+          <li>Kies <strong>Zet op beginscherm</strong>.</li>
+        </ol>
         <h4>Android (Chrome)</h4>
-        <ol><li>Tik op het <strong>menu (⋮)</strong>.</li><li>Kies <strong>Toevoegen aan startscherm</strong>.</li></ol>
-        <p><strong>Voordelen:</strong> werkt offline, start direct vanaf je beginscherm en ondersteunt push-notificaties.</p>
-        <div class="hb-shot">Nog geen schermafbeelding beschikbaar — PWA-installatie op telefoon (Deel-knop → Zet op beginscherm)</div>
+        <ol class="hb-step">
+          <li>Tik op het <strong>menu (⋮)</strong>.</li>
+          <li>Kies <strong>App installeren</strong> of <strong>Toevoegen aan startscherm</strong>.</li>
+        </ol>
+        <div class="hb-tip">Geïnstalleerd op je beginscherm: start direct, werkt offline en neemt minder ruimte in dan een gewone website.</div>
+      </div>
+
+      <div class="hb-sec" data-kw="scoutdag flow overzicht plan observeer rapport vergelijken database stappen">
+        <h3>1.3 De scoutdag in vijf stappen</h3>
+        <p>ScoutingHub begeleidt je door elke stap — van plannen tot vergelijken.</p>
+        <div class="hb-flow">
+          <a class="hb-flow-step" data-goch="3"><span class="hb-flow-n">1</span><span class="hb-flow-t">Plan</span><span class="hb-flow-d">Wedstrijd aanmaken en spelers koppelen</span><span class="hb-flow-go">Hoofdstuk 3 →</span></a>
+          <a class="hb-flow-step" data-goch="4"><span class="hb-flow-n">2</span><span class="hb-flow-t">Observeer</span><span class="hb-flow-d">Live chips tikken langs de lijn</span><span class="hb-flow-go">Hoofdstuk 4 →</span></a>
+          <a class="hb-flow-step" data-goch="5"><span class="hb-flow-n">3</span><span class="hb-flow-t">Rapporteer</span><span class="hb-flow-d">Observatie uitwerken tot rapport</span><span class="hb-flow-go">Hoofdstuk 5 →</span></a>
+          <a class="hb-flow-step" data-goch="6"><span class="hb-flow-n">4</span><span class="hb-flow-t">Archiveer</span><span class="hb-flow-d">Rapport indienen en opslaan</span><span class="hb-flow-go">Hoofdstuk 6 →</span></a>
+          <a class="hb-flow-step" data-goch="8"><span class="hb-flow-n">5</span><span class="hb-flow-t">Vergelijk</span><span class="hb-flow-d">Spelers naast elkaar zetten</span><span class="hb-flow-go">Hoofdstuk 8 →</span></a>
+        </div>
       </div>
     </section>
 
     <!-- ============ HOOFDSTUK 2 ============ -->
     <section class="hb-chapter" data-ch="2">
-      <h1 class="hb-h1">2. Je eerste wedstrijd</h1>
-      <p class="hb-lead">Maak een wedstrijd aan en koppel de spelers die je wilt observeren.</p>
+      <h1 class="hb-h1">2. Dashboard &amp; menu</h1>
+      <p class="hb-lead">Na het inloggen kom je op het dashboard. Hier vind je een snel overzicht en toegang tot alle modules.</p>
 
-      <div class="hb-sec" data-kw="wedstrijd aanmaken programma nieuwe datum tijd teams leeftijd locatie plan modal">
-        <h3>2.1 Wedstrijd aanmaken</h3>
-        <ol class="hb-step">
-          <li>Ga naar <strong>Programma</strong> en klik op <strong>+ Nieuwe wedstrijd</strong>.</li>
-          <li>Vul de velden in: <strong>datum, tijd, teams (thuis/uit), leeftijdscategorie</strong> en <strong>locatie</strong>.</li>
-          <li>Klik op <strong>Opslaan</strong> — de wedstrijd verschijnt in je programma.</li>
-        </ol>
-        <div class="hb-shot has-img"><img src="lp-shot-programma.jpg" alt="Programma met de plan-modal voor een nieuwe wedstrijd: velden voor datum, tijd, teams, leeftijdscategorie en locatie" loading="lazy"></div>
+      <div class="hb-sec" data-kw="dashboard kpi tegels snelknoppen rapport wedstrijd overzicht startpunt agenda live">
+        <h3>2.1 Het dashboard</h3>
+        <p>Het dashboard is je startpunt voor elke scoutdag. Je ziet in één oogopslag:</p>
+        <ul>
+          <li><strong>KPI-tegels</strong> — aantal spelers, rapporten en wedstrijden in je database.</li>
+          <li><strong>Agenda / live-tegels</strong> — je geplande en lopende wedstrijden.</li>
+          <li><strong>Snelknoppen</strong> — <strong>+ Rapport</strong> en <strong>+ Wedstrijd</strong> om meteen aan de slag te gaan.</li>
+          <li><strong>Recente activiteit</strong> — je laatste rapporten en observaties.</li>
+        </ul>
+        <div class="hb-shot has-img"><img src="screenshot-dashboard.png" alt="Dashboard met KPI-tegels, agenda en snelknoppen" loading="lazy"></div>
       </div>
 
-      <div class="hb-sec" data-kw="spelers koppelen wedstrijd detail zoeken naam selecteren bevestigen">
-        <h3>2.2 Spelers koppelen</h3>
-        <ol class="hb-step">
-          <li>Open de wedstrijd om het <strong>wedstrijd-detail</strong> te bekijken.</li>
-          <li>Klik op <strong>+ Speler koppelen</strong>.</li>
-          <li>Zoek op naam, selecteer de speler en bevestig.</li>
-        </ol>
-        <div class="hb-tip">Je kunt ook spelers "spotten" tijdens de wedstrijd en ze later koppelen aan een profiel.</div>
-        <div class="hb-shot has-img"><img src="lp-shot-spelersdatabase.jpg" alt="Speler zoeken op naam in de spelersdatabase om te koppelen aan een wedstrijd" loading="lazy"></div>
+      <div class="hb-sec" data-kw="sidebar menu modules navigatie scouten analyse relaties ritten toernooien vergelijken">
+        <h3>2.2 Het menu (sidebar)</h3>
+        <p>Links vind je het navigatiemenu met alle modules. Op mobiel open je het met de menuknop (☰) linksboven.</p>
+        <table class="hb-modules">
+          <thead><tr><th class="hb-mod-ic"></th><th>Module</th><th>Wat doe je hier?</th></tr></thead>
+          <tbody>
+            <tr><td>📊</td><td><strong>Dashboard</strong></td><td>Startpagina, KPI's, agenda</td></tr>
+            <tr><td>👤</td><td><strong>Spelers</strong></td><td>Database van al je gescoute spelers</td></tr>
+            <tr><td>📋</td><td><strong>Wedstrijden</strong></td><td>Overzicht van alle gescoute wedstrijden</td></tr>
+            <tr><td>📅</td><td><strong>Programma</strong></td><td>Komende wedstrijden plannen en beheren</td></tr>
+            <tr><td>⚖️</td><td><strong>Vergelijken</strong></td><td>Spelers head-to-head vergelijken</td></tr>
+            <tr><td>⚽</td><td><strong>Elftallen</strong></td><td>Opstellingen bouwen met je spelers</td></tr>
+            <tr><td>🏆</td><td><strong>Toernooien</strong></td><td>Toernooi-modus met importeer en bundeling</td></tr>
+            <tr><td>💡</td><td><strong>Tips</strong></td><td>Getipte spelers bijhouden</td></tr>
+            <tr><td>🚗</td><td><strong>Ritten</strong></td><td>Kilometer-registratie en declaraties</td></tr>
+            <tr><td>📖</td><td><strong>Adresboek</strong></td><td>Clubs en locaties</td></tr>
+            <tr><td>👥</td><td><strong>Contacten</strong></td><td>Trainers, coördinatoren, relaties</td></tr>
+          </tbody>
+        </table>
+        <div class="hb-shot has-img"><img src="screenshot-sidebar.png" alt="Sidebar met alle menumodules" loading="lazy"></div>
       </div>
 
-      <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Volgende stap.</strong> Je wedstrijd en spelers staan klaar. Ga nu langs de lijn observeren — <a data-goch="3" href="#">hoofdstuk 3: Scouten langs de lijn</a>.</div></div>
+      <div class="hb-sec" data-kw="instellingen profiel foto account wachtwoord apparaten profielfoto installeren pwa app rol team persoonsgegevens">
+        <h3>2.3 Instellingen</h3>
+        <p>Open <strong>Instellingen</strong> via het tandwiel-icoon in het menu. Je vindt er vier secties:</p>
+        <ul>
+          <li><strong>Account</strong> — je e-mailadres, rol en team (alleen-lezen).</li>
+          <li><strong>App installeren</strong> — klik <em>Installeer app</em> om ScoutingHub als PWA op je beginscherm of bureaublad te zetten (ook beschikbaar via 1.2).</li>
+          <li><strong>Profielfoto</strong> — kies een JPG of PNG. Verschijnt in de zijbalk en op al je apparaten. Geen foto? Dan zie je je initialen.</li>
+          <li><strong>Persoonsgegevens</strong> — telefoon, adres en voorkeuren (alleen voor jou zichtbaar).</li>
+        </ul>
+        <div class="hb-shot has-img"><img src="PWA installeren.png" alt="Instellingen met App installeren, Profielfoto en Persoonsgegevens" loading="lazy"></div>
+      </div>
+
+      <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Volgende stap.</strong> Plan je eerste wedstrijd — <a data-goch="3" href="#">hoofdstuk 3</a>.</div></div>
     </section>
 
     <!-- ============ HOOFDSTUK 3 ============ -->
     <section class="hb-chapter" data-ch="3">
-      <h1 class="hb-h1">3. Scouten langs de lijn</h1>
-      <p class="hb-lead">Het hart van ScoutingHub: snel en met één hand een speler beoordelen tijdens de wedstrijd.</p>
+      <h1 class="hb-h1">3. Programma &amp; wedstrijden</h1>
+      <p class="hb-lead">Plan een wedstrijd, koppel de spelers die je wilt scouten en bekijk de voortgang.</p>
 
-      <div class="hb-sec" data-kw="observatie starten obs knop spelersprofiel nieuwe">
-        <h3>3.1 Observatie starten</h3>
-        <ul>
-          <li><strong>Vanuit een wedstrijd:</strong> klik op de obs-knop bij een gekoppelde speler.</li>
-          <li><strong>Vanuit een spelersprofiel:</strong> klik op <strong>+ Nieuwe observatie</strong>.</li>
-        </ul>
+      <div class="hb-sec" data-kw="programma wedstrijd aanmaken nieuwe datum tijd teams leeftijd locatie veld">
+        <h3>3.1 Wedstrijd aanmaken</h3>
+        <ol class="hb-step">
+          <li>Ga naar <strong>Programma</strong> en klik op <strong>+ Nieuwe wedstrijd</strong>.</li>
+          <li>Vul in: <strong>datum, tijd, thuis- en uitploeg, leeftijdscategorie</strong> en optioneel <strong>locatie / veld</strong>.</li>
+          <li>Klik op <strong>Opslaan</strong>. De wedstrijd verschijnt direct in je programma en op het dashboard.</li>
+        </ol>
+        <div class="hb-shot has-img"><img src="lp-shot-programma.jpg" alt="Programma met plan-modal voor een nieuwe wedstrijd" loading="lazy"></div>
       </div>
 
-      <div class="hb-sec" data-kw="chips gebruiken trefwoord categorie goed normaal matig reset tikken kleur">
-        <h3>3.2 Chips gebruiken</h3>
-        <p>Per categorie zie je trefwoord-chips. Tik om een oordeel te geven — elke tik verandert de kleur:</p>
-        <ul>
-          <li><span class="hb-chip g">Passing</span> 1× tik = <strong>🟢 goed</strong></li>
-          <li><span class="hb-chip o">Passing</span> 2× tik = <strong>🟠 normaal</strong></li>
-          <li><span class="hb-chip r">Passing</span> 3× tik = <strong>🔴 matig</strong></li>
-          <li><span class="hb-chip x">Passing</span> 4× tik = <strong>⚪ uit / reset</strong></li>
-        </ul>
-        <p>Chips staan in <strong>vijf categorieën</strong>:</p>
-        <ul>
-          <li><strong>Mentaliteit</strong> — Winnaar, Leider, Communicatief, Rustig, Nerveus, Emotioneel, Doorzetter, Opgeven, Concentratie, Gretig</li>
-          <li><strong>Techniek</strong> — Balbehandeling, Passing, Eerste aanname, Traptechniek, Koppen, Dribbel, Overzicht, Beide benen</li>
-          <li><strong>Snelheid</strong> — Startsnelheid, Topsnelheid, Wendbaarheid, Versnelling, Traag, Explosief</li>
-          <li><strong>Fysiek</strong> — Sterk, Licht, Lenig, Groot, Klein, Dualkracht, Uithoudingsvermogen</li>
-          <li><strong>Inzicht</strong> — Scannen, Positiespel, Ruimte zien, Anticipatie, Coaching, Rust aan de bal, Loopacties, Timing</li>
-        </ul>
-        <div class="hb-shot has-img"><img src="screenshot-obs-chips.png" alt="Observatieformulier met trefwoord-chips: groen is goed, oranje is gemiddeld, rood is ondermaats. Drie categorieën zichtbaar met notitieveld per categorie" loading="lazy"></div>
+      <div class="hb-sec" data-kw="spelers koppelen wedstrijd detail zoeken naam selecteren observatie obs">
+        <h3>3.2 Spelers koppelen</h3>
+        <p>Open een wedstrijd en koppel de spelers die je wilt volgen:</p>
+        <ol class="hb-step">
+          <li>Klik op <strong>+ Speler koppelen</strong> in het wedstrijd-detail.</li>
+          <li>Zoek op naam of blader door je database.</li>
+          <li>Selecteer en bevestig — de speler staat nu klaar om te scouten.</li>
+        </ol>
+        <p>Naast elke gekoppelde speler staat een <strong>obs-knop</strong> om direct een observatie te starten.</p>
+        <div class="hb-tip">Je kunt ook een speler <em>spotten</em> — dus live observeren — zonder hem vooraf te koppelen. Koppel hem achteraf aan een profiel.</div>
       </div>
 
-      <div class="hb-sec" data-kw="notitie categorie tekstveld algemeen optioneel opmerkingen">
-        <h3>3.3 Notitie per categorie</h3>
-        <p>Onder elke categorie staat een kort tekstveld voor een toelichting. Dit is <strong>optioneel</strong> — leeg laten mag.</p>
-        <p>Het veld <strong>Algemeen</strong> is voor overige opmerkingen die niet in een categorie passen.</p>
+      <div class="hb-sec" data-kw="wedstrijden overzicht voortgang progress balk beoordeeld ingediend status">
+        <h3>3.3 Voortgang bijhouden</h3>
+        <p>In het wedstrijd-overzicht zie je per wedstrijd een <strong>voortgangsbalk</strong>: hoeveel gekoppelde spelers je al hebt beoordeeld (bijv. <strong>3/5 ✅</strong>). Zo mis je niemand.</p>
+        <div class="hb-shot has-img"><img src="lp-shot-wedstrijden.jpg" alt="Wedstrijd-overzicht met voortgangsbalk en status" loading="lazy"></div>
       </div>
 
-      <div class="hb-sec" data-kw="overall rating beoordeling abcd uitzonderlijk onder niveau huidig potentieel">
-        <h3>3.4 Overall rating (A–D)</h3>
-        <p>Bovenaan geef je een totaaloordeel met de chips
-          <span class="hb-grade on">A</span><span class="hb-grade">B</span><span class="hb-grade">C</span><span class="hb-grade">D</span>.</p>
-
-        <p><strong>Wat betekent elke letter?</strong></p>
-        <ul>
-          <li><span class="hb-grade on" style="width:22px;height:22px;font-size:13px">A</span> <strong>Uitzonderlijk</strong> — speler valt op boven zijn leeftijdsniveau. Zeldzaam, maximaal 1–2 spelers per wedstrijd.</li>
-          <li><span class="hb-grade on" style="width:22px;height:22px;font-size:13px;background:#f59e0b;border-color:#f59e0b">B</span> <strong>Goed</strong> — duidelijk beter dan gemiddeld op dit niveau. Interessant profiel, de moeite van vervolgen waard.</li>
-          <li><span class="hb-grade on" style="width:22px;height:22px;font-size:13px;background:#64748b;border-color:#64748b">C</span> <strong>Gemiddeld</strong> — past bij het niveau, geen uitschieters. Nuttig als referentie voor vergelijking.</li>
-          <li><span class="hb-grade on" style="width:22px;height:22px;font-size:13px;background:#e30613;border-color:#e30613">D</span> <strong>Onder niveau</strong> — presteert duidelijk onder verwachting voor leeftijd en competitie.</li>
-        </ul>
-
-        <p><strong>Waarom twee beoordelingen: huidig én potentieel?</strong></p>
-        <p>Een speler beoordeel je altijd op twee assen:</p>
-        <ul>
-          <li><strong>Huidig niveau</strong> — wat laat de speler vandaag zien? Dit is je directe observatie: techniek, positiespel, snelheid, beslissingen onder druk.</li>
-          <li><strong>Potentieel</strong> — welk niveau kan deze speler bereiken? Dit weeg je op basis van leeftijd, atletiek, leervermogen, mentale veerkracht en ruimte voor groei.</li>
-        </ul>
-        <p>Een speler kan nu een <strong>C</strong> zijn (gemiddeld huidig) maar een <strong>A-potentieel</strong> hebben — júist die combinatie is het meest waardevolle signaal voor een scout. Omgekeerd kan iemand nu goed presteren (B) maar weinig ruimte meer hebben om door te groeien (C-potentieel).</p>
-
-        <div class="hb-tip">
-          <strong>Vuistregel:</strong> beoordeel huidig niveau op wat je <em>ziet</em> die dag. Beoordeel potentieel op wat je <em>verwacht</em> op basis van alles wat je weet. Houd beoordelingen consistent — zo zijn spelers uit verschillende wedstrijden en perioden eerlijk vergelijkbaar in je database.
-        </div>
-
-        <p><strong>Aanbevolen gebruik in de praktijk:</strong></p>
-        <ul>
-          <li>Gebruik A spaarzaam — te veel A's maakt je database waardeloos als signaal.</li>
-          <li>Geef bij elke C of D altijd een korte notitie mee (waarom), zodat je het later kunt terugvinden.</li>
-          <li>Kijk bij je rapporten regelmatig terug: klopt je inschatting van potentieel nog na 6–12 maanden?</li>
-        </ul>
+      <div class="hb-sec" data-kw="uitslag invullen score eindstand wedstrijd afronden verwerken">
+        <h3>3.4 Uitslag &amp; afronden</h3>
+        <p>Open de wedstrijd na afloop en vul de <strong>einduitslag</strong> in. Afgeronde wedstrijden tellen mee in je statistieken.</p>
       </div>
 
-      <div class="hb-sec" data-kw="opslaan keuze observatie rapport">
-        <h3>3.5 Opslaan</h3>
-        <p>Klik op <strong>Opslaan</strong>. Je krijgt een keuzevenster met twee opties:</p>
-        <ul>
-          <li><strong>📋 Bewaar als observatie</strong> — klaar; je chips én notities-per-categorie zijn opgeslagen.</li>
-          <li><strong>📝 Maak er een rapport van</strong> — opent het rapportformulier met alles al voorgevuld (zie 4.3).</li>
-        </ul>
-        <div class="hb-tip">Bewaar live een observatie en werk 'm na de wedstrijd rustig uit tot een rapport.</div>
-      </div>
-
-      <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Volgende stap.</strong> Je observatie wordt automatisch klaargezet als concept-rapport — zie <a data-goch="4" href="#">hoofdstuk 4: Na de wedstrijd</a>.</div></div>
+      <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Volgende stap.</strong> Ga langs de lijn observeren — <a data-goch="4" href="#">hoofdstuk 4</a>.</div></div>
     </section>
 
     <!-- ============ HOOFDSTUK 4 ============ -->
     <section class="hb-chapter" data-ch="4">
-      <h1 class="hb-h1">4. Na de wedstrijd</h1>
-      <p class="hb-lead">Van losse observaties naar afgeronde, ingediende rapporten.</p>
+      <h1 class="hb-h1">4. Scouten langs de lijn</h1>
+      <p class="hb-lead">Tijdens een live wedstrijd werk je vanuit de <strong>Wedstrijden</strong>-view. Alles werkt offline — automatisch gesynchroniseerd zodra je weer bereik hebt.</p>
 
-      <div class="hb-sec" data-kw="uitslag invullen score eindstand">
-        <h3>4.1 Uitslag invullen</h3>
-        <p>Open de wedstrijd en vul de <strong>einduitslag</strong> in. Afgeronde wedstrijden tellen mee in je statistieken.</p>
-      </div>
-      <div class="hb-sec" data-kw="observaties reviewen bekijken nalopen">
-        <h3>4.2 Observaties reviewen</h3>
-        <p>Loop je live-observaties na. Vul aan, corrigeer chips of voeg notities toe waar nodig.</p>
-      </div>
-      <div class="hb-sec" data-kw="rapport maken concept promoot observatie">
-        <h3>4.3 Rapport maken (concept)</h3>
-        <p>Maak een nieuw rapport of <strong>promoot een observatie</strong> tot rapport — de chips en notities worden automatisch overgenomen. Het rapport begint als <strong>concept</strong>.</p>
-      </div>
-      <div class="hb-sec" data-kw="rapport bewerken indienen verplicht niveau advies">
-        <h3>4.4 Rapport bewerken en indienen</h3>
+      <div class="hb-sec" data-kw="live wedstrijd kaart actief scouten live-kaart status warmup">
+        <h3>4.1 De live-kaart</h3>
+        <p>Open <strong>Wedstrijden</strong> in het menu. Lopende of geplande wedstrijden verschijnen als een <strong>live-kaart</strong> bovenaan, met drie actieknoppen:</p>
         <ul>
-          <li>Per categorie kun je <strong>trefwoord-chips</strong> tikken (zelfde 🟢🟠🔴⚪-logica als bij de observatie), boven de A/B/C/D-keuze.</li>
-          <li>Kies een <strong>Huidig niveau (A/B/C/D)</strong> met de grade-chips — dit is verplicht.</li>
-          <li>Geef je <strong>Advies</strong> via de advies-chips (geen dropdown meer); dit wordt getoond aan de coördinator.</li>
-          <li>Klik op <strong>Indienen</strong> om het rapport definitief te maken.</li>
+          <li>🔗 <strong>Gekoppelde speler(s)</strong> — spelers die je vooraf aan deze wedstrijd hebt gekoppeld.</li>
+          <li>👁 <strong>Opgevallen speler</strong> — om snel een speler te noteren die je op het veld spot.</li>
+          <li>📋 <strong>Wedstrijdnotitie</strong> — voor algemene observaties over de wedstrijd zelf.</li>
         </ul>
-      </div>
-      <div class="hb-sec" data-kw="verwerken wat waarom archief team coordinator">
-        <h3>4.5 Verwerken: wat en waarom</h3>
-        <p>Een ingediend rapport wordt <strong>verwerkt</strong>: het komt in het team-archief en is zichtbaar voor de coördinator. Zo blijft de scoutingshistorie van je organisatie compleet.</p>
-      </div>
-      <div class="hb-sec" data-kw="progress indicator voortgang status lezen verwerkt">
-        <h3>4.6 Progress-indicator lezen</h3>
-        <p>De voortgangsbalk laat zien hoeveel gekoppelde spelers je al hebt beoordeeld in een wedstrijd (bijv. <strong>3/5 ✅</strong>) en of de wedstrijd is verwerkt, zodat je niemand vergeet.</p>
-        <div class="hb-shot has-img"><img src="lp-shot-wedstrijden.jpg" alt="Wedstrijd-detail met voortgangsbalk: 3 van 5 gekoppelde spelers beoordeeld en de verwerkt-status" loading="lazy"></div>
-      </div>
-      <div class="hb-sec" data-kw="rapport chips drie lagen trefwoorden gebaseerd op observatie">
-        <h3>4.7 Drie lagen: chips · A/B/C/D · tekst</h3>
-        <p>Een rapport heeft per categorie drie lagen die samenwerken:</p>
-        <ul>
-          <li><strong>Chips</strong> — snelle kwalificatie (één tik per eigenschap).</li>
-          <li><strong>Grade (A/B/C/D)</strong> — je eindbeoordeling, verplicht.</li>
-          <li><strong>Toelichting</strong> — nuance en detail, optioneel.</li>
-        </ul>
-        <p>In het spelersprofiel zie je per categorie de gekleurde chips boven de toelichting. Komt het rapport uit een observatie, dan staat er <strong>📋 Gebaseerd op observatie van [datum]</strong> — klik erop om de bron-observatie te openen.</p>
+        <div class="hb-tip">Klap de live-kaart uit door erop te tikken om de spelerstiles te zien. De kaart is op mobiel direct bereikbaar — geen extra vensters nodig.</div>
       </div>
 
-      <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Volgende stap.</strong> Ingediende rapporten verschijnen automatisch in de spelersdatabase — zie <a data-goch="6" href="#">hoofdstuk 6: Spelersdatabase</a>.</div></div>
+      <div class="hb-sec" data-kw="spelerstiles tiles gekoppelde speler noteren velden techniek inzicht mentaliteit explosiviteit sprinten duelleren wendbaarheid algemeen opvallend ster autosave">
+        <h3>4.2 Gekoppelde speler — live noteren via tiles</h3>
+        <p>Elke vooraf gekoppelde speler heeft een eigen <strong>tile</strong>. Tik op een tile om hem uit te klappen — je ziet dan acht snelle invulvelden:</p>
+        <ul>
+          <li><strong>techniek</strong> — bv. "scherp, eerste aanname goed"</li>
+          <li><strong>inzicht</strong> — bv. "leest spel goed, scan hoog"</li>
+          <li><strong>mentaliteit</strong> — bv. "werkt hard, leidersfiguur"</li>
+          <li><strong>explosiviteit</strong> — bv. "eerste 5 meter sterk"</li>
+          <li><strong>sprinten</strong> — bv. "topsnelheid hoog"</li>
+          <li><strong>duelleren</strong> — bv. "wint 1-op-1 in de rug"</li>
+          <li><strong>wendbaarheid</strong> — bv. "soepel, lichtvoeting"</li>
+          <li><strong>algemeen</strong> — overige opmerkingen</li>
+        </ul>
+        <p>De notities worden <strong>automatisch opgeslagen</strong> terwijl je tikt — je hoeft geen knop in te drukken. Sluit de tile met ✕ en ga verder naar de volgende speler.</p>
+        <p>Vind je een speler opvallend? Tik <strong>☆ Opvallend</strong> — de tile krijgt een ⭐ en springt bovenaan. Zo mis je hem later niet.</p>
+        <div class="hb-shot has-img"><img src="screenshot-obs-chips.png" alt="Live spelerstile met acht notitievelden en opvallend-knop" loading="lazy"></div>
+      </div>
+
+      <div class="hb-sec" data-kw="opgevallen speler onbekend noteren obs draft rugnummer club positie heropenbaar">
+        <h3>4.3 Opgevallen speler — een onbekende noteren</h3>
+        <p>Zie je een speler die je niet vooraf had gekoppeld? Tik op <strong>👁 Opgevallen speler</strong>. Er opent een observatieformulier:</p>
+        <ul>
+          <li>Vul in wat je weet: naam (of later), rugnummer, club, positie, elftal.</li>
+          <li>Gebruik dezelfde acht notitievelden als bij de tile.</li>
+          <li>Geef een <strong>huidig niveau (A/B/C/D)</strong> en optioneel een <strong>advies</strong>.</li>
+          <li>Tik <strong>Opslaan als observatie</strong> — je gaat terug naar de wedstrijd. De obs is opgeslagen en heropenbaar via de knop <em>Opgevallen speler (x)</em>.</li>
+        </ul>
+        <p>Je kunt meerdere opgevallen spelers per wedstrijd hebben, elk als eigen obs-draft.</p>
+        <div class="hb-tip">Naam niet bekend langs de lijn? Vul rugnummer en club in en zoek de naam thuis op. Koppel de obs daarna aan het juiste spelersprofiel.</div>
+      </div>
+
+      <div class="hb-sec" data-kw="wedstrijdnotitie algemeen thuis uit gedeeld tekst opmerking">
+        <h3>4.4 Wedstrijdnotitie</h3>
+        <p>Tik op <strong>📋 Wedstrijdnotitie</strong> voor een algemene notitie over de wedstrijd. Je hebt drie tekstgebieden: thuis, uit en gedeeld. Dit is handig voor teamobservaties of context die je later in een rapport wilt gebruiken.</p>
+      </div>
+
+      <div class="hb-sec" data-kw="overall rating beoordeling abcd uitzonderlijk goed gemiddeld onder niveau huidig potentieel grade">
+        <h3>4.5 Beoordeling A–D</h3>
+        <p>Bij elke observatie (opgevallen speler) geef je een totaaloordeel op <strong>twee assen</strong>:</p>
+        <ul>
+          <li><strong>Huidig niveau</strong> — wat laat de speler vandaag zien?</li>
+          <li><strong>Potentieel</strong> — welk niveau kan hij bereiken?</li>
+        </ul>
+        <ul>
+          <li><span class="hb-grade on">A</span> <strong>Champions League-niveau</strong> — uitzonderlijk, ver boven zijn leeftijdscategorie. Maximaal 1–2 per wedstrijd.</li>
+          <li><span class="hb-grade b">B</span> <strong>Top Eredivisie-niveau</strong> — duidelijk beter dan gemiddeld op dit niveau.</li>
+          <li><span class="hb-grade c">C</span> <strong>Eredivisie-niveau</strong> — past bij het niveau, geen negatieve uitschieters.</li>
+          <li><span class="hb-grade d">D</span> <strong>KKD / onder niveau</strong> — presteert onder verwachting voor zijn leeftijdscategorie.</li>
+        </ul>
+        <p>Een speler kan nu een <strong>C</strong> zijn (huidig) maar een <strong>A-potentieel</strong> hebben — júist die combinatie is het meest waardevolle signaal voor een scout.</p>
+        <div class="hb-tip">Gebruik A spaarzaam. Voeg bij D altijd een korte notitie toe: waarom? Zo is je database eerlijk vergelijkbaar.</div>
+      </div>
+
+      <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Volgende stap.</strong> Na de wedstrijd werk je je notities uit tot rapporten — <a data-goch="5" href="#">hoofdstuk 5</a>.</div></div>
     </section>
 
     <!-- ============ HOOFDSTUK 5 ============ -->
     <section class="hb-chapter" data-ch="5">
-      <h1 class="hb-h1">5. Toernooi-modus</h1>
-      <p class="hb-lead">Scout een heel toernooi vanaf één plek — van import tot eindrapporten.</p>
+      <h1 class="hb-h1">5. Rapporten</h1>
+      <p class="hb-lead">Na de wedstrijd werk je je live-notities en observaties uit tot volledige, ingediende spelersrapporten.</p>
 
-      <div class="hb-sec" data-kw="toernooi importeren tournify url link nieuw synchroniseren">
-        <h3>5.1 Toernooi importeren via Tournify</h3>
-        <ol class="hb-step">
-          <li>Ga naar <strong>Toernooien</strong> en klik op <strong>+ Nieuw</strong>.</li>
-          <li>Plak de <strong>Tournify-link</strong> van het toernooi.</li>
-          <li>Het programma, de teams en de wedstrijden worden automatisch ingeladen. Importeer je per ongeluk twee keer, dan worden <strong>dubbelen herkend</strong> en niet opnieuw toegevoegd.</li>
-        </ol>
-        <p>Een via Tournify gekoppeld toernooi kun je later opnieuw <strong>synchroniseren</strong>, zodat nieuwe of gewijzigde wedstrijden en uitslagen worden bijgewerkt.</p>
-      </div>
-      <div class="hb-sec" data-kw="toernooi handmatig aanmaken zonder tournify categorie poule veld wedstrijd toevoegen zelf">
-        <h3>5.2 Handmatig een toernooi aanmaken</h3>
-        <p>Geen Tournify-link? Maak het toernooi dan zelf aan en vul de wedstrijden met de hand in.</p>
-        <ol class="hb-step">
-          <li>Klik bij <strong>Toernooien</strong> op <strong>+ Nieuw</strong> en kies <strong>Handmatig aanmaken</strong>.</li>
-          <li>Vul de toernooigegevens in: <strong>naam, datum en locatie</strong>.</li>
-          <li>Voeg per wedstrijd de <strong>thuis- en uitploeg</strong>, <strong>tijd</strong>, <strong>veld</strong> en het <strong>categorie/poule-veld</strong> in.</li>
-          <li>Klik op <strong>+ Wedstrijd toevoegen</strong> voor elke volgende wedstrijd — herhaal tot het hele programma erin staat.</li>
-        </ol>
-        <div class="hb-tip">De poule die je per wedstrijd invult, bepaalt hoe de <strong>standen</strong> (zie 5.5) worden berekend.</div>
-        <div class="hb-shot has-img"><img src="lp-shot-toernooi.jpg" alt="Toernooi handmatig aanmaken met categorie- en poule-veld en de knop Wedstrijd toevoegen" loading="lazy"></div>
-      </div>
-      <div class="hb-sec" data-kw="programma bekijken tijdsblokken velden poule nu lopend">
-        <h3>5.3 Programma bekijken</h3>
-        <p>Bekijk alle wedstrijden per tijdsblok, veld en poule. Het lopende blok is gemarkeerd met <strong>NU</strong>.</p>
-      </div>
-      <div class="hb-sec" data-kw="mijn programma tab clubs volgen watchstatus bekijken optioneel niet haalbaar tijdsconflict pauze schema">
-        <h3>5.4 Mijn programma: clubs volgen &amp; watch-status</h3>
-        <p>In de tab <strong>Mijn programma</strong> stel je je persoonlijke scoutdag samen:</p>
+      <div class="hb-sec" data-kw="na wedstrijd wedstrijddetail blokken obs rapport naast elkaar alles verwerkt status">
+        <h3>5.1 Wedstrijd-detail na afloop</h3>
+        <p>Open de wedstrijd na afloop via <strong>Wedstrijden</strong>. Je ziet per wedstrijd een overzicht met blokken — één blok per observatie (OBS) en één per wedstrijdrapport. Bovenaan staat de status:</p>
         <ul>
-          <li><strong>Clubs volgen:</strong> volg één of meer clubs en filter het programma op alleen hún wedstrijden.</li>
-          <li><strong>Watch-status per wedstrijd:</strong> markeer je interesse met <span class="hb-chip g">Bekijken</span> <span class="hb-chip o">Optioneel</span> <span class="hb-chip r">Niet haalbaar</span>.</li>
-          <li><strong>Tijdsconflicten:</strong> overlappen twee wedstrijden die je op Bekijken zette, dan wordt het conflict gemarkeerd zodat je kunt kiezen.</li>
-          <li><strong>Pauzes:</strong> gaten tussen je geselecteerde wedstrijden worden als pauze getoond — handig om te plannen.</li>
+          <li><strong>✓ ALLES VERWERKT</strong> (groen) — alle gekoppelde spelers hebben een rapport of observatie.</li>
+          <li>Counter "<em>1 observatie · 1 wedstrijdrapport</em>" — direct zichtbaar hoeveel je hebt vastgelegd.</li>
         </ul>
-        <div class="hb-shot has-img"><img src="lp-shot-programma.jpg" alt="Mijn programma-tab met gevolgde clubs, watch-status per wedstrijd en gemarkeerde tijdsconflicten en pauzes" loading="lazy"></div>
+        <p>Een OBS-blok en een Wedstrijdrapport-blok zijn aparte objecten — geen van beiden wordt automatisch omgezet naar het andere.</p>
+        <div class="hb-shot has-img"><img src="Wedstrijd overzicht verwerken.png" alt="Wedstrijd-detail met ALLES VERWERKT status en OBS- en rapportblokken naast elkaar" loading="lazy"></div>
       </div>
-      <div class="hb-sec" data-kw="standen tab poule ranglijst uitslag score tikken invoeren berekend tournify synchroniseren">
-        <h3>5.5 Standen per poule</h3>
-        <p>De tab <strong>Standen</strong> toont de ranglijst per poule. De stand wordt <strong>berekend uit de ingevoerde uitslagen</strong> of, bij een Tournify-toernooi, <strong>gesynchroniseerd vanaf Tournify</strong>.</p>
+
+      <div class="hb-sec" data-kw="obs observatie apart rapport apart verschil obs badge database wedstrijddetail blokken">
+        <h3>5.2 Observatie vs. rapport — wat is het verschil?</h3>
+        <p>Een <strong>observatie (OBS)</strong> en een <strong>rapport</strong> zijn <em>twee aparte dingen</em> — een obs wordt nooit automatisch omgezet naar een rapport:</p>
         <ul>
-          <li><strong>Uitslag invoeren:</strong> tik op de <strong>score</strong> van een wedstrijd en vul de eindstand in.</li>
-          <li>Zodra een uitslag bekend is, werkt de poulestand zich automatisch bij.</li>
+          <li><strong>Observatie (OBS)</strong> — je live-aantekeningen tijdens de wedstrijd. Snel, kort, geen formele beoordeling vereist. In de spelersdatabase herken je ze aan het paarse <strong>OBS</strong>-badge. Kolommen Huidig en Potentieel blijven leeg (–).</li>
+          <li><strong>Rapport</strong> — een volledige, formele beoordeling met A/B/C/D-grades en advies. Dit schrijf je bewust, los van de observatie.</li>
         </ul>
+        <p>In het wedstrijd-detail zie je beide blokken naast elkaar: een OBS-blok en een Wedstrijdrapport-blok. Ze staan naast elkaar, niet in elkaars verlengde.</p>
+        <div class="hb-shot has-img"><img src="screenshot-wedstrijd-detail.png" alt="Wedstrijd-detail met OBS-blok en Wedstrijdrapport-blok naast elkaar" loading="lazy"></div>
+        <div class="hb-tip">Wil je een rapport schrijven over een speler die je hebt geobserveerd? Start dan een <em>nieuw</em> rapport via + Rapport of vanuit het spelersprofiel. De OBS blijft als aparte aantekening bewaard.</div>
       </div>
-      <div class="hb-sec" data-kw="live wedstrijdklok eerste helft rust tweede helft klok timer live-stack gelijktijdig uitklappen">
-        <h3>5.6 Live-wedstrijdklok &amp; live-stack</h3>
-        <p>Tijdens het toernooi houdt ScoutingHub de lopende wedstrijden voor je bij:</p>
+
+      <div class="hb-sec" data-kw="rapport formulier velden techniek inzicht mentaliteit explosiviteit huidig potentieel advies toelichting concept nieuw">
+        <h3>5.3 Het rapportformulier</h3>
+        <p>Het rapportformulier heeft de volgende onderdelen:</p>
         <ul>
-          <li><strong>Live-wedstrijdklok:</strong> per wedstrijd zie je de fase — <strong>1e helft</strong>, <strong>rust</strong> of <strong>2e helft</strong> — met de meelopende speeltijd.</li>
-          <li><strong>Live-stack:</strong> draaien er meerdere wedstrijden tegelijk, dan worden ze gebundeld in een <strong>uitklapbare</strong> live-stack. Klap 'm open om snel tussen gelijktijdige wedstrijden te wisselen.</li>
+          <li><strong>Spelersgegevens</strong> — naam, geboortejaar, positie, elftal, club.</li>
+          <li><strong>Categorieën</strong> — per categorie (techniek, inzicht, mentaliteit, explosiviteit) een tekstveld voor toelichting.</li>
+          <li><strong>Huidig niveau (A/B/C/D)</strong> — verplicht.</li>
+          <li><strong>Potentieel (A/B/C/D)</strong> — je verwachting op langere termijn.</li>
+          <li><strong>Advies</strong> — jouw aanbeveling (bv. "Volgen", "Uitnodigen", "Niet interessant").</li>
+          <li><strong>Algemeen</strong> — vrije tekst voor overige opmerkingen.</li>
+        </ul>
+        <p>Een rapport begint altijd als <strong>concept</strong> — je kunt het zo lang bewerken als je wilt voordat je indient.</p>
+        <div class="hb-tip">Komt het rapport uit een observatie? Dan staat er <strong>📋 Gebaseerd op observatie van [datum]</strong> bovenaan — klik erop om de bron te bekijken.</div>
+      </div>
+
+      <div class="hb-sec" data-kw="rapport indienen definitief verwerken archief status voortgang">
+        <h3>5.4 Indienen</h3>
+        <p>Klik op <strong>Indienen</strong> om het rapport definitief te maken. Daarna:</p>
+        <ul>
+          <li>Het rapport verschijnt in het spelersprofiel onder de volledige scoutingshistorie.</li>
+          <li>Het telt mee in de <strong>Vormtrend</strong> en de <strong>Vergelijken</strong>-module.</li>
+          <li>De voortgangsbalk van de wedstrijd bijt bij (bijv. 3/5 ✅).</li>
         </ul>
       </div>
-      <div class="hb-sec" data-kw="wedstrijden scouten observatie chips toernooi speler uitslag modal">
-        <h3>5.7 Wedstrijden scouten</h3>
-        <p>Open een wedstrijd en scout de spelers — exact dezelfde chips-flow als langs de lijn (zie hoofdstuk 3). De <strong>uitslag voer je in de wedstrijd-modal zelf in</strong> (geen browser-pop-up).</p>
+
+      <div class="hb-sec" data-kw="nieuw rapport aanmaken los van wedstrijd plus knop dashboard database">
+        <h3>5.5 Rapport zonder wedstrijd</h3>
+        <p>Wil je een rapport schrijven dat niet aan een wedstrijd is gekoppeld? Klik op <strong>+ Rapport</strong> op het dashboard of in de spelersdatabase. Het formulier (zie 5.3) opent leeg en je vult alles handmatig in.</p>
       </div>
-      <div class="hb-sec" data-kw="bundeling reviewen observaties speler samenvatting eindoordeel">
-        <h3>5.8 Bundeling reviewen</h3>
-        <p>In de <strong>Bundeling</strong> zie je alle observaties van één speler over het toernooi gebundeld — de chips per categorie samengevat. Schrijf een algemene samenvatting en kies een eindoordeel met chips.</p>
+
+      <div class="hb-sec" data-kw="pdf exporteren rapport pdf export afdrukken delen foto">
+        <h3>5.6 PDF exporteren</h3>
+        <p>Open een ingediend rapport en klik op <strong>PDF</strong> voor een nette PDF-versie — inclusief foto van de speler, beoordelingen en notities.</p>
       </div>
-      <div class="hb-sec" data-kw="toernooi afronden rapporten genereren spelersrapporten bundeling">
-        <h3>5.9 Toernooi afronden → rapporten</h3>
-        <p>Rond het toernooi af om van je bundelingen <strong>volledige spelersrapporten</strong> te genereren.</p>
-        <div class="hb-shot has-img"><img src="lp-shot-toernooi.jpg" alt="Toernooi-bundeling reviewen en het toernooi afronden om spelersrapporten te genereren" loading="lazy"></div>
-      </div>
+
+      <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Volgende stap.</strong> Ingediende rapporten verschijnen in de spelersdatabase — <a data-goch="6" href="#">hoofdstuk 6</a>.</div></div>
     </section>
 
     <!-- ============ HOOFDSTUK 6 ============ -->
     <section class="hb-chapter" data-ch="6">
       <h1 class="hb-h1">6. Spelersdatabase</h1>
-      <p class="hb-lead">Al je gescoute spelers op één plek, doorzoekbaar en filterbaar.</p>
+      <p class="hb-lead">Al je gescoute spelers op één plek — doorzoekbaar, filterbaar en met volledige scoutingshistorie.</p>
 
-      <div class="hb-sec" data-kw="spelers zoeken filteren database naam club positie">
-        <h3>6.1 Spelers zoeken en filteren</h3>
-        <p>Zoek op naam of filter op club, positie of leeftijd. De zoekfunctie is <strong>tolerant voor tikfouten</strong>: "Jnsen" vindt ook "Jansen", en "Daan" vindt zowel Daan Jansen als Daan de Vries. Geen resultaat? Dan krijg je een <em>"bedoelde je …?"</em>-suggestie.</p>
-      </div>
-      <div class="hb-sec" data-kw="spelersprofiel bekijken detail gegevens">
-        <h3>6.2 Spelersprofiel bekijken</h3>
-        <p>Open een speler om alle gegevens, rapporten en observaties op één pagina te zien. Naast de naam staat een foto-cirkel: tik erop om een <strong>foto te maken</strong> (camera, handig langs de lijn) of te <strong>uploaden</strong>. De foto verschijnt in het profiel, de database-lijst, bij Vergelijken en in de rapport-PDF. Geen foto? Dan zie je de initialen.</p>
-      </div>
-      <div class="hb-sec" data-kw="rapporten observaties historie tijdlijn">
-        <h3>6.3 Rapporten en observaties</h3>
-        <p>Bekijk de volledige scoutingshistorie van de speler: alle rapporten en losse observaties.</p>
-      </div>
-      <div class="hb-sec" data-kw="promoot observatie rapport overnemen chips">
-        <h3>6.4 Promoot obs naar rapport</h3>
-        <p>Zet een losse observatie met één klik om in een volledig rapport — chips en notities worden meegenomen.</p>
-        <div class="hb-shot has-img"><img src="lp-shot-vormtrend.jpg" alt="Spelersprofiel met foto, gekleurde chips per categorie en de gebaseerd-op-observatie-link" loading="lazy"></div>
-      </div>
-      <div class="hb-sec" data-kw="vormtrend sparkline trend grafiek ontwikkeling stijgend dalend stabiel">
-        <h3>6.5 Vormtrend</h3>
-        <p>Heeft een speler twee of meer rapporten, dan toont het profiel een <strong>📈 Vormtrend</strong>: een lijngrafiek van huidig- en potentieelniveau over tijd, plus per categorie een mini-grafiek (sparkline) met een trendpijl <strong>↗ stijgend · → stabiel · ↘ dalend</strong>. Bij minder dan 2 rapporten staat er "Onvoldoende data voor trend".</p>
-        <div class="hb-shot has-img"><img src="screenshot-vormtrend.png" alt="Spelersprofiel met vormtrend: lijngrafiek van huidig en potentieel niveau over tijd, plus sparklines per categorie met trendpijlen" loading="lazy"></div>
+      <div class="hb-sec" data-kw="spelers zoeken filteren database naam club positie leeftijd tikfouten tolerant obs badge huidig potentieel advies kolommen legende">
+        <h3>6.1 De spelersdatabase</h3>
+        <p>De database toont al je gescoute spelers in een tabel. Bovenaan staat de legende voor de grades:</p>
+        <ul>
+          <li><span class="hb-grade on" style="width:18px;height:18px;font-size:11px">A</span> Champions League &nbsp; <span class="hb-grade b" style="width:18px;height:18px;font-size:11px">B</span> Top Eredivisie &nbsp; <span class="hb-grade c" style="width:18px;height:18px;font-size:11px">C</span> Eredivisie &nbsp; <span class="hb-grade d" style="width:18px;height:18px;font-size:11px">D</span> KKD / onder niveau</li>
+        </ul>
+        <p>De kolommen zijn: <strong>Speler · Positie · Club · Elftal · Huidig · Potentieel · Advies · Datum</strong>.</p>
+        <p>Spelers met alleen een observatie (nog geen ingediend rapport) hebben een paars <strong>OBS</strong>-badge naast hun naam. De kolommen Huidig en Potentieel tonen dan <strong>–</strong>. Zodra er een ingediend rapport is, verschijnen de gekleurde grade-squares.</p>
+        <p>Zoek op naam, club, positie of leeftijd. De zoekfunctie is tolerant voor tikfouten: "Jnsen" vindt ook "Jansen".</p>
+        <div class="hb-shot has-img"><img src="Spelersdatabase.png" alt="Spelersdatabase met OBS-badges, grade-kolommen en legende A/B/C/D" loading="lazy"></div>
       </div>
 
-      <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Laatste stap.</strong> Zet spelers uit je database head-to-head naast elkaar — zie <a data-goch="7" href="#">hoofdstuk 7: Vergelijken</a>.</div></div>
+      <div class="hb-sec" data-kw="spelersprofiel bekijken detail foto camera uploaden initialen gegevens">
+        <h3>6.2 Spelersprofiel</h3>
+        <p>Open een speler om alle gegevens, rapporten en observaties te zien. Naast de naam staat een foto-cirkel:</p>
+        <ul>
+          <li>Tik erop om een <strong>foto te maken</strong> (handig langs de lijn) of te <strong>uploaden</strong>.</li>
+          <li>De foto verschijnt in het profiel, de database-lijst, bij Vergelijken en in de PDF.</li>
+          <li>Geen foto ingesteld? Dan zie je de initialen van de speler.</li>
+        </ul>
+      </div>
+
+      <div class="hb-sec" data-kw="rapporten observaties historie tijdlijn gebaseerd op">
+        <h3>6.3 Scoutingshistorie</h3>
+        <p>Alle rapporten en losse observaties staan in chronologische volgorde. Rapporten die uit een observatie zijn gemaakt, tonen een <strong>📋 Gebaseerd op observatie van [datum]</strong>-link — klik erop om de bron-observatie te bekijken.</p>
+      </div>
+
+      <div class="hb-sec" data-kw="vormtrend sparkline trend grafiek ontwikkeling stijgend dalend stabiel twee rapporten">
+        <h3>6.4 Vormtrend</h3>
+        <p>Heeft een speler twee of meer rapporten, dan toont het profiel een <strong>📈 Vormtrend</strong>:</p>
+        <ul>
+          <li>Een lijngrafiek van huidig- en potentieelniveau door de tijd.</li>
+          <li>Per categorie een mini-grafiek (sparkline) met een trendpijl: <strong>↗ stijgend · → stabiel · ↘ dalend</strong>.</li>
+        </ul>
+        <p>Minder dan 2 rapporten? Dan staat er "Onvoldoende data voor trend".</p>
+        <div class="hb-shot has-img"><img src="screenshot-vormtrend.png" alt="Spelersprofiel met vormtrend en sparklines per categorie" loading="lazy"></div>
+      </div>
+
+      <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Volgende stap.</strong> Scout een heel toernooi vanuit één plek — <a data-goch="7" href="#">hoofdstuk 7</a>.</div></div>
     </section>
 
     <!-- ============ HOOFDSTUK 7 ============ -->
     <section class="hb-chapter" data-ch="7">
-      <h1 class="hb-h1">7. Extra modules</h1>
-      <p class="hb-lead">Vergelijken, opstellingen, ritten en je adresboek.</p>
+      <h1 class="hb-h1">7. Toernooien</h1>
+      <p class="hb-lead">Scout een heel toernooi vanuit één overzicht — van import tot bundeling en eindrapporten.</p>
 
-      <div class="hb-sec" data-kw="vergelijken spelers naast elkaar radar scores head-to-head criterium criteria donut niveau-matrix totaalindruk balken pdf delen twee drie spelers tegenover">
-        <h3>7.1 Vergelijken: spelers naast elkaar</h3>
-        <p>Zet twee of meer spelers naast elkaar en vergelijk objectief met radar en balken. Onder de radar staat per speler een <strong>trend-indicator</strong> (bijv. "↗ stijgend, B→A over 3 rapporten"). Spelers met alléén observaties krijgen een <strong>geschatte score</strong> uit hun chips, duidelijk gelabeld <em>"📋 Observatie (geschat)"</em> met een gestreepte lijn — zo zie je het verschil met een echt rapport. Exporteer als <strong>PDF</strong> of deel de vergelijking.</p>
-        <p>De vergelijking toont drie weergaven onder elkaar:</p>
+      <div class="hb-sec" data-kw="toernooi importeren tournify url link nieuw synchroniseren duplicaten">
+        <h3>7.1 Toernooi importeren via Tournify</h3>
+        <ol class="hb-step">
+          <li>Ga naar <strong>Toernooien</strong> en klik op <strong>+ Nieuw</strong>.</li>
+          <li>Plak de <strong>Tournify-link</strong> van het toernooi.</li>
+          <li>Programma, teams en wedstrijden worden automatisch ingeladen. Dubbelen worden herkend en niet opnieuw toegevoegd.</li>
+        </ol>
+        <p>Later opnieuw <strong>synchroniseren</strong>? Nieuwe of gewijzigde wedstrijden en uitslagen worden dan bijgewerkt.</p>
+      </div>
+
+      <div class="hb-sec" data-kw="toernooi handmatig aanmaken zonder tournify categorie poule veld wedstrijd toevoegen zelf">
+        <h3>7.2 Handmatig aanmaken</h3>
+        <p>Geen Tournify-link? Maak het toernooi zelf aan:</p>
+        <ol class="hb-step">
+          <li>Klik op <strong>+ Nieuw → Handmatig aanmaken</strong>.</li>
+          <li>Vul in: <strong>naam, datum en locatie</strong>.</li>
+          <li>Voeg per wedstrijd de thuis- en uitploeg, tijd, veld en poule in.</li>
+          <li>Klik op <strong>+ Wedstrijd toevoegen</strong> voor elke volgende wedstrijd.</li>
+        </ol>
+        <div class="hb-shot has-img"><img src="lp-shot-toernooi.jpg" alt="Toernooi handmatig aanmaken met poule-veld" loading="lazy"></div>
+      </div>
+
+      <div class="hb-sec" data-kw="programma bekijken tijdsblokken velden poule nu lopend live klok">
+        <h3>7.3 Programma &amp; live-klok</h3>
+        <p>Bekijk alle wedstrijden per tijdsblok, veld en poule. Lopende wedstrijden zijn gemarkeerd met <strong>NU</strong> en tonen de fase — 1e helft, rust of 2e helft — met meelopende speeltijd.</p>
+        <p><strong>Live-stack:</strong> draaien er meerdere wedstrijden tegelijk, dan worden ze gebundeld in een uitklapbare live-stack zodat je snel kunt wisselen.</p>
+      </div>
+
+      <div class="hb-sec" data-kw="mijn programma clubs volgen watchstatus bekijken optioneel niet haalbaar tijdsconflict pauze">
+        <h3>7.4 Mijn programma</h3>
+        <p>In de tab <strong>Mijn programma</strong> stel je je persoonlijke scoutdag samen:</p>
         <ul>
-          <li><strong>Totaalindruk</strong> — een donut per speler met de algemene score.</li>
-          <li><strong>Niveau-matrix</strong> — de A/B/C/D-beoordelingen per categorie naast elkaar.</li>
-          <li><strong>Head-to-head per criterium</strong> — balken die de spelers eigenschap-voor-eigenschap tegenover elkaar zetten.</li>
+          <li><strong>Clubs volgen:</strong> filter op alleen de wedstrijden van jouw clubs.</li>
+          <li><strong>Watch-status per wedstrijd:</strong> <span class="hb-chip g">Bekijken</span> <span class="hb-chip o">Optioneel</span> <span class="hb-chip r">Niet haalbaar</span>.</li>
+          <li><strong>Tijdsconflicten:</strong> overlappen twee "Bekijken"-wedstrijden, dan wordt het conflict gemarkeerd.</li>
+          <li><strong>Pauzes:</strong> gaten tussen je geselecteerde wedstrijden worden als pauze getoond.</li>
         </ul>
-        <div class="hb-shot has-img"><img src="screenshot-vergelijken.png" alt="Spelers vergelijken: totaalindruk met donuts, niveau-matrix en head-to-head balken per criterium" loading="lazy"></div>
+        <div class="hb-shot has-img"><img src="lp-shot-programma.jpg" alt="Mijn programma met watchstatus en tijdsconflicten" loading="lazy"></div>
       </div>
-      <div class="hb-sec" data-kw="elftal analyse opstelling pitch maken kandidaten">
-        <h3>7.2 Elftal Analyse: opstelling maken</h3>
-        <p>Bouw een opstelling op het veld. Klik op een positie en je krijgt <strong>automatisch voorgestelde kandidaten</strong> uit je database die op die positie passen — gesorteerd op recentste rapport en hoogste score, met een zoekbalk en een "+ Koppel"-knop. Vanuit <strong>Gescoute teams</strong> open je met "📊 Analyseer dit team" meteen de juiste spelers; vanuit <strong>Vergelijken</strong> stuur je een selectie door met "➕ Voeg toe aan opstelling".</p>
+
+      <div class="hb-sec" data-kw="standen poule ranglijst uitslag score invoeren berekend tournify">
+        <h3>7.5 Standen per poule</h3>
+        <p>De tab <strong>Standen</strong> toont de ranglijst per poule. De stand wordt berekend uit de ingevoerde uitslagen, of bij een Tournify-toernooi gesynchroniseerd vanuit Tournify. Tik op de score van een wedstrijd om de uitslag in te voeren.</p>
       </div>
-      <div class="hb-sec" data-kw="ritten km kilometers bijhouden declaratie vergoeding tarief pdf">
-        <h3>7.3 Ritten: km bijhouden + declaratie</h3>
-        <p>Registreer je kilometers per rit (van/naar/km/doel). Rij je vaak dezelfde route? Sla 'm op als <strong>favoriete route</strong> en vul 'm met één tik in — je past alleen de datum nog aan. Je km-tarief (€/km) stel je in bij Instellingen; per rit zie je het bedrag plus maandtotalen. Exporteren kan als <strong>CSV</strong> of als <strong>PDF-declaratie</strong>.</p>
+
+      <div class="hb-sec" data-kw="scouten observatie chips wedstrijden toernooi uitslag modal">
+        <h3>7.6 Scouten tijdens het toernooi</h3>
+        <p>Open een wedstrijd en scout de spelers — exact dezelfde chips-flow als in hoofdstuk 4. De uitslag voer je direct in de wedstrijd-modal in.</p>
       </div>
-      <div class="hb-sec" data-kw="clubs locaties adresboek velden adres">
-        <h3>7.4 Clubs &amp; locaties: adresboek</h3>
-        <p>Een adresboek van clubs en sportparken, makkelijk te doorzoeken per letter of provincie.</p>
+
+      <div class="hb-sec" data-kw="bundeling reviewen observaties speler samenvatting eindoordeel chips">
+        <h3>7.7 Bundeling reviewen</h3>
+        <p>In de <strong>Bundeling</strong> zie je alle observaties van één speler over het hele toernooi gebundeld — de chips per categorie samengevat. Schrijf een algemene samenvatting en kies een eindoordeel.</p>
       </div>
-      <div class="hb-sec" data-kw="contactpersonen relaties trainers coordinatoren">
-        <h3>7.5 Contactpersonen</h3>
-        <p>Houd je contactpersonen bij — trainers, coördinatoren en andere relaties.</p>
-        <div class="hb-shot has-img"><img src="screenshot-elftal-analyse.png" alt="Elftal Analyse: pitch met opstelling, positie-detail en auto-kandidaten" loading="lazy"></div>
-        <div class="hb-shot has-img"><img src="screenshot-ritten.png" alt="Ritten: km-registratie met bedragen, maandtotalen en PDF-declaratie" loading="lazy"></div>
+
+      <div class="hb-sec" data-kw="toernooi afronden rapporten genereren spelersrapporten afsluiten">
+        <h3>7.8 Toernooi afronden</h3>
+        <p>Rond het toernooi af om van je bundelingen <strong>volledige spelersrapporten</strong> te genereren. Deze verschijnen direct in de spelersdatabase.</p>
       </div>
+
+      <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Volgende stap.</strong> Zet spelers naast elkaar en maak opstellingen — <a data-goch="8" href="#">hoofdstuk 8</a>.</div></div>
     </section>
 
     <!-- ============ HOOFDSTUK 8 ============ -->
     <section class="hb-chapter" data-ch="8">
-      <h1 class="hb-h1">8. Tips &amp; tricks</h1>
-      <p class="hb-lead">Haal het maximale uit ScoutingHub.</p>
+      <h1 class="hb-h1">8. Extra modules</h1>
+      <p class="hb-lead">Vergelijken, opstellingen bouwen, kilometers bijhouden en meer.</p>
 
-      <div class="hb-sec" data-kw="offline werken synchroniseren sync geen bereik">
-        <h3>8.1 Offline werken</h3>
-        <p>Geen bereik op het sportpark? Geen probleem. Je observaties en rapporten worden lokaal bewaard en <strong>automatisch gesynchroniseerd</strong> zodra je weer online bent.</p>
-      </div>
-      <div class="hb-sec" data-kw="sneltoetsen toetsenbord escape navigatie">
-        <h3>8.2 Sneltoetsen</h3>
+      <div class="hb-sec" data-kw="vergelijken spelers naast elkaar radar balken head-to-head trend pdf observatie geschat">
+        <h3>8.1 Vergelijken</h3>
+        <p>Zet twee of meer spelers naast elkaar via <strong>Vergelijken</strong> in het menu. Je ziet:</p>
         <ul>
-          <li><span class="hb-kbd">Esc</span> sluit een geopend venster of modal.</li>
-          <li>In de wizard en carrousels navigeer je met <span class="hb-kbd">←</span> en <span class="hb-kbd">→</span>.</li>
+          <li><strong>Totaalindruk</strong> — een donut per speler met de algemene score.</li>
+          <li><strong>Niveau-matrix</strong> — de A/B/C/D-beoordelingen per categorie naast elkaar.</li>
+          <li><strong>Head-to-head per eigenschap</strong> — balken die de spelers eigenschap-voor-eigenschap tegenover elkaar zetten.</li>
+          <li><strong>Trend-indicator</strong> onder de radar, bijv. "↗ stijgend, B→A over 3 rapporten".</li>
         </ul>
+        <p>Spelers met alleen observaties (geen ingediend rapport) krijgen een <strong>geschatte score</strong> — duidelijk gelabeld als <em>"📋 Observatie (geschat)"</em> met een gestreepte lijn.</p>
+        <p>Exporteer als <strong>PDF</strong> of deel de vergelijking via een link.</p>
+        <div class="hb-shot has-img"><img src="screenshot-vergelijken.png" alt="Vergelijken: totaalindruk, niveau-matrix en head-to-head balken" loading="lazy"></div>
       </div>
-      <div class="hb-sec" data-kw="pwa tips beginscherm snelstart installeren">
-        <h3>8.3 PWA-tips</h3>
-        <p>Installeer de app op je beginscherm (hoofdstuk 1.4) voor snelstart, volledig scherm en offline gebruik.</p>
-      </div>
-      <div class="hb-sec" data-kw="herinneringen notificatie melding wedstrijd toestemming instellingen push">
-        <h3>8.4 Herinneringen vóór je wedstrijd</h3>
-        <p>Deze functie is gepland voor een volgende versie van ScoutingHub en nog niet beschikbaar.</p>
-        <div class="hb-tip">🔒 Komt binnenkort — blijf kijken voor updates.</div>
-      </div>
-      <div class="hb-sec" data-kw="profielfoto avatar instellingen apparaten synchroniseren">
-        <h3>8.5 Profielfoto</h3>
-        <p>Stel in <strong>Instellingen</strong> je eigen profielfoto in. Die wordt veilig bewaard en verschijnt op <strong>al je apparaten</strong> zodra je inlogt — in de zijbalk en in Instellingen. Geen foto? Dan zie je je initialen.</p>
-      </div>
-      <div class="hb-sec" data-kw="mobiel dashboard compact telefoon weergave snelknoppen">
-        <h3>8.6 Compacter op mobiel</h3>
-        <p>Op een telefoon toont het dashboard automatisch een compactere weergave: grotere snelknoppen en live-tegel, kleinere KPI's, en de zware grafieken worden verborgen — zodat je langs de lijn alleen ziet wat telt.</p>
-      </div>
-      <div class="hb-sec" data-kw="best practices scouting consistent live direct chips notitie">
-        <h3>8.7 Best practices voor scouting</h3>
+
+      <div class="hb-sec" data-kw="elftal analyse opstelling pitch positie kandidaten automatisch gescoute teams vergelijken">
+        <h3>8.2 Elftallen: opstelling bouwen</h3>
+        <p>In <strong>Elftallen</strong> bouw je een opstelling op het veld. Klik op een positie en je krijgt automatisch <strong>voorgestelde kandidaten</strong> uit je database die op die positie passen — gesorteerd op recentste rapport en hoogste score.</p>
         <ul>
-          <li>Scout <strong>live</strong> met chips — leg je eerste indruk vast op het moment zelf.</li>
-          <li>Wees <strong>consistent</strong> in je A/B/C/D-beoordeling, zodat spelers vergelijkbaar blijven.</li>
-          <li>Vul notities kort en concreet in; werk ze later uit tot een rapport.</li>
-          <li>Gebruik <strong>Mijn programma</strong> bij toernooien om je tijd slim te plannen.</li>
+          <li>Vanuit <strong>Gescoute teams</strong> open je met "📊 Analyseer dit team" meteen de juiste spelers.</li>
+          <li>Vanuit <strong>Vergelijken</strong> stuur je een selectie door met "➕ Voeg toe aan opstelling".</li>
+        </ul>
+        <div class="hb-shot has-img"><img src="screenshot-elftal-analyse.png" alt="Elftal Analyse: pitch met opstelling en auto-kandidaten" loading="lazy"></div>
+      </div>
+
+      <div class="hb-sec" data-kw="ritten km kilometers bijhouden declaratie vergoeding tarief pdf csv favoriete route">
+        <h3>8.3 Ritten: km bijhouden</h3>
+        <p>Registreer je kilometers via <strong>Ritten</strong>:</p>
+        <ul>
+          <li>Vul per rit in: van / naar / km / doel.</li>
+          <li>Sla veelgebruikte routes op als <strong>favoriete route</strong> — vul ze met één tik in, pas alleen de datum aan.</li>
+          <li>Je km-tarief stel je in bij Instellingen. Per rit zie je het bedrag en de maandtotalen.</li>
+          <li>Exporteer als <strong>CSV</strong> of als nette <strong>PDF-declaratie</strong>.</li>
+        </ul>
+        <div class="hb-shot has-img"><img src="screenshot-ritten.png" alt="Ritten: km-registratie met bedragen en maandtotalen" loading="lazy"></div>
+      </div>
+
+      <div class="hb-sec" data-kw="tips getipte spelers bijhouden volgen notitie">
+        <h3>8.4 Tips: getipte spelers</h3>
+        <p>In <strong>Tips</strong> houd je spelers bij die je zijn aangedragen of die je op je radar wilt houden zonder nog een volledig rapport te schrijven. Voeg een notitie en datum toe.</p>
+      </div>
+
+      <div class="hb-sec" data-kw="adresboek clubs locaties sportparken provincie letter zoeken">
+        <h3>8.5 Adresboek &amp; contacten</h3>
+        <p><strong>Adresboek</strong> bevat clubs en sportparken, doorzoekbaar per letter of provincie. In <strong>Contacten</strong> houd je trainers, coördinatoren en andere relaties bij.</p>
+      </div>
+
+      <div class="hb-sec" data-kw="offline werken synchroniseren sync geen bereik sportpark bereikloos">
+        <h3>8.6 Offline werken</h3>
+        <p>Geen bereik op het sportpark? ScoutingHub werkt ook offline. Observaties en rapporten worden lokaal opgeslagen en <strong>automatisch gesynchroniseerd</strong> zodra je weer online bent.</p>
+      </div>
+
+      <div class="hb-sec" data-kw="feedback sturen probleem melding rapporteren contactformulier screenshot bijlage bestand">
+        <h3>8.7 Feedback sturen</h3>
+        <p>Zie je iets dat niet klopt, mis je een functie of heb je een suggestie? Klik op het <strong>feedback-icoon</strong> in de app. Het formulier vraagt om:</p>
+        <ul>
+          <li>Een korte beschrijving van wat je ziet, mist of wilt verbeteren.</li>
+          <li>Optioneel: een <strong>screenshot of bijlage</strong> (max 5 MB).</li>
+        </ul>
+        <p>Je naam en e-mailadres worden automatisch meegestuurd. De beheerder ziet je feedback direct in het beheerpaneel.</p>
+        <div class="hb-shot has-img"><img src="Feedback.png" alt="Feedback-modal met tekstveld en optionele bestandsbijlage" loading="lazy"></div>
+      </div>
+
+      <div class="hb-sec" data-kw="best practices scouting tips consistent live direct chips notitie a spaarzaam">
+        <h3>8.8 Best practices</h3>
+        <ul>
+          <li>Scout <strong>live</strong> met chips — leg je eerste indruk vast op het moment zelf, niet achteraf.</li>
+          <li>Wees <strong>consistent</strong> in je A/B/C/D-beoordeling zodat spelers vergelijkbaar blijven. Gebruik A spaarzaam.</li>
+          <li>Vul notities kort en concreet in langs de lijn. Werk ze later thuis uit tot een volledig rapport.</li>
+          <li>Gebruik <strong>Mijn programma</strong> bij toernooien om je tijd slim te plannen en conflicten te zien.</li>
+          <li>Bekijk de <strong>Vormtrend</strong> regelmatig — klopt je potentieelschatting nog na 6–12 maanden?</li>
         </ul>
       </div>
     </section>
@@ -667,7 +731,6 @@
   document.querySelectorAll('.hb-tab').forEach(function(t){
     t.addEventListener('click', function(){ showChapter(t.dataset.ch); });
   });
-  // Flow-overzicht & "Volgende stap"-links: spring naar een hoofdstuk
   document.querySelectorAll('[data-goch]').forEach(function(el){
     el.addEventListener('click', function(e){ e.preventDefault(); showChapter(el.getAttribute('data-goch')); });
   });
@@ -676,7 +739,6 @@
     q = (q||'').trim().toLowerCase();
     if(!q){
       document.querySelectorAll('.hb-sec').forEach(function(s){ s.style.display=''; });
-      // restore: only active chapter visible
       var active = document.querySelector('.hb-ch.active');
       var n = active ? active.dataset.ch : '1';
       document.querySelectorAll('.hb-chapter').forEach(function(c){ c.classList.toggle('active', c.dataset.ch===n); });
@@ -684,7 +746,6 @@
       return;
     }
     var hits = 0;
-    // during search: show ALL chapters, filter sections
     document.querySelectorAll('.hb-chapter').forEach(function(c){ c.classList.add('active'); });
     document.querySelectorAll('.hb-sec').forEach(function(s){
       var hay = (s.getAttribute('data-kw')||'') + ' ' + s.textContent.toLowerCase();
@@ -692,7 +753,6 @@
       s.style.display = match ? '' : 'none';
       if(match) hits++;
     });
-    // hide chapter headers whose sections are all hidden
     document.querySelectorAll('.hb-chapter').forEach(function(c){
       var anyVisible = Array.prototype.some.call(c.querySelectorAll('.hb-sec'), function(s){ return s.style.display !== 'none'; });
       c.classList.toggle('active', anyVisible);
@@ -703,16 +763,13 @@
     search.addEventListener('input', function(){ applySearch(search.value); });
   }
 
-  // Quick Reference verwijderd (rm-quick-ref)
-
-  // Register SW for offline (shares app's worker scope)
   if('serviceWorker' in navigator){
     try { navigator.serviceWorker.register('sw.js'); } catch(e){}
   }
 })();
 </script>
 <script>
-(function(){function init(){var lb=document.getElementById("sh-lightbox");if(!lb){lb=document.createElement("div");lb.id="sh-lightbox";lb.className="sh-lb";lb.setAttribute("role","dialog");lb.setAttribute("aria-modal","true");lb.setAttribute("aria-label","Afbeelding vergroten");lb.innerHTML='<button class="sh-lb-close" aria-label="Sluiten">\u00d7</button><img class="sh-lb-img" src="" alt="">';document.body.appendChild(lb);}var img=lb.querySelector(".sh-lb-img");var closeBtn=lb.querySelector(".sh-lb-close");function openLb(src,alt){if(!src)return;img.src=src;img.alt=alt||"";lb.classList.add("open");document.body.style.overflow="hidden";}function closeLb(){lb.classList.remove("open");img.src="";document.body.style.overflow="";}lb.addEventListener("click",function(e){closeLb();});document.addEventListener("keydown",function(e){if(e.key==="Escape"&&lb.classList.contains("open"))closeLb();});document.addEventListener("click",function(e){var t=e.target;if(!t||t.tagName!=="IMG"||!t.closest)return;if(t.closest("#sh-lightbox"))return;if(t.closest(".hb-shot.has-img")||t.closest("#landing-overlay")){e.preventDefault();openLb(t.currentSrc||t.src,t.alt);}});}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();})();
+(function(){function init(){var lb=document.getElementById("sh-lightbox");if(!lb){lb=document.createElement("div");lb.id="sh-lightbox";lb.className="sh-lb";lb.setAttribute("role","dialog");lb.setAttribute("aria-modal","true");lb.setAttribute("aria-label","Afbeelding vergroten");lb.innerHTML='<button class="sh-lb-close" aria-label="Sluiten">×</button><img class="sh-lb-img" src="" alt="">';document.body.appendChild(lb);}var img=lb.querySelector(".sh-lb-img");var closeBtn=lb.querySelector(".sh-lb-close");function openLb(src,alt){if(!src)return;img.src=src;img.alt=alt||"";lb.classList.add("open");document.body.style.overflow="hidden";}function closeLb(){lb.classList.remove("open");img.src="";document.body.style.overflow="";}lb.addEventListener("click",function(e){closeLb();});document.addEventListener("keydown",function(e){if(e.key==="Escape"&&lb.classList.contains("open"))closeLb();});document.addEventListener("click",function(e){var t=e.target;if(!t||t.tagName!=="IMG"||!t.closest)return;if(t.closest("#sh-lightbox"))return;if(t.closest(".hb-shot.has-img")||t.closest("#landing-overlay")){e.preventDefault();openLb(t.currentSrc||t.src,t.alt);}});}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();})();
 </script>
 </body>
 </html>

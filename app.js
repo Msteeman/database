@@ -6033,6 +6033,7 @@ function go(view){
   if(view === 'toernooien') renderToernooien();
   if(view === 'admin')      { if(typeof _shIsAdmin==='function' && _shIsAdmin() && typeof _admActivate==='function'){ _admActivate(); } else if(typeof renderBeheer === 'function'){ renderBeheer(); } }
   if(view === 'player')    renderPlayer();
+  if(view === 'team-overzicht') { if(typeof _toRender==='function') _toRender(); }
   // s35cr: privacy + voorwaarden zijn statische views — geen render-functie nodig
   window.scrollTo({top:0});
 }
@@ -27814,18 +27815,26 @@ async function loadUserRole(){
     const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const db = getFirestore();
     const snap = await getDoc(doc(db, 'users', currentUser.uid));
-    const role = snap.exists() ? (snap.data().role || 'scout') : 'scout';
-    window._shUserRole = role;
+    const d2 = snap.exists() ? snap.data() : {};
+    const role = d2.role || 'scout';
+    window._shUserRole   = role;
+    window._shUserOrgId  = d2.orgId  || null;
+    window._shUserTeamId = d2.teamId || null;
+    const _isHoofd = role && role.startsWith('hoofd');
+    const _isCoord = role === 'coordinator' || _isHoofd || role === 'admin';
     try { document.body.classList.toggle('role-admin', (role==='admin') || (currentUser && currentUser.email && ['admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1)); } catch(_){}
-    try { if(snap.exists() && snap.data().onboardingCompleted === false && typeof _obStart==='function'){ _obStart(role, snap.data()); } } catch(_){}
-    // Coordinator-features tonen/verbergen
+    try { document.body.classList.toggle('role-coord', _isCoord); } catch(_){}
+    try { if(snap.exists() && d2.onboardingCompleted === false && typeof _obStart==='function'){ _obStart(role, d2); } } catch(_){}
+    // Coordinator/hoofd-features tonen/verbergen
     document.querySelectorAll('[data-role-min="coordinator"]').forEach(el => {
-      el.style.display = (role === 'coordinator' || role === 'admin') ? '' : 'none';
+      el.style.display = _isCoord ? '' : 'none';
     });
   } catch(_){
-    // Geen rol-data beschikbaar — geen probleem, app werkt als standaard scout
-    window._shUserRole = 'scout';
+    window._shUserRole   = 'scout';
+    window._shUserOrgId  = null;
+    window._shUserTeamId = null;
     try { document.body.classList.toggle('role-admin', currentUser && currentUser.email && ['admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1); } catch(_){}
+    try { document.body.classList.remove('role-coord'); } catch(_){}
   }
   // FASE A: admin → eigen console-overlay; scout/coördinator → normale app.
   try { if(typeof _shIsAdmin==='function' && _shIsAdmin()){ if(typeof _admActivate==='function') _admActivate(); } else { if(typeof _admDeactivate==='function') _admDeactivate(); } } catch(_){}
@@ -34169,3 +34178,159 @@ function _admOrgStyles() {
   document.head.appendChild(s);
   return '';
 }
+
+
+// ── s35f2: TEAM-OVERZICHT (fase 2) ──────────────────────────────────────────
+// Laadt wedstrijd/speler/scouts tabs voor coordinator (eigen team) en hoofd (eigen org).
+
+// Tab-switching
+(function(){
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('.to-tab');
+    if(!btn) return;
+    var key = btn.dataset.toTab;
+    document.querySelectorAll('.to-tab').forEach(function(b){ b.classList.toggle('active', b===btn); });
+    document.querySelectorAll('.to-section').forEach(function(s){ s.classList.toggle('active', s.id==='to-section-'+key); });
+  });
+})();
+
+async function _toRender(){
+  var role    = window._shUserRole  || 'scout';
+  var orgId   = window._shUserOrgId  || null;
+  var teamId  = window._shUserTeamId || null;
+  var isHoofd = role.startsWith('hoofd');
+
+  // Titel aanpassen
+  var h2 = document.querySelector('#view-team-overzicht h2');
+  if(h2) h2.textContent = isHoofd ? 'Organisatie-overzicht' : 'Team-overzicht';
+
+  // Laad-indicator tonen
+  ['wedstrijd','speler','scouts'].forEach(function(k){
+    var el = document.getElementById('to-empty-'+k); if(el) el.textContent = 'Laden…';
+    var lst = document.getElementById('to-list-'+k); if(lst) lst.innerHTML = '';
+  });
+
+  if(!orgId && !teamId){ 
+    ['wedstrijd','speler','scouts'].forEach(function(k){ var el=document.getElementById('to-empty-'+k); if(el) el.textContent='Geen organisatie/team gekoppeld.'; });
+    return;
+  }
+
+  try {
+    const { getFirestore, collection, getDocs, query, where, collectionGroup } =
+      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const db = getFirestore();
+
+    // Stap 1: gebruikers ophalen (team of org)
+    var usersQ = isHoofd
+      ? query(collection(db,'users'), where('orgId','==',orgId))
+      : query(collection(db,'users'), where('teamId','==',teamId));
+    var usersSnap = await getDocs(usersQ);
+
+    var teamUsers = [];
+    usersSnap.forEach(function(d){ teamUsers.push(Object.assign({ uid: d.id }, d.data())); });
+
+    // Scouts-tab
+    var scoutsEl = document.getElementById('to-list-scouts');
+    var scoutsEmpty = document.getElementById('to-empty-scouts');
+    if(teamUsers.length === 0){
+      scoutsEmpty.textContent = 'Geen gebruikers gevonden.';
+    } else {
+      scoutsEmpty.style.display = 'none';
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:14px">'
+        + '<thead><tr style="border-bottom:1px solid var(--border)">'
+        + '<th style="text-align:left;padding:6px 8px">Naam</th>'
+        + '<th style="text-align:left;padding:6px 8px">Rol</th>'
+        + (isHoofd ? '<th style="text-align:left;padding:6px 8px">Team</th>' : '')
+        + '</tr></thead><tbody>';
+      teamUsers.forEach(function(u){
+        var rolLabel = u.role==='coordinator'?'Coördinator':u.role==='scout'?'Scout':u.role;
+        html += '<tr style="border-bottom:1px solid var(--border)">'
+          + '<td style="padding:6px 8px">' + (u.displayName||u.email||u.uid) + '</td>'
+          + '<td style="padding:6px 8px">' + rolLabel + '</td>'
+          + (isHoofd ? '<td style="padding:6px 8px">' + (u.teamName||(window._bhTeamNameMap&&window._bhTeamNameMap[u.teamId])||u.teamId||'—') + '</td>' : '')
+          + '</tr>';
+      });
+      html += '</tbody></table>';
+      scoutsEl.innerHTML = html;
+    }
+
+    // Stap 2: wedstrijdrapporten ophalen via collectionGroup
+    var matchQ = isHoofd
+      ? query(collectionGroup(db,'match_reports'), where('orgId','==',orgId))
+      : query(collectionGroup(db,'match_reports'), where('teamId','==',teamId));
+    var matchSnap = await getDocs(matchQ);
+
+    var wedstrijdEl = document.getElementById('to-list-wedstrijd');
+    var wedstrijdEmpty = document.getElementById('to-empty-wedstrijd');
+    if(matchSnap.empty){
+      wedstrijdEmpty.textContent = 'Geen wedstrijdrapporten gevonden.';
+    } else {
+      wedstrijdEmpty.style.display = 'none';
+      var rows = [];
+      matchSnap.forEach(function(d){ rows.push(Object.assign({ _id: d.id }, d.data())); });
+      rows.sort(function(a,b){ return (b.datum||'') > (a.datum||'') ? 1 : -1; });
+      var whtml = '<table style="width:100%;border-collapse:collapse;font-size:14px">'
+        + '<thead><tr style="border-bottom:1px solid var(--border)">'
+        + '<th style="text-align:left;padding:6px 8px">Datum</th>'
+        + '<th style="text-align:left;padding:6px 8px">Wedstrijd</th>'
+        + '<th style="text-align:left;padding:6px 8px">Scout</th>'
+        + '</tr></thead><tbody>';
+      rows.forEach(function(r){
+        var wedLabel = (r.thuisTeam||r.thuis||'?') + ' vs ' + (r.uitTeam||r.uit||'?');
+        // Zoek scout naam
+        var scoutUser = teamUsers.find(function(u){ return u.uid === r.uid || u.uid === r.userId; });
+        var scoutNaam = scoutUser ? (scoutUser.displayName||scoutUser.email) : (r.uid||r.userId||'—');
+        whtml += '<tr style="border-bottom:1px solid var(--border)">'
+          + '<td style="padding:6px 8px">' + (r.datum||'—') + '</td>'
+          + '<td style="padding:6px 8px">' + wedLabel + '</td>'
+          + '<td style="padding:6px 8px">' + scoutNaam + '</td>'
+          + '</tr>';
+      });
+      whtml += '</tbody></table>';
+      wedstrijdEl.innerHTML = whtml;
+    }
+
+    // Stap 3: spelersrapporten ophalen
+    var spelQ = isHoofd
+      ? query(collectionGroup(db,'players'), where('orgId','==',orgId))
+      : query(collectionGroup(db,'players'), where('teamId','==',teamId));
+    var spelSnap = await getDocs(spelQ);
+
+    var spelEl = document.getElementById('to-list-speler');
+    var spelEmpty = document.getElementById('to-empty-speler');
+    if(spelSnap.empty){
+      spelEmpty.textContent = 'Geen spelersrapporten gevonden.';
+    } else {
+      spelEmpty.style.display = 'none';
+      var srows = [];
+      spelSnap.forEach(function(d){ srows.push(Object.assign({ _id: d.id }, d.data())); });
+      srows.sort(function(a,b){ return (b.updatedAt||b.createdAt||'') > (a.updatedAt||a.createdAt||'') ? 1 : -1; });
+      var shtml = '<table style="width:100%;border-collapse:collapse;font-size:14px">'
+        + '<thead><tr style="border-bottom:1px solid var(--border)">'
+        + '<th style="text-align:left;padding:6px 8px">Speler</th>'
+        + '<th style="text-align:left;padding:6px 8px">Club</th>'
+        + '<th style="text-align:left;padding:6px 8px">Scout</th>'
+        + '</tr></thead><tbody>';
+      srows.forEach(function(r){
+        var spelNaam = [r.voornaam, r.achternaam].filter(Boolean).join(' ') || r.naam || r._id;
+        var scoutUser2 = teamUsers.find(function(u){ return u.uid === r.uid || u.uid === r.userId; });
+        var scoutNaam2 = scoutUser2 ? (scoutUser2.displayName||scoutUser2.email) : (r.uid||r.userId||'—');
+        shtml += '<tr style="border-bottom:1px solid var(--border)">'
+          + '<td style="padding:6px 8px">' + spelNaam + '</td>'
+          + '<td style="padding:6px 8px">' + (r.club||'—') + '</td>'
+          + '<td style="padding:6px 8px">' + scoutNaam2 + '</td>'
+          + '</tr>';
+      });
+      shtml += '</tbody></table>';
+      spelEl.innerHTML = shtml;
+    }
+
+  } catch(err){
+    console.error('[_toRender]', err);
+    ['wedstrijd','speler','scouts'].forEach(function(k){
+      var el=document.getElementById('to-empty-'+k);
+      if(el) el.textContent = 'Fout bij laden: ' + (err.message||err);
+    });
+  }
+}
+window._toRender = _toRender;

@@ -1,6 +1,6 @@
 /* Scouting Platform — Service Worker
    Bump CACHE_VERSION whenever you ship a new index.html so users get the latest. */
-const CACHE_VERSION = 'sh-v469-teamnamen-demofilt';
+const CACHE_VERSION = 'sh-v470-fase2-teamoverzicht';
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-rt`;
 
@@ -166,4 +166,3 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 });
-   

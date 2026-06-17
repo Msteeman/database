@@ -126,10 +126,10 @@
   .hb-chip.x{background:var(--bg-2); color:var(--text-3); border:1px solid var(--border);}
   .hb-grade{display:inline-flex; width:26px; height:26px; border-radius:7px; align-items:center; justify-content:center;
     font-weight:800; font-size:13px; margin:1px 2px; background:var(--bg-2); border:1px solid var(--border); color:var(--text-2);}
-  .hb-grade.on{background:var(--accent); color:#06223f; border-color:var(--accent);}
-  .hb-grade.b{background:#f59e0b; color:#06223f; border-color:#f59e0b;}
-  .hb-grade.c{background:#64748b; color:#fff; border-color:#64748b;}
-  .hb-grade.d{background:#e30613; color:#fff; border-color:#e30613;}
+  .hb-grade.on{background:#22c55e; color:#062b12; border-color:#22c55e;}
+  .hb-grade.b{background:#84cc16; color:#1a2806; border-color:#84cc16;}
+  .hb-grade.c{background:#f59e0b; color:#2a1a04; border-color:#f59e0b;}
+  .hb-grade.d{background:#ef4444; color:#2a0606; border-color:#ef4444;}
   .hb-tip{border-left:3px solid var(--accent-2); background:rgba(245,197,24,.07); padding:10px 14px; border-radius:0 8px 8px 0; margin:12px 0; font-size:14px;}
   .hb-tip::before{content:"💡 "; }
   .hb-kbd{display:inline-block; background:var(--bg-2); border:1px solid var(--border); border-bottom-width:2px;
@@ -323,7 +323,7 @@
           <li><strong>Profielfoto</strong> — kies een JPG of PNG. Verschijnt in de zijbalk en op al je apparaten. Geen foto? Dan zie je je initialen.</li>
           <li><strong>Persoonsgegevens</strong> — telefoon, adres en voorkeuren (alleen voor jou zichtbaar).</li>
         </ul>
-        <div class="hb-shot has-img"><img src="PWA installeren.png" alt="Instellingen met App installeren, Profielfoto en Persoonsgegevens" loading="lazy"></div>
+        <div class="hb-shot has-img"><img src="PWA installeren.png" alt="Instellingen met App installeren, Profielfoto en Persoonsgegevens" loading="lazy" style="max-width:420px"></div>
       </div>
 
       <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Volgende stap.</strong> Plan je eerste wedstrijd — <a data-goch="3" href="#">hoofdstuk 3</a>.</div></div>
@@ -458,16 +458,15 @@
         <div class="hb-shot has-img"><img src="Wedstrijd overzicht verwerken.png" alt="Wedstrijd-detail met ALLES VERWERKT status en OBS- en rapportblokken naast elkaar" loading="lazy"></div>
       </div>
 
-      <div class="hb-sec" data-kw="obs observatie apart rapport apart verschil obs badge database wedstrijddetail blokken">
+      <div class="hb-sec" data-kw="obs observatie rapport verschil obs badge database wedstrijddetail blokken opgevallen gekoppeld">
         <h3>5.2 Observatie vs. rapport — wat is het verschil?</h3>
-        <p>Een <strong>observatie (OBS)</strong> en een <strong>rapport</strong> zijn <em>twee aparte dingen</em> — een obs wordt nooit automatisch omgezet naar een rapport:</p>
+        <p>Er zijn twee manieren om iets vast te leggen over een speler, met een andere herkomst:</p>
         <ul>
-          <li><strong>Observatie (OBS)</strong> — je live-aantekeningen tijdens de wedstrijd. Snel, kort, geen formele beoordeling vereist. In de spelersdatabase herken je ze aan het paarse <strong>OBS</strong>-badge. Kolommen Huidig en Potentieel blijven leeg (–).</li>
-          <li><strong>Rapport</strong> — een volledige, formele beoordeling met A/B/C/D-grades en advies. Dit schrijf je bewust, los van de observatie.</li>
+          <li><strong>Observatie (OBS)</strong> — ontstaat vanuit een <em>opgevallen speler</em>. Je hebt de speler niet vooraf gekoppeld — je spot hem op het veld en noteert snel wat je ziet. In de spelersdatabase herken je observaties aan het paarse <strong>OBS</strong>-badge. Kolommen Huidig en Potentieel blijven leeg (&ndash;).</li>
+          <li><strong>Rapport</strong> — ontstaat vanuit een <em>gekoppelde speler</em>. De speler is vooraf aan de wedstrijd gekoppeld, je hebt hem live gevolgd via de tile, en na de wedstrijd dien je een volledig rapport in met A/B/C/D-grades en advies.</li>
         </ul>
-        <p>In het wedstrijd-detail zie je beide blokken naast elkaar: een OBS-blok en een Wedstrijdrapport-blok. Ze staan naast elkaar, niet in elkaars verlengde.</p>
-        <div class="hb-shot has-img"><img src="screenshot-wedstrijd-detail.png" alt="Wedstrijd-detail met OBS-blok en Wedstrijdrapport-blok naast elkaar" loading="lazy"></div>
-        <div class="hb-tip">Wil je een rapport schrijven over een speler die je hebt geobserveerd? Start dan een <em>nieuw</em> rapport via + Rapport of vanuit het spelersprofiel. De OBS blijft als aparte aantekening bewaard.</div>
+        <p>In het wedstrijd-detail zie je beide blokken naast elkaar. Status <strong>&check; ALLES VERWERKT</strong> verschijnt zodra alles is ingediend.</p>
+        <div class="hb-shot has-img"><img src="Wedstrijd overzicht verwerken.png" alt="Wedstrijd-detail met ALLES VERWERKT, OBS-blok en rapportblok" loading="lazy" style="max-width:700px"></div>
       </div>
 
       <div class="hb-sec" data-kw="rapport formulier velden techniek inzicht mentaliteit explosiviteit huidig potentieel advies toelichting concept nieuw">
@@ -482,7 +481,6 @@
           <li><strong>Algemeen</strong> — vrije tekst voor overige opmerkingen.</li>
         </ul>
         <p>Een rapport begint altijd als <strong>concept</strong> — je kunt het zo lang bewerken als je wilt voordat je indient.</p>
-        <div class="hb-tip">Komt het rapport uit een observatie? Dan staat er <strong>📋 Gebaseerd op observatie van [datum]</strong> bovenaan — klik erop om de bron te bekijken.</div>
       </div>
 
       <div class="hb-sec" data-kw="rapport indienen definitief verwerken archief status voortgang">
@@ -522,7 +520,7 @@
         <p>De kolommen zijn: <strong>Speler · Positie · Club · Elftal · Huidig · Potentieel · Advies · Datum</strong>.</p>
         <p>Spelers met alleen een observatie (nog geen ingediend rapport) hebben een paars <strong>OBS</strong>-badge naast hun naam. De kolommen Huidig en Potentieel tonen dan <strong>–</strong>. Zodra er een ingediend rapport is, verschijnen de gekleurde grade-squares.</p>
         <p>Zoek op naam, club, positie of leeftijd. De zoekfunctie is tolerant voor tikfouten: "Jnsen" vindt ook "Jansen".</p>
-        <div class="hb-shot has-img"><img src="Spelersdatabase.png" alt="Spelersdatabase met OBS-badges, grade-kolommen en legende A/B/C/D" loading="lazy"></div>
+        <div class="hb-shot has-img"><img src="Spelersdatabase.png" alt="Spelersdatabase met OBS-badges, grade-kolommen en legende A/B/C/D" loading="lazy" style="max-width:800px"></div>
       </div>
 
       <div class="hb-sec" data-kw="spelersprofiel bekijken detail foto camera uploaden initialen gegevens">
@@ -537,7 +535,7 @@
 
       <div class="hb-sec" data-kw="rapporten observaties historie tijdlijn gebaseerd op">
         <h3>6.3 Scoutingshistorie</h3>
-        <p>Alle rapporten en losse observaties staan in chronologische volgorde. Rapporten die uit een observatie zijn gemaakt, tonen een <strong>📋 Gebaseerd op observatie van [datum]</strong>-link — klik erop om de bron-observatie te bekijken.</p>
+        <p>Alle rapporten en losse observaties staan in chronologische volgorde, zodat je de volledige scoutingshistorie van een speler in één oogopslag ziet.</p>
       </div>
 
       <div class="hb-sec" data-kw="vormtrend sparkline trend grafiek ontwikkeling stijgend dalend stabiel twee rapporten">
@@ -569,54 +567,35 @@
         <p>Later opnieuw <strong>synchroniseren</strong>? Nieuwe of gewijzigde wedstrijden en uitslagen worden dan bijgewerkt.</p>
       </div>
 
-      <div class="hb-sec" data-kw="toernooi handmatig aanmaken zonder tournify categorie poule veld wedstrijd toevoegen zelf">
-        <h3>7.2 Handmatig aanmaken</h3>
-        <p>Geen Tournify-link? Maak het toernooi zelf aan:</p>
-        <ol class="hb-step">
-          <li>Klik op <strong>+ Nieuw → Handmatig aanmaken</strong>.</li>
-          <li>Vul in: <strong>naam, datum en locatie</strong>.</li>
-          <li>Voeg per wedstrijd de thuis- en uitploeg, tijd, veld en poule in.</li>
-          <li>Klik op <strong>+ Wedstrijd toevoegen</strong> voor elke volgende wedstrijd.</li>
-        </ol>
-        <div class="hb-shot has-img"><img src="lp-shot-toernooi.jpg" alt="Toernooi handmatig aanmaken met poule-veld" loading="lazy"></div>
+      <div class="hb-sec" data-kw="programma bekijken tijdsblokken velden poule bekijken optioneel niet haalbaar live klok wedstrijdduur">
+        <h3>7.2 Programma</h3>
+        <p>De tab <strong>Programma</strong> toont alle wedstrijden van het toernooi per tijdsblok. Per wedstrijd zie je het veld, de poule, de uitslag en welke spelers je al hebt gelinkt. Lopende wedstrijden tonen de fase (1e helft, rust, 2e helft) met meelopende speeltijd.</p>
+        <p>Filter direct op watch-status: <span class="hb-chip g">Bekijken</span> <span class="hb-chip o">Optioneel</span> <span class="hb-chip r">Niet haalbaar</span>.</p>
+        <div class="hb-shot has-img"><img src="toernooi-programma.png" alt="Toernooi programma-tab met wedstrijden per tijdsblok en watch-status" loading="lazy"></div>
       </div>
 
-      <div class="hb-sec" data-kw="programma bekijken tijdsblokken velden poule nu lopend live klok">
-        <h3>7.3 Programma &amp; live-klok</h3>
-        <p>Bekijk alle wedstrijden per tijdsblok, veld en poule. Lopende wedstrijden zijn gemarkeerd met <strong>NU</strong> en tonen de fase — 1e helft, rust of 2e helft — met meelopende speeltijd.</p>
-        <p><strong>Live-stack:</strong> draaien er meerdere wedstrijden tegelijk, dan worden ze gebundeld in een uitklapbare live-stack zodat je snel kunt wisselen.</p>
+      <div class="hb-sec" data-kw="mijn programma clubs volgen wedstrijd toevoegen persoonlijk schema">
+        <h3>7.3 Mijn programma</h3>
+        <p>In <strong>Mijn programma</strong> bouw je je persoonlijke scoutdag. Volg clubs via de Spelers-tab om hun wedstrijden automatisch toe te voegen, of klik <strong>+ Wedstrijd toevoegen</strong> om handmatig te kiezen.</p>
+        <div class="hb-shot has-img"><img src="toernooi-mijn-programma.png" alt="Mijn programma tab leeg met uitleg en knop wedstrijd toevoegen" loading="lazy"></div>
       </div>
 
-      <div class="hb-sec" data-kw="mijn programma clubs volgen watchstatus bekijken optioneel niet haalbaar tijdsconflict pauze">
-        <h3>7.4 Mijn programma</h3>
-        <p>In de tab <strong>Mijn programma</strong> stel je je persoonlijke scoutdag samen:</p>
-        <ul>
-          <li><strong>Clubs volgen:</strong> filter op alleen de wedstrijden van jouw clubs.</li>
-          <li><strong>Watch-status per wedstrijd:</strong> <span class="hb-chip g">Bekijken</span> <span class="hb-chip o">Optioneel</span> <span class="hb-chip r">Niet haalbaar</span>.</li>
-          <li><strong>Tijdsconflicten:</strong> overlappen twee "Bekijken"-wedstrijden, dan wordt het conflict gemarkeerd.</li>
-          <li><strong>Pauzes:</strong> gaten tussen je geselecteerde wedstrijden worden als pauze getoond.</li>
-        </ul>
-        <div class="hb-shot has-img"><img src="lp-shot-programma.jpg" alt="Mijn programma met watchstatus en tijdsconflicten" loading="lazy"></div>
+      <div class="hb-sec" data-kw="teams tab clubs volgen speler koppelen overzicht elftal toernooi">
+        <h3>7.4 Teams</h3>
+        <p>De tab <strong>Teams</strong> toont alle deelnemende clubs per categorie. Per club zie je hoeveel spelers je al hebt gekoppeld. Klik <strong>★ Volgen</strong> om een club te volgen — hun wedstrijden verschijnen automatisch in Mijn programma. Via <strong>+ Speler koppelen</strong> voeg je direct een speler toe.</p>
+        <div class="hb-shot has-img"><img src="toernooi-teams.png" alt="Teams-tab met club-kaarten, Volgen-knop en spelersaantal" loading="lazy"></div>
       </div>
 
-      <div class="hb-sec" data-kw="standen poule ranglijst uitslag score invoeren berekend tournify">
-        <h3>7.5 Standen per poule</h3>
-        <p>De tab <strong>Standen</strong> toont de ranglijst per poule. De stand wordt berekend uit de ingevoerde uitslagen, of bij een Tournify-toernooi gesynchroniseerd vanuit Tournify. Tik op de score van een wedstrijd om de uitslag in te voeren.</p>
+      <div class="hb-sec" data-kw="standen poule ranglijst uitslag score punten doelpunten gespeeld gewonnen verloren">
+        <h3>7.5 Standen</h3>
+        <p>De tab <strong>Standen</strong> toont de ranglijst per poule met gespeeld, gewonnen, gelijk, verloren, doelpuntensaldo en punten. De stand wordt automatisch bijgewerkt zodra uitslagen binnenkomen.</p>
+        <div class="hb-shot has-img"><img src="toernooi-standen.png" alt="Standen-tab met pouleranglijst en statistieken" loading="lazy"></div>
       </div>
 
-      <div class="hb-sec" data-kw="scouten observatie chips wedstrijden toernooi uitslag modal">
-        <h3>7.6 Scouten tijdens het toernooi</h3>
-        <p>Open een wedstrijd en scout de spelers — exact dezelfde chips-flow als in hoofdstuk 4. De uitslag voer je direct in de wedstrijd-modal in.</p>
-      </div>
-
-      <div class="hb-sec" data-kw="bundeling reviewen observaties speler samenvatting eindoordeel chips">
-        <h3>7.7 Bundeling reviewen</h3>
-        <p>In de <strong>Bundeling</strong> zie je alle observaties van één speler over het hele toernooi gebundeld — de chips per categorie samengevat. Schrijf een algemene samenvatting en kies een eindoordeel.</p>
-      </div>
-
-      <div class="hb-sec" data-kw="toernooi afronden rapporten genereren spelersrapporten afsluiten">
-        <h3>7.8 Toernooi afronden</h3>
-        <p>Rond het toernooi af om van je bundelingen <strong>volledige spelersrapporten</strong> te genereren. Deze verschijnen direct in de spelersdatabase.</p>
+      <div class="hb-sec" data-kw="scouten observatie chips wedstrijden toernooi uitslag afronden">
+        <h3>7.6 Scouten &amp; afronden</h3>
+        <p>Open een wedstrijd en scout de spelers — dezelfde chips-flow als in hoofdstuk 4. Uitslag invoer je direct in de wedstrijd.</p>
+        <p>Klaar? Klik <strong>Afronden</strong> (tab bovenin) om het toernooi af te sluiten. Alle observaties worden gebundeld per speler en verschijnen in de spelersdatabase.</p>
       </div>
 
       <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Volgende stap.</strong> Zet spelers naast elkaar en maak opstellingen — <a data-goch="8" href="#">hoofdstuk 8</a>.</div></div>
@@ -686,7 +665,7 @@
           <li>Optioneel: een <strong>screenshot of bijlage</strong> (max 5 MB).</li>
         </ul>
         <p>Je naam en e-mailadres worden automatisch meegestuurd. De beheerder ziet je feedback direct in het beheerpaneel.</p>
-        <div class="hb-shot has-img"><img src="Feedback.png" alt="Feedback-modal met tekstveld en optionele bestandsbijlage" loading="lazy"></div>
+        <div class="hb-shot has-img"><img src="Feedback.png" alt="Feedback-modal met tekstveld en optionele bestandsbijlage" loading="lazy" style="max-width:420px"></div>
       </div>
 
       <div class="hb-sec" data-kw="best practices scouting tips consistent live direct chips notitie a spaarzaam">
@@ -697,79 +676,3 @@
           <li>Vul notities kort en concreet in langs de lijn. Werk ze later thuis uit tot een volledig rapport.</li>
           <li>Gebruik <strong>Mijn programma</strong> bij toernooien om je tijd slim te plannen en conflicten te zien.</li>
           <li>Bekijk de <strong>Vormtrend</strong> regelmatig — klopt je potentieelschatting nog na 6–12 maanden?</li>
-        </ul>
-      </div>
-    </section>
-  </main>
-</div>
-
-<script>
-(function(){
-  var nav = document.getElementById('hb-nav');
-  var backdrop = document.getElementById('hb-nav-backdrop');
-  var content = document.getElementById('hb-content');
-  var noresult = document.getElementById('hb-noresult');
-  var search = document.getElementById('hb-search');
-
-  function closeNav(){ nav.classList.remove('open'); backdrop.classList.remove('show'); }
-  function openNav(){ nav.classList.add('open'); backdrop.classList.add('show'); }
-  document.getElementById('hb-burger').addEventListener('click', function(){ nav.classList.contains('open') ? closeNav() : openNav(); });
-  backdrop.addEventListener('click', closeNav);
-
-  function showChapter(n){
-    document.querySelectorAll('.hb-chapter').forEach(function(c){ c.classList.toggle('active', c.dataset.ch === n); });
-    document.querySelectorAll('.hb-ch').forEach(function(a){ a.classList.toggle('active', a.dataset.ch === n); });
-    document.querySelectorAll('.hb-tab').forEach(function(b){ b.classList.toggle('active', b.dataset.ch === n); });
-    if(search) search.value='';
-    applySearch('');
-    window.scrollTo({top:0, behavior:'smooth'});
-    closeNav();
-  }
-  document.querySelectorAll('.hb-ch').forEach(function(a){
-    a.addEventListener('click', function(){ showChapter(a.dataset.ch); });
-  });
-  document.querySelectorAll('.hb-tab').forEach(function(t){
-    t.addEventListener('click', function(){ showChapter(t.dataset.ch); });
-  });
-  document.querySelectorAll('[data-goch]').forEach(function(el){
-    el.addEventListener('click', function(e){ e.preventDefault(); showChapter(el.getAttribute('data-goch')); });
-  });
-
-  function applySearch(q){
-    q = (q||'').trim().toLowerCase();
-    if(!q){
-      document.querySelectorAll('.hb-sec').forEach(function(s){ s.style.display=''; });
-      var active = document.querySelector('.hb-ch.active');
-      var n = active ? active.dataset.ch : '1';
-      document.querySelectorAll('.hb-chapter').forEach(function(c){ c.classList.toggle('active', c.dataset.ch===n); });
-      noresult.style.display='none';
-      return;
-    }
-    var hits = 0;
-    document.querySelectorAll('.hb-chapter').forEach(function(c){ c.classList.add('active'); });
-    document.querySelectorAll('.hb-sec').forEach(function(s){
-      var hay = (s.getAttribute('data-kw')||'') + ' ' + s.textContent.toLowerCase();
-      var match = hay.toLowerCase().indexOf(q) !== -1;
-      s.style.display = match ? '' : 'none';
-      if(match) hits++;
-    });
-    document.querySelectorAll('.hb-chapter').forEach(function(c){
-      var anyVisible = Array.prototype.some.call(c.querySelectorAll('.hb-sec'), function(s){ return s.style.display !== 'none'; });
-      c.classList.toggle('active', anyVisible);
-    });
-    noresult.style.display = hits ? 'none' : 'block';
-  }
-  if(search){
-    search.addEventListener('input', function(){ applySearch(search.value); });
-  }
-
-  if('serviceWorker' in navigator){
-    try { navigator.serviceWorker.register('sw.js'); } catch(e){}
-  }
-})();
-</script>
-<script>
-(function(){function init(){var lb=document.getElementById("sh-lightbox");if(!lb){lb=document.createElement("div");lb.id="sh-lightbox";lb.className="sh-lb";lb.setAttribute("role","dialog");lb.setAttribute("aria-modal","true");lb.setAttribute("aria-label","Afbeelding vergroten");lb.innerHTML='<button class="sh-lb-close" aria-label="Sluiten">×</button><img class="sh-lb-img" src="" alt="">';document.body.appendChild(lb);}var img=lb.querySelector(".sh-lb-img");var closeBtn=lb.querySelector(".sh-lb-close");function openLb(src,alt){if(!src)return;img.src=src;img.alt=alt||"";lb.classList.add("open");document.body.style.overflow="hidden";}function closeLb(){lb.classList.remove("open");img.src="";document.body.style.overflow="";}lb.addEventListener("click",function(e){closeLb();});document.addEventListener("keydown",function(e){if(e.key==="Escape"&&lb.classList.contains("open"))closeLb();});document.addEventListener("click",function(e){var t=e.target;if(!t||t.tagName!=="IMG"||!t.closest)return;if(t.closest("#sh-lightbox"))return;if(t.closest(".hb-shot.has-img")||t.closest("#landing-overlay")){e.preventDefault();openLb(t.currentSrc||t.src,t.alt);}});}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();})();
-</script>
-</body>
-</html>

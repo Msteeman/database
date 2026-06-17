@@ -676,3 +676,57 @@
           <li>Vul notities kort en concreet in langs de lijn. Werk ze later thuis uit tot een volledig rapport.</li>
           <li>Gebruik <strong>Mijn programma</strong> bij toernooien om je tijd slim te plannen en conflicten te zien.</li>
           <li>Bekijk de <strong>Vormtrend</strong> regelmatig — klopt je potentieelschatting nog na 6–12 maanden?</li>
+        </ul>
+      </div>
+
+    </div><!-- /.hb-content -->
+  </main>
+
+  <footer style="text-align:center;padding:2rem 1rem;color:var(--muted,#6b7280);font-size:.8rem">
+    &copy; 2025 ScoutingHub &mdash; gemaakt voor professionele scouts
+  </footer>
+
+  <script>
+  /* ---- zoekfunctie ---- */
+  (function(){
+    const inp = document.getElementById('hb-search');
+    const secs = document.querySelectorAll('.hb-sec');
+    const chaps = document.querySelectorAll('.hb-chapter');
+    if(!inp) return;
+    inp.addEventListener('input', function(){
+      const q = this.value.trim().toLowerCase();
+      if(!q){
+        secs.forEach(s=>s.style.display='');
+        chaps.forEach(c=>c.style.display='');
+        return;
+      }
+      chaps.forEach(c=>{
+        let vis=false;
+        c.querySelectorAll('.hb-sec').forEach(s=>{
+          const kw=(s.dataset.kw||'').toLowerCase();
+          const txt=s.innerText.toLowerCase();
+          const show=kw.includes(q)||txt.includes(q);
+          s.style.display=show?'':'none';
+          if(show) vis=true;
+        });
+        c.style.display=vis?'':'none';
+      });
+    });
+
+    /* ---- sidebar actief ---- */
+    const links=document.querySelectorAll('.hb-nav a');
+    const observer=new IntersectionObserver(entries=>{
+      entries.forEach(e=>{
+        if(e.isIntersecting){
+          links.forEach(l=>l.classList.remove('active'));
+          const id=e.target.id;
+          const a=document.querySelector('.hb-nav a[href="#'+id+'"]');
+          if(a) a.classList.add('active');
+        }
+      });
+    },{threshold:.3});
+    document.querySelectorAll('.hb-chapter[id]').forEach(c=>observer.observe(c));
+  })();
+  </script>
+</body>
+</html>

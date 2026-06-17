@@ -31986,6 +31986,7 @@ function _admFbNote(id){
 let _bhAanvrFilter = 'pending';
 let _bhAanvrCache = [];
 let _bhTeamsCache = [];
+let _bhShowDemo = false;
 let _bhUserCache = [];
 let _bhAuditCache = [];
 
@@ -32093,9 +32094,11 @@ async function _bhLoadOrg(){
   var el = document.getElementById('bh-org');
   if(el) el.innerHTML = '<div class="bh-empty">Laden…</div>';
   try {
-    var snap = await getDocs(collection(db,'users'));
+    var [uSnap, tSnap] = await Promise.all([getDocs(collection(db,'users')), getDocs(collection(db,'teams'))]);
     _bhUserCache = [];
-    snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhUserCache.push(x); });
+    uSnap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhUserCache.push(x); });
+    window._bhTeamNameMap = {};
+    tSnap.forEach(function(d){ window._bhTeamNameMap[d.id] = d.data().name||d.id; });
     _bhRenderOrg();
   } catch(e){
     if(el) el.innerHTML = '<div class="bh-empty">Kon het organigram niet laden.</div>';
@@ -32123,7 +32126,7 @@ function _bhRenderOrg(){
     if(role==='admin'){ admins.push(u); return; }
     var tid = u.teamId||'';
     if(!tid){ noTeam.push(u); return; }
-    if(!teams[tid]) teams[tid] = { name: u.teamName||tid, club: (u.clubName||''), coords:[], scouts:[] };
+    if(!teams[tid]) teams[tid] = { name: (window._bhTeamNameMap&&window._bhTeamNameMap[tid])||u.teamName||tid, club: (u.clubName||''), coords:[], scouts:[] };
     if(u.clubName && !teams[tid].club) teams[tid].club = u.clubName;
     if(role==='coordinator') teams[tid].coords.push(u); else teams[tid].scouts.push(u);
   });
@@ -32411,7 +32414,7 @@ function _bhRenderStats(){
    + charts
    + '<div class="bh-stat-hd">Top gebruikers — '+topLab+' <span class="bh-stat-sub2">(kies metric rechtsboven)</span></div><div class="bh-rank-card">'+topHtml+'</div>'
    + '<div class="bh-stat-hd">Teams</div>'+ttable
-   + '<div class="bh-stat-hd bh-stat-hd-row"><span>Gebruikersactiviteit</span><button type="button" class="adm-btn-ghost" onclick="_bhExportStatsCsv()">⬇️ Exporteer CSV</button></div>'+chips+utable
+   + '<div class="bh-stat-hd bh-stat-hd-row"><span>Gebruikersactiviteit</span><span style="display:flex;gap:6px"><button type="button" id="bh-demo-toggle" class="adm-btn-ghost" onclick="_bhToggleDemo()" style="font-size:.78rem">👁 Demo verbergen</button><button type="button" class="adm-btn-ghost" onclick="_bhExportStatsCsv()">⬇️ Exporteer CSV</button></span></div>'+chips+utable
    + (loadingCounts?'<div class="bh-stat-note">Activiteit per gebruiker wordt geladen…</div>':'');
 }
 function _bhExportStatsCsv(){
@@ -32708,6 +32711,12 @@ async function _bhLoadUsers(){
    Lijst rendert per pagina i.p.v. alles tegelijk; stats-counts cappen we. */
 var _bhUserPageSize = 50, _bhUserShown = 50, _bhSearchT = null, _BH_STAT_CAP = 100;
 function _bhUserMore(){ _bhUserShown = (typeof _bhUserShown==='number'?_bhUserShown:_bhUserPageSize) + _bhUserPageSize; _bhRenderUsers(); }
+window._bhToggleDemo = function(){
+  _bhShowDemo = !_bhShowDemo;
+  var btn = document.getElementById('bh-demo-toggle');
+  if(btn) btn.textContent = _bhShowDemo ? '👁 Demo verbergen' : '👁 Demo tonen';
+  _bhUserResetPage();
+};
 function _bhUserResetPage(){ _bhUserShown = _bhUserPageSize; _bhRenderUsers(); }
 function _bhDebounce(fn){ return function(){ if(_bhSearchT) clearTimeout(_bhSearchT); _bhSearchT = setTimeout(fn, 220); }; }
 function _bhRenderUsers(){
@@ -32734,6 +32743,8 @@ function _bhRenderUsers(){
   if(tmf==='__none__') rows = rows.filter(function(u){ return !(u.teamId||''); });
   else if(tmf) rows = rows.filter(function(u){ return (u.teamId||'')===tmf; });
   if(q) rows = rows.filter(function(u){ return ((u.displayName||'')+' '+(u.email||'')).toLowerCase().indexOf(q) !== -1; });
+  // Demo-filter: verberg demo. accounts tenzij expliciet aan
+  if(!_bhShowDemo) rows = rows.filter(function(u){ return !(u.email||'').toLowerCase().startsWith('demo.'); });
   rows.sort(function(a,b){
     var da=((a.status||'')==='deleted')?1:0, db=((b.status||'')==='deleted')?1:0;
     if(da!==db) return da-db;
@@ -33827,8 +33838,9 @@ async function _admRenderOrganisaties(el) {
 window._admRenderOrganisaties = _admRenderOrganisaties;
 
 function _admOrgRender(el, users) {
-  var orgs = _admOrgCache || [];
+  var orgs  = _admOrgCache    || [];
   var teams = _admTeamsCache2 || [];
+  _admOrgStyles();
 
   var html = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">'
     + '<div class="bh-stat-hd" style="margin:0">Organisaties</div>'
@@ -33836,70 +33848,102 @@ function _admOrgRender(el, users) {
     + '</div>';
 
   if (!orgs.length) {
-    html += '<div class="bh-empty">Nog geen organisaties. Klik op + Organisatie om te beginnen.</div>';
-  } else {
-    orgs.forEach(function(org) {
-      var orgTeams = teams.filter(function(t){ return t.orgId === org._id; });
-      var orgUsers = users.filter(function(u){ return u.orgId === org._id; });
-      var hoofden  = orgUsers.filter(function(u){ return u.role && u.role.startsWith('hoofd'); });
-
-      html += '<div class="adm-org-card" id="org-'+org._id+'">'
-        + '<div class="adm-org-hd">'
-        + '<span class="adm-org-naam">🏛️ '+_bhEsc(org.naam)+'</span>'
-        + '<span style="display:flex;gap:6px">'
-        + '<button class="adm-btn-ghost" onclick="_admOrgAddHoofd(\''+org._id+'\',\''+_bhEsc(org.naam)+'\')">＋ Hoofd</button>'
-        + '<button class="adm-btn-ghost" onclick="_admOrgAddTeam(\''+org._id+'\',\''+_bhEsc(org.naam)+'\')">＋ Team</button>'
-        + '<button class="adm-btn-ghost" style="color:#ef4444" onclick="_admOrgDelete(\''+org._id+'\',\''+_bhEsc(org.naam)+'\')">Verwijder org</button>'
-        + '</span></div>';
-
-      // Hoofden
-      if (hoofden.length) {
-        html += '<div class="adm-org-section"><b>Hoofd</b>'
-          + hoofden.map(function(u){
-              var lbl = u.role==='hoofd_jeugdscouting'?'Hoofd Jeugdscouting':u.role==='hoofd_coordinator'?'Hoofd Coördinator':'Hoofd Jeugdopleiding';
-              return '<div class="adm-org-user">'
-                + '<span>'+_bhEsc(u.displayName||u.email)+' <span class="adm-role-badge hoofd">'+lbl+'</span></span>'
-                + '<button class="adm-btn-ghost" style="color:#ef4444;font-size:.75rem" onclick="_admOrgRemoveUser(\''+u._id+'\')">Verwijder</button>'
-                + '</div>';
-            }).join('')
-          + '</div>';
-      }
-
-      // Teams
-      orgTeams.forEach(function(team) {
-        var teamUsers = orgUsers.filter(function(u){ return u.teamId === team._id; });
-        var coords = teamUsers.filter(function(u){ return u.role==='coordinator'; });
-        var scouts = teamUsers.filter(function(u){ return u.role==='scout'; });
-
-        html += '<div class="adm-team-block">'
-          + '<div class="adm-team-hd">'
-          + '<span>👥 '+_bhEsc(team.name)+'</span>'
-          + '<span style="display:flex;gap:6px">'
-          + '<button class="adm-btn-ghost" onclick="_admOrgAddUser(\''+org._id+'\',\''+team._id+'\',\''+_bhEsc(org.naam)+'\',\''+_bhEsc(team.name)+'\')">＋ Gebruiker</button>'
-          + '<button class="adm-btn-ghost" style="color:#ef4444;font-size:.75rem" onclick="_admOrgDeleteTeam(\''+team._id+'\',\''+_bhEsc(team.name)+'\')">Verwijder team</button>'
-          + '</span></div>';
-
-        var renderUser = function(u, rol) {
-          return '<div class="adm-org-user">'
-            + '<span>'+_bhEsc(u.displayName||u.email)+' <span class="adm-role-badge '+rol+'">'+( rol==='coordinator'?'Coördinator':'Scout')+'</span>'
-            + '<span style="color:var(--text-3);font-size:.75rem;margin-left:6px">'+_bhEsc(u.email||'')+'</span></span>'
-            + '<button class="adm-btn-ghost" style="color:#ef4444;font-size:.75rem" onclick="_admOrgRemoveUser(\''+u._id+'\')">Verwijder</button>'
-            + '</div>';
-        };
-
-        if (coords.length) html += '<div class="adm-org-section"><b>Coördinatoren</b>'+coords.map(function(u){return renderUser(u,'coordinator');}).join('')+'</div>';
-        if (scouts.length) html += '<div class="adm-org-section"><b>Scouts</b>'+scouts.map(function(u){return renderUser(u,'scout');}).join('')+'</div>';
-        if (!coords.length && !scouts.length) html += '<div style="padding:6px 0;color:var(--text-3);font-size:.85rem">Nog geen leden in dit team.</div>';
-
-        html += '</div>'; // adm-team-block
-      });
-
-      html += '</div>'; // adm-org-card
-    });
+    html += '<div class="bh-empty">Nog geen organisaties. Klik op + Organisatie.</div>';
+    el.innerHTML = html; return;
   }
 
-  el.innerHTML = html + _admOrgStyles();
+  orgs.forEach(function(org) {
+    var oid      = org._id;
+    var orgTeams = teams.filter(function(t){ return t.orgId===oid; });
+    var orgUsers = users.filter(function(u){ return u.orgId===oid; });
+    var hoofden  = orgUsers.filter(function(u){ return u.role&&u.role.startsWith('hoofd'); });
+
+    html += '<div class="ao-org-card">'
+      + '<div class="ao-row ao-lvl1" onclick="_aoToggle(\'aob-org-'+oid+'\')">'
+      + '<span class="ao-arr" id="aoarr-aob-org-'+oid+'">▶</span>'
+      + '<span>🏛️</span><span class="ao-lbl">'+_bhEsc(org.naam)+'</span>'
+      + '<span class="ao-meta">'+orgTeams.length+' teams · '+orgUsers.length+' leden</span>'
+      + '<span class="ao-acts" onclick="event.stopPropagation()">'
+      + '<button class="adm-btn-ghost" onclick="_admOrgAddHoofd(\''+oid+'\',\''+_bhEsc(org.naam)+'\')">＋ Hoofd</button>'
+      + '<button class="adm-btn-ghost" onclick="_admOrgAddTeam(\''+oid+'\',\''+_bhEsc(org.naam)+'\')">＋ Team</button>'
+      + '<button class="adm-btn-ghost" style="color:#ef4444" onclick="_admOrgDelete(\''+oid+'\',\''+_bhEsc(org.naam)+'\')">✕</button>'
+      + '</span></div>'
+      + '<div class="ao-body" id="aob-org-'+oid+'" style="display:none">';
+
+    // Hoofden niveau 2
+    if (hoofden.length) {
+      html += '<div class="ao-row ao-lvl2" onclick="_aoToggle(\'aob-hoofd-'+oid+'\')">'
+        + '<span class="ao-arr" id="aoarr-aob-hoofd-'+oid+'">▶</span>'
+        + '<span>👑</span><span class="ao-lbl">Hoofden</span>'
+        + '<span class="ao-meta">'+hoofden.length+'</span></div>'
+        + '<div class="ao-body" id="aob-hoofd-'+oid+'" style="display:none">';
+      hoofden.forEach(function(u){
+        var lbl=u.role==='hoofd_jeugdscouting'?'Hoofd Jeugdscouting':u.role==='hoofd_coordinator'?'Hoofd Coördinator':'Hoofd Jeugdopleiding';
+        html += '<div class="ao-user ao-lvl3"><span>👤 '+_bhEsc(u.displayName||u.email)+'</span>'
+          + '<span class="adm-role-badge hoofd">'+lbl+'</span>'
+          + '<span class="ao-email">'+_bhEsc(u.email||'')+'</span>'
+          + '<button class="ao-del" onclick="_admOrgRemoveUser(\''+u._id+'\')">✕</button></div>';
+      });
+      html += '</div>';
+    }
+
+    // Teams niveau 2
+    orgTeams.forEach(function(team){
+      var tid      = team._id;
+      var tUsers   = orgUsers.filter(function(u){ return u.teamId===tid; });
+      var coords   = tUsers.filter(function(u){ return u.role==='coordinator'; });
+      var scouts   = tUsers.filter(function(u){ return u.role==='scout'; });
+
+      html += '<div class="ao-row ao-lvl2" onclick="_aoToggle(\'aob-team-'+tid+'\')">'
+        + '<span class="ao-arr" id="aoarr-aob-team-'+tid+'">▶</span>'
+        + '<span>👥</span><span class="ao-lbl">'+_bhEsc(team.name)+'</span>'
+        + '<span class="ao-meta">'+tUsers.length+' leden</span>'
+        + '<span class="ao-acts" onclick="event.stopPropagation()">'
+        + '<button class="adm-btn-ghost" onclick="_admOrgAddUser(\''+oid+'\',\''+tid+'\',\''+_bhEsc(org.naam)+'\',\''+_bhEsc(team.name)+'\')">＋ Gebruiker</button>'
+        + '<button class="adm-btn-ghost" style="color:#ef4444" onclick="_admOrgDeleteTeam(\''+tid+'\',\''+_bhEsc(team.name)+'\')">✕</button>'
+        + '</span></div>'
+        + '<div class="ao-body" id="aob-team-'+tid+'" style="display:none">';
+
+      var renderU = function(u,rol){
+        return '<div class="ao-user ao-lvl3"><span>👤 '+_bhEsc(u.displayName||u.email)+'</span>'
+          + '<span class="adm-role-badge '+rol+'">'+(rol==='coordinator'?'Coördinator':'Scout')+'</span>'
+          + '<span class="ao-email">'+_bhEsc(u.email||'')+'</span>'
+          + '<button class="ao-del" onclick="_admOrgRemoveUser(\''+u._id+'\')">✕</button></div>';
+      };
+
+      if (coords.length) {
+        html += '<div class="ao-row ao-lvl3" onclick="_aoToggle(\'aob-coords-'+tid+'\')">'
+          + '<span class="ao-arr" id="aoarr-aob-coords-'+tid+'">▶</span>'
+          + '<span>🔵</span><span class="ao-lbl">Coördinatoren</span><span class="ao-meta">'+coords.length+'</span></div>'
+          + '<div class="ao-body" id="aob-coords-'+tid+'" style="display:none">'
+          + coords.map(function(u){return renderU(u,'coordinator');}).join('')+'</div>';
+      }
+      if (scouts.length) {
+        html += '<div class="ao-row ao-lvl3" onclick="_aoToggle(\'aob-scouts-'+tid+'\')">'
+          + '<span class="ao-arr" id="aoarr-aob-scouts-'+tid+'">▶</span>'
+          + '<span>🟢</span><span class="ao-lbl">Scouts</span><span class="ao-meta">'+scouts.length+'</span></div>'
+          + '<div class="ao-body" id="aob-scouts-'+tid+'" style="display:none">'
+          + scouts.map(function(u){return renderU(u,'scout');}).join('')+'</div>';
+      }
+      if (!tUsers.length) html += '<div class="ao-empty">Nog geen leden.</div>';
+      html += '</div>'; // aob-team
+    });
+
+    html += '</div></div>'; // aob-org + ao-org-card
+  });
+
+  el.innerHTML = html;
 }
+
+window._aoToggle = function(id){
+  var b=document.getElementById(id);
+  var a=document.getElementById('aoarr-'+id);
+  if(!b) return;
+  var open=b.style.display!=='none';
+  b.style.display=open?'none':'block';
+  if(a) a.textContent=open?'▶':'▼';
+};
+
 
 // ---- Org aanmaken ----
 window._admOrgNew = function() {
@@ -34007,6 +34051,25 @@ async function _admOrgUpsertUser(email, naam, role, orgId, teamId) {
       if (teamId) profiel.teamId = teamId;
       await setDoc(doc(db,'users',newUid), profiel);
       if (typeof toast==='function') toast('Account aangemaakt ✓ — tijdelijk ww: Welkom2026!');
+      // Welkomstmail sturen
+      try {
+        var orgSnap = await getDoc(doc(db,'organisaties',orgId));
+        var orgNaamMail = orgSnap.exists() ? (orgSnap.data().naam||'') : '';
+        var teamNaamMail = '';
+        if (teamId) { var tSnap2 = await getDoc(doc(db,'teams',teamId)); if(tSnap2.exists()) teamNaamMail = tSnap2.data().name||''; }
+        var rolLabel = role==='coordinator'?'Coördinator':role==='scout'?'Scout':role==='hoofd_jeugdscouting'?'Hoofd Jeugdscouting':role==='hoofd_coordinator'?'Hoofd Coördinator':'Hoofd Jeugdopleiding';
+        var mailBody = 'Hallo '+(naam||email)+',\n\nJe hebt toegang gekregen tot ScoutingHub.'
+          + (orgNaamMail ? '\n\nOrganisatie: '+orgNaamMail : '')
+          + (teamNaamMail ? '\nAfdeling/Team: '+teamNaamMail : '')
+          + '\nRol: '+rolLabel
+          + '\n\nInloggen via: https://scoutinghub.nl'
+          + '\nE-mailadres: '+email
+          + '\nTijdelijk wachtwoord: Welkom2026!'
+          + '\n\nWij raden je aan je wachtwoord te wijzigen na de eerste keer inloggen via Instellingen.'
+          + '\n\nMet sportieve groet,\nScoutingHub';
+        await fetch('/api/admin-mail-send', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ to: email, toName: naam||email, subject: 'Je ScoutingHub toegang — '+orgNaamMail, body: mailBody }) });
+      } catch(_){}
     }
   } catch(e) {
     alert('Fout bij opslaan: '+e.message);
@@ -34080,15 +34143,23 @@ function _admOrgStyles() {
   var s = document.createElement('style');
   s.id = 'adm-org-styles';
   s.textContent = `
-    .adm-org-card{background:var(--bg-1,#111827);border:1px solid var(--border,#374151);border-radius:10px;padding:16px;margin-bottom:16px}
-    .adm-org-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
-    .adm-org-naam{font-weight:700;font-size:1.05rem}
-    .adm-team-block{background:var(--bg-2,#1f2937);border-radius:8px;padding:12px;margin-bottom:10px}
-    .adm-team-hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-weight:600}
-    .adm-org-section{margin-bottom:8px}
-    .adm-org-user{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border,#374151)}
-    .adm-org-user:last-child{border-bottom:none}
-    .adm-role-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:.72rem;font-weight:700;margin-left:6px}
+    .ao-org-card{border:1px solid var(--border,#374151);border-radius:10px;margin-bottom:12px;overflow:hidden}
+    .ao-row{display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;user-select:none}
+    .ao-row:hover{background:rgba(255,255,255,.04)}
+    .ao-lvl1{background:var(--bg-1,#111827);font-weight:700;font-size:1rem}
+    .ao-lvl2{background:var(--bg-2,#1f2937);padding-left:28px;font-weight:600}
+    .ao-lvl3{background:var(--bg-3,#111827);padding-left:48px}
+    .ao-arr{font-size:.7rem;width:12px;flex-shrink:0;color:var(--text-3)}
+    .ao-lbl{flex:1}
+    .ao-meta{font-size:.75rem;color:var(--text-3)}
+    .ao-acts{display:flex;gap:4px;margin-left:auto}
+    .ao-body{border-top:1px solid var(--border,#374151)}
+    .ao-user{display:flex;align-items:center;gap:8px;padding:7px 14px 7px 64px;border-bottom:1px solid var(--border,#374151)}
+    .ao-user:last-child{border-bottom:none}
+    .ao-email{font-size:.75rem;color:var(--text-3);margin-left:4px}
+    .ao-del{margin-left:auto;background:none;border:none;color:#ef4444;cursor:pointer;font-size:.8rem;padding:2px 6px}
+    .ao-empty{padding:8px 14px 8px 64px;font-size:.82rem;color:var(--text-3)}
+    .adm-role-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:.72rem;font-weight:700;margin-left:4px}
     .adm-role-badge.hoofd{background:#7c3aed;color:#fff}
     .adm-role-badge.coordinator{background:#2563eb;color:#fff}
     .adm-role-badge.scout{background:#059669;color:#fff}

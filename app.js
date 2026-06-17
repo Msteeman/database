@@ -31653,32 +31653,42 @@ var _ADM_MB_ADDR={admin:'admin@scoutinghub.nl',contact:'contact@scoutinghub.nl',
 var _admMb={type:'admin',folder:'inbox'};
 var _admMbEl=null;
 
+// ── Mailcentrum: volledig 3-koloms client ──────────────────────────────────
+// Layout: [folders sidebar] | [berichtenlijst] | [detail / compose]
+// Alles naast elkaar zichtbaar. Detail opent rechts, niet onder de lijst.
+
 async function _admRenderMail(el){
   _admMbEl=el;
   el.innerHTML='<div class="adm-loading">Mailcentrum laden…</div>';
   await _admEnsureCore();
+  _admMbRebuild();
+}
+window._admRenderMail=_admRenderMail;
+
+function _admMbRebuild(){
+  var el=_admMbEl; if(!el) return;
   var tabs=Object.keys(_ADM_MB_ADDR).map(function(k){
     return '<button class="adm-mb-tab'+(k===_admMb.type?' adm-mb-tab-active':'')+'" onclick="_admMbSwitch(\''+k+'\')">'+_ADM_MB_ADDR[k]+'</button>';
   }).join('');
-  var sideItems=[['new','✉️ Nieuw'],['inbox','📥 Inbox'],['sent','📤 Verstuurd'],['trash','🗑️ Verwijderd']];
+  var sideItems=[['compose','✏️ Opstellen'],['inbox','📥 Inbox'],['sent','📤 Verstuurd'],['trash','🗑️ Verwijderd']];
   var side=sideItems.map(function(s){
     return '<button class="adm-mb-side'+(s[0]===_admMb.folder?' adm-mb-side-active':'')+'" onclick="_admMbNav(\''+s[0]+'\')">'+s[1]+'</button>';
   }).join('')
+    +'<hr style="border:none;border-top:1px solid var(--border,#1f2937);margin:6px 0">'
     +'<button class="adm-mb-side" onclick="_admTestMail(\''+_admMb.type+'\',this)">🧪 Testmail</button>'
     +'<a class="adm-mb-side" href="https://webmail.transip.email/" target="_blank" rel="noopener">🌐 Webmail</a>';
   el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Mailcentrum</div>'
-    +'<div class="bh-stat-note">Inbox/Verstuurd/Verwijderd via IMAP (alleen-lezen). Versturen via Resend in ScoutingHub-huisstijl, met automatische ondertekening. Vereist server-secrets IMAP_PASS_ADMIN/IMAP_PASS_CONTACT/IMAP_PASS_INFO.</div>'
-    +'<div class="adm-mailbox-app">'
-      +'<div class="adm-mailbox-tabs">'+tabs+'</div>'
-      +'<div class="adm-mailbox-body">'
-        +'<div class="adm-mailbox-side">'+side+'</div>'
-        +'<div class="adm-mailbox-main" id="adm-mb-main"></div>'
+    +'<div class="adm-mb3-wrap">'
+      +'<div class="adm-mb3-tabs">'+tabs+'</div>'
+      +'<div class="adm-mb3-body">'
+        +'<div class="adm-mb3-side">'+side+'</div>'
+        +'<div class="adm-mb3-list" id="adm-mb3-list"><div class="adm-loading">Laden…</div></div>'
+        +'<div class="adm-mb3-detail" id="adm-mb3-detail"><div class="adm-mb3-empty">← Selecteer een bericht</div></div>'
       +'</div>'
     +'</div>'
     +'<datalist id="adm-mb-contacts">'+_admMbContactOptions()+'</datalist>';
-  _admMbRenderMain();
+  _admMbLoadPane();
 }
-window._admRenderMail=_admRenderMail;
 
 function _admMbContactOptions(){
   var set={};
@@ -31687,30 +31697,39 @@ function _admMbContactOptions(){
   return Object.keys(set).sort().map(function(k){ return '<option value="'+_bhEsc(set[k])+'">'; }).join('');
 }
 
-function _admMbSwitch(type){ _admMb.type=type; _admMb.folder='inbox'; if(_admMbEl) _admRenderMail(_admMbEl); }
+function _admMbSwitch(type){ _admMb.type=type; _admMb.folder='inbox'; _admMbRebuild(); }
 window._admMbSwitch=_admMbSwitch;
 
-function _admMbNav(folder){ _admMb.folder=folder; if(_admMbEl) _admRenderMail(_admMbEl); }
+function _admMbNav(folder){ _admMb.folder=folder; _admMbRebuild(); }
 window._admMbNav=_admMbNav;
 
-function _admMbRenderMain(){
-  var main=document.getElementById('adm-mb-main');
-  if(!main) return;
-  if(_admMb.folder==='new'){ _admMbRenderCompose(main); return; }
-  _admMbLoadFolder(main,_admMb.type,_admMb.folder);
+function _admMbLoadPane(){
+  var list=document.getElementById('adm-mb3-list'); if(!list) return;
+  var detail=document.getElementById('adm-mb3-detail'); if(!detail) return;
+  if(_admMb.folder==='compose'){
+    list.innerHTML='';
+    _admMbRenderCompose(detail);
+    return;
+  }
+  detail.innerHTML='<div class="adm-mb3-empty">← Selecteer een bericht</div>';
+  _admMbLoadFolder(list, _admMb.type, _admMb.folder);
 }
 
-function _admMbRenderCompose(main){
+function _admMbRenderCompose(pane, replyTo){
   var type=_admMb.type, addr=_ADM_MB_ADDR[type];
-  main.innerHTML='<div class="adm-compose adm-compose-lg">'
-    +'<input type="email" class="adm-compose-input" id="adm-mb-to" list="adm-mb-contacts" placeholder="Aan (e-mailadres)">'
+  var toVal=replyTo?_bhEsc(replyTo):'';
+  pane.innerHTML='<div class="adm-mb3-compose">'
+    +'<div class="adm-mb3-compose-hd">Nieuw bericht — van <b>'+_bhEsc(addr)+'</b></div>'
+    +'<input type="email" class="adm-compose-input" id="adm-mb-to" list="adm-mb-contacts" placeholder="Aan (e-mailadres)" value="'+toVal+'">'
     +'<input type="text" class="adm-compose-input" id="adm-mb-subj" placeholder="Onderwerp">'
-    +'<textarea class="adm-compose-input adm-compose-msg" id="adm-mb-msg" placeholder="Bericht…" rows="12"></textarea>'
-    +'<div class="adm-mailenv">Verstuurd vanaf '+addr+' in ScoutingHub-huisstijl, met automatische ondertekening "Team ScoutingHub — '+addr+'".</div>'
-    +'<div class="adm-mailact"><button class="adm-btn-ghost adm-btn-primary" onclick="_admMbSend(this)">Versturen</button>'
-    +'<button class="adm-btn-ghost" onclick="_admMbNav(\'inbox\')">Annuleren</button></div>'
+    +'<textarea class="adm-compose-input adm-mb3-compose-msg" id="adm-mb-msg" placeholder="Bericht…"></textarea>'
+    +'<div class="adm-mailact">'
+      +'<button class="adm-btn-ghost adm-btn-primary" onclick="_admMbSend(this)">Versturen</button>'
+      +'<button class="adm-btn-ghost" onclick="_admMbNav(\'inbox\')">Annuleren</button>'
+    +'</div>'
     +'<div id="adm-mb-res"></div>'
   +'</div>';
+  var toEl=pane.querySelector('#adm-mb-to'); if(toEl&&!toVal) toEl.focus();
 }
 
 async function _admMbSend(btn){
@@ -31727,9 +31746,8 @@ async function _admMbSend(btn){
     var r=await fetch(_admBase()+'/api/admin-mail-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:_admMb.type,to:to,subject:subj,message:msg})});
     var j={};try{j=await r.json();}catch(_){}
     if(r.ok&&j&&j.ok&&j.sent){
-      if(typeof toast==='function')toast('Mail verstuurd ✓');
-      _admMb.folder='sent';
-      if(_admMbEl) _admRenderMail(_admMbEl);
+      if(typeof toast==='function') toast('Mail verstuurd ✓');
+      _admMb.folder='sent'; _admMbRebuild();
     } else {
       if(res) res.innerHTML='<div class="bh-empty">Versturen mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
       if(btn){ btn.disabled=false; btn.textContent=_o; }
@@ -31738,68 +31756,78 @@ async function _admMbSend(btn){
 }
 window._admMbSend=_admMbSend;
 
-async function _admMbLoadFolder(main, type, folder){
+async function _admMbLoadFolder(listEl, type, folder){
   var lbl=_ADM_MAILLABELS[folder]||'Map';
-  main.innerHTML='<div class="adm-loading">'+lbl+' laden…</div>';
+  listEl.innerHTML='<div class="adm-loading">'+lbl+' laden…</div>';
   try{
-    var tk=await _admToken(); if(!tk){ main.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
-    var r=await fetch(_admBase()+'/api/admin-mail-inbox',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,folder:folder,limit:20})});
+    var tk=await _admToken(); if(!tk){ listEl.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
+    var r=await fetch(_admBase()+'/api/admin-mail-inbox',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,folder:folder,limit:50})});
     var j={};try{j=await r.json();}catch(_){}
     if(!(r.ok&&j&&j.ok)){
-      main.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
+      listEl.innerHTML='<div class="bh-empty">'+_bhEsc(lbl)+' laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
       return;
     }
     var msgs=j.messages||[];
     var fLabel=j.folder||lbl;
-    if(!msgs.length){ main.innerHTML='<div class="bh-empty">'+fLabel+' is leeg (totaal: '+(j.count||0)+').</div>'; return; }
-    var rows=msgs.map(function(m){
-      var dt=m.date||''; try{ var d=new Date(m.date); if(!isNaN(d.getTime())) dt=d.toLocaleString('nl-NL'); }catch(_){}
-      var who=(folder==='sent')?('Aan: '+(m.to||'—')):(m.from||'—');
-      return '<div class="adm-mail-row adm-mail-row-lg'+(m.seen?'':' adm-mail-unread')+' adm-mail-row-clickable" onclick="_admMbOpenMail(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\','+m.seq+',this)">'
-        +'<div class="adm-mail-from">'+_bhEsc(who)+'</div>'
-        +'<div class="adm-mail-subj">'+_bhEsc(m.subject||'(geen onderwerp)')+'</div>'
-        +'<div class="adm-mail-date">'+_bhEsc(dt)+'</div></div>';
-    }).join('');
-    main.innerHTML='<div class="bh-stat-note" style="margin:8px 0">Laatste '+msgs.length+' van '+(j.count||0)+' berichten in '+fLabel+' — klik om te openen.</div>'
-      +'<div class="adm-mailinbox adm-mailinbox-lg" id="adm-mb-list">'+rows+'</div>'
-      +'<div id="adm-mb-detail"></div>';
-  }catch(_){ main.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt.</div>'; }
+    if(!msgs.length){ listEl.innerHTML='<div class="bh-empty">'+_bhEsc(fLabel)+' is leeg.</div>'; return; }
+    listEl.innerHTML='<div class="adm-mb3-list-hd">'+_bhEsc(fLabel)+' <span class="adm-mb3-count">'+msgs.length+(j.count&&j.count>msgs.length?'/'+j.count:'')+'</span></div>'
+      +msgs.map(function(m){
+        var dt=''; try{ var d=new Date(m.date); if(!isNaN(d.getTime())) dt=d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }catch(_){}
+        var who=(folder==='sent')?_bhEsc(m.to||'—'):_bhEsc(m.from||'—');
+        return '<div class="adm-mb3-row'+(m.seen?'':' adm-mb3-unread')+'" data-seq="'+m.seq+'" onclick="_admMbOpenMail(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\','+m.seq+',this)">'
+          +'<div class="adm-mb3-row-from">'+who+'</div>'
+          +'<div class="adm-mb3-row-subj">'+_bhEsc(m.subject||'(geen onderwerp)')+'</div>'
+          +'<div class="adm-mb3-row-date">'+_bhEsc(dt)+'</div>'
+        +'</div>';
+      }).join('');
+  }catch(_){ listEl.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt.</div>'; }
 }
 
 async function _admMbOpenMail(type, folder, seq, rowEl){
-  // Markeer actieve rij
-  var list=document.getElementById('adm-mb-list');
-  if(list) list.querySelectorAll('.adm-mail-row-active').forEach(function(r){ r.classList.remove('adm-mail-row-active'); });
-  if(rowEl) rowEl.classList.add('adm-mail-row-active');
-
-  var detail=document.getElementById('adm-mb-detail');
-  if(!detail) return;
-  detail.innerHTML='<div class="adm-mail-detail"><div class="adm-loading">Bericht laden…</div></div>';
+  var listEl=document.getElementById('adm-mb3-list');
+  if(listEl) listEl.querySelectorAll('.adm-mb3-row-active').forEach(function(r){ r.classList.remove('adm-mb3-row-active'); });
+  if(rowEl) rowEl.classList.add('adm-mb3-row-active');
+  var detail=document.getElementById('adm-mb3-detail'); if(!detail) return;
+  detail.innerHTML='<div class="adm-loading">Bericht laden…</div>';
   try{
-    var tk=await _admToken(); if(!tk){ detail.innerHTML='<div class="adm-mail-detail"><div class="bh-empty">Niet ingelogd.</div></div>'; return; }
+    var tk=await _admToken(); if(!tk){ detail.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
     var r=await fetch(_admBase()+'/api/admin-mail-read',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,folder:folder,seq:seq})});
     var j={};try{j=await r.json();}catch(_){}
-    if(!(r.ok&&j&&j.ok)){
-      detail.innerHTML='<div class="adm-mail-detail"><div class="bh-empty">Bericht laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div></div>';
-      return;
-    }
+    if(!(r.ok&&j&&j.ok)){ detail.innerHTML='<div class="bh-empty">Laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>'; return; }
     var dt=''; try{ var d=new Date(j.date); if(!isNaN(d.getTime())) dt=d.toLocaleString('nl-NL'); }catch(_){ dt=j.date||''; }
-    detail.innerHTML='<div class="adm-mail-detail">'
-      +'<div class="adm-mail-detail-hd">'
-        +'<div class="adm-mail-detail-subj">'+_bhEsc(j.subject||'(geen onderwerp)')+'</div>'
-        +'<div class="adm-mail-detail-meta">'
+    var fromAddr=''; try{ fromAddr=j.from.replace(/.*<([^>]+)>.*/,'$1')||j.from; }catch(_){ fromAddr=j.from||''; }
+    detail.innerHTML='<div class="adm-mb3-detail-inner">'
+      +'<div class="adm-mb3-detail-hd">'
+        +'<div class="adm-mb3-detail-subj">'+_bhEsc(j.subject||'(geen onderwerp)')+'</div>'
+        +'<div class="adm-mb3-detail-meta">'
           +(j.from?'<span><b>Van:</b> '+_bhEsc(j.from)+'</span>':'')
           +(j.to?'<span><b>Aan:</b> '+_bhEsc(j.to)+'</span>':'')
           +(dt?'<span><b>Datum:</b> '+_bhEsc(dt)+'</span>':'')
         +'</div>'
-        +'<button class="adm-btn-ghost" style="margin-top:8px;font-size:12px" onclick="document.getElementById(\'adm-mb-detail\').innerHTML=\'\'">✕ Sluiten</button>'
+        +'<div class="adm-mb3-detail-acts">'
+          +'<button class="adm-btn-ghost adm-btn-primary" onclick="_admMbReply(\''+_bhEsc(fromAddr)+'\',\''+_bhEsc(j.subject||'')+'\')">↩ Beantwoorden</button>'
+          +'<button class="adm-btn-ghost" onclick="_admMbNav(\'compose\')">✏️ Nieuw</button>'
+        +'</div>'
       +'</div>'
-      +'<pre class="adm-mail-detail-body">'+_bhEsc(j.text||'(leeg bericht)')+'</pre>'
+      +'<pre class="adm-mb3-detail-body">'+_bhEsc(j.text||'(leeg bericht)')+'</pre>'
     +'</div>';
-    detail.scrollIntoView({behavior:'smooth',block:'nearest'});
-  }catch(_){ detail.innerHTML='<div class="adm-mail-detail"><div class="bh-empty">Bericht laden mislukt.</div></div>'; }
+  }catch(_){ detail.innerHTML='<div class="bh-empty">Bericht laden mislukt.</div>'; }
 }
 window._admMbOpenMail=_admMbOpenMail;
+
+function _admMbReply(fromAddr, subject){
+  _admMb.folder='compose';
+  var el=_admMbEl; if(!el) return;
+  // Rebuild met compose open, prefill To + Subject
+  _admMbRebuild();
+  setTimeout(function(){
+    var detail=document.getElementById('adm-mb3-detail'); if(!detail) return;
+    _admMbRenderCompose(detail, fromAddr);
+    var subEl=detail.querySelector('#adm-mb-subj');
+    if(subEl) subEl.value=(subject&&!/^Re:/i.test(subject)?'Re: ':'')+subject;
+  }, 50);
+}
+window._admMbReply=_admMbReply;
 
 async function _admTestMail(type, btn){
   var _o='';
@@ -31891,7 +31919,7 @@ async function _admRenderSettings(el){
 }
 
 var _admFbCache=[], _admFbStatus='';
-var _ADM_FB_LABELS={ new:['Nieuw','bh-b-blue'], in_progress:['In behandeling','bh-b-amber'], resolved:['Opgelost','bh-b-green'], no_action:['Geen actie','bh-b-grey'] };
+var _ADM_FB_LABELS={ open:['Open','bh-b-blue'], in_progress:['In behandeling','bh-b-amber'], resolved:['Afgehandeld','bh-b-green'], no_action:['Geen actie','bh-b-grey'] };
 async function _admRenderFeedback(el){
   el.innerHTML='<div class="adm-loading">Feedback laden…</div>';
   try{
@@ -31906,17 +31934,19 @@ async function _admRenderFeedback(el){
 }
 function _admFbRenderList(el){
   var all=_admFbCache||[];
-  function cnt(st){ return all.filter(function(f){return (f.status||'new')===st;}).length; }
+  function _fbSt(f){ var s=f.status||'open'; return (s==='new')?'open':s; }
+  function cnt(st){ return all.filter(function(f){ return _fbSt(f)===st; }).length; }
   function chip(val,lab){ return '<button class="bh-chip'+((_admFbStatus===val)?' active':'')+'" onclick="_admFbFilter(\''+val+'\')">'+lab+'</button>'; }
   var chips='<div class="bh-chips"><span class="bh-chips-l">Status</span>'
     +'<button class="bh-chip'+(_admFbStatus===''?' active':'')+'" onclick="_admFbFilter(\'\')">Alle ('+all.length+')</button>'
-    +chip('new','Nieuw ('+cnt('new')+')')+chip('in_progress','In behandeling ('+cnt('in_progress')+')')
-    +chip('resolved','Opgelost ('+cnt('resolved')+')')+chip('no_action','Geen actie ('+cnt('no_action')+')')+'</div>';
-  var rows=all.filter(function(f){ return !_admFbStatus || (f.status||'new')===_admFbStatus; });
+    +chip('open','Open ('+cnt('open')+')')+chip('in_progress','In behandeling ('+cnt('in_progress')+')')
+    +chip('resolved','Afgehandeld ('+cnt('resolved')+')')+chip('no_action','Geen actie ('+cnt('no_action')+')')+'</div>';
+  var rows=all.filter(function(f){ return !_admFbStatus || _fbSt(f)===_admFbStatus; });
   var capped=rows.slice(0,100);
   var cards=capped.map(function(f){
-    var lab=_ADM_FB_LABELS[f.status||'new']||_ADM_FB_LABELS.new;
-    var opts=['new','in_progress','resolved','no_action'].map(function(s){ return '<option value="'+s+'"'+(((f.status||'new')===s)?' selected':'')+'>'+_ADM_FB_LABELS[s][0]+'</option>'; }).join('');
+    var st=_fbSt(f);
+    var lab=_ADM_FB_LABELS[st]||_ADM_FB_LABELS.open;
+    var opts=['open','in_progress','resolved','no_action'].map(function(s){ return '<option value="'+s+'"'+((st===s)?' selected':'')+'>'+_ADM_FB_LABELS[s][0]+'</option>'; }).join('');
     return '<div class="adm-fb-card">'
       +'<div class="adm-fb-top"><div><b>'+(_bhEsc(f.name)||_bhEsc(f.email)||'—')+'</b> <span class="adm-fb-meta">'+(_bhEsc(f.email)||'')+(f.role?(' · '+_bhEsc(f.role)):'')+(f.teamName?(' · '+_bhEsc(f.teamName)):'')+'</span></div>'
         +'<span class="bh-badge '+lab[1]+'">'+lab[0]+'</span></div>'

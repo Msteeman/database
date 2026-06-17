@@ -1636,6 +1636,17 @@ async function handleFeedback(body, env, request){
   let saToken; try { saToken = await getServiceAccountToken(env); } catch(_){ saToken = null; }
   if(saToken){ try { const u = await saFsGet(saToken, 'users/'+caller.uid); if(u){ name = u.displayName||u.name||''; role = u.role||''; teamName = u.teamName||''; } } catch(_){} }
   const mailSent = await sendFeedbackMail(env, { name, email: caller.email, uid: caller.uid, role, teamName, route, ua, text, attachment });
+  // Opslaan in Firestore → admin-panel kan feedback tonen
+  if(saToken){
+    try {
+      await saFsCreate(saToken, 'feedback', {
+        name, email: caller.email, uid: caller.uid, role, teamName,
+        route, ua, text: text.slice(0, 4000),
+        status: 'open',
+        createdAt: new Date().toISOString()
+      });
+    } catch(_){}
+  }
   return json({ ok:true, mailSent });
 }
 

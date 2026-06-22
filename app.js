@@ -15602,6 +15602,8 @@ function renderDetailOverview(p){
       </div>
     </div>
 
+    <div id="dtl-carriere-card"></div>
+
     <div class="dtl-kpi-grid" id="dtl-kpi-grid"></div>
 
     <div id="dtl-obs-card"></div>
@@ -34392,7 +34394,164 @@ async function _toRender(){
     ['wedstrijd','speler','scouts'].forEach(function(k){
       var el=document.getElementById('to-empty-'+k);
       if(el) el.textContent = 'Fout bij laden: ' + (err.message||err);
-    });
-  }
+    })
+/* ── v487-carriere-ux ── */
+function _shGetSeizoen(date){
+  const d = date ? new Date(date) : new Date();
+  const grens = new Date(d.getFullYear(), 6, 15); // 15 juli
+  const jaar = d >= grens ? d.getFullYear() : d.getFullYear() - 1;
+  return `${jaar}-${jaar+1}`;
 }
-window._toRender = _toRender;
+function _shGetPlayerPeriods(pid){
+  try { return JSON.parse(localStorage.getItem('sh_carriere_'+pid)||'[]'); } catch(_){ return []; }
+}
+function _shSavePlayerPeriods(pid, arr){
+  localStorage.setItem('sh_carriere_'+pid, JSON.stringify(arr));
+}
+function _shActivePeriod(arr){
+  return arr.find(function(x){ return !x.eindDatum; }) || null;
+}
+
+function _shRenderCarriereKaart(p){
+  const wrap = document.getElementById('dtl-carriere-card');
+  if(!wrap) return;
+  const pid = p.id;
+  let periods = _shGetPlayerPeriods(pid);
+
+  // Seed: als nog leeg, maak 1 periode op basis van huidige club/elftal
+  if(!periods.length && (p.club || p.elftal)){
+    periods = [{
+      id: Date.now(),
+      club: p.club || '',
+      elftal: p.elftal || '',
+      seizoen: _shGetSeizoen(),
+      startDatum: new Date().toISOString().slice(0,10),
+      eindDatum: null
+    }];
+    _shSavePlayerPeriods(pid, periods);
+  }
+
+  const active = _shActivePeriod(periods);
+  const seizoenNu = _shGetSeizoen();
+
+  // Timeline HTML
+  const timelineHtml = periods.slice().reverse().map(function(per, i){
+    const isActief = !per.eindDatum;
+    const dotClass = isActief ? 'carriere-dot active' : 'carriere-dot';
+    const transferTag = per.transfer ? '<span class="carriere-transfer-tag">transfer</span>' : '';
+    return `
+      <div class="carriere-seizoen">
+        <div class="${dotClass}"></div>
+        <div class="carriere-vline"></div>
+        <div class="carriere-content">
+          <div class="carriere-szn-label">${escapeHtml(per.seizoen||'—')}${transferTag}</div>
+          <div class="carriere-szn-club">${escapeHtml(per.club||'—')}</div>
+          <div class="carriere-szn-elftal">${per.elftal ? '<span class="carriere-szn-badge">'+escapeHtml(per.elftal)+'</span>' : ''}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  wrap.innerHTML = `
+    <div class="card compare-card carriere-card" style="margin-top:12px;">
+      <div class="compare-card-title" style="display:flex;justify-content:space-between;align-items:center;">
+        <span>📋 Club &amp; carrière</span>
+        <div class="carriere-actions">
+          <button class="carriere-btn carriere-btn-primary" id="sh-carriere-edit-btn">✏️ Aanpassen</button>
+          <button class="carriere-btn" id="sh-carriere-transfer-btn">🔄 Transfer</button>
+        </div>
+      </div>
+      <div class="carriere-timeline">${timelineHtml || '<div style="padding:10px;color:var(--text-3);font-size:13px;">Nog geen periodes.</div>'}</div>
+    </div>`;
+
+  document.getElementById('sh-carriere-edit-btn')?.addEventListener('click', function(){
+    _shOpenTransferModal(p, false);
+  });
+  document.getElementById('sh-carriere-transfer-btn')?.addEventListener('click', function(){
+    _shOpenTransferModal(p, true);
+  });
+}
+
+function _shCheckSeizoenPopup(p){
+  const pid = p.id;
+  const seizoenNu = _shGetSeizoen();
+  const key = 'sh_szn_seen_'+pid+'_'+seizoenNu;
+  if(localStorage.getItem(key)) return;
+
+  const periods = _shGetPlayerPeriods(pid);
+  const active = _shActivePeriod(periods);
+  if(!active) return;
+
+  // Toon popup alleen als seizoen net begonnen is (binnen 60 dagen na 15 juli)
+  const nu = new Date();
+  const grens = new Date(nu.getFullYear(), 6, 15);
+  const diff = (nu - grens) / 86400000;
+  if(diff < 0 || diff > 60) return;
+
+  const backdrop = document.getElementById('sh-szn-popup-backdrop');
+  if(!backdrop) return;
+  document.getElementById('sh-szn-popup-naam').textContent = p.naam || '—';
+  document.getElementById('sh-szn-popup-info').textContent = (active.club||'—') + (active.elftal ? ' · '+active.elftal : '');
+  document.getElementById('sh-szn-popup-sub').textContent = 'Klopt de clubinfo nog voor seizoen '+seizoenNu+'?';
+  backdrop.style.display = 'flex';
+
+  const close = function(){ backdrop.style.display = 'none'; localStorage.setItem(key,'1'); };
+  document.getElementById('sh-szn-btn-yes')?.addEventListener('click', function(){ close(); });
+  document.getElementById('sh-szn-btn-no')?.addEventListener('click', function(){ close(); _shOpenTransferModal(p, true); });
+}
+
+function _shOpenTransferModal(p, isNewSeason){
+  const pid = p.id;
+  const periods = _shGetPlayerPeriods(pid);
+  const active = _shActivePeriod(periods);
+  const backdrop = document.getElementById('sh-transfer-backdrop');
+  if(!backdrop) return;
+
+  document.getElementById('sh-transfer-sub').textContent = isNewSeason
+    ? 'Nieuw seizoen — vul nieuwe situatie in'
+    : 'Pas huidige club/team aan';
+  document.getElementById('sh-transfer-from').textContent = active
+    ? (active.club||'—') + (active.elftal ? ' · '+active.elftal : '')
+    : '—';
+  document.getElementById('sh-transfer-club').value = '';
+  document.getElementById('sh-transfer-elftal').value = '';
+  document.getElementById('sh-transfer-datum').value = new Date().toISOString().slice(0,10);
+
+  backdrop.style.display = 'flex';
+
+  const cancel = document.getElementById('sh-transfer-cancel');
+  const save = document.getElementById('sh-transfer-save');
+  const close = function(){ backdrop.style.display = 'none'; };
+
+  const newCancel = cancel.cloneNode(true);
+  cancel.parentNode.replaceChild(newCancel, cancel);
+  const newSave = save.cloneNode(true);
+  save.parentNode.replaceChild(newSave, save);
+
+  newCancel.addEventListener('click', close);
+  newSave.addEventListener('click', function(){
+    const nieuweClub = document.getElementById('sh-transfer-club').value.trim();
+    const nieuwElftal = document.getElementById('sh-transfer-elftal').value.trim();
+    const datum = document.getElementById('sh-transfer-datum').value || new Date().toISOString().slice(0,10);
+    if(!nieuweClub){ document.getElementById('sh-transfer-club').focus(); return; }
+
+    // Sluit actieve periode af
+    if(active){ active.eindDatum = datum; }
+
+    // Voeg nieuwe periode toe
+    periods.push({
+      id: Date.now(),
+      club: nieuweClub,
+      elftal: nieuwElftal,
+      seizoen: _shGetSeizoen(datum),
+      startDatum: datum,
+      eindDatum: null,
+      transfer: isNewSeason
+    });
+    _shSavePlayerPeriods(pid, periods);
+    close();
+    _shRenderCarriereKaart(p);
+  });
+}
+
+window._shRenderCarriereKaart = _shRenderCarriereKaart;
+window._shCheckSeizoenPopup = _shCheckSeizoenPopup;

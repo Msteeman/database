@@ -14059,3 +14059,21 @@ tr.db-row-report td:first-child { border-left: 2px solid rgba(34,197,94,0.55); }
   font-size: 11.5px;
   padding: 4px 9px;
 }
+
+/* ── v473-TEXTAREA: geen scrollbalk/resize, betere hoogte ─────────────── */
+
+/* Nooit een resize-handle op textareas (hele site) */
+textarea { resize: none !important; }
+
+/* Subcriteria-note: minder smal */
+#report-form .subcriteria-note {
+  min-height: 46px;
+  height: 46px;
+  overflow: hidden;
+}
+
+/* Hoofdcategorie toelichting ook overflow hidden */
+#report-form .field textarea {
+  overflow: hidden;
+  min-height: 52px;
+}

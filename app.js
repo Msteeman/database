@@ -10287,7 +10287,7 @@ function renderDashboard(){
         <p>Zodra je rapporten invult verschijnen hier visualisaties: verdeling, open posities, top talenten, advies-mix en positiedekking.</p>
         <button class="btn btn-primary" data-go="report">+ Eerste rapport maken</button>
       </div>`;
-    empty.querySelector('[data-go]').addEventListener('click', ()=> go('report'));
+    empty.querySelector('[data-go]').addEventListener('click', ()=> { window.__shReportSource = 'database'; go('report'); });
     renderGeo();
     return;
   }
@@ -11366,8 +11366,8 @@ function buildDbPaginator(totalItems, page, pageSize, position){
 }
 function applyFilters(){
   const allPlayers = loadPlayers();
-  // Concept-records nooit tonen in spelersdatabase — alleen na indienen (concept:false)
-  let players = allPlayers.filter(p => !_shPlayerIsConcept(p));
+  // Concept-records: wel tonen als aangemaakt vanuit spelersdatabase (_source='database')
+  let players = allPlayers.filter(p => !_shPlayerIsConcept(p) || (p.concept === true && p._source === 'database'));
   // Verrijk obs-spelers met datum uit programmaCache als datum leeg is
   if(typeof programmaCache !== 'undefined'){
     players = players.map(p => {
@@ -17504,6 +17504,7 @@ async function submitReport(e){
     potentieel_niveau: pot,
     datum: $('#f-w-datum').value || todayISO(),
     concept: (__mode === 'draft'),
+    _source: (__mode === 'draft' && window.__shReportSource === 'database') ? 'database' : (_existRep._source || null),
     // BATCH 1 / 1B — "niet gerapporteerd"-status meebewaren
     niet_gerapporteerd: _ngChecked,
     niet_gerapporteerd_reden: _ngChecked ? _ngReden : '',
@@ -17549,6 +17550,7 @@ async function submitReport(e){
     }
     // s35ca-3: toast tekst hangt af van mode
     if(__mode === 'draft'){
+      window.__shReportSource = null;
       toast(isEdit ? 'Concept bijgewerkt' : 'Concept opgeslagen');
       setDirty(false);
       resetReportForm();
@@ -23524,7 +23526,10 @@ function initApp(){
   const mtHome = $('#mt-home');
   if(mtHome) mtHome.addEventListener('click', ()=> go('dashboard'));
   $$('[data-go]').forEach(b=>{
-    b.addEventListener('click', ()=> go(b.dataset.go));
+    b.addEventListener('click', ()=> {
+      if(b.dataset.go === 'report') window.__shReportSource = (currentView === 'database') ? 'database' : null;
+      go(b.dataset.go);
+    });
   });
   $('#logout-btn').addEventListener('click', ()=> doLogout(false));
 

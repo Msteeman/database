@@ -13862,3 +13862,98 @@ tr.db-row-report td:first-child { border-left: 2px solid rgba(34,197,94,0.55); }
 .is-admin .bh-org-av{ background:#7c3aed; }
 .bh-org-nm{ font-size:14px; font-weight:600; color:var(--text,#e8edf5); }
 .bh-org-rl{ font-size:11px; color:var(--text-3,#9aa6ba); margin-top:2px; }
+
+/* ── v471-COMPACT: spelersrapport rustiger & compacter ───────────────────────
+   Doel: minder scrollen, minder visuele drukte, professioneel rapport-gevoel.
+   Labels blijven gedempte grijs (geen wit).
+   ─────────────────────────────────────────────────────────────────────────── */
+
+/* 1 — Grade-knoppen kleiner (was sideline-maat: 56px/20px) */
+.grade-pick {
+  padding: 9px 0;
+  font-size: 15px;
+  font-weight: 700;
+  min-height: 38px;
+}
+
+/* 2 — Form-secties minder tussenruimte */
+#report-form .form-section {
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+}
+
+/* 3 — Sectietitel iets zachter (minder schreeuwerig) */
+#report-form .form-section-title {
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+  opacity: .85;
+}
+
+/* 4 — Criteria-blok zonder zware card: geen aparte achtergrond/border */
+#report-form .criteria-block {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border, #2b374c);
+  border-radius: 0;
+  padding: 10px 0;
+  margin-bottom: 0;
+}
+#report-form .criteria-block:last-of-type { border-bottom: none; }
+#report-form .criteria-block-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text, #e8edf5);
+  margin-bottom: 3px;
+}
+#report-form .criteria-block-help {
+  font-size: 11px;
+  color: var(--text-3, #9aa6ba);
+  margin-bottom: 8px;
+}
+
+/* 5 — Subcriteria (Explosiviteit/Sprinten/Duelleren/Wendbaarheid):
+         label + ABCD op één rij, toelichting eronder als smalle balk */
+#report-form .subcriteria-row {
+  display: grid;
+  grid-template-columns: 110px 1fr;
+  grid-template-rows: auto auto;
+  gap: 5px 10px;
+  align-items: center;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--border, #2b374c);
+  border-radius: 0;
+  padding: 8px 0;
+}
+#report-form .subcriteria-row:last-child { border-bottom: none; }
+#report-form .subcriteria-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2, #aab6c9);
+  grid-column: 1;
+  grid-row: 1;
+}
+#report-form .subcriteria-row .grade-picker {
+  grid-column: 2;
+  grid-row: 1;
+}
+#report-form .subcriteria-note {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-height: 30px;
+  height: 30px;
+  resize: vertical;
+}
+
+/* 6 — Toelichting textareas in hoofdcategorieën kleiner */
+#report-form .field textarea { min-height: 48px; }
+
+/* 7 — Field-labels iets kleiner letterafstand */
+#report-form .field label {
+  font-size: 10.5px;
+  letter-spacing: .6px;
+}
+
+/* 8 — Minder ruimte tussen field-rows */
+#report-form .field-row { margin-bottom: 8px; }

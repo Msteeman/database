@@ -11423,6 +11423,10 @@ function applyFilters(){
     filtered.sort((a,b)=> (b.__fuzzy||0) - (a.__fuzzy||0));
   } else
   filtered.sort((a,b)=>{
+    // Database-concepten altijd bovenaan
+    const ac = (a.concept===true && a._source==='database') ? 1 : 0;
+    const bc = (b.concept===true && b._source==='database') ? 1 : 0;
+    if(ac !== bc) return bc - ac;
     let av = a[sortKey], bv = b[sortKey];
     if(sortKey === 'datum'){
       // obs: gebruik wedstrijd_datum als datum leeg is
@@ -11567,7 +11571,8 @@ function applyFilters(){
   } catch(_){}
   const draftHtml = _draftParts.join('');
   // s35ao: draftHtml naar eigen slot boven filters
-  { const slot = document.getElementById('db-draft-slot'); if(slot) slot.innerHTML = draftHtml; }
+  // Wedstrijd-concepten NIET tonen in spelersdatabase (horen bij Wedstrijden tab)
+  { const slot = document.getElementById('db-draft-slot'); if(slot) slot.innerHTML = ''; }
   if(!filtered.length){
     const _sugg = q ? _shFuzzySuggestion(q, players) : '';
     if(q){
@@ -15097,6 +15102,12 @@ function openDetail(id, opts){
   const players = loadPlayers();
   const p = players.find(x=>x.id===id);
   if(!p) return;
+  // Concept vanuit spelersdatabase -> formulier hervatten, niet detail
+  if(p.concept === true && p._source === 'database'){
+    go('report');
+    setTimeout(() => { try { window.__shEditConceptId = id; loadIntoForm(p); } catch(_){} }, 150);
+    return;
+  }
   currentPlayerId = id;
   currentReportSelection = (opts && opts.reportId) ? opts.reportId : null;
   // BATCH 1 / 1B — vlag: direct het volledige rapport tonen (sla het overzicht/

@@ -16564,7 +16564,7 @@ function renderDetailTrend(p){
           }).join('')}</tbody>
         </table>
       </div>
-    </div>\`;"
+    </div>`;
 
 }
 

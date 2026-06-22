@@ -4013,5 +4013,51 @@ algemeen:</textarea>
   </div>
 </div>
 
+<!-- ── SEIZOEN POPUP ── -->
+<div id="sh-szn-popup-backdrop" class="sh-szn-popup-backdrop" style="display:none;" role="dialog" aria-modal="true">
+  <div class="sh-szn-popup">
+    <div class="sh-szn-popup-icon">🗓️</div>
+    <div class="sh-szn-popup-title">Nieuw seizoen gestart</div>
+    <div class="sh-szn-popup-sub" id="sh-szn-popup-sub">Klopt de clubinfo nog voor dit seizoen?</div>
+    <div class="sh-szn-popup-player">
+      <div class="sh-szn-popup-player-name" id="sh-szn-popup-naam">—</div>
+      <div class="sh-szn-popup-player-info" id="sh-szn-popup-info">—</div>
+    </div>
+    <div class="sh-szn-popup-btns">
+      <button class="sh-szn-popup-btn-yes" id="sh-szn-btn-yes">✓ Ja, klopt nog steeds</button>
+      <button class="sh-szn-popup-btn-no" id="sh-szn-btn-no">✏️ Nee, club/team gewijzigd</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TRANSFER MODAL ── -->
+<div id="sh-transfer-backdrop" class="sh-transfer-modal-backdrop" style="display:none;" role="dialog" aria-modal="true">
+  <div class="sh-transfer-modal">
+    <div class="sh-transfer-title">🔄 Transfer registreren</div>
+    <div class="sh-transfer-sub" id="sh-transfer-sub">Vul de nieuwe situatie in</div>
+    <div class="sh-transfer-field">
+      <div class="sh-transfer-label">Van</div>
+      <div class="sh-transfer-from" id="sh-transfer-from">—</div>
+    </div>
+    <div class="sh-transfer-arrow">↓</div>
+    <div class="sh-transfer-field">
+      <div class="sh-transfer-label">Nieuwe club</div>
+      <input class="sh-transfer-input" id="sh-transfer-club" type="text" placeholder="bijv. PSV" autocomplete="off"/>
+    </div>
+    <div class="sh-transfer-field">
+      <div class="sh-transfer-label">Nieuw elftal</div>
+      <input class="sh-transfer-input" id="sh-transfer-elftal" type="text" placeholder="bijv. O.16-1" autocomplete="off"/>
+    </div>
+    <div class="sh-transfer-field">
+      <div class="sh-transfer-label">Transferdatum</div>
+      <input class="sh-transfer-input" id="sh-transfer-datum" type="date"/>
+    </div>
+    <div class="sh-transfer-btns">
+      <button class="sh-transfer-btn-cancel" id="sh-transfer-cancel">Annuleren</button>
+      <button class="sh-transfer-btn-save" id="sh-transfer-save">Opslaan</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>

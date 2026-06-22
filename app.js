@@ -15703,6 +15703,8 @@ function renderDetailOverview(p){
   renderDetailPizza(vp);
   renderDetailBars(vp);
   renderDetailTrend(p);
+  _shRenderCarriereKaart(p);
+  _shCheckSeizoenPopup(p);
   document.getElementById('dtl-back-prev')?.addEventListener('click', () => go(previousViewBeforePlayer || 'database'));
   // Vergelijk-knop: toevoegen/verwijderen
   const _dtlCmpToggle = document.getElementById('dtl-cmp-toggle');

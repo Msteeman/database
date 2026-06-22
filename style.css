@@ -14165,3 +14165,62 @@ tr.db-row-concept td:first-child {
 .lp-features-4col { grid-template-columns: repeat(4, 1fr) !important; }
 @media (max-width:900px) { .lp-features-4col { grid-template-columns: repeat(2, 1fr) !important; } .lp-duo-media { grid-template-columns:1fr; } }
 @media (max-width:560px) { .lp-features-4col { grid-template-columns: 1fr !important; } }
+
+/* ── v487-carriere-ux ── */
+/* Carrière kaart */
+.carriere-card { background:var(--panel,#111722); border:1px solid var(--border,#232d40); border-radius:12px; padding:16px; margin-top:16px; }
+.carriere-card-title { font-size:14px; font-weight:700; color:var(--text,#e8edf5); margin-bottom:14px; display:flex; align-items:center; justify-content:space-between; }
+.carriere-card-title span { display:flex; align-items:center; gap:6px; }
+.carriere-btn { background:rgba(255,255,255,.07); border:1px solid var(--border,#232d40); border-radius:8px; color:var(--text-2,#9aa8bd); font-size:12px; font-weight:600; padding:5px 11px; cursor:pointer; transition:background .15s; }
+.carriere-btn:hover { background:rgba(255,255,255,.13); }
+.carriere-btn-primary { background:rgba(59,130,246,.18); border-color:rgba(59,130,246,.4); color:#60a5fa; }
+.carriere-btn-primary:hover { background:rgba(59,130,246,.28); }
+
+/* Tijdlijn */
+.carriere-timeline { display:flex; flex-direction:column; gap:0; }
+.carriere-seizoen { display:flex; gap:0; align-items:stretch; }
+.carriere-line-col { display:flex; flex-direction:column; align-items:center; width:28px; flex-shrink:0; }
+.carriere-dot { width:10px; height:10px; border-radius:50%; background:var(--border-2,#374151); border:2px solid var(--border,#232d40); flex-shrink:0; margin-top:4px; }
+.carriere-dot.active { background:#60a5fa; border-color:#60a5fa; box-shadow:0 0 0 3px rgba(96,165,250,.2); }
+.carriere-dot.transfer { background:#f59e0b; border-color:#f59e0b; }
+.carriere-vline { width:2px; background:var(--border,#232d40); flex:1; min-height:8px; }
+.carriere-content { flex:1; padding:0 0 16px 10px; }
+.carriere-seizoen:last-child .carriere-vline { display:none; }
+.carriere-szn-label { font-size:11px; font-weight:700; color:var(--text-3,#6b7280); text-transform:uppercase; letter-spacing:.5px; margin-bottom:3px; }
+.carriere-szn-club { font-size:14px; font-weight:700; color:var(--text,#e8edf5); }
+.carriere-szn-elftal { font-size:12px; color:var(--text-2,#9aa8bd); margin-bottom:4px; }
+.carriere-szn-meta { font-size:11.5px; color:var(--text-3,#6b7280); }
+.carriere-szn-badge { display:inline-block; font-size:10.5px; font-weight:700; padding:2px 8px; border-radius:20px; margin-left:6px; background:rgba(96,165,250,.15); color:#60a5fa; border:1px solid rgba(96,165,250,.3); }
+.carriere-transfer-tag { display:inline-flex; align-items:center; gap:4px; font-size:11px; color:#f59e0b; background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.3); border-radius:6px; padding:2px 8px; margin-top:4px; }
+.carriere-actions { display:flex; gap:8px; margin-top:12px; }
+
+/* Seizoen popup */
+.sh-szn-popup-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:3100; display:flex; align-items:center; justify-content:center; padding:16px; }
+.sh-szn-popup { background:var(--bg-2,#0f1623); border:1px solid var(--border,#232d40); border-radius:16px; padding:24px; max-width:400px; width:100%; box-shadow:0 24px 60px rgba(0,0,0,.6); }
+.sh-szn-popup-icon { font-size:32px; text-align:center; margin-bottom:10px; }
+.sh-szn-popup-title { font-size:17px; font-weight:800; color:var(--text,#e8edf5); text-align:center; margin-bottom:6px; }
+.sh-szn-popup-sub { font-size:13px; color:var(--text-2,#9aa8bd); text-align:center; margin-bottom:18px; line-height:1.5; }
+.sh-szn-popup-player { background:rgba(255,255,255,.05); border:1px solid var(--border,#232d40); border-radius:10px; padding:12px 14px; margin-bottom:18px; }
+.sh-szn-popup-player-name { font-size:15px; font-weight:700; color:var(--text,#e8edf5); margin-bottom:4px; }
+.sh-szn-popup-player-info { font-size:13px; color:var(--text-2,#9aa8bd); }
+.sh-szn-popup-btns { display:flex; flex-direction:column; gap:8px; }
+.sh-szn-popup-btn-yes { background:linear-gradient(135deg,#1d4ed8,#3b82f6); color:#fff; border:none; border-radius:10px; padding:12px; font-size:14px; font-weight:700; cursor:pointer; width:100%; }
+.sh-szn-popup-btn-yes:hover { opacity:.9; }
+.sh-szn-popup-btn-no { background:rgba(255,255,255,.07); border:1px solid var(--border,#232d40); color:var(--text-2,#9aa8bd); border-radius:10px; padding:12px; font-size:14px; font-weight:600; cursor:pointer; width:100%; }
+.sh-szn-popup-btn-no:hover { background:rgba(255,255,255,.12); }
+
+/* Transfer modal */
+.sh-transfer-modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:3200; display:flex; align-items:center; justify-content:center; padding:16px; }
+.sh-transfer-modal { background:var(--bg-2,#0f1623); border:1px solid var(--border,#232d40); border-radius:16px; padding:24px; max-width:380px; width:100%; box-shadow:0 24px 60px rgba(0,0,0,.6); }
+.sh-transfer-title { font-size:16px; font-weight:800; color:var(--text,#e8edf5); margin-bottom:4px; }
+.sh-transfer-sub { font-size:13px; color:var(--text-2,#9aa8bd); margin-bottom:18px; }
+.sh-transfer-field { margin-bottom:14px; }
+.sh-transfer-label { font-size:11.5px; font-weight:700; color:var(--text-3,#6b7280); text-transform:uppercase; letter-spacing:.4px; margin-bottom:5px; }
+.sh-transfer-input { width:100%; background:var(--input-bg,#0b1220); border:1px solid var(--border,#232d40); border-radius:8px; color:var(--text,#e8edf5); font-size:14px; padding:9px 12px; outline:none; box-sizing:border-box; }
+.sh-transfer-input:focus { border-color:#3b82f6; }
+.sh-transfer-from { background:rgba(255,255,255,.04); border:1px solid var(--border,#232d40); border-radius:8px; padding:9px 12px; font-size:13px; color:var(--text-2,#9aa8bd); margin-bottom:14px; }
+.sh-transfer-arrow { text-align:center; color:var(--text-3,#6b7280); font-size:18px; margin:4px 0 14px; }
+.sh-transfer-btns { display:flex; gap:8px; margin-top:18px; }
+.sh-transfer-btn-cancel { flex:1; background:rgba(255,255,255,.07); border:1px solid var(--border,#232d40); color:var(--text-2,#9aa8bd); border-radius:10px; padding:11px; font-size:14px; font-weight:600; cursor:pointer; }
+.sh-transfer-btn-save { flex:2; background:linear-gradient(135deg,#b45309,#f59e0b); color:#fff; border:none; border-radius:10px; padding:11px; font-size:14px; font-weight:700; cursor:pointer; }
+.sh-transfer-btn-save:hover { opacity:.9; }

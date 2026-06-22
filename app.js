@@ -11491,7 +11491,7 @@ function applyFilters(){
           _draftParts.push(`
             <div class="db-draft-card">
               <div class="info">
-                <div class="badge">Concept vanuit wedstrijd</div>
+                <div class="badge">Spelersrapport concept</div>
                 <div class="title">${escapeHtml(naam)}${club ? ' &middot; ' + escapeHtml(club) : ''}</div>
                 <div class="meta">Niet ingediend${ago ? ' &middot; ' + ago : ''}</div>
               </div>
@@ -11620,7 +11620,7 @@ function applyFilters(){
             ? `<button type="button" class="db-expand-btn" data-id="${escapeAttr(p.id)}" ${_dupCount >= 2 ? 'data-dup="1"' : ''} aria-label="Toon ${_badgeCount} records" aria-expanded="false" title="${_badgeCount} records"><span class="db-expand-chev">▸</span><span class="db-expand-count">${_badgeCount}</span></button>`
             : '';
           return `
-          <tr data-id="${p.id}" class="${dbCheckedIds.includes(p.id)?'db-row-checked':''} ${p.rapport_type==='observatie'?'db-row-obs':'db-row-report'} ${_isTourn?'db-row-tournament':''}">
+          <tr data-id="${p.id}" class="${dbCheckedIds.includes(p.id)?'db-row-checked':''} ${p.rapport_type==='observatie'?'db-row-obs':'db-row-report'} ${_isTourn?'db-row-tournament':''} ${p.concept?'db-row-concept':''}">
             <td class="db-check-col"><input type="checkbox" class="db-check" data-id="${escapeAttr(p.id)}" ${dbCheckedIds.includes(p.id)?'checked':''} aria-label="Selecteer ${escapeAttr(p.naam||'speler')}"/></td>
             <td class="db-expand-col">${_expandCell}</td>
             <td>

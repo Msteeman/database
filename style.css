@@ -14077,3 +14077,22 @@ textarea { resize: none !important; }
   overflow: hidden;
   min-height: 52px;
 }
+
+/* ── v475-CONCEPT-STIJL: gele rand voor concepten ───────────────────────── */
+
+/* Concept-rij in tabel: gele rand links + subtiele gele achtergrond */
+tr.db-row-concept {
+  background: linear-gradient(90deg, rgba(245,158,11,0.08) 0%, transparent 60%);
+}
+tr.db-row-concept:hover {
+  background: linear-gradient(90deg, rgba(245,158,11,0.16) 0%, rgba(245,158,11,0.04) 100%) !important;
+}
+tr.db-row-concept td:first-child {
+  border-left: 2px solid rgba(245,158,11,0.7);
+}
+
+/* db-draft-card: gele rand links (zelfde stijl) */
+.db-draft-card {
+  border-left: 2px solid rgba(245,158,11,0.65);
+  background: linear-gradient(90deg, rgba(245,158,11,0.06) 0%, rgba(255,255,255,0.02) 100%);
+}

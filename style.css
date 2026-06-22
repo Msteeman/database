@@ -9861,17 +9861,7 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
   display: flex; justify-content: flex-end; gap: 10px; margin-top: 18px;
   padding-top: 14px; border-top: 1px solid var(--border,#232838);
 }
-items: center; gap: 4px;
-  background: rgba(245,197,66,.15); border: 1px solid rgba(245,197,66,.35);
-  color: var(--gold,#f5c542); border-radius: 20px;
-  padding: 3px 10px 3px 12px; font-size: 12px; font-weight: 600;
-}
-.tf-cat-tag-x {
-  background: none; border: none; color: var(--gold,#f5c542);
-  cursor: pointer; font-size: 15px; line-height: 1; padding: 0 2px;
-  opacity: .7; transition: opacity .1s;
-}
-.tf-cat-tag-x:hover { opacity: 1; }
+
 .tf-leeftijd-add { width: auto !important; }
 
 /* ── Observatie modal (s102) ───────────────────────────────────────────────── */

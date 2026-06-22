@@ -34394,7 +34394,11 @@ async function _toRender(){
     ['wedstrijd','speler','scouts'].forEach(function(k){
       var el=document.getElementById('to-empty-'+k);
       if(el) el.textContent = 'Fout bij laden: ' + (err.message||err);
-    })
+    });
+  }
+}
+window._toRender = _toRender;
+
 /* ── v487-carriere-ux ── */
 function _shGetSeizoen(date){
   const d = date ? new Date(date) : new Date();

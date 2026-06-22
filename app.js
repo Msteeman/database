@@ -6901,7 +6901,7 @@ window.openObservatieForm = openObservatieForm;
 const PLF_FIELDS = ['techniek','inzicht','mentaliteit','explosiviteit','sprinten','duelleren','wendbaarheid','algemeen'];
 const PLF_PH = { techniek:'bv. scherp, snel', inzicht:'bv. leest spel goed', mentaliteit:'bv. werkt hard, leidt', explosiviteit:'bv. eerste 5m sterk', sprinten:'bv. topsnelheid hoog', duelleren:'bv. wint 1-op-1', wendbaarheid:'bv. soepel, lichtvoetig', algemeen:'bv. interessante speler' };
 const PLF_CHIP_CATS = {
-  techniek: ['Balbehandeling','Passing','Eerste aanname','Traptechniek','Koppen','Dribbel','Beide benen','Overzicht'],
+  techniek: ['Balbehandeling','Passing','Eerste aanname','Traptechniek','Koppen','Dribbel','Beide benen','Overzicht','Afmaken','Klinisch Afronden','Krachtig/Hard Schot'],
   inzicht: ['Scannen','Positiespel','Ruimte zien','Anticipatie','Coaching','Timing','Loopacties'],
   mentaliteit: ['Winnaar','Leider','Communicatief','Rustig','Doorzetter','Concentratie','Gretig','Emotioneel'],
   explosiviteit: ['Eerste 5m','Versnelling','Explosief','Sprongkracht','Krachtig'],
@@ -13271,13 +13271,26 @@ function _elfRender(players, resultsEl, q){
 }
 let _elfCurClub = '';
 
+function _shNormElftalDisplay(e){
+  // Altijd O.16-1 formaat (nooit O.16 zonder teamnummer)
+  if(!e) return e;
+  const m = e.trim().match(/^(O\.?\d+)$/i);
+  if(m) return m[1] + '-1';
+  return e.trim();
+}
 function _elfBuildTeamMap(players){
   const teamMap = new Map();
   players.forEach(p => {
-    const club  = (p.club  || 'Onbekende club').trim();
-    // Voor obs: gebruik wedstrijd_leeftijd als elftal fallback
+    let club = (p.club || 'Onbekende club').trim();
     const _elfFallback = p.wedstrijd_leeftijd || (p.wedstrijd && p.wedstrijd.leeftijd) || '';
-    const elftal = (p.elftal || deriveElftalFromReport(p) || _elfFallback || '').trim();
+    let elftal = (p.elftal || deriveElftalFromReport(p) || _elfFallback || '').trim();
+    // Extraheer elftal uit clubnaam als club "Ajax O.16" patroon heeft
+    if(!elftal || !/O\.?\d+/i.test(elftal)) {
+      const mx = club.match(/^(.+?)\s+(O\.?\d+(?:-\d+)?)$/i);
+      if(mx) { club = mx[1].trim(); elftal = mx[2].trim(); }
+    }
+    // Altijd O.16-1 format (nooit O.16 zonder -cijfer)
+    elftal = _shNormElftalDisplay(elftal);
     const key = _shNormTeamKey(club) + '\x00' + _shNormTeamKey(elftal);
     if(!teamMap.has(key)) teamMap.set(key, { club, elftal, players: [] });
     teamMap.get(key).players.push(p);
@@ -31175,7 +31188,7 @@ function _injectReportTrefwoorden(existingTags){
   // BATCH 1 / 1B — chip-set gelijkgetrokken met de LIVE-set (PLF_CHIP_CATS).
   // Live is leidend, zodat live-chips 1-op-1 naar het rapport prefillen.
   var MAP = {
-    'techniek_huidig':     { section:'techniek_huidig',     chips:['Balbehandeling','Passing','Eerste aanname','Traptechniek','Koppen','Dribbel','Beide benen','Overzicht'] },
+    'techniek_huidig':     { section:'techniek_huidig',     chips:['Balbehandeling','Passing','Eerste aanname','Traptechniek','Koppen','Dribbel','Beide benen','Overzicht','Afmaken','Klinisch Afronden','Krachtig/Hard Schot'] },
     'inzicht_huidig':      { section:'inzicht_huidig',      chips:['Scannen','Positiespel','Ruimte zien','Anticipatie','Coaching','Timing','Loopacties'] },
     'grit_huidig':         { section:'mentaliteit_huidig',  chips:['Winnaar','Leider','Communicatief','Rustig','Doorzetter','Concentratie','Gretig','Emotioneel'] },
     'explosiviteit_huidig':{ section:'explosiviteit_huidig',chips:['Eerste 5m','Versnelling','Explosief','Sprongkracht','Krachtig'] },

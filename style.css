@@ -12233,9 +12233,9 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 
 .lp-hero {
   display: grid; grid-template-columns: 1.05fr .95fr; gap: 40px; align-items: center;
-  max-width: 1140px; margin: 0 auto; padding: 64px 24px 48px; width: 100%;
+  max-width: 1400px; margin: 0 auto; padding: 54px 24px 40px; width: 100%;
 }
-.lp-h1 { font-size: clamp(30px, 5vw, 52px); line-height: 1.08; font-weight: 800; letter-spacing: -1px; margin: 0 0 16px; }
+.lp-h1 { font-size: clamp(26px, 3.8vw, 44px); line-height: 1.08; font-weight: 800; letter-spacing: -1px; margin: 0 0 16px; }
 .lp-sub { font-size: clamp(15px, 2vw, 18px); color: var(--text-2, #9aa8bd); max-width: 540px; margin: 0 0 26px; }
 .lp-cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
 
@@ -12248,7 +12248,7 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 .lp-visual-16x9 { aspect-ratio: 16 / 9; }
 .lp-visual-step { aspect-ratio: 16 / 10; margin-top: 12px; font-size: 11px; }
 
-.lp-section { max-width: 1140px; margin: 0 auto; padding: 48px 24px; width: 100%; }
+.lp-section { max-width: 1400px; margin: 0 auto; padding: 48px 24px; width: 100%; }
 .lp-h2 { font-size: clamp(22px, 3.4vw, 32px); font-weight: 800; letter-spacing: -.5px; text-align: center; margin: 0 0 32px; }
 
 .lp-features { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; }
@@ -13405,7 +13405,7 @@ body.sh-onb-open{ overflow:hidden; }
   background:radial-gradient(60% 60% at 50% 42%, rgba(230,57,70,.32), rgba(78,161,255,.16) 55%, transparent 76%);
   filter:blur(30px); opacity:.55;
 }
-#landing-overlay .lp-media-hero{ max-width:560px; }
+#landing-overlay .lp-media-hero{ max-width:470px; }
 
 /* perspectief + zweef-animatie alleen op desktop */
 @media (min-width:901px){
@@ -13444,10 +13444,10 @@ body.sh-onb-open{ overflow:hidden; }
 /* ============================================================
    ZO WERKT HET — afwisselende beeld/tekst-rijen (pro-stijl)
    ============================================================ */
-#landing-overlay .lp-rows{ display:flex; flex-direction:column; gap:64px; max-width:1080px; margin:8px auto 0; }
+#landing-overlay .lp-rows{ display:flex; flex-direction:column; gap:48px; max-width:1280px; margin:8px auto 0; }
 #landing-overlay .lp-row{ display:grid; grid-template-columns:1fr 1fr; align-items:center; gap:56px; }
 #landing-overlay .lp-row .lp-media{ width:100%; max-width:520px; margin:0; }
-#landing-overlay .lp-row .lp-media img{ display:block; width:100%; height:auto; max-height:440px; object-fit:contain; }
+#landing-overlay .lp-row .lp-media img{ display:block; width:100%; height:auto; max-height:360px; object-fit:contain; }
 #landing-overlay .lp-row:nth-child(even) .lp-media{ order:2; justify-self:end; }
 #landing-overlay .lp-row:nth-child(even) .lp-rowtext{ order:1; }
 #landing-overlay .lp-row-t{ font-size:clamp(20px,2.1vw,26px); font-weight:800; letter-spacing:-.4px; line-height:1.2; color:var(--text,#e8edf5); }
@@ -14096,3 +14096,59 @@ tr.db-row-concept td:first-child {
   border-left: 2px solid rgba(245,158,11,0.65);
   background: linear-gradient(90deg, rgba(245,158,11,0.06) 0%, rgba(255,255,255,0.02) 100%);
 }
+
+/* ── v480-landing-org: logo + org chart + missie ── */
+.lp-logo-svg { width: 26px; height: 30px; flex-shrink: 0; }
+
+/* Org chart */
+.lp-org-chart { display: flex; flex-direction: column; align-items: center; gap: 0; margin: 8px auto 0; max-width: 900px; }
+.lp-org-top { display: flex; justify-content: center; }
+.lp-org-node {
+  background: var(--panel, #111722); border: 1px solid var(--border, #232d40);
+  border-radius: 14px; padding: 16px 20px; text-align: center; position: relative;
+}
+.lp-org-node-head {
+  background: linear-gradient(135deg, #e30613, #f5c518);
+  border: none; color: #fff; min-width: 220px; max-width: 280px;
+}
+.lp-org-node-coord {
+  background: var(--panel-2, #1d2533); border-color: var(--accent, #4ea1ff);
+  min-width: 180px; max-width: 220px;
+}
+.lp-org-node-scout {
+  background: var(--panel, #111722); border-color: var(--border-2, #2f3b52);
+  min-width: 130px; max-width: 160px;
+}
+.lp-org-node-t { font-size: 14px; font-weight: 800; margin-bottom: 5px; line-height: 1.3; }
+.lp-org-node-s { font-size: 12px; opacity: .8; line-height: 1.4; }
+.lp-org-node-head .lp-org-node-t { color: #fff; font-size: 15px; }
+.lp-org-node-head .lp-org-node-s { color: rgba(255,255,255,.85); }
+.lp-org-node-ic { font-size: 18px; margin-bottom: 6px; }
+
+/* Connector lines */
+.lp-org-vline { width: 2px; height: 32px; background: var(--border-2, #2f3b52); margin: 0 auto; }
+.lp-org-hrow { display: flex; align-items: flex-start; gap: 24px; justify-content: center; }
+.lp-org-branch { display: flex; flex-direction: column; align-items: center; }
+.lp-org-hline-wrap { display: flex; align-items: flex-start; position: relative; }
+.lp-org-hline-wrap::before {
+  content: ''; position: absolute; top: 0; left: 50%; right: 50%;
+  height: 2px; background: var(--border-2, #2f3b52);
+}
+.lp-org-mid { position: relative; }
+.lp-org-coord-row { display: flex; gap: 32px; align-items: flex-start; }
+.lp-org-coord-branch { display: flex; flex-direction: column; align-items: center; }
+.lp-org-scout-row { display: flex; gap: 12px; align-items: flex-start; margin-top: 0; }
+
+/* Missie */
+.lp-missie { max-width: 780px; margin: 0 auto; }
+.lp-missie-label { font-size: 12px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--primary, #e30613); margin-bottom: 16px; }
+.lp-missie-h { font-size: clamp(22px, 2.8vw, 34px); font-weight: 800; letter-spacing: -.4px; margin: 0 0 20px; line-height: 1.15; }
+.lp-missie-p { font-size: 16px; color: var(--text-2, #9aa8bd); line-height: 1.7; margin: 0 0 14px; }
+.lp-missie-tag { display: inline-block; margin-top: 16px; font-size: 14px; font-weight: 700; color: var(--text, #e8edf5); background: var(--panel-2, #1d2533); border: 1px solid var(--border-2, #2f3b52); border-radius: 30px; padding: 8px 18px; }
+
+/* Org features grid */
+.lp-org-feats { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 40px; }
+
+/* h2 sub */
+.lp-h2-sub { text-align: center; color: var(--text-2, #9aa8bd); font-size: 15.5px; margin: -22px 0 28px; }
+.lp-h2.has-sub { margin-bottom: 10px; }

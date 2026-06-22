@@ -13284,10 +13284,12 @@ function _elfBuildTeamMap(players){
     let club = (p.club || 'Onbekende club').trim();
     const _elfFallback = p.wedstrijd_leeftijd || (p.wedstrijd && p.wedstrijd.leeftijd) || '';
     let elftal = (p.elftal || deriveElftalFromReport(p) || _elfFallback || '').trim();
-    // Extraheer elftal uit clubnaam als club "Ajax O.16" patroon heeft
-    if(!elftal || !/O\.?\d+/i.test(elftal)) {
-      const mx = club.match(/^(.+?)\s+(O\.?\d+(?:-\d+)?)$/i);
-      if(mx) { club = mx[1].trim(); elftal = mx[2].trim(); }
+    // ALTIJD suffix strippen uit clubnaam (ook als elftal al gezet is)
+    // "Ajax O.16" → club="Ajax", elftal behouden als al valide, anders suffix gebruiken
+    const mxClub = club.match(/^(.+?)\s+(O\.?\d+(?:-\d+)?)$/i);
+    if(mxClub) {
+      club = mxClub[1].trim();
+      if(!elftal || !/O\.?\d+/i.test(elftal)) elftal = mxClub[2].trim();
     }
     // Altijd O.16-1 format (nooit O.16 zonder -cijfer)
     elftal = _shNormElftalDisplay(elftal);
@@ -16467,7 +16469,7 @@ function renderDetailTrend(p){
   }));
 
   const n = points.length;
-  const W = 400, H = 160, pad = { l:36, r:16, t:16, b:32 };
+  const W = 600, H = 200, pad = { l:36, r:16, t:20, b:36 };
   const iW = W - pad.l - pad.r;
   const iH = H - pad.t - pad.b;
   const xPos = i => pad.l + (n === 1 ? iW/2 : (i / (n-1)) * iW);
@@ -16550,7 +16552,20 @@ function renderDetailTrend(p){
         </svg>
       </div>
       ${_shCriteriaSparklines(sorted)}
-    </div>`;
+      <div class="dtl-trend-table">
+        <div class="dtl-trend-table-head">Rapportdetails</div>
+        <table class="dtl-trend-tbl">
+          <thead><tr><th>Datum</th><th>Huidig</th><th>Potentieel</th><th>Techniek</th><th>Inzicht</th><th>GRIT</th><th>Explosief</th><th>Sprinten</th><th>Duelleren</th><th>Wendbaarh.</th></tr></thead>
+          <tbody>${sorted.map(r => {
+            const b = r.beoordelingen || {};
+            const grit = b.grit_huidig || b.drit_huidig || '';
+            const td = (v) => `<td class="dtl-trd-g dtl-trd-${(v||'').toLowerCase()}">${v||'–'}</td>`;
+            return `<tr><td class="dtl-trd-dt">${escapeHtml(r.datum ? formatDate(r.datum) : '–')}</td>${td(r.huidig_niveau)}${td(r.potentieel_niveau)}${td(b.techniek_huidig)}${td(b.inzicht_huidig)}${td(grit)}${td(b.explosiviteit_huidig)}${td(b.sprinten_huidig)}${td(b.duelleren_huidig)}${td(b.wendbaarheid_huidig)}</tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+    </div>\`;"
+
 }
 
 // Parse obs-notities tekst naar criterium-tekst object
@@ -27858,6 +27873,16 @@ async function loadUserRole(){
     document.querySelectorAll('[data-role-min="coordinator"]').forEach(el => {
       el.style.display = _isCoord ? '' : 'none';
     });
+    // Rol-label invullen (altijd zichtbaar)
+    const _rolLabels = { scout:'Scout', coordinator:'Coördinator', hoofd:'Hoofd Jeugdscouting', hoofd_opleiding:'Hoofd Jeugdopleiding', admin:'Admin' };
+    const _rolLabel = _rolLabels[role] || (role ? role.charAt(0).toUpperCase()+role.slice(1) : 'Scout');
+    try { var _rEl = document.getElementById('settings-role'); if(_rEl) _rEl.textContent = _rolLabel; } catch(_){}
+    // Team rij alleen tonen als gebruiker in een organisatie zit
+    const _inOrg = !!(d2.orgId);
+    try { var _tRow = document.getElementById('settings-team-row'); if(_tRow) _tRow.style.display = _inOrg ? '' : 'none'; } catch(_){}
+    if(_inOrg){
+      try { var _teamEl = document.getElementById('settings-team'); if(_teamEl) _teamEl.textContent = d2.teamNaam || d2.teamId || 'Onbekend'; } catch(_){}
+    }
   } catch(_){
     window._shUserRole   = 'scout';
     window._shUserOrgId  = null;
@@ -30643,19 +30668,24 @@ window._shFuzzySuggestion = _shFuzzySuggestion;
    ============================================================ */
 
 /* Mini-sparkline (SVG) uit een reeks scores (1..4). */
-function _shMiniSparkline(values, color){
+function _shMiniSparkline(values, color, grades){
   var vals = (values||[]).map(function(v){ return v||0; });
-  var W=120, H=34, pad=4, n=vals.length;
+  var gradeLabels = grades||[];
+  var W=180, H=60, pad=8, n=vals.length;
   var xPos=function(i){ return n<=1 ? W/2 : pad + (i/(n-1))*(W-2*pad); };
-  var yPos=function(v){ return H-pad - ((v-1)/3)*(H-2*pad); };
-  var pts=[]; vals.forEach(function(v,i){ if(v) pts.push({i:i,v:v}); });
+  var yPos=function(v){ return H-pad-8 - ((v-1)/3)*(H-2*pad-12); };
+  var pts=[]; vals.forEach(function(v,i){ if(v) pts.push({i:i,v:v,g:gradeLabels[i]||''}); });
   if(pts.length < 2){
-    return '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" class="sh-spark"><text x="'+(W/2)+'" y="'+(H/2+3)+'" text-anchor="middle" font-size="9" fill="rgba(232,237,245,.4)">\u2014</text></svg>';
+    return '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" class="sh-spark"><text x="'+(W/2)+'" y="'+(H/2+3)+'" text-anchor="middle" font-size="9" fill="rgba(232,237,245,.4)">-</text></svg>';
   }
   var poly=pts.map(function(p){ return xPos(p.i).toFixed(1)+','+yPos(p.v).toFixed(1); }).join(' ');
-  var last=pts[pts.length-1];
-  var dot='<circle cx="'+xPos(last.i).toFixed(1)+'" cy="'+yPos(last.v).toFixed(1)+'" r="2.6" fill="'+color+'"/>';
-  return '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" class="sh-spark"><polyline points="'+poly+'" fill="none" stroke="'+color+'" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>'+dot+'</svg>';
+  var dotsHtml='';
+  pts.forEach(function(p){
+    var cx=xPos(p.i).toFixed(1), cy=yPos(p.v).toFixed(1);
+    dotsHtml+='<circle cx="'+cx+'" cy="'+cy+'" r="3.2" fill="'+color+'" stroke="rgba(11,15,21,.8)" stroke-width="1.2"/>';
+    if(p.g) dotsHtml+='<text x="'+cx+'" y="'+(parseFloat(cy)-6)+'" text-anchor="middle" font-size="8" font-weight="700" fill="'+color+'" font-family="inherit">'+p.g+'</text>';
+  });
+  return '<svg viewBox="0 0 '+W+' '+H+'" width="'+W+'" height="'+H+'" class="sh-spark"><polyline points="'+poly+'" fill="none" stroke="'+color+'" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>'+dotsHtml+'</svg>';
 }
 
 /* Per-categorie sparklines voor het spelersprofiel (gesorteerde rapporten). */
@@ -30663,17 +30693,18 @@ function _shCriteriaSparklines(sortedReports){
   if(!Array.isArray(sortedReports) || sortedReports.length < 2) return '';
   var gs = CMP_GRADE_VAL;
   var cells = CMP_CRITERIA.map(function(c){
-    var series = sortedReports.map(function(r){
+    var gradeArr = sortedReports.map(function(r){
       var g = (r.beoordelingen && r.beoordelingen[c.key]) || '';
       if(!g && c.key === 'grit_huidig' && r.beoordelingen) g = r.beoordelingen.drit_huidig || '';
-      return gs[(g||'').toUpperCase()] || 0;
+      return (g||'').toUpperCase();
     });
+    var series = gradeArr.map(function(g){ return gs[g]||0; });
     var nz = series.filter(function(v){ return v; });
     var first = nz[0], last = nz[nz.length-1];
     var d = (first && last) ? last - first : 0;
     var icon = (!first || !last) ? '' : (d>0?'\u2197':d<0?'\u2198':'\u2192');
     var cls = d>0?'up':d<0?'down':'flat';
-    return '<div class="sh-spark-cell"><div class="sh-spark-lbl"><span>'+escapeHtml(c.label)+'</span><span class="sh-spark-tr '+cls+'">'+icon+'</span></div>'+_shMiniSparkline(series, '#60a5fa')+'</div>';
+    return '<div class="sh-spark-cell"><div class="sh-spark-lbl"><span>'+escapeHtml(c.label)+'</span><span class="sh-spark-tr '+cls+'">'+icon+'</span></div>'+_shMiniSparkline(series, '#60a5fa', gradeArr)+'</div>';
   }).join('');
   return '<div class="sh-spark-grid"><div class="sh-spark-grid-title">Per categorie</div><div class="sh-spark-cells">'+cells+'</div></div>';
 }

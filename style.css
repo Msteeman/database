@@ -1579,15 +1579,31 @@ a { color: var(--accent); text-decoration: none; }
   display: flex; gap: 5px; flex-wrap: nowrap;
 }
 .sa-header-acts-row {
-  margin-top: 10px; flex-wrap: wrap; gap: 8px;
+  display: flex; margin-top: 10px; flex-wrap: wrap; gap: 8px;
 }
 @media (max-width: 600px){
-  .sa-header-acts-row { gap: 6px; }
-  .sa-header-acts-row .sa-live-btn { flex: 1 1 auto; justify-content: center; }
+  .sa-header-acts-row { gap: 6px; display: grid; grid-template-columns: 1fr 1fr; }
+  .sa-header-acts-row .sa-live-btn { min-width: 0; justify-content: center; flex: unset; }
+  .sa-header-acts-row .sa-live-btn-wstr { grid-column: 1 / -1; }
+  .sa-gk-wrap, .sa-obs-wrap { min-width: 0; }
 }
 .sa-header-acts .btn-ghost {
   font-size: 11px; padding: 4px 9px; white-space: nowrap;
 }
+/* Trash knop in wedstrijd-header */
+.sa-del-prog-btn {
+  background: none; border: none; cursor: pointer; font-size: 16px; line-height: 1;
+  padding: 4px 6px; opacity: .45; flex-shrink: 0; color: #ef4444;
+  transition: opacity .15s;
+}
+.sa-del-prog-btn:hover { opacity: 1; }
+/* Trash kolom in db-tabel */
+.db-del-col { width: 36px; text-align: center; padding: 0 4px !important; }
+.db-del-btn {
+  background: none; border: none; cursor: pointer; font-size: 15px; line-height: 1;
+  padding: 4px 6px; opacity: .3; color: #ef4444; transition: opacity .15s;
+}
+.db-del-btn:hover { opacity: 1; }
 /* s92: vandaag banner collapsible */
 .dvb-header { cursor: pointer; user-select: none; justify-content: space-between; }
 .dvb-collapse-btn {
@@ -2585,6 +2601,7 @@ a { color: var(--accent); text-decoration: none; }
 .advies-count { width: 30px; text-align: right; font-weight: 600; color: var(--text-2); }
 
 .cat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+@media (max-width: 600px){ .cat-grid { grid-template-columns: repeat(2, 1fr); } }
 .cat-card {
   background: var(--bg-3); border: 1px solid var(--border); border-radius: 8px;
   padding: 12px 14px;
@@ -11054,6 +11071,9 @@ tr.db-row-obs td:first-child {
 }
 
 .recent-item-obs{ border-left:2px solid rgba(168,85,247,.5) !important; background:rgba(168,85,247,.04); }
+.recent-item:not(.recent-item-obs){ border-left:2px solid rgba(16,185,129,.45); background:rgba(16,185,129,.04); }
+.recent-item:not(.recent-item-obs):hover{ border-color:rgba(16,185,129,.75); background:rgba(16,185,129,.09); }
+.recent-avatar:not(.avatar-obs){ background:linear-gradient(135deg,#10b981 0%,#059669 100%) !important; color:#fff !important; }
 .recent-wstr{ font-size:10.5px;color:var(--text-3);margin-top:1px; }
 
 /* iPhone safe area voor modals die fullscreen openen op PWA */
@@ -12181,6 +12201,7 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
   position: fixed; inset: 0; z-index: 5000;
   background: var(--bg, #0a0c12); color: var(--text, #e8edf5);
   overflow-y: auto; -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain; touch-action: pan-y;
   display: none; flex-direction: column;
   font: 15px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -12497,9 +12518,6 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
   .panel:has(#dist-current),
   .panel:has(#dash-gaps),
   .panel:has(#dash-clubs),
-  .panel:has(#dash-positions),
-  .panel:has(#dash-advies2),
-  .panel:has(#dash-categories),
   #dash-overzichtsmap-panel{ display:none !important; }
 }
 
@@ -12592,7 +12610,9 @@ body.sh-offline #sync-dot { background: var(--red, #ef4444) !important; }
 /* Fase 1 — Toegang aanvragen */
 .login-req-btn{ background:none; border:1px solid var(--border,#1f2937); color:var(--text-2,#9aa8bd); border-radius:8px; padding:9px 16px; font-size:13px; cursor:pointer; min-height:40px; }
 .login-req-btn:hover{ border-color:var(--accent,#4ea1ff); color:var(--text,#e8edf5); }
-.sh-req-card{ max-width:320px; width:100%; text-align:left; position:relative; padding:12px 14px; max-height:min(560px, calc(100vh - 40px)); overflow-y:auto; overscroll-behavior:contain; }
+.sh-req-card{ max-width:340px; width:100%; text-align:left; position:relative; padding:12px 14px; max-height:calc(100vh - 40px); overflow-y:auto; overscroll-behavior:contain; }
+.sh-req-role-info{ font-size:12px; color:var(--text-3,#8b97ad); background:var(--bg-2,#0e1626); border:1px solid var(--border,#1f2937); border-radius:7px; padding:7px 10px; margin:4px 0; line-height:1.4; }
+.sh-req-role-info strong{ color:var(--text-2,#9aa8bd); }
 .sh-req-x{ position:absolute; top:4px; right:4px; background:none; border:none; color:var(--text-2,#9aa8bd); font-size:20px; cursor:pointer; line-height:1; width:36px; height:36px; }
 .sh-req-sub{ font-size:12px; color:var(--text-2,#9aa8bd); margin:2px 0 8px; line-height:1.4; }
 .sh-req-l{ display:block; font-size:11.5px; color:var(--text-3,#8b97ad); margin:5px 0 2px; }
@@ -12764,23 +12784,54 @@ a.adm-btn-ghost{ text-decoration:none; display:inline-block; }
 .adm-settings-card .bh-card-row span{ color:var(--text-2,#9aa8bd); }
 .adm-settings-card .bh-card-row b{ color:var(--text,#e8edf5); text-align:right; }
 @media(max-width:900px){ .adm-mailgrid{ grid-template-columns:1fr; } }
-.adm-mailbox-app{ background:var(--panel,#0b1220); border:1px solid var(--border,#1f2937); border-radius:13px; overflow:hidden; }
-.adm-mailbox-tabs{ display:flex; gap:6px; padding:10px; border-bottom:1px solid var(--border,#1f2937); flex-wrap:wrap; }
-.adm-mb-tab{ background:#1a2436; border:1px solid var(--border,#1f2937); color:var(--text-2,#9aa8bd); border-radius:9px; padding:9px 16px; font-size:13px; font-weight:600; cursor:pointer; transition:border-color .2s ease, color .2s ease, background .2s ease; }
+/* ── Mailcentrum 3-koloms ───────────────────────────────────────────── */
+.adm-mb3-wrap{ background:var(--panel,#0b1220); border:1px solid var(--border,#1f2937); border-radius:13px; overflow:hidden; }
+.adm-mb3-tabs{ display:flex; gap:6px; padding:10px 12px; border-bottom:1px solid var(--border,#1f2937); flex-wrap:wrap; }
+.adm-mb-tab{ background:#1a2436; border:1px solid var(--border,#1f2937); color:var(--text-2,#9aa8bd); border-radius:9px; padding:8px 14px; font-size:13px; font-weight:600; cursor:pointer; transition:border-color .2s,color .2s,background .2s; }
 .adm-mb-tab:hover{ border-color:#4ea1ff; color:var(--text,#e8edf5); }
 .adm-mb-tab-active{ border-color:#4ea1ff; color:var(--text,#e8edf5); background:rgba(78,161,255,.12); }
-.adm-mailbox-body{ display:flex; min-height:420px; }
-.adm-mailbox-side{ flex:0 0 150px; display:flex; flex-direction:column; gap:3px; padding:12px 8px; border-right:1px solid var(--border,#1f2937); }
-.adm-mb-side{ background:transparent; border:1px solid transparent; color:var(--text-2,#9aa8bd); border-radius:8px; padding:8px 10px; font-size:12.5px; text-align:left; cursor:pointer; text-decoration:none; display:block; transition:background .2s ease, color .2s ease; }
+.adm-mb3-body{ display:grid; grid-template-columns:140px 260px 1fr; min-height:540px; }
+.adm-mb3-side{ display:flex; flex-direction:column; gap:2px; padding:10px 8px; border-right:1px solid var(--border,#1f2937); }
+.adm-mb-side{ background:transparent; border:1px solid transparent; color:var(--text-2,#9aa8bd); border-radius:8px; padding:8px 10px; font-size:12.5px; text-align:left; cursor:pointer; text-decoration:none; display:block; transition:background .15s,color .15s; white-space:nowrap; }
 .adm-mb-side:hover{ background:rgba(255,255,255,.04); color:var(--text,#e8edf5); }
 .adm-mb-side-active{ background:rgba(78,161,255,.12); color:var(--text,#e8edf5); font-weight:700; }
-.adm-mailbox-main{ flex:1; padding:14px 16px; min-width:0; overflow-y:auto; }
-.adm-compose-lg{ max-width:640px; }
-.adm-mailinbox-lg{ max-height:none; }
-.adm-mail-row-lg{ font-size:13px; padding:9px 11px; }
-.adm-mail-row-clickable{ cursor:pointer; transition:background .15s ease; }
-.adm-mail-row-clickable:hover{ background:rgba(78,161,255,.07); border-color:rgba(78,161,255,.3); }
-.adm-mail-row-active{ background:rgba(78,161,255,.13) !important; border-color:#4ea1ff !important; }
+.adm-mb3-list{ border-right:1px solid var(--border,#1f2937); overflow-y:auto; display:flex; flex-direction:column; }
+.adm-mb3-list-hd{ padding:10px 12px 6px; font-size:11px; font-weight:700; color:var(--text-3,#8b97ad); text-transform:uppercase; letter-spacing:.06em; border-bottom:1px solid var(--border,#1f2937); display:flex; align-items:center; gap:6px; }
+.adm-mb3-count{ background:rgba(78,161,255,.12); color:#4ea1ff; border-radius:10px; padding:1px 7px; font-size:11px; font-weight:600; }
+.adm-mb3-row{ padding:10px 12px; border-bottom:1px solid var(--border,#1f2937); cursor:pointer; transition:background .12s; }
+.adm-mb3-row:hover{ background:rgba(78,161,255,.06); }
+.adm-mb3-row-active{ background:rgba(78,161,255,.13) !important; }
+.adm-mb3-unread .adm-mb3-row-from{ font-weight:800; color:var(--text,#e8edf5); }
+.adm-mb3-unread{ border-left:3px solid #4ea1ff; }
+.adm-mb3-row-from{ font-size:12.5px; font-weight:600; color:var(--text,#e8edf5); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.adm-mb3-row-subj{ font-size:12px; color:var(--text-2,#9aa8bd); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-top:2px; }
+.adm-mb3-row-date{ font-size:11px; color:var(--text-3,#8b97ad); margin-top:3px; }
+.adm-mb3-detail{ overflow-y:auto; display:flex; flex-direction:column; }
+.adm-mb3-empty{ display:flex; align-items:center; justify-content:center; height:100%; color:var(--text-3,#8b97ad); font-size:13px; padding:24px; }
+.adm-mb3-detail-inner{ display:flex; flex-direction:column; height:100%; }
+.adm-mb3-detail-hd{ padding:16px 18px 14px; border-bottom:1px solid var(--border,#1f2937); flex-shrink:0; }
+.adm-mb3-detail-subj{ font-size:16px; font-weight:700; color:var(--text,#e8edf5); margin-bottom:8px; line-height:1.35; }
+.adm-mb3-detail-meta{ display:flex; flex-wrap:wrap; gap:6px 18px; font-size:12px; color:var(--text-2,#9aa8bd); margin-bottom:10px; }
+.adm-mb3-detail-meta b{ color:var(--text,#e8edf5); }
+.adm-mb3-detail-acts{ display:flex; gap:8px; flex-wrap:wrap; }
+.adm-mb3-detail-body{ flex:1; padding:16px 18px; margin:0; font-size:13.5px; line-height:1.7; white-space:pre-wrap; word-break:break-word; color:var(--text,#e8edf5); font-family:inherit; background:transparent; border:none; overflow-y:auto; }
+.adm-mb3-compose{ padding:16px 18px; display:flex; flex-direction:column; gap:10px; height:100%; box-sizing:border-box; }
+.adm-mb3-compose-hd{ font-size:13px; font-weight:600; color:var(--text-2,#9aa8bd); }
+.adm-mb3-compose-msg{ flex:1; min-height:200px; resize:none; }
+/* Bestaande compose-input stijlen hergebruiken */
+@media(max-width:900px){
+  .adm-mb3-body{ grid-template-columns:120px 1fr; grid-template-rows:auto 1fr; }
+  .adm-mb3-list{ border-right:none; border-bottom:1px solid var(--border,#1f2937); max-height:220px; }
+  .adm-mb3-detail{ grid-column:1/-1; }
+}
+@media(max-width:600px){
+  .adm-mb3-body{ grid-template-columns:1fr; }
+  .adm-mb3-side{ flex-direction:row; overflow-x:auto; border-right:none; border-bottom:1px solid var(--border,#1f2937); }
+  .adm-mb-side{ white-space:nowrap; }
+  .adm-mb3-list{ max-height:180px; }
+}
+/* Oudere stijlen bewaren voor achterwaartse compatibiliteit */
+.adm-mailbox-app{ background:var(--panel,#0b1220); border:1px solid var(--border,#1f2937); border-radius:13px; overflow:hidden; }
 .adm-mail-detail{ margin-top:14px; background:var(--panel,#0b1220); border:1px solid var(--border,#1f2937); border-radius:12px; overflow:hidden; }
 .adm-mail-detail-hd{ padding:14px 16px; border-bottom:1px solid var(--border,#1f2937); }
 .adm-mail-detail-subj{ font-size:15px; font-weight:700; color:var(--text,#e8edf5); margin-bottom:8px; }
@@ -13206,6 +13257,10 @@ body.sh-onb-open{ overflow:hidden; }
 
 /* RESET batch 3 — hele rij klikbaar (DEEL 2D), losse open-knoppen weg */
 .pm-item-row .pm-item-acts{ display:none !important; }
+/* Trash-knop in pm-item-acts wél zichtbaar */
+.pm-item-row .pm-item-acts:has(.pm-del-obs-btn){ display:flex !important; gap:5px; align-items:center; flex-shrink:0; }
+.pm-del-obs-btn{ background:none; border:none; cursor:pointer; font-size:15px; line-height:1; padding:4px 6px; opacity:.35; color:#ef4444; transition:opacity .15s; flex-shrink:0; }
+.pm-del-obs-btn:hover{ opacity:1; }
 .pm-row-click{ cursor:pointer; min-height:44px; transition:background .15s ease; border-radius:8px; }
 .pm-row-click:hover{ background:rgba(255,255,255,.05); }
 .pm-row-chev{ margin-left:auto; color:var(--text-3,#8b93a8); font-size:18px; line-height:1; flex-shrink:0; }

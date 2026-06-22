@@ -732,6 +732,7 @@ let matchReportsCache = [];
 let tipsCache = [];
 let programmaCache = [];
 let unsubProgramma = null;
+let unsubLiveMatchNotes = null;
 let rittenCache = [];
 let unsubRitten = null;
 
@@ -3580,6 +3581,31 @@ function subscribeData(){
     setSync('offline');
   });
 
+  // live_match_notes onSnapshot — cross-device sync voor live wedstrijd notities
+  unsubLiveMatchNotes = onSnapshot(
+    collection(db, 'users', currentUser.uid, 'live_match_notes'),
+    snap => {
+      snap.docChanges().forEach(ch => {
+        if(ch.type === 'removed') return;
+        const d = {...ch.doc.data(), _lmnId: ch.doc.id};
+        const prog = programmaCache.find(p => p.id === d.matchId);
+        if(!prog || !d.playerId) return;
+        if(!Array.isArray(prog.snelnotities)) prog.snelnotities = [];
+        const sn = prog.snelnotities.find(s => s && s.spelerKey === d.playerId);
+        if(sn){
+          if(d.fields) sn.fields = {...(sn.fields||{}), ...d.fields};
+          if(d.tags)   sn.tags  = d.tags;
+          if(typeof d.is_opvallend !== 'undefined') sn.is_opvallend = d.is_opvallend;
+        }
+      });
+      if(currentView === 'actief' && typeof renderActiveScouting === 'function'){
+        const busy = !!document.querySelector('.sa-snel-form[style*="display: block"], .sa-snel-wstr-form[style*="display: block"]');
+        if(!busy) requestAnimationFrame(() => { try{ renderActiveScouting(); }catch(_){} });
+      }
+    },
+    err => { console.warn('live_match_notes sync error:', err); }
+  );
+
 }
 
 function unsubscribeData(){
@@ -3589,6 +3615,7 @@ function unsubscribeData(){
   if(unsubMatchReports){ unsubMatchReports(); unsubMatchReports = null; }
   if(unsubTips){ unsubTips(); unsubTips = null; }
   if(unsubProgramma){ unsubProgramma(); unsubProgramma = null; }
+  if(unsubLiveMatchNotes){ unsubLiveMatchNotes(); unsubLiveMatchNotes = null; }
   if(unsubRitten){ unsubRitten(); unsubRitten = null; }
   playersCache = [];
   analysesCache = [];
@@ -6006,6 +6033,7 @@ function go(view){
   if(view === 'toernooien') renderToernooien();
   if(view === 'admin')      { if(typeof _shIsAdmin==='function' && _shIsAdmin() && typeof _admActivate==='function'){ _admActivate(); } else if(typeof renderBeheer === 'function'){ renderBeheer(); } }
   if(view === 'player')    renderPlayer();
+  if(view === 'team-overzicht') { if(typeof _toRender==='function') _toRender(); }
   // s35cr: privacy + voorwaarden zijn statische views — geen render-functie nodig
   window.scrollTo({top:0});
 }
@@ -8218,6 +8246,7 @@ function renderActiveScouting(){
               ${clockBtnHtml}
             </div>
           </div>
+          <button class="sa-del-prog-btn" data-sa-act="delete-prog" data-progid="${escapeHtml(prog.id)}" title="Wedstrijd verwijderen" aria-label="Wedstrijd verwijderen">🗑</button>
           <span class="sa-collapse-chev" aria-hidden="true">&#9662;</span>
         </div>
         <div class="sa-header-acts sa-header-acts-row">
@@ -8747,10 +8776,10 @@ function renderActiveScouting(){
     document._shSaMenuOutside = true;
     document.addEventListener('click', function(ev){
       if(!ev.target.closest('.sa-obs-wrap') && !ev.target.closest('.sa-obs-menu')){
-        document.querySelectorAll('.sa-obs-menu').forEach(function(m){ m.style.display='none'; });
+        document.querySelectorAll('.sa-obs-menu').forEach(function(m){ m.style.display='none'; if(m._saWrap && m.parentElement===document.body) m._saWrap.appendChild(m); });
       }
       if(!ev.target.closest('.sa-gk-wrap') && !ev.target.closest('.sa-gk-menu')){
-        document.querySelectorAll('.sa-gk-menu').forEach(function(m){ m.style.display='none'; });
+        document.querySelectorAll('.sa-gk-menu').forEach(function(m){ m.style.display='none'; if(m._saWrap && m.parentElement===document.body) m._saWrap.appendChild(m); });
       }
     }, true);
   }
@@ -8774,6 +8803,27 @@ function renderActiveScouting(){
           else alert('Deze wedstrijd is op slot.\nBewerk via tab Wedstrijden.');
           return;
         }
+      }
+      if(act === 'delete-prog'){
+        const _dpProg = programmaCache.find(p => p.id === progId);
+        const _dpLabel = _dpProg ? ((_dpProg.thuis||'?')+' – '+(_dpProg.uit||'?')) : 'deze wedstrijd';
+        showTypedDeleteConfirm({
+          title: 'Wedstrijd verwijderen?',
+          body: `<b>${_dpLabel}</b> wordt permanent verwijderd.<br><br><b>Let op:</b> hiermee worden alle gegevens van de wedstrijd verwijderd — inclusief rapporten en observaties van spelers, live-wedstrijdnotities en gevolgde spelers. Dit is onomkeerbaar.`,
+          confirmWord: 'VERWIJDEREN',
+          label: 'Type om te bevestigen'
+        }).then(async ok => {
+          if(!ok) return;
+          try {
+            const lmnSnap = await getDocs(query(collection(db,'users',currentUser.uid,'live_match_notes'),where('matchId','==',progId)));
+            await Promise.all(lmnSnap.docs.map(d=>deleteDoc(d.ref)));
+            const obsSnap = await getDocs(query(collection(db,'users',currentUser.uid,'players'),where('programma_link.progId','==',progId)));
+            await Promise.all(obsSnap.docs.map(d=>deleteDoc(d.ref)));
+            await deleteProgrammaItem(progId);
+            if(typeof toast==='function') toast('Wedstrijd + alle gekoppelde data verwijderd');
+          } catch(_){ if(typeof toast==='function') toast('Verwijderen mislukt',true); }
+        });
+        return;
       }
       if(act === 'match-start'){
         if(typeof setMatchStarted === 'function') setMatchStarted(progId);
@@ -9021,9 +9071,10 @@ function renderActiveScouting(){
         if(naamIn) naamIn.focus();
       } else if(act === 'toggle-gk'){
         const wrap2 = btn.closest('.sa-gk-wrap');
-        if(wrap2){ const menu = wrap2.querySelector('.sa-gk-menu'); if(menu){
+        if(wrap2){ const menu = wrap2.querySelector('.sa-gk-menu') || document.body.querySelector('.sa-gk-menu[data-saown="'+wrap2.dataset.saown+'"]'); if(menu){
           const isOpen = menu.style.display === 'block';
-          if(!isOpen){ const r = btn.getBoundingClientRect(); menu.style.position='fixed'; menu.style.top=(r.bottom+4)+'px'; menu.style.left=r.left+'px'; menu.style.zIndex='9999'; }
+          if(!isOpen){ const r = btn.getBoundingClientRect(); const _zoom=parseFloat(getComputedStyle(document.body).zoom)||1; menu._saWrap=wrap2; if(!wrap2.dataset.saown){wrap2.dataset.saown=Date.now().toString(36);} menu.dataset.saown=wrap2.dataset.saown; document.body.appendChild(menu); menu.style.position='fixed'; menu.style.top=(r.bottom/_zoom+12)+'px'; menu.style.left=(r.left/_zoom)+'px'; menu.style.zIndex='9999'; }
+          else { if(menu._saWrap && menu.parentElement===document.body) menu._saWrap.appendChild(menu); }
           menu.style.display = isOpen ? 'none' : 'block';
         }}
       } else if(act === 'open-gk'){
@@ -9037,9 +9088,10 @@ function renderActiveScouting(){
         } catch(_){}
       } else if(act === 'toggle-obs'){
         const wrap2 = btn.closest('.sa-obs-wrap');
-        if(wrap2){ const menu = wrap2.querySelector('.sa-obs-menu'); if(menu){
+        if(wrap2){ const menu = wrap2.querySelector('.sa-obs-menu') || document.body.querySelector('.sa-obs-menu[data-saown="'+wrap2.dataset.saown+'"]'); if(menu){
           const isOpen = menu.style.display === 'block';
-          if(!isOpen){ const r = btn.getBoundingClientRect(); menu.style.position='fixed'; menu.style.top=(r.bottom+4)+'px'; menu.style.left=r.left+'px'; menu.style.zIndex='9999'; }
+          if(!isOpen){ const r = btn.getBoundingClientRect(); const _zoom=parseFloat(getComputedStyle(document.body).zoom)||1; menu._saWrap=wrap2; if(!wrap2.dataset.saown){wrap2.dataset.saown=Date.now().toString(36);} menu.dataset.saown=wrap2.dataset.saown; document.body.appendChild(menu); menu.style.position='fixed'; menu.style.top=(r.bottom/_zoom+12)+'px'; menu.style.left=(r.left/_zoom)+'px'; menu.style.zIndex='9999'; }
+          else { if(menu._saWrap && menu.parentElement===document.body) menu._saWrap.appendChild(menu); }
           menu.style.display = isOpen ? 'none' : 'block';
         }}
       } else if(act === 'open-obs-draft'){
@@ -11553,6 +11605,7 @@ function applyFilters(){
           <th data-sort="potentieel_niveau">Potentieel</th>
           <th data-sort="advies">Advies</th>
           <th data-sort="datum">Datum</th>
+          <th class="db-del-col" aria-label=""></th>
         </tr>
       </thead>
       <tbody>
@@ -11598,6 +11651,7 @@ function applyFilters(){
                     +'</span>';
                 })()
               : formatDate(p.datum)}</td>
+            <td class="db-del-col"><button type="button" class="db-del-btn" data-del-id="${escapeAttr(p.id)}" data-del-naam="${escapeAttr(p.naam||'')}" data-del-type="${escapeAttr(p.rapport_type||'')}" title="Verwijderen" aria-label="Verwijderen">🗑</button></td>
           </tr>
         `;
       }).join('')}
@@ -11634,13 +11688,34 @@ function applyFilters(){
   });
   wireDraftCard();
   setTimeout(() => shStagger(wrap, 'tbody tr:not(.db-expanded-row)'), 0);
-  // Row click → detail (but ignore clicks on de checkbox- en expand-kolommen)
+  // Row click → detail (but ignore clicks on de checkbox-, expand- en del-kolommen)
   $$('tbody tr', wrap).forEach(tr=>{
     tr.addEventListener('click', (ev)=>{
       if(ev.target.closest('.db-check-col')) return;
       if(ev.target.closest('.db-expand-col')) return;
+      if(ev.target.closest('.db-del-col')) return;
       if(tr.classList.contains('db-expanded-row')) return;
       openDetail(tr.dataset.id);
+    });
+  });
+  // Trash knoppen in db-tabel
+  $$('.db-del-btn', wrap).forEach(btn => {
+    btn.addEventListener('click', async (ev) => {
+      ev.stopPropagation();
+      const pid = btn.dataset.delId;
+      const naam = btn.dataset.delNaam || 'deze speler';
+      const isObs = btn.dataset.delType === 'observatie';
+      const ok = await showTypedDeleteConfirm({
+        title: (isObs ? 'Observatie' : 'Rapport') + ' verwijderen?',
+        body: (isObs
+          ? `De observatie van <b>${escapeHtml(naam)}</b> wordt definitief verwijderd — onomkeerbaar.`
+          : `Het rapport van <b>${escapeHtml(naam)}</b> wordt definitief verwijderd — onomkeerbaar.`),
+        confirmWord: 'VERWIJDEREN',
+        label: 'Type om te bevestigen'
+      });
+      if(!ok) return;
+      try { await deletePlayer(pid); if(typeof toast==='function') toast((isObs?'Observatie':'Rapport')+' verwijderd'); }
+      catch(_){ if(typeof toast==='function') toast('Verwijderen mislukt',true); }
     });
   });
   // s35df: expand-arrow → toon rapportenlijst onder de rij
@@ -15228,11 +15303,13 @@ function renderDetailObsOverview(p){
   document.getElementById('dtl-back-prev')?.addEventListener('click', ()=>go(previousViewBeforePlayer||'database'));
   document.getElementById('dtl-del-obs')?.addEventListener('click', ()=>{
     // BATCH 1 / 1C — site-stijl popup i.p.v. browser-confirm
-    _shStyledConfirm({
+    showTypedDeleteConfirm({
       title: 'Observatie verwijderen?',
-      msg: 'De observatie van ' + (p.naam || 'deze speler') + ' wordt definitief verwijderd.',
-      yes: '🗑️ Ja, verwijderen'
-    }, async ()=>{
+      body: 'De observatie van <b>'+(p.naam||'deze speler').replace(/</g,'&lt;')+'</b> wordt definitief verwijderd — onomkeerbaar.',
+      confirmWord: 'VERWIJDEREN',
+      label: 'Type om te bevestigen'
+    }).then(async ok => {
+      if(!ok) return;
       try{ await deletePlayer(p.id); go(previousViewBeforePlayer||'database'); if(typeof toast==='function') toast('Observatie verwijderd'); }
       catch(_){ if(typeof toast==='function') toast('Verwijderen mislukt',true); }
     });
@@ -17902,6 +17979,7 @@ function renderMatches(){
               </div>
               <div class="pm-item-acts">
                 <button type="button" class="pm-item-link" data-player-id="${escapeHtml(p.id)}">Rapport →</button>
+                <button type="button" class="pm-del-obs-btn" data-del-player-id="${escapeHtml(p.id)}" data-del-naam="${escapeHtml(p.naam||'')}" data-del-type="${escapeHtml(p.rapport_type||'')}" title="Verwijderen">🗑</button>
               </div>
             </div>`;
           }).join('');
@@ -17929,7 +18007,7 @@ function renderMatches(){
             </div>
             <div class="pm-item-acts">
               ${isVerwerkt
-                ? `<button type="button" class="pm-item-link" data-player-id="${escapeHtml(concept.id)}" title="Open rapport">Rapport →</button>`
+                ? `<button type="button" class="pm-item-link" data-player-id="${escapeHtml(concept.id)}" title="Open rapport">Rapport →</button><button type="button" class="pm-del-obs-btn" data-del-player-id="${escapeHtml(concept.id)}" data-del-naam="${escapeHtml(naam)}" data-del-type="${escapeHtml(concept.rapport_type||'')}" title="Verwijderen">🗑</button>`
                 : `<button type="button" class="pm-item-btn${concept?' ':' new'}" data-pm-rapport="${escapeHtml(m.progId)}" data-pm-sp-id="${escapeHtml(sp.id)}">${concept ? '\u2192 Open' : '\u2192 Rapport'}</button>`
               }
             </div>
@@ -18438,6 +18516,27 @@ function renderMatches(){
         if(prog_ro && typeof openMatchLiveForm === 'function'){
           openMatchLiveForm(prog_ro, { mode: 'rapport' });
         }
+        return;
+      }
+      // Trash knop op obs/rapport in wedstrijd dropdown
+      const btnDelObs = e.target.closest('.pm-del-obs-btn');
+      if(btnDelObs){
+        e.stopPropagation();
+        const _dPid = btnDelObs.dataset.delPlayerId;
+        const _dNaam = btnDelObs.dataset.delNaam || 'deze speler';
+        const _dIsObs = btnDelObs.dataset.delType === 'observatie';
+        showTypedDeleteConfirm({
+          title: (_dIsObs ? 'Observatie' : 'Rapport') + ' verwijderen?',
+          body: (_dIsObs
+            ? `De observatie van <b>${escapeHtml(_dNaam)}</b> wordt definitief verwijderd — onomkeerbaar.`
+            : `Het rapport van <b>${escapeHtml(_dNaam)}</b> wordt definitief verwijderd — onomkeerbaar.`),
+          confirmWord: 'VERWIJDEREN',
+          label: 'Type om te bevestigen'
+        }).then(async ok => {
+          if(!ok) return;
+          try { await deletePlayer(_dPid); if(typeof toast==='function') toast((_dIsObs?'Observatie':'Rapport')+' verwijderd'); }
+          catch(_){ if(typeof toast==='function') toast('Verwijderen mislukt',true); }
+        });
         return;
       }
       // s93: profiel-knop (verwerkte spelers) + klikbare spelernaam
@@ -21439,13 +21538,33 @@ async function saveProgMatchFromForm(e){
 async function deleteProgMatchFromForm(){
   const id = $('#pm-id').value;
   if(!id) return;
-  if(!confirm('Geplande wedstrijd verwijderen? Eventuele spelers in dit plan gaan ook weg.')) return;
+  const prog = programmaCache.find(p => p.id === id);
+  const label = prog ? ((prog.thuis||'?')+' – '+(prog.uit||'?')) : 'deze wedstrijd';
+  const ok = await showTypedDeleteConfirm({
+    title: 'Wedstrijd verwijderen?',
+    body: `<b>${label}</b> wordt permanent verwijderd.<br><br><b>Let op:</b> hiermee worden alle gegevens van de wedstrijd verwijderd — inclusief rapporten en observaties van spelers, live-wedstrijdnotities en gevolgde spelers. Dit is onomkeerbaar.`,
+    confirmWord: 'VERWIJDEREN',
+    label: 'Type om te bevestigen'
+  });
+  if(!ok) return;
   try {
+    // Cascade: verwijder alle live_match_notes voor dit match-id
+    const lmnSnap = await getDocs(query(
+      collection(db, 'users', currentUser.uid, 'live_match_notes'),
+      where('matchId', '==', id)
+    ));
+    await Promise.all(lmnSnap.docs.map(d => deleteDoc(d.ref)));
+    // Cascade: verwijder ook alle observaties/rapporten gekoppeld aan dit match-id
+    const obsSnap = await getDocs(query(
+      collection(db, 'users', currentUser.uid, 'players'),
+      where('programma_link.progId', '==', id)
+    ));
+    await Promise.all(obsSnap.docs.map(d => deleteDoc(d.ref)));
     await deleteProgrammaItem(id);
     closeProgMatchModal();
     if(progExpandedId === id) progExpandedId = null;
-    toast('Verwijderd');
-  } catch(e){}
+    toast('Wedstrijd + alle gekoppelde data verwijderd');
+  } catch(e){ toast('Verwijderen mislukt', true); }
 }
 
 /* ------------- Plan player modal ------------- */
@@ -27637,7 +27756,7 @@ function shWireClubAC(input){
   input.addEventListener('blur', () => setTimeout(() => window.shAC?.close(), 150));
 }
 function shUpgradeSelectToAC(id){ /* no-op */ }
-const _SH_ELFTALLEN = (function(){ const out = []; for(let age=8;age<=23;age++){ const max=10; for(let nr=1;nr<=max;nr++) out.push('O.'+age+'-'+nr); } return out; })();
+const _SH_ELFTALLEN = (function(){ const out = []; for(let age=8;age<=23;age++){ const max=10; for(let nr=1;nr<=max;nr++) out.push('O.'+age+'-'+nr); } for(let age=14;age<=23;age++){ for(let nr=1;nr<=4;nr++) out.push('JONG O.'+age+'-'+nr); } return out; })();
 function shWireLeeftijdAC(input){
   if(!input) return;
   input.setAttribute('autocomplete','off');
@@ -27696,18 +27815,26 @@ async function loadUserRole(){
     const { getFirestore, doc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
     const db = getFirestore();
     const snap = await getDoc(doc(db, 'users', currentUser.uid));
-    const role = snap.exists() ? (snap.data().role || 'scout') : 'scout';
-    window._shUserRole = role;
+    const d2 = snap.exists() ? snap.data() : {};
+    const role = d2.role || 'scout';
+    window._shUserRole   = role;
+    window._shUserOrgId  = d2.orgId  || null;
+    window._shUserTeamId = d2.teamId || null;
+    const _isHoofd = role && role.startsWith('hoofd');
+    const _isCoord = role === 'coordinator' || _isHoofd || role === 'admin';
     try { document.body.classList.toggle('role-admin', (role==='admin') || (currentUser && currentUser.email && ['admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1)); } catch(_){}
-    try { if(snap.exists() && snap.data().onboardingCompleted === false && typeof _obStart==='function'){ _obStart(role, snap.data()); } } catch(_){}
-    // Coordinator-features tonen/verbergen
+    try { document.body.classList.toggle('role-coord', _isCoord); } catch(_){}
+    try { if(snap.exists() && d2.onboardingCompleted === false && typeof _obStart==='function'){ _obStart(role, d2); } } catch(_){}
+    // Coordinator/hoofd-features tonen/verbergen
     document.querySelectorAll('[data-role-min="coordinator"]').forEach(el => {
-      el.style.display = (role === 'coordinator' || role === 'admin') ? '' : 'none';
+      el.style.display = _isCoord ? '' : 'none';
     });
   } catch(_){
-    // Geen rol-data beschikbaar — geen probleem, app werkt als standaard scout
-    window._shUserRole = 'scout';
+    window._shUserRole   = 'scout';
+    window._shUserOrgId  = null;
+    window._shUserTeamId = null;
     try { document.body.classList.toggle('role-admin', currentUser && currentUser.email && ['admin@scoutinghub.nl'].indexOf(currentUser.email.toLowerCase()) !== -1); } catch(_){}
+    try { document.body.classList.remove('role-coord'); } catch(_){}
   }
   // FASE A: admin → eigen console-overlay; scout/coördinator → normale app.
   try { if(typeof _shIsAdmin==='function' && _shIsAdmin()){ if(typeof _admActivate==='function') _admActivate(); } else { if(typeof _admDeactivate==='function') _admDeactivate(); } } catch(_){}
@@ -31398,7 +31525,7 @@ function _admBuildShell(){
   var email=''; try{ email=(typeof currentUser!=='undefined'&&currentUser&&currentUser.email)||''; }catch(_){}
   var navGroups=[
     {label:'', items:[['overzicht','Overzicht','📊']]},
-    {label:'Gebruikers', items:[['toegang','Toegang','📨'],['gebruikers','Gebruikers','👥'],['teams','Teams & Organigram','🏢']]},
+    {label:'Gebruikers', items:[['organisaties','Organisaties','🏛️'],['toegang','Toegang','📨'],['gebruikers','Gebruikers','👥'],['teams','Teams & Organigram','🏢']]},
     {label:'Inzicht & communicatie', items:[['statistieken','Statistieken','📈'],['feedback','Feedback','💬'],['mail','Mailcentrum','✉️']]},
     {label:'Beveiliging', items:[['security','Security & Audit','🛡️'],['support','Support','🤝']]},
     {label:'Systeem', items:[['instellingen','Instellingen','⚙️']]}
@@ -31444,6 +31571,7 @@ function _admShowSection(key){
   else if(key==='support')     _admRenderSupport(stub);
   else if(key==='instellingen')_admRenderSettings(stub);
   else if(key==='feedback')    _admRenderFeedback(stub);
+  else if(key==='organisaties') _admRenderOrganisaties(stub);
   else stub.innerHTML=_admStubHtml(key);
 }
 window._admNav=_admShowSection;
@@ -31535,32 +31663,40 @@ var _ADM_MB_ADDR={admin:'admin@scoutinghub.nl',contact:'contact@scoutinghub.nl',
 var _admMb={type:'admin',folder:'inbox'};
 var _admMbEl=null;
 
+// ── Mailcentrum: volledig 3-koloms client ──────────────────────────────────
+// Layout: [folders sidebar] | [berichtenlijst] | [detail / compose]
+// Alles naast elkaar zichtbaar. Detail opent rechts, niet onder de lijst.
+
 async function _admRenderMail(el){
   _admMbEl=el;
   el.innerHTML='<div class="adm-loading">Mailcentrum laden…</div>';
   await _admEnsureCore();
+  _admMbRebuild();
+}
+window._admRenderMail=_admRenderMail;
+
+function _admMbRebuild(){
+  var el=_admMbEl; if(!el) return;
   var tabs=Object.keys(_ADM_MB_ADDR).map(function(k){
     return '<button class="adm-mb-tab'+(k===_admMb.type?' adm-mb-tab-active':'')+'" onclick="_admMbSwitch(\''+k+'\')">'+_ADM_MB_ADDR[k]+'</button>';
   }).join('');
-  var sideItems=[['new','✉️ Nieuw'],['inbox','📥 Inbox'],['sent','📤 Verstuurd'],['trash','🗑️ Verwijderd']];
+  var sideItems=[['compose','✏️ Opstellen'],['inbox','📥 Inbox'],['sent','📤 Verstuurd'],['trash','🗑️ Verwijderd']];
   var side=sideItems.map(function(s){
     return '<button class="adm-mb-side'+(s[0]===_admMb.folder?' adm-mb-side-active':'')+'" onclick="_admMbNav(\''+s[0]+'\')">'+s[1]+'</button>';
   }).join('')
-    +'<button class="adm-mb-side" onclick="_admTestMail(\''+_admMb.type+'\',this)">🧪 Testmail</button>'
-    +'<a class="adm-mb-side" href="https://webmail.transip.email/" target="_blank" rel="noopener">🌐 Webmail</a>';
+;
   el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Mailcentrum</div>'
-    +'<div class="bh-stat-note">Inbox/Verstuurd/Verwijderd via IMAP (alleen-lezen). Versturen via Resend in ScoutingHub-huisstijl, met automatische ondertekening. Vereist server-secrets IMAP_PASS_ADMIN/IMAP_PASS_CONTACT/IMAP_PASS_INFO.</div>'
-    +'<div class="adm-mailbox-app">'
-      +'<div class="adm-mailbox-tabs">'+tabs+'</div>'
-      +'<div class="adm-mailbox-body">'
-        +'<div class="adm-mailbox-side">'+side+'</div>'
-        +'<div class="adm-mailbox-main" id="adm-mb-main"></div>'
+    +'<div class="adm-mb3-wrap">'
+      +'<div class="adm-mb3-tabs">'+tabs+'</div>'
+      +'<div class="adm-mb3-body">'
+        +'<div class="adm-mb3-side">'+side+'</div>'
+        +'<div class="adm-mb3-list" id="adm-mb3-list"><div class="adm-loading">Laden…</div></div>'
+        +'<div class="adm-mb3-detail" id="adm-mb3-detail"><div class="adm-mb3-empty">← Selecteer een bericht</div></div>'
       +'</div>'
     +'</div>'
     +'<datalist id="adm-mb-contacts">'+_admMbContactOptions()+'</datalist>';
-  _admMbRenderMain();
+  _admMbLoadPane();
 }
-window._admRenderMail=_admRenderMail;
 
 function _admMbContactOptions(){
   var set={};
@@ -31569,30 +31705,39 @@ function _admMbContactOptions(){
   return Object.keys(set).sort().map(function(k){ return '<option value="'+_bhEsc(set[k])+'">'; }).join('');
 }
 
-function _admMbSwitch(type){ _admMb.type=type; _admMb.folder='inbox'; if(_admMbEl) _admRenderMail(_admMbEl); }
+function _admMbSwitch(type){ _admMb.type=type; _admMb.folder='inbox'; _admMbRebuild(); }
 window._admMbSwitch=_admMbSwitch;
 
-function _admMbNav(folder){ _admMb.folder=folder; if(_admMbEl) _admRenderMail(_admMbEl); }
+function _admMbNav(folder){ _admMb.folder=folder; _admMbRebuild(); }
 window._admMbNav=_admMbNav;
 
-function _admMbRenderMain(){
-  var main=document.getElementById('adm-mb-main');
-  if(!main) return;
-  if(_admMb.folder==='new'){ _admMbRenderCompose(main); return; }
-  _admMbLoadFolder(main,_admMb.type,_admMb.folder);
+function _admMbLoadPane(){
+  var list=document.getElementById('adm-mb3-list'); if(!list) return;
+  var detail=document.getElementById('adm-mb3-detail'); if(!detail) return;
+  if(_admMb.folder==='compose'){
+    list.innerHTML='';
+    _admMbRenderCompose(detail);
+    return;
+  }
+  detail.innerHTML='<div class="adm-mb3-empty">← Selecteer een bericht</div>';
+  _admMbLoadFolder(list, _admMb.type, _admMb.folder);
 }
 
-function _admMbRenderCompose(main){
+function _admMbRenderCompose(pane, replyTo){
   var type=_admMb.type, addr=_ADM_MB_ADDR[type];
-  main.innerHTML='<div class="adm-compose adm-compose-lg">'
-    +'<input type="email" class="adm-compose-input" id="adm-mb-to" list="adm-mb-contacts" placeholder="Aan (e-mailadres)">'
+  var toVal=replyTo?_bhEsc(replyTo):'';
+  pane.innerHTML='<div class="adm-mb3-compose">'
+    +'<div class="adm-mb3-compose-hd">Nieuw bericht — van <b>'+_bhEsc(addr)+'</b></div>'
+    +'<input type="email" class="adm-compose-input" id="adm-mb-to" list="adm-mb-contacts" placeholder="Aan (e-mailadres)" value="'+toVal+'">'
     +'<input type="text" class="adm-compose-input" id="adm-mb-subj" placeholder="Onderwerp">'
-    +'<textarea class="adm-compose-input adm-compose-msg" id="adm-mb-msg" placeholder="Bericht…" rows="12"></textarea>'
-    +'<div class="adm-mailenv">Verstuurd vanaf '+addr+' in ScoutingHub-huisstijl, met automatische ondertekening "Team ScoutingHub — '+addr+'".</div>'
-    +'<div class="adm-mailact"><button class="adm-btn-ghost adm-btn-primary" onclick="_admMbSend(this)">Versturen</button>'
-    +'<button class="adm-btn-ghost" onclick="_admMbNav(\'inbox\')">Annuleren</button></div>'
+    +'<textarea class="adm-compose-input adm-mb3-compose-msg" id="adm-mb-msg" placeholder="Bericht…"></textarea>'
+    +'<div class="adm-mailact">'
+      +'<button class="adm-btn-ghost adm-btn-primary" onclick="_admMbSend(this)">Versturen</button>'
+      +'<button class="adm-btn-ghost" onclick="_admMbNav(\'inbox\')">Annuleren</button>'
+    +'</div>'
     +'<div id="adm-mb-res"></div>'
   +'</div>';
+  var toEl=pane.querySelector('#adm-mb-to'); if(toEl&&!toVal) toEl.focus();
 }
 
 async function _admMbSend(btn){
@@ -31609,9 +31754,8 @@ async function _admMbSend(btn){
     var r=await fetch(_admBase()+'/api/admin-mail-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:_admMb.type,to:to,subject:subj,message:msg})});
     var j={};try{j=await r.json();}catch(_){}
     if(r.ok&&j&&j.ok&&j.sent){
-      if(typeof toast==='function')toast('Mail verstuurd ✓');
-      _admMb.folder='sent';
-      if(_admMbEl) _admRenderMail(_admMbEl);
+      if(typeof toast==='function') toast('Mail verstuurd ✓');
+      _admMb.folder='sent'; _admMbRebuild();
     } else {
       if(res) res.innerHTML='<div class="bh-empty">Versturen mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
       if(btn){ btn.disabled=false; btn.textContent=_o; }
@@ -31620,68 +31764,78 @@ async function _admMbSend(btn){
 }
 window._admMbSend=_admMbSend;
 
-async function _admMbLoadFolder(main, type, folder){
+async function _admMbLoadFolder(listEl, type, folder){
   var lbl=_ADM_MAILLABELS[folder]||'Map';
-  main.innerHTML='<div class="adm-loading">'+lbl+' laden…</div>';
+  listEl.innerHTML='<div class="adm-loading">'+lbl+' laden…</div>';
   try{
-    var tk=await _admToken(); if(!tk){ main.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
-    var r=await fetch(_admBase()+'/api/admin-mail-inbox',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,folder:folder,limit:20})});
+    var tk=await _admToken(); if(!tk){ listEl.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
+    var r=await fetch(_admBase()+'/api/admin-mail-inbox',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,folder:folder,limit:50})});
     var j={};try{j=await r.json();}catch(_){}
     if(!(r.ok&&j&&j.ok)){
-      main.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
+      listEl.innerHTML='<div class="bh-empty">'+_bhEsc(lbl)+' laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
       return;
     }
     var msgs=j.messages||[];
     var fLabel=j.folder||lbl;
-    if(!msgs.length){ main.innerHTML='<div class="bh-empty">'+fLabel+' is leeg (totaal: '+(j.count||0)+').</div>'; return; }
-    var rows=msgs.map(function(m){
-      var dt=m.date||''; try{ var d=new Date(m.date); if(!isNaN(d.getTime())) dt=d.toLocaleString('nl-NL'); }catch(_){}
-      var who=(folder==='sent')?('Aan: '+(m.to||'—')):(m.from||'—');
-      return '<div class="adm-mail-row adm-mail-row-lg'+(m.seen?'':' adm-mail-unread')+' adm-mail-row-clickable" onclick="_admMbOpenMail(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\','+m.seq+',this)">'
-        +'<div class="adm-mail-from">'+_bhEsc(who)+'</div>'
-        +'<div class="adm-mail-subj">'+_bhEsc(m.subject||'(geen onderwerp)')+'</div>'
-        +'<div class="adm-mail-date">'+_bhEsc(dt)+'</div></div>';
-    }).join('');
-    main.innerHTML='<div class="bh-stat-note" style="margin:8px 0">Laatste '+msgs.length+' van '+(j.count||0)+' berichten in '+fLabel+' — klik om te openen.</div>'
-      +'<div class="adm-mailinbox adm-mailinbox-lg" id="adm-mb-list">'+rows+'</div>'
-      +'<div id="adm-mb-detail"></div>';
-  }catch(_){ main.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt.</div>'; }
+    if(!msgs.length){ listEl.innerHTML='<div class="bh-empty">'+_bhEsc(fLabel)+' is leeg.</div>'; return; }
+    listEl.innerHTML='<div class="adm-mb3-list-hd">'+_bhEsc(fLabel)+' <span class="adm-mb3-count">'+msgs.length+(j.count&&j.count>msgs.length?'/'+j.count:'')+'</span></div>'
+      +msgs.map(function(m){
+        var dt=''; try{ var d=new Date(m.date); if(!isNaN(d.getTime())) dt=d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }catch(_){}
+        var who=(folder==='sent')?_bhEsc(m.to||'—'):_bhEsc(m.from||'—');
+        return '<div class="adm-mb3-row'+(m.seen?'':' adm-mb3-unread')+'" data-seq="'+m.seq+'" onclick="_admMbOpenMail(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\','+m.seq+',this)">'
+          +'<div class="adm-mb3-row-from">'+who+'</div>'
+          +'<div class="adm-mb3-row-subj">'+_bhEsc(m.subject||'(geen onderwerp)')+'</div>'
+          +'<div class="adm-mb3-row-date">'+_bhEsc(dt)+'</div>'
+        +'</div>';
+      }).join('');
+  }catch(_){ listEl.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt.</div>'; }
 }
 
 async function _admMbOpenMail(type, folder, seq, rowEl){
-  // Markeer actieve rij
-  var list=document.getElementById('adm-mb-list');
-  if(list) list.querySelectorAll('.adm-mail-row-active').forEach(function(r){ r.classList.remove('adm-mail-row-active'); });
-  if(rowEl) rowEl.classList.add('adm-mail-row-active');
-
-  var detail=document.getElementById('adm-mb-detail');
-  if(!detail) return;
-  detail.innerHTML='<div class="adm-mail-detail"><div class="adm-loading">Bericht laden…</div></div>';
+  var listEl=document.getElementById('adm-mb3-list');
+  if(listEl) listEl.querySelectorAll('.adm-mb3-row-active').forEach(function(r){ r.classList.remove('adm-mb3-row-active'); });
+  if(rowEl) rowEl.classList.add('adm-mb3-row-active');
+  var detail=document.getElementById('adm-mb3-detail'); if(!detail) return;
+  detail.innerHTML='<div class="adm-loading">Bericht laden…</div>';
   try{
-    var tk=await _admToken(); if(!tk){ detail.innerHTML='<div class="adm-mail-detail"><div class="bh-empty">Niet ingelogd.</div></div>'; return; }
+    var tk=await _admToken(); if(!tk){ detail.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
     var r=await fetch(_admBase()+'/api/admin-mail-read',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,folder:folder,seq:seq})});
     var j={};try{j=await r.json();}catch(_){}
-    if(!(r.ok&&j&&j.ok)){
-      detail.innerHTML='<div class="adm-mail-detail"><div class="bh-empty">Bericht laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div></div>';
-      return;
-    }
+    if(!(r.ok&&j&&j.ok)){ detail.innerHTML='<div class="bh-empty">Laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>'; return; }
     var dt=''; try{ var d=new Date(j.date); if(!isNaN(d.getTime())) dt=d.toLocaleString('nl-NL'); }catch(_){ dt=j.date||''; }
-    detail.innerHTML='<div class="adm-mail-detail">'
-      +'<div class="adm-mail-detail-hd">'
-        +'<div class="adm-mail-detail-subj">'+_bhEsc(j.subject||'(geen onderwerp)')+'</div>'
-        +'<div class="adm-mail-detail-meta">'
+    var fromAddr=''; try{ fromAddr=j.from.replace(/.*<([^>]+)>.*/,'$1')||j.from; }catch(_){ fromAddr=j.from||''; }
+    detail.innerHTML='<div class="adm-mb3-detail-inner">'
+      +'<div class="adm-mb3-detail-hd">'
+        +'<div class="adm-mb3-detail-subj">'+_bhEsc(j.subject||'(geen onderwerp)')+'</div>'
+        +'<div class="adm-mb3-detail-meta">'
           +(j.from?'<span><b>Van:</b> '+_bhEsc(j.from)+'</span>':'')
           +(j.to?'<span><b>Aan:</b> '+_bhEsc(j.to)+'</span>':'')
           +(dt?'<span><b>Datum:</b> '+_bhEsc(dt)+'</span>':'')
         +'</div>'
-        +'<button class="adm-btn-ghost" style="margin-top:8px;font-size:12px" onclick="document.getElementById(\'adm-mb-detail\').innerHTML=\'\'">✕ Sluiten</button>'
+        +'<div class="adm-mb3-detail-acts">'
+          +'<button class="adm-btn-ghost adm-btn-primary" onclick="_admMbReply(\''+_bhEsc(fromAddr)+'\',\''+_bhEsc(j.subject||'')+'\')">↩ Beantwoorden</button>'
+          +'<button class="adm-btn-ghost" onclick="_admMbNav(\'compose\')">✏️ Nieuw</button>'
+        +'</div>'
       +'</div>'
-      +'<pre class="adm-mail-detail-body">'+_bhEsc(j.text||'(leeg bericht)')+'</pre>'
+      +'<pre class="adm-mb3-detail-body">'+_bhEsc(j.text||'(leeg bericht)')+'</pre>'
     +'</div>';
-    detail.scrollIntoView({behavior:'smooth',block:'nearest'});
-  }catch(_){ detail.innerHTML='<div class="adm-mail-detail"><div class="bh-empty">Bericht laden mislukt.</div></div>'; }
+  }catch(_){ detail.innerHTML='<div class="bh-empty">Bericht laden mislukt.</div>'; }
 }
 window._admMbOpenMail=_admMbOpenMail;
+
+function _admMbReply(fromAddr, subject){
+  _admMb.folder='compose';
+  var el=_admMbEl; if(!el) return;
+  // Rebuild met compose open, prefill To + Subject
+  _admMbRebuild();
+  setTimeout(function(){
+    var detail=document.getElementById('adm-mb3-detail'); if(!detail) return;
+    _admMbRenderCompose(detail, fromAddr);
+    var subEl=detail.querySelector('#adm-mb-subj');
+    if(subEl) subEl.value=(subject&&!/^Re:/i.test(subject)?'Re: ':'')+subject;
+  }, 50);
+}
+window._admMbReply=_admMbReply;
 
 async function _admTestMail(type, btn){
   var _o='';
@@ -31773,7 +31927,7 @@ async function _admRenderSettings(el){
 }
 
 var _admFbCache=[], _admFbStatus='';
-var _ADM_FB_LABELS={ new:['Nieuw','bh-b-blue'], in_progress:['In behandeling','bh-b-amber'], resolved:['Opgelost','bh-b-green'], no_action:['Geen actie','bh-b-grey'] };
+var _ADM_FB_LABELS={ open:['Open','bh-b-blue'], in_progress:['In behandeling','bh-b-amber'], resolved:['Afgehandeld','bh-b-green'], no_action:['Geen actie','bh-b-grey'] };
 async function _admRenderFeedback(el){
   el.innerHTML='<div class="adm-loading">Feedback laden…</div>';
   try{
@@ -31788,17 +31942,19 @@ async function _admRenderFeedback(el){
 }
 function _admFbRenderList(el){
   var all=_admFbCache||[];
-  function cnt(st){ return all.filter(function(f){return (f.status||'new')===st;}).length; }
+  function _fbSt(f){ var s=f.status||'open'; return (s==='new')?'open':s; }
+  function cnt(st){ return all.filter(function(f){ return _fbSt(f)===st; }).length; }
   function chip(val,lab){ return '<button class="bh-chip'+((_admFbStatus===val)?' active':'')+'" onclick="_admFbFilter(\''+val+'\')">'+lab+'</button>'; }
   var chips='<div class="bh-chips"><span class="bh-chips-l">Status</span>'
     +'<button class="bh-chip'+(_admFbStatus===''?' active':'')+'" onclick="_admFbFilter(\'\')">Alle ('+all.length+')</button>'
-    +chip('new','Nieuw ('+cnt('new')+')')+chip('in_progress','In behandeling ('+cnt('in_progress')+')')
-    +chip('resolved','Opgelost ('+cnt('resolved')+')')+chip('no_action','Geen actie ('+cnt('no_action')+')')+'</div>';
-  var rows=all.filter(function(f){ return !_admFbStatus || (f.status||'new')===_admFbStatus; });
+    +chip('open','Open ('+cnt('open')+')')+chip('in_progress','In behandeling ('+cnt('in_progress')+')')
+    +chip('resolved','Afgehandeld ('+cnt('resolved')+')')+chip('no_action','Geen actie ('+cnt('no_action')+')')+'</div>';
+  var rows=all.filter(function(f){ return !_admFbStatus || _fbSt(f)===_admFbStatus; });
   var capped=rows.slice(0,100);
   var cards=capped.map(function(f){
-    var lab=_ADM_FB_LABELS[f.status||'new']||_ADM_FB_LABELS.new;
-    var opts=['new','in_progress','resolved','no_action'].map(function(s){ return '<option value="'+s+'"'+(((f.status||'new')===s)?' selected':'')+'>'+_ADM_FB_LABELS[s][0]+'</option>'; }).join('');
+    var st=_fbSt(f);
+    var lab=_ADM_FB_LABELS[st]||_ADM_FB_LABELS.open;
+    var opts=['open','in_progress','resolved','no_action'].map(function(s){ return '<option value="'+s+'"'+((st===s)?' selected':'')+'>'+_ADM_FB_LABELS[s][0]+'</option>'; }).join('');
     return '<div class="adm-fb-card">'
       +'<div class="adm-fb-top"><div><b>'+(_bhEsc(f.name)||_bhEsc(f.email)||'—')+'</b> <span class="adm-fb-meta">'+(_bhEsc(f.email)||'')+(f.role?(' · '+_bhEsc(f.role)):'')+(f.teamName?(' · '+_bhEsc(f.teamName)):'')+'</span></div>'
         +'<span class="bh-badge '+lab[1]+'">'+lab[0]+'</span></div>'
@@ -31839,6 +31995,7 @@ function _admFbNote(id){
 let _bhAanvrFilter = 'pending';
 let _bhAanvrCache = [];
 let _bhTeamsCache = [];
+let _bhShowDemo = false;
 let _bhUserCache = [];
 let _bhAuditCache = [];
 
@@ -31946,9 +32103,11 @@ async function _bhLoadOrg(){
   var el = document.getElementById('bh-org');
   if(el) el.innerHTML = '<div class="bh-empty">Laden…</div>';
   try {
-    var snap = await getDocs(collection(db,'users'));
+    var [uSnap, tSnap] = await Promise.all([getDocs(collection(db,'users')), getDocs(collection(db,'teams'))]);
     _bhUserCache = [];
-    snap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhUserCache.push(x); });
+    uSnap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhUserCache.push(x); });
+    window._bhTeamNameMap = {};
+    tSnap.forEach(function(d){ window._bhTeamNameMap[d.id] = d.data().name||d.id; });
     _bhRenderOrg();
   } catch(e){
     if(el) el.innerHTML = '<div class="bh-empty">Kon het organigram niet laden.</div>';
@@ -31976,7 +32135,7 @@ function _bhRenderOrg(){
     if(role==='admin'){ admins.push(u); return; }
     var tid = u.teamId||'';
     if(!tid){ noTeam.push(u); return; }
-    if(!teams[tid]) teams[tid] = { name: u.teamName||tid, club: (u.clubName||''), coords:[], scouts:[] };
+    if(!teams[tid]) teams[tid] = { name: (window._bhTeamNameMap&&window._bhTeamNameMap[tid])||u.teamName||tid, club: (u.clubName||''), coords:[], scouts:[] };
     if(u.clubName && !teams[tid].club) teams[tid].club = u.clubName;
     if(role==='coordinator') teams[tid].coords.push(u); else teams[tid].scouts.push(u);
   });
@@ -32264,7 +32423,7 @@ function _bhRenderStats(){
    + charts
    + '<div class="bh-stat-hd">Top gebruikers — '+topLab+' <span class="bh-stat-sub2">(kies metric rechtsboven)</span></div><div class="bh-rank-card">'+topHtml+'</div>'
    + '<div class="bh-stat-hd">Teams</div>'+ttable
-   + '<div class="bh-stat-hd bh-stat-hd-row"><span>Gebruikersactiviteit</span><button type="button" class="adm-btn-ghost" onclick="_bhExportStatsCsv()">⬇️ Exporteer CSV</button></div>'+chips+utable
+   + '<div class="bh-stat-hd bh-stat-hd-row"><span>Gebruikersactiviteit</span><span style="display:flex;gap:6px"><button type="button" id="bh-demo-toggle" class="adm-btn-ghost" onclick="_bhToggleDemo()" style="font-size:.78rem">👁 Demo verbergen</button><button type="button" class="adm-btn-ghost" onclick="_bhExportStatsCsv()">⬇️ Exporteer CSV</button></span></div>'+chips+utable
    + (loadingCounts?'<div class="bh-stat-note">Activiteit per gebruiker wordt geladen…</div>':'');
 }
 function _bhExportStatsCsv(){
@@ -32561,6 +32720,12 @@ async function _bhLoadUsers(){
    Lijst rendert per pagina i.p.v. alles tegelijk; stats-counts cappen we. */
 var _bhUserPageSize = 50, _bhUserShown = 50, _bhSearchT = null, _BH_STAT_CAP = 100;
 function _bhUserMore(){ _bhUserShown = (typeof _bhUserShown==='number'?_bhUserShown:_bhUserPageSize) + _bhUserPageSize; _bhRenderUsers(); }
+window._bhToggleDemo = function(){
+  _bhShowDemo = !_bhShowDemo;
+  var btn = document.getElementById('bh-demo-toggle');
+  if(btn) btn.textContent = _bhShowDemo ? '👁 Demo verbergen' : '👁 Demo tonen';
+  _bhUserResetPage();
+};
 function _bhUserResetPage(){ _bhUserShown = _bhUserPageSize; _bhRenderUsers(); }
 function _bhDebounce(fn){ return function(){ if(_bhSearchT) clearTimeout(_bhSearchT); _bhSearchT = setTimeout(fn, 220); }; }
 function _bhRenderUsers(){
@@ -32587,6 +32752,8 @@ function _bhRenderUsers(){
   if(tmf==='__none__') rows = rows.filter(function(u){ return !(u.teamId||''); });
   else if(tmf) rows = rows.filter(function(u){ return (u.teamId||'')===tmf; });
   if(q) rows = rows.filter(function(u){ return ((u.displayName||'')+' '+(u.email||'')).toLowerCase().indexOf(q) !== -1; });
+  // Demo-filter: verberg demo. accounts tenzij expliciet aan
+  if(!_bhShowDemo) rows = rows.filter(function(u){ return !(u.email||'').toLowerCase().startsWith('demo.'); });
   rows.sort(function(a,b){
     var da=((a.status||'')==='deleted')?1:0, db=((b.status||'')==='deleted')?1:0;
     if(da!==db) return da-db;
@@ -33652,18 +33819,518 @@ window._shFieldError = _shFieldError;
 window._shClearFieldError = _shClearFieldError;
 
 /* ============================================================
-   BATCH 1 / 1A — picker/advies-foutmarkering (rood) bij Indienen.
-   Markeert de niveau-grade-pickers en de advies-chips rood wanneer ze
-   verplicht maar leeg zijn. Wist bij de volgende submit-poging (submitReport
-   reset de markeringen aan het begin) of bij interactie.
+   BATCH 1 / 1A — picker/advies-foutmarke
+/* ============================================================
+   ORGANISATIES BEHEER — admin panel
+   Org > Hoofd / Teams > Coordinatoren + Scouts
    ============================================================ */
-function _shMarkPickerError(key, on){
-  const p = document.querySelector('.grade-picker[data-key="' + key + '"]');
-  if(p) p.classList.toggle('sh-picker-error', on !== false);
+
+var _admOrgCache = null;
+var _admTeamsCache2 = null;
+
+async function _admRenderOrganisaties(el) {
+  el.innerHTML = '<div class="bh-stat-note" style="margin-top:0">Laden…</div>';
+  try {
+    var [orgSnap, teamSnap, userSnap] = await Promise.all([
+      getDocs(collection(db, 'organisaties')),
+      getDocs(collection(db, 'teams')),
+      getDocs(collection(db, 'users'))
+    ]);
+    _admOrgCache   = orgSnap.docs.map(function(d){ var x=d.data(); x._id=d.id; return x; });
+    _admTeamsCache2= teamSnap.docs.map(function(d){ var x=d.data(); x._id=d.id; return x; });
+    var users      = userSnap.docs.map(function(d){ var x=d.data(); x._id=d.id; return x; });
+    _admOrgRender(el, users);
+  } catch(e) {
+    el.innerHTML = '<div class="bh-stat-note" style="color:red">Fout: '+e.message+'</div>';
+  }
 }
-function _shMarkAdviesError(on){
-  const c = document.getElementById('f-advies') || document.getElementById('f-advies-chips');
-  if(c) c.classList.toggle('sh-picker-error', on !== false);
+window._admRenderOrganisaties = _admRenderOrganisaties;
+
+function _admOrgRender(el, users) {
+  var orgs  = _admOrgCache    || [];
+  var teams = _admTeamsCache2 || [];
+  _admOrgStyles();
+
+  var html = '<div style="display:flex;align-items:center;gap:12px;margin-bottom:18px">'
+    + '<div class="bh-stat-hd" style="margin:0">Organisaties</div>'
+    + '<button class="adm-btn-ghost" onclick="_admOrgNew()">＋ Organisatie</button>'
+    + '</div>';
+
+  if (!orgs.length) {
+    html += '<div class="bh-empty">Nog geen organisaties. Klik op + Organisatie.</div>';
+    el.innerHTML = html; return;
+  }
+
+  orgs.forEach(function(org) {
+    var oid      = org._id;
+    var orgTeams = teams.filter(function(t){ return t.orgId===oid; });
+    var orgUsers = users.filter(function(u){ return u.orgId===oid; });
+    var hoofden  = orgUsers.filter(function(u){ return u.role&&u.role.startsWith('hoofd'); });
+
+    html += '<div class="ao-org-card">'
+      + '<div class="ao-row ao-lvl1" onclick="_aoToggle(\'aob-org-'+oid+'\')">'
+      + '<span class="ao-arr" id="aoarr-aob-org-'+oid+'">▶</span>'
+      + '<span>🏛️</span><span class="ao-lbl">'+_bhEsc(org.naam)+'</span>'
+      + '<span class="ao-meta">'+orgTeams.length+' teams · '+orgUsers.length+' leden</span>'
+      + '<span class="ao-acts" onclick="event.stopPropagation()">'
+      + '<button class="adm-btn-ghost" onclick="_admOrgAddHoofd(\''+oid+'\',\''+_bhEsc(org.naam)+'\')">＋ Hoofd</button>'
+      + '<button class="adm-btn-ghost" onclick="_admOrgAddTeam(\''+oid+'\',\''+_bhEsc(org.naam)+'\')">＋ Team</button>'
+      + '<button class="adm-btn-ghost" style="color:#ef4444" onclick="_admOrgDelete(\''+oid+'\',\''+_bhEsc(org.naam)+'\')">✕</button>'
+      + '</span></div>'
+      + '<div class="ao-body" id="aob-org-'+oid+'" style="display:none">';
+
+    // Hoofden niveau 2
+    if (hoofden.length) {
+      html += '<div class="ao-row ao-lvl2" onclick="_aoToggle(\'aob-hoofd-'+oid+'\')">'
+        + '<span class="ao-arr" id="aoarr-aob-hoofd-'+oid+'">▶</span>'
+        + '<span>👑</span><span class="ao-lbl">Hoofden</span>'
+        + '<span class="ao-meta">'+hoofden.length+'</span></div>'
+        + '<div class="ao-body" id="aob-hoofd-'+oid+'" style="display:none">';
+      hoofden.forEach(function(u){
+        var lbl=u.role==='hoofd_jeugdscouting'?'Hoofd Jeugdscouting':u.role==='hoofd_coordinator'?'Hoofd Coördinator':'Hoofd Jeugdopleiding';
+        html += '<div class="ao-user ao-lvl3"><span>👤 '+_bhEsc(u.displayName||u.email)+'</span>'
+          + '<span class="adm-role-badge hoofd">'+lbl+'</span>'
+          + '<span class="ao-email">'+_bhEsc(u.email||'')+'</span>'
+          + '<button class="ao-del" onclick="_admOrgRemoveUser(\''+u._id+'\')">✕</button></div>';
+      });
+      html += '</div>';
+    }
+
+    // Teams niveau 2
+    orgTeams.forEach(function(team){
+      var tid      = team._id;
+      var tUsers   = orgUsers.filter(function(u){ return u.teamId===tid; });
+      var coords   = tUsers.filter(function(u){ return u.role==='coordinator'; });
+      var scouts   = tUsers.filter(function(u){ return u.role==='scout'; });
+
+      html += '<div class="ao-row ao-lvl2" onclick="_aoToggle(\'aob-team-'+tid+'\')">'
+        + '<span class="ao-arr" id="aoarr-aob-team-'+tid+'">▶</span>'
+        + '<span>👥</span><span class="ao-lbl">'+_bhEsc(team.name)+'</span>'
+        + '<span class="ao-meta">'+tUsers.length+' leden</span>'
+        + '<span class="ao-acts" onclick="event.stopPropagation()">'
+        + '<button class="adm-btn-ghost" onclick="_admOrgAddUser(\''+oid+'\',\''+tid+'\',\''+_bhEsc(org.naam)+'\',\''+_bhEsc(team.name)+'\')">＋ Gebruiker</button>'
+        + '<button class="adm-btn-ghost" style="color:#ef4444" onclick="_admOrgDeleteTeam(\''+tid+'\',\''+_bhEsc(team.name)+'\')">✕</button>'
+        + '</span></div>'
+        + '<div class="ao-body" id="aob-team-'+tid+'" style="display:none">';
+
+      var renderU = function(u,rol){
+        return '<div class="ao-user ao-lvl3"><span>👤 '+_bhEsc(u.displayName||u.email)+'</span>'
+          + '<span class="adm-role-badge '+rol+'">'+(rol==='coordinator'?'Coördinator':'Scout')+'</span>'
+          + '<span class="ao-email">'+_bhEsc(u.email||'')+'</span>'
+          + '<button class="ao-del" onclick="_admOrgRemoveUser(\''+u._id+'\')">✕</button></div>';
+      };
+
+      if (coords.length) {
+        html += '<div class="ao-row ao-lvl3" onclick="_aoToggle(\'aob-coords-'+tid+'\')">'
+          + '<span class="ao-arr" id="aoarr-aob-coords-'+tid+'">▶</span>'
+          + '<span>🔵</span><span class="ao-lbl">Coördinatoren</span><span class="ao-meta">'+coords.length+'</span></div>'
+          + '<div class="ao-body" id="aob-coords-'+tid+'" style="display:none">'
+          + coords.map(function(u){return renderU(u,'coordinator');}).join('')+'</div>';
+      }
+      if (scouts.length) {
+        html += '<div class="ao-row ao-lvl3" onclick="_aoToggle(\'aob-scouts-'+tid+'\')">'
+          + '<span class="ao-arr" id="aoarr-aob-scouts-'+tid+'">▶</span>'
+          + '<span>🟢</span><span class="ao-lbl">Scouts</span><span class="ao-meta">'+scouts.length+'</span></div>'
+          + '<div class="ao-body" id="aob-scouts-'+tid+'" style="display:none">'
+          + scouts.map(function(u){return renderU(u,'scout');}).join('')+'</div>';
+      }
+      if (!tUsers.length) html += '<div class="ao-empty">Nog geen leden.</div>';
+      html += '</div>'; // aob-team
+    });
+
+    html += '</div></div>'; // aob-org + ao-org-card
+  });
+
+  el.innerHTML = html;
 }
-window._shMarkPickerError = _shMarkPickerError;
-window._shMarkAdviesError = _shMarkAdviesError;
+
+window._aoToggle = function(id){
+  var b=document.getElementById(id);
+  var a=document.getElementById('aoarr-'+id);
+  if(!b) return;
+  var open=b.style.display!=='none';
+  b.style.display=open?'none':'block';
+  if(a) a.textContent=open?'▶':'▼';
+};
+
+
+// ---- Org aanmaken ----
+window._admOrgNew = function() {
+  var naam = prompt('Naam van de nieuwe organisatie:');
+  if (!naam || !naam.trim()) return;
+  addDoc(collection(db, 'organisaties'), { naam: naam.trim(), afdelingen: [], createdAt: new Date() })
+    .then(function(ref) {
+      if (typeof toast==='function') toast('Organisatie aangemaakt ✓');
+      var stub = document.getElementById('adm-stub');
+      if (stub) _admRenderOrganisaties(stub);
+    }).catch(function(e){ alert('Fout: '+e.message); });
+};
+
+// ---- Team aanmaken ----
+window._admOrgAddTeam = function(orgId, orgNaam) {
+  var naam = prompt('Naam van het team/afdeling (bijv. Onderbouw, Regio Oost):');
+  if (!naam || !naam.trim()) return;
+  addDoc(collection(db, 'teams'), { name: naam.trim(), orgId: orgId, orgNaam: orgNaam, createdAt: new Date() })
+    .then(function() {
+      if (typeof toast==='function') toast('Team aangemaakt ✓');
+      var stub = document.getElementById('adm-stub');
+      if (stub) _admRenderOrganisaties(stub);
+    }).catch(function(e){ alert('Fout: '+e.message); });
+};
+
+// ---- Hoofd toevoegen (bestaande gebruiker of nieuw) ----
+window._admOrgAddHoofd = function(orgId, orgNaam) {
+  var html = '<div style="padding:8px 0">'
+    + '<label style="display:block;margin-bottom:6px;font-weight:600">Type hoofd:</label>'
+    + '<select id="adm-hoofd-type" style="width:100%;margin-bottom:12px;padding:6px;border-radius:6px;border:1px solid var(--border)">'
+    + '<option value="hoofd_jeugdscouting">Hoofd Jeugdscouting</option>'
+    + '<option value="hoofd_coordinator">Hoofd Coördinator</option>'
+    + '<option value="hoofd_jeugdopleiding">Hoofd Jeugdopleiding</option>'
+    + '</select>'
+    + '<label style="display:block;margin-bottom:6px;font-weight:600">E-mailadres gebruiker:</label>'
+    + '<input id="adm-hoofd-email" type="email" placeholder="bestaand of nieuw e-mailadres" style="width:100%;padding:7px;border-radius:6px;border:1px solid var(--border);margin-bottom:12px">'
+    + '<label style="display:block;margin-bottom:6px;font-weight:600">Naam:</label>'
+    + '<input id="adm-hoofd-naam" type="text" placeholder="Volledige naam" style="width:100%;padding:7px;border-radius:6px;border:1px solid var(--border)">'
+    + '</div>';
+  _admModal('Hoofd toevoegen aan '+orgNaam, html, async function() {
+    var type  = document.getElementById('adm-hoofd-type').value;
+    var email = (document.getElementById('adm-hoofd-email').value||'').trim().toLowerCase();
+    var naam  = (document.getElementById('adm-hoofd-naam').value||'').trim();
+    if (!email) { alert('Vul een e-mailadres in.'); return; }
+    await _admOrgUpsertUser(email, naam, type, orgId, null);
+    var stub = document.getElementById('adm-stub');
+    if (stub) _admRenderOrganisaties(stub);
+  });
+};
+
+// ---- Gebruiker toevoegen aan team ----
+window._admOrgAddUser = function(orgId, teamId, orgNaam, teamNaam) {
+  var html = '<div style="padding:8px 0">'
+    + '<label style="display:block;margin-bottom:6px;font-weight:600">Rol:</label>'
+    + '<select id="adm-user-role" style="width:100%;margin-bottom:12px;padding:6px;border-radius:6px;border:1px solid var(--border)">'
+    + '<option value="coordinator">Coördinator</option>'
+    + '<option value="scout">Scout</option>'
+    + '</select>'
+    + '<label style="display:block;margin-bottom:6px;font-weight:600">E-mailadres:</label>'
+    + '<input id="adm-user-email" type="email" placeholder="bestaand of nieuw e-mailadres" style="width:100%;padding:7px;border-radius:6px;border:1px solid var(--border);margin-bottom:12px">'
+    + '<label style="display:block;margin-bottom:6px;font-weight:600">Naam:</label>'
+    + '<input id="adm-user-naam" type="text" placeholder="Volledige naam" style="width:100%;padding:7px;border-radius:6px;border:1px solid var(--border);margin-bottom:12px">'
+    + '<div style="font-size:.8rem;color:var(--text-3)">Als dit een nieuw e-mailadres is, wordt er automatisch een account aangemaakt met tijdelijk wachtwoord <b>Welkom2026!</b> — de gebruiker kan dit zelf wijzigen.</div>'
+    + '</div>';
+  _admModal('Gebruiker toevoegen — '+teamNaam, html, async function() {
+    var rol   = document.getElementById('adm-user-role').value;
+    var email = (document.getElementById('adm-user-email').value||'').trim().toLowerCase();
+    var naam  = (document.getElementById('adm-user-naam').value||'').trim();
+    if (!email) { alert('Vul een e-mailadres in.'); return; }
+    await _admOrgUpsertUser(email, naam, rol, orgId, teamId);
+    var stub = document.getElementById('adm-stub');
+    if (stub) _admRenderOrganisaties(stub);
+  });
+};
+
+// ---- Upsert user: bestaande bijwerken of nieuw aanmaken ----
+async function _admOrgUpsertUser(email, naam, role, orgId, teamId) {
+  try {
+    // Zoek bestaande user op in cache
+    var bestaand = null;
+    try {
+      var usSnap = await getDocs(collection(db,'users'));
+      usSnap.forEach(function(d){ if((d.data().email||'').toLowerCase()===email) bestaand=d; });
+    } catch(_){}
+
+    if (bestaand) {
+      // Bestaande gebruiker bijwerken
+      var upd = { role: role, orgId: orgId };
+      if (teamId) upd.teamId = teamId; else upd.teamId = null;
+      if (naam) upd.displayName = naam;
+      await updateDoc(doc(db,'users',bestaand.id), upd);
+      if (typeof toast==='function') toast('Gebruiker bijgewerkt ✓');
+    } else {
+      // Nieuw account aanmaken via secondary Firebase app
+      var { initializeApp: initApp2 } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js');
+      var { getAuth: getAuth2, createUserWithEmailAndPassword: createUser2, updateProfile: updateProfile2, deleteApp: delApp2 } = await import('https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js');
+      var app2 = initApp2(firebaseConfig, 'sh-admin-create-'+Date.now());
+      var auth2 = getAuth2(app2);
+      var cred  = await createUser2(auth2, email, 'Welkom2026!');
+      if (naam) await updateProfile2(cred.user, { displayName: naam });
+      var newUid = cred.user.uid;
+      try { await delApp2(app2); } catch(_){}
+      // Firestore profiel aanmaken
+      var profiel = { email: email, displayName: naam||email, role: role, orgId: orgId, createdAt: new Date() };
+      if (teamId) profiel.teamId = teamId;
+      await setDoc(doc(db,'users',newUid), profiel);
+      if (typeof toast==='function') toast('Account aangemaakt ✓ — tijdelijk ww: Welkom2026!');
+      // Welkomstmail sturen
+      try {
+        var orgSnap = await getDoc(doc(db,'organisaties',orgId));
+        var orgNaamMail = orgSnap.exists() ? (orgSnap.data().naam||'') : '';
+        var teamNaamMail = '';
+        if (teamId) { var tSnap2 = await getDoc(doc(db,'teams',teamId)); if(tSnap2.exists()) teamNaamMail = tSnap2.data().name||''; }
+        var rolLabel = role==='coordinator'?'Coördinator':role==='scout'?'Scout':role==='hoofd_jeugdscouting'?'Hoofd Jeugdscouting':role==='hoofd_coordinator'?'Hoofd Coördinator':'Hoofd Jeugdopleiding';
+        var mailBody = 'Hallo '+(naam||email)+',\n\nJe hebt toegang gekregen tot ScoutingHub.'
+          + (orgNaamMail ? '\n\nOrganisatie: '+orgNaamMail : '')
+          + (teamNaamMail ? '\nAfdeling/Team: '+teamNaamMail : '')
+          + '\nRol: '+rolLabel
+          + '\n\nInloggen via: https://scoutinghub.nl'
+          + '\nE-mailadres: '+email
+          + '\nTijdelijk wachtwoord: Welkom2026!'
+          + '\n\nWij raden je aan je wachtwoord te wijzigen na de eerste keer inloggen via Instellingen.'
+          + '\n\nMet sportieve groet,\nScoutingHub';
+        await fetch('/api/admin-mail-send', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ to: email, toName: naam||email, subject: 'Je ScoutingHub toegang — '+orgNaamMail, body: mailBody }) });
+      } catch(_){}
+    }
+  } catch(e) {
+    alert('Fout bij opslaan: '+e.message);
+  }
+}
+
+// ---- Gebruiker uit org/team halen ----
+window._admOrgRemoveUser = async function(uid) {
+  if (!confirm('Gebruiker uit organisatie/team verwijderen? (Account blijft bestaan)')) return;
+  await updateDoc(doc(db,'users',uid), { orgId: null, teamId: null, role: 'scout' });
+  if (typeof toast==='function') toast('Gebruiker verwijderd uit team ✓');
+  var stub = document.getElementById('adm-stub');
+  if (stub) _admRenderOrganisaties(stub);
+};
+
+// ---- Org verwijderen ----
+window._admOrgDelete = async function(orgId, naam) {
+  if (!confirm('Organisatie "'+naam+'" verwijderen? Teams en gebruikerskoppelingen worden losgekoppeld.')) return;
+  try {
+    await deleteDoc(doc(db,'organisaties',orgId));
+    // Teams losmaken
+    var tSnap = await getDocs(collection(db,'teams'));
+    for (var d of tSnap.docs) { if (d.data().orgId===orgId) await deleteDoc(doc(db,'teams',d.id)); }
+    // Gebruikers losmaken
+    var uSnap = await getDocs(collection(db,'users'));
+    for (var u of uSnap.docs) { if (u.data().orgId===orgId) await updateDoc(doc(db,'users',u.id),{orgId:null,teamId:null}); }
+    if (typeof toast==='function') toast('Organisatie verwijderd ✓');
+    var stub = document.getElementById('adm-stub');
+    if (stub) _admRenderOrganisaties(stub);
+  } catch(e){ alert('Fout: '+e.message); }
+};
+
+// ---- Team verwijderen ----
+window._admOrgDeleteTeam = async function(teamId, naam) {
+  if (!confirm('Team "'+naam+'" verwijderen?')) return;
+  try {
+    await deleteDoc(doc(db,'teams',teamId));
+    var uSnap = await getDocs(collection(db,'users'));
+    for (var u of uSnap.docs) { if (u.data().teamId===teamId) await updateDoc(doc(db,'users',u.id),{teamId:null}); }
+    if (typeof toast==='function') toast('Team verwijderd ✓');
+    var stub = document.getElementById('adm-stub');
+    if (stub) _admRenderOrganisaties(stub);
+  } catch(e){ alert('Fout: '+e.message); }
+};
+
+// ---- Modal helper ----
+function _admModal(title, bodyHtml, onOk) {
+  var existing = document.getElementById('adm-org-modal');
+  if (existing) existing.remove();
+  var m = document.createElement('div');
+  m.id = 'adm-org-modal';
+  m.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center';
+  m.innerHTML = '<div style="background:var(--bg-1,#111827);border:1px solid var(--border,#374151);border-radius:12px;padding:24px;min-width:340px;max-width:480px;width:90%">'
+    + '<div style="font-weight:700;font-size:1.1rem;margin-bottom:14px">'+_bhEsc(title)+'</div>'
+    + bodyHtml
+    + '<div style="display:flex;gap:8px;margin-top:16px;justify-content:flex-end">'
+    + '<button class="adm-btn-ghost" onclick="document.getElementById(\'adm-org-modal\').remove()">Annuleren</button>'
+    + '<button class="adm-btn-primary" id="adm-modal-ok">Opslaan</button>'
+    + '</div></div>';
+  document.body.appendChild(m);
+  document.getElementById('adm-modal-ok').onclick = async function() {
+    this.disabled = true; this.textContent = 'Bezig…';
+    await onOk();
+    m.remove();
+  };
+}
+
+// ---- CSS ----
+function _admOrgStyles() {
+  if (document.getElementById('adm-org-styles')) return '';
+  var s = document.createElement('style');
+  s.id = 'adm-org-styles';
+  s.textContent = `
+    .ao-org-card{border:1px solid var(--border,#374151);border-radius:10px;margin-bottom:12px;overflow:hidden}
+    .ao-row{display:flex;align-items:center;gap:8px;padding:10px 14px;cursor:pointer;user-select:none}
+    .ao-row:hover{background:rgba(255,255,255,.04)}
+    .ao-lvl1{background:var(--bg-1,#111827);font-weight:700;font-size:1rem}
+    .ao-lvl2{background:var(--bg-2,#1f2937);padding-left:28px;font-weight:600}
+    .ao-lvl3{background:var(--bg-3,#111827);padding-left:48px}
+    .ao-arr{font-size:.7rem;width:12px;flex-shrink:0;color:var(--text-3)}
+    .ao-lbl{flex:1}
+    .ao-meta{font-size:.75rem;color:var(--text-3)}
+    .ao-acts{display:flex;gap:4px;margin-left:auto}
+    .ao-body{border-top:1px solid var(--border,#374151)}
+    .ao-user{display:flex;align-items:center;gap:8px;padding:7px 14px 7px 64px;border-bottom:1px solid var(--border,#374151)}
+    .ao-user:last-child{border-bottom:none}
+    .ao-email{font-size:.75rem;color:var(--text-3);margin-left:4px}
+    .ao-del{margin-left:auto;background:none;border:none;color:#ef4444;cursor:pointer;font-size:.8rem;padding:2px 6px}
+    .ao-empty{padding:8px 14px 8px 64px;font-size:.82rem;color:var(--text-3)}
+    .adm-role-badge{display:inline-block;padding:2px 7px;border-radius:4px;font-size:.72rem;font-weight:700;margin-left:4px}
+    .adm-role-badge.hoofd{background:#7c3aed;color:#fff}
+    .adm-role-badge.coordinator{background:#2563eb;color:#fff}
+    .adm-role-badge.scout{background:#059669;color:#fff}
+    .adm-btn-primary{background:var(--accent,#3b82f6);color:#fff;border:none;border-radius:6px;padding:7px 16px;cursor:pointer;font-size:.9rem}
+    .adm-btn-primary:hover{opacity:.85}
+  `;
+  document.head.appendChild(s);
+  return '';
+}
+
+
+// ── s35f2: TEAM-OVERZICHT (fase 2) ──────────────────────────────────────────
+// Laadt wedstrijd/speler/scouts tabs voor coordinator (eigen team) en hoofd (eigen org).
+
+// Tab-switching
+(function(){
+  document.addEventListener('click', function(e){
+    var btn = e.target.closest('.to-tab');
+    if(!btn) return;
+    var key = btn.dataset.toTab;
+    document.querySelectorAll('.to-tab').forEach(function(b){ b.classList.toggle('active', b===btn); });
+    document.querySelectorAll('.to-section').forEach(function(s){ s.classList.toggle('active', s.id==='to-section-'+key); });
+  });
+})();
+
+async function _toRender(){
+  var role    = window._shUserRole  || 'scout';
+  var orgId   = window._shUserOrgId  || null;
+  var teamId  = window._shUserTeamId || null;
+  var isHoofd = role.startsWith('hoofd');
+
+  // Titel aanpassen
+  var h2 = document.querySelector('#view-team-overzicht h2');
+  if(h2) h2.textContent = isHoofd ? 'Organisatie-overzicht' : 'Team-overzicht';
+
+  // Laad-indicator tonen
+  ['wedstrijd','speler','scouts'].forEach(function(k){
+    var el = document.getElementById('to-empty-'+k); if(el) el.textContent = 'Laden…';
+    var lst = document.getElementById('to-list-'+k); if(lst) lst.innerHTML = '';
+  });
+
+  if(!orgId && !teamId){ 
+    ['wedstrijd','speler','scouts'].forEach(function(k){ var el=document.getElementById('to-empty-'+k); if(el) el.textContent='Geen organisatie/team gekoppeld.'; });
+    return;
+  }
+
+  try {
+    const { getFirestore, collection, getDocs, query, where, collectionGroup } =
+      await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js');
+    const db = getFirestore();
+
+    // Stap 1: gebruikers ophalen (team of org)
+    var usersQ = isHoofd
+      ? query(collection(db,'users'), where('orgId','==',orgId))
+      : query(collection(db,'users'), where('teamId','==',teamId));
+    var usersSnap = await getDocs(usersQ);
+
+    var teamUsers = [];
+    usersSnap.forEach(function(d){ teamUsers.push(Object.assign({ uid: d.id }, d.data())); });
+
+    // Scouts-tab
+    var scoutsEl = document.getElementById('to-list-scouts');
+    var scoutsEmpty = document.getElementById('to-empty-scouts');
+    if(teamUsers.length === 0){
+      scoutsEmpty.textContent = 'Geen gebruikers gevonden.';
+    } else {
+      scoutsEmpty.style.display = 'none';
+      var html = '<table style="width:100%;border-collapse:collapse;font-size:14px">'
+        + '<thead><tr style="border-bottom:1px solid var(--border)">'
+        + '<th style="text-align:left;padding:6px 8px">Naam</th>'
+        + '<th style="text-align:left;padding:6px 8px">Rol</th>'
+        + (isHoofd ? '<th style="text-align:left;padding:6px 8px">Team</th>' : '')
+        + '</tr></thead><tbody>';
+      teamUsers.forEach(function(u){
+        var rolLabel = u.role==='coordinator'?'Coördinator':u.role==='scout'?'Scout':u.role;
+        html += '<tr style="border-bottom:1px solid var(--border)">'
+          + '<td style="padding:6px 8px">' + (u.displayName||u.email||u.uid) + '</td>'
+          + '<td style="padding:6px 8px">' + rolLabel + '</td>'
+          + (isHoofd ? '<td style="padding:6px 8px">' + (u.teamName||(window._bhTeamNameMap&&window._bhTeamNameMap[u.teamId])||u.teamId||'—') + '</td>' : '')
+          + '</tr>';
+      });
+      html += '</tbody></table>';
+      scoutsEl.innerHTML = html;
+    }
+
+    // Stap 2: wedstrijdrapporten ophalen via collectionGroup
+    var matchQ = isHoofd
+      ? query(collectionGroup(db,'match_reports'), where('orgId','==',orgId))
+      : query(collectionGroup(db,'match_reports'), where('teamId','==',teamId));
+    var matchSnap = await getDocs(matchQ);
+
+    var wedstrijdEl = document.getElementById('to-list-wedstrijd');
+    var wedstrijdEmpty = document.getElementById('to-empty-wedstrijd');
+    if(matchSnap.empty){
+      wedstrijdEmpty.textContent = 'Geen wedstrijdrapporten gevonden.';
+    } else {
+      wedstrijdEmpty.style.display = 'none';
+      var rows = [];
+      matchSnap.forEach(function(d){ rows.push(Object.assign({ _id: d.id }, d.data())); });
+      rows.sort(function(a,b){ return (b.datum||'') > (a.datum||'') ? 1 : -1; });
+      var whtml = '<table style="width:100%;border-collapse:collapse;font-size:14px">'
+        + '<thead><tr style="border-bottom:1px solid var(--border)">'
+        + '<th style="text-align:left;padding:6px 8px">Datum</th>'
+        + '<th style="text-align:left;padding:6px 8px">Wedstrijd</th>'
+        + '<th style="text-align:left;padding:6px 8px">Scout</th>'
+        + '</tr></thead><tbody>';
+      rows.forEach(function(r){
+        var wedLabel = (r.thuisTeam||r.thuis||'?') + ' vs ' + (r.uitTeam||r.uit||'?');
+        // Zoek scout naam
+        var scoutUser = teamUsers.find(function(u){ return u.uid === r.uid || u.uid === r.userId; });
+        var scoutNaam = scoutUser ? (scoutUser.displayName||scoutUser.email) : (r.uid||r.userId||'—');
+        whtml += '<tr style="border-bottom:1px solid var(--border)">'
+          + '<td style="padding:6px 8px">' + (r.datum||'—') + '</td>'
+          + '<td style="padding:6px 8px">' + wedLabel + '</td>'
+          + '<td style="padding:6px 8px">' + scoutNaam + '</td>'
+          + '</tr>';
+      });
+      whtml += '</tbody></table>';
+      wedstrijdEl.innerHTML = whtml;
+    }
+
+    // Stap 3: spelersrapporten ophalen
+    var spelQ = isHoofd
+      ? query(collectionGroup(db,'players'), where('orgId','==',orgId))
+      : query(collectionGroup(db,'players'), where('teamId','==',teamId));
+    var spelSnap = await getDocs(spelQ);
+
+    var spelEl = document.getElementById('to-list-speler');
+    var spelEmpty = document.getElementById('to-empty-speler');
+    if(spelSnap.empty){
+      spelEmpty.textContent = 'Geen spelersrapporten gevonden.';
+    } else {
+      spelEmpty.style.display = 'none';
+      var srows = [];
+      spelSnap.forEach(function(d){ srows.push(Object.assign({ _id: d.id }, d.data())); });
+      srows.sort(function(a,b){ return (b.updatedAt||b.createdAt||'') > (a.updatedAt||a.createdAt||'') ? 1 : -1; });
+      var shtml = '<table style="width:100%;border-collapse:collapse;font-size:14px">'
+        + '<thead><tr style="border-bottom:1px solid var(--border)">'
+        + '<th style="text-align:left;padding:6px 8px">Speler</th>'
+        + '<th style="text-align:left;padding:6px 8px">Club</th>'
+        + '<th style="text-align:left;padding:6px 8px">Scout</th>'
+        + '</tr></thead><tbody>';
+      srows.forEach(function(r){
+        var spelNaam = [r.voornaam, r.achternaam].filter(Boolean).join(' ') || r.naam || r._id;
+        var scoutUser2 = teamUsers.find(function(u){ return u.uid === r.uid || u.uid === r.userId; });
+        var scoutNaam2 = scoutUser2 ? (scoutUser2.displayName||scoutUser2.email) : (r.uid||r.userId||'—');
+        shtml += '<tr style="border-bottom:1px solid var(--border)">'
+          + '<td style="padding:6px 8px">' + spelNaam + '</td>'
+          + '<td style="padding:6px 8px">' + (r.club||'—') + '</td>'
+          + '<td style="padding:6px 8px">' + scoutNaam2 + '</td>'
+          + '</tr>';
+      });
+      shtml += '</tbody></table>';
+      spelEl.innerHTML = shtml;
+    }
+
+  } catch(err){
+    console.error('[_toRender]', err);
+    ['wedstrijd','speler','scouts'].forEach(function(k){
+      var el=document.getElementById('to-empty-'+k);
+      if(el) el.textContent = 'Fout bij laden: ' + (err.message||err);
+    });
+  }
+}
+window._toRender = _toRender;

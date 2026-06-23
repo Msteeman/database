@@ -30476,12 +30476,13 @@ document.addEventListener('click', function(e){
 /* --- Avatar: foto of initialen --- */
 function _shPlayerPhotoFor(p){
   if(!p) return '';
+  if(p.photoUrl) return p.photoUrl;
   if(p.photoBase64) return p.photoBase64;
   try {
     if(typeof playersCache !== 'undefined' && p.naam){
       var nm = (p.naam||'').toLowerCase().trim();
-      var hit = playersCache.find(function(x){ return x && x.photoBase64 && (x.naam||'').toLowerCase().trim() === nm; });
-      if(hit) return hit.photoBase64;
+      var hit = playersCache.find(function(x){ return x && (x.photoUrl||x.photoBase64) && (x.naam||'').toLowerCase().trim() === nm; });
+      if(hit) return hit.photoUrl || hit.photoBase64;
     }
   } catch(_){}
   return '';
@@ -30516,7 +30517,7 @@ function _shPhotoMenu(pid){
   _shPhotoTargetPid = pid;
   _shEnsurePhotoInputs();
   var rec = (typeof playersCache !== 'undefined') ? playersCache.find(function(x){ return x && x.id === pid; }) : null;
-  var hasPhoto = rec && rec.photoBase64;
+  var hasPhoto = rec && (rec.photoUrl || rec.photoBase64);
   var ex = document.getElementById('sh-photo-menu'); if(ex) ex.remove();
   var bd = document.createElement('div');
   bd.id = 'sh-photo-menu'; bd.className = 'sh-photo-menu-bd';
@@ -30592,7 +30593,7 @@ async function _shSavePhoto(pid, dataUrl){
     var rec = (typeof playersCache !== 'undefined') ? playersCache.find(function(x){ return x && x.id === pid; }) : null;
     if(!rec){ if(typeof toast === 'function') toast('Speler niet gevonden', true); return; }
     rec.photoBase64 = dataUrl;
-    if(typeof toast === 'function') toast('Foto opslaan\u2026');
+    if(typeof toast === 'function') toast('Foto opslaan…');
     await savePlayer(rec);
     if(typeof toast === 'function') toast('Foto opgeslagen ✓');
     _shRefreshAfterPhoto();

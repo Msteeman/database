@@ -4225,19 +4225,28 @@ async function _ritNominatimSearch(q){
   q = (q||'').trim();
   if(q.length < 3) return [];
   if(_ritSearchCache.has(q)) return _ritSearchCache.get(q);
-  const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}&countrycodes=nl&limit=6&addressdetails=1`;
-  try {
-    const res = await fetch(url, { headers: { 'Accept-Language': 'nl' } });
-    if(!res.ok) return [];
-    const arr = await res.json();
-    const out = (arr||[]).map(it => ({
-      label: _ritFormatNomItem(it),
-      lat: parseFloat(it.lat),
-      lon: parseFloat(it.lon)
-    })).filter(x => x.label && _ritCoordsValid(x.lat, x.lon));
-    if(out.length) _ritSearchCache.set(q, out); // lege resultaten niet cachen
-    return out;
-  } catch(_){ return []; }
+  const hdrs = { 'Accept-Language': 'nl', 'User-Agent': 'ScoutingHub/1.0 (scoutinghub.nl)' };
+  const _fetch = async (query) => {
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&countrycodes=nl&limit=6&addressdetails=1`;
+    try {
+      const res = await fetch(url, { headers: hdrs });
+      if(!res.ok) return [];
+      const arr = await res.json();
+      return (arr||[]).map(it => ({
+        label: _ritFormatNomItem(it),
+        lat: parseFloat(it.lat),
+        lon: parseFloat(it.lon)
+      })).filter(x => x.label && _ritCoordsValid(x.lat, x.lon));
+    } catch(_){ return []; }
+  };
+  // Poging 1: zoekopdracht zoals opgegeven
+  let out = await _fetch(q);
+  // Poging 2: + ", Nederland" toevoegen
+  if(!out.length) out = await _fetch(q + ', Nederland');
+  // Poging 3: alleen eerste deel voor komma
+  if(!out.length && q.includes(',')) out = await _fetch(q.split(',')[0].trim() + ', Nederland');
+  if(out.length) _ritSearchCache.set(q, out);
+  return out;
 }
 
 /* Club-adresboek doorzoeken voor rit-suggesties */
@@ -4409,22 +4418,25 @@ async function _ritRouteKm(lat1, lon1, lat2, lon2){
   const _havKm = _hav * _roadFactor;
 
   // OSRM — gratis, geen API key, goede NL routering
+  // OSRM — primaire route-berekening
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 7000);
-    const res = await fetch(url, { signal: controller.signal });
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    const res = await fetch(
+      `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`,
+      { signal: controller.signal, headers: { 'User-Agent': 'ScoutingHub/1.0' } }
+    );
     clearTimeout(timeout);
     if(res.ok){
-      const data = await res.json();
-      const dist = data && data.routes && data.routes[0] && data.routes[0].distance;
+      const json = await res.json();
+      const dist = json && json.routes && json.routes[0] && json.routes[0].distance;
       if(isFinite(dist) && dist > 0 && dist < 800000){
-        return Math.round(dist / 100) / 10; // afgerond op 0.1 km
+        return Math.round(dist / 100) / 10;
       }
     }
   } catch(_){}
 
-  // Fallback: haversine * wegfactor
+  // Fallback: haversine * wegfactor (altijd beschikbaar)
   return _havKm < 800 ? Math.round(_havKm * 10) / 10 : null;
 }
 
@@ -4493,25 +4505,26 @@ async function _ritTryAutoKm(force){
 
   _ritKmBusy = true;
   const prev = kmInp.placeholder;
-  // Toon direct een haversine schatting als tijdelijke waarde
-  const _havEst = _ritHaversineKm(_vLat, _vLon, _aLat, _aLon);
-  const _havFactor = _havEst < 15 ? 1.35 : _havEst < 40 ? 1.25 : 1.18;
-  if(_havEst > 0) kmInp.value = Math.round(_havEst * _havFactor * 10) / 10;
+  const btn = document.getElementById('rit-km-herbereken');
+  const btnTxt = btn ? btn.textContent : '';
+  if(btn){ btn.textContent = '⏳ Berekenen…'; btn.disabled = true; }
   kmInp.placeholder = 'Berekenen…';
+  kmInp.value = '';
   try {
     const km = await _ritRouteKm(_vLat, _vLon, _aLat, _aLon);
     if(km !== null && isFinite(km) && km > 0){
       kmInp.value = km.toFixed(1);
-      // Sla gevonden coords op in hidden fields voor volgende keer
       const setHidden = (id, v) => { const el = document.getElementById(id); if(el) el.value = v; };
       setHidden('rit-vertrek-lat', _vLat); setHidden('rit-vertrek-lon', _vLon);
       setHidden('rit-aankomst-lat', _aLat); setHidden('rit-aankomst-lon', _aLon);
+      if(typeof toast === 'function') toast('Afstand berekend: ' + km.toFixed(1) + ' km');
     } else {
-      kmInp.value = '';
       kmInp.placeholder = 'Vul handmatig in';
+      if(typeof toast === 'function') toast('Kon afstand niet berekenen — vul handmatig in', true);
     }
   } finally {
     kmInp.placeholder = prev || '0';
+    if(btn){ btn.textContent = btnTxt; btn.disabled = false; }
     _ritKmBusy = false;
   }
 }

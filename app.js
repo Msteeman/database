@@ -4295,6 +4295,24 @@ function _ritVasteLoc(txt){
   return null;
 }
 
+/* PDOK — Nederlandse overheidsgeocoder, meest betrouwbaar voor NL adressen */
+async function _ritPdokSearch(q){
+  q = (q||'').trim();
+  if(q.length < 3) return [];
+  try {
+    const url = `https://api.pdok.nl/bzk/locatieserver/search/v3_1/free?q=${encodeURIComponent(q)}&rows=1&fl=id,weergavenaam,centroide_ll`;
+    const res = await fetch(url, { headers: { 'User-Agent': 'ScoutingHub/1.0' } });
+    if(!res.ok) return [];
+    const json = await res.json();
+    const docs = (json.response && json.response.docs) || [];
+    return docs.map(d => {
+      const m = (d.centroide_ll||'').match(/POINT\(([0-9.]+)\s+([0-9.]+)\)/);
+      if(!m) return null;
+      return { label: d.weergavenaam || q, lat: parseFloat(m[2]), lon: parseFloat(m[1]) };
+    }).filter(x => x && _ritCoordsValid(x.lat, x.lon));
+  } catch(_){ return []; }
+}
+
 /* Photon (Komoot) — betere POI/sportpark geocoder als Nominatim faalt */
 async function _ritPhotonSearch(q){
   q = (q||'').trim();
@@ -4390,6 +4408,12 @@ function _ritSetupSuggest(inputId, boxId, kind){
         const m = matches[Number(el.dataset.i)];
         // Veld krijgt adres (niet clubnaam)
         input.value = m.adresLabel || m.label;
+        // Club-badge tonen als het een club is
+        if(m.fromClub && m.label !== (m.adresLabel||m.label) && boxId === 'rit-aankomst-suggest'){
+          const badge = document.getElementById('rit-club-badge');
+          const naam = document.getElementById('rit-club-badge-naam');
+          if(badge && naam){ naam.textContent = '🏟 ' + m.label; badge.style.display = 'flex'; }
+        }
         if(isFinite(m.lat) && isFinite(m.lon)){
           if(latInp) latInp.value = String(m.lat);
           if(lonInp) lonInp.value = String(m.lon);
@@ -4567,7 +4591,10 @@ async function _ritTryAutoKm(force){
       hits = await _ritNominatimSearch(beforeComma).catch(()=>[]);
       if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
     }
-    // Poging 4: Photon — betere POI/sportparkherkenning
+    // Poging 4: PDOK (NL overheidsgeocoder — beste voor NL adressen)
+    hits = await _ritPdokSearch(q1).catch(()=>[]);
+    if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
+    // Poging 5: Photon — betere POI/sportparkherkenning
     hits = await _ritPhotonSearch(q1).catch(()=>[]);
     if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
     return null;
@@ -4680,6 +4707,21 @@ function _ritInitListeners(){
 
   _ritSetupSuggest('rit-vertrek', 'rit-vertrek-suggest', 'vertrek');
   _ritSetupSuggest('rit-aankomst', 'rit-aankomst-suggest', 'aankomst');
+  // Club-badge: verberg bij handmatig typen
+  const _aankomstInp = document.getElementById('rit-aankomst');
+  if(_aankomstInp) _aankomstInp.addEventListener('input', () => {
+    const badge = document.getElementById('rit-club-badge');
+    if(badge) badge.style.display = 'none';
+  });
+  bind('rit-club-badge-clear', 'click', () => {
+    const badge = document.getElementById('rit-club-badge');
+    const inp = document.getElementById('rit-aankomst');
+    if(badge) badge.style.display = 'none';
+    if(inp){ inp.value = ''; inp.focus(); }
+    const latEl = document.getElementById('rit-aankomst-lat');
+    const lonEl = document.getElementById('rit-aankomst-lon');
+    if(latEl) latEl.value = ''; if(lonEl) lonEl.value = '';
+  });
   // s35dj: km herberekening via de ⟳ knop
   bind('rit-km-herbereken', 'click', () => _ritTryAutoKm(true));
   bind('rit-fav-save-btn', 'click', _shSaveCurrentRouteAsFav);

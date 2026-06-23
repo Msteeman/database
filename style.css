@@ -3507,6 +3507,7 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
   grid-template-columns: repeat(4, 1fr);
   gap: 10px;
   margin-top: 16px;
+  margin-bottom: 16px;
 }
 @media (max-width: 720px){
   .dtl-kpi-grid { grid-template-columns: repeat(2, 1fr); }

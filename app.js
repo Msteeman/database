@@ -3965,30 +3965,43 @@ function _ritShowProgChips(chipsEl){
         if(doelEl && doel && !doelEl.value){ doelEl.value = doel; }
         if(datumEl && datum){ datumEl.value = datum; }
         if(tijdEl && tijd){ tijdEl.value = tijd; }
-        // Probeer coords: eerst club-adresboek, dan Nominatim
+        // Probeer coords: club-adresboek → Nominatim → Photon (met clubnaam als context)
         if(adres){
-          const clubMatches = typeof _ritSearchClubs === 'function' ? _ritSearchClubs(adres) : [];
-          const clubHit = clubMatches.find(c => isFinite(c.lat) && isFinite(c.lon));
-          if(clubHit){
+          const _setCoords = (lat, lon) => {
             const latEl = document.getElementById('rit-aankomst-lat');
             const lonEl = document.getElementById('rit-aankomst-lon');
-            if(latEl) latEl.value = String(clubHit.lat);
-            if(lonEl) lonEl.value = String(clubHit.lon);
-            _ritAddrCoords.set(adres, {lat:clubHit.lat, lon:clubHit.lon});
-          } else if(typeof _ritNominatimSearch === 'function'){
-            _ritNominatimSearch(adres).then(results => {
-              if(results && results.length){
-                const r = results[0];
-                const latEl = document.getElementById('rit-aankomst-lat');
-                const lonEl = document.getElementById('rit-aankomst-lon');
-                if(latEl) latEl.value = String(r.lat);
-                if(lonEl) lonEl.value = String(r.lon);
-                _ritAddrCoords.set(adres, {lat:r.lat, lon:r.lon});
-              }
-            }).catch(()=>{}).finally(() => { setTimeout(_ritTryAutoKm, 100); });
+            if(latEl) latEl.value = String(lat);
+            if(lonEl) lonEl.value = String(lon);
+            _ritAddrCoords.set(adres, {lat, lon});
+            setTimeout(_ritTryAutoKm, 100);
+          };
+          // 1. clubs-data op adres
+          let clubMatches = typeof _ritSearchClubs === 'function' ? _ritSearchClubs(adres) : [];
+          let clubHit = clubMatches.find(c => isFinite(c.lat) && isFinite(c.lon));
+          // 2. clubs-data op clubnaam (bijv. "Ajax")
+          if(!clubHit && doel){
+            const clubNaam = (doel||'').replace(/^Wedstrijd\s*/i,'').trim();
+            if(clubNaam){
+              clubMatches = typeof _ritSearchClubs === 'function' ? _ritSearchClubs(clubNaam) : [];
+              clubHit = clubMatches.find(c => isFinite(c.lat) && isFinite(c.lon));
+            }
           }
-          // Altijd km berekenen na chip-selectie (ook als coords via Nominatim komen)
-          setTimeout(_ritTryAutoKm, 400);
+          if(clubHit){
+            _setCoords(clubHit.lat, clubHit.lon);
+          } else {
+            // 3. Geocode: probeer adres + clubnaam samen voor betere herkenning
+            const clubNaam = (doel||'').replace(/^Wedstrijd\s*/i,'').trim();
+            const q1 = adres;
+            const q2 = clubNaam ? (adres + ' ' + clubNaam) : '';
+            (async () => {
+              let results = await (typeof _ritNominatimSearch==='function' ? _ritNominatimSearch(q1).catch(()=>[]) : Promise.resolve([]));
+              if((!results||!results.length) && q2) results = await _ritNominatimSearch(q2).catch(()=>[]);
+              if(!results||!results.length) results = await (typeof _ritPhotonSearch==='function' ? _ritPhotonSearch(q1).catch(()=>[]) : Promise.resolve([]));
+              if((!results||!results.length) && q2) results = await (typeof _ritPhotonSearch==='function' ? _ritPhotonSearch(q2).catch(()=>[]) : Promise.resolve([]));
+              if(results && results.length) _setCoords(results[0].lat, results[0].lon);
+            })();
+          }
+          setTimeout(_ritTryAutoKm, 1200);
         }
       });
     });

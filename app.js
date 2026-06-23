@@ -3965,7 +3965,7 @@ function _ritShowProgChips(chipsEl){
         if(doelEl && doel && !doelEl.value){ doelEl.value = doel; }
         if(datumEl && datum){ datumEl.value = datum; }
         if(tijdEl && tijd){ tijdEl.value = tijd; }
-        // Probeer coords: club-adresboek → Nominatim → Photon (met clubnaam als context)
+        // Probeer coords: vaste tabel → club-adresboek → Nominatim → Photon
         if(adres){
           const _setCoords = (lat, lon) => {
             const latEl = document.getElementById('rit-aankomst-lat');
@@ -3975,6 +3975,10 @@ function _ritShowProgChips(chipsEl){
             _ritAddrCoords.set(adres, {lat, lon});
             setTimeout(_ritTryAutoKm, 100);
           };
+          // 0. vaste locatietabel
+          const vasteHit = _ritVasteLoc(adres);
+          if(vasteHit){ _setCoords(vasteHit.lat, vasteHit.lon); }
+          else {
           // 1. clubs-data op adres
           let clubMatches = typeof _ritSearchClubs === 'function' ? _ritSearchClubs(adres) : [];
           let clubHit = clubMatches.find(c => isFinite(c.lat) && isFinite(c.lon));
@@ -4001,6 +4005,7 @@ function _ritShowProgChips(chipsEl){
               if(results && results.length) _setCoords(results[0].lat, results[0].lon);
             })();
           }
+          } // end else vaste tabel
           setTimeout(_ritTryAutoKm, 1200);
         }
       });
@@ -4262,6 +4267,34 @@ async function _ritNominatimSearch(q){
   return out;
 }
 
+/* Vaste locaties — bekende NL voetballocaties, geen API nodig */
+const _RIT_VASTE_LOC = {
+  'sportpark de toekomst':    {lat:52.3130, lon:4.9367},
+  'de toekomst amsterdam':    {lat:52.3130, lon:4.9367},
+  'ajax de toekomst':         {lat:52.3130, lon:4.9367},
+  'johan cruyff arena':       {lat:52.3143, lon:4.9411},
+  'amsterdam arena':          {lat:52.3143, lon:4.9411},
+  'de kuip':                  {lat:51.8942, lon:4.5229},
+  'gelredome':                {lat:51.9898, lon:5.9244},
+  'gelredome jeugdcomplex':   {lat:51.9898, lon:5.9244},
+  'mac3park stadion':         {lat:52.5041, lon:6.1042},
+  'abe lenstra stadion':      {lat:52.9542, lon:5.9186},
+  'philips stadion':          {lat:51.4415, lon:5.4677},
+  'grolsch veste':            {lat:52.2295, lon:6.8917},
+  'rat verlegh stadion':      {lat:51.5906, lon:4.7806},
+  'cars jeans stadion':       {lat:52.0562, lon:4.3211},
+  'yanmar stadion':           {lat:51.4482, lon:5.4929},
+  'polman stadion':           {lat:52.3109, lon:6.8936},
+  'vijverberg':               {lat:51.9760, lon:6.2936},
+};
+function _ritVasteLoc(txt){
+  const k = (txt||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
+  for(const [name, coords] of Object.entries(_RIT_VASTE_LOC)){
+    if(k.includes(name) || name.includes(k)) return coords;
+  }
+  return null;
+}
+
 /* Photon (Komoot) — betere POI/sportpark geocoder als Nominatim faalt */
 async function _ritPhotonSearch(q){
   q = (q||'').trim();
@@ -4290,13 +4323,15 @@ function _ritSearchClubs(q){
   const addResult = (naam, ci) => {
     if(!ci || seen.has(naam)) return;
     seen.add(naam);
-    // label = sportpark of naam, plus plaats
+    // label = sportpark of naam, plus stad
     const label = [ci.sportpark || ci.naam || naam, ci.plaats].filter(Boolean).join(', ');
     if(!label) return;
+    // volledig adres voor geocoding: straat + postcode + stad
+    const volledigAdres = [ci.adres, ci.postcode, ci.plaats].filter(Boolean).join(', ');
     if(isFinite(ci.lat) && isFinite(ci.lon)){
-      results.push({ label, lat: Number(ci.lat), lon: Number(ci.lon), fromClub: true });
+      results.push({ label, lat: Number(ci.lat), lon: Number(ci.lon), fromClub: true, volledigAdres });
     } else if(ci.adres){
-      results.push({ label, lat: NaN, lon: NaN, adres: ci.adres, fromClub: true });
+      results.push({ label, lat: NaN, lon: NaN, adres: volledigAdres || ci.adres, fromClub: true });
     }
   };
   // Zoek in CLUB_ADRESSEN (handmatig geverifieerd, heeft lat/lon)
@@ -4354,9 +4389,17 @@ function _ritSetupSuggest(inputId, boxId, kind){
           box.classList.remove('open');
           _ritTryAutoKm();
         } else if(m.adres && typeof _ritNominatimSearch === 'function'){
-          // Club zonder coords — geocodeer het adres
+          // Club zonder coords — geocodeer volledig adres (straat + postcode + stad)
           box.classList.remove('open');
-          _ritNominatimSearch(m.adres).then(res => {
+          const vasteC = _ritVasteLoc(m.adres) || _ritVasteLoc(m.label);
+          if(vasteC){
+            if(latInp) latInp.value = String(vasteC.lat);
+            if(lonInp) lonInp.value = String(vasteC.lon);
+            _ritAddrCoords.set(m.label, vasteC);
+            _ritTryAutoKm();
+          } else {
+          _ritNominatimSearch(m.adres).then(async res => {
+            if(!res || !res.length) res = await _ritPhotonSearch(m.adres).catch(()=>[]);
             if(res && res.length){
               if(latInp) latInp.value = String(res[0].lat);
               if(lonInp) lonInp.value = String(res[0].lon);
@@ -4364,6 +4407,7 @@ function _ritSetupSuggest(inputId, boxId, kind){
               _ritTryAutoKm();
             }
           }).catch(()=>{});
+          }
         } else {
           if(latInp) latInp.value = '';
           if(lonInp) lonInp.value = '';
@@ -4497,6 +4541,9 @@ async function _ritTryAutoKm(force){
   const _geocode = async (raw) => {
     if(!raw || !raw.trim()) return null;
     const q1 = _cleanQ(raw);
+    // Poging 0: vaste locatietabel (sportparken/stadions)
+    const vaste = _ritVasteLoc(q1);
+    if(vaste) return vaste;
     // Poging 1: volledig adres
     let hits = await _ritNominatimSearch(q1).catch(()=>[]);
     if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];

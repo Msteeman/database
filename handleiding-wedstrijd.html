@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wedstrijd handleiding — ScoutingHub</title>
+<meta name="theme-color" content="#0b1220">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+  :root{
+    --bg:#0a1019; --bg-2:#0e1626; --panel:#0b1220; --border:#1f2937;
+    --text:#e8edf5; --text-2:#9aa8bd; --text-3:#8b97ad;
+    --accent:#4ea1ff; --accent-2:#f5c518; --good:#34d399; --warn:#fbbf24; --bad:#f87171;
+    --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:radial-gradient(1200px 600px at 20% -10%, #11203a 0%, var(--bg) 55%) fixed, var(--bg);
+    color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    font-size:15px; line-height:1.6;
+    -webkit-font-smoothing:antialiased;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  a{color:var(--accent); text-decoration:none;}
+  a:hover{text-decoration:underline;}
+
+  /* ===== Topbar ===== */
+  .hb-top{
+    position:sticky; top:0; z-index:30;
+    display:flex; align-items:center; gap:12px;
+    padding:12px 18px; padding-top:calc(12px + env(safe-area-inset-top));
+    background:rgba(10,16,25,.92); backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--border);
+  }
+  .hb-burger{
+    display:none; background:var(--bg-2); border:1px solid var(--border); color:var(--text);
+    width:44px; height:44px; border-radius:10px; font-size:20px; cursor:pointer; flex:0 0 auto;
+    align-items:center; justify-content:center; touch-action:manipulation; position:relative; z-index:31;
+  }
+  .hb-brand{display:flex; align-items:center; gap:9px; font-weight:800; letter-spacing:-.3px; flex:0 0 auto;}
+  .hb-logo{width:26px; height:26px; border-radius:7px;
+    background:linear-gradient(135deg,#ff8189,#e30613 55%,#f5c518); display:inline-flex;
+    align-items:center; justify-content:center; color:#fff; font-weight:900; font-size:12px;}
+  .hb-brand small{color:var(--text-3); font-weight:600; font-size:11.5px; display:block; margin-top:-2px;}
+  .hb-search-wrap{flex:1 1 auto; max-width:420px; margin-left:auto; position:relative;}
+  .hb-search{
+    width:100%; background:var(--bg-2); border:1px solid var(--border); color:var(--text);
+    border-radius:999px; padding:9px 14px 9px 36px; font-size:14px; outline:none;
+  }
+  .hb-search:focus{border-color:var(--accent);}
+  .hb-search-ic{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-3); font-size:14px;}
+  .hb-actions{display:flex; gap:8px; flex:0 0 auto;}
+  .hb-btn{
+    background:var(--bg-2); border:1px solid var(--border); color:var(--text);
+    padding:9px 13px; border-radius:10px; font-size:13px; cursor:pointer; white-space:nowrap;
+  }
+  .hb-btn:hover{border-color:var(--accent);}
+  .hb-btn-primary{background:var(--accent); border-color:var(--accent); color:#06223f; font-weight:700;}
+
+  /* ===== Layout ===== */
+  .hb-shell{display:grid; grid-template-columns:268px 1fr; gap:0; max-width:1180px; margin:0 auto;}
+  .hb-nav{
+    position:sticky; top:65px; align-self:start; height:calc(100vh - 65px); overflow-y:auto;
+    padding:18px 12px 40px; border-right:1px solid var(--border);
+  }
+  .hb-nav-group{margin-bottom:6px;}
+  .hb-nav a.hb-ch{
+    display:block; padding:9px 12px; border-radius:9px; color:var(--text-2);
+    font-size:14px; font-weight:600; cursor:pointer;
+  }
+  .hb-nav a.hb-ch:hover{background:var(--bg-2); color:var(--text); text-decoration:none;}
+  .hb-nav a.hb-ch.active{background:rgba(78,161,255,.14); color:var(--text); border-left:3px solid var(--accent); padding-left:9px;}
+  .hb-nav a.hb-ch .hb-ch-n{color:var(--text-3); font-weight:700; margin-right:7px;}
+
+  .hb-content{padding:26px 30px 80px; min-width:0;}
+  .hb-chapter{display:none;}
+  .hb-chapter.active{display:block; animation:hbFade .25s ease;}
+  @keyframes hbFade{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;}}
+  .hb-h1{font-size:26px; font-weight:800; margin:0 0 4px; letter-spacing:-.5px;}
+  .hb-lead{color:var(--text-2); margin:0 0 22px; font-size:15px;}
+  .hb-sec{
+    background:var(--panel); border:1px solid var(--border); border-radius:var(--radius);
+    padding:18px 20px; margin:0 0 16px;
+  }
+  .hb-sec h3{margin:0 0 8px; font-size:17px; font-weight:700;}
+  .hb-sec h4{margin:14px 0 6px; font-size:14.5px; font-weight:700; color:var(--text);}
+  .hb-sec p{margin:0 0 10px; color:var(--text);}
+  .hb-sec ul,.hb-sec ol{margin:0 0 10px; padding-left:22px; color:var(--text);}
+  .hb-sec li{margin:4px 0;}
+  .hb-sec strong{color:var(--text);}
+  .hb-shot{
+    border:1.5px dashed var(--border); border-radius:10px; background:var(--bg-2);
+    color:var(--text-3); font-size:12.5px; text-align:center; padding:26px 16px; margin:12px 0;
+  }
+  .hb-shot::before{content:"📷  "; opacity:.8;}
+  .hb-shot.has-img{ padding:0; border:none; background:none; }
+  .hb-shot.has-img::before{ display:none; }
+  .hb-shot.has-img img{ width:100%; max-width:100%; height:auto; border-radius:10px; border:1px solid var(--border); box-shadow:0 4px 20px rgba(0,0,0,.3); display:block; margin:0 auto; }
+
+  /* Lightbox */
+  .sh-lb{ display:none; position:fixed; inset:0; z-index:9999; background:rgba(0,0,0,.85); backdrop-filter:blur(4px); align-items:center; justify-content:center; cursor:pointer; }
+  .sh-lb.open{ display:flex; }
+  .sh-lb-img{ max-width:90vw; max-height:90vh; object-fit:contain; border-radius:8px; box-shadow:0 12px 60px rgba(0,0,0,.6); }
+  .sh-lb-close{ position:fixed; top:max(16px, env(safe-area-inset-top, 0px)); right:16px; background:rgba(255,255,255,.15); border:none; color:#fff; font-size:28px; width:44px; height:44px; border-radius:50%; cursor:pointer; z-index:10000; display:flex; align-items:center; justify-content:center; }
+  .sh-lb-close:hover{ background:rgba(255,255,255,.3); }
+  .hb-shot.has-img img{ cursor:pointer; transition:transform .15s ease; }
+  .hb-shot.has-img img:hover{ transform:scale(1.02); }
+
+  .hb-step{counter-reset:hbstep; list-style:none; padding-left:0;}
+  .hb-step li{position:relative; padding:6px 0 6px 38px; margin:0;}
+  .hb-step li::before{
+    counter-increment:hbstep; content:counter(hbstep);
+    position:absolute; left:0; top:5px; width:24px; height:24px; border-radius:50%;
+    background:var(--accent); color:#06223f; font-weight:800; font-size:12px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .hb-chip{display:inline-block; padding:2px 9px; border-radius:999px; font-size:12.5px; font-weight:700; margin:1px 2px;}
+  .hb-chip.g{background:rgba(52,211,153,.18); color:#6ee7b7;}
+  .hb-chip.o{background:rgba(251,191,36,.18); color:#fcd34d;}
+  .hb-chip.r{background:rgba(248,113,113,.18); color:#fca5a5;}
+  .hb-chip.x{background:var(--bg-2); color:var(--text-3); border:1px solid var(--border);}
+  .hb-grade{display:inline-flex; width:26px; height:26px; border-radius:7px; align-items:center; justify-content:center;
+    font-weight:800; font-size:13px; margin:1px 2px; background:var(--bg-2); border:1px solid var(--border); color:var(--text-2);}
+  .hb-grade.on{background:#22c55e; color:#062b12; border-color:#22c55e;}
+  .hb-grade.b{background:#84cc16; color:#1a2806; border-color:#84cc16;}
+  .hb-grade.c{background:#f59e0b; color:#2a1a04; border-color:#f59e0b;}
+  .hb-grade.d{background:#ef4444; color:#2a0606; border-color:#ef4444;}
+  .hb-tip{border-left:3px solid var(--accent-2); background:rgba(245,197,24,.07); padding:10px 14px; border-radius:0 8px 8px 0; margin:12px 0; font-size:14px;}
+  .hb-tip::before{content:"💡 "; }
+  .hb-warn{border-left:3px solid var(--bad); background:rgba(248,113,113,.07); padding:10px 14px; border-radius:0 8px 8px 0; margin:12px 0; font-size:14px;}
+  .hb-warn::before{content:"⚠️ "; }
+  .hb-kbd{display:inline-block; background:var(--bg-2); border:1px solid var(--border); border-bottom-width:2px;
+    border-radius:6px; padding:1px 7px; font-size:12.5px; font-family:ui-monospace,monospace;}
+  .hb-noresult{display:none; color:var(--text-2); padding:30px; text-align:center;}
+  .hb-next{display:flex; align-items:flex-start; gap:10px; border-left:3px solid var(--good); background:rgba(52,211,153,.08); padding:11px 14px; border-radius:0 8px 8px 0; margin:16px 0 0; font-size:14px; color:var(--text);}
+  .hb-next .hb-next-ic{font-size:16px; line-height:1.5; flex:0 0 auto; color:var(--good);}
+  .hb-next a{font-weight:700;}
+
+  /* Flow */
+  .hb-flow{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px;}
+  .hb-flow-step{display:block; background:var(--bg-2); border:1px solid var(--border); border-radius:10px; padding:12px; color:var(--text); cursor:pointer; transition:border-color .15s ease, transform .15s ease;}
+  .hb-flow-step:hover{border-color:var(--accent); text-decoration:none; transform:translateY(-2px);}
+  .hb-flow-n{display:inline-flex; width:26px; height:26px; border-radius:50%; align-items:center; justify-content:center; background:var(--accent); color:#06223f; font-weight:800; font-size:13px; margin-bottom:8px;}
+  .hb-flow-t{display:block; font-weight:700; font-size:14px; margin-bottom:2px;}
+  .hb-flow-d{display:block; color:var(--text-2); font-size:12px; line-height:1.4;}
+  .hb-flow-go{display:block; color:var(--accent); font-size:11.5px; font-weight:700; margin-top:7px;}
+
+  /* Fase-badge */
+  .hb-fase{display:inline-flex; align-items:center; gap:6px; background:var(--bg-2); border:1px solid var(--border); border-radius:999px; padding:3px 10px 3px 6px; font-size:12.5px; font-weight:700; margin:2px 2px 8px; color:var(--text-2);}
+  .hb-fase .dot{width:8px;height:8px;border-radius:50%;display:inline-block;}
+  .hb-fase.plan .dot{background:#4ea1ff;}
+  .hb-fase.live .dot{background:#34d399;}
+  .hb-fase.na .dot{background:#f5c518;}
+
+  /* Mobile */
+  .hb-nav-backdrop{display:none;}
+  @media (max-width:860px){
+    .hb-shell{grid-template-columns:1fr;}
+    .hb-burger{display:inline-flex;}
+    .hb-search-wrap{max-width:none;}
+    .hb-brand small{display:none;}
+    .hb-nav{
+      position:fixed; top:0; left:0; bottom:0; width:280px; height:100vh; height:100dvh; z-index:50;
+      background:var(--bg-2); border-right:1px solid var(--border); overflow-y:auto;
+      transform:translateX(-100%); transition:transform .25s ease; padding-top:calc(18px + env(safe-area-inset-top));
+    }
+    .hb-nav.open{transform:none;}
+    .hb-nav-backdrop.show{display:block; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:45;}
+    .hb-content{padding:20px 16px 70px;}
+    .hb-flow{grid-template-columns:1fr;}
+  }
+
+  /* Tabs mobiel */
+  .hb-tabs{display:none;}
+  .hb-tab{flex:0 0 auto; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; background:var(--bg-2); border:1px solid var(--border); color:var(--text-2); cursor:pointer; touch-action:manipulation; padding:0;}
+  .hb-tab.active{background:var(--accent); color:#06223f; border-color:var(--accent);}
+  @media (max-width:860px){
+    .hb-tabs{display:flex; gap:8px; padding:10px 16px; overflow-x:auto; -webkit-overflow-scrolling:touch; position:sticky; top:calc(60px + env(safe-area-inset-top, 0px)); z-index:20; background:var(--bg); border-bottom:1px solid var(--border);}
+  }
+  @media print{.hb-tabs{display:none !important;}}
+</style>
+</head>
+<body>
+
+<div id="sh-lb" class="sh-lb" role="dialog" aria-modal="true" aria-label="Vergroot afbeelding">
+  <button class="sh-lb-close" id="sh-lb-close" aria-label="Sluiten">✕</button>
+  <img class="sh-lb-img" id="sh-lb-img" src="" alt="">
+</div>
+
+<div class="hb-top">
+  <button class="hb-burger" id="hb-burger" aria-label="Hoofdstukken">☰</button>
+  <div class="hb-brand"><span class="hb-logo">SH</span><span>Wedstrijd handleiding<small>ScoutingHub</small></span></div>
+  <div class="hb-search-wrap">
+    <span class="hb-search-ic">🔍</span>
+    <input type="search" class="hb-search" id="hb-search" placeholder="Zoek in de handleiding…" aria-label="Zoeken">
+  </div>
+  <div class="hb-actions">
+    <a class="hb-btn" href="handleiding.html">Volledige handleiding</a>
+    <a class="hb-btn hb-btn-primary" href="index.html">Naar de app</a>
+  </div>
+</div>
+
+<div class="hb-tabs" id="hb-tabs">
+  <button class="hb-tab active" data-ch="1">1</button>
+  <button class="hb-tab" data-ch="2">2</button>
+  <button class="hb-tab" data-ch="3">3</button>
+  <button class="hb-tab" data-ch="4">4</button>
+</div>
+
+<div class="hb-nav-backdrop" id="hb-nav-backdrop"></div>
+
+<div class="hb-shell">
+  <nav class="hb-nav" id="hb-nav" aria-label="Hoofdstukken">
+    <div class="hb-nav-group">
+      <a class="hb-ch active" data-ch="1"><span class="hb-ch-n">1</span>Overzicht</a>
+      <a class="hb-ch" data-ch="2"><span class="hb-ch-n">2</span>Voor de wedstrijd</a>
+      <a class="hb-ch" data-ch="3"><span class="hb-ch-n">3</span>Live scouten</a>
+      <a class="hb-ch" data-ch="4"><span class="hb-ch-n">4</span>Na de wedstrijd</a>
+    </div>
+  </nav>
+
+  <main class="hb-content" id="hb-content">
+    <div class="hb-noresult" id="hb-noresult">Geen resultaten gevonden. Probeer een ander trefwoord.</div>
+
+    <!-- ============ HOOFDSTUK 1 ============ -->
+    <section class="hb-chapter active" data-ch="1">
+      <h1 class="hb-h1">1. Overzicht — de wedstrijd flow</h1>
+      <p class="hb-lead">Een wedstrijd in ScoutingHub heeft drie fases: inplannen, live scouten en verwerken. Deze handleiding neemt je stap voor stap door elke fase.</p>
+
+      <div class="hb-sec" data-kw="overzicht flow drie fases plannen live na wedstrijd verwerken">
+        <h3>1.1 De drie fases</h3>
+        <div class="hb-flow">
+          <a class="hb-flow-step" data-goch="2">
+            <span class="hb-flow-n">1</span>
+            <span class="hb-flow-t">🗓 Inplannen</span>
+            <span class="hb-flow-d">Wedstrijd aanmaken, spelers koppelen, rit registreren. Dit doe je thuis, de avond of ochtend van tevoren.</span>
+            <span class="hb-flow-go">Hoofdstuk 2 →</span>
+          </a>
+          <a class="hb-flow-step" data-goch="3">
+            <span class="hb-flow-n">2</span>
+            <span class="hb-flow-t">⚽ Live scouten</span>
+            <span class="hb-flow-d">Live notities tikken vanuit de live-kaart. Tiles, obs-chips en snel-beoordeling. Werkt offline.</span>
+            <span class="hb-flow-go">Hoofdstuk 3 →</span>
+          </a>
+          <a class="hb-flow-step" data-goch="4">
+            <span class="hb-flow-n">3</span>
+            <span class="hb-flow-t">📋 Verwerken</span>
+            <span class="hb-flow-d">Rapport uitschrijven, 7 criteria invullen, uitslag vastleggen en rit afsluiten.</span>
+            <span class="hb-flow-go">Hoofdstuk 4 →</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="hb-sec" data-kw="gekoppeld obs rapport verschil flow speler aanmaken vooraf achteraf">
+        <h3>1.2 Gekoppelde speler vs. opgevallen speler</h3>
+        <p>Binnen de live-fase zijn er twee routes:</p>
+        <ul>
+          <li><strong>Gekoppelde speler</strong> — je hebt hem vóór de wedstrijd aan de wedstrijd gekoppeld. Tijdens de wedstrijd vul je zijn tile in. Na afloop maak je een volledig rapport met A/B/C/D-grades.</li>
+          <li><strong>Opgevallen speler</strong> — je spot iemand langs de lijn die je niet vooraf had. Je vult snel een obs-formulier in en koppelt hem daarna aan een spelersprofiel. In de database staat dit als <strong>OBS</strong>-observatie, zonder grade-kolommen.</li>
+        </ul>
+        <div class="hb-tip">Weet je van tevoren wie je wilt volgen? Koppel de speler dan altijd vooraf. Dat geeft je een gestructureerde tile tijdens de wedstrijd en een volledig rapport achteraf.</div>
+      </div>
+
+      <div class="hb-sec" data-kw="offline geen bereik sportpark synchroniseren wifi autosave">
+        <h3>1.3 Offline werken</h3>
+        <p>ScoutingHub werkt ook zonder mobiel bereik. Alles wat je tijdens de wedstrijd invult wordt <strong>automatisch lokaal opgeslagen</strong>. Zodra je weer online bent synchroniseert de app automatisch met de database.</p>
+        <div class="hb-tip">Installeer ScoutingHub als app op je telefoon (zie de volledige handleiding, hoofdstuk 1.2). Dan heb je ook op sportparken zonder wifi altijd toegang.</div>
+      </div>
+
+      <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Aan de slag.</strong> Begin met inplannen — <a data-goch="2" href="#">hoofdstuk 2</a>.</div></div>
+    </section>
+
+    <!-- ============ HOOFDSTUK 2 ============ -->
+    <section class="hb-chapter" data-ch="2">
+      <h1 class="hb-h1">2. Voor de wedstrijd — inplannen</h1>
+      <p class="hb-lead"><span class="hb-fase plan"><span class="dot"></span>Fase 1 — Inplannen</span><br>Dit doe je thuis of onderweg, vóór je naar het sportpark gaat.</p>
+
+      <div class="hb-sec" data-kw="wedstrijd aanmaken nieuw programma datum tijd thuis uit leeftijdscategorie locatie veld opslaan">
+        <h3>2.1 Wedstrijd aanmaken</h3>
+        <ol class="hb-step">
+          <li>Ga naar <strong>Programma</strong> in het menu.</li>
+          <li>Klik op <strong>+ Nieuwe wedstrijd</strong>.</li>
+          <li>Vul in:
+            <ul>
+              <li><strong>Datum en tijd</strong></li>
+              <li><strong>Thuis- en uitploeg</strong> (bijv. Ajax O.18 – Feyenoord O.18)</li>
+              <li><strong>Leeftijdscategorie</strong></li>
+              <li><strong>Locatie / sportpark</strong> (optioneel, handig voor de rit)</li>
+            </ul>
+          </li>
+          <li>Klik op <strong>Opslaan</strong>. De wedstrijd verschijnt direct in je programma en als kaart op het dashboard.</li>
+        </ol>
+        <div class="hb-shot">Screenshot: Programma met het nieuwe wedstrijd-formulier open</div>
+      </div>
+
+      <div class="hb-sec" data-kw="speler koppelen wedstrijd database zoeken naam profiel obs tile live aanmaken formulier">
+        <h3>2.2 Spelers koppelen</h3>
+        <p>Je kunt spelers op <strong>twee momenten</strong> koppelen:</p>
+        <h4>Tijdens het aanmaken</h4>
+        <p>Onderaan het aanmaakformulier staat direct een sectie <strong>Spelers toevoegen</strong>. Vul naam (en optioneel geboortejaar, club) in en klik <strong>Toevoegen</strong>. Je kunt meteen meerdere spelers toevoegen nog vóór je de wedstrijd opslaat.</p>
+        <h4>Achteraf — vóór de wedstrijd begint</h4>
+        <ol class="hb-step">
+          <li>Open de wedstrijd in <strong>Programma</strong>.</li>
+          <li>Klik op <strong>+ Speler toevoegen</strong> in het wedstrijd-detail.</li>
+          <li>Zoek op naam, club of elftal en bevestig.</li>
+        </ol>
+        <p>Je kunt zo lang spelers toevoegen als de wedstrijd nog niet gestart is. Zodra de wedstrijd live is staat elke gekoppelde speler als tile klaar.</p>
+        <div class="hb-tip">Speler nog niet in je database? Geen probleem — voeg hem gewoon toe met naam en club. Het profiel wordt automatisch aangemaakt zodra je het eerste rapport indient.</div>
+      </div>
+
+      <div class="hb-sec" data-kw="rit aanmaken kilometer km route vertrek bestemming locatie declaratie registreren sportpark adres">
+        <h3>2.3 Rit registreren</h3>
+        <p>Leg je rit vast vóór de wedstrijd zodat je niks vergeet.</p>
+        <ol class="hb-step">
+          <li>Ga naar <strong>Ritten</strong> in het menu.</li>
+          <li>Klik op <strong>+ Nieuwe rit</strong>.</li>
+          <li>Vul in: <strong>datum, vertrekpunt, bestemming</strong> en het <strong>doel</strong> (bijv. "Wedstrijd Ajax O.18 – Feyenoord O.18").</li>
+          <li>Klik op <strong>Herbereken km</strong> om de afstand automatisch te berekenen op basis van het adres.</li>
+          <li>Sla op. Je ziet direct het bedrag op basis van je tarief.</li>
+        </ol>
+        <div class="hb-tip">Rij je dezelfde route vaker? Sla hem op als <strong>favoriete route</strong>. De volgende keer vul je met één tik alles in — alleen de datum aanpassen.</div>
+        <div class="hb-shot">Screenshot: Ritten-module met het nieuwe rit-formulier</div>
+      </div>
+
+      <div class="hb-sec" data-kw="checklist klaar voor wedstrijd controle telefoon offline">
+        <h3>2.4 Checklist voor vertrek</h3>
+        <ul>
+          <li>✅ Wedstrijd aangemaakt in Programma</li>
+          <li>✅ Spelers gekoppeld aan de wedstrijd</li>
+          <li>✅ Rit geregistreerd in Ritten</li>
+          <li>✅ App geïnstalleerd op telefoon (werkt offline op het sportpark)</li>
+        </ul>
+        <div class="hb-tip">Open de app vóór vertrek zodat alles al ingeladen is. Dan heb je bij gebrekkig bereik op het sportpark geen probleem.</div>
+      </div>
+
+      <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Wedstrijd begint.</strong> Ga naar het live scouten — <a data-goch="3" href="#">hoofdstuk 3</a>.</div></div>
+    </section>
+
+    <!-- ============ HOOFDSTUK 3 ============ -->
+    <section class="hb-chapter" data-ch="3">
+      <h1 class="hb-h1">3. Live scouten — tijdens de wedstrijd</h1>
+      <p class="hb-lead"><span class="hb-fase live"><span class="dot"></span>Fase 2 — Live</span><br>Je staat langs de lijn. Alles werkt offline — notities sla je ter plekke op.</p>
+
+      <div class="hb-sec" data-kw="live kaart openenen wedstrijd starten dashboard wedstrijden actief live tile lopend">
+        <h3>3.1 De live-kaart openen</h3>
+        <ol class="hb-step">
+          <li>Open ScoutingHub op je telefoon.</li>
+          <li>Ga naar <strong>Wedstrijden</strong> in het menu (of open het dashboard — de live-kaart staat bovenaan).</li>
+          <li>Tik op de actieve wedstrijd. De live-kaart klapt open met drie knoppen:
+            <ul>
+              <li><strong>🔗 Gekoppelde spelers</strong> — de spelers die je vooraf hebt gekoppeld.</li>
+              <li><strong>👁 Opgevallen speler</strong> — voor een speler die je spot maar niet had voorbereid.</li>
+              <li><strong>📋 Wedstrijdnotitie</strong> — voor algemene opmerkingen over de wedstrijd.</li>
+            </ul>
+          </li>
+        </ol>
+        <div class="hb-shot has-img"><img src="screenshot-obs-chips.png" alt="Live spelerstile met notitievelden" loading="lazy"></div>
+      </div>
+
+      <div class="hb-sec" data-kw="tile speler uitklappen notities velden techniek inzicht mentaliteit explosiviteit sprinten duelleren wendbaarheid algemeen autosave opvallend ster">
+        <h3>3.2 Gekoppelde speler — tile invullen</h3>
+        <p>Tik op <strong>🔗 Gekoppelde spelers</strong> en kies een speler. Zijn tile klapt open. Je ziet acht korte notitievelden:</p>
+        <ul>
+          <li><strong>Techniek</strong> — bv. "aanname goed, passnauwkeurigheid hoog"</li>
+          <li><strong>Inzicht</strong> — bv. "leest spel vroeg, scan continu"</li>
+          <li><strong>Mentaliteit</strong> — bv. "werkt hard, coacht ploeggenoten"</li>
+          <li><strong>Explosiviteit</strong> — bv. "eerste stap snel, ontsnapt makkelijk"</li>
+          <li><strong>Sprinten</strong> — bv. "topsnelheid hoog"</li>
+          <li><strong>Duelleren</strong> — bv. "wint 1-op-1 defensief"</li>
+          <li><strong>Wendbaarheid</strong> — bv. "soepel in kleine ruimtes"</li>
+          <li><strong>Algemeen</strong> — overige opmerkingen</li>
+        </ul>
+        <p>Typ kort en concreet. De notities worden <strong>automatisch opgeslagen</strong> terwijl je tikt — geen bewaarknop nodig. Sluit de tile met <strong>✕</strong> en ga verder naar de volgende speler.</p>
+        <p>Vind je de speler opvallend goed? Tik <strong>☆ Opvallend</strong> — zijn tile krijgt een ⭐ en springt bovenaan. Zo mis je hem later niet bij het uitwerken.</p>
+        <div class="hb-tip">Gebruik trefwoorden, geen volzinnen. "scan goed, besluit snel" is beter dan "hij kijkt regelmatig over zijn schouder". Trefwoorden zijn sneller te tikken langs de lijn en later makkelijker te verwerken tot een rapport.</div>
+      </div>
+
+      <div class="hb-sec" data-kw="opgevallen speler onbekend spot langs lijn rugnummer naam club positie obs formulier opslaan koppelen">
+        <h3>3.3 Opgevallen speler — onbekende snel noteren</h3>
+        <p>Zie je iemand die je niet had voorbereid? Tik op <strong>👁 Opgevallen speler</strong>.</p>
+        <ol class="hb-step">
+          <li>Vul in wat je weet: <strong>naam</strong> (of later invullen), <strong>rugnummer</strong>, <strong>club</strong>, <strong>positie</strong>, <strong>elftal</strong>.</li>
+          <li>Gebruik de acht notitievelden (zelfde als de tile).</li>
+          <li>Geef een <strong>huidig niveau</strong> (<span class="hb-grade on">A</span><span class="hb-grade b">B</span><span class="hb-grade c">C</span><span class="hb-grade d">D</span>) en optioneel een <strong>advies</strong>.</li>
+          <li>Tik <strong>Opslaan als observatie</strong>. Je gaat terug naar de wedstrijd.</li>
+        </ol>
+        <p>De obs is bewaard en heropenbaar via de knop <em>Opgevallen speler (1)</em> — het getal stijgt per opgeslagen speler. Je kunt meerdere opgevallen spelers per wedstrijd noteren.</p>
+        <div class="hb-warn">Een obs is altijd een obs — je kunt hem <strong>niet</strong> achteraf omzetten naar een volledig spelersrapport, en ook niet koppelen aan een bestaand spelersprofiel. Wil je een volledig rapport over deze speler? Voeg hem bij de volgende wedstrijd dan vooraf als gekoppelde speler toe.</div>
+        <div class="hb-tip">Naam nog niet bekend? Vul alleen het rugnummer en de club in. Je kunt de obs daarna opnieuw openen en de naam aanvullen zodra je die weet.</div>
+      </div>
+
+      <div class="hb-sec" data-kw="wedstrijdnotitie algemeen thuis uit gedeeld context ploeg aanpak systeem">
+        <h3>3.4 Wedstrijdnotitie</h3>
+        <p>Tik op <strong>📋 Wedstrijdnotitie</strong> voor algemene opmerkingen die niet over één speler gaan. Er zijn drie tekstgebieden:</p>
+        <ul>
+          <li><strong>Thuis</strong> — observaties over de thuisploeg als team.</li>
+          <li><strong>Uit</strong> — observaties over de uitploeg als team.</li>
+          <li><strong>Gedeeld</strong> — context die voor de hele wedstrijd geldt, bijv. weersomstandigheden of veldsituatie.</li>
+        </ul>
+        <p>Deze notitie verschijnt in het wedstrijd-detail na afloop en is handig als referentie bij het uitwerken van rapporten.</p>
+      </div>
+
+      <div class="hb-sec" data-kw="beoordeling abcd huidig potentieel grade A B C D uitstekend goed gemiddeld onder niveau">
+        <h3>3.5 Beoordeling A–D</h3>
+        <p>Bij elke observatie (opgevallen speler) geef je een beoordeling op <strong>twee assen</strong>:</p>
+        <ul>
+          <li><strong>Huidig niveau</strong> — wat laat de speler vandaag zien?</li>
+          <li><strong>Potentieel</strong> — welk niveau kan hij bereiken?</li>
+        </ul>
+        <ul>
+          <li><span class="hb-grade on">A</span> <strong>Champions League-niveau</strong> — uitzonderlijk, ver boven zijn leeftijdscategorie. Max 1–2 per wedstrijd.</li>
+          <li><span class="hb-grade b">B</span> <strong>Top Eredivisie-niveau</strong> — duidelijk beter dan gemiddeld op dit niveau.</li>
+          <li><span class="hb-grade c">C</span> <strong>Eredivisie-niveau</strong> — past bij het niveau, geen negatieve uitschieters.</li>
+          <li><span class="hb-grade d">D</span> <strong>KKD / onder niveau</strong> — presteert onder verwachting voor zijn leeftijdscategorie.</li>
+        </ul>
+        <div class="hb-tip">Een speler kan nu een <span class="hb-grade c">C</span> zijn (huidig) maar een <span class="hb-grade on">A</span>-potentieel hebben — júist die combinatie is het meest waardevolle signaal voor een scout. Gebruik A spaarzaam. Voeg bij D altijd een korte notitie toe.</div>
+      </div>
+
+      <div class="hb-sec" data-kw="rust halftime nieuwe speler bijhouden telefoon accu offline sync bereik">
+        <h3>3.6 Tips tijdens de wedstrijd</h3>
+        <ul>
+          <li>Werk tijdens de <strong>rust</strong> de notities bij die je mondeling hebt onthouden — nu je even de tijd hebt.</li>
+          <li>Zie je een extra interessante speler? Voeg hem direct toe als Opgevallen speler — ook als je al meerdere hebt.</li>
+          <li>Accu bijna leeg? Je notities zijn al opgeslagen. Doe de app dicht, laad de telefoon en open hem daarna opnieuw — alles staat er nog.</li>
+          <li>Geen bereik? Geen probleem. Alles werkt offline. Synchroniseer pas als je thuis bent.</li>
+        </ul>
+      </div>
+
+      <div class="hb-next"><span class="hb-next-ic">→</span><div><strong>Wedstrijd klaar.</strong> Werk de notities uit — <a data-goch="4" href="#">hoofdstuk 4</a>.</div></div>
+    </section>
+
+    <!-- ============ HOOFDSTUK 4 ============ -->
+    <section class="hb-chapter" data-ch="4">
+      <h1 class="hb-h1">4. Na de wedstrijd — verwerken</h1>
+      <p class="hb-lead"><span class="hb-fase na"><span class="dot"></span>Fase 3 — Verwerken</span><br>Terug thuis werk je je live-notities uit tot complete rapporten.</p>
+
+      <div class="hb-sec" data-kw="wedstrijd detail na afloop open overzicht blokken obs rapport status alles verwerkt voortgang groene gloed">
+        <h3>4.1 Wedstrijd-detail openen</h3>
+        <ol class="hb-step">
+          <li>Ga naar <strong>Wedstrijden</strong> in het menu.</li>
+          <li>Open de wedstrijd die je hebt gescouted.</li>
+          <li>Je ziet een overzicht van alle vastgelegde spelers — één rij per gekoppelde speler en één per obs (opgevallen speler).</li>
+        </ol>
+        <p>Onderaan de wedstrijd-kaart staat een <strong>voortgangsregel</strong>. Die ziet er zo uit:</p>
+        <ul>
+          <li><code>0/2 spelers ⬜ · Wedstrijdrapport ⬜</code> — nog niets ingediend</li>
+          <li><code>1/2 spelers ✅ · Wedstrijdrapport ⬜</code> — gedeeltelijk klaar</li>
+          <li><code>2/2 spelers ✅ · Wedstrijdrapport ✅ · Verwerkt ✅</code> — alles klaar</li>
+        </ul>
+        <p>Zodra alles verwerkt is krijgt de wedstrijd-kaart een <strong>groene gloed</strong> en verschijnt de pill <strong>✓ Alles verwerkt</strong>.</p>
+        <div class="hb-warn">Een obs (opgevallen speler) kan <strong>niet</strong> worden omgezet naar een volledig spelersrapport. Obs blijft altijd obs. De voortgangsregel telt alleen gekoppelde spelers mee.</div>
+      </div>
+
+      <div class="hb-sec" data-kw="rapport invullen formulier 7 criteria techniek inzicht mentaliteit explosiviteit sprinten duelleren wendbaarheid huidig potentieel advies toelichting concept indienen">
+        <h3>4.2 Rapport uitwerken — 7 criteria</h3>
+        <p>Open het blok van een gekoppelde speler en klik <strong>Rapport bewerken</strong>. Het rapportformulier heeft de volgende onderdelen:</p>
+
+        <h4>Spelergegevens</h4>
+        <p>Naam, geboortejaar, positie, elftal en club. Controleer of alles klopt — je live-notities zijn al ingeladen als concept.</p>
+
+        <h4>De 7 beoordelingscriteria</h4>
+        <p>Geef per criterium een <strong>A/B/C/D-grade</strong> en een korte toelichting. De 7 criteria zijn:</p>
+        <ul>
+          <li><strong>Techniek</strong> — balbeheer, pasnauwkeurigheid, aanname</li>
+          <li><strong>Inzicht</strong> — spelvisie, positiespel, scan</li>
+          <li><strong>Mentaliteit</strong> — inzet, leiderschap, reactie op tegenslag</li>
+          <li><strong>Explosiviteit</strong> — eerste stap, acceleratie</li>
+          <li><strong>Sprinten</strong> — topsnelheid over afstand</li>
+          <li><strong>Duelleren</strong> — 1-op-1 winnen, kracht in duel</li>
+          <li><strong>Wendbaarheid</strong> — souplesse, snel van richting wisselen</li>
+        </ul>
+        <p>Je live-notities (uit de tiles) zijn al ingeladen als concept voor elke categorie. Werk ze uit tot een volledige zin of alinea.</p>
+        <div class="hb-tip">Gebruik je eigen trefwoorden uit de live-fase als basis. Voeg context toe die je je nog herinnert van het veld. Hoe concreter, hoe meer waarde het rapport heeft bij een tweede rapportage over dezelfde speler.</div>
+
+        <h4>Totaalbeoordeling</h4>
+        <ul>
+          <li><strong>Huidig niveau (A/B/C/D)</strong> — verplicht.</li>
+          <li><strong>Potentieel (A/B/C/D)</strong> — je verwachting op langere termijn.</li>
+          <li><strong>Advies</strong> — jouw aanbeveling, bijv. "Volgen", "Uitnodigen voor proeftraining", "Niet interessant".</li>
+        </ul>
+
+        <h4>Algemeen</h4>
+        <p>Vrije tekst voor context die niet in de criteria past, zoals wedstrijdsituatie, tegenstanders, of vergelijkingen met eerder bezoek.</p>
+      </div>
+
+      <div class="hb-sec" data-kw="rapport indienen definitief status archief voortgang badge groen verwerkt">
+        <h3>4.3 Indienen</h3>
+        <p>Klik op <strong>Indienen</strong> als het rapport compleet is. Na het indienen:</p>
+        <ul>
+          <li>Het rapport staat in de <strong>scoutingshistorie</strong> van de speler.</li>
+          <li>De <strong>Vormtrend</strong> wordt bijgewerkt als er al een eerder rapport is.</li>
+          <li>Het telt mee in <strong>Vergelijken</strong> en in de KPI-tellers op het dashboard.</li>
+          <li>De voortgangsbalk van de wedstrijd stijgt (bijv. 4/5 ✅).</li>
+        </ul>
+        <div class="hb-tip">Nog niet zeker over je beoordeling? Sla het rapport op als <strong>concept</strong> — je kunt het later bewerken en dan pas indienen. Concepten tellen niet mee in de statistieken.</div>
+      </div>
+
+      <div class="hb-sec" data-kw="obs naam aanvullen achteraf naam invullen wedstrijd detail obs openen">
+        <h3>4.4 Obs naam aanvullen</h3>
+        <p>Heb je een obs ingevuld zonder naam? Open de obs opnieuw via het wedstrijd-detail en vul de naam in.</p>
+        <div class="hb-tip">Naam achteraf opzoeken? Gebruik de clubsite of KNVB Competitie. Open daarna de obs en vul naam + club aan. De obs staat zo volledig in je archief.</div>
+      </div>
+
+      <div class="hb-sec" data-kw="uitslag score eindstand toekomst bouwen">
+        <h3>4.5 Uitslag</h3>
+        <p>Open het wedstrijd-detail en vul de <strong>einduitslag</strong> in via het uitslag-veld bovenin. De uitslag verschijnt op de wedstrijd-kaart en telt mee in je statistieken.</p>
+      </div>
+
+      <div class="hb-sec" data-kw="checklist klaar verwerkt alle stappen afgerond rapport obs">
+        <h3>4.6 Checklist na de wedstrijd</h3>
+        <ul>
+          <li>✅ Rapport ingediend voor alle gekoppelde spelers</li>
+          <li>✅ Obs-blokken doorgelopen en naam ingevuld waar nodig</li>
+          <li>✅ Wedstrijdrapport (wedstrijdnotitie) ingediend</li>
+          <li>✅ Wedstrijd-kaart toont groene gloed + <strong>✓ Alles verwerkt</strong></li>
+        </ul>
+      </div>
+
+    </section>
+
+  </main>
+</div>
+
+<footer style="text-align:center;padding:2rem 1rem;color:var(--text-3);font-size:.8rem">
+  &copy; 2025 ScoutingHub &mdash; gemaakt voor professionele scouts
+</footer>
+
+<script>
+(function(){
+  /* ---- chapter wisselen ---- */
+  function goTo(ch){
+    var navLinks = document.querySelectorAll('.hb-ch');
+    var chapters = document.querySelectorAll('.hb-chapter');
+    var tabs = document.querySelectorAll('.hb-tab');
+    navLinks.forEach(function(l){ l.classList.remove('active'); });
+    chapters.forEach(function(c){ c.classList.remove('active'); });
+    tabs.forEach(function(t){ t.classList.remove('active'); });
+    var navLink = document.querySelector('.hb-ch[data-ch="'+ch+'"]');
+    var chapter = document.querySelector('.hb-chapter[data-ch="'+ch+'"]');
+    var tab = document.querySelector('.hb-tab[data-ch="'+ch+'"]');
+    if(navLink) navLink.classList.add('active');
+    if(chapter) chapter.classList.add('active');
+    if(tab) tab.classList.add('active');
+    document.getElementById('hb-content').scrollTop = 0;
+    window.scrollTo(0,0);
+    document.getElementById('hb-nav').classList.remove('open');
+    document.getElementById('hb-nav-backdrop').classList.remove('show');
+  }
+
+  document.querySelectorAll('.hb-ch').forEach(function(link){
+    link.addEventListener('click', function(){ goTo(this.dataset.ch); });
+  });
+
+  document.querySelectorAll('.hb-tab').forEach(function(tab){
+    tab.addEventListener('click', function(){ goTo(this.dataset.ch); });
+  });
+
+  document.querySelectorAll('[data-goch]').forEach(function(el){
+    el.addEventListener('click', function(e){ e.preventDefault(); goTo(this.dataset.goch); });
+  });
+
+  /* ---- burger menu ---- */
+  var burger = document.getElementById('hb-burger');
+  var nav = document.getElementById('hb-nav');
+  var backdrop = document.getElementById('hb-nav-backdrop');
+  if(burger){
+    burger.addEventListener('click', function(){
+      nav.classList.toggle('open');
+      backdrop.classList.toggle('show');
+    });
+    backdrop.addEventListener('click', function(){
+      nav.classList.remove('open');
+      backdrop.classList.remove('show');
+    });
+  }
+
+  /* ---- zoekfunctie ---- */
+  var inp = document.getElementById('hb-search');
+  var secs = document.querySelectorAll('.hb-sec');
+  var chaps = document.querySelectorAll('.hb-chapter');
+  var noResult = document.getElementById('hb-noresult');
+  if(inp){
+    inp.addEventListener('input', function(){
+      var q = this.value.trim().toLowerCase();
+      if(!q){
+        secs.forEach(function(s){ s.style.display=''; });
+        chaps.forEach(function(c){ c.style.display=''; });
+        if(noResult) noResult.style.display='none';
+        return;
+      }
+      var anyVisible = false;
+      chaps.forEach(function(c){
+        var vis = false;
+        c.querySelectorAll('.hb-sec').forEach(function(s){
+          var kw = (s.dataset.kw||'').toLowerCase();
+          var txt = s.innerText.toLowerCase();
+          var show = kw.includes(q) || txt.includes(q);
+          s.style.display = show ? '' : 'none';
+          if(show){ vis = true; anyVisible = true; }
+        });
+        c.style.display = vis ? '' : 'none';
+        if(vis) c.classList.add('active');
+      });
+      if(noResult) noResult.style.display = anyVisible ? 'none' : 'block';
+    });
+  }
+
+  /* ---- lightbox ---- */
+  var lb = document.getElementById('sh-lb');
+  var lbImg = document.getElementById('sh-lb-img');
+  var lbClose = document.getElementById('sh-lb-close');
+  document.querySelectorAll('.hb-shot.has-img img').forEach(function(img){
+    img.addEventListener('click', function(){
+      lbImg.src = this.src;
+      lbImg.alt = this.alt;
+      lb.classList.add('open');
+    });
+  });
+  if(lbClose) lbClose.addEventListener('click', function(){ lb.classList.remove('open'); });
+  if(lb) lb.addEventListener('click', function(e){ if(e.target===lb) lb.classList.remove('open'); });
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') lb.classList.remove('open'); });
+})();
+</script>
+</body>
+</html>

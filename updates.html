@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Wat is er nieuw — ScoutingHub</title>
+<meta name="theme-color" content="#0b1220">
+<style>
+  :root{
+    --bg:#0a1019; --bg-2:#0e1626; --panel:#0b1220; --border:#1f2937;
+    --text:#e8edf5; --text-2:#9aa8bd; --text-3:#6b7a96;
+    --accent:#4ea1ff; --accent-2:#f5c518; --good:#34d399; --warn:#fbbf24; --bad:#f87171;
+    --red:#e30613; --radius:12px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  html,body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:15px;line-height:1.65;-webkit-font-smoothing:antialiased;}
+  body{padding-bottom:80px;}
+
+  .top{display:flex;align-items:center;gap:14px;padding:14px 24px;padding-top:calc(14px + env(safe-area-inset-top));border-bottom:1px solid var(--border);background:rgba(10,16,25,.95);position:sticky;top:0;z-index:20;}
+  .logo{width:30px;height:30px;border-radius:8px;flex-shrink:0;background:linear-gradient(135deg,#ff8189,var(--red) 55%,#f5c518);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:13px;}
+  .brand{font-weight:800;font-size:15px;letter-spacing:-.3px;}
+  .brand span{color:var(--text-3);font-weight:500;font-size:12px;margin-left:8px;}
+  .top-link{margin-left:auto;color:var(--accent);font-size:13px;text-decoration:none;font-weight:600;}
+  .top-link:hover{text-decoration:underline;}
+
+  .hero{max-width:700px;margin:0 auto;padding:52px 24px 36px;}
+  .hero-eyebrow{font-size:12px;font-weight:700;letter-spacing:.08em;color:var(--accent);text-transform:uppercase;margin-bottom:10px;}
+  .hero-title{font-size:32px;font-weight:800;letter-spacing:-.6px;line-height:1.15;margin-bottom:12px;}
+  .hero-sub{color:var(--text-2);font-size:15px;line-height:1.6;}
+  .hero-date{margin-top:18px;font-size:13px;color:var(--text-3);display:flex;align-items:center;gap:6px;}
+  .hero-date::before{content:'';display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--good);}
+
+  .content{max-width:700px;margin:0 auto;padding:0 24px;}
+  .section-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--text-3);margin:36px 0 14px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:var(--radius);padding:22px 24px;margin-bottom:16px;}
+  .card-header{display:flex;align-items:flex-start;gap:14px;margin-bottom:16px;}
+  .card-icon{width:40px;height:40px;border-radius:10px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:20px;}
+  .card-icon.green{background:rgba(52,211,153,.12);}
+  .card-icon.blue{background:rgba(78,161,255,.12);}
+  .card-icon.yellow{background:rgba(251,191,36,.12);}
+  .card-meta{flex:1;}
+  .card-badge{display:inline-block;font-size:10.5px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:4px;margin-bottom:5px;}
+  .badge-new{background:rgba(52,211,153,.15);color:#6ee7b7;}
+  .badge-improved{background:rgba(78,161,255,.15);color:#93c5fd;}
+  .badge-fix{background:rgba(251,191,36,.15);color:#fcd34d;}
+  .card-title{font-size:17px;font-weight:700;line-height:1.25;}
+  .card-body{font-size:14px;color:var(--text-2);line-height:1.65;}
+  .card-body p{margin-bottom:10px;}
+  .card-body p:last-child{margin-bottom:0;}
+  .card-body strong{color:var(--text);font-weight:600;}
+  .card-body ul{padding-left:18px;margin-bottom:10px;}
+  .card-body li{margin-bottom:4px;}
+
+  .tip{border-left:3px solid var(--accent-2);background:rgba(245,197,24,.07);padding:10px 14px;margin:14px 0 0;font-size:13px;color:var(--text-2);line-height:1.55;}
+  .tip strong{color:var(--text);}
+
+  /* Visual compare panels */
+  .vis-compare{display:grid;grid-template-columns:1fr 1fr;gap:0;margin:18px 0 0;border-radius:10px;overflow:hidden;border:1px solid var(--border);}
+  .vis-panel{padding:14px;}
+  .vis-panel.old{background:#120a0a;border-right:1px solid var(--border);}
+  .vis-panel.new{background:#0a1412;}
+  .vis-tag{font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:5px;}
+  .vis-tag.old-tag{color:#f87171;}
+  .vis-tag.new-tag{color:#34d399;}
+  .vis-tag::before{content:'';width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+  .vis-tag.old-tag::before{background:#f87171;}
+  .vis-tag.new-tag::before{background:#34d399;}
+
+  /* ---- mock UI elements ---- */
+  .mock-box{background:#0e1626;border:1px solid #1f2937;border-radius:8px;padding:10px 12px;font-size:12px;color:#9aa8bd;}
+  .mock-row{display:flex;align-items:center;gap:8px;margin-bottom:5px;}
+  .mock-row:last-child{margin-bottom:0;}
+  .mock-label{font-size:10px;color:#6b7a96;margin-bottom:3px;}
+  .mock-val{font-size:12px;color:#e8edf5;font-weight:600;}
+  .mock-btn{display:inline-flex;align-items:center;gap:5px;background:#0e1626;border:1px solid #1f2937;border-radius:6px;padding:5px 10px;font-size:11px;color:#9aa8bd;}
+  .mock-btn.accent{border-color:#4ea1ff;color:#4ea1ff;}
+  .mock-btn.success{border-color:#34d399;color:#34d399;}
+  .mock-btn.loading{border-color:#f5c518;color:#f5c518;}
+  .mock-pill{display:inline-block;border-radius:999px;padding:2px 8px;font-size:10px;font-weight:700;}
+  .mock-pill.red{background:rgba(227,6,19,.18);color:#f87171;}
+  .mock-pill.gray{background:rgba(107,122,150,.15);color:#9aa8bd;}
+  .mock-pill.green{background:rgba(52,211,153,.15);color:#34d399;}
+  .mock-grade{display:inline-flex;width:24px;height:24px;border-radius:6px;align-items:center;justify-content:center;font-weight:900;font-size:13px;}
+  .mg-b{background:#3b82f6;color:#fff;}
+  .mg-a{background:#22c55e;color:#fff;}
+  .mg-c{background:#f59e0b;color:#fff;}
+  .mock-flip-card{background:linear-gradient(135deg,rgba(59,130,246,.25),rgba(59,130,246,.1));border-radius:8px;padding:16px 12px;text-align:center;border:1px solid rgba(59,130,246,.3);}
+  .mock-flip-num{font-size:32px;font-weight:900;color:#60a5fa;line-height:1;}
+  .mock-flip-name{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:rgba(255,255,255,.6);margin-top:4px;}
+  .mock-flip-hint{font-size:9px;color:rgba(255,255,255,.3);margin-top:5px;text-transform:uppercase;letter-spacing:.4px;}
+  .mock-expand-card{background:#0e1626;border-radius:8px;border:1px solid #3b82f6;padding:10px 12px;}
+  .mock-expand-top{display:flex;align-items:center;gap:8px;}
+  .mock-expand-grade{font-size:24px;font-weight:900;color:#60a5fa;line-height:1;flex-shrink:0;}
+  .mock-expand-name{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#9aa8bd;flex:1;}
+  .mock-expand-arrow{font-size:14px;color:#9aa8bd;}
+  .mock-expand-body{margin-top:8px;padding-top:8px;border-top:1px solid #1f2937;font-size:11px;color:#9aa8bd;line-height:1.5;}
+  .mock-timeline-item{display:flex;gap:10px;margin-bottom:8px;align-items:flex-start;}
+  .mock-tl-dot{width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0;}
+  .mock-tl-dot.active{background:#e30613;}
+  .mock-tl-dot.past{background:#4b5563;}
+  .mock-tl-content{flex:1;}
+  .mock-tl-season{font-size:10px;font-weight:700;margin-bottom:1px;}
+  .mock-tl-season.active{color:#f87171;}
+  .mock-tl-season.past{color:#6b7a96;}
+  .mock-tl-club{font-size:11px;color:#e8edf5;font-weight:600;}
+  .mock-tl-elftal{font-size:10px;color:#9aa8bd;}
+  .mock-tl-line{width:1px;height:12px;background:#1f2937;margin-left:3px;margin-bottom:0;}
+  .mock-hero-name{font-size:13px;font-weight:800;color:#e8edf5;margin-bottom:2px;}
+  .mock-hero-sub{font-size:10px;color:#9aa8bd;}
+  .mock-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#6b7a96;margin-bottom:8px;}
+  .mock-toast{background:#1a2a1a;border:1px solid #34d399;border-radius:6px;padding:6px 10px;font-size:11px;color:#34d399;margin-top:8px;display:flex;align-items:center;gap:5px;}
+  .mock-progress{font-size:11px;color:#9aa8bd;margin-top:6px;}
+
+  footer{max-width:700px;margin:40px auto 0;padding:0 24px;font-size:13px;color:var(--text-3);display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);padding-top:20px;}
+
+  @media(max-width:600px){
+    .hero-title{font-size:24px;}
+    .vis-compare{grid-template-columns:1fr;}
+    .vis-panel.old{border-right:none;border-bottom:1px solid var(--border);}
+    .top{padding:12px 16px;}
+    .hero,.content{padding-left:16px;padding-right:16px;}
+    footer{padding-left:16px;padding-right:16px;flex-direction:column;gap:6px;align-items:flex-start;}
+  }
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="logo">SH</div>
+  <div class="brand">ScoutingHub <span>Update overzicht</span></div>
+  <a class="top-link" href="index.html">Naar de app →</a>
+</div>
+
+<div class="hero">
+  <div class="hero-eyebrow">Wat is er nieuw</div>
+  <div class="hero-title">Carrière, betere kaartjes &amp; meer</div>
+  <div class="hero-sub">Een overzicht van alles wat er veranderd en verbeterd is. Hieronder lees je wat er nieuw is, wat we hebben aangepast en waarom.</div>
+  <div class="hero-date">Juni 2026 · versie sh-v488</div>
+</div>
+
+<div class="content">
+
+  <div class="section-label">Nieuw</div>
+
+  <!-- CARD 1: Carrière -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon green">🏟️</div>
+      <div class="card-meta">
+        <div class="card-badge badge-new">Nieuw</div>
+        <div class="card-title">Spelersprofiel — carrière &amp; clubhistorie</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <p>Bovenaan elk spelersprofiel staat nu een <strong>spelerskaart</strong> met naam, leeftijd, positie, rugnummer en voorkeursbeen, en direct daaronder een carrièretijdlijn per seizoen.</p>
+      <p>Op de kaart staan twee knoppen: <strong>Aanpassen</strong> (correctie in huidig seizoen) en <strong>Transfer</strong> (nieuwe club of elftal, nieuw seizoen in de tijdlijn).</p>
+
+      <div class="vis-compare">
+        <div class="vis-panel old">
+          <div class="vis-tag old-tag">Oud</div>
+          <div class="mock-box">
+            <div class="mock-label">Naam</div>
+            <div class="mock-val" style="margin-bottom:8px;">Liam de Boer</div>
+            <div class="mock-label">Club</div>
+            <div class="mock-val" style="margin-bottom:8px;">Ajax · O.18-1</div>
+            <div class="mock-label">Positie</div>
+            <div class="mock-val">Middenvelder</div>
+          </div>
+          <div style="font-size:11px;color:#6b7a96;margin-top:8px;text-align:center;">Geen seizoenshistorie zichtbaar</div>
+        </div>
+        <div class="vis-panel new">
+          <div class="vis-tag new-tag">Nieuw</div>
+          <div class="mock-box" style="margin-bottom:8px;">
+            <div class="mock-hero-name">Liam de Boer <span style="font-size:10px;font-weight:400;color:#9aa8bd;">17 jaar</span></div>
+            <div class="mock-hero-sub">Middenvelder · #8 · Rechts</div>
+          </div>
+          <div class="mock-section-title">Club &amp; carriere</div>
+          <div class="mock-timeline-item">
+            <div><div class="mock-tl-dot active"></div><div class="mock-tl-line"></div></div>
+            <div class="mock-tl-content">
+              <div class="mock-tl-season active">2025/2026</div>
+              <div class="mock-tl-club">Ajax</div>
+              <div class="mock-tl-elftal">O.18-1</div>
+            </div>
+          </div>
+          <div class="mock-timeline-item">
+            <div><div class="mock-tl-dot past"></div><div class="mock-tl-line"></div></div>
+            <div class="mock-tl-content">
+              <div class="mock-tl-season past">2024/2025</div>
+              <div class="mock-tl-club">Ajax</div>
+              <div class="mock-tl-elftal">O.17-1</div>
+            </div>
+          </div>
+          <div class="mock-timeline-item" style="margin-bottom:0;">
+            <div><div class="mock-tl-dot past"></div></div>
+            <div class="mock-tl-content">
+              <div class="mock-tl-season past">2023/2024</div>
+              <div class="mock-tl-club">Ajax</div>
+              <div class="mock-tl-elftal">O.16-2</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="tip">Beide knoppen hebben een <strong>vraagteken-tooltip</strong> die uitlegt wanneer je welke actie gebruikt.</div>
+    </div>
+  </div>
+
+  <!-- CARD 2: Handleiding -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon blue">📖</div>
+      <div class="card-meta">
+        <div class="card-badge badge-new">Nieuw</div>
+        <div class="card-title">Wedstrijd handleiding</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <p>Er is een <strong>aparte, gerichte handleiding</strong> toegevoegd voor de wedstrijd-flow. Die behandelt stap voor stap de drie fases:</p>
+      <ul>
+        <li><strong>Voor de wedstrijd</strong> — aanmaken, spelers koppelen, rit registreren</li>
+        <li><strong>Live scouten</strong> — tiles invullen, Opvallend markeren, Opgevallen speler noteren</li>
+        <li><strong>Na de wedstrijd</strong> — rapport uitwerken met 7 criteria, indienen, voortgang controleren</li>
+      </ul>
+      <p>De bestaande handleiding blijft ongewijzigd. De wedstrijd-handleiding is een aanvulling erop.</p>
+
+      <div class="vis-compare">
+        <div class="vis-panel old">
+          <div class="vis-tag old-tag">Oud</div>
+          <div style="font-size:11px;color:#6b7a96;margin-bottom:8px;">Wedstrijd-flow verspreid over 3+ hoofdstukken</div>
+          <div class="mock-box" style="margin-bottom:6px;">
+            <div style="font-size:11px;color:#9aa8bd;">H3 · Programma &amp; wedstrijden</div>
+          </div>
+          <div class="mock-box" style="margin-bottom:6px;">
+            <div style="font-size:11px;color:#9aa8bd;">H4 · Scouten langs de lijn</div>
+          </div>
+          <div class="mock-box">
+            <div style="font-size:11px;color:#9aa8bd;">H5 · Rapporten</div>
+          </div>
+        </div>
+        <div class="vis-panel new">
+          <div class="vis-tag new-tag">Nieuw</div>
+          <div style="font-size:11px;color:#6b7a96;margin-bottom:8px;">Eigen handleiding — alles op 1 plek</div>
+          <div class="mock-box" style="margin-bottom:6px;">
+            <div class="mock-row"><span style="font-size:14px;">🗓</span><span style="font-size:11px;color:#e8edf5;font-weight:600;">Voor de wedstrijd</span></div>
+          </div>
+          <div class="mock-box" style="margin-bottom:6px;">
+            <div class="mock-row"><span style="font-size:14px;">⚽</span><span style="font-size:11px;color:#e8edf5;font-weight:600;">Live scouten</span></div>
+          </div>
+          <div class="mock-box">
+            <div class="mock-row"><span style="font-size:14px;">📋</span><span style="font-size:11px;color:#e8edf5;font-weight:600;">Na de wedstrijd</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Verbeterd</div>
+
+  <!-- CARD 3: Criterium kaartjes -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon blue">📊</div>
+      <div class="card-meta">
+        <div class="card-badge badge-improved">Verbeterd</div>
+        <div class="card-title">Criterium-kaartjes — uitklappen in plaats van omdraaien</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <p>De 7 beoordelingskaartjes in het spelersprofiel werkten als een flipkaart: klikken draaide de kaart om om de notitie te tonen. Veel gebruikers wisten niet dat er iets achter zat. Nu klappen de kaartjes gewoon open.</p>
+
+      <div class="vis-compare">
+        <div class="vis-panel old">
+          <div class="vis-tag old-tag">Oud — omdraaien</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <div class="mock-flip-card">
+              <div class="mock-flip-num">B</div>
+              <div class="mock-flip-name">Techniek</div>
+              <div class="mock-flip-hint">↺ notitie</div>
+            </div>
+            <div class="mock-flip-card" style="background:linear-gradient(135deg,rgba(34,197,94,.2),rgba(34,197,94,.08));border-color:rgba(34,197,94,.3);">
+              <div class="mock-flip-num" style="color:#4ade80;">A</div>
+              <div class="mock-flip-name">Inzicht</div>
+              <div class="mock-flip-hint">↺ notitie</div>
+            </div>
+            <div class="mock-flip-card" style="background:linear-gradient(135deg,rgba(245,158,11,.2),rgba(245,158,11,.08));border-color:rgba(245,158,11,.3);">
+              <div class="mock-flip-num" style="color:#fbbf24;">C</div>
+              <div class="mock-flip-name">Snelheid</div>
+              <div class="mock-flip-hint">↺ notitie</div>
+            </div>
+            <div class="mock-flip-card" style="background:linear-gradient(135deg,rgba(59,130,246,.2),rgba(59,130,246,.08));border-color:rgba(59,130,246,.3);">
+              <div class="mock-flip-num" style="color:#93c5fd;">B</div>
+              <div class="mock-flip-name">Mentaliteit</div>
+              <div class="mock-flip-hint">↺ notitie</div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:#6b7a96;margin-top:8px;text-align:center;">Niet duidelijk dat je kon klikken</div>
+        </div>
+        <div class="vis-panel new">
+          <div class="vis-tag new-tag">Nieuw — uitklappen</div>
+          <div style="display:flex;flex-direction:column;gap:6px;">
+            <div class="mock-expand-card" style="border-color:#3b82f6;">
+              <div class="mock-expand-top">
+                <div class="mock-expand-grade" style="color:#60a5fa;">B</div>
+                <div class="mock-expand-name">Techniek</div>
+                <div class="mock-expand-arrow" style="transform:rotate(90deg);">›</div>
+              </div>
+              <div class="mock-expand-body">Aanname goed, passnauwkeurigheid hoog. Kan beter bij hoge bal.</div>
+            </div>
+            <div class="mock-expand-card" style="border-color:#22c55e;">
+              <div class="mock-expand-top">
+                <div class="mock-expand-grade" style="color:#4ade80;">A</div>
+                <div class="mock-expand-name">Inzicht</div>
+                <div class="mock-expand-arrow">›</div>
+              </div>
+            </div>
+            <div class="mock-expand-card" style="border-color:#f59e0b;">
+              <div class="mock-expand-top">
+                <div class="mock-expand-grade" style="color:#fbbf24;">C</div>
+                <div class="mock-expand-name">Snelheid</div>
+                <div class="mock-expand-arrow">›</div>
+              </div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:#34d399;margin-top:8px;text-align:center;">Pijltje geeft aan dat er meer is</div>
+        </div>
+      </div>
+      <div class="tip">Het cijfer en de naam blijven altijd zichtbaar. Alleen de notitie klapt open bij een klik.</div>
+    </div>
+  </div>
+
+  <div class="section-label">Opgelost</div>
+
+  <!-- CARD 4: Ritten -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon yellow">🚗</div>
+      <div class="card-meta">
+        <div class="card-badge badge-fix">Bugfix</div>
+        <div class="card-title">Ritten — km herberekening verbeterd</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <p>De knop "Herbereken km" werkte niet altijd. Dit is opgelost. De knop toont nu een ⏳ tijdens het berekenen en geeft daarna een bevestiging.</p>
+
+      <div class="vis-compare">
+        <div class="vis-panel old">
+          <div class="vis-tag old-tag">Oud</div>
+          <div class="mock-box" style="margin-bottom:8px;">
+            <div class="mock-label">Van</div>
+            <div class="mock-val" style="margin-bottom:6px;">Amsterdam</div>
+            <div class="mock-label">Naar</div>
+            <div class="mock-val">Enschede</div>
+          </div>
+          <div class="mock-btn" style="width:100%;justify-content:center;">Herbereken km</div>
+          <div style="font-size:11px;color:#6b7a96;margin-top:8px;text-align:center;">Niets gebeurde, geen feedback</div>
+        </div>
+        <div class="vis-panel new">
+          <div class="vis-tag new-tag">Nieuw</div>
+          <div class="mock-box" style="margin-bottom:8px;">
+            <div class="mock-label">Van</div>
+            <div class="mock-val" style="margin-bottom:6px;">Amsterdam</div>
+            <div class="mock-label">Naar</div>
+            <div class="mock-val">Enschede</div>
+          </div>
+          <div class="mock-btn loading" style="width:100%;justify-content:center;">⏳ Berekenen...</div>
+          <div class="mock-toast">✓ 149 km berekend</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<footer>
+  <span>ScoutingHub · versie sh-v488 · juni 2026</span>
+  <a href="handleiding-wedstrijd.html" style="color:var(--accent);text-decoration:none;font-weight:600;">Wedstrijd handleiding →</a>
+</footer>
+
+</body>
+</html>

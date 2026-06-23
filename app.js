@@ -34461,8 +34461,16 @@ function _shRenderCarriereKaart(p){
       <div class="compare-card-title">
         <span>📋 Club &amp; carrière</span>
         <div class="carriere-actions">
-          <button class="carriere-btn carriere-btn-primary" id="sh-carriere-edit-btn">✏️ Aanpassen</button>
-          <button class="carriere-btn" id="sh-carriere-transfer-btn">🔄 Transfer</button>
+          <div class="sh-tip-wrap">
+            <button class="carriere-btn carriere-btn-primary" id="sh-carriere-edit-btn">✏️ Aanpassen</button>
+            <span class="sh-tip-icon">?</span>
+            <div class="sh-tip-box">Corrigeer een fout in het huidige seizoen, bijv. verkeerde leeftijdscategorie. Geen clubwijziging.</div>
+          </div>
+          <div class="sh-tip-wrap">
+            <button class="carriere-btn" id="sh-carriere-transfer-btn">🔄 Transfer</button>
+            <span class="sh-tip-icon">?</span>
+            <div class="sh-tip-box">Speler gaat naar ander elftal of andere club. Zomertransfer, nieuwe jaargang of tussentijdse transfer.</div>
+          </div>
         </div>
       </div>
       <div class="carriere-timeline">${timelineHtml || '<div style="padding:10px;color:var(--text-3);font-size:13px;">Nog geen periodes.</div>'}</div>
@@ -34542,12 +34550,14 @@ function _shOpenModal(p, mode){
     <div class="sh-transfer-arrow">↓</div>
     <div class="sh-transfer-field">
       <div class="sh-transfer-label">Nieuwe club</div>
-      <input class="sh-transfer-input" id="sh-transfer-club" type="text" placeholder="bijv. PSV" autocomplete="off"/>
+      <input class="sh-transfer-input" id="sh-transfer-club" type="text" placeholder="bijv. PSV" list="sh-club-list" autocomplete="off"/>
     </div>
     <div class="sh-transfer-field">
       <div class="sh-transfer-label">Nieuw elftal (bijv. O.16-1)</div>
-      <input class="sh-transfer-input" id="sh-transfer-elftal" type="text" placeholder="bijv. O.16-1" autocomplete="off"/>
+      <input class="sh-transfer-input" id="sh-transfer-elftal" type="text" placeholder="bijv. O.16-1" list="sh-elftal-list" autocomplete="off"/>
     </div>
+    <datalist id="sh-club-list">${(()=>{ const all=[...( (typeof HV_CLUBS!=='undefined'?HV_CLUBS:[]).map(c=>c.naam) ),'Ajax','PSV','Feyenoord','AZ','FC Twente','FC Utrecht','Vitesse','NEC','FC Groningen','Heracles','Go Ahead Eagles','PEC Zwolle','Sparta Rotterdam','RKC Waalwijk','Almere City','FC Volendam','Willem II','sc Heerenveen','FC Emmen','ADO Den Haag','NAC Breda'].filter((v,i,a)=>a.indexOf(v)===i); return all.map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">').join(''); })()}</datalist>
+    <datalist id="sh-elftal-list">${(()=>{ const cats=[]; for(let a=8;a<=19;a++){ for(let t=1;t<=3;t++) cats.push('O.'+a+'-'+t); } ['O.21-1','O.21-2','1','2','3','Dames 1','Dames 2'].forEach(c=>cats.push(c)); return cats.map(c=>'<option value="'+c+'">').join(''); })()}</datalist>
     <div class="sh-transfer-field">
       <div class="sh-transfer-label">Datum</div>
       <input class="sh-transfer-input" id="sh-transfer-datum" type="date" value="${new Date().toISOString().slice(0,10)}"/>

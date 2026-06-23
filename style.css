@@ -14224,3 +14224,9 @@ tr.db-row-concept td:first-child {
 ont-weight:600; cursor:pointer; }
 .sh-transfer-btn-save { flex:2; background:linear-gradient(135deg,#b45309,#f59e0b); color:#fff; border:none; border-radius:10px; padding:11px; font-size:14px; font-weight:700; cursor:pointer; }
 .sh-transfer-btn-save:hover { opacity:.9; }
+
+/* ── v487-tooltip ── */
+.sh-tip-wrap { position:relative; display:inline-flex; align-items:center; }
+.sh-tip-icon { width:16px; height:16px; border-radius:50%; background:var(--text-3,#8b97ad); color:var(--card-bg,#151e2d); font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; cursor:default; margin-left:5px; flex-shrink:0; user-select:none; }
+.sh-tip-box { display:none; position:absolute; bottom:calc(100% + 8px); right:0; width:220px; background:var(--hover-bg,#1e2a3d); border:1px solid var(--border,#232d40); border-radius:9px; padding:10px 12px; font-size:12px; line-height:1.5; color:var(--text-2,#9aa8bd); z-index:99; box-shadow:0 8px 24px rgba(0,0,0,.4); pointer-events:none; }
+.sh-tip-wrap:hover .sh-tip-box { display:block; }

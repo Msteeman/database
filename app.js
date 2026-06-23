@@ -30024,13 +30024,50 @@ function _ritExportPdf(){
   const MND=['jan','feb','mrt','apr','mei','jun','jul','aug','sep','okt','nov','dec'];
   const subHtml=Object.keys(byMonth).sort().map(mk=>{ const o=byMonth[mk]; const p=mk.split('-'); const lbl=(MND[parseInt(p[1],10)-1]||p[1])+' '+p[0]; return '<tr class="sub"><td colspan="3">Subtotaal '+lbl+'</td><td style="text-align:right">'+esc(_ritFmtKm(o.km))+'</td><td>'+o.n+' ritten</td><td style="text-align:right">'+_fmtEur(o.km*tarief)+'</td></tr>'; }).join('');
   const periode=(van||tot)?((van?_ritFmtDatum(van):'begin')+' t/m '+(tot?_ritFmtDatum(tot):'nu')):'alle ritten';
-  const html='<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>Rittenregistratie</title>'+
-    '<style>body{font-family:Arial,Helvetica,sans-serif;color:#111;margin:24px;}h1{font-size:18px;margin:0 0 2px;}h2{font-size:12px;font-weight:normal;color:#555;margin:0 0 16px;}table{width:100%;border-collapse:collapse;font-size:12px;}th,td{border-bottom:1px solid #ddd;padding:6px 8px;text-align:left;}th{background:#f3f3f3;}tr.sub td{background:#fafafa;font-weight:bold;}tfoot td{font-weight:bold;border-top:2px solid #333;}@media print{body{margin:0;}}</style></head><body>'+
-    '<h1>Rittenregistratie'+(naam?' \u2014 '+esc(naam):'')+'</h1><h2>Periode: '+esc(periode)+' \u00b7 Tarief: '+_fmtEur(tarief)+'/km</h2>'+
+  const html='<!doctype html><html lang="nl"><head><meta charset="utf-8"><title>Rittenregistratie ScoutingHub</title>'+
+    '<style>'+
+    '*{box-sizing:border-box;margin:0;padding:0;}'+
+    'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif;color:#111;background:#fff;font-size:12px;}'+
+    '.sh-header{background:linear-gradient(135deg,#1a0a0a 0%,#0b1220 60%,#0e1626 100%);color:#fff;padding:18px 28px 16px;display:flex;align-items:center;gap:14px;border-bottom:3px solid #e30613;}'+
+    '.sh-logo{width:34px;height:34px;border-radius:8px;background:linear-gradient(135deg,#ff8189,#e30613 55%,#f5c518);display:flex;align-items:center;justify-content:center;font-weight:900;font-size:13px;color:#fff;flex-shrink:0;}'+
+    '.sh-brand{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:rgba(255,255,255,.5);margin-bottom:2px;}'+
+    '.sh-title{font-size:18px;font-weight:800;letter-spacing:-.3px;color:#fff;}'+
+    '.sh-name{font-size:13px;color:#f87171;font-weight:700;margin-top:1px;}'+
+    '.sh-meta{margin-left:auto;text-align:right;font-size:11px;color:rgba(255,255,255,.45);line-height:1.6;}'+
+    '.sh-meta strong{color:rgba(255,255,255,.75);}'+
+    '.sh-body{padding:20px 28px;}'+
+    'table{width:100%;border-collapse:collapse;font-size:11.5px;}'+
+    'thead th{background:#e30613;color:#fff;padding:7px 9px;text-align:left;font-weight:700;font-size:11px;letter-spacing:.04em;text-transform:uppercase;}'+
+    'thead th:last-child,thead th:nth-child(4){text-align:right;}'+
+    'tbody td{padding:6px 9px;border-bottom:1px solid #eee;vertical-align:top;}'+
+    'tbody tr:nth-child(even) td{background:#fafafa;}'+
+    'tr.sub td{background:#fff3f3;font-weight:700;color:#c00;font-size:11px;}'+
+    'tr.sub td:last-child,tr.sub td:nth-child(4){text-align:right;}'+
+    'tbody td:last-child,tbody td:nth-child(4){text-align:right;}'+
+    'tfoot td{font-weight:800;border-top:2px solid #e30613;padding:8px 9px;font-size:12px;background:#fff;}'+
+    'tfoot td:last-child,tfoot td:nth-child(4){text-align:right;color:#e30613;}'+
+    '.sh-footer{margin-top:20px;padding-top:10px;border-top:1px solid #eee;font-size:10px;color:#aaa;display:flex;justify-content:space-between;}'+
+    '@media print{.sh-header{-webkit-print-color-adjust:exact;print-color-adjust:exact;}thead th{-webkit-print-color-adjust:exact;print-color-adjust:exact;}tr.sub td{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}'+
+    '</style></head><body>'+
+    '<div class="sh-header">'+
+      '<div class="sh-logo">SH</div>'+
+      '<div>'+
+        '<div class="sh-brand">ScoutingHub</div>'+
+        '<div class="sh-title">Rittenregistratie</div>'+
+        (naam?'<div class="sh-name">'+esc(naam)+'</div>':'')+
+      '</div>'+
+      '<div class="sh-meta">'+
+        '<strong>Periode</strong><br>'+esc(periode)+'<br>'+
+        '<strong>Tarief</strong><br>'+_fmtEur(tarief)+'/km'+
+      '</div>'+
+    '</div>'+
+    '<div class="sh-body">'+
     '<table><thead><tr><th>Datum</th><th>Van</th><th>Naar</th><th style="text-align:right">Km</th><th>Doel</th><th style="text-align:right">Bedrag</th></tr></thead>'+
     '<tbody>'+rowHtml+'</tbody>'+(subHtml?'<tbody>'+subHtml+'</tbody>':'')+
     '<tfoot><tr><td colspan="3">Totaal</td><td style="text-align:right">'+esc(_ritFmtKm(totKm))+'</td><td></td><td style="text-align:right">'+_fmtEur(totKm*tarief)+'</td></tr></tfoot>'+
-    '</table></body></html>';
+    '</table>'+
+    '<div class="sh-footer"><span>Gegenereerd met ScoutingHub</span><span>'+new Date().toLocaleDateString('nl-NL',{day:'numeric',month:'long',year:'numeric'})+'</span></div>'+
+    '</div></body></html>';
   const w=window.open('','_blank');
   if(!w){ if(typeof toast==='function') toast('Pop-up geblokkeerd \u2014 sta pop-ups toe',true); return; }
   w.document.open(); w.document.write(html); w.document.close(); w.focus();

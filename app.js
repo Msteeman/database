@@ -4323,15 +4323,19 @@ function _ritSearchClubs(q){
   const addResult = (naam, ci) => {
     if(!ci || seen.has(naam)) return;
     seen.add(naam);
-    // label = sportpark of naam, plus stad
-    const label = [ci.sportpark || ci.naam || naam, ci.plaats].filter(Boolean).join(', ');
+    // label = clubnaam (getoond in dropdown)
+    const label = ci.naam || naam;
     if(!label) return;
-    // volledig adres voor geocoding: straat + postcode + stad
+    // sublabel = stad/sportpark (hint onder clubnaam)
+    const sublabel = [ci.sportpark, ci.plaats].filter(Boolean).join(', ');
+    // adresLabel = wat in het veld komt na klikken
+    const adresLabel = [ci.adres, ci.postcode, ci.plaats].filter(Boolean).join(', ') || sublabel;
+    // adres voor geocoding
     const volledigAdres = [ci.adres, ci.postcode, ci.plaats].filter(Boolean).join(', ');
     if(isFinite(ci.lat) && isFinite(ci.lon)){
-      results.push({ label, lat: Number(ci.lat), lon: Number(ci.lon), fromClub: true, volledigAdres });
+      results.push({ label, sublabel, adresLabel, lat: Number(ci.lat), lon: Number(ci.lon), fromClub: true });
     } else if(ci.adres){
-      results.push({ label, lat: NaN, lon: NaN, adres: volledigAdres || ci.adres, fromClub: true });
+      results.push({ label, sublabel, adresLabel, lat: NaN, lon: NaN, adres: volledigAdres || ci.adres, fromClub: true });
     }
   };
   // Zoek in CLUB_ADRESSEN (handmatig geverifieerd, heeft lat/lon)
@@ -4374,14 +4378,18 @@ function _ritSetupSuggest(inputId, boxId, kind){
   const render = (matches) => {
     if(!matches.length){ box.classList.remove('open'); box.innerHTML = ''; return; }
     box.innerHTML = matches.map((m,i) =>
-      '<div class="rm-suggest-item" data-i="' + i + '">' + escapeHtml(m.label) + '</div>'
+      '<div class="rm-suggest-item" data-i="' + i + '">' +
+        escapeHtml(m.label) +
+        (m.sublabel ? '<span style="display:block;font-size:11px;color:var(--text-3,#6b7a96);margin-top:1px">' + escapeHtml(m.sublabel) + '</span>' : '') +
+      '</div>'
     ).join('');
     box.classList.add('open');
     box.querySelectorAll('.rm-suggest-item').forEach((el) => {
       el.addEventListener('mousedown', (ev) => {
         ev.preventDefault();
         const m = matches[Number(el.dataset.i)];
-        input.value = m.label;
+        // Veld krijgt adres (niet clubnaam)
+        input.value = m.adresLabel || m.label;
         if(isFinite(m.lat) && isFinite(m.lon)){
           if(latInp) latInp.value = String(m.lat);
           if(lonInp) lonInp.value = String(m.lon);

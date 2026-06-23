@@ -16677,24 +16677,18 @@ function renderDetailBars(p){
   wrap.innerHTML = _shReportTagsSummary(p) + `<div class="dtl-crit-grid">${CMP_CRITERIA.map((crit,i) => {
     let g=b[crit.key]; if(!g&&crit.key==='grit_huidig')g=b.drit_huidig;
     const tekst=b[crit.key.replace('_huidig','_tekst')]||'';
-    const fg=GRAD[g]||'linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.03))';
     const bc=GCOL[g]||'var(--border-2)';
-    return `<div class="dtl-crit-card sh-tilt-card advies-badge-anim" style="animation-delay:${i*0.07}s">
-      <div class="dtl-crit-inner">
-        <div class="dtl-crit-front" style="background:${fg}">
-          <div class="dtl-crit-grade">${escapeHtml(g||'–')}</div>
-          <div class="dtl-crit-name">${escapeHtml(crit.label)}</div>
-          <div class="dtl-crit-hint">${tekst?'↺ notitie':'geen notitie'}</div>
-        </div>
-        <div class="dtl-crit-back" style="border-color:${bc}">
-          <div class="dtl-crit-back-head" style="color:${bc}">${escapeHtml(crit.label)}${g?' · '+escapeHtml(g):''}</div>
-          <div class="dtl-crit-back-text">${tekst?escapeHtml(tekst):'<span style="opacity:.38;font-style:italic;">Geen notitie ingevuld</span>'}</div>
-        </div>
+    return `<div class="dtl-crit-card advies-badge-anim" style="animation-delay:${i*0.07}s;border-color:${bc}">
+      <div class="dtl-crit-top">
+        <div class="dtl-crit-grade" style="color:${bc}">${escapeHtml(g||'–')}</div>
+        <div class="dtl-crit-name">${escapeHtml(crit.label)}</div>
+        <div class="dtl-crit-arrow">›</div>
       </div>
+      <div class="dtl-crit-expand">${tekst?escapeHtml(tekst):'<span style="opacity:.38;font-style:italic;">Geen notitie ingevuld</span>'}</div>
     </div>`;
   }).join('')}</div>`;
   wrap.querySelectorAll('.dtl-crit-card').forEach(card => {
-    card.addEventListener('click', () => card.classList.toggle('flipped'));
+    card.addEventListener('click', () => card.classList.toggle('open'));
   });
 }
 

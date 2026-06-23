@@ -4267,6 +4267,67 @@ async function _ritNominatimSearch(q){
   return out;
 }
 
+/* Club logo systeem — TheSportsDB on-demand, localStorage cache */
+const _SH_LOGO_CACHE_KEY = 'sh_logo_v1';
+function _shLogoGetCache(){
+  try{ return JSON.parse(localStorage.getItem(_SH_LOGO_CACHE_KEY)||'{}'); }catch(e){ return {}; }
+}
+function _shLogoSetCache(key, url){
+  try{
+    const c = _shLogoGetCache();
+    c[key] = { url: url, ts: Date.now() };
+    localStorage.setItem(_SH_LOGO_CACHE_KEY, JSON.stringify(c));
+  } catch(e){}
+}
+async function _shGetClubLogo(naam){
+  if(!naam || naam.length < 2) return null;
+  // Strip elftal-suffix: "Ajax O.16-1" -> "Ajax"
+  const clubNaam = naam.replace(/\s+(O\.|U)\d+[\-\d]*/gi,'').trim();
+  const key = clubNaam.toLowerCase().trim();
+  if(!key) return null;
+  // Cache check (24u TTL)
+  const cache = _shLogoGetCache();
+  if(cache[key] && (Date.now() - (cache[key].ts||0)) < 86400000){
+    return cache[key].url || null;
+  }
+  // TheSportsDB search
+  try{
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 5000);
+    const res = await fetch(
+      'https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=' + encodeURIComponent(clubNaam),
+      { signal: ctrl.signal }
+    );
+    clearTimeout(tid);
+    if(!res.ok) throw new Error('nok');
+    const json = await res.json();
+    const teams = json.teams || [];
+    const t = teams.find(t => t.strCountry === 'Netherlands' || t.strCountry === 'Holland') || teams[0];
+    const url = (t && t.strTeamBadge) ? t.strTeamBadge + '/tiny' : '';
+    _shLogoSetCache(key, url);
+    return url || null;
+  } catch(e){
+    _shLogoSetCache(key, '');
+    return null;
+  }
+}
+// Vul alle img[data-club-logo] in een container
+async function _shFillLogos(container){
+  container = container || document;
+  const imgs = Array.from(container.querySelectorAll('img[data-club-logo]'));
+  for(const img of imgs){
+    const naam = img.getAttribute('data-club-logo');
+    if(!naam) continue;
+    const url = await _shGetClubLogo(naam);
+    if(url){ img.src = url; img.style.opacity = '1'; }
+  }
+}
+function _shLogoImg(naam, size){
+  size = size || 22;
+  if(!naam) return '';
+  return '<img data-club-logo="' + escapeAttr(naam) + '" src="" alt="" style="width:' + size + 'px;height:' + size + 'px;object-fit:contain;opacity:0;transition:opacity .25s;border-radius:2px;flex-shrink:0;" onerror="this.style.display=\'none\'">';
+}
+
 /* Vaste locaties — bekende NL voetballocaties, geen API nodig */
 const _RIT_VASTE_LOC = {
   'sportpark de toekomst':    {lat:52.3130, lon:4.9367},
@@ -7517,7 +7578,15 @@ async function openMatchLiveForm(prog, opts){
   _mlfCtx = { matchId, progId: prog.id, thuis: prog.thuis||'', uit: prog.uit||'', isRapport };
   const st = matchLiveState[matchId];
 
-  const titleEl = document.getElementById('mlf-title'); if(titleEl) titleEl.textContent = (prog.thuis||'?') + ' — ' + (prog.uit||'?');
+  const titleEl = document.getElementById('mlf-title');
+  if(titleEl){
+    titleEl.innerHTML =
+      _shLogoImg(prog.thuis, 20) +
+      '<span>' + escapeHtml((prog.thuis||'?') + ' vs ' + (prog.uit||'?')) + '</span>' +
+      _shLogoImg(prog.uit, 20);
+    titleEl.style.cssText += ';display:flex;align-items:center;gap:6px;';
+    setTimeout(() => _shFillLogos(titleEl), 0);
+  }
   const subEl = document.getElementById('mlf-sub'); if(subEl) subEl.textContent = isRapport ? 'Wedstrijdrapport' : 'Live wedstrijdnotitie (concept)';
   const ctxParts = [];
   if(prog.datum) ctxParts.push(prog.datum + (prog.tijd?' · '+prog.tijd:''));
@@ -7531,7 +7600,8 @@ async function openMatchLiveForm(prog, opts){
   if(ctxEl) ctxEl.innerHTML = '<div class="mlf-ctx-match">'+escapeHtml((prog.thuis||'?')+' — '+(prog.uit||'?'))+'</div>'+(ctxParts.length?'<div class="mlf-ctx-meta">'+ctxParts.map(escapeHtml).join(' · ')+'</div>':'')+'<div class="mlf-ctx-note">'+ctxNote+'</div>';
 
   const renderTeam = (team, teamName) => {
-    return '<div class="mlf-col" data-team="'+team+'"><div class="mlf-team-head mlf-team-'+team+'">'+escapeHtml(teamName||team)+'</div>'+
+    const _logoHtml = teamName ? '<img data-club-logo="'+escapeAttr(teamName)+'" src="" alt="" style="width:20px;height:20px;object-fit:contain;opacity:0;transition:opacity .25s;border-radius:2px;flex-shrink:0;" onerror="this.style.display=\'none\'">' : '';
+    return '<div class="mlf-col" data-team="'+team+'"><div class="mlf-team-head mlf-team-'+team+'" style="display:flex;align-items:center;gap:5px;">'+_logoHtml+escapeHtml(teamName||team)+'</div>'+
       MLF_TEAM_CATS.map(function(c){
         const cat=c[0], label=c[1], chips=c[2];
         const cst=(st[team]&&st[team][cat])||{chips:[],ratings:{},note:''};
@@ -7548,6 +7618,7 @@ async function openMatchLiveForm(prog, opts){
   if(body){
     body.className = 'mlf-show-thuis';
     body.innerHTML = tabs + '<div class="mlf-cols">' + renderTeam('thuis', prog.thuis) + renderTeam('uit', prog.uit) + '</div>' + sharedHtml;
+    setTimeout(() => _shFillLogos(body), 0);
     if(!body._mlfWired){
       body._mlfWired = true;
       body.addEventListener('click', function(e){
@@ -15430,7 +15501,10 @@ function renderDetailObsOverview(p){
       <div class="obs-profile-badge">OBS</div>
       <div class="obs-profile-avatar">${initials(p.naam)}</div>
       <div class="obs-profile-info">
-        <div class="obs-profile-name">${escapeHtml(p.naam||'—')}</div>
+        <div style="display:flex;align-items:center;gap:7px;margin-bottom:2px;">
+          ${p.club ? `<img data-club-logo="${escapeAttr(p.club)}" src="" alt="" style="width:26px;height:26px;object-fit:contain;opacity:0;transition:opacity .25s;border-radius:3px;flex-shrink:0;" onerror="this.style.display='none'">` : ''}
+          <div class="obs-profile-name">${escapeHtml(p.naam||'?')}</div>
+        </div>
         <div class="obs-profile-meta">${escapeHtml(meta)}</div>
         ${p.rugnummer?`<div class="obs-profile-rug">#${escapeHtml(p.rugnummer)}</div>`:''}
         <div class="obs-profile-dob">
@@ -15469,6 +15543,9 @@ function renderDetailObsOverview(p){
       </div>
     </div>
   `;
+
+  // Logo's invullen (obs profiel)
+  setTimeout(() => _shFillLogos(document.getElementById('player-view-body')), 0);
 
   // Event listeners
   document.getElementById('dtl-back-prev')?.addEventListener('click', ()=>go(previousViewBeforePlayer||'database'));
@@ -16964,7 +17041,10 @@ function renderDetailFullReport(p){
     <div class="detail-header">
       <button type="button" class="detail-avatar sh-avatar-btn" data-pid="${escapeAttr(p.id)}" title="Foto toevoegen of wijzigen" aria-label="Spelerfoto">${_shAvatarInner(p)}<span class="sh-avatar-cam" aria-hidden="true">📷</span></button>
       <div style="flex:1;">
-        <div class="detail-name">${escapeHtml(p.naam)}</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+          ${p.club ? `<img data-club-logo="${escapeAttr(p.club)}" src="" alt="" style="width:28px;height:28px;object-fit:contain;opacity:0;transition:opacity .25s;border-radius:3px;flex-shrink:0;" onerror="this.style.display='none'">` : ''}
+          <div class="detail-name" style="margin-bottom:0;">${escapeHtml(p.naam)}</div>
+        </div>
         <div class="detail-meta">
           ${escapeHtml(positionLabel(p.positie))}${p.club?(' · '+escapeHtml(p.club)):''}${p.rugnummer?(' · #'+escapeHtml(p.rugnummer)):''}
           ${p.been?(' · '+escapeHtml(p.been)):''}
@@ -17034,6 +17114,7 @@ function renderDetailFullReport(p){
       <button class="btn btn-sm" id="edit-${p.id}">Bewerken</button>
     </div>
   `;
+  setTimeout(() => _shFillLogos(document.getElementById('player-view-body')), 0);
   if(typeof renderDetailPizza === 'function') renderDetailPizza(p);
   if(typeof renderDetailBars === 'function') renderDetailBars(p);
   $('#dtl-back-overview')?.addEventListener('click', ()=>{

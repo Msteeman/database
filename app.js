@@ -4249,6 +4249,25 @@ async function _ritNominatimSearch(q){
   return out;
 }
 
+/* Photon (Komoot) — betere POI/sportpark geocoder als Nominatim faalt */
+async function _ritPhotonSearch(q){
+  q = (q||'').trim();
+  if(q.length < 3) return [];
+  try {
+    const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(q)}&limit=5&lang=nl&bbox=3.2,50.5,7.4,53.7`;
+    const res = await fetch(url, { headers: { 'User-Agent': 'ScoutingHub/1.0 (scoutinghub.nl)' } });
+    if(!res.ok) return [];
+    const json = await res.json();
+    return (json.features||[]).map(f => {
+      const p = f.properties||{};
+      const label = [p.name, p.city||p.town||p.village||p.county].filter(Boolean).join(', ');
+      const lat = f.geometry && f.geometry.coordinates ? f.geometry.coordinates[1] : NaN;
+      const lon = f.geometry && f.geometry.coordinates ? f.geometry.coordinates[0] : NaN;
+      return { label, lat, lon };
+    }).filter(x => x.label && _ritCoordsValid(x.lat, x.lon));
+  } catch(_){ return []; }
+}
+
 /* Club-adresboek doorzoeken voor rit-suggesties */
 function _ritSearchClubs(q){
   q = (q||'').trim().toLowerCase();
@@ -4480,6 +4499,9 @@ async function _ritTryAutoKm(force){
       hits = await _ritNominatimSearch(beforeComma).catch(()=>[]);
       if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
     }
+    // Poging 4: Photon — betere POI/sportparkherkenning
+    hits = await _ritPhotonSearch(q1).catch(()=>[]);
+    if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
     return null;
   };
 

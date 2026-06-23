@@ -3538,9 +3538,11 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
   font-size: 26px; font-weight: 800; line-height: 1.1;
   color: var(--text); margin-bottom: 2px;
 }
-.dtl-kpi-value.small { font-size: 18px; }
+.dtl-kpi-value.small { font-size: 16px; line-height: 1.25; }
 .dtl-kpi-sub {
   font-size: 11px; color: var(--text-3); margin-top: 4px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden; line-height: 1.4;
 }
 .dtl-kpi-tile.accent-a { --kpi-accent: #22c55e; }
 .dtl-kpi-tile.accent-b { --kpi-accent: #3b82f6; }
@@ -10367,7 +10369,7 @@ tr.db-row-obs td:first-child {
    ═══════════════════════════════════════════════════════════════ */
 
 /* ── 3D flip: dtl-kpi-tile ───────────────────────────────────── */
-.dtl-kpi-tile { height: 118px; overflow: visible; perspective: 900px; }
+.dtl-kpi-tile { height: 138px; overflow: visible; perspective: 900px; }
 .dtl-kpi-tile::before { display: none; }          /* moved to .dtl-kpi-front */
 .dtl-kpi-tile.sh-tilt-card { transform-style: flat; }
 .dtl-kpi-inner {

@@ -15583,26 +15583,50 @@ function renderDetailOverview(p){
       ${mode === 'average' ? `<span class="dtl-avg-pill">Gemiddelde · ${reportCount} rapporten</span>` : ''}
       ${mode === 'single-report' ? `<span class="dtl-avg-pill">Eén rapport</span>` : ''}
     </div>
-    <div class="detail-header">
-      <button type="button" class="detail-avatar sh-avatar-btn" data-pid="${escapeAttr(p.id)}" title="Foto toevoegen of wijzigen" aria-label="Spelerfoto">${_shAvatarInner(p)}<span class="sh-avatar-cam" aria-hidden="true">📷</span></button>
-      <div style="flex:1;">
-        <div class="detail-name">
-          ${escapeHtml(p.naam)}
-          ${p.leeftijd ? `<span class="dtl-leeftijd-chip">${escapeHtml(p.leeftijd)}</span>` : ''}
+    <div class="sh-hero-card">
+      <div class="sh-hero-top">
+        <div class="sh-hero-avatar">
+          <button type="button" class="detail-avatar sh-avatar-btn" data-pid="${escapeAttr(p.id)}" title="Foto toevoegen of wijzigen" aria-label="Spelerfoto">${_shAvatarInner(p)}<span class="sh-avatar-cam" aria-hidden="true">📷</span></button>
         </div>
-        <div class="detail-meta">
-          ${escapeHtml(meta||'—')}${p.rugnummer?(' · #'+escapeHtml(p.rugnummer)):''}${p.been?(' · '+escapeHtml(p.been)):''}${p.geboorte?(' · '+formatDate(p.geboorte)):''}
-        </div>
-        ${p.tweebenig ? `<div class="detail-meta" style="margin-top:2px;font-style:italic;">${escapeHtml(p.tweebenig)}</div>` : ''}
-        <div class="detail-grade-row">
-          <div><span class="grade-label">Huidig</span> <span class="grade ${vp.huidig_niveau||'D'}">${vp.huidig_niveau||'-'}</span></div>
-          <div><span class="grade-label">Potentieel</span> <span class="grade outline ${vp.potentieel_niveau||'D'}">${vp.potentieel_niveau||'-'}</span></div>
-          <div><span class="grade-label">Advies</span> <span class="grade ${gradeForAdvies(vp.advies)}">${adviesLabel(vp.advies)||'-'}</span></div>
+        <div class="sh-hero-body">
+          <div class="sh-hero-name">
+            ${escapeHtml(p.naam)}
+            ${p.leeftijd ? `<span class="sh-hero-leeftijd">${escapeHtml(p.leeftijd)} jaar</span>` : ''}
+          </div>
+          <div class="sh-hero-positie">${escapeHtml(meta||'—')}</div>
+          <div class="sh-hero-info">
+            ${p.rugnummer ? `<span class="sh-hero-info-item">🔢 #${escapeHtml(p.rugnummer)}</span>` : ''}
+            ${p.been ? `<span class="sh-hero-info-item">🦶 ${escapeHtml(p.been)}</span>` : ''}
+            ${p.tweebenig ? `<span class="sh-hero-info-item" style="font-style:italic;">${escapeHtml(p.tweebenig)}</span>` : ''}
+            ${p.geboorte ? `<span class="sh-hero-info-item">📅 ${p.geboorte.split('-').reverse().join('-')}</span>` : ''}
+          </div>
+          <div class="sh-hero-grades">
+            <span class="sh-hero-grade-item">Huidig <span class="grade ${vp.huidig_niveau||'D'}">${vp.huidig_niveau||'-'}</span></span>
+            <span class="sh-hero-grade-item">Potentieel <span class="grade outline ${vp.potentieel_niveau||'D'}">${vp.potentieel_niveau||'-'}</span></span>
+            <span class="sh-hero-grade-item">Advies <span class="grade ${gradeForAdvies(vp.advies)}">${adviesLabel(vp.advies)||'-'}</span></span>
+          </div>
         </div>
       </div>
+      <hr class="sh-hero-divider"/>
+      <div class="sh-hero-carriere">
+        <div class="sh-hero-carriere-header">
+          <span class="sh-hero-carriere-title">Club &amp; carrière</span>
+          <div class="carriere-actions">
+            <div class="sh-tip-wrap">
+              <button class="carriere-btn carriere-btn-primary" id="sh-carriere-edit-btn">✏️ Aanpassen</button>
+              <span class="sh-tip-icon">?</span>
+              <div class="sh-tip-box">Corrigeer een fout in het huidige seizoen, bijv. verkeerde leeftijdscategorie. Geen clubwijziging.</div>
+            </div>
+            <div class="sh-tip-wrap">
+              <button class="carriere-btn" id="sh-carriere-transfer-btn">🔄 Transfer</button>
+              <span class="sh-tip-icon">?</span>
+              <div class="sh-tip-box">Speler gaat naar ander elftal of andere club. Zomertransfer, nieuwe jaargang of tussentijdse transfer.</div>
+            </div>
+          </div>
+        </div>
+        <div id="dtl-carriere-timeline"></div>
+      </div>
     </div>
-
-    <div id="dtl-carriere-card"></div>
 
     <div class="dtl-kpi-grid" id="dtl-kpi-grid"></div>
 
@@ -34404,7 +34428,7 @@ function _shGetSeizoen(date){
   const d = date ? new Date(date) : new Date();
   const grens = new Date(d.getFullYear(), 6, 15); // 15 juli
   const jaar = d >= grens ? d.getFullYear() : d.getFullYear() - 1;
-  return `${jaar}-${jaar+1}`;
+  return `${jaar}/${jaar+1}`;
 }
 function _shGetPlayerPeriods(pid){
   try { return JSON.parse(localStorage.getItem('sh_carriere_'+pid)||'[]'); } catch(_){ return []; }
@@ -34417,7 +34441,7 @@ function _shActivePeriod(arr){
 }
 
 function _shRenderCarriereKaart(p){
-  const wrap = document.getElementById('dtl-carriere-card');
+  const wrap = document.getElementById('dtl-carriere-timeline') || document.getElementById('dtl-carriere-card');
   if(!wrap) return;
   const pid = p.id;
   let periods = _shGetPlayerPeriods(pid);
@@ -34456,25 +34480,7 @@ function _shRenderCarriereKaart(p){
       </div>`;
   }).join('');
 
-  wrap.innerHTML = `
-    <div class="card compare-card carriere-card" style="margin-top:12px;">
-      <div class="compare-card-title">
-        <span>📋 Club &amp; carrière</span>
-        <div class="carriere-actions">
-          <div class="sh-tip-wrap">
-            <button class="carriere-btn carriere-btn-primary" id="sh-carriere-edit-btn">✏️ Aanpassen</button>
-            <span class="sh-tip-icon">?</span>
-            <div class="sh-tip-box">Corrigeer een fout in het huidige seizoen, bijv. verkeerde leeftijdscategorie. Geen clubwijziging.</div>
-          </div>
-          <div class="sh-tip-wrap">
-            <button class="carriere-btn" id="sh-carriere-transfer-btn">🔄 Transfer</button>
-            <span class="sh-tip-icon">?</span>
-            <div class="sh-tip-box">Speler gaat naar ander elftal of andere club. Zomertransfer, nieuwe jaargang of tussentijdse transfer.</div>
-          </div>
-        </div>
-      </div>
-      <div class="carriere-timeline">${timelineHtml || '<div style="padding:10px;color:var(--text-3);font-size:13px;">Nog geen periodes.</div>'}</div>
-    </div>`;
+  wrap.innerHTML = `<div class="carriere-timeline">${timelineHtml || '<div style="padding:10px;color:var(--text-3);font-size:13px;">Nog geen periodes.</div>'}</div>`;
 
   document.getElementById('sh-carriere-edit-btn')?.addEventListener('click', function(){
     _shOpenModal(p, 'aanpassen');
@@ -34516,7 +34522,7 @@ function _shGetNextSeizoen(){
   const nu = new Date();
   const grens = new Date(nu.getFullYear(), 6, 15);
   const jaar = nu >= grens ? nu.getFullYear() + 1 : nu.getFullYear();
-  return `${jaar}-${jaar+1}`;
+  return `${jaar}/${jaar+1}`;
 }
 
 function _shOpenTransferModal(p, isNewSeason){ _shOpenModal(p, isNewSeason ? 'transfer' : 'aanpassen'); }

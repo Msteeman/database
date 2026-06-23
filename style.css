@@ -14230,3 +14230,21 @@ ont-weight:600; cursor:pointer; }
 .sh-tip-icon { width:16px; height:16px; border-radius:50%; background:var(--text-3,#8b97ad); color:var(--card-bg,#151e2d); font-size:10px; font-weight:800; display:inline-flex; align-items:center; justify-content:center; cursor:default; margin-left:5px; flex-shrink:0; user-select:none; }
 .sh-tip-box { display:none; position:absolute; bottom:calc(100% + 8px); right:0; width:220px; background:var(--hover-bg,#1e2a3d); border:1px solid var(--border,#232d40); border-radius:9px; padding:10px 12px; font-size:12px; line-height:1.5; color:var(--text-2,#9aa8bd); z-index:99; box-shadow:0 8px 24px rgba(0,0,0,.4); pointer-events:none; }
 .sh-tip-wrap:hover .sh-tip-box { display:block; }
+
+/* ── v487-hero-kaart ── */
+.sh-hero-card { background:var(--card-bg,#151e2d); border:1px solid var(--border,#232d40); border-radius:14px; padding:20px 22px 0; margin-bottom:14px; }
+.sh-hero-top { display:flex; align-items:flex-start; gap:16px; padding-bottom:18px; }
+.sh-hero-avatar { flex-shrink:0; }
+.sh-hero-body { flex:1; min-width:0; }
+.sh-hero-name { font-size:22px; font-weight:900; color:var(--text-1,#e2eaf6); letter-spacing:-.3px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:3px; }
+.sh-hero-leeftijd { font-size:13px; font-weight:600; background:var(--blue-pill,#1e3a5f); color:#7eb8f7; padding:2px 9px; border-radius:20px; }
+.sh-hero-positie { font-size:13px; font-weight:600; color:var(--text-3,#8b97ad); margin-bottom:8px; }
+.sh-hero-info { display:flex; flex-wrap:wrap; gap:6px 16px; font-size:13px; color:var(--text-2,#9aa8bd); margin-bottom:14px; }
+.sh-hero-info-item { display:flex; align-items:center; gap:4px; }
+.sh-hero-grades { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.sh-hero-grade-item { display:flex; align-items:center; gap:5px; font-size:12px; color:var(--text-3,#8b97ad); font-weight:600; text-transform:uppercase; letter-spacing:.5px; }
+.sh-hero-divider { border:none; border-top:1px solid var(--border,#232d40); margin:0 -22px; }
+.sh-hero-carriere { padding:14px 0 16px; }
+.sh-hero-carriere-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+.sh-hero-carriere-title { font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.7px; color:var(--text-3,#8b97ad); }
+@media (max-width:560px) { .sh-hero-name { font-size:18px; } .sh-hero-info { gap:4px 12px; } }

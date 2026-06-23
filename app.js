@@ -4267,8 +4267,37 @@ async function _ritNominatimSearch(q){
   return out;
 }
 
-/* Club logo systeem — TheSportsDB on-demand, localStorage cache */
+/* Club logo systeem — TheSportsDB hardcoded IDs + on-demand fallback */
 const _SH_LOGO_CACHE_KEY = 'sh_logo_v1';
+
+// Bekende NL BVO's met TheSportsDB team ID (gevonden via thesportsdb.com/team/ID)
+const _SH_TSDB_IDS = {
+  'ajax': 133772,
+  'feyenoord': 133758,
+  'psv': 133768, 'psv eindhoven': 133768,
+  'az': 133767, 'az alkmaar': 133767,
+  'fc utrecht': 133764,
+  'vitesse': 133770,
+  'sc heerenveen': 133759, 'heerenveen': 133759,
+  'nec': 133760, 'nec nijmegen': 133760,
+  'heracles almelo': 133766, 'sc heracles almelo': 133766, 'heracles': 133766,
+  'rkc waalwijk': 133765, 'rkc': 133765,
+  'sparta rotterdam': 133866,
+  'go ahead eagles': 134304,
+  'fortuna sittard': 134264,
+  'nac breda': 133773, 'nac': 133773,
+  'excelsior': 133757, 'sbv excelsior': 133757,
+  'willem ii': 133827,
+  'fc emmen': 136191,
+  'fc volendam': 133867,
+  'sc cambuur': 134303, 'cambuur': 134303,
+  'fc den bosch': 134236,
+  'helmond sport': 137998,
+  'jong psv': 138001,
+  'roda jc': 133761, 'roda jc kerkrade': 133761,
+  'ado den haag': 133769,
+};
+
 function _shLogoGetCache(){
   try{ return JSON.parse(localStorage.getItem(_SH_LOGO_CACHE_KEY)||'{}'); }catch(e){ return {}; }
 }
@@ -4279,6 +4308,60 @@ function _shLogoSetCache(key, url){
     localStorage.setItem(_SH_LOGO_CACHE_KEY, JSON.stringify(c));
   } catch(e){}
 }
+async function _shLogoFromTsdb(clubNaam, key){
+  const tsdbId = _SH_TSDB_IDS[key];
+  const apiUrl = tsdbId
+    ? 'https://www.thesportsdb.com/api/v1/json/3/lookupteam.php?id=' + tsdbId
+    : 'https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=' + encodeURIComponent(clubNaam);
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), 5000);
+  try{
+    const res = await fetch(apiUrl, { signal: ctrl.signal });
+    clearTimeout(tid);
+    if(!res.ok) return '';
+    const json = await res.json();
+    const teams = json.teams || [];
+    const t = tsdbId
+      ? teams[0]
+      : (teams.find(t => t.strCountry === 'Netherlands' || t.strCountry === 'Holland') || teams[0]);
+    return (t && t.strTeamBadge) ? t.strTeamBadge + '/tiny' : '';
+  } catch(e){ clearTimeout(tid); return ''; }
+}
+
+async function _shLogoFromWiki(clubNaam){
+  // Wikipedia NL: zoek pagina, haal hoofdafbeelding op (club badge staat bovenaan)
+  try{
+    const q = encodeURIComponent(clubNaam + ' voetbalclub');
+    const ctrl1 = new AbortController();
+    const t1 = setTimeout(() => ctrl1.abort(), 5000);
+    const sRes = await fetch(
+      'https://nl.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + q + '&format=json&origin=*&srlimit=3',
+      { signal: ctrl1.signal }
+    );
+    clearTimeout(t1);
+    if(!sRes.ok) return '';
+    const sJson = await sRes.json();
+    const hits = (sJson.query && sJson.query.search) || [];
+    if(!hits.length) return '';
+    // Neem eerste hit waarvan de titel de clubnaam bevat
+    const match = hits.find(h => h.title.toLowerCase().includes(clubNaam.toLowerCase().split(' ')[0].toLowerCase())) || hits[0];
+    const pid = match.pageid;
+    const ctrl2 = new AbortController();
+    const t2 = setTimeout(() => ctrl2.abort(), 5000);
+    const iRes = await fetch(
+      'https://nl.wikipedia.org/w/api.php?action=query&pageids=' + pid + '&prop=pageimages&format=json&pithumbsize=120&origin=*',
+      { signal: ctrl2.signal }
+    );
+    clearTimeout(t2);
+    if(!iRes.ok) return '';
+    const iJson = await iRes.json();
+    const pages = iJson.query && iJson.query.pages;
+    if(!pages) return '';
+    const page = pages[pid] || Object.values(pages)[0];
+    return (page && page.thumbnail && page.thumbnail.source) || '';
+  } catch(e){ return ''; }
+}
+
 async function _shGetClubLogo(naam){
   if(!naam || naam.length < 2) return null;
   // Strip elftal-suffix: "Ajax O.16-1" -> "Ajax"
@@ -4290,26 +4373,12 @@ async function _shGetClubLogo(naam){
   if(cache[key] && (Date.now() - (cache[key].ts||0)) < 86400000){
     return cache[key].url || null;
   }
-  // TheSportsDB search
-  try{
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 5000);
-    const res = await fetch(
-      'https://www.thesportsdb.com/api/v1/json/3/searchteams.php?t=' + encodeURIComponent(clubNaam),
-      { signal: ctrl.signal }
-    );
-    clearTimeout(tid);
-    if(!res.ok) throw new Error('nok');
-    const json = await res.json();
-    const teams = json.teams || [];
-    const t = teams.find(t => t.strCountry === 'Netherlands' || t.strCountry === 'Holland') || teams[0];
-    const url = (t && t.strTeamBadge) ? t.strTeamBadge + '/tiny' : '';
-    _shLogoSetCache(key, url);
-    return url || null;
-  } catch(e){
-    _shLogoSetCache(key, '');
-    return null;
-  }
+  // Poging 1: TheSportsDB (hardcoded ID of naam-zoek)
+  let url = await _shLogoFromTsdb(clubNaam, key);
+  // Poging 2: Wikipedia NL
+  if(!url) url = await _shLogoFromWiki(clubNaam);
+  _shLogoSetCache(key, url);
+  return url || null;
 }
 // Vul alle img[data-club-logo] in een container
 async function _shFillLogos(container){

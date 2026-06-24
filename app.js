@@ -4270,6 +4270,64 @@ async function _ritNominatimSearch(q){
 /* Club logo systeem — TheSportsDB hardcoded IDs + on-demand fallback */
 const _SH_LOGO_CACHE_KEY = 'sh_logo_v1';
 
+// football-logos.cc CDN: snelste bron, hardcoded hashes (64x64 PNG, transparant)
+const _SH_FLCC_BASE = 'https://assets.football-logos.cc/logos/netherlands/64x64/';
+const _SH_FLCC_URLS = {
+  // Eredivisie
+  'ajax': 'ajax.ba64e68a.png',
+  'psv': 'psv.235a2590.png', 'psv eindhoven': 'psv.235a2590.png',
+  'feyenoord': 'feyenoord.6ee42168.png',
+  'fc utrecht': 'fc-utrecht.e2efd9f4.png',
+  'az': 'az-alkmaar.8ae443c1.png', 'az alkmaar': 'az-alkmaar.8ae443c1.png',
+  'fc twente': 'twente.ebf3d03a.png', 'twente': 'twente.ebf3d03a.png',
+  'excelsior': 'excelsior-rotterdam.8ed71923.png', 'sbv excelsior': 'excelsior-rotterdam.8ed71923.png', 'excelsior rotterdam': 'excelsior-rotterdam.8ed71923.png',
+  'telstar': 'telstar.14c48b9d.png',
+  'fortuna sittard': 'fortuna-sittard.f8eede25.png',
+  'go ahead eagles': 'go-ahead-eagles.f23fb216.png',
+  'fc groningen': 'fc-groningen.9a36d1f8.png',
+  'sc heerenveen': 'sc-heerenveen.6fea520e.png', 'heerenveen': 'sc-heerenveen.6fea520e.png',
+  'heracles almelo': 'heracles-almelo.67502a62.png', 'heracles': 'heracles-almelo.67502a62.png', 'sc heracles almelo': 'heracles-almelo.67502a62.png',
+  'nac breda': 'nac-breda.f10df3d9.png', 'nac': 'nac-breda.f10df3d9.png',
+  'nec nijmegen': 'nec-nijmegen.2b23a93e.png', 'nec': 'nec-nijmegen.2b23a93e.png',
+  'sparta rotterdam': 'sparta-rotterdam.9e85179e.png',
+  'fc volendam': 'volendam.85985465.png', 'volendam': 'volendam.85985465.png',
+  'pec zwolle': 'pec-zwolle.ec48634c.png',
+  // Eerste Divisie
+  'almere city': 'almere-city-fc.340e41fb.png', 'almere city fc': 'almere-city-fc.340e41fb.png',
+  'ado den haag': 'ado-den-haag.11660ed1.png',
+  'fc emmen': 'fc-emmen.e91a9740.png',
+  'rkc waalwijk': 'rkc-waalwijk.c4ff262c.png', 'rkc': 'rkc-waalwijk.c4ff262c.png',
+  'roda jc': 'roda-jc-kerkrade.31b63e9b.png', 'roda jc kerkrade': 'roda-jc-kerkrade.31b63e9b.png',
+  'vitesse': 'vitesse.6a980df2.png',
+  'vvv-venlo': 'vvv-venlo.58b88519.png', 'vvv venlo': 'vvv-venlo.58b88519.png',
+  'willem ii': 'willem-ii.18c35418.png',
+  'sc cambuur': 'sc-cambuur.558a2b37.png', 'cambuur': 'sc-cambuur.558a2b37.png',
+  'top oss': 'top-oss.21f95a19.png',
+  'de graafschap': 'de-graafschap.a55b7591.png',
+  'fc den bosch': 'fc-den-bosch.b9898d97.png',
+  'fc eindhoven': 'fc-eindhoven.91a2d12c.png',
+  'fc dordrecht': 'fc-dordrecht.f3b9fe2f.png',
+  'helmond sport': 'helmond-sport.d2af932c.png',
+  'mvv maastricht': 'mvv-maastricht.e4c8f158.png', 'mvv': 'mvv-maastricht.e4c8f158.png',
+  // Tweede Divisie
+  'excelsior maassluis': 'excelsior-maassluis.2e879d9f.png',
+  'de treffers': 'de-treffers.73aaac61.png',
+  'quick boys': 'quick-boys.961736e7.png',
+  'vv katwijk': 'katwijk.af5e48fd.png', 'katwijk': 'katwijk.af5e48fd.png',
+  'sv spakenburg': 'sv-spakenburg.1b16716f.png', 'spakenburg': 'sv-spakenburg.1b16716f.png',
+  'kozakken boys': 'kozakken-boys.e927559b.png',
+  'hhc hardenberg': 'hhc-hardenberg.af123236.png',
+  'hsv hoek': 'hsv-hoek.de0c1b8f.png',
+  'acv assen': 'acv-assen.c1a4b5df.png',
+  'bvv barendrecht': 'bvv-barendrecht.28bc8138.png',
+  'rijnsburgse boys': 'rijnsburgse-boys.beb8de45.png',
+  'koninklijke hfc': 'koninklijke-hfc.161bb399.png',
+  'gvvv': 'gvvv.9beb01b6.png',
+  'ijsselmeervogels': 'ijsselmeervogels.a1cd8ee6.png',
+  'afc amsterdam': 'afc-amsterdam.f1df1c37.png',
+  'rkav volendam': 'rkav-volendam.0b528015.png',
+};
+
 // Bekende NL BVO's met TheSportsDB team ID (gevonden via thesportsdb.com/team/ID)
 const _SH_TSDB_IDS = {
   'ajax': 133772,
@@ -4329,37 +4387,52 @@ async function _shLogoFromTsdb(clubNaam, key){
 }
 
 async function _shLogoFromWiki(clubNaam){
-  // Wikipedia NL: zoek pagina, haal hoofdafbeelding op (club badge staat bovenaan)
+  // Wikipedia NL + EN: 1 call per taal via generator=search+pageimages
+  const talen = [
+    { lang: 'nl', q: clubNaam + ' voetbalclub' },
+    { lang: 'en', q: clubNaam + ' football club' }
+  ];
+  const word = clubNaam.toLowerCase().split(' ')[0];
+  for(const { lang, q } of talen){
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 6000);
+    try{
+      const res = await fetch(
+        'https://' + lang + '.wikipedia.org/w/api.php?action=query&generator=search&gsrsearch=' + encodeURIComponent(q) + '&gsrlimit=5&prop=pageimages&pithumbsize=120&format=json&origin=*',
+        { signal: ctrl.signal }
+      );
+      clearTimeout(tid);
+      if(!res.ok) continue;
+      const json = await res.json();
+      const pages = Object.values((json.query && json.query.pages) || {});
+      if(!pages.length) continue;
+      const match = pages.find(p => p.title && p.title.toLowerCase().includes(word)) || pages[0];
+      const src = match && match.thumbnail && match.thumbnail.source;
+      if(src) return src;
+    } catch(e){ clearTimeout(tid); }
+  }
+  return '';
+}
+
+async function _shLogoFromFootyLogos(clubNaam){
+  // footylogos.com: slug afleiden, og:image ophalen (dekt Europese pro clubs)
+  const slug = clubNaam.toLowerCase()
+    .replace(/[àáâã]/g,'a').replace(/[èéêë]/g,'e').replace(/[ìíîï]/g,'i')
+    .replace(/[òóôõ]/g,'o').replace(/[ùúûü]/g,'u').replace(/ñ/g,'n')
+    .replace(/[^a-z0-9\s]/g,' ').trim().replace(/\s+/g,'-');
+  if(!slug || slug.length < 2) return '';
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), 6000);
   try{
-    const q = encodeURIComponent(clubNaam + ' voetbalclub');
-    const ctrl1 = new AbortController();
-    const t1 = setTimeout(() => ctrl1.abort(), 5000);
-    const sRes = await fetch(
-      'https://nl.wikipedia.org/w/api.php?action=query&list=search&srsearch=' + q + '&format=json&origin=*&srlimit=3',
-      { signal: ctrl1.signal }
-    );
-    clearTimeout(t1);
-    if(!sRes.ok) return '';
-    const sJson = await sRes.json();
-    const hits = (sJson.query && sJson.query.search) || [];
-    if(!hits.length) return '';
-    // Neem eerste hit waarvan de titel de clubnaam bevat
-    const match = hits.find(h => h.title.toLowerCase().includes(clubNaam.toLowerCase().split(' ')[0].toLowerCase())) || hits[0];
-    const pid = match.pageid;
-    const ctrl2 = new AbortController();
-    const t2 = setTimeout(() => ctrl2.abort(), 5000);
-    const iRes = await fetch(
-      'https://nl.wikipedia.org/w/api.php?action=query&pageids=' + pid + '&prop=pageimages&format=json&pithumbsize=120&origin=*',
-      { signal: ctrl2.signal }
-    );
-    clearTimeout(t2);
-    if(!iRes.ok) return '';
-    const iJson = await iRes.json();
-    const pages = iJson.query && iJson.query.pages;
-    if(!pages) return '';
-    const page = pages[pid] || Object.values(pages)[0];
-    return (page && page.thumbnail && page.thumbnail.source) || '';
-  } catch(e){ return ''; }
+    const res = await fetch('https://www.footylogos.com/logos/' + slug, { signal: ctrl.signal });
+    clearTimeout(tid);
+    if(!res.ok) return '';
+    const html = await res.text();
+    const m = html.match(/meta-og:image:\s*(https:\/\/cdn\.prod\.website-files\.com\/[^\s"'<]+)/);
+    if(m) return m[1];
+    const m2 = html.match(/<meta[^>]+property="og:image"[^>]+content="(https:\/\/cdn\.prod\.website-files\.com\/[^"]+)"/);
+    return (m2 && m2[1]) || '';
+  } catch(e){ clearTimeout(tid); return ''; }
 }
 
 async function _shGetClubLogo(naam){
@@ -4373,18 +4446,39 @@ async function _shGetClubLogo(naam){
   if(cache[key] && (Date.now() - (cache[key].ts||0)) < 86400000){
     return cache[key].url || null;
   }
-  // Poging 1: TheSportsDB (hardcoded ID of naam-zoek)
-  let url = await _shLogoFromTsdb(clubNaam, key);
-  // Poging 2: Wikipedia NL
+  // Poging 1: football-logos.cc CDN (hardcoded hash, instant)
+  let url = '';
+  if(_SH_FLCC_URLS[key]) url = _SH_FLCC_BASE + _SH_FLCC_URLS[key];
+  // Poging 2: TheSportsDB (hardcoded ID of naam-zoek)
+  if(!url) url = await _shLogoFromTsdb(clubNaam, key);
+  // Poging 3: footylogos.com (Europese pro clubs, og:image CDN)
+  if(!url) url = await _shLogoFromFootyLogos(clubNaam);
+  // Poging 4: Wikipedia NL + EN (1 call per taal)
   if(!url) url = await _shLogoFromWiki(clubNaam);
   _shLogoSetCache(key, url);
   return url || null;
 }
-// Vul alle img[data-club-logo] in een container
+// Preload: FLCC-clubs (hardcoded) direct in localStorage-cache zetten, geen netwerk
+function _shPreloadLogoCache(){
+  try{
+    const c = _shLogoGetCache();
+    const now = Date.now();
+    let changed = false;
+    for(const [key, file] of Object.entries(_SH_FLCC_URLS)){
+      if(!c[key] || (now - (c[key].ts||0)) > 86400000){
+        c[key] = { url: _SH_FLCC_BASE + file, ts: now };
+        changed = true;
+      }
+    }
+    if(changed) localStorage.setItem(_SH_LOGO_CACHE_KEY, JSON.stringify(c));
+  } catch(e){}
+}
+// Vul alle img[data-club-logo] in een container (alleen imgs nog zonder src)
 async function _shFillLogos(container){
   container = container || document;
   const imgs = Array.from(container.querySelectorAll('img[data-club-logo]'));
   for(const img of imgs){
+    if(img.src && img.src !== window.location.href && !img.src.endsWith('/')) continue; // al gevuld
     const naam = img.getAttribute('data-club-logo');
     if(!naam) continue;
     const url = await _shGetClubLogo(naam);
@@ -4394,6 +4488,16 @@ async function _shFillLogos(container){
 function _shLogoImg(naam, size){
   size = size || 22;
   if(!naam) return '';
+  // Sync cache-check: als al bekend, direct zichtbaar (geen flicker)
+  try{
+    const key = naam.replace(/\s+(O\.|U)\d+[\-\d]*/gi,'').trim().toLowerCase();
+    const c = _shLogoGetCache();
+    const hit = c[key];
+    if(hit && hit.url && (Date.now() - (hit.ts||0)) < 86400000){
+      return '<img data-club-logo="' + escapeAttr(naam) + '" src="' + escapeAttr(hit.url) + '" alt="" style="width:' + size + 'px;height:' + size + 'px;object-fit:contain;opacity:1;border-radius:2px;flex-shrink:0;" onerror="this.style.display=\'none\'">';
+    }
+  } catch(e){}
+  // Nog niet in cache: placeholder, wordt async gevuld
   return '<img data-club-logo="' + escapeAttr(naam) + '" src="" alt="" style="width:' + size + 'px;height:' + size + 'px;object-fit:contain;opacity:0;transition:opacity .25s;border-radius:2px;flex-shrink:0;" onerror="this.style.display=\'none\'">';
 }
 
@@ -23833,6 +23937,7 @@ function initApp(){
     }
 
   if(appInitialized) return;
+  try { _shPreloadLogoCache(); } catch(_){} // FLCC-clubs direct in cache, geen netwerk
   if (window.location.hostname.includes('cloudworkstations.dev')) {
         setTimeout(() => { if (typeof go === 'function') go('dashboard'); }, 200);
     }

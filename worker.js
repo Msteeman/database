@@ -2397,4 +2397,85 @@ export default {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
       try { return await handleAdminFeedbackUpdate((b && typeof b==='object') ? b : {}, env, request); }
-      catch(err){ return json({ ok:false, error:'Onver
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+    if (path.endsWith('/api/send-password-reset') || path.endsWith('/send-password-reset')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/send-password-reset' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleSendPasswordReset((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+    if (path.endsWith('/api/request-password-reset') || path.endsWith('/request-password-reset')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/request-password-reset' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handlePublicPasswordReset((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:true, message:'Als er een account bestaat met dit e-mailadres, ontvang je een herstel-link.' }); }
+    }
+    if (path.endsWith('/api/admin-stats') || path.endsWith('/admin-stats')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-stats' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminStats((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/admin-status') || path.endsWith('/admin-status')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-status' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminStatus((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/admin-mail-test') || path.endsWith('/admin-mail-test')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-mail-test' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminMailTest((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/admin-mail-send') || path.endsWith('/admin-mail-send')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-mail-send' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminMailSend((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/admin-mail-read') || path.endsWith('/admin-mail-read')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-mail-read' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminMailRead((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/admin-mail-inbox') || path.endsWith('/admin-mail-inbox')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-mail-inbox' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminMailInbox((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/support-notify') || path.endsWith('/support-notify')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/support-notify' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminSupportNotify((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (request.method === 'GET') {
+      return json({ status: 'ok', service: 'ScoutingHub API', routes: ['/parse','/sync','/reglement','/api/request-access','/api/create-account','/api/reject-request'], hint: 'Gebruik POST met JSON-body' });
+    }
+    if (request.method !== 'POST') return json({ error: 'Gebruik POST', routes: ROUTES }, 405);
+
+    let body = {};
+    try { body = await request.json(); } catch (_) { body = {}; }
+    if (!body || typeof body !== 'object') body = {};
+    const is = (...names) => names.some(n => path.endsWith(n));
+    try {
+      if (is('/parse', '/parseToernooiUrl')) return await handleParseToernooiUrl(body);
+      if (is('/sync', '/syncTournamentResults')) return await handleSyncTournamentResults(body);
+      if (is('/reglement', '/parseToernooiReglement')) return await handleParseToernooiReglement(body);
+      return json({ error: 'Onbekende route', routes: ['/parse', '/reglement', '/sync'] }, 404);
+    } catch (err) {
+      return json({ error: 'Onverwachte fout', message: err && err.message ? err.message : String(err) }, 200);
+    }
+  }
+};

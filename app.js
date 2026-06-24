@@ -21186,7 +21186,7 @@ function renderProgramma(){
     const thuisLbl = [it.thuis, it.thuis_elftal].filter(Boolean).join(' ');
     const uitLbl   = [it.uit,   it.uit_elftal  ].filter(Boolean).join(' ');
     const titleLine = type==='wedstrijd'
-      ? `${escapeHtml(thuisLbl||'?')} – ${escapeHtml(uitLbl||'?')}`
+      ? `${_shLogoImg(it.thuis||'',18)}${escapeHtml(thuisLbl||'?')} – ${escapeHtml(uitLbl||'?')}${_shLogoImg(it.uit||'',18)}`
       : escapeHtml(it.naam||(type.charAt(0).toUpperCase()+type.slice(1)));
     const spelersN = (it.spelers||[]).length;
     const clubInfo = (typeof CLUB_ADRESSEN!=='undefined'&&it.thuis) ? CLUB_ADRESSEN[(it.thuis||'').toLowerCase().trim()] : null;
@@ -21274,6 +21274,7 @@ function renderProgramma(){
   const newGrid = grid.cloneNode(false);
   newGrid.innerHTML = grid.innerHTML;
   grid.parentNode.replaceChild(newGrid, grid);
+  setTimeout(() => _shFillLogos(newGrid), 0);
 
   newGrid.addEventListener('click', e => {
     const card = e.target.closest('[data-prog-id]');

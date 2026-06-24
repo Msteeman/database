@@ -32325,6 +32325,15 @@ async function _admMbOpenMail(type, folder, seq, rowEl){
     if(!(r.ok&&j&&j.ok)){ detail.innerHTML='<div class="bh-empty">Laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>'; return; }
     var dt=''; try{ var d=new Date(j.date); if(!isNaN(d.getTime())) dt=d.toLocaleString('nl-NL'); }catch(_){ dt=j.date||''; }
     var fromAddr=''; try{ fromAddr=j.from.replace(/.*<([^>]+)>.*/,'$1')||j.from; }catch(_){ fromAddr=j.from||''; }
+    var attHtml='';
+    if(j.attachments&&j.attachments.length){
+      attHtml='<div class="adm-mb3-attach"><span class="adm-mb3-attach-lbl">📎 Bijlagen:</span>'
+        +j.attachments.map(function(a){ return '<span class="adm-mb3-attach-item">'+_bhEsc(a.name||'bijlage')+'<small> ('+_bhEsc(a.type||'')+')</small></span>'; }).join('')
+        +'</div>';
+    }
+    var bodyHtml = j.html
+      ? '<iframe id="adm-mb-iframe" sandbox="allow-same-origin" style="width:100%;min-height:420px;max-height:70vh;border:none;background:#fff;border-radius:6px;display:block;" onload="try{this.style.height=Math.min(this.contentDocument.body.scrollHeight+24,window.innerHeight*0.7)+\'px\';}catch(_){}"></iframe>'
+      : '<pre class="adm-mb3-detail-body">'+_bhEsc(j.text||'(leeg bericht)')+'</pre>';
     detail.innerHTML='<div class="adm-mb3-detail-inner">'
       +'<div class="adm-mb3-detail-hd">'
         +'<div class="adm-mb3-detail-subj">'+_bhEsc(j.subject||'(geen onderwerp)')+'</div>'
@@ -32338,8 +32347,13 @@ async function _admMbOpenMail(type, folder, seq, rowEl){
           +'<button class="adm-btn-ghost" onclick="_admMbNav(\'compose\')">✏️ Nieuw</button>'
         +'</div>'
       +'</div>'
-      +'<pre class="adm-mb3-detail-body">'+_bhEsc(j.text||'(leeg bericht)')+'</pre>'
+      +attHtml
+      +bodyHtml
     +'</div>';
+    if(j.html){
+      var ifrm=document.getElementById('adm-mb-iframe');
+      if(ifrm) ifrm.srcdoc=j.html;
+    }
   }catch(_){ detail.innerHTML='<div class="bh-empty">Bericht laden mislukt.</div>'; }
 }
 window._admMbOpenMail=_admMbOpenMail;
@@ -32452,13 +32466,16 @@ var _ADM_FB_LABELS={ open:['Open','bh-b-blue'], in_progress:['In behandeling','b
 async function _admRenderFeedback(el){
   el.innerHTML='<div class="adm-loading">Feedback laden…</div>';
   try{
-    var s=await getDocs(collection(db,'feedback'));
-    _admFbCache=[]; s.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _admFbCache.push(x); });
+    var tk=await _admToken(); if(!tk){ el.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
+    var base=(typeof TOERNOOI_API_BASE!=='undefined'&&TOERNOOI_API_BASE)?TOERNOOI_API_BASE:'https://scoutinghub-api.marcelsteeman1.workers.dev';
+    var r=await fetch(base+'/api/admin-feedback',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(!(r.ok&&j&&j.ok)){ el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Feedbackcentrum</div><div class="bh-empty">Kon feedback niet laden: '+_bhEsc((j&&j.error)||'worker niet bereikbaar')+'</div>'; return; }
+    _admFbCache=j.items||[];
   }catch(e){
-    el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Feedbackcentrum</div><div class="bh-empty">Kon feedback niet laden. Is de feedback-rules-patch gepubliceerd én de nieuwe worker live (die feedback opslaat)?</div>';
+    el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Feedbackcentrum</div><div class="bh-empty">Kon feedback niet laden. Staat de nieuwe worker live?</div>';
     return;
   }
-  _admFbCache.sort(function(a,b){ return _bhStatMs(b.createdAt)-_bhStatMs(a.createdAt); });
   _admFbRenderList(el);
 }
 function _admFbRenderList(el){
@@ -32494,22 +32511,29 @@ function _admFbRenderList(el){
   el.querySelectorAll('[data-fbnote]').forEach(function(b){ b.addEventListener('click', function(){ _admFbNote(b.getAttribute('data-fbnote')); }); });
 }
 window._admFbFilter=function(v){ _admFbStatus=v; var el=document.getElementById('adm-stub'); if(el) _admFbRenderList(el); };
+async function _admFbUpdate(id, patch){
+  try{
+    var tk=await _admToken(); if(!tk) throw new Error('niet ingelogd');
+    var base=(typeof TOERNOOI_API_BASE!=='undefined'&&TOERNOOI_API_BASE)?TOERNOOI_API_BASE:'https://scoutinghub-api.marcelsteeman1.workers.dev';
+    var r=await fetch(base+'/api/admin-feedback-update',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify(Object.assign({id:id},patch))});
+    var j={};try{j=await r.json();}catch(_){}
+    if(!(r.ok&&j&&j.ok)) throw new Error((j&&j.error)||'fout');
+  }catch(e){ if(typeof toast==='function') toast('Kon niet opslaan: '+(e&&e.message||'fout'),true); throw e; }
+}
 async function _admFbSetStatus(id, status){
   try{
-    await updateDoc(doc(db,'feedback',id), { status: status, reviewedAt: new Date(), reviewedBy: (typeof currentUser!=='undefined'&&currentUser)?currentUser.uid:'' });
+    await _admFbUpdate(id,{status:status});
     var f=(_admFbCache||[]).find(function(x){return x._id===id;}); if(f) f.status=status;
     if(typeof toast==='function') toast('Status bijgewerkt ✓');
     var el=document.getElementById('adm-stub'); if(el) _admFbRenderList(el);
-  }catch(e){ if(typeof toast==='function') toast('Kon status niet bijwerken — is de feedback-rules-patch gepubliceerd?',true); }
+  }catch(_){}
 }
 function _admFbNote(id){
   var f=(_admFbCache||[]).find(function(x){return x._id===id;}); if(!f) return;
   var body='<textarea id="adm-fb-note-in" class="sh-req-i" rows="3" placeholder="Interne notitie (alleen admin)">'+_bhEsc(f.adminNote||'')+'</textarea>';
   var m=_bhModal('Interne notitie', body, { confirmLabel:'Opslaan', onConfirm: async function(){
     var inp=m.root.querySelector('#adm-fb-note-in'); var v=(inp&&inp.value)||'';
-    await updateDoc(doc(db,'feedback',id), { adminNote: String(v).slice(0,2000), reviewedAt: new Date(), reviewedBy:(typeof currentUser!=='undefined'&&currentUser)?currentUser.uid:'' });
-    f.adminNote=String(v).slice(0,2000);
-    var el=document.getElementById('adm-stub'); if(el) _admFbRenderList(el);
+    try{ await _admFbUpdate(id,{adminNote:String(v).slice(0,2000)}); f.adminNote=String(v).slice(0,2000); var el=document.getElementById('adm-stub'); if(el) _admFbRenderList(el); }catch(_){}
   }});
 }
 
@@ -32751,6 +32775,9 @@ async function _bhLoadStats(){
   try{
     var usnap=await getDocs(collection(db,'users'));
     _bhUserCache=[]; usnap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhUserCache.push(x); });
+    // Teams collectie laden zodat teamnamen en org-namen kloppen
+    window._bhTeamNameMap={}; window._bhTeamOrgMap={};
+    try{ var tsnap2=await getDocs(collection(db,'teams')); tsnap2.forEach(function(d){ var td=d.data()||{}; window._bhTeamNameMap[d.id]=td.name||d.id; window._bhTeamOrgMap[d.id]=td.orgNaam||td.clubNaam||''; }); }catch(_){}
     _bhStatReqs=[]; try{ var asnap=await getDocs(collection(db,'access_requests')); asnap.forEach(function(d){ var x=d.data()||{}; x._id=d.id; _bhStatReqs.push(x); }); }catch(_){}
     _bhStatSupport={ grantsActive:0, grantsExpired:0, reqPending:0 };
     try{ var gsnap=await getDocs(collection(db,'support_grants')); gsnap.forEach(function(d){ var x=d.data()||{}; var exp=_bhStatMs(x.expiresAt); if((x.status==='active')&&exp>Date.now()) _bhStatSupport.grantsActive++; else _bhStatSupport.grantsExpired++; }); }catch(_){}
@@ -32807,7 +32834,7 @@ function _bhRenderStats(){
   var login30=users.filter(function(u){ var m=_bhStatMs(u.lastLoginAt); return m&&m>=D30; }).length;
   var neverLogin=users.filter(function(u){ return !(Number(u.loginCount)>0) && !_bhStatMs(u.lastLoginAt); }).length;
   var teams={};
-  users.forEach(function(u){ if((u.role||'scout')==='admin')return; var tid=u.teamId||''; if(!tid)return; if(!teams[tid])teams[tid]={id:tid,name:u.teamName||tid,club:u.clubName||'',coords:0,scouts:0,active:0,inactive:0,users:[]}; if(u.clubName&&!teams[tid].club)teams[tid].club=u.clubName; if(u.role==='coordinator')teams[tid].coords++;else teams[tid].scouts++; if(_bhStatActiveU(u))teams[tid].active++;else teams[tid].inactive++; teams[tid].users.push(u); });
+  users.forEach(function(u){ if((u.role||'scout')==='admin')return; var tid=u.teamId||''; if(!tid)return; var tNm=(window._bhTeamNameMap&&window._bhTeamNameMap[tid])||u.teamName||tid; var tOrg=(window._bhTeamOrgMap&&window._bhTeamOrgMap[tid])||u.clubName||''; if(!teams[tid])teams[tid]={id:tid,name:tNm,club:tOrg,coords:0,scouts:0,active:0,inactive:0,users:[]}; if(tOrg&&!teams[tid].club)teams[tid].club=tOrg; if(u.role==='coordinator')teams[tid].coords++;else teams[tid].scouts++; if(_bhStatActiveU(u))teams[tid].active++;else teams[tid].inactive++; teams[tid].users.push(u); });
   var teamArr=Object.keys(teams).map(function(k){return teams[k];});
   var teamsCount=teamArr.length;
   var clubsCount=(function(){ var s={}; teamArr.forEach(function(t){ s[t.club||'—']=1; }); return Object.keys(s).length; })();
@@ -32880,6 +32907,8 @@ function _bhRenderStats(){
     + '</div>';
 
   var rows=users.slice();
+  if(_bhShowDemo) rows=rows.filter(function(u){ return (u.email||'').toLowerCase().startsWith('demo.'); });
+  else rows=rows.filter(function(u){ return !(u.email||'').toLowerCase().startsWith('demo.'); });
   if(_bhStatRole) rows=rows.filter(function(u){ return (u.role||'scout')===_bhStatRole; });
   if(_bhStatStatus==='active') rows=rows.filter(_bhStatActiveU);
   else if(_bhStatStatus==='inactive') rows=rows.filter(function(u){ return u.isActive===false && !_bhStatDeletedU(u); });
@@ -32899,11 +32928,13 @@ function _bhRenderStats(){
     var role=u.role||'scout'; var rl=role==='coordinator'?'Coördinator':(role==='admin'?'Admin':'Scout');
     var rcl=role==='admin'?'bh-b-purple':(role==='coordinator'?'bh-b-blue':'bh-b-grey');
     var st=_bhStatDeletedU(u)?'<span class="bh-badge bh-b-red">Verwijderd</span>':((u.isActive===false)?'<span class="bh-badge bh-b-amber">Inactief</span>':'<span class="bh-badge bh-b-green">Actief</span>');
-    return '<tr>'
+    var tNm=(window._bhTeamNameMap&&u.teamId&&window._bhTeamNameMap[u.teamId])||u.teamName||'—';
+    var tOrg=(window._bhTeamOrgMap&&u.teamId&&window._bhTeamOrgMap[u.teamId])||u.clubName||'—';
+    return '<tr style="cursor:pointer" onclick="_bhStatOpenScout(\''+_bhEsc(u._id||'')+'\')">'
       +'<td><div class="bh-tb-nm">'+(_bhEsc(u.displayName)||_bhEsc(u.email)||'—')+'</div><div class="bh-tb-em">'+(_bhEsc(u.email)||'')+'</div></td>'
       +'<td><span class="bh-badge '+rcl+'">'+rl+'</span></td>'
-      +'<td>'+(_bhEsc(u.teamName)||'—')+'</td>'
-      +'<td>'+(_bhEsc(u.clubName)||'—')+'</td>'
+      +'<td>'+_bhEsc(tNm)+'</td>'
+      +'<td>'+_bhEsc(tOrg)+'</td>'
       +'<td>'+st+'</td>'
       +'<td class="bh-tb-dt">'+_bhFmtDateTime(u.createdAt)+'</td>'
       +'<td class="bh-tb-dt">'+_bhFmtDateTime(u.lastLoginAt)+'</td>'
@@ -32944,7 +32975,7 @@ function _bhRenderStats(){
    + charts
    + '<div class="bh-stat-hd">Top gebruikers — '+topLab+' <span class="bh-stat-sub2">(kies metric rechtsboven)</span></div><div class="bh-rank-card">'+topHtml+'</div>'
    + '<div class="bh-stat-hd">Teams</div>'+ttable
-   + '<div class="bh-stat-hd bh-stat-hd-row"><span>Gebruikersactiviteit</span><span style="display:flex;gap:6px"><button type="button" id="bh-demo-toggle" class="adm-btn-ghost" onclick="_bhToggleDemo()" style="font-size:.78rem">👁 Demo verbergen</button><button type="button" class="adm-btn-ghost" onclick="_bhExportStatsCsv()">⬇️ Exporteer CSV</button></span></div>'+chips+utable
+   + '<div class="bh-stat-hd bh-stat-hd-row"><span>Gebruikersactiviteit</span><span style="display:flex;gap:6px"><button type="button" id="bh-demo-toggle" class="adm-btn-ghost'+(  _bhShowDemo?' adm-btn-primary':'')+'" onclick="_bhToggleDemo()" style="font-size:.78rem">'+(_bhShowDemo?'👥 Demo verbergen':'👁 Demo tonen')+'</button><button type="button" class="adm-btn-ghost" onclick="_bhExportStatsCsv()">⬇️ Exporteer CSV</button></span></div>'+chips+utable
    + (loadingCounts?'<div class="bh-stat-note">Activiteit per gebruiker wordt geladen…</div>':'');
 }
 function _bhExportStatsCsv(){
@@ -32973,6 +33004,51 @@ function _bhExportStatsCsv(){
 }
 window._bhExportStatsCsv=_bhExportStatsCsv;
 window._bhLoadStats=_bhLoadStats; window._bhRenderStats=_bhRenderStats;
+
+/* Scout dashboard: klik op rij → KPI modal */
+window._bhStatOpenScout = function(uid){
+  var u=(_bhUserCache||[]).find(function(x){ return x._id===uid; }); if(!u) return;
+  var c=_bhStatCounts[uid]||{};
+  var role=u.role||'scout'; var rl=role==='coordinator'?'Coördinator':(role==='admin'?'Admin':'Scout');
+  var tNm=(window._bhTeamNameMap&&u.teamId&&window._bhTeamNameMap[u.teamId])||u.teamName||'';
+  var tOrg=(window._bhTeamOrgMap&&u.teamId&&window._bhTeamOrgMap[u.teamId])||u.clubName||'';
+  var st=_bhStatDeletedU(u)?'Verwijderd':((u.isActive===false)?'Inactief':'Actief');
+  var stCol=_bhStatDeletedU(u)?'#ef4444':((u.isActive===false)?'#f59e0b':'#22c55e');
+  var kpis=[
+    ['Logins',Number(u.loginCount)||0,'totaal'],
+    ['Spelers',c.players!=null?c.players:'…','geobserveerd'],
+    ['Rapporten',c.matchReports!=null?c.matchReports:'…','wedstrijden'],
+    ['Toernooien',c.tournaments!=null?c.tournaments:'…',''],
+    ['Tips',c.tips!=null?c.tips:'…','spelerstips'],
+    ['Analyses',c.analyses!=null?c.analyses:'…',''],
+  ];
+  function kpiCard(k){ return '<div style="background:#1e2a3a;border-radius:10px;padding:16px;text-align:center;min-width:90px;">'
+    +'<div style="font-size:1.6rem;font-weight:700;color:#e2e8f0;">'+k[1]+'</div>'
+    +'<div style="font-size:.8rem;color:#94a3b8;margin-top:2px;">'+_bhEsc(k[0])+'</div>'
+    +(k[2]?'<div style="font-size:.72rem;color:#475569;">'+_bhEsc(k[2])+'</div>':'')+'</div>'; }
+  var bars=[['Spelers',c.players||0,'#4ea1ff'],['Rapporten',c.matchReports||0,'#22c55e'],['Toernooien',c.tournaments||0,'#f59e0b'],['Tips',c.tips||0,'#a78bfa'],['Analyses',c.analyses||0,'#ec4899']];
+  var bMax=Math.max.apply(null,bars.map(function(b){return b[1];})) || 1;
+  var barHtml=bars.map(function(b){ var w=Math.round(b[1]/bMax*100); return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">'
+    +'<div style="width:90px;font-size:.8rem;color:#94a3b8;flex-shrink:0;">'+_bhEsc(b[0])+'</div>'
+    +'<div style="flex:1;background:#1e2a3a;border-radius:4px;height:14px;overflow:hidden;"><div style="height:100%;width:'+w+'%;background:'+b[2]+';border-radius:4px;transition:width .4s;"></div></div>'
+    +'<div style="width:32px;text-align:right;font-size:.8rem;color:#e2e8f0;">'+b[1]+'</div></div>'; }).join('');
+  var html='<div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">'
+    +'<div style="width:52px;height:52px;border-radius:50%;background:#1e3a5f;display:flex;align-items:center;justify-content:center;font-size:1.4rem;font-weight:700;color:#e2e8f0;flex-shrink:0;">'+((_bhEsc(u.displayName)||_bhEsc(u.email)||'?').charAt(0).toUpperCase())+'</div>'
+    +'<div><div style="font-size:1.1rem;font-weight:600;color:#e2e8f0;">'+(_bhEsc(u.displayName)||_bhEsc(u.email)||'—')+'</div>'
+      +'<div style="font-size:.82rem;color:#94a3b8;">'+(_bhEsc(u.email)||'')+'</div>'
+      +'<div style="display:flex;gap:8px;margin-top:5px;flex-wrap:wrap;">'
+        +'<span style="background:#1e3a5f;color:#4ea1ff;border-radius:999px;padding:2px 10px;font-size:.75rem;">'+_bhEsc(rl)+'</span>'
+        +(tOrg?'<span style="background:#1a2535;color:#94a3b8;border-radius:999px;padding:2px 10px;font-size:.75rem;">'+_bhEsc(tOrg)+'</span>':'')
+        +(tNm?'<span style="background:#1a2535;color:#94a3b8;border-radius:999px;padding:2px 10px;font-size:.75rem;">'+_bhEsc(tNm)+'</span>':'')
+        +'<span style="background:'+stCol+'22;color:'+stCol+';border-radius:999px;padding:2px 10px;font-size:.75rem;">'+_bhEsc(st)+'</span>'
+      +'</div></div></div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px;">'+kpis.map(kpiCard).join('')+'</div>'
+    +'<div style="margin-bottom:6px;font-size:.82rem;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.05em;">Activiteit</div>'
+    +barHtml
+    +'<div style="margin-top:14px;font-size:.78rem;color:#475569;">'
+      +'<b>Aangemaakt:</b> '+_bhFmtDateTime(u.createdAt)+' &nbsp; <b>Laatste login:</b> '+_bhFmtDateTime(u.lastLoginAt)+'</div>';
+  _bhModal(_bhEsc(u.displayName||u.email||'Scout'), html, {confirmLabel:'Sluiten',onConfirm:function(){}});
+};
 
 /* FASE 4 — Supportlogboek in Beheer (leesbaar audit-overzicht). */
 function _bhDateTime(v){ try { var ms=_suMs(v); if(!ms) return '—'; var d=new Date(ms); return d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'}) + ' ' + d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}); } catch(_){ return '—'; } }
@@ -33231,6 +33307,9 @@ async function _bhLoadUsers(){
     var snap = await getDocs(collection(db,'users'));
     _bhUserCache = [];
     snap.forEach(function(d){ var x = d.data()||{}; x._id = d.id; _bhUserCache.push(x); });
+    // Teams laden voor org-naam lookup
+    if(!window._bhTeamNameMap){ window._bhTeamNameMap={}; window._bhTeamOrgMap={}; }
+    try{ var ts=await getDocs(collection(db,'teams')); ts.forEach(function(d){ var td=d.data()||{}; window._bhTeamNameMap[d.id]=td.name||d.id; window._bhTeamOrgMap[d.id]=td.orgNaam||td.clubNaam||''; }); }catch(_){}
     _bhRenderUsers();
   } catch(e){
     if(list) list.innerHTML = '<div class="bh-empty">Kon gebruikers niet laden. Zijn de admin-rules gepubliceerd?</div>';
@@ -33244,7 +33323,8 @@ function _bhUserMore(){ _bhUserShown = (typeof _bhUserShown==='number'?_bhUserSh
 window._bhToggleDemo = function(){
   _bhShowDemo = !_bhShowDemo;
   var btn = document.getElementById('bh-demo-toggle');
-  if(btn) btn.textContent = _bhShowDemo ? '👁 Demo verbergen' : '👁 Demo tonen';
+  if(btn){ btn.textContent = _bhShowDemo ? '👥 Demo verbergen' : '👁 Demo tonen'; btn.classList.toggle('adm-btn-primary', _bhShowDemo); }
+  if(document.getElementById('bh-stat-body')) _bhRenderStats();
   _bhUserResetPage();
 };
 function _bhUserResetPage(){ _bhUserShown = _bhUserPageSize; _bhRenderUsers(); }
@@ -33273,8 +33353,9 @@ function _bhRenderUsers(){
   if(tmf==='__none__') rows = rows.filter(function(u){ return !(u.teamId||''); });
   else if(tmf) rows = rows.filter(function(u){ return (u.teamId||'')===tmf; });
   if(q) rows = rows.filter(function(u){ return ((u.displayName||'')+' '+(u.email||'')).toLowerCase().indexOf(q) !== -1; });
-  // Demo-filter: verberg demo. accounts tenzij expliciet aan
-  if(!_bhShowDemo) rows = rows.filter(function(u){ return !(u.email||'').toLowerCase().startsWith('demo.'); });
+  // Demo-filter: standaard geen demo-accounts; knop = toon ALLEEN demo
+  if(_bhShowDemo) rows = rows.filter(function(u){ return (u.email||'').toLowerCase().startsWith('demo.'); });
+  else rows = rows.filter(function(u){ return !(u.email||'').toLowerCase().startsWith('demo.'); });
   rows.sort(function(a,b){
     var da=((a.status||'')==='deleted')?1:0, db=((b.status||'')==='deleted')?1:0;
     if(da!==db) return da-db;
@@ -33313,10 +33394,12 @@ function _bhRenderUsers(){
              : '<button class="bh-btn bh-btn-ghost" disabled>Deactiveren</button>') +
         '</div>' +
         (_canDelete ? '<div class="bh-actions-danger"><button class="bh-btn bh-btn-danger-outline" data-bh-userdelete="'+id+'">Verwijderen</button></div>' : ''));
+    var _uOrg=(window._bhTeamOrgMap&&u.teamId&&window._bhTeamOrgMap[u.teamId])||u.organisatieNaam||u.clubName||'';
+    var _uTeam=(window._bhTeamNameMap&&u.teamId&&window._bhTeamNameMap[u.teamId])||u.teamName||'';
     return '<div class="bh-card'+((_isDeleted||_isInactive)?' bh-card-dim':'')+'">' +
-      '<div class="bh-card-top"><div class="bh-card-name">'+(_bhEsc(u.displayName)||_bhEsc(u.email)||'—')+'</div>'+roleBadge+statusBadge+'</div>' +
+      '<div class="bh-card-top"><div class="bh-card-name">'+(_bhEsc(u.displayName)||_bhEsc(u.email)||'—')+(_uOrg?'<span class="bh-card-org"> · '+_bhEsc(_uOrg)+'</span>':'')+'</div>'+roleBadge+statusBadge+'</div>' +
       '<div class="bh-card-row"><span>E-mail</span><b>'+(_bhEsc(u.email)||'—')+'</b></div>' +
-      (u.organisatieNaam ? '<div class="bh-card-row"><span>Organisatie</span><b>'+_bhEsc(u.organisatieNaam)+(u.afdelingNaam?' · '+_bhEsc(u.afdelingNaam):'')+'</b></div>' : '') +
+      (_uOrg||_uTeam ? '<div class="bh-card-row"><span>Organisatie</span><b>'+_bhEsc(_uOrg||'—')+(_uTeam?' · '+_bhEsc(_uTeam):'')+'</b></div>' : '') +
       '<div class="bh-card-row"><span>Aangemaakt</span><b>'+_bhDateShort(u.createdAt)+'</b></div>' +
       statusRow +
       actionsHtml +
@@ -34897,155 +34980,4 @@ function _shRenderCarriereKaart(p){
   // Timeline HTML — nieuwste bovenaan
   const timelineHtml = periods.slice().reverse().map(function(per){
     const isActief = !per.eindDatum;
-    const clubElftal = [per.club, per.elftal].filter(Boolean).join(' · ');
-    const transferTag = per.transfer ? '<span class="carriere-transfer-tag">transfer</span>' : '';
-    const sznClass = 'carriere-szn-label' + (isActief ? ' active' : '');
-    return `
-      <div class="carriere-seizoen">
-        <div class="carriere-left">
-          <div class="${isActief ? 'carriere-dot active' : 'carriere-dot'}"></div>
-          <div class="carriere-vline"></div>
-        </div>
-        <div class="carriere-content">
-          <div class="${sznClass}"><span class="carriere-szn-icon">📅</span>${escapeHtml(per.seizoen||'—')}${transferTag}</div>
-          <div class="carriere-club-row">${escapeHtml(clubElftal||'—')}</div>
-        </div>
-      </div>`;
-  }).join('');
-
-  wrap.innerHTML = `<div class="carriere-timeline">${timelineHtml || '<div style="padding:10px;color:var(--text-3);font-size:13px;">Nog geen periodes.</div>'}</div>`;
-
-  document.getElementById('sh-carriere-edit-btn')?.addEventListener('click', function(){
-    _shOpenModal(p, 'aanpassen');
-  });
-  document.getElementById('sh-carriere-transfer-btn')?.addEventListener('click', function(){
-    _shOpenModal(p, 'transfer');
-  });
-}
-
-function _shCheckSeizoenPopup(p){
-  const pid = p.id;
-  const seizoenNu = _shGetSeizoen();
-  const key = 'sh_szn_seen_'+pid+'_'+seizoenNu;
-  if(localStorage.getItem(key)) return;
-
-  const periods = _shGetPlayerPeriods(pid);
-  const active = _shActivePeriod(periods);
-  if(!active) return;
-
-  // Toon popup alleen als seizoen net begonnen is (binnen 60 dagen na 15 juli)
-  const nu = new Date();
-  const grens = new Date(nu.getFullYear(), 6, 15);
-  const diff = (nu - grens) / 86400000;
-  if(diff < 0 || diff > 60) return;
-
-  const backdrop = document.getElementById('sh-szn-popup-backdrop');
-  if(!backdrop) return;
-  document.getElementById('sh-szn-popup-naam').textContent = p.naam || '—';
-  document.getElementById('sh-szn-popup-info').textContent = (active.club||'—') + (active.elftal ? ' · '+active.elftal : '');
-  document.getElementById('sh-szn-popup-sub').textContent = 'Klopt de clubinfo nog voor seizoen '+seizoenNu+'?';
-  backdrop.style.display = 'flex';
-
-  const close = function(){ backdrop.style.display = 'none'; localStorage.setItem(key,'1'); };
-  document.getElementById('sh-szn-btn-yes')?.addEventListener('click', function(){ close(); });
-  document.getElementById('sh-szn-btn-no')?.addEventListener('click', function(){ close(); _shOpenTransferModal(p, true); });
-}
-
-function _shGetNextSeizoen(){
-  const nu = new Date();
-  const grens = new Date(nu.getFullYear(), 6, 15);
-  const jaar = nu >= grens ? nu.getFullYear() + 1 : nu.getFullYear();
-  return `${jaar}/${jaar+1}`;
-}
-
-function _shOpenTransferModal(p, isNewSeason){ _shOpenModal(p, isNewSeason ? 'transfer' : 'aanpassen'); }
-
-function _shOpenModal(p, mode){
-  // mode: 'aanpassen' = huidige periode wijzigen, 'transfer' = seizoen toggle
-  const pid = p.id;
-  const periods = _shGetPlayerPeriods(pid);
-  const active = _shActivePeriod(periods);
-  const backdrop = document.getElementById('sh-transfer-backdrop');
-  if(!backdrop) return;
-
-  const sznNu = _shGetSeizoen();
-  const sznNext = _shGetNextSeizoen();
-  let gekozenSzn = mode === 'transfer' ? sznNext : sznNu;
-
-  // Bouw modal opnieuw op
-  const modal = backdrop.querySelector('.sh-transfer-modal');
-  modal.innerHTML = `
-    <div class="sh-transfer-title">${mode === 'aanpassen' ? '✏️ Aanpassen' : '🔄 Transfer registreren'}</div>
-    <div class="sh-transfer-sub">${mode === 'aanpassen' ? 'Wijzig club/elftal voor huidig seizoen' : 'Naar welk seizoen?'}</div>
-    ${mode === 'transfer' ? `
-    <div class="sh-transfer-szn-toggle">
-      <button class="sh-transfer-szn-btn${gekozenSzn===sznNu?' selected':''}" data-szn="${escapeAttr(sznNu)}">📅 Huidig<br><strong>${escapeHtml(sznNu)}</strong></button>
-      <button class="sh-transfer-szn-btn${gekozenSzn===sznNext?' selected':''}" data-szn="${escapeAttr(sznNext)}">🆕 Nieuw<br><strong>${escapeHtml(sznNext)}</strong></button>
-    </div>` : ''}
-    <div class="sh-transfer-field">
-      <div class="sh-transfer-label">Van</div>
-      <div class="sh-transfer-from-box">${escapeHtml(active ? ([active.club,active.elftal].filter(Boolean).join(' · ')) : '—')}</div>
-    </div>
-    <div class="sh-transfer-arrow">↓</div>
-    <div class="sh-transfer-field">
-      <div class="sh-transfer-label">Nieuwe club</div>
-      <input class="sh-transfer-input" id="sh-transfer-club" type="text" placeholder="bijv. PSV" list="sh-club-list" autocomplete="off"/>
-    </div>
-    <div class="sh-transfer-field">
-      <div class="sh-transfer-label">Nieuw elftal (bijv. O.16-1)</div>
-      <input class="sh-transfer-input" id="sh-transfer-elftal" type="text" placeholder="bijv. O.16-1" list="sh-elftal-list" autocomplete="off"/>
-    </div>
-    <datalist id="sh-club-list">${(()=>{ const all=[...( (typeof HV_CLUBS!=='undefined'?HV_CLUBS:[]).map(c=>c.naam) ),'Ajax','PSV','Feyenoord','AZ','FC Twente','FC Utrecht','Vitesse','NEC','FC Groningen','Heracles','Go Ahead Eagles','PEC Zwolle','Sparta Rotterdam','RKC Waalwijk','Almere City','FC Volendam','Willem II','sc Heerenveen','FC Emmen','ADO Den Haag','NAC Breda'].filter((v,i,a)=>a.indexOf(v)===i); return all.map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">').join(''); })()}</datalist>
-    <datalist id="sh-elftal-list">${(()=>{ const cats=[]; for(let a=8;a<=19;a++){ for(let t=1;t<=3;t++) cats.push('O.'+a+'-'+t); } ['O.21-1','O.21-2','1','2','3','Dames 1','Dames 2'].forEach(c=>cats.push(c)); return cats.map(c=>'<option value="'+c+'">').join(''); })()}</datalist>
-    <div class="sh-transfer-field">
-      <div class="sh-transfer-label">Datum</div>
-      <input class="sh-transfer-input" id="sh-transfer-datum" type="date" value="${new Date().toISOString().slice(0,10)}"/>
-    </div>
-    <div class="sh-transfer-btns">
-      <button class="sh-transfer-btn-cancel" id="sh-transfer-cancel">Annuleren</button>
-      <button class="sh-transfer-btn-save" id="sh-transfer-save">Opslaan</button>
-    </div>`;
-
-  backdrop.style.display = 'flex';
-
-  // Seizoen toggle
-  modal.querySelectorAll('.sh-transfer-szn-btn').forEach(function(btn){
-    btn.addEventListener('click', function(){
-      gekozenSzn = btn.dataset.szn;
-      modal.querySelectorAll('.sh-transfer-szn-btn').forEach(function(b){ b.classList.toggle('selected', b===btn); });
-    });
-  });
-
-  const close = function(){ backdrop.style.display = 'none'; };
-  document.getElementById('sh-transfer-cancel').addEventListener('click', close);
-  document.getElementById('sh-transfer-save').addEventListener('click', function(){
-    const nieuweClub = document.getElementById('sh-transfer-club').value.trim();
-    const nieuwElftal = document.getElementById('sh-transfer-elftal').value.trim();
-    const datum = document.getElementById('sh-transfer-datum').value || new Date().toISOString().slice(0,10);
-    if(!nieuweClub){ document.getElementById('sh-transfer-club').focus(); return; }
-
-    if(mode === 'aanpassen' && active){
-      // Alleen huidige periode bijwerken, geen nieuwe
-      active.club = nieuweClub;
-      active.elftal = nieuwElftal;
-    } else {
-      // Sluit actieve af, maak nieuwe periode
-      if(active){ active.eindDatum = datum; }
-      periods.push({
-        id: Date.now(),
-        club: nieuweClub,
-        elftal: nieuwElftal,
-        seizoen: gekozenSzn,
-        startDatum: datum,
-        eindDatum: null,
-        transfer: true
-      });
-    }
-    _shSavePlayerPeriods(pid, periods);
-    close();
-    _shRenderCarriereKaart(p);
-  });
-}
-
-window._shRenderCarriereKaart = _shRenderCarriereKaart;
-window._shCheckSeizoenPopup = _shCheckSeizoenPopup;
+    const clubElft

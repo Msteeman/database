@@ -2073,7 +2073,22 @@ async function imapFetchFolder(env, type, folderKey, limit){
 
 // Decodeert Quoted-Printable encoding.
 function imapDecodeQP(str){
-  return str.replace(/=\r\n/g,'').replace(/=([0-9A-Fa-f]{2})/g,(_,h)=>String.fromCharCode(parseInt(h,16)));
+  // Soft line-breaks weghalen
+  const s = str.replace(/=\r\n/g,'').replace(/=\n/g,'');
+  // QP bytes verzamelen als raw byte-array, dan UTF-8 decoderen
+  const bytes = [];
+  let i = 0;
+  while(i < s.length){
+    if(s[i]==='=' && i+2 < s.length && /^[0-9A-Fa-f]{2}$/.test(s.slice(i+1,i+3))){
+      bytes.push(parseInt(s.slice(i+1,i+3),16));
+      i += 3;
+    } else {
+      bytes.push(s.charCodeAt(i) & 0xFF);
+      i++;
+    }
+  }
+  try{ return new TextDecoder('utf-8').decode(new Uint8Array(bytes)); }
+  catch(_){ return bytes.map(b=>String.fromCharCode(b)).join(''); }
 }
 
 // Strips HTML tags naar leesbare platte tekst.
@@ -2087,36 +2102,68 @@ function imapStripHtml(html){
     .replace(/\r\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
 }
 
-// Extraheert leesbare tekst uit een mail-body (plain / html / multipart).
-function imapExtractText(body, contentType){
-  const ct = (contentType||'').toLowerCase();
-  if(ct.includes('multipart/')){
-    const bm = ct.match(/boundary=["']?([^"';\s\r\n]+)["']?/i);
-    if(bm){
-      const boundary = '--' + bm[1];
-      const parts = body.split(new RegExp(boundary.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?:--)?'));
-      let textPart='', htmlPart='';
+// Extraheert {text, html, attachments[]} uit een mail-body (plain/html/multipart).
+function imapExtractBody(body, contentType){
+  let html='', text='', attachments=[];
+  function b64utf8(s){
+    try{
+      const bin=atob(s.replace(/\s/g,''));
+      const b=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i);
+      return new TextDecoder('utf-8').decode(b);
+    }catch(_){ try{ return atob(s.replace(/\s/g,'')); }catch(e){ return s; } }
+  }
+  function decodePart(pbody, penc){
+    const e=(penc||'').toLowerCase().trim();
+    if(e==='quoted-printable') return imapDecodeQP(pbody);
+    if(e==='base64') return b64utf8(pbody);
+    return pbody;
+  }
+  function parse(rawBody, rawCt){
+    const lct=(rawCt||'').toLowerCase();
+    if(lct.includes('multipart/')){
+      const bm=rawCt.match(/boundary=["']?([^"';\s\r\n]+)["']?/i);
+      if(!bm) return;
+      const bd='--'+bm[1];
+      const bRe=new RegExp(bd.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'(?:--)?');
+      const parts=rawBody.split(bRe);
       for(const part of parts){
-        const hdrEnd = part.indexOf('\r\n\r\n');
-        if(hdrEnd < 0) continue;
-        const phdr = part.slice(0, hdrEnd);
-        const pbody = part.slice(hdrEnd + 4);
-        const pct = (imapHeaderField(phdr,'Content-Type')||'').toLowerCase();
-        const penc = (imapHeaderField(phdr,'Content-Transfer-Encoding')||'').toLowerCase().trim();
-        let decoded = pbody;
-        try{
-          if(penc==='quoted-printable') decoded = imapDecodeQP(pbody);
-          else if(penc==='base64') decoded = atob(pbody.replace(/\s/g,''));
-        }catch(_){}
-        if(pct.includes('text/plain') && !textPart) textPart = decoded;
-        if(pct.includes('text/html') && !htmlPart) htmlPart = decoded;
+        if(!part||/^\s*$/.test(part)) continue;
+        const hi=part.indexOf('\r\n\r\n');
+        if(hi<0) continue;
+        const phdr=part.slice(0,hi);
+        const pbody=part.slice(hi+4).replace(/\r\n$/,'');
+        const pct=imapHeaderField(phdr,'Content-Type')||'';
+        const pctl=pct.toLowerCase();
+        const penc=(imapHeaderField(phdr,'Content-Transfer-Encoding')||'').toLowerCase().trim();
+        const pdisp=(imapHeaderField(phdr,'Content-Disposition')||'').toLowerCase();
+        const pname=((pct.match(/name=["']?([^"';\r\n]+)["']?/i)||pdisp.match(/filename=["']?([^"';\r\n]+)["']?/i)||[])[1]||'').trim();
+        if(pctl.includes('multipart/')){
+          parse(pbody, pct); continue;
+        }
+        if(pname||pdisp.includes('attachment')||(pct&&!pctl.includes('text/'))){
+          attachments.push({name:pname||'bijlage',type:(pct.split(';')[0]||'application/octet-stream').trim()});
+          continue;
+        }
+        const dec=decodePart(pbody,penc);
+        if(pctl.includes('text/html')&&!html) html=dec;
+        else if(pctl.includes('text/plain')&&!text) text=dec;
       }
-      if(textPart) return textPart;
-      if(htmlPart) return imapStripHtml(htmlPart);
+    } else if(lct.includes('text/html')){
+      html=rawBody;
+    } else {
+      text=rawBody;
     }
   }
-  if(ct.includes('text/html')) return imapStripHtml(body);
-  return body; // text/plain of onbekend
+  parse(body, contentType||'');
+  return {text:text.trim(), html, attachments};
+}
+
+// Extraheert leesbare tekst uit een mail-body (backwards compat).
+function imapExtractText(body, contentType){
+  const r=imapExtractBody(body,contentType);
+  if(r.html) return imapStripHtml(r.html);
+  return r.text||body;
 }
 
 // Haalt de volledige body van één bericht op via IMAP FETCH <seq> BODY.PEEK[].
@@ -2168,16 +2215,23 @@ async function imapFetchBody(env, type, folderKey, seq){
     let bodyDecoded = bodyPart;
     try{
       if(cte==='quoted-printable') bodyDecoded = imapDecodeQP(bodyPart);
-      else if(cte==='base64') bodyDecoded = atob(bodyPart.replace(/\s/g,''));
+      else if(cte==='base64'){
+        const bin=atob(bodyPart.replace(/\s/g,''));
+        const b=new Uint8Array(bin.length);
+        for(let i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i);
+        bodyDecoded=new TextDecoder('utf-8').decode(b);
+      }
     }catch(_){}
-    const text = clip(imapExtractText(bodyDecoded, contentType), 60000);
+    const extracted = imapExtractBody(bodyDecoded, contentType);
     return {
       ok:true,
       from: imapHeaderField(headerPart,'From'),
       to:   imapHeaderField(headerPart,'To'),
       subject: imapHeaderField(headerPart,'Subject'),
       date: imapHeaderField(headerPart,'Date'),
-      text
+      text: clip(extracted.text, 60000),
+      html: clip(extracted.html, 200000),
+      attachments: extracted.attachments
     };
   } catch(err){
     try{ if(socket) socket.close(); }catch(_){}
@@ -2204,7 +2258,7 @@ async function handleAdminMailRead(body, env, request){
   if(!seq || seq < 1) return json({ ok:false, error:'Ongeldig berichtnummer' }, 400);
   const result = await imapFetchBody(env, type, folder, seq);
   if(!result.ok) return json({ ok:false, error: result.error || 'Bericht ophalen mislukt' });
-  return json({ ok:true, from:result.from, to:result.to, subject:result.subject, date:result.date, text:result.text });
+  return json({ ok:true, from:result.from, to:result.to, subject:result.subject, date:result.date, text:result.text, html:result.html||'', attachments:result.attachments||[] });
 }
 
 /* ============================================================ *
@@ -2228,6 +2282,42 @@ async function handleAdminMailInbox(body, env, request){
   const result = await imapFetchFolder(env, type, folder, body.limit);
   if(!result.ok) return json({ ok:false, error: result.error || 'Map ophalen mislukt' });
   return json({ ok:true, label:result.label, folder:result.folder, count:result.count, messages:result.messages });
+}
+
+/* ============================================================ *
+ * HANDLER — admin-feedback (leest feedback-collectie via SA)
+ * ============================================================ */
+async function handleAdminFeedback(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  if(!saToken) return json({ ok:false, error:'Serverconfiguratie ontbreekt' }, 500);
+  const items = await saFsList(saToken, 'feedback', 500);
+  items.sort((a,b)=>{ const ta=new Date(a.createdAt||0).getTime(); const tb=new Date(b.createdAt||0).getTime(); return tb-ta; });
+  return json({ ok:true, items });
+}
+async function handleAdminFeedbackUpdate(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  if(!saToken) return json({ ok:false, error:'Serverconfiguratie ontbreekt' }, 500);
+  const id = clip(String(body.id||''), 200);
+  if(!id) return json({ ok:false, error:'Geen feedback-id' }, 400);
+  const patch = {};
+  if(body.status) patch.status = clip(String(body.status),50);
+  if(body.adminNote !== undefined) patch.adminNote = clip(String(body.adminNote||''),2000);
+  patch.reviewedAt = new Date().toISOString();
+  patch.reviewedBy = caller.uid || '';
+  await saFsPatch(saToken, 'feedback/'+id, patch);
+  return json({ ok:true });
 }
 
 export default {
@@ -2297,83 +2387,14 @@ export default {
       try { return await handleFeedback((b && typeof b==='object') ? b : {}, env, request); }
       catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
     }
-    if (path.endsWith('/api/send-password-reset') || path.endsWith('/send-password-reset')) {
-      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/send-password-reset' }, 405);
+    if (path.endsWith('/api/admin-feedback') || path.endsWith('/admin-feedback')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
-      try { return await handleSendPasswordReset((b && typeof b==='object') ? b : {}, env, request); }
+      try { return await handleAdminFeedback((b && typeof b==='object') ? b : {}, env, request); }
       catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
     }
-    if (path.endsWith('/api/request-password-reset') || path.endsWith('/request-password-reset')) {
-      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/request-password-reset' }, 405);
+    if (path.endsWith('/api/admin-feedback-update') || path.endsWith('/admin-feedback-update')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
-      try { return await handlePublicPasswordReset((b && typeof b==='object') ? b : {}, env, request); }
-      catch(err){ return json({ ok:true, message:'Als er een account bestaat met dit e-mailadres, ontvang je een herstel-link.' }); }
-    }
-    if (path.endsWith('/api/admin-stats') || path.endsWith('/admin-stats')) {
-      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-stats' }, 405);
-      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
-      try { return await handleAdminStats((b && typeof b==='object') ? b : {}, env, request); }
-      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
-    }
-
-    if (path.endsWith('/api/admin-status') || path.endsWith('/admin-status')) {
-      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-status' }, 405);
-      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
-      try { return await handleAdminStatus((b && typeof b==='object') ? b : {}, env, request); }
-      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
-    }
-
-    if (path.endsWith('/api/admin-mail-test') || path.endsWith('/admin-mail-test')) {
-      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-mail-test' }, 405);
-      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
-      try { return await handleAdminMailTest((b && typeof b==='object') ? b : {}, env, request); }
-      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
-    }
-
-    if (path.endsWith('/api/admin-mail-send') || path.endsWith('/admin-mail-send')) {
-      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-mail-send' }, 405);
-      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
-      try { return await handleAdminMailSend((b && typeof b==='object') ? b : {}, env, request); }
-      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
-    }
-
-    if (path.endsWith('/api/admin-mail-read') || path.endsWith('/admin-mail-read')) {
-      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-mail-read' }, 405);
-      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
-      try { return await handleAdminMailRead((b && typeof b==='object') ? b : {}, env, request); }
-      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
-    }
-
-    if (path.endsWith('/api/admin-mail-inbox') || path.endsWith('/admin-mail-inbox')) {
-      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-mail-inbox' }, 405);
-      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
-      try { return await handleAdminMailInbox((b && typeof b==='object') ? b : {}, env, request); }
-      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
-    }
-
-    if (path.endsWith('/api/support-notify') || path.endsWith('/support-notify')) {
-      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/support-notify' }, 405);
-      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
-      try { return await handleAdminSupportNotify((b && typeof b==='object') ? b : {}, env, request); }
-      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
-    }
-
-    if (request.method === 'GET') {
-      return json({ status: 'ok', service: 'ScoutingHub API', routes: ['/parse','/sync','/reglement','/api/request-access','/api/create-account','/api/reject-request'], hint: 'Gebruik POST met JSON-body' });
-    }
-    if (request.method !== 'POST') return json({ error: 'Gebruik POST', routes: ROUTES }, 405);
-
-    let body = {};
-    try { body = await request.json(); } catch (_) { body = {}; }
-    if (!body || typeof body !== 'object') body = {};
-    const is = (...names) => names.some(n => path.endsWith(n));
-    try {
-      if (is('/parse', '/parseToernooiUrl')) return await handleParseToernooiUrl(body);
-      if (is('/sync', '/syncTournamentResults')) return await handleSyncTournamentResults(body);
-      if (is('/reglement', '/parseToernooiReglement')) return await handleParseToernooiReglement(body);
-      return json({ error: 'Onbekende route', routes: ['/parse', '/reglement', '/sync'] }, 404);
-    } catch (err) {
-      return json({ error: 'Onverwachte fout', message: err && err.message ? err.message : String(err) }, 200);
-    }
-  }
-};
+      try { return await handleAdminFeedbackUpdate((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onver

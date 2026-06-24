@@ -1,7 +1,7 @@
 /* ScoutingHub Beheer — Service Worker (scope: /admin/)
    Apart van de scout-PWA (../sw.js): eigen cache, eigen scope.
    Bump CACHE_VERSION wanneer er een nieuwe admin/index.html komt. */
-const CACHE_VERSION = 'sh-admin-v1';
+const CACHE_VERSION = 'sh-admin-v3';
 const CORE_CACHE = `${CACHE_VERSION}-core`;
 const RUNTIME_CACHE = `${CACHE_VERSION}-rt`;
 
@@ -22,7 +22,9 @@ self.addEventListener('install', (event) => {
     caches.open(CORE_CACHE)
       .then((cache) => {
         const reqs = CORE_ASSETS.map((u) => new Request(u, { cache: 'reload' }));
-        return Promise.all(reqs.map((r) => fetch(r).then((res) => cache.put(r, res)).catch(()=>{})));
+        return Promise.all(reqs.map((r) => fetch(r).then((res) => {
+          if(res && res.status === 200) return cache.put(r, res);
+        }).catch(()=>{})));
       })
       .then(() => self.skipWaiting())
   );
@@ -44,36 +46,52 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(req.url);
 
-  // Cross-origin (Firebase/Firestore/Google) altijd rechtstreeks naar netwerk.
-  if (url.origin !== self.location.origin &&
-      /firebaseio|firestore|googleapis|gstatic|google\.com/.test(url.hostname)) {
-    return;
-  }
+  // Cross-origin (Firebase/Firestore/Google/CDN) altijd rechtstreeks.
+  if (url.origin !== self.location.origin) return;
 
   // Navigaties: network-first, val terug op admin-shell.
   if (req.mode === 'navigate' || req.destination === 'document') {
     event.respondWith(
-      fetch(new Request(req, { cache: 'reload' })).then((res) => {
-        const copy = res.clone();
-        caches.open(RUNTIME_CACHE).then((c) => c.put(req, copy));
-        return res;
-      }).catch(() => caches.match(req).then((r) => r || caches.match('/admin/index.html')))
+      fetch(new Request(req, { cache: 'reload' }))
+        .then((res) => {
+          if(res && res.status === 200){
+            const copy = res.clone();
+            caches.open(RUNTIME_CACHE).then((c) => c.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req).then((r) => r || caches.match('/admin/index.html')))
     );
     return;
   }
 
   // JS/CSS: network-first zodat updates direct landen.
-  if (url.origin === self.location.origin &&
-      (url.pathname.endsWith('.js') || url.pathname.endsWith('.css'))) {
+  if (url.pathname.endsWith('.js') || url.pathname.endsWith('.css')) {
     event.respondWith(
-      fetch(new Request(req, { cache: 'reload' })).then((res) => {
+      fetch(new Request(req, { cache: 'reload' }))
+        .then((res) => {
+          if (res && res.status === 200) {
+            const copy = res.clone();
+            caches.open(RUNTIME_CACHE).then((c) => c.put(req, copy));
+          }
+          return res;
+        })
+        .catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Overige assets (iconen, manifest): cache-first.
+  event.respondWith(
+    caches.match(req).then((cached) => {
+      if (cached) return cached;
+      return fetch(req).then((res) => {
         if (res && res.status === 200) {
           const copy = res.clone();
           caches.open(RUNTIME_CACHE).then((c) => c.put(req, copy));
         }
         return res;
-      }).catch(() => caches.match(req))
-    );
-    return;
-  }
+      });
+    })
+  );
 });

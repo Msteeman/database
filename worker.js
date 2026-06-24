@@ -1843,7 +1843,212 @@ async function handleAdminMailSend(body, env, request){
 
   const sent = await sendMail(env, { from: m.from, to, subject, html: mailShell(env, subject, html), text, replyTo: m.from });
   if(!sent) return json({ ok:false, error:'Verzenden via Resend mislukt' });
+  // IMAP APPEND: sla op in Verzonden map
+  try{
+    const dateStr = new Date().toUTCString();
+    const rawMsg = 'From: '+m.from+'\r\nTo: '+to+'\r\nSubject: '+subject+'\r\nDate: '+dateStr+'\r\nMIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\n\r\n'+text;
+    await imapAppendSent(env, type, rawMsg);
+  }catch(_){}
   return json({ ok:true, sent:true });
+}
+
+/* ============================================================ *
+ * IMAP APPEND — sla raw bericht op in Verzonden map
+ * ============================================================ */
+async function imapAppendSent(env, type, rawMsg){
+  const m = imapMailboxCfg(env, type);
+  if(!m||!m.pass) return false;
+  let socket;
+  try{
+    socket = connect({ hostname: m.host, port: m.port }, { secureTransport: 'on', allowHalfOpen: false });
+    const writer = socket.writable.getWriter();
+    const reader = socket.readable.getReader();
+    const enc = new TextEncoder();
+    const send = (s) => writer.write(enc.encode(s + '\r\n'));
+    const q = (s) => '"' + String(s).replace(/([\\"])/g,'\\$1') + '"';
+    await reader.read().catch(()=>{});
+    await send('A1 LOGIN '+q(m.user)+' '+q(m.pass));
+    let resp = await imapReadUntilTagged(reader,'A1 ',8192);
+    if(!/A1 OK/i.test(resp)){ try{writer.close();}catch(_){} return false; }
+    // Zoek Verzonden map
+    await send('AL LIST "" "*"');
+    const lr = await imapReadUntilTagged(reader,'AL ',32768);
+    const names = imapParseFolderNames(lr);
+    const sentFolder = imapPickFolder(names,'sent') || 'Sent';
+    // APPEND commando
+    const msgBytes = enc.encode(rawMsg);
+    await writer.write(enc.encode('A5 APPEND '+q(sentFolder)+' (\\Seen) {'+msgBytes.length+'}\r\n'));
+    resp = await imapReadUntilTagged(reader,'+ ',2048).catch(()=>'+');
+    await writer.write(msgBytes);
+    await writer.write(enc.encode('\r\n'));
+    resp = await imapReadUntilTagged(reader,'A5 ',4096);
+    try{ await send('A9 LOGOUT'); }catch(_){}
+    try{ writer.close(); }catch(_){}
+    return /A5 OK/i.test(resp);
+  }catch(err){
+    try{ if(socket) socket.close(); }catch(_){}
+    return false;
+  }
+}
+
+/* ============================================================ *
+ * IMAP STATUS — ongelezen tellen per mailbox
+ * ============================================================ */
+async function imapGetUnread(env, type){
+  const m = imapMailboxCfg(env, type);
+  if(!m||!m.pass) return 0;
+  let socket;
+  try{
+    socket = connect({ hostname: m.host, port: m.port }, { secureTransport: 'on', allowHalfOpen: false });
+    const writer = socket.writable.getWriter();
+    const reader = socket.readable.getReader();
+    const enc = new TextEncoder();
+    const send = (s) => writer.write(enc.encode(s + '\r\n'));
+    const q = (s) => '"' + String(s).replace(/([\\"])/g,'\\$1') + '"';
+    await reader.read().catch(()=>{});
+    await send('A1 LOGIN '+q(m.user)+' '+q(m.pass));
+    let resp = await imapReadUntilTagged(reader,'A1 ',8192);
+    if(!/A1 OK/i.test(resp)){ try{writer.close();}catch(_){} return 0; }
+    await send('A2 STATUS INBOX (UNSEEN)');
+    resp = await imapReadUntilTagged(reader,'A2 ',4096);
+    try{ await send('A9 LOGOUT'); }catch(_){}
+    try{ writer.close(); }catch(_){}
+    const um = resp.match(/UNSEEN\s+(\d+)/i);
+    return um ? parseInt(um[1],10) : 0;
+  }catch(err){
+    try{ if(socket) socket.close(); }catch(_){}
+    return 0;
+  }
+}
+
+/* ============================================================ *
+ * HANDLER — admin-mail-unread
+ * ============================================================ */
+async function handleAdminMailUnread(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  const counts = {};
+  await Promise.all(['admin','contact','info'].map(async (t) => {
+    try{ counts[t] = await imapGetUnread(env, t); }catch(_){ counts[t]=0; }
+  }));
+  return json({ ok:true, counts });
+}
+
+/* ============================================================ *
+ * HANDLER — admin-mail-attachment (bijlage ophalen als base64)
+ * ============================================================ */
+async function handleAdminMailAttachment(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  const type = String(body.type||'');
+  if(!['admin','contact','info'].includes(type)) return json({ ok:false, error:'Onbekend mailtype' }, 400);
+  const folder = String(body.folder||'inbox').toLowerCase();
+  const seq = parseInt(body.seq,10);
+  const idx = parseInt(body.index||'0',10);
+  if(!seq||seq<1) return json({ ok:false, error:'Ongeldig berichtnummer' }, 400);
+  // Herlaad volledig bericht met attachment inhoud
+  const m = imapMailboxCfg(env, type);
+  if(!m||!m.pass) return json({ ok:false, error:'IMAP niet geconfigureerd' });
+  const key = ['inbox','sent','trash'].includes(folder)?folder:'inbox';
+  let socket;
+  try{
+    socket = connect({ hostname: m.host, port: m.port }, { secureTransport:'on', allowHalfOpen:false });
+    const writer = socket.writable.getWriter();
+    const reader = socket.readable.getReader();
+    const enc = new TextEncoder();
+    const send = (s) => writer.write(enc.encode(s+'\r\n'));
+    const q = (s) => '"'+String(s).replace(/([\\"])/g,'\\$1')+'"';
+    await reader.read().catch(()=>{});
+    await send('A1 LOGIN '+q(m.user)+' '+q(m.pass));
+    let resp = await imapReadUntilTagged(reader,'A1 ',8192);
+    if(!/A1 OK/i.test(resp)){ try{writer.close();}catch(_){} return json({ok:false,error:'Login mislukt'}); }
+    let folderName = 'INBOX';
+    if(key!=='inbox'){
+      await send('AL LIST "" "*"');
+      const lr=await imapReadUntilTagged(reader,'AL ',32768);
+      const found=imapPickFolder(imapParseFolderNames(lr),key);
+      if(found) folderName=found;
+    }
+    await send('A2 SELECT '+q(folderName));
+    resp = await imapReadUntilTagged(reader,'A2 ',8192);
+    await send('A3 FETCH '+seq+' (BODY.PEEK[])');
+    resp = await imapReadUntilTagged(reader,'A3 ',800000);
+    try{ await send('A9 LOGOUT'); }catch(_){}
+    try{ writer.close(); }catch(_){}
+    const bm=resp.match(/\* \d+ FETCH \(BODY\[\] \{(\d+)\}\r\n([\s\S]*)/i);
+    if(!bm) return json({ok:false,error:'Bericht niet gevonden'});
+    const raw=bm[2].slice(0,parseInt(bm[1],10));
+    const splitIdx=raw.indexOf('\r\n\r\n');
+    const headerPart=splitIdx>=0?raw.slice(0,splitIdx):raw;
+    const bodyPart=splitIdx>=0?raw.slice(splitIdx+4):'';
+    const contentType=imapHeaderField(headerPart,'Content-Type');
+    const extracted=imapExtractBody(bodyPart,contentType,true);
+    const att=extracted.attachments[idx];
+    if(!att) return json({ok:false,error:'Bijlage niet gevonden (index '+idx+')'});
+    return json({ok:true,name:att.name,type:att.type,b64:att.b64||''});
+  }catch(err){
+    try{ if(socket) socket.close(); }catch(_){}
+    return json({ok:false,error:'Bijlage ophalen mislukt: '+(err&&err.message||'')});
+  }
+}
+
+/* ============================================================ *
+ * HANDLER — admin-newsletter-list
+ * ============================================================ */
+async function handleAdminNewsletterList(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  const all = await saFsList(saToken, 'access_requests', 500);
+  const subs = all.filter(function(x){ return x.newsletterOptIn===true; });
+  subs.sort(function(a,b){ return new Date(b.timestamp||0)-new Date(a.timestamp||0); });
+  return json({ ok:true, subscribers: subs });
+}
+
+/* ============================================================ *
+ * HANDLER — admin-newsletter-send
+ * ============================================================ */
+async function handleAdminNewsletterSend(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  const subject = clip(String(body.subject||'').trim(),200);
+  const message = clip(String(body.message||'').trim(),10000);
+  if(!subject||!message) return json({ ok:false, error:'Onderwerp en bericht zijn verplicht' }, 400);
+  const all = await saFsList(saToken, 'access_requests', 500);
+  const subs = all.filter(function(x){ return x.newsletterOptIn===true && x.email; });
+  if(!subs.length) return json({ ok:true, sent:0, message:'Geen abonnees gevonden' });
+  const paragraphs = message.split(/\n{2,}/).map(function(p){ return '<p style="'+MAIL_P+'">'+shEsc(p).replace(/\n/g,'<br>')+'</p>'; }).join('');
+  const htmlBody = paragraphs
+    + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>'
+    + '<p style="'+MAIL_MUTED+'">Je ontvangt deze nieuwsbrief omdat je je hebt aangemeld. Stuur een mail naar contact@scoutinghub.nl om je af te melden.</p>';
+  const text = message + '\n\nMet vriendelijke groet,\nTeam ScoutingHub\n\nAfmelden: stuur een mail naar contact@scoutinghub.nl';
+  let sent = 0, failed = 0;
+  for(const sub of subs){
+    try{
+      const ok = await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: mailShell(env,subject,htmlBody), text });
+      if(ok) sent++; else failed++;
+    }catch(_){ failed++; }
+  }
+  return json({ ok:true, sent, failed, total:subs.length });
 }
 
 /* ============================================================ *
@@ -2103,7 +2308,8 @@ function imapStripHtml(html){
 }
 
 // Extraheert {text, html, attachments[]} uit een mail-body (plain/html/multipart).
-function imapExtractBody(body, contentType){
+// withContent=true voegt ook raw b64 content toe aan elke bijlage (voor download).
+function imapExtractBody(body, contentType, withContent){
   let html='', text='', attachments=[];
   function b64utf8(s){
     try{
@@ -2142,7 +2348,9 @@ function imapExtractBody(body, contentType){
           parse(pbody, pct); continue;
         }
         if(pname||pdisp.includes('attachment')||(pct&&!pctl.includes('text/'))){
-          attachments.push({name:pname||'bijlage',type:(pct.split(';')[0]||'application/octet-stream').trim()});
+          const attObj={name:pname||'bijlage',type:(pct.split(';')[0]||'application/octet-stream').trim()};
+          if(withContent){ attObj.b64=pbody.replace(/\s/g,''); }
+          attachments.push(attObj);
           continue;
         }
         const dec=decodePart(pbody,penc);
@@ -2457,6 +2665,34 @@ export default {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/support-notify' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
       try { return await handleAdminSupportNotify((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/admin-mail-unread') || path.endsWith('/admin-mail-unread')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminMailUnread((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/admin-mail-attachment') || path.endsWith('/admin-mail-attachment')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminMailAttachment((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/admin-newsletter-list') || path.endsWith('/admin-newsletter-list')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminNewsletterList((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/admin-newsletter-send') || path.endsWith('/admin-newsletter-send')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminNewsletterSend((b && typeof b==='object') ? b : {}, env, request); }
       catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
     }
 

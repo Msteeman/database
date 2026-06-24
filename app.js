@@ -4485,6 +4485,28 @@ async function _shFillLogos(container){
     if(url){ img.src = url; img.style.opacity = '1'; }
   }
 }
+window._shLogoErr=async function(el){
+  // Gecachte URL werkt niet meer: wis cache + skip FLCC + fallback via TheSportsDB/Wiki
+  try{
+    const naam = el.getAttribute('data-club-logo')||'';
+    const clubNaam = naam.replace(/\s+(O\.|U)\d+[\-\d]*/gi,'').trim();
+    const key = clubNaam.toLowerCase();
+    const c = _shLogoGetCache();
+    delete c[key];
+    try{ localStorage.setItem(_SH_LOGO_CACHE_KEY, JSON.stringify(c)); }catch(_){}
+    el.style.opacity='0';
+    el.removeAttribute('src');
+    if(!clubNaam){ el.style.display='none'; return; }
+    // Probeer bronnen zonder FLCC (FLCC is de bron die net faalde)
+    let url = await _shLogoFromTsdb(clubNaam, key);
+    if(!url) url = await _shLogoFromFootyLogos(clubNaam);
+    if(!url) url = await _shLogoFromWiki(clubNaam);
+    if(url){
+      _shLogoSetCache(key, url);
+      el.src=url; el.style.opacity='1';
+    } else { el.style.display='none'; }
+  }catch(_){ el.style.display='none'; }
+};
 function _shLogoImg(naam, size){
   size = size || 22;
   if(!naam) return '';
@@ -4494,7 +4516,7 @@ function _shLogoImg(naam, size){
     const c = _shLogoGetCache();
     const hit = c[key];
     if(hit && hit.url && (Date.now() - (hit.ts||0)) < 86400000){
-      return '<img data-club-logo="' + escapeAttr(naam) + '" src="' + escapeAttr(hit.url) + '" alt="" style="width:' + size + 'px;height:' + size + 'px;object-fit:contain;opacity:1;border-radius:2px;flex-shrink:0;" onerror="this.style.display=\'none\'">';
+      return '<img data-club-logo="' + escapeAttr(naam) + '" src="' + escapeAttr(hit.url) + '" alt="" style="width:' + size + 'px;height:' + size + 'px;object-fit:contain;opacity:1;border-radius:2px;flex-shrink:0;" onerror="window._shLogoErr(this)">';
     }
   } catch(e){}
   // Nog niet in cache: placeholder, wordt async gevuld
@@ -32183,6 +32205,8 @@ var _ADM_MAILLABELS={inbox:'Inbox',sent:'Verzonden',trash:'Verwijderd'};
 var _ADM_MB_ADDR={admin:'admin@scoutinghub.nl',contact:'contact@scoutinghub.nl',info:'info@scoutinghub.nl'};
 var _admMb={type:'admin',folder:'inbox'};
 var _admMbEl=null;
+var _admMbUnread={}; // {admin:N, contact:N, info:N}
+var _admMbMsgCache={}; // cache geladen berichten per type+folder
 
 // ── Mailcentrum: volledig 3-koloms client ──────────────────────────────────
 // Layout: [folders sidebar] | [berichtenlijst] | [detail / compose]
@@ -32193,19 +32217,32 @@ async function _admRenderMail(el){
   el.innerHTML='<div class="adm-loading">Mailcentrum laden…</div>';
   await _admEnsureCore();
   _admMbRebuild();
+  // Ongelezen badges ophalen op achtergrond
+  _admMbFetchUnread();
+}
+async function _admMbFetchUnread(){
+  try{
+    var tk=await _admToken(); if(!tk) return;
+    var r=await fetch(_admBase()+'/api/admin-mail-unread',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(j&&j.ok&&j.counts){ _admMbUnread=j.counts; _admMbRebuild(); }
+  }catch(_){}
 }
 window._admRenderMail=_admRenderMail;
 
 function _admMbRebuild(){
   var el=_admMbEl; if(!el) return;
   var tabs=Object.keys(_ADM_MB_ADDR).map(function(k){
-    return '<button class="adm-mb-tab'+(k===_admMb.type?' adm-mb-tab-active':'')+'" onclick="_admMbSwitch(\''+k+'\')">'+_ADM_MB_ADDR[k]+'</button>';
+    var u=_admMbUnread[k]||0;
+    var badge=u?'<span style="background:#ef4444;color:#fff;border-radius:999px;font-size:.7rem;padding:1px 6px;margin-left:5px;font-weight:700;">'+u+'</span>':'';
+    return '<button class="adm-mb-tab'+(k===_admMb.type?' adm-mb-tab-active':'')+'" onclick="_admMbSwitch(\''+k+'\')">'+_ADM_MB_ADDR[k]+badge+'</button>';
   }).join('');
-  var sideItems=[['compose','✏️ Opstellen'],['inbox','📥 Inbox'],['sent','📤 Verstuurd'],['trash','🗑️ Verwijderd']];
+  var draftCount=(_admMbDrafts()||[]).length;
+  var inboxU=_admMbUnread[_admMb.type]||0;
+  var sideItems=[['compose','✏️ Opstellen'],['inbox','📥 Inbox'+(inboxU?' <span style="background:#ef4444;color:#fff;border-radius:999px;font-size:.7rem;padding:1px 5px;">'+inboxU+'</span>':'')],['sent','📤 Verstuurd'],['drafts','📝 Concepten'+(draftCount?' ('+draftCount+')':'')],['trash','🗑️ Verwijderd'],['newsletter','📧 Nieuwsbrief']];
   var side=sideItems.map(function(s){
     return '<button class="adm-mb-side'+(s[0]===_admMb.folder?' adm-mb-side-active':'')+'" onclick="_admMbNav(\''+s[0]+'\')">'+s[1]+'</button>';
-  }).join('')
-;
+  }).join('');
   el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Mailcentrum</div>'
     +'<div class="adm-mb3-wrap">'
       +'<div class="adm-mb3-tabs">'+tabs+'</div>'
@@ -32229,7 +32266,28 @@ function _admMbContactOptions(){
 function _admMbSwitch(type){ _admMb.type=type; _admMb.folder='inbox'; _admMbRebuild(); }
 window._admMbSwitch=_admMbSwitch;
 
-function _admMbNav(folder){ _admMb.folder=folder; _admMbRebuild(); }
+function _admMbDrafts(){ try{ return JSON.parse(localStorage.getItem('sh_mb_drafts')||'[]'); }catch(_){return[];} }
+function _admMbSaveDraft(d){ try{ var ds=_admMbDrafts(); ds.unshift(d); if(ds.length>20)ds=ds.slice(0,20); localStorage.setItem('sh_mb_drafts',JSON.stringify(ds)); }catch(_){} }
+function _admMbDeleteDraft(i){ try{ var ds=_admMbDrafts(); ds.splice(i,1); localStorage.setItem('sh_mb_drafts',JSON.stringify(ds)); }catch(_){} }
+
+function _admMbNav(folder){
+  // Als huidig venster compose is: vraag of concept opgeslagen moet worden
+  if(_admMb.folder==='compose' && folder!=='compose'){
+    var detail=document.getElementById('adm-mb3-detail');
+    var to='',subj='',msg='';
+    if(detail){
+      var tEl=detail.querySelector('[data-mb-to]'); var sEl=detail.querySelector('[data-mb-subj]'); var mEl=detail.querySelector('[data-mb-msg]');
+      if(tEl) to=tEl.value||''; if(sEl) subj=sEl.value||''; if(mEl) msg=mEl.value||'';
+    }
+    if(to||subj||msg){
+      if(confirm('Opslaan als concept?')){
+        _admMbSaveDraft({type:_admMb.type,to:to,subject:subj,message:msg,saved:new Date().toISOString()});
+        if(typeof toast==='function') toast('Concept opgeslagen ✓');
+      }
+    }
+  }
+  _admMb.folder=folder; _admMbRebuild();
+}
 window._admMbNav=_admMbNav;
 
 function _admMbLoadPane(){
@@ -32240,18 +32298,58 @@ function _admMbLoadPane(){
     _admMbRenderCompose(detail);
     return;
   }
-  detail.innerHTML='<div class="adm-mb3-empty">← Selecteer een bericht</div>';
+  if(_admMb.folder==='drafts'){
+    detail.innerHTML='<div class="adm-mb3-empty">Selecteer een concept om te bewerken</div>';
+    _admMbRenderDraftsList(list);
+    return;
+  }
+  if(_admMb.folder==='newsletter'){
+    list.innerHTML='';
+    _admMbRenderNewsletter(detail);
+    return;
+  }
+  detail.innerHTML='<div class="adm-mb3-empty">Selecteer een bericht</div>';
   _admMbLoadFolder(list, _admMb.type, _admMb.folder);
 }
+
+function _admMbRenderDraftsList(listEl){
+  var ds=_admMbDrafts();
+  if(!ds.length){ listEl.innerHTML='<div class="adm-mb3-list-hd">Concepten <span class="adm-mb3-count">0</span></div><div class="bh-empty" style="padding:16px">Geen concepten</div>'; return; }
+  listEl.innerHTML='<div class="adm-mb3-list-hd">Concepten <span class="adm-mb3-count">'+ds.length+'</span></div>'
+    +ds.map(function(d,i){
+      var dt=''; try{ var dd=new Date(d.saved); if(!isNaN(dd.getTime())) dt=dd.toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }catch(_){}
+      return '<div class="adm-mb3-row" style="cursor:pointer" onclick="_admMbOpenDraft('+i+')">'
+        +'<div class="adm-mb3-row-from">'+_bhEsc(d.to||'(geen ontvanger)')+'</div>'
+        +'<div class="adm-mb3-row-subj">'+_bhEsc(d.subject||'(geen onderwerp)')+'</div>'
+        +'<div class="adm-mb3-row-date">'+dt+'</div>'
+      +'</div>';
+    }).join('');
+}
+window._admMbOpenDraft=function(i){
+  var ds=_admMbDrafts(); var d=ds[i]; if(!d) return;
+  var detail=document.getElementById('adm-mb3-detail'); if(!detail) return;
+  // zet type terug
+  if(d.type && _ADM_MB_ADDR[d.type]) _admMb.type=d.type;
+  _admMb.folder='compose'; _admMbRebuild();
+  // prefill
+  setTimeout(function(){
+    var det=document.getElementById('adm-mb3-detail'); if(!det) return;
+    var tEl=det.querySelector('[data-mb-to]'); var sEl=det.querySelector('[data-mb-subj]'); var mEl=det.querySelector('[data-mb-msg]');
+    if(tEl) tEl.value=d.to||''; if(sEl) sEl.value=d.subject||''; if(mEl) mEl.value=d.message||'';
+    // verwijder concept
+    _admMbDeleteDraft(i);
+    _admMbRebuild();
+  },100);
+};
 
 function _admMbRenderCompose(pane, replyTo){
   var type=_admMb.type, addr=_ADM_MB_ADDR[type];
   var toVal=replyTo?_bhEsc(replyTo):'';
   pane.innerHTML='<div class="adm-mb3-compose">'
     +'<div class="adm-mb3-compose-hd">Nieuw bericht — van <b>'+_bhEsc(addr)+'</b></div>'
-    +'<input type="email" class="adm-compose-input" id="adm-mb-to" list="adm-mb-contacts" placeholder="Aan (e-mailadres)" value="'+toVal+'">'
-    +'<input type="text" class="adm-compose-input" id="adm-mb-subj" placeholder="Onderwerp">'
-    +'<textarea class="adm-compose-input adm-mb3-compose-msg" id="adm-mb-msg" placeholder="Bericht…"></textarea>'
+    +'<input type="email" class="adm-compose-input" id="adm-mb-to" data-mb-to list="adm-mb-contacts" placeholder="Aan (e-mailadres)" value="'+toVal+'">'
+    +'<input type="text" class="adm-compose-input" id="adm-mb-subj" data-mb-subj placeholder="Onderwerp">'
+    +'<textarea class="adm-compose-input adm-mb3-compose-msg" id="adm-mb-msg" data-mb-msg placeholder="Bericht…"></textarea>'
     +'<div class="adm-mailact">'
       +'<button class="adm-btn-ghost adm-btn-primary" onclick="_admMbSend(this)">Versturen</button>'
       +'<button class="adm-btn-ghost" onclick="_admMbNav(\'inbox\')">Annuleren</button>'
@@ -32285,8 +32383,93 @@ async function _admMbSend(btn){
 }
 window._admMbSend=_admMbSend;
 
+async function _admMbRenderNewsletter(pane){
+  if(!pane) return;
+  pane.innerHTML='<div class="adm-loading">Abonnees laden…</div>';
+  try{
+    var tk=await _admToken(); if(!tk){ pane.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
+    var r=await fetch(_admBase()+'/api/admin-newsletter-list',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(!(r.ok&&j&&j.ok)){ pane.innerHTML='<div class="bh-empty">Abonnees laden mislukt.</div>'; return; }
+    var subs=j.subscribers||[];
+    pane.innerHTML='<div class="adm-mb3-detail-inner">'
+      +'<div class="adm-mb3-detail-hd"><div class="adm-mb3-detail-subj">📧 Nieuwsbrief</div></div>'
+      +'<div style="padding:0 16px 12px;">'
+        +'<div style="font-size:.85rem;color:#94a3b8;margin-bottom:8px;">'+subs.length+' abonnee'+(subs.length!==1?'s':'')+'</div>'
+        +'<div style="max-height:180px;overflow-y:auto;background:#0d1929;border-radius:6px;padding:8px;">'
+          +(subs.length?subs.map(function(s){ return '<div style="font-size:.82rem;padding:3px 0;color:#e2e8f0;">'+_bhEsc((s.name||s.displayName||'')+(s.email?' &lt;'+s.email+'&gt;':''))+'</div>'; }).join(''):'<div class="bh-empty" style="padding:8px">Geen abonnees</div>')
+        +'</div>'
+      +'</div>'
+      +'<div style="padding:0 16px;">'
+        +'<div style="font-weight:600;font-size:.88rem;margin-bottom:8px;color:#e2e8f0;">Nieuwsbrief versturen</div>'
+        +'<input class="adm-compose-input" id="adm-nl-subj" placeholder="Onderwerp" style="margin-bottom:8px;" />'
+        +'<textarea class="adm-compose-input" id="adm-nl-msg" placeholder="Bericht (tekst of HTML)…" rows="7" style="min-height:140px;resize:vertical;"></textarea>'
+        +'<div class="adm-mailact" style="margin-top:10px;">'
+          +'<button class="adm-btn-ghost adm-btn-primary" onclick="_admNlSend(this,'+subs.length+')">Verstuur naar '+subs.length+' abonnee'+(subs.length!==1?'s':'')+'</button>'
+        +'</div>'
+        +'<div id="adm-nl-res"></div>'
+      +'</div>'
+    +'</div>';
+  }catch(_){ pane.innerHTML='<div class="bh-empty">Nieuwsbrief laden mislukt.</div>'; }
+}
+
+window._admNlSend=async function(btn, cnt){
+  var res=document.getElementById('adm-nl-res');
+  var subj=(document.getElementById('adm-nl-subj')||{}).value||'';
+  var msg=(document.getElementById('adm-nl-msg')||{}).value||'';
+  if(!subj||!msg){ if(res) res.innerHTML='<div class="bh-empty">Vul onderwerp en bericht in.</div>'; return; }
+  if(!confirm('Versturen naar '+cnt+' abonnee'+(cnt!==1?'s':'')+'?')) return;
+  var _o=''; if(btn){ _o=btn.textContent; btn.disabled=true; btn.textContent='Versturen…'; }
+  if(res) res.innerHTML='';
+  try{
+    var tk=await _admToken(); if(!tk) return;
+    var r=await fetch(_admBase()+'/api/admin-newsletter-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({subject:subj,message:msg})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(r.ok&&j&&j.ok){
+      if(typeof toast==='function') toast('Nieuwsbrief verstuurd naar '+( j.sent||cnt)+' abonnees');
+      if(res) res.innerHTML='<div style="color:#4ade80;padding:8px 0;">Verstuurd naar '+(j.sent||cnt)+' abonnee'+(cnt!==1?'s'||'')+'</div>';
+    } else {
+      if(res) res.innerHTML='<div class="bh-empty">Mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
+      if(btn){ btn.disabled=false; btn.textContent=_o; }
+    }
+  }catch(_){ if(res) res.innerHTML='<div class="bh-empty">Versturen mislukt.</div>'; if(btn){ btn.disabled=false; btn.textContent=_o; } }
+};
+
+function _admMbRenderList(listEl, msgs, fLabel, folder, type){
+  var q=(listEl.querySelector('.adm-mb-search')||{}).value||'';
+  var filtered=q?msgs.filter(function(m){ return ((m.from||'')+(m.to||'')+(m.subject||'')).toLowerCase().indexOf(q.toLowerCase())!==-1; }):msgs;
+  var rows=filtered.map(function(m){
+    var dt=''; try{ var d=new Date(m.date); if(!isNaN(d.getTime())) dt=d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }catch(_){}
+    var who=(folder==='sent')?_bhEsc(m.to||''):_bhEsc(m.from||'');
+    return '<div class="adm-mb3-row'+(m.seen?'':' adm-mb3-unread')+'" data-seq="'+m.seq+'" onclick="_admMbOpenMail(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\','+m.seq+',this)">'
+      +'<div class="adm-mb3-row-from">'+who+'</div>'
+      +'<div class="adm-mb3-row-subj">'+_bhEsc(m.subject||'(geen onderwerp)')+'</div>'
+      +'<div class="adm-mb3-row-date">'+_bhEsc(dt)+'</div>'
+    +'</div>';
+  }).join('');
+  var existSearch=listEl.querySelector('.adm-mb-search');
+  var searchHtml='<div style="padding:6px 8px;border-bottom:1px solid #1e2a3a;">'
+    +'<input class="adm-mb-search adm-compose-input" style="margin:0;padding:5px 8px;font-size:.82rem;" placeholder="🔍 Zoeken…" value="'+_bhEsc(q)+'" oninput="_admMbSearch(this,\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\')" />'
+    +'</div>';
+  var hdHtml='<div class="adm-mb3-list-hd">'+_bhEsc(fLabel)+' <span class="adm-mb3-count">'+filtered.length+(filtered.length<msgs.length?'/'+msgs.length:'')+'</span></div>';
+  if(existSearch){
+    // Alleen rows updaten, zoekbalk bewaren
+    var body=listEl.querySelector('.adm-mb-rows');
+    if(body) body.innerHTML=rows||(filtered.length?'':'<div class="bh-empty">Geen berichten gevonden.</div>');
+  } else {
+    listEl.innerHTML=searchHtml+hdHtml+'<div class="adm-mb-rows">'+rows+'</div>';
+  }
+}
+window._admMbSearch=function(inp, type, folder){
+  var listEl=document.getElementById('adm-mb3-list'); if(!listEl) return;
+  var key=type+'/'+folder;
+  var msgs=(_admMbMsgCache[key])||[];
+  var fLabel=_ADM_MAILLABELS[folder]||'Map';
+  _admMbRenderList(listEl,msgs,fLabel,folder,type);
+};
 async function _admMbLoadFolder(listEl, type, folder){
   var lbl=_ADM_MAILLABELS[folder]||'Map';
+  var key=type+'/'+folder;
   listEl.innerHTML='<div class="adm-loading">'+lbl+' laden…</div>';
   try{
     var tk=await _admToken(); if(!tk){ listEl.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
@@ -32297,18 +32480,10 @@ async function _admMbLoadFolder(listEl, type, folder){
       return;
     }
     var msgs=j.messages||[];
+    _admMbMsgCache[key]=msgs;
     var fLabel=j.folder||lbl;
     if(!msgs.length){ listEl.innerHTML='<div class="bh-empty">'+_bhEsc(fLabel)+' is leeg.</div>'; return; }
-    listEl.innerHTML='<div class="adm-mb3-list-hd">'+_bhEsc(fLabel)+' <span class="adm-mb3-count">'+msgs.length+(j.count&&j.count>msgs.length?'/'+j.count:'')+'</span></div>'
-      +msgs.map(function(m){
-        var dt=''; try{ var d=new Date(m.date); if(!isNaN(d.getTime())) dt=d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }catch(_){}
-        var who=(folder==='sent')?_bhEsc(m.to||'—'):_bhEsc(m.from||'—');
-        return '<div class="adm-mb3-row'+(m.seen?'':' adm-mb3-unread')+'" data-seq="'+m.seq+'" onclick="_admMbOpenMail(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\','+m.seq+',this)">'
-          +'<div class="adm-mb3-row-from">'+who+'</div>'
-          +'<div class="adm-mb3-row-subj">'+_bhEsc(m.subject||'(geen onderwerp)')+'</div>'
-          +'<div class="adm-mb3-row-date">'+_bhEsc(dt)+'</div>'
-        +'</div>';
-      }).join('');
+    _admMbRenderList(listEl,msgs,fLabel,folder,type);
   }catch(_){ listEl.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt.</div>'; }
 }
 
@@ -32328,7 +32503,7 @@ async function _admMbOpenMail(type, folder, seq, rowEl){
     var attHtml='';
     if(j.attachments&&j.attachments.length){
       attHtml='<div class="adm-mb3-attach"><span class="adm-mb3-attach-lbl">📎 Bijlagen:</span>'
-        +j.attachments.map(function(a){ return '<span class="adm-mb3-attach-item">'+_bhEsc(a.name||'bijlage')+'<small> ('+_bhEsc(a.type||'')+')</small></span>'; }).join('')
+        +j.attachments.map(function(a,i){ return '<button class="adm-mb3-attach-item adm-btn-ghost" style="cursor:pointer;" onclick="_admMbDownloadAtt(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\','+seq+','+i+',\''+_bhEsc(a.name||'bijlage')+'\',\''+_bhEsc(a.type||'application/octet-stream')+'\')">📄 '+_bhEsc(a.name||'bijlage')+'<small style="opacity:.7"> ('+_bhEsc(a.type||'')+')</small></button>'; }).join('')
         +'</div>';
     }
     var bodyHtml = j.html
@@ -32357,6 +32532,20 @@ async function _admMbOpenMail(type, folder, seq, rowEl){
   }catch(_){ detail.innerHTML='<div class="bh-empty">Bericht laden mislukt.</div>'; }
 }
 window._admMbOpenMail=_admMbOpenMail;
+
+window._admMbDownloadAtt=async function(type, folder, seq, idx, name, mimeType){
+  try{
+    var tk=await _admToken(); if(!tk) return;
+    var r=await fetch(_admBase()+'/api/admin-mail-attachment',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,folder:folder,seq:seq,index:idx})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(!(r.ok&&j&&j.ok&&j.b64)){ alert('Bijlage laden mislukt.'); return; }
+    var bytes=Uint8Array.from(atob(j.b64),function(c){return c.charCodeAt(0);});
+    var blob=new Blob([bytes],{type:j.type||mimeType});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a'); a.href=url; a.download=j.name||name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(url);},10000);
+  }catch(_){ alert('Bijlage downloaden mislukt.'); }
+};
 
 function _admMbReply(fromAddr, subject){
   _admMb.folder='compose';
@@ -32684,35 +32873,78 @@ function _bhRenderOrg(){
     if(u.clubName && !teams[tid].club) teams[tid].club = u.clubName;
     if(role==='coordinator') teams[tid].coords.push(u); else teams[tid].scouts.push(u);
   });
-  var html = '';
   var DEFAULT_CLUB = 'ScoutingHub (organisatie)';
   var clubs = {};
   Object.keys(teams).forEach(function(tid){ var c = teams[tid].club || DEFAULT_CLUB; (clubs[c] = clubs[c] || []).push(tid); });
+
+  function orgTeamBlock(tid){
+    var t = teams[tid];
+    var oid = 'org-t-'+tid.replace(/[^a-z0-9]/gi,'-');
+    var warn = (t.coords.length===0?'<span class="bh-org-badge bh-b-amber">Geen coördinator</span>':'')
+             + (t.scouts.length===0?'<span class="bh-org-badge bh-b-amber">Geen scouts</span>':'');
+    var coordsHtml = t.coords.length ? t.coords.map(_orgNode).join('') : '<div class="bh-org-node bh-org-empty">Geen coördinator</div>';
+    var scoutsHtml = t.scouts.length ? t.scouts.map(_orgNode).join('') : '<div class="bh-org-node bh-org-empty">Nog geen scouts</div>';
+    return '<div style="border-bottom:1px solid #1e2a3a;padding:4px 0;">'
+      +'<div onclick="_bhOrgToggle(\''+oid+'\')" style="cursor:pointer;display:flex;align-items:center;gap:8px;padding:8px 4px;border-radius:6px;" onmouseover="this.style.background=\'#1e2a3a\'" onmouseout="this.style.background=\'\'">'
+        +'<span id="arr-'+oid+'" style="color:#4ea1ff;font-size:.85rem;">▶</span>'
+        +'<span style="font-weight:600;color:#e2e8f0;">'+_bhEsc(t.name)+'</span>'
+        +'<span class="bh-org-count">'+(t.coords.length+t.scouts.length)+'</span>'+warn
+      +'</div>'
+      +'<div id="'+oid+'" style="display:none;padding:10px 0 6px 18px;border-left:2px solid #1e3a5f;margin-left:10px;">'
+        +'<div class="bh-org-sub">COORDINATOREN</div><div class="bh-org-row">'+coordsHtml+'</div>'
+        +'<div class="bh-org-line"></div>'
+        +'<div class="bh-org-sub">SCOUTS</div><div class="bh-org-row">'+scoutsHtml+'</div>'
+      +'</div>'
+    +'</div>';
+  }
+
+  var html = '';
   Object.keys(clubs).sort(function(a,b){ return a.localeCompare(b); }).forEach(function(cn){
+    var cid = 'org-c-'+cn.replace(/[^a-z0-9]/gi,'-');
     var tids = clubs[cn].sort(function(a,b){ return String(teams[a].name).localeCompare(String(teams[b].name)); });
-    var teamCards = tids.map(function(tid){
-      var t = teams[tid];
-      var warn = (t.coords.length===0 ? '<span class="bh-org-badge bh-b-amber">Geen coördinator — actie nodig</span>' : '')
-               + (t.scouts.length===0 ? '<span class="bh-org-badge bh-b-amber">Nog geen scouts</span>' : '');
-      var coordsHtml = t.coords.length ? t.coords.map(_orgNode).join('') : '<div class="bh-org-node bh-org-empty">Geen coördinator</div>';
-      var scoutsHtml = t.scouts.length ? t.scouts.map(_orgNode).join('') : '<div class="bh-org-node bh-org-empty">Nog geen scouts</div>';
-      return '<div class="bh-org-group">'
-        + '<div class="bh-org-team">'+_bhEsc(t.name)+' <span class="bh-org-count">'+(t.coords.length+t.scouts.length)+'</span>'+warn+'</div>'
-        + '<div class="bh-org-sub">Coördinatoren</div><div class="bh-org-row">'+coordsHtml+'</div>'
-        + '<div class="bh-org-line"></div>'
-        + '<div class="bh-org-sub">Scouts</div><div class="bh-org-row">'+scoutsHtml+'</div>'
-        + '</div>';
-    }).join('');
-    html += '<div class="bh-org-club"><div class="bh-org-clubhd">🏢 '+_bhEsc(cn)+' <span class="bh-org-count">'+tids.length+' team'+(tids.length===1?'':'s')+'</span></div>'+teamCards+'</div>';
+    var totalMembers = tids.reduce(function(s,tid){ return s+teams[tid].coords.length+teams[tid].scouts.length; },0);
+    html += '<div class="bh-org-club" style="margin-bottom:10px;">'
+      +'<div onclick="_bhOrgToggle(\''+cid+'\')" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 14px;background:#0f1923;border-radius:8px;" onmouseover="this.style.background=\'#1e2a3a\'" onmouseout="this.style.background=\'#0f1923\'">'
+        +'<span id="arr-'+cid+'" style="color:#4ea1ff;font-size:1.1rem;">▶</span>'
+        +'<span style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">'+_bhEsc(cn)+'</span>'
+        +'<span class="bh-org-count" style="margin-left:auto;">'+tids.length+' team'+(tids.length===1?'':'s')+' &middot; '+totalMembers+' leden</span>'
+      +'</div>'
+      +'<div id="'+cid+'" style="display:none;padding:8px 12px 4px 24px;border-left:3px solid #1e3a5f;margin-left:14px;">'
+        +tids.map(orgTeamBlock).join('')
+      +'</div>'
+    +'</div>';
   });
   if(noTeam.length){
-    html += '<div class="bh-org-group"><div class="bh-org-team">Individuele scouts <span class="bh-org-count">'+noTeam.length+'</span></div><div class="bh-org-row">'+noTeam.map(_orgNode).join('')+'</div></div>';
+    var nid='org-noTeam';
+    html += '<div class="bh-org-club" style="margin-bottom:10px;">'
+      +'<div onclick="_bhOrgToggle(\''+nid+'\')" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 14px;background:#0f1923;border-radius:8px;" onmouseover="this.style.background=\'#1e2a3a\'" onmouseout="this.style.background=\'#0f1923\'">'
+        +'<span id="arr-'+nid+'" style="color:#4ea1ff;">▶</span>'
+        +'<span style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">Individuele scouts</span>'
+        +'<span class="bh-org-count" style="margin-left:auto;">'+noTeam.length+'</span>'
+      +'</div>'
+      +'<div id="'+nid+'" style="display:none;padding:10px 0;"><div class="bh-org-row">'+noTeam.map(_orgNode).join('')+'</div></div>'
+    +'</div>';
   }
   if(admins.length){
-    html += '<div class="bh-org-group"><div class="bh-org-team">Beheerders <span class="bh-org-count">'+admins.length+'</span></div><div class="bh-org-row">'+admins.map(_orgNode).join('')+'</div></div>';
+    var aid='org-admins';
+    html += '<div class="bh-org-club" style="margin-bottom:10px;">'
+      +'<div onclick="_bhOrgToggle(\''+aid+'\')" style="cursor:pointer;display:flex;align-items:center;gap:10px;padding:12px 14px;background:#0f1923;border-radius:8px;" onmouseover="this.style.background=\'#1e2a3a\'" onmouseout="this.style.background=\'#0f1923\'">'
+        +'<span id="arr-'+aid+'" style="color:#4ea1ff;">▶</span>'
+        +'<span style="font-size:1.05rem;font-weight:700;color:#e2e8f0;">Beheerders</span>'
+        +'<span class="bh-org-count" style="margin-left:auto;">'+admins.length+'</span>'
+      +'</div>'
+      +'<div id="'+aid+'" style="display:none;padding:10px 0;"><div class="bh-org-row">'+admins.map(_orgNode).join('')+'</div></div>'
+    +'</div>';
   }
   el.innerHTML = html || '<div class="bh-empty">Nog geen gebruikers om te tonen</div>';
 }
+window._bhOrgToggle = function(id){
+  var b=document.getElementById(id); var a=document.getElementById('arr-'+id);
+  if(!b) return;
+  var open=b.style.display!=='none';
+  b.style.display=open?'none':'block';
+  if(a) a.textContent=open?'▶':'▼';
+};
 window.renderBeheer = renderBeheer;
 
 /* ============================================================
@@ -32728,6 +32960,12 @@ var _bhStatTotals = null;
 var _bhStatCounts = {};
 var _bhStatRole = '', _bhStatStatus = '', _bhStatActivity = '';
 var _bhStatRows = [];
+var _bhStatSortCol = '', _bhStatSortAsc = false;
+var _BH_DEMO_EMAILS = ['demo@scoutinghub.nl'];
+// Altijd demo: email begint met "demo." OF staat in vaste lijst
+function _bhIsDemo(u){ var e=(u.email||'').toLowerCase(); return e.startsWith('demo.')||_BH_DEMO_EMAILS.indexOf(e)!==-1; }
+// Verberg in standaard view: alleen demo.* prefix (niet vaste accounts)
+function _bhIsDemoHidden(u){ return (u.email||'').toLowerCase().startsWith('demo.'); }
 
 function _bhFmtDateTime(v){
   try{
@@ -32907,8 +33145,8 @@ function _bhRenderStats(){
     + '</div>';
 
   var rows=users.slice();
-  if(_bhShowDemo) rows=rows.filter(function(u){ return (u.email||'').toLowerCase().startsWith('demo.'); });
-  else rows=rows.filter(function(u){ return !(u.email||'').toLowerCase().startsWith('demo.'); });
+  if(_bhShowDemo) rows=rows.filter(function(u){ return _bhIsDemo(u); });
+  else rows=rows.filter(function(u){ return !_bhIsDemoHidden(u); });
   if(_bhStatRole) rows=rows.filter(function(u){ return (u.role||'scout')===_bhStatRole; });
   if(_bhStatStatus==='active') rows=rows.filter(_bhStatActiveU);
   else if(_bhStatStatus==='inactive') rows=rows.filter(function(u){ return u.isActive===false && !_bhStatDeletedU(u); });
@@ -32920,21 +33158,39 @@ function _bhRenderStats(){
   else if(tmf) rows=rows.filter(function(u){ return (u.teamId||'')===tmf; });
   if(q) rows=rows.filter(function(u){ return ((u.displayName||'')+' '+(u.email||'')+' '+(u.teamName||'')).toLowerCase().indexOf(q)!==-1; });
   function mval(u){ if(metric==='loginCount')return Number(u.loginCount)||0; var c=_bhStatCounts[u._id]; return c?(Number(c[metric])||0):-1; }
-  rows.sort(function(a,b){ return mval(b)-mval(a); });
+  if(_bhStatSortCol){
+    var sc=_bhStatSortCol, asc=_bhStatSortAsc;
+    rows.sort(function(a,b){
+      var va,vb;
+      if(sc==='name'){ va=(a.displayName||a.email||'').toLowerCase(); vb=(b.displayName||b.email||'').toLowerCase(); return asc?va.localeCompare(vb):vb.localeCompare(va); }
+      if(sc==='team'){ va=((window._bhTeamNameMap&&a.teamId&&window._bhTeamNameMap[a.teamId])||a.teamName||'').toLowerCase(); vb=((window._bhTeamNameMap&&b.teamId&&window._bhTeamNameMap[b.teamId])||b.teamName||'').toLowerCase(); return asc?va.localeCompare(vb):vb.localeCompare(va); }
+      if(sc==='club'){ va=((window._bhTeamOrgMap&&a.teamId&&window._bhTeamOrgMap[a.teamId])||a.clubName||'').toLowerCase(); vb=((window._bhTeamOrgMap&&b.teamId&&window._bhTeamOrgMap[b.teamId])||b.clubName||'').toLowerCase(); return asc?va.localeCompare(vb):vb.localeCompare(va); }
+      if(sc==='status'){ va=_bhStatDeletedU(a)?2:(a.isActive===false?1:0); vb=_bhStatDeletedU(b)?2:(b.isActive===false?1:0); return asc?va-vb:vb-va; }
+      if(sc==='created'){ va=_bhStatMs(a.createdAt)||0; vb=_bhStatMs(b.createdAt)||0; return asc?va-vb:vb-va; }
+      if(sc==='lastlogin'){ va=_bhStatMs(a.lastLoginAt)||0; vb=_bhStatMs(b.lastLoginAt)||0; return asc?va-vb:vb-va; }
+      if(sc==='logins'){ va=Number(a.loginCount)||0; vb=Number(b.loginCount)||0; return asc?va-vb:vb-va; }
+      if(sc==='players'||sc==='matchReports'||sc==='tournaments'||sc==='tips'){ va=cnt(a,sc); vb=cnt(b,sc); if(typeof va!=='number')va=-1; if(typeof vb!=='number')vb=-1; return asc?va-vb:vb-va; }
+      return 0;
+    });
+  } else {
+    rows.sort(function(a,b){ return mval(b)-mval(a); });
+  }
   _bhStatRows=rows;
   var loadingCounts=(Object.keys(_bhStatCounts).length<users.length);
   function cnt(u,k){ var c=_bhStatCounts[u._id]; if(c&&c[k]!=null)return c[k]; return loadingCounts?'…':0; }
+  function thSort(col,lab){ var cur=_bhStatSortCol===col; var arr=cur?(_bhStatSortAsc?'▲':'▼'):''; return '<th style="cursor:pointer;user-select:none" onclick="_bhStatClickSort(\''+col+'\')" title="Sorteer op '+lab+'">'+lab+(arr?' <span style="color:#4ea1ff">'+arr+'</span>':'')+'</th>'; }
   function urow(u){
     var role=u.role||'scout'; var rl=role==='coordinator'?'Coördinator':(role==='admin'?'Admin':'Scout');
     var rcl=role==='admin'?'bh-b-purple':(role==='coordinator'?'bh-b-blue':'bh-b-grey');
     var st=_bhStatDeletedU(u)?'<span class="bh-badge bh-b-red">Verwijderd</span>':((u.isActive===false)?'<span class="bh-badge bh-b-amber">Inactief</span>':'<span class="bh-badge bh-b-green">Actief</span>');
-    var tNm=(window._bhTeamNameMap&&u.teamId&&window._bhTeamNameMap[u.teamId])||u.teamName||'—';
-    var tOrg=(window._bhTeamOrgMap&&u.teamId&&window._bhTeamOrgMap[u.teamId])||u.clubName||'—';
+    var tNm=(window._bhTeamNameMap&&u.teamId&&window._bhTeamNameMap[u.teamId])||u.teamName||'';
+    var tOrg=(window._bhTeamOrgMap&&u.teamId&&window._bhTeamOrgMap[u.teamId])||u.clubName||'';
+    var demoTag=(!_bhShowDemo&&_bhIsDemo(u))?'<span class="bh-badge" style="background:#7c3aed22;color:#a78bfa;font-size:.7rem">Demo</span>':'';
     return '<tr style="cursor:pointer" onclick="_bhStatOpenScout(\''+_bhEsc(u._id||'')+'\')">'
-      +'<td><div class="bh-tb-nm">'+(_bhEsc(u.displayName)||_bhEsc(u.email)||'—')+'</div><div class="bh-tb-em">'+(_bhEsc(u.email)||'')+'</div></td>'
+      +'<td><div class="bh-tb-nm">'+(_bhEsc(u.displayName)||_bhEsc(u.email)||'&mdash;')+' '+demoTag+'</div><div class="bh-tb-em">'+(_bhEsc(u.email)||'')+'</div></td>'
       +'<td><span class="bh-badge '+rcl+'">'+rl+'</span></td>'
-      +'<td>'+_bhEsc(tNm)+'</td>'
-      +'<td>'+_bhEsc(tOrg)+'</td>'
+      +'<td>'+(_bhEsc(tNm)||'&mdash;')+'</td>'
+      +'<td>'+(_bhEsc(tOrg)||'&mdash;')+'</td>'
       +'<td>'+st+'</td>'
       +'<td class="bh-tb-dt">'+_bhFmtDateTime(u.createdAt)+'</td>'
       +'<td class="bh-tb-dt">'+_bhFmtDateTime(u.lastLoginAt)+'</td>'
@@ -32946,11 +33202,11 @@ function _bhRenderStats(){
       +'</tr>';
   }
   var utable='<div class="bh-tbl-wrap"><table class="bh-tbl"><thead><tr>'
-    +'<th>Gebruiker</th><th>Rol</th><th>Team</th><th>Club</th><th>Status</th><th>Aangemaakt</th><th>Laatste login</th><th>Logins</th><th>Spelers</th><th>Rapporten</th><th>Toern.</th><th>Tips</th>'
+    +thSort('name','Gebruiker')+'<th>Rol</th>'+thSort('team','Team')+thSort('club','Club')+thSort('status','Status')+thSort('created','Aangemaakt')+thSort('lastlogin','Laatste login')+thSort('logins','Logins')+thSort('players','Spelers')+thSort('matchReports','Rapporten')+'<th>Toern.</th><th>Tips</th>'
     +'</tr></thead><tbody>'
     +(rows.length?rows.slice(0,_BH_STAT_CAP).map(urow).join(''):'<tr><td colspan="12" class="bh-empty">Geen gebruikers met deze filters</td></tr>')
     +'</tbody></table></div>'
-    +((rows.length>_BH_STAT_CAP)?('<div class="bh-stat-note">Top '+_BH_STAT_CAP+' van '+rows.length+' getoond — verfijn met zoeken/filters of een andere metric.</div>'):'');
+    +((rows.length>_BH_STAT_CAP)?('<div class="bh-stat-note">Top '+_BH_STAT_CAP+' van '+rows.length+' getoond.</div>'):'');
 
   teamArr.sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
   function tStatus(t){ if(t.coords===0)return ['bad','Geen coördinator']; if(t.scouts===0)return['warn','Geen scouts']; if(t.active===0)return['warn','Alleen inactief']; return['ok','OK']; }
@@ -33003,6 +33259,7 @@ function _bhExportStatsCsv(){
   if(typeof toast==='function') toast('CSV gedownload ✓');
 }
 window._bhExportStatsCsv=_bhExportStatsCsv;
+window._bhStatClickSort=function(col){ if(_bhStatSortCol===col){ _bhStatSortAsc=!_bhStatSortAsc; }else{ _bhStatSortCol=col; _bhStatSortAsc=true; } _bhRenderStats(); };
 window._bhLoadStats=_bhLoadStats; window._bhRenderStats=_bhRenderStats;
 
 /* Scout dashboard: klik op rij → KPI modal */
@@ -33353,9 +33610,9 @@ function _bhRenderUsers(){
   if(tmf==='__none__') rows = rows.filter(function(u){ return !(u.teamId||''); });
   else if(tmf) rows = rows.filter(function(u){ return (u.teamId||'')===tmf; });
   if(q) rows = rows.filter(function(u){ return ((u.displayName||'')+' '+(u.email||'')).toLowerCase().indexOf(q) !== -1; });
-  // Demo-filter: standaard geen demo-accounts; knop = toon ALLEEN demo
-  if(_bhShowDemo) rows = rows.filter(function(u){ return (u.email||'').toLowerCase().startsWith('demo.'); });
-  else rows = rows.filter(function(u){ return !(u.email||'').toLowerCase().startsWith('demo.'); });
+  // Demo-filter: standaard geen demo.* accounts; knop = toon ALLEEN demo-accounts
+  if(_bhShowDemo) rows = rows.filter(function(u){ return _bhIsDemo(u); });
+  else rows = rows.filter(function(u){ return !_bhIsDemoHidden(u); });
   rows.sort(function(a,b){
     var da=((a.status||'')==='deleted')?1:0, db=((b.status||'')==='deleted')?1:0;
     if(da!==db) return da-db;

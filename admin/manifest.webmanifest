@@ -1,15 +1,18 @@
 {
+  "id": "/admin/",
   "name": "ScoutingHub Beheer",
   "short_name": "SH Beheer",
   "description": "Beheerconsole voor ScoutingHub — alleen voor beheerders",
-  "start_url": "/admin/",
+  "start_url": "/admin/?pwa=1",
   "scope": "/admin/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
   "background_color": "#0c1119",
   "theme_color": "#0c1119",
   "lang": "nl",
   "categories": ["productivity", "business"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/admin/icon-192.png",

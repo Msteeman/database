@@ -4814,7 +4814,12 @@ function _ritSetupSuggest(inputId, boxId, kind){
     }, 280);
   };
   input.addEventListener('focus', fill);
-  input.addEventListener('input', fill);
+  input.addEventListener('input', () => {
+    // Adres gewijzigd — wis opgeslagen coords zodat Herbereken opnieuw geocodeert
+    if(latInp) latInp.value = '';
+    if(lonInp) lonInp.value = '';
+    fill();
+  });
   input.addEventListener('blur', () => {
     setTimeout(() => {
       box.classList.remove('open');

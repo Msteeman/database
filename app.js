@@ -4190,7 +4190,7 @@ async function _ritGeoLocation(kind){
     const {latitude, longitude} = pos.coords;
     let adres = '';
     try {
-      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=16&addressdetails=1`;
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=16&addressdetails=1&email=marcelsteeman1%40gmail.com`;
       const res = await fetch(url, { headers: { 'Accept-Language': 'nl' } });
       const json = await res.json();
       const a = json.address || {};
@@ -4200,7 +4200,7 @@ async function _ritGeoLocation(kind){
     } catch(e){
       // Tweede poging zonder zoom/addressdetails
       try {
-        const fb = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}`, { headers: { 'Accept-Language': 'nl' } });
+        const fb = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&email=marcelsteeman1%40gmail.com`, { headers: { 'Accept-Language': 'nl' } });
         const fj = await fb.json();
         const fa = fj.address || {};
         const fStraat = [fa.road, fa.house_number].filter(Boolean).join(' ');
@@ -4245,7 +4245,7 @@ async function _ritNominatimSearch(q){
   if(_ritSearchCache.has(q)) return _ritSearchCache.get(q);
   const hdrs = { 'Accept-Language': 'nl', 'User-Agent': 'ScoutingHub/1.0 (scoutinghub.nl)' };
   const _fetch = async (query) => {
-    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&countrycodes=nl&limit=6&addressdetails=1`;
+    const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(query)}&countrycodes=nl&limit=6&addressdetails=1&email=marcelsteeman1%40gmail.com`;
     try {
       const res = await fetch(url, { headers: hdrs });
       if(!res.ok) return [];
@@ -4876,27 +4876,30 @@ async function _ritTryAutoKm(force){
     return;
   }
 
+  // Geocoded coords altijd opslaan in hidden fields (ook als km-berekening later faalt)
+  const setHidden = (id, v) => { const el = document.getElementById(id); if(el) el.value = v; };
+  setHidden('rit-vertrek-lat', _vLat); setHidden('rit-vertrek-lon', _vLon);
+  setHidden('rit-aankomst-lat', _aLat); setHidden('rit-aankomst-lon', _aLon);
+
   _ritKmBusy = true;
-  const prev = kmInp.placeholder;
   const btn = document.getElementById('rit-km-herbereken');
   const btnTxt = btn ? btn.textContent : '';
   if(btn){ btn.textContent = '⏳ Berekenen…'; btn.disabled = true; }
+  const prevPlaceholder = kmInp.placeholder;
   kmInp.placeholder = 'Berekenen…';
   kmInp.value = '';
+  let kmSuccess = false;
   try {
     const km = await _ritRouteKm(_vLat, _vLon, _aLat, _aLon);
     if(km !== null && isFinite(km) && km > 0){
       kmInp.value = km.toFixed(1);
-      const setHidden = (id, v) => { const el = document.getElementById(id); if(el) el.value = v; };
-      setHidden('rit-vertrek-lat', _vLat); setHidden('rit-vertrek-lon', _vLon);
-      setHidden('rit-aankomst-lat', _aLat); setHidden('rit-aankomst-lon', _aLon);
+      kmSuccess = true;
       if(typeof toast === 'function') toast('Afstand berekend: ' + km.toFixed(1) + ' km');
     } else {
-      kmInp.placeholder = 'Vul handmatig in';
       if(typeof toast === 'function') toast('Kon afstand niet berekenen — vul handmatig in', true);
     }
   } finally {
-    kmInp.placeholder = prev || '0';
+    kmInp.placeholder = kmSuccess ? (prevPlaceholder || '0') : 'Vul handmatig in';
     if(btn){ btn.textContent = btnTxt; btn.disabled = false; }
     _ritKmBusy = false;
   }

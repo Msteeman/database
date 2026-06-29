@@ -32427,7 +32427,7 @@ window._admNlSend=async function(btn, cnt){
     var j={};try{j=await r.json();}catch(_){}
     if(r.ok&&j&&j.ok){
       if(typeof toast==='function') toast('Nieuwsbrief verstuurd naar '+( j.sent||cnt)+' abonnees');
-      if(res) res.innerHTML='<div style="color:#4ade80;padding:8px 0;">Verstuurd naar '+(j.sent||cnt)+' abonnee'+(cnt!==1?'s'||'')+'</div>';
+      if(res) res.innerHTML='<div style="color:#4ade80;padding:8px 0;">Verstuurd naar '+(j.sent||cnt)+' abonnee'+(cnt!==1?'s':'')+'</div>';
     } else {
       if(res) res.innerHTML='<div class="bh-empty">Mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
       if(btn){ btn.disabled=false; btn.textContent=_o; }

@@ -4525,23 +4525,77 @@ function _shLogoImg(naam, size){
 
 /* Vaste locaties — bekende NL voetballocaties, geen API nodig */
 const _RIT_VASTE_LOC = {
-  'sportpark de toekomst':    {lat:52.3130, lon:4.9367},
-  'de toekomst amsterdam':    {lat:52.3130, lon:4.9367},
-  'ajax de toekomst':         {lat:52.3130, lon:4.9367},
-  'johan cruyff arena':       {lat:52.3143, lon:4.9411},
-  'amsterdam arena':          {lat:52.3143, lon:4.9411},
-  'de kuip':                  {lat:51.8942, lon:4.5229},
-  'gelredome':                {lat:51.9898, lon:5.9244},
-  'gelredome jeugdcomplex':   {lat:51.9898, lon:5.9244},
-  'mac3park stadion':         {lat:52.5041, lon:6.1042},
-  'abe lenstra stadion':      {lat:52.9542, lon:5.9186},
-  'philips stadion':          {lat:51.4415, lon:5.4677},
-  'grolsch veste':            {lat:52.2295, lon:6.8917},
-  'rat verlegh stadion':      {lat:51.5906, lon:4.7806},
-  'cars jeans stadion':       {lat:52.0562, lon:4.3211},
-  'yanmar stadion':           {lat:51.4482, lon:5.4929},
-  'polman stadion':           {lat:52.3109, lon:6.8936},
-  'vijverberg':               {lat:51.9760, lon:6.2936},
+  // Ajax
+  'sportpark de toekomst':          {lat:52.3130, lon:4.9367},
+  'de toekomst amsterdam':          {lat:52.3130, lon:4.9367},
+  'ajax de toekomst':               {lat:52.3130, lon:4.9367},
+  'johan cruyff arena':             {lat:52.3143, lon:4.9411},
+  'amsterdam arena':                {lat:52.3143, lon:4.9411},
+  // PSV
+  'philips stadion':                {lat:51.4415, lon:5.4677},
+  'psv campus':                     {lat:51.4358, lon:5.4680},
+  'de herdgang':                    {lat:51.4358, lon:5.4680},
+  'psv de herdgang':                {lat:51.4358, lon:5.4680},
+  'yanmar stadion':                 {lat:51.4482, lon:5.4929},
+  // Feyenoord
+  'de kuip':                        {lat:51.8942, lon:4.5229},
+  'sportcomplex varkenoord':        {lat:51.8857, lon:4.5231},
+  'varkenoord':                     {lat:51.8857, lon:4.5231},
+  'feyenoord varkenoord':           {lat:51.8857, lon:4.5231},
+  // FC Twente / Heracles Almelo
+  'grolsch veste':                  {lat:52.2295, lon:6.8917},
+  'kuipersdijk':                    {lat:52.2493, lon:6.7855},
+  'kuipersdijk hengelo':            {lat:52.2493, lon:6.7855},
+  'fc twente heracles':             {lat:52.2493, lon:6.7855},
+  'twente heracles academie':       {lat:52.2493, lon:6.7855},
+  'fc twente heracles academie':    {lat:52.2493, lon:6.7855},
+  'polman stadion':                 {lat:52.3109, lon:6.8936},
+  // AZ Alkmaar
+  'afas stadion':                   {lat:52.6119, lon:4.7469},
+  'afas trainingscomplex':          {lat:52.6163, lon:4.7405},
+  'az trainingscomplex':            {lat:52.6163, lon:4.7405},
+  'AFAS Trainingscomplex':          {lat:52.6163, lon:4.7405},
+  // FC Utrecht
+  'stadion galgenwaard':            {lat:52.0802, lon:5.1431},
+  'nieuw de stadion galgenwaard':   {lat:52.0802, lon:5.1431},
+  'fc utrecht sportcomplex':        {lat:52.0915, lon:5.1100},
+  'zoudenbalch':                    {lat:52.0915, lon:5.1100},
+  // SC Heerenveen
+  'abe lenstra stadion':            {lat:52.9542, lon:5.9186},
+  'sc heerenveen trainingscomplex': {lat:52.9500, lon:5.9200},
+  // Go Ahead Eagles
+  'de adelaarshorst':               {lat:52.2619, lon:6.1514},
+  'vijverberg':                     {lat:51.9760, lon:6.2936},
+  // NEC Nijmegen
+  'goffertstadion':                 {lat:51.8238, lon:5.8608},
+  'nec nijmegen jeugd':             {lat:51.8238, lon:5.8608},
+  // NAC Breda
+  'rat verlegh stadion':            {lat:51.5906, lon:4.7806},
+  // FC Groningen
+  'euroborg':                       {lat:53.2030, lon:6.5904},
+  'fc groningen trainingscomplex':  {lat:53.2150, lon:6.5850},
+  // Vitesse
+  'gelredome':                      {lat:51.9898, lon:5.9244},
+  'gelredome jeugdcomplex':         {lat:51.9898, lon:5.9244},
+  'papendal':                       {lat:51.9785, lon:5.8520},
+  // Sparta Rotterdam
+  'het kasteel':                    {lat:51.9287, lon:4.4278},
+  // RKC Waalwijk
+  'mandemakers stadion':            {lat:51.6833, lon:5.0677},
+  // FC Emmen
+  'de oude meerdijk':               {lat:52.7800, lon:6.9100},
+  // PEC Zwolle
+  'mac3park stadion':               {lat:52.5041, lon:6.1042},
+  // Den Haag
+  'cars jeans stadion':             {lat:52.0562, lon:4.3211},
+  'binnenlandse baan':              {lat:52.0700, lon:4.3350},
+  // Fortuna Sittard
+  'fortuna sittard stadion':        {lat:51.0000, lon:5.8700},
+  // Excelsior
+  'van donge en de roo stadion':    {lat:51.9190, lon:4.5270},
+  // Heracles Almelo
+  'polman stadion almelo':          {lat:52.3109, lon:6.8936},
+  'heracles trainingscomplex':      {lat:52.3150, lon:6.8900},
 };
 function _ritVasteLoc(txt){
   const k = (txt||'').toLowerCase().replace(/[^a-z0-9 ]/g,' ').replace(/\s+/g,' ').trim();
@@ -4829,30 +4883,32 @@ async function _ritTryAutoKm(force){
   const _geocode = async (raw) => {
     if(!raw || !raw.trim()) return null;
     const q1 = _cleanQ(raw);
-    // Poging 0: vaste locatietabel (sportparken/stadions)
+    // Poging 0: vaste locatietabel (sportparken/stadions — altijd offline)
     const vaste = _ritVasteLoc(q1);
     if(vaste) return vaste;
-    // Poging 1: volledig adres
-    let hits = await _ritNominatimSearch(q1).catch(()=>[]);
+    // Poging 1: PDOK (NL overheidsregister — meest betrouwbaar voor NL adressen/postcodes)
+    let hits = await _ritPdokSearch(q1).catch(()=>[]);
     if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
-    // Poging 2: alleen na de komma (plaatsnaam)
+    // Poging 2: Nominatim volledig adres
+    hits = await _ritNominatimSearch(q1).catch(()=>[]);
+    if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
+    // Poging 3: Photon — betere POI/sportparkherkenning
+    hits = await _ritPhotonSearch(q1).catch(()=>[]);
+    if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
+    // Poging 4: alleen voor de komma (straatnaam/sportpark)
+    const beforeComma = q1.includes(',') ? q1.split(',')[0].trim() : '';
+    if(beforeComma && beforeComma !== q1){
+      hits = await _ritPdokSearch(beforeComma).catch(()=>[]);
+      if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
+      hits = await _ritNominatimSearch(beforeComma).catch(()=>[]);
+      if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
+    }
+    // Poging 5: alleen plaatsnaam (laatste deel na komma)
     const afterComma = q1.includes(',') ? q1.split(',').pop().trim() : '';
     if(afterComma && afterComma !== q1){
       hits = await _ritNominatimSearch(afterComma).catch(()=>[]);
       if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
     }
-    // Poging 3: alleen voor de komma (straatnaam/sportpark)
-    const beforeComma = q1.includes(',') ? q1.split(',')[0].trim() : '';
-    if(beforeComma && beforeComma !== q1){
-      hits = await _ritNominatimSearch(beforeComma).catch(()=>[]);
-      if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
-    }
-    // Poging 4: PDOK (NL overheidsgeocoder — beste voor NL adressen)
-    hits = await _ritPdokSearch(q1).catch(()=>[]);
-    if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
-    // Poging 5: Photon — betere POI/sportparkherkenning
-    hits = await _ritPhotonSearch(q1).catch(()=>[]);
-    if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
     return null;
   };
 

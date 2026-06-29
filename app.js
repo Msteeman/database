@@ -4526,23 +4526,30 @@ function _shLogoImg(naam, size){
 /* Vaste locaties — bekende NL voetballocaties, geen API nodig */
 const _RIT_VASTE_LOC = {
   // Ajax
+  'ajax':                           {lat:52.3130, lon:4.9367},
+  'borchlandweg':                   {lat:52.3130, lon:4.9367},
   'sportpark de toekomst':          {lat:52.3130, lon:4.9367},
   'de toekomst amsterdam':          {lat:52.3130, lon:4.9367},
   'ajax de toekomst':               {lat:52.3130, lon:4.9367},
   'johan cruyff arena':             {lat:52.3143, lon:4.9411},
   'amsterdam arena':                {lat:52.3143, lon:4.9411},
   // PSV
+  'psv':                            {lat:51.4358, lon:5.4680},
   'philips stadion':                {lat:51.4415, lon:5.4677},
   'psv campus':                     {lat:51.4358, lon:5.4680},
   'de herdgang':                    {lat:51.4358, lon:5.4680},
   'psv de herdgang':                {lat:51.4358, lon:5.4680},
   'yanmar stadion':                 {lat:51.4482, lon:5.4929},
   // Feyenoord
+  'feyenoord':                      {lat:51.8857, lon:4.5231},
   'de kuip':                        {lat:51.8942, lon:4.5229},
   'sportcomplex varkenoord':        {lat:51.8857, lon:4.5231},
   'varkenoord':                     {lat:51.8857, lon:4.5231},
   'feyenoord varkenoord':           {lat:51.8857, lon:4.5231},
   // FC Twente / Heracles Almelo
+  'fc twente':                      {lat:52.2493, lon:6.7855},
+  'heracles':                       {lat:52.3109, lon:6.8936},
+  'heracles almelo':                {lat:52.3109, lon:6.8936},
   'grolsch veste':                  {lat:52.2295, lon:6.8917},
   'kuipersdijk':                    {lat:52.2493, lon:6.7855},
   'kuipersdijk hengelo':            {lat:52.2493, lon:6.7855},
@@ -4551,11 +4558,13 @@ const _RIT_VASTE_LOC = {
   'fc twente heracles academie':    {lat:52.2493, lon:6.7855},
   'polman stadion':                 {lat:52.3109, lon:6.8936},
   // AZ Alkmaar
+  'az':                             {lat:52.6163, lon:4.7405},
+  'az alkmaar':                     {lat:52.6163, lon:4.7405},
   'afas stadion':                   {lat:52.6119, lon:4.7469},
   'afas trainingscomplex':          {lat:52.6163, lon:4.7405},
   'az trainingscomplex':            {lat:52.6163, lon:4.7405},
-  'AFAS Trainingscomplex':          {lat:52.6163, lon:4.7405},
   // FC Utrecht
+  'fc utrecht':                     {lat:52.0915, lon:5.1100},
   'stadion galgenwaard':            {lat:52.0802, lon:5.1431},
   'nieuw de stadion galgenwaard':   {lat:52.0802, lon:5.1431},
   'fc utrecht sportcomplex':        {lat:52.0915, lon:5.1100},

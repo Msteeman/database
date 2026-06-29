@@ -4960,9 +4960,7 @@ async function _ritTryAutoKm(force){
   }
   if(![_vLat,_vLon,_aLat,_aLon].every(isFinite)){
     const kmInp2 = document.getElementById('rit-km');
-    if(kmInp2 && !kmInp2.value) kmInp2.placeholder = 'Klik ⟳ Herbereken';
-    // DEBUG: toon welke coord ontbreekt
-    if(typeof toast === 'function') toast('DBG coords: v=' + _vLat?.toFixed(2) + ',' + _vLon?.toFixed(2) + ' a=' + _aLat?.toFixed(2) + ',' + _aLon?.toFixed(2), true);
+    if(kmInp2) kmInp2.placeholder = 'DBG v=' + (_vLat||'NaN') + ',' + (_vLon||'NaN') + ' a=' + (_aLat||'NaN') + ',' + (_aLon||'NaN');
     return;
   }
 
@@ -4986,12 +4984,12 @@ async function _ritTryAutoKm(force){
       kmSuccess = true;
       if(typeof toast === 'function') toast('Afstand berekend: ' + km.toFixed(1) + ' km');
     } else {
-      // DEBUG: coords waren wel geldig maar OSRM/haversine gaf geen resultaat
-      if(typeof toast === 'function') toast('DBG routeKm null: v=' + _vLat?.toFixed(2) + ',' + _vLon?.toFixed(2) + ' a=' + _aLat?.toFixed(2) + ',' + _aLon?.toFixed(2), true);
+      // DEBUG: toon in km-placeholder (blijft staan)
+      kmInp.placeholder = 'DBG v=' + (_vLat||0).toFixed(3) + ',' + (_vLon||0).toFixed(3) + ' a=' + (_aLat||0).toFixed(3) + ',' + (_aLon||0).toFixed(3);
       if(typeof toast === 'function') toast('Kon afstand niet berekenen — vul handmatig in', true);
     }
   } finally {
-    kmInp.placeholder = kmSuccess ? (prevPlaceholder || '0') : 'Vul handmatig in';
+    if(kmSuccess) kmInp.placeholder = (prevPlaceholder || '0');
     if(btn){ btn.textContent = btnTxt; btn.disabled = false; }
     _ritKmBusy = false;
   }

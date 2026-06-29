@@ -4739,38 +4739,14 @@ function _ritSetupSuggest(inputId, boxId, kind){
           _ritAddrCoords.set(m.label, {lat:m.lat, lon:m.lon});
           box.classList.remove('open');
           _ritTryAutoKm();
-        } else if(m.adres && typeof _ritNominatimSearch === 'function'){
-          // Club zonder coords — vaste tabel, dan PDOK (postcode), dan Nominatim/Photon
+        } else if(m.adres){
+          // Club zonder coords: zelfde pad als handmatig typen.
+          // _ritTryAutoKm leest het adres uit het veld en geocodeert via _geocode
+          // (vaste tabel -> PDOK -> Nominatim -> Photon) — identiek aan blur-pad.
           box.classList.remove('open');
-          const vasteC = _ritVasteLoc(m.adres) || _ritVasteLoc(m.label);
-          if(vasteC){
-            if(latInp) latInp.value = String(vasteC.lat);
-            if(lonInp) lonInp.value = String(vasteC.lon);
-            _ritAddrCoords.set(m.label, vasteC);
-            _ritTryAutoKm();
-          } else {
-            (async () => {
-              let res = [];
-              // PDOK met postcode — meest betrouwbaar voor NL clubadressen
-              const pcM = (m.adres||'').match(/\b(\d{4})\s*([a-z]{2})\b/i);
-              if(pcM){
-                const pc = pcM[1] + pcM[2].toUpperCase();
-                const hnM = (m.adres||'').match(/\b(\d+)\b/);
-                const pdokQ = hnM ? (hnM[1] + ' ' + pc) : pc;
-                res = await _ritPdokSearch(pdokQ).catch(()=>[]);
-                if(!res.length) res = await _ritPdokSearch(pc).catch(()=>[]);
-              }
-              if(!res.length) res = await _ritPdokSearch(m.adres).catch(()=>[]);
-              if(!res.length) res = await _ritNominatimSearch(m.adres).catch(()=>[]);
-              if(!res.length) res = await _ritPhotonSearch(m.adres).catch(()=>[]);
-              if(res.length){
-                if(latInp) latInp.value = String(res[0].lat);
-                if(lonInp) lonInp.value = String(res[0].lon);
-                _ritAddrCoords.set(m.label, {lat:res[0].lat, lon:res[0].lon});
-                _ritTryAutoKm();
-              }
-            })();
-          }
+          if(latInp) latInp.value = '';
+          if(lonInp) lonInp.value = '';
+          _ritTryAutoKm(true);
         } else {
           if(latInp) latInp.value = '';
           if(lonInp) lonInp.value = '';

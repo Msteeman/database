@@ -4815,9 +4815,11 @@ function _ritSetupSuggest(inputId, boxId, kind){
   };
   input.addEventListener('focus', fill);
   input.addEventListener('input', () => {
-    // Adres gewijzigd — wis opgeslagen coords zodat Herbereken opnieuw geocodeert
+    // Adres gewijzigd — wis coords + km zodat blur/Herbereken opnieuw geocodeert
     if(latInp) latInp.value = '';
     if(lonInp) lonInp.value = '';
+    const _kmInp = document.getElementById('rit-km');
+    if(_kmInp) _kmInp.value = '';
     fill();
   });
   input.addEventListener('blur', () => {

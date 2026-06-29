@@ -4740,7 +4740,7 @@ function _ritSetupSuggest(inputId, boxId, kind){
           box.classList.remove('open');
           _ritTryAutoKm();
         } else if(m.adres && typeof _ritNominatimSearch === 'function'){
-          // Club zonder coords — geocodeer volledig adres (straat + postcode + stad)
+          // Club zonder coords — vaste tabel, dan PDOK (postcode), dan Nominatim/Photon
           box.classList.remove('open');
           const vasteC = _ritVasteLoc(m.adres) || _ritVasteLoc(m.label);
           if(vasteC){
@@ -4749,15 +4749,27 @@ function _ritSetupSuggest(inputId, boxId, kind){
             _ritAddrCoords.set(m.label, vasteC);
             _ritTryAutoKm();
           } else {
-          _ritNominatimSearch(m.adres).then(async res => {
-            if(!res || !res.length) res = await _ritPhotonSearch(m.adres).catch(()=>[]);
-            if(res && res.length){
-              if(latInp) latInp.value = String(res[0].lat);
-              if(lonInp) lonInp.value = String(res[0].lon);
-              _ritAddrCoords.set(m.label, {lat:res[0].lat, lon:res[0].lon});
-              _ritTryAutoKm();
-            }
-          }).catch(()=>{});
+            (async () => {
+              let res = [];
+              // PDOK met postcode — meest betrouwbaar voor NL clubadressen
+              const pcM = (m.adres||'').match(/\b(\d{4})\s*([a-z]{2})\b/i);
+              if(pcM){
+                const pc = pcM[1] + pcM[2].toUpperCase();
+                const hnM = (m.adres||'').match(/\b(\d+)\b/);
+                const pdokQ = hnM ? (hnM[1] + ' ' + pc) : pc;
+                res = await _ritPdokSearch(pdokQ).catch(()=>[]);
+                if(!res.length) res = await _ritPdokSearch(pc).catch(()=>[]);
+              }
+              if(!res.length) res = await _ritPdokSearch(m.adres).catch(()=>[]);
+              if(!res.length) res = await _ritNominatimSearch(m.adres).catch(()=>[]);
+              if(!res.length) res = await _ritPhotonSearch(m.adres).catch(()=>[]);
+              if(res.length){
+                if(latInp) latInp.value = String(res[0].lat);
+                if(lonInp) lonInp.value = String(res[0].lon);
+                _ritAddrCoords.set(m.label, {lat:res[0].lat, lon:res[0].lon});
+                _ritTryAutoKm();
+              }
+            })();
           }
         } else {
           if(latInp) latInp.value = '';
@@ -4892,32 +4904,61 @@ async function _ritTryAutoKm(force){
   const _geocode = async (raw) => {
     if(!raw || !raw.trim()) return null;
     const q1 = _cleanQ(raw);
-    // Poging 0: vaste locatietabel (sportparken/stadions — altijd offline)
+
+    // 0: vaste locatietabel (sportparken/stadions/clubnamen — altijd offline)
     const vaste = _ritVasteLoc(q1);
     if(vaste) return vaste;
-    // Poging 1: PDOK (NL overheidsregister — meest betrouwbaar voor NL adressen/postcodes)
+
+    // 1: NL postcode detectie (NNNNLL of NNNN LL) — meest betrouwbaar via PDOK BAG
+    const pcMatch = q1.match(/\b(\d{4})\s*([a-z]{2})\b/i);
+    if(pcMatch){
+      const pc = pcMatch[1] + pcMatch[2].toUpperCase();
+      // Huisnummer ook meenemen als dat aanwezig is
+      const hnMatch = q1.match(/\b(\d+)\b/);
+      const pdokQ = hnMatch ? (hnMatch[1] + ' ' + pc) : pc;
+      let hits = await _ritPdokSearch(pdokQ).catch(()=>[]);
+      if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
+      // Alleen postcode als fallback
+      if(hnMatch){
+        hits = await _ritPdokSearch(pc).catch(()=>[]);
+        if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
+      }
+      // Nominatim met postcode-vrij adres (straat + huisnr + plaats)
+      const withoutPc = q1.replace(/\b\d{4}\s*[a-z]{2}\b/gi, '').replace(/\s*,\s*/g, ', ').replace(/,\s*,/g, ',').trim().replace(/^,|,$/g, '').trim();
+      if(withoutPc && withoutPc !== q1){
+        hits = await _ritNominatimSearch(withoutPc).catch(()=>[]);
+        if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
+      }
+    }
+
+    // 2: PDOK volledig adres
     let hits = await _ritPdokSearch(q1).catch(()=>[]);
     if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
-    // Poging 2: Nominatim volledig adres
+
+    // 3: Nominatim volledig adres
     hits = await _ritNominatimSearch(q1).catch(()=>[]);
     if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
-    // Poging 3: Photon — betere POI/sportparkherkenning
+
+    // 4: Photon — betere POI/sportparkherkenning
     hits = await _ritPhotonSearch(q1).catch(()=>[]);
     if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
-    // Poging 4: alleen voor de komma (straatnaam/sportpark)
+
+    // 5: alleen voor de eerste komma (straatnaam/sportpark)
     const beforeComma = q1.includes(',') ? q1.split(',')[0].trim() : '';
     if(beforeComma && beforeComma !== q1){
       hits = await _ritPdokSearch(beforeComma).catch(()=>[]);
       if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
-      hits = await _ritNominatimSearch(beforeComma).catch(()=>[]);
+      hits = await _ritNominatimSearch(beforeComma + ', Nederland').catch(()=>[]);
       if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
     }
-    // Poging 5: alleen plaatsnaam (laatste deel na komma)
+
+    // 6: alleen plaatsnaam (laatste deel na komma)
     const afterComma = q1.includes(',') ? q1.split(',').pop().trim() : '';
-    if(afterComma && afterComma !== q1){
-      hits = await _ritNominatimSearch(afterComma).catch(()=>[]);
+    if(afterComma && afterComma !== q1 && afterComma.length > 2){
+      hits = await _ritNominatimSearch(afterComma + ', Nederland').catch(()=>[]);
       if(hits && hits[0] && isFinite(hits[0].lat)) return hits[0];
     }
+
     return null;
   };
 

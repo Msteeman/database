@@ -4740,12 +4740,11 @@ function _ritSetupSuggest(inputId, boxId, kind){
           box.classList.remove('open');
           _ritTryAutoKm();
         } else if(m.adres){
-          // Club zonder coords: zelfde pad als handmatig typen.
-          // _ritTryAutoKm leest het adres uit het veld en geocodeert via _geocode
-          // (vaste tabel -> PDOK -> Nominatim -> Photon) — identiek aan blur-pad.
           box.classList.remove('open');
           if(latInp) latInp.value = '';
           if(lonInp) lonInp.value = '';
+          // DEBUG: toon welk adres geocodeert wordt
+          if(typeof toast === 'function') toast('DBG club: adres=' + (m.adres||'?').slice(0,40), false);
           _ritTryAutoKm(true);
         } else {
           if(latInp) latInp.value = '';
@@ -4962,6 +4961,8 @@ async function _ritTryAutoKm(force){
   if(![_vLat,_vLon,_aLat,_aLon].every(isFinite)){
     const kmInp2 = document.getElementById('rit-km');
     if(kmInp2 && !kmInp2.value) kmInp2.placeholder = 'Klik ⟳ Herbereken';
+    // DEBUG: toon welke coord ontbreekt
+    if(typeof toast === 'function') toast('DBG coords: v=' + _vLat?.toFixed(2) + ',' + _vLon?.toFixed(2) + ' a=' + _aLat?.toFixed(2) + ',' + _aLon?.toFixed(2), true);
     return;
   }
 
@@ -4985,6 +4986,8 @@ async function _ritTryAutoKm(force){
       kmSuccess = true;
       if(typeof toast === 'function') toast('Afstand berekend: ' + km.toFixed(1) + ' km');
     } else {
+      // DEBUG: coords waren wel geldig maar OSRM/haversine gaf geen resultaat
+      if(typeof toast === 'function') toast('DBG routeKm null: v=' + _vLat?.toFixed(2) + ',' + _vLon?.toFixed(2) + ' a=' + _aLat?.toFixed(2) + ',' + _aLon?.toFixed(2), true);
       if(typeof toast === 'function') toast('Kon afstand niet berekenen — vul handmatig in', true);
     }
   } finally {

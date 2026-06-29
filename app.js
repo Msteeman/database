@@ -4743,8 +4743,6 @@ function _ritSetupSuggest(inputId, boxId, kind){
           box.classList.remove('open');
           if(latInp) latInp.value = '';
           if(lonInp) lonInp.value = '';
-          // DEBUG: toon welk adres geocodeert wordt
-          if(typeof toast === 'function') toast('DBG club: adres=' + (m.adres||'?').slice(0,40), false);
           _ritTryAutoKm(true);
         } else {
           if(latInp) latInp.value = '';
@@ -4944,23 +4942,24 @@ async function _ritTryAutoKm(force){
     return null;
   };
 
-  if(!isFinite(_vLat) || !isFinite(_vLon)){
+  // Geocode als coords ontbreken OF buiten NL vallen (bijv. 0,0 door eerdere fout)
+  if(!_ritCoordsValid(_vLat, _vLon)){
     const vtxt = (document.getElementById('rit-vertrek')||{}).value||'';
     if(vtxt.trim()){
       const hit = await _geocode(vtxt);
       if(hit){ _vLat = hit.lat; _vLon = hit.lon; }
     }
   }
-  if(!isFinite(_aLat) || !isFinite(_aLon)){
+  if(!_ritCoordsValid(_aLat, _aLon)){
     const atxt = (document.getElementById('rit-aankomst')||{}).value||'';
     if(atxt.trim()){
       const hit = await _geocode(atxt);
       if(hit){ _aLat = hit.lat; _aLon = hit.lon; }
     }
   }
-  if(![_vLat,_vLon,_aLat,_aLon].every(isFinite)){
+  if(!_ritCoordsValid(_vLat, _vLon) || !_ritCoordsValid(_aLat, _aLon)){
     const kmInp2 = document.getElementById('rit-km');
-    if(kmInp2) kmInp2.placeholder = 'DBG v=' + (_vLat||'NaN') + ',' + (_vLon||'NaN') + ' a=' + (_aLat||'NaN') + ',' + (_aLon||'NaN');
+    if(kmInp2 && !kmInp2.value) kmInp2.placeholder = 'Klik ⟳ Herbereken';
     return;
   }
 
@@ -4984,12 +4983,10 @@ async function _ritTryAutoKm(force){
       kmSuccess = true;
       if(typeof toast === 'function') toast('Afstand berekend: ' + km.toFixed(1) + ' km');
     } else {
-      // DEBUG: toon in km-placeholder (blijft staan)
-      kmInp.placeholder = 'DBG v=' + (_vLat||0).toFixed(3) + ',' + (_vLon||0).toFixed(3) + ' a=' + (_aLat||0).toFixed(3) + ',' + (_aLon||0).toFixed(3);
       if(typeof toast === 'function') toast('Kon afstand niet berekenen — vul handmatig in', true);
     }
   } finally {
-    if(kmSuccess) kmInp.placeholder = (prevPlaceholder || '0');
+    kmInp.placeholder = kmSuccess ? (prevPlaceholder || '0') : 'Vul handmatig in';
     if(btn){ btn.textContent = btnTxt; btn.disabled = false; }
     _ritKmBusy = false;
   }

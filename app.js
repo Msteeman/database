@@ -24385,6 +24385,18 @@ function initApp(){
 
   // Contacts
   $('#contact-new-btn')?.addEventListener('click', ()=> openContactModal());
+
+  // Tips
+  $('#tip-new-btn')?.addEventListener('click', ()=> openTipModal(null));
+  $('#tip-close')?.addEventListener('click', ()=> closeTipModal());
+  $('#tip-cancel')?.addEventListener('click', ()=> closeTipModal());
+  $('#tip-form')?.addEventListener('submit', submitTipForm);
+  $('#tip-delete')?.addEventListener('click', async ()=> {
+    const id = $('#t-id')?.value;
+    if(!id) return;
+    if(!confirm('Tip verwijderen?')) return;
+    try { await deleteTip(id); closeTipModal(); toast('Tip verwijderd'); } catch(_){}
+  });
   $('#contact-close')?.addEventListener('click', () => _shGuardClose('contact', closeContactModal));
   $('#contact-cancel')?.addEventListener('click', () => _shGuardClose('contact', closeContactModal));
   $('#contact-backdrop')?.addEventListener('click', e=>{

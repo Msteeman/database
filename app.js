@@ -32312,16 +32312,16 @@ var _admMbEl=null;
 var _admMbUnread={}; // {admin:N, contact:N, info:N}
 var _admMbMsgCache={}; // cache geladen berichten per type+folder
 
-// ── Mailcentrum: volledig 3-koloms client ──────────────────────────────────
-// Layout: [folders sidebar] | [berichtenlijst] | [detail / compose]
-// Alles naast elkaar zichtbaar. Detail opent rechts, niet onder de lijst.
+// ── Mailcentrum: Outlook-stijl 3-koloms client ─────────────────────────────
+// Layout: [mappen sidebar] | [berichtenlijst] | [detail / opstellen]
+
+var _admMbOpenMailData = {}; // cache van huidig geopend bericht
 
 async function _admRenderMail(el){
   _admMbEl=el;
   el.innerHTML='<div class="adm-loading">Mailcentrum laden…</div>';
   await _admEnsureCore();
   _admMbRebuild();
-  // Ongelezen badges ophalen op achtergrond
   _admMbFetchUnread();
 }
 async function _admMbFetchUnread(){
@@ -32338,14 +32338,23 @@ function _admMbRebuild(){
   var el=_admMbEl; if(!el) return;
   var tabs=Object.keys(_ADM_MB_ADDR).map(function(k){
     var u=_admMbUnread[k]||0;
-    var badge=u?'<span style="background:#ef4444;color:#fff;border-radius:999px;font-size:.7rem;padding:1px 6px;margin-left:5px;font-weight:700;">'+u+'</span>':'';
+    var badge=u?'<span class="adm-mb-badge">'+u+'</span>':'';
     return '<button class="adm-mb-tab'+(k===_admMb.type?' adm-mb-tab-active':'')+'" onclick="_admMbSwitch(\''+k+'\')">'+_ADM_MB_ADDR[k]+badge+'</button>';
   }).join('');
   var draftCount=(_admMbDrafts()||[]).length;
   var inboxU=_admMbUnread[_admMb.type]||0;
-  var sideItems=[['compose','✏️ Opstellen'],['inbox','📥 Inbox'+(inboxU?' <span style="background:#ef4444;color:#fff;border-radius:999px;font-size:.7rem;padding:1px 5px;">'+inboxU+'</span>':'')],['sent','📤 Verstuurd'],['drafts','📝 Concepten'+(draftCount?' ('+draftCount+')':'')],['trash','🗑️ Verwijderd'],['newsletter','📧 Nieuwsbrief']];
+  var sideItems=[
+    ['compose','Opstellen'],
+    ['inbox','Inbox'+(inboxU?'<span class="adm-mb-badge">'+inboxU+'</span>':'')],
+    ['sent','Verzonden'],
+    ['drafts','Concepten'+(draftCount?'<span class="adm-mb-badge adm-mb-badge-grey">'+draftCount+'</span>':'')],
+    ['trash','Verwijderd'],
+    ['newsletter','Nieuwsbrief']
+  ];
+  var sideIcons={compose:'&#9998;',inbox:'&#9993;',sent:'&#10148;',drafts:'&#9999;',trash:'&#128465;',newsletter:'&#128507;'};
   var side=sideItems.map(function(s){
-    return '<button class="adm-mb-side'+(s[0]===_admMb.folder?' adm-mb-side-active':'')+'" onclick="_admMbNav(\''+s[0]+'\')">'+s[1]+'</button>';
+    return '<button class="adm-mb-side'+(s[0]===_admMb.folder?' adm-mb-side-active':'')+'" onclick="_admMbNav(\''+s[0]+'\')">'
+      +'<span class="adm-mb-side-icon">'+(sideIcons[s[0]]||'')+'</span>'+s[1]+'</button>';
   }).join('');
   el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Mailcentrum</div>'
     +'<div class="adm-mb3-wrap">'
@@ -32353,7 +32362,7 @@ function _admMbRebuild(){
       +'<div class="adm-mb3-body">'
         +'<div class="adm-mb3-side">'+side+'</div>'
         +'<div class="adm-mb3-list" id="adm-mb3-list"><div class="adm-loading">Laden…</div></div>'
-        +'<div class="adm-mb3-detail" id="adm-mb3-detail"><div class="adm-mb3-empty">← Selecteer een bericht</div></div>'
+        +'<div class="adm-mb3-detail" id="adm-mb3-detail"><div class="adm-mb3-empty">Selecteer een bericht</div></div>'
       +'</div>'
     +'</div>'
     +'<datalist id="adm-mb-contacts">'+_admMbContactOptions()+'</datalist>';
@@ -32375,18 +32384,19 @@ function _admMbSaveDraft(d){ try{ var ds=_admMbDrafts(); ds.unshift(d); if(ds.le
 function _admMbDeleteDraft(i){ try{ var ds=_admMbDrafts(); ds.splice(i,1); localStorage.setItem('sh_mb_drafts',JSON.stringify(ds)); }catch(_){} }
 
 function _admMbNav(folder){
-  // Als huidig venster compose is: vraag of concept opgeslagen moet worden
   if(_admMb.folder==='compose' && folder!=='compose'){
     var detail=document.getElementById('adm-mb3-detail');
-    var to='',subj='',msg='';
+    var to='',subj='',msg='',cc='';
     if(detail){
-      var tEl=detail.querySelector('[data-mb-to]'); var sEl=detail.querySelector('[data-mb-subj]'); var mEl=detail.querySelector('[data-mb-msg]');
-      if(tEl) to=tEl.value||''; if(sEl) subj=sEl.value||''; if(mEl) msg=mEl.value||'';
+      var tEl=detail.querySelector('[data-mb-to]'); var sEl=detail.querySelector('[data-mb-subj]');
+      var mEl=detail.querySelector('[data-mb-msg]'); var cEl=detail.querySelector('[data-mb-cc]');
+      if(tEl) to=tEl.value||''; if(sEl) subj=sEl.value||'';
+      if(mEl) msg=mEl.value||''; if(cEl) cc=cEl.value||'';
     }
     if(to||subj||msg){
       if(confirm('Opslaan als concept?')){
-        _admMbSaveDraft({type:_admMb.type,to:to,subject:subj,message:msg,saved:new Date().toISOString()});
-        if(typeof toast==='function') toast('Concept opgeslagen ✓');
+        _admMbSaveDraft({type:_admMb.type,to:to,cc:cc,subject:subj,message:msg,saved:new Date().toISOString()});
+        if(typeof toast==='function') toast('Concept opgeslagen');
       }
     }
   }
@@ -32422,50 +32432,52 @@ function _admMbRenderDraftsList(listEl){
   listEl.innerHTML='<div class="adm-mb3-list-hd">Concepten <span class="adm-mb3-count">'+ds.length+'</span></div>'
     +ds.map(function(d,i){
       var dt=''; try{ var dd=new Date(d.saved); if(!isNaN(dd.getTime())) dt=dd.toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }catch(_){}
-      return '<div class="adm-mb3-row" style="cursor:pointer" onclick="_admMbOpenDraft('+i+')">'
-        +'<div class="adm-mb3-row-from">'+_bhEsc(d.to||'(geen ontvanger)')+'</div>'
+      return '<div class="adm-mb3-row" onclick="_admMbOpenDraft('+i+')">'
+        +'<div class="adm-mb3-row-top"><span class="adm-mb3-row-from">'+_bhEsc(d.to||'(geen ontvanger)')+'</span><span class="adm-mb3-row-date">'+dt+'</span></div>'
         +'<div class="adm-mb3-row-subj">'+_bhEsc(d.subject||'(geen onderwerp)')+'</div>'
-        +'<div class="adm-mb3-row-date">'+dt+'</div>'
       +'</div>';
     }).join('');
 }
 window._admMbOpenDraft=function(i){
   var ds=_admMbDrafts(); var d=ds[i]; if(!d) return;
-  var detail=document.getElementById('adm-mb3-detail'); if(!detail) return;
-  // zet type terug
   if(d.type && _ADM_MB_ADDR[d.type]) _admMb.type=d.type;
   _admMb.folder='compose'; _admMbRebuild();
-  // prefill
   setTimeout(function(){
     var det=document.getElementById('adm-mb3-detail'); if(!det) return;
-    var tEl=det.querySelector('[data-mb-to]'); var sEl=det.querySelector('[data-mb-subj]'); var mEl=det.querySelector('[data-mb-msg]');
-    if(tEl) tEl.value=d.to||''; if(sEl) sEl.value=d.subject||''; if(mEl) mEl.value=d.message||'';
-    // verwijder concept
+    var tEl=det.querySelector('[data-mb-to]'); var sEl=det.querySelector('[data-mb-subj]');
+    var mEl=det.querySelector('[data-mb-msg]'); var cEl=det.querySelector('[data-mb-cc]');
+    if(tEl) tEl.value=d.to||''; if(sEl) sEl.value=d.subject||'';
+    if(mEl) mEl.value=d.message||''; if(cEl) cEl.value=d.cc||'';
     _admMbDeleteDraft(i);
-    _admMbRebuild();
   },100);
 };
 
-function _admMbRenderCompose(pane, replyTo){
+function _admMbRenderCompose(pane, replyTo, opts){
+  opts=opts||{};
   var type=_admMb.type, addr=_ADM_MB_ADDR[type];
   var toVal=replyTo?_bhEsc(replyTo):'';
+  var subjVal=opts.subject?_bhEsc(opts.subject):'';
+  var msgVal=opts.body?_bhEsc(opts.body):'';
   pane.innerHTML='<div class="adm-mb3-compose">'
-    +'<div class="adm-mb3-compose-hd">Nieuw bericht — van <b>'+_bhEsc(addr)+'</b></div>'
-    +'<input type="email" class="adm-compose-input" id="adm-mb-to" data-mb-to list="adm-mb-contacts" placeholder="Aan (e-mailadres)" value="'+toVal+'">'
-    +'<input type="text" class="adm-compose-input" id="adm-mb-subj" data-mb-subj placeholder="Onderwerp">'
-    +'<textarea class="adm-compose-input adm-mb3-compose-msg" id="adm-mb-msg" data-mb-msg placeholder="Bericht…"></textarea>'
+    +'<div class="adm-mb3-compose-from">Van: <b>'+_bhEsc(addr)+'</b></div>'
+    +'<input type="email" class="adm-compose-input" id="adm-mb-to" data-mb-to list="adm-mb-contacts" placeholder="Aan" value="'+toVal+'">'
+    +'<input type="email" class="adm-compose-input" id="adm-mb-cc" data-mb-cc list="adm-mb-contacts" placeholder="CC (optioneel)">'
+    +'<input type="text" class="adm-compose-input" id="adm-mb-subj" data-mb-subj placeholder="Onderwerp" value="'+subjVal+'">'
+    +'<textarea class="adm-compose-input adm-mb3-compose-msg" id="adm-mb-msg" data-mb-msg placeholder="Schrijf je bericht hier…">'+msgVal+'</textarea>'
     +'<div class="adm-mailact">'
       +'<button class="adm-btn-ghost adm-btn-primary" onclick="_admMbSend(this)">Versturen</button>'
       +'<button class="adm-btn-ghost" onclick="_admMbNav(\'inbox\')">Annuleren</button>'
     +'</div>'
     +'<div id="adm-mb-res"></div>'
   +'</div>';
-  var toEl=pane.querySelector('#adm-mb-to'); if(toEl&&!toVal) toEl.focus();
+  if(toVal){ var sEl=pane.querySelector('#adm-mb-subj'); if(sEl&&!subjVal) sEl.focus(); }
+  else { var tEl=pane.querySelector('#adm-mb-to'); if(tEl) tEl.focus(); }
 }
 
 async function _admMbSend(btn){
   var res=document.getElementById('adm-mb-res');
   var to=(document.getElementById('adm-mb-to')||{}).value||'';
+  var cc=(document.getElementById('adm-mb-cc')||{}).value||'';
   var subj=(document.getElementById('adm-mb-subj')||{}).value||'';
   var msg=(document.getElementById('adm-mb-msg')||{}).value||'';
   to=to.trim(); subj=subj.trim(); msg=msg.trim();
@@ -32474,10 +32486,11 @@ async function _admMbSend(btn){
   if(res) res.innerHTML='';
   try{
     var tk=await _admToken(); if(!tk){ if(res) res.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
-    var r=await fetch(_admBase()+'/api/admin-mail-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:_admMb.type,to:to,subject:subj,message:msg})});
+    var body={type:_admMb.type,to:to,subject:subj,message:msg}; if(cc) body.cc=cc;
+    var r=await fetch(_admBase()+'/api/admin-mail-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify(body)});
     var j={};try{j=await r.json();}catch(_){}
     if(r.ok&&j&&j.ok&&j.sent){
-      if(typeof toast==='function') toast('Mail verstuurd ✓');
+      if(typeof toast==='function') toast('Mail verstuurd');
       _admMb.folder='sent'; _admMbRebuild();
     } else {
       if(res) res.innerHTML='<div class="bh-empty">Versturen mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
@@ -32489,32 +32502,77 @@ window._admMbSend=_admMbSend;
 
 async function _admMbRenderNewsletter(pane){
   if(!pane) return;
-  pane.innerHTML='<div class="adm-loading">Abonnees laden…</div>';
+  pane.innerHTML='<div class="adm-loading">Nieuwsbrief laden…</div>';
+  var subs=[], savedSubj='', savedMsg='', autoSend=false, savedAt='';
   try{
     var tk=await _admToken(); if(!tk){ pane.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
     var r=await fetch(_admBase()+'/api/admin-newsletter-list',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({})});
     var j={};try{j=await r.json();}catch(_){}
-    if(!(r.ok&&j&&j.ok)){ pane.innerHTML='<div class="bh-empty">Abonnees laden mislukt'+(j&&j.error?' ('+_bhEsc(j.error)+')':'')+'.</div>'; return; }
-    var subs=j.subscribers||[];
-    pane.innerHTML='<div class="adm-mb3-detail-inner">'
-      +'<div class="adm-mb3-detail-hd"><div class="adm-mb3-detail-subj">📧 Nieuwsbrief</div></div>'
-      +'<div style="padding:0 16px 12px;">'
-        +'<div style="font-size:.85rem;color:#94a3b8;margin-bottom:8px;">'+subs.length+' abonnee'+(subs.length!==1?'s':'')+'</div>'
-        +'<div style="max-height:180px;overflow-y:auto;background:#0d1929;border-radius:6px;padding:8px;">'
-          +(subs.length?subs.map(function(s){ return '<div style="font-size:.82rem;padding:3px 0;color:#e2e8f0;">'+_bhEsc((s.name||s.displayName||'')+(s.email?' &lt;'+s.email+'&gt;':''))+'</div>'; }).join(''):'<div class="bh-empty" style="padding:8px">Geen abonnees</div>')
-        +'</div>'
+    if(r.ok&&j&&j.ok) subs=j.subscribers||[];
+  }catch(_){}
+  try{
+    var draftSnap=await getDoc(doc(db,'admin_settings','newsletter_draft'));
+    if(draftSnap.exists()){
+      var dd=draftSnap.data()||{};
+      savedSubj=dd.subject||''; savedMsg=dd.message||''; autoSend=!!dd.autoSend;
+      if(dd.savedAt){ try{ savedAt=new Date(dd.savedAt).toLocaleString('nl-NL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(_){} }
+    }
+  }catch(_){}
+  var now=new Date(); var nm=now.getMonth()+(now.getDate()===1&&now.getHours()<7?0:1);
+  var next1=new Date(now.getFullYear()+(nm>11?1:0),(nm>11?0:nm),1,7,0,0);
+  var next1Lbl=next1.toLocaleDateString('nl-NL',{day:'numeric',month:'long'})+' om 07:00';
+  var subsHtml=subs.length
+    ?'<div class="adm-nl-subs-list">'+subs.slice(0,10).map(function(s){
+        return '<div class="adm-nl-sub-row"><span class="adm-nl-sub-name">'+_bhEsc(s.displayName||s.name||s.email||'Onbekend')+'</span><span class="adm-nl-sub-email">'+_bhEsc(s.email||'')+'</span></div>';
+      }).join('')+(subs.length>10?'<div class="adm-nl-sub-more">+'+( subs.length-10)+' meer</div>':'')+'</div>'
+    :'<div class="bh-empty" style="padding:8px">Geen abonnees</div>';
+  pane.innerHTML='<div class="adm-mb3-detail-inner">'
+    +'<div class="adm-mb3-detail-hd"><div class="adm-mb3-detail-subj">Nieuwsbrief</div></div>'
+    +'<div class="adm-nl-wrap">'
+      +'<div class="adm-nl-col-left">'
+        +'<div class="adm-nl-section-hd">Abonnees ('+subs.length+')</div>'
+        +subsHtml
       +'</div>'
-      +'<div style="padding:0 16px;">'
-        +'<div style="font-weight:600;font-size:.88rem;margin-bottom:8px;color:#e2e8f0;">Nieuwsbrief versturen</div>'
-        +'<input class="adm-compose-input" id="adm-nl-subj" placeholder="Onderwerp" style="margin-bottom:8px;" />'
-        +'<textarea class="adm-compose-input" id="adm-nl-msg" placeholder="Bericht (tekst of HTML)…" rows="7" style="min-height:140px;resize:vertical;"></textarea>'
+      +'<div class="adm-nl-col-right">'
+        +'<div class="adm-nl-section-hd">Concept'+(savedAt?'<span class="adm-nl-saved-note"> - opgeslagen '+savedAt+'</span>':'')+'</div>'
+        +'<input class="adm-compose-input" id="adm-nl-subj" placeholder="Onderwerp" value="'+_bhEsc(savedSubj)+'" style="margin-bottom:8px;">'
+        +'<textarea class="adm-compose-input" id="adm-nl-msg" placeholder="Bericht (platte tekst of HTML)…" rows="8" style="min-height:160px;resize:vertical;">'+_bhEsc(savedMsg)+'</textarea>'
+        +'<div class="adm-nl-autosend">'
+          +'<label class="adm-nl-toggle"><input type="checkbox" id="adm-nl-auto"'+(autoSend?' checked':'')+'> <span>Automatisch versturen op 1e van de maand om 07:00</span></label>'
+          +(autoSend?'<div class="adm-nl-next">Volgende verzending: '+next1Lbl+'</div>':'')
+        +'</div>'
         +'<div class="adm-mailact" style="margin-top:10px;">'
-          +'<button class="adm-btn-ghost adm-btn-primary" onclick="_admNlSend(this,'+subs.length+')">Verstuur naar '+subs.length+' abonnee'+(subs.length!==1?'s':'')+'</button>'
+          +'<button class="adm-btn-ghost adm-btn-primary" onclick="_admNlSend(this,'+subs.length+')">Nu versturen naar '+subs.length+' abonnee'+(subs.length!==1?'s':'')+'</button>'
+          +'<button class="adm-btn-ghost" onclick="_admNlSaveConcept(this)">Concept opslaan</button>'
         +'</div>'
         +'<div id="adm-nl-res"></div>'
       +'</div>'
-    +'</div>';
-  }catch(_){ pane.innerHTML='<div class="bh-empty">Nieuwsbrief laden mislukt.</div>'; }
+    +'</div>'
+  +'</div>';
+  var cb=document.getElementById('adm-nl-auto');
+  if(cb) cb.addEventListener('change',function(){ _admNlToggleAuto(this.checked); });
+}
+
+window._admNlSaveConcept=async function(btn){
+  var subj=(document.getElementById('adm-nl-subj')||{}).value||'';
+  var msg=(document.getElementById('adm-nl-msg')||{}).value||'';
+  var auto=document.getElementById('adm-nl-auto'); var autoSend=auto?auto.checked:false;
+  var _o=''; if(btn){ _o=btn.textContent; btn.disabled=true; btn.textContent='Opslaan…'; }
+  try{
+    await setDoc(doc(db,'admin_settings','newsletter_draft'),{subject:subj,message:msg,autoSend:autoSend,savedAt:new Date().toISOString()});
+    if(typeof toast==='function') toast('Concept opgeslagen');
+    var res=document.getElementById('adm-nl-res');
+    if(res) res.innerHTML='<div style="color:#4ade80;padding:6px 0;font-size:.82rem;">Opgeslagen om '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})+'</div>';
+  }catch(e){ if(typeof toast==='function') toast('Opslaan mislukt',true); }
+  finally{ if(btn){ btn.disabled=false; btn.textContent=_o; } }
+};
+async function _admNlToggleAuto(val){
+  try{
+    var snap=await getDoc(doc(db,'admin_settings','newsletter_draft'));
+    var cur=snap.exists()?snap.data():{};
+    await setDoc(doc(db,'admin_settings','newsletter_draft'),Object.assign({},cur,{autoSend:val,savedAt:cur.savedAt||new Date().toISOString()}));
+    if(typeof toast==='function') toast(val?'Auto-verzending ingeschakeld':'Auto-verzending uitgeschakeld');
+  }catch(_){}
 }
 
 window._admNlSend=async function(btn, cnt){
@@ -32530,8 +32588,8 @@ window._admNlSend=async function(btn, cnt){
     var r=await fetch(_admBase()+'/api/admin-newsletter-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({subject:subj,message:msg})});
     var j={};try{j=await r.json();}catch(_){}
     if(r.ok&&j&&j.ok){
-      if(typeof toast==='function') toast('Nieuwsbrief verstuurd naar '+( j.sent||cnt)+' abonnees');
-      if(res) res.innerHTML='<div style="color:#4ade80;padding:8px 0;">Verstuurd naar '+(j.sent||cnt)+' abonnee'+(cnt!==1?'s':'')+'</div>';
+      if(typeof toast==='function') toast('Nieuwsbrief verstuurd naar '+(j.sent||cnt)+' abonnees');
+      if(res) res.innerHTML='<div style="color:#4ade80;padding:8px 0;font-size:.83rem;">Verstuurd naar '+(j.sent||cnt)+' abonnee'+(cnt!==1?'s':'')+'</div>';
     } else {
       if(res) res.innerHTML='<div class="bh-empty">Mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>';
       if(btn){ btn.disabled=false; btn.textContent=_o; }
@@ -32541,25 +32599,28 @@ window._admNlSend=async function(btn, cnt){
 
 function _admMbRenderList(listEl, msgs, fLabel, folder, type){
   var q=(listEl.querySelector('.adm-mb-search')||{}).value||'';
-  var filtered=q?msgs.filter(function(m){ return ((m.from||'')+(m.to||'')+(m.subject||'')).toLowerCase().indexOf(q.toLowerCase())!==-1; }):msgs;
+  var filtered=q?msgs.filter(function(m){ return ((m.from||'')+(m.to||'')+(m.subject||'')+(m.preview||'')).toLowerCase().indexOf(q.toLowerCase())!==-1; }):msgs;
   var rows=filtered.map(function(m){
-    var dt=''; try{ var d=new Date(m.date); if(!isNaN(d.getTime())) dt=d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }catch(_){}
-    var who=(folder==='sent')?_bhEsc(m.to||''):_bhEsc(m.from||'');
+    var dt=''; try{ var d=new Date(m.date); if(!isNaN(d.getTime())){
+      var isToday=d.toDateString()===new Date().toDateString();
+      dt=isToday?d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'});
+    }}catch(_){}
+    var who=(folder==='sent'||folder==='drafts')?_bhEsc(m.to||''):_bhEsc(m.from||'');
+    var preview=m.preview?_bhEsc(String(m.preview).slice(0,90)):'';
     return '<div class="adm-mb3-row'+(m.seen?'':' adm-mb3-unread')+'" data-seq="'+m.seq+'" onclick="_admMbOpenMail(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\','+m.seq+',this)">'
-      +'<div class="adm-mb3-row-from">'+who+'</div>'
+      +'<div class="adm-mb3-row-top"><span class="adm-mb3-row-from">'+who+'</span><span class="adm-mb3-row-date">'+_bhEsc(dt)+'</span></div>'
       +'<div class="adm-mb3-row-subj">'+_bhEsc(m.subject||'(geen onderwerp)')+'</div>'
-      +'<div class="adm-mb3-row-date">'+_bhEsc(dt)+'</div>'
+      +(preview?'<div class="adm-mb3-row-preview">'+preview+'</div>':'')
     +'</div>';
   }).join('');
   var existSearch=listEl.querySelector('.adm-mb-search');
-  var searchHtml='<div style="padding:6px 8px;border-bottom:1px solid #1e2a3a;">'
-    +'<input class="adm-mb-search adm-compose-input" style="margin:0;padding:5px 8px;font-size:.82rem;" placeholder="🔍 Zoeken…" value="'+_bhEsc(q)+'" oninput="_admMbSearch(this,\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\')" />'
+  var searchHtml='<div class="adm-mb-search-wrap">'
+    +'<input class="adm-mb-search adm-compose-input" style="margin:0;padding:5px 10px;font-size:.82rem;" placeholder="Zoeken…" value="'+_bhEsc(q)+'" oninput="_admMbSearch(this,\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\')" />'
     +'</div>';
   var hdHtml='<div class="adm-mb3-list-hd">'+_bhEsc(fLabel)+' <span class="adm-mb3-count">'+filtered.length+(filtered.length<msgs.length?'/'+msgs.length:'')+'</span></div>';
   if(existSearch){
-    // Alleen rows updaten, zoekbalk bewaren
     var body=listEl.querySelector('.adm-mb-rows');
-    if(body) body.innerHTML=rows||(filtered.length?'':'<div class="bh-empty">Geen berichten gevonden.</div>');
+    if(body) body.innerHTML=rows||'<div class="bh-empty" style="padding:16px">Geen berichten gevonden.</div>';
   } else {
     listEl.innerHTML=searchHtml+hdHtml+'<div class="adm-mb-rows">'+rows+'</div>';
   }
@@ -32586,7 +32647,7 @@ async function _admMbLoadFolder(listEl, type, folder){
     var msgs=j.messages||[];
     _admMbMsgCache[key]=msgs;
     var fLabel=j.folder||lbl;
-    if(!msgs.length){ listEl.innerHTML='<div class="bh-empty">'+_bhEsc(fLabel)+' is leeg.</div>'; return; }
+    if(!msgs.length){ listEl.innerHTML='<div class="adm-mb3-list-hd">'+_bhEsc(fLabel)+' <span class="adm-mb3-count">0</span></div><div class="bh-empty" style="padding:16px">'+_bhEsc(fLabel)+' is leeg.</div>'; return; }
     _admMbRenderList(listEl,msgs,fLabel,folder,type);
   }catch(_){ listEl.innerHTML='<div class="bh-empty">'+lbl+' laden mislukt.</div>'; }
 }
@@ -32594,7 +32655,7 @@ async function _admMbLoadFolder(listEl, type, folder){
 async function _admMbOpenMail(type, folder, seq, rowEl){
   var listEl=document.getElementById('adm-mb3-list');
   if(listEl) listEl.querySelectorAll('.adm-mb3-row-active').forEach(function(r){ r.classList.remove('adm-mb3-row-active'); });
-  if(rowEl) rowEl.classList.add('adm-mb3-row-active');
+  if(rowEl){ rowEl.classList.add('adm-mb3-row-active'); rowEl.classList.remove('adm-mb3-unread'); }
   var detail=document.getElementById('adm-mb3-detail'); if(!detail) return;
   detail.innerHTML='<div class="adm-loading">Bericht laden…</div>';
   try{
@@ -32603,36 +32664,35 @@ async function _admMbOpenMail(type, folder, seq, rowEl){
     var j={};try{j=await r.json();}catch(_){}
     if(!(r.ok&&j&&j.ok)){ detail.innerHTML='<div class="bh-empty">Laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>'; return; }
     var dt=''; try{ var d=new Date(j.date); if(!isNaN(d.getTime())) dt=d.toLocaleString('nl-NL'); }catch(_){ dt=j.date||''; }
-    var fromAddr=''; try{ fromAddr=j.from.replace(/.*<([^>]+)>.*/,'$1')||j.from; }catch(_){ fromAddr=j.from||''; }
+    // Sla maildata op voor reply/forward
+    _admMbOpenMailData={type:type,folder:folder,seq:seq,subject:j.subject||'',from:j.from||'',to:j.to||'',date:dt,text:j.text||''};
     var attHtml='';
     if(j.attachments&&j.attachments.length){
-      attHtml='<div class="adm-mb3-attach"><span class="adm-mb3-attach-lbl">📎 Bijlagen:</span>'
-        +j.attachments.map(function(a,i){ return '<button class="adm-mb3-attach-item adm-btn-ghost" style="cursor:pointer;" onclick="_admMbDownloadAtt(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\','+seq+','+i+',\''+_bhEsc(a.name||'bijlage')+'\',\''+_bhEsc(a.type||'application/octet-stream')+'\')">📄 '+_bhEsc(a.name||'bijlage')+'<small style="opacity:.7"> ('+_bhEsc(a.type||'')+')</small></button>'; }).join('')
+      attHtml='<div class="adm-mb3-attach"><span class="adm-mb3-attach-lbl">Bijlagen:</span>'
+        +j.attachments.map(function(a,i){ return '<button class="adm-mb3-attach-item adm-btn-ghost" onclick="_admMbDownloadAtt(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\','+seq+','+i+',\''+_bhEsc(a.name||'bijlage')+'\',\''+_bhEsc(a.type||'application/octet-stream')+'\')">&#128196; '+_bhEsc(a.name||'bijlage')+'</button>'; }).join('')
         +'</div>';
     }
     var bodyHtml = j.html
-      ? '<iframe id="adm-mb-iframe" sandbox="allow-same-origin" style="width:100%;min-height:420px;max-height:70vh;border:none;background:#fff;border-radius:6px;display:block;" onload="try{this.style.height=Math.min(this.contentDocument.body.scrollHeight+24,window.innerHeight*0.7)+\'px\';}catch(_){}"></iframe>'
+      ? '<iframe id="adm-mb-iframe" sandbox="allow-same-origin" style="width:100%;min-height:420px;max-height:70vh;border:none;background:#fff;border-radius:6px;display:block;margin-top:4px;" onload="try{this.style.height=Math.min(this.contentDocument.body.scrollHeight+24,window.innerHeight*0.7)+\'px\';}catch(_){}"></iframe>'
       : '<pre class="adm-mb3-detail-body">'+_bhEsc(j.text||'(leeg bericht)')+'</pre>';
     detail.innerHTML='<div class="adm-mb3-detail-inner">'
       +'<div class="adm-mb3-detail-hd">'
         +'<div class="adm-mb3-detail-subj">'+_bhEsc(j.subject||'(geen onderwerp)')+'</div>'
         +'<div class="adm-mb3-detail-meta">'
-          +(j.from?'<span><b>Van:</b> '+_bhEsc(j.from)+'</span>':'')
-          +(j.to?'<span><b>Aan:</b> '+_bhEsc(j.to)+'</span>':'')
-          +(dt?'<span><b>Datum:</b> '+_bhEsc(dt)+'</span>':'')
+          +(j.from?'<div><b>Van:</b> '+_bhEsc(j.from)+'</div>':'')
+          +(j.to?'<div><b>Aan:</b> '+_bhEsc(j.to)+'</div>':'')
+          +(dt?'<div><b>Datum:</b> '+_bhEsc(dt)+'</div>':'')
         +'</div>'
-        +'<div class="adm-mb3-detail-acts">'
-          +'<button class="adm-btn-ghost adm-btn-primary" onclick="_admMbReply(\''+_bhEsc(fromAddr)+'\',\''+_bhEsc(j.subject||'')+'\')">↩ Beantwoorden</button>'
-          +'<button class="adm-btn-ghost" onclick="_admMbNav(\'compose\')">✏️ Nieuw</button>'
+        +'<div class="adm-mb3-toolbar">'
+          +'<button class="adm-tb-btn adm-tb-btn-primary" onclick="_admMbReplyLast()">&#8617; Beantwoorden</button>'
+          +'<button class="adm-tb-btn" onclick="_admMbForwardLast()">&#8618; Doorsturen</button>'
+          +'<button class="adm-tb-btn" onclick="_admMbNav(\'compose\')">&#9998; Nieuw bericht</button>'
         +'</div>'
       +'</div>'
       +attHtml
       +bodyHtml
     +'</div>';
-    if(j.html){
-      var ifrm=document.getElementById('adm-mb-iframe');
-      if(ifrm) ifrm.srcdoc=j.html;
-    }
+    if(j.html){ var ifrm=document.getElementById('adm-mb-iframe'); if(ifrm) ifrm.srcdoc=j.html; }
   }catch(_){ detail.innerHTML='<div class="bh-empty">Bericht laden mislukt.</div>'; }
 }
 window._admMbOpenMail=_admMbOpenMail;
@@ -32651,16 +32711,28 @@ window._admMbDownloadAtt=async function(type, folder, seq, idx, name, mimeType){
   }catch(_){ alert('Bijlage downloaden mislukt.'); }
 };
 
+window._admMbReplyLast=function(){
+  var d=_admMbOpenMailData; if(!d||!d.from) return;
+  var fromAddr=''; try{ fromAddr=d.from.replace(/^.*<([^>]+)>.*$/,'$1')||d.from; }catch(_){ fromAddr=d.from; }
+  _admMbReply(fromAddr, d.subject||'');
+};
+window._admMbForwardLast=function(){
+  var d=_admMbOpenMailData; if(!d) return;
+  _admMb.folder='compose'; _admMbRebuild();
+  setTimeout(function(){
+    var detail=document.getElementById('adm-mb3-detail'); if(!detail) return;
+    var fwdSubj=(/^Fwd:/i.test(d.subject||'')?'':'Fwd: ')+(d.subject||'');
+    var fwdBody='\r\n\r\n--- Doorgestuurd bericht ---\r\nVan: '+(d.from||'')+'\r\nDatum: '+(d.date||'')+'\r\n\r\n'+(d.text||'');
+    _admMbRenderCompose(detail,'',{subject:fwdSubj,body:fwdBody});
+  },50);
+};
+
 function _admMbReply(fromAddr, subject){
   _admMb.folder='compose';
-  var el=_admMbEl; if(!el) return;
-  // Rebuild met compose open, prefill To + Subject
   _admMbRebuild();
   setTimeout(function(){
     var detail=document.getElementById('adm-mb3-detail'); if(!detail) return;
-    _admMbRenderCompose(detail, fromAddr);
-    var subEl=detail.querySelector('#adm-mb-subj');
-    if(subEl) subEl.value=(subject&&!/^Re:/i.test(subject)?'Re: ':'')+subject;
+    _admMbRenderCompose(detail, fromAddr, {subject:(/^Re:/i.test(subject||'')?'':'Re: ')+subject});
   }, 50);
 }
 window._admMbReply=_admMbReply;

@@ -2727,5 +2727,37 @@ export default {
     } catch (err) {
       return json({ error: 'Onverwachte fout', message: err && err.message ? err.message : String(err) }, 200);
     }
+  },
+
+  /* Cloudflare Cron Trigger: 0 7 1 * * (1e vd maand om 07:00 UTC)
+   * Leest concept uit Firestore admin_settings/newsletter_draft,
+   * verstuurt nieuwsbrief naar alle abonnees als autoSend===true. */
+  async scheduled(event, env, ctx) {
+    if(event.cron === '0 7 1 * *') {
+      ctx.waitUntil(handleScheduledNewsletter(env));
+    }
   }
 };
+
+async function handleScheduledNewsletter(env){
+  try{
+    const saToken = await getServiceAccountToken(env);
+    if(!saToken) return;
+    const draft = await saFsGet(saToken, 'admin_settings/newsletter_draft');
+    if(!draft || !draft.autoSend) return;
+    const subject = String(draft.subject||'').trim();
+    const message = String(draft.message||'').trim();
+    if(!subject||!message) return;
+    const all = await saFsList(saToken, 'access_requests', 500);
+    const subs = all.filter(function(x){ return x.newsletterOptIn===true && x.email; });
+    if(!subs.length) return;
+    const paragraphs = message.split(/\n{2,}/).map(function(p){ return '<p style="'+MAIL_P+'">'+shEsc(p).replace(/\n/g,'<br>')+'</p>'; }).join('');
+    const htmlBody = paragraphs
+      + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>'
+      + '<p style="'+MAIL_MUTED+'">Je ontvangt deze nieuwsbrief omdat je je hebt aangemeld. Stuur een mail naar contact@scoutinghub.nl om je af te melden.</p>';
+    const text = message+'\n\nMet vriendelijke groet,\nTeam ScoutingHub\n\nAfmelden: stuur een mail naar contact@scoutinghub.nl';
+    for(const sub of subs){
+      try{ await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: mailShell(env,subject,htmlBody), text }); }catch(_){}
+    }
+  }catch(_){}
+}

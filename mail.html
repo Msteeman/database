@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>ScoutingHub Mail</title>
+<link rel="manifest" href="./mail.webmanifest">
+<meta name="theme-color" content="#0b1220">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SH Mail">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<style>
+:root{--bg:#060e1c;--panel:#0b1220;--panel2:#0e1624;--border:#1f2937;--text:#e8edf5;--text-2:#9aa8bd;--text-3:#8b97ad;--accent:#4ea1ff;--bad:#f87171;--good:#4ade80}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:14px;display:flex;flex-direction:column}
+button{font-family:inherit;cursor:pointer}
+input,textarea,select{font-family:inherit;font-size:13px}
+
+/* ── App header ── */
+#app-hd{display:flex;align-items:center;justify-content:space-between;padding:0 14px;height:46px;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0;gap:12px}
+#app-hd-logo{font-size:17px;font-weight:800;letter-spacing:-.01em;white-space:nowrap}
+#app-hd-logo span{color:#e30613}
+#app-hd-meta{font-size:11.5px;color:var(--text-3);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#app-hd-actions{display:flex;gap:6px;flex-shrink:0}
+.hd-btn{background:#1a2436;border:1px solid var(--border);color:var(--text-2);border-radius:7px;padding:5px 12px;font-size:12px;transition:all .15s}
+.hd-btn:hover{border-color:var(--accent);color:var(--text)}
+
+/* ── Login ── */
+#login-screen{flex:1;display:flex;align-items:center;justify-content:center;padding:24px}
+.login-box{width:100%;max-width:360px;background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:28px 24px;display:flex;flex-direction:column;gap:14px}
+.login-box h2{font-size:18px;font-weight:700;color:var(--text);text-align:center}
+.login-box p{font-size:13px;color:var(--text-3);text-align:center}
+.lf-input{background:#0e1726;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px 12px;width:100%;font-size:14px}
+.lf-input:focus{outline:none;border-color:var(--accent)}
+.lf-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:11px;font-size:14px;font-weight:700;width:100%;transition:opacity .15s}
+.lf-btn:hover{opacity:.88}
+.lf-btn:disabled{opacity:.5;cursor:not-allowed}
+#login-err{font-size:13px;color:var(--bad);text-align:center;display:none}
+
+/* ── Main mail layout ── */
+#mail-app{flex:1;display:none;flex-direction:column;min-height:0}
+#mb-tabs{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0;flex-wrap:wrap}
+.mb-tab{background:#1a2436;border:1px solid var(--border);color:var(--text-2);border-radius:9px;padding:7px 14px;font-size:13px;font-weight:600;transition:all .15s}
+.mb-tab:hover{border-color:var(--accent);color:var(--text)}
+.mb-tab-active{border-color:var(--accent);color:var(--text);background:rgba(78,161,255,.12)}
+.mb-badge{background:#ef4444;color:#fff;border-radius:999px;font-size:.68rem;padding:1px 5px;margin-left:4px;font-weight:700;vertical-align:middle;display:inline-block;line-height:1.4}
+.mb-badge-grey{background:#374151}
+
+/* ── 3-column body ── */
+#mb-body{flex:1;display:grid;grid-template-columns:140px 280px 1fr;min-height:0}
+
+/* ── Sidebar ── */
+#mb-side{display:flex;flex-direction:column;gap:2px;padding:10px 8px;border-right:1px solid var(--border);overflow-y:auto}
+.mb-side-btn{background:transparent;border:1px solid transparent;color:var(--text-2);border-radius:8px;padding:8px 10px;font-size:12.5px;text-align:left;transition:all .15s;white-space:nowrap;display:flex;align-items:center;gap:6px}
+.mb-side-btn:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.mb-side-btn.active{background:rgba(78,161,255,.12);color:var(--text);font-weight:700}
+.mb-side-icon{width:16px;text-align:center;opacity:.75;flex-shrink:0}
+
+/* ── Message list ── */
+#mb-list{border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.mb-list-hd{padding:9px 12px 6px;font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;flex-shrink:0}
+.mb-count{background:rgba(78,161,255,.12);color:var(--accent);border-radius:10px;padding:1px 7px;font-size:11px;font-weight:600}
+.mb-search-wrap{padding:6px 8px;border-bottom:1px solid var(--border);flex-shrink:0}
+.mb-search{width:100%;background:#0e1726;border:1px solid var(--border);color:var(--text);border-radius:7px;padding:5px 10px;font-size:.82rem}
+.mb-search:focus{outline:none;border-color:var(--accent)}
+.mb-rows{overflow-y:auto;flex:1}
+.mb-row{padding:9px 12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s}
+.mb-row:hover{background:rgba(78,161,255,.05)}
+.mb-row.active{background:rgba(78,161,255,.13)!important}
+.mb-row.unread{border-left:3px solid var(--accent)}
+.mb-row-top{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.mb-row-from{font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mb-row.unread .mb-row-from{font-weight:800}
+.mb-row-date{font-size:11px;color:var(--text-3);flex-shrink:0}
+.mb-row-subj{font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.mb-row-preview{font-size:.74rem;color:var(--text-3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+
+/* ── Detail pane ── */
+#mb-detail{overflow-y:auto;display:flex;flex-direction:column}
+.mb-empty{display:flex;align-items:center;justify-content:center;height:100%;color:var(--text-3);font-size:13px;padding:24px}
+.mb-detail-inner{display:flex;flex-direction:column;min-height:100%}
+.mb-detail-hd{padding:16px 18px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.mb-detail-subj{font-size:16px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.35}
+.mb-detail-meta{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--text-2);margin-bottom:10px}
+.mb-detail-meta b{color:var(--text)}
+.mb-toolbar{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.mb-tb-btn{background:#1a2436;border:1px solid var(--border);color:var(--text-2);border-radius:7px;padding:6px 13px;font-size:12.5px;transition:all .15s}
+.mb-tb-btn:hover{background:rgba(78,161,255,.08);color:var(--text);border-color:var(--accent)}
+.mb-tb-btn-primary{border-color:var(--accent);background:rgba(78,161,255,.12);color:var(--text);font-weight:700}
+.mb-detail-body{flex:1;padding:16px 18px;margin:0;font-size:13.5px;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:var(--text);font-family:inherit;background:transparent;border:none;overflow-y:auto}
+.mb-attach{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 18px;background:#1a2535;font-size:.82rem;border-bottom:1px solid var(--border)}
+.mb-attach-lbl{color:var(--text-3);font-weight:600}
+.mb-attach-item{background:#1e3a5f;color:var(--accent);border-radius:999px;padding:3px 10px;border:none;font-size:12px;cursor:pointer}
+
+/* ── Compose ── */
+.mb-compose{padding:16px 18px;display:flex;flex-direction:column;gap:10px;height:100%;overflow-y:auto}
+.mb-compose-from{font-size:.82rem;color:var(--text-2);padding:8px 0;border-bottom:1px solid var(--border)}
+.mb-input{width:100%;background:#0e1726;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px}
+.mb-input:focus{outline:none;border-color:var(--accent)}
+.mb-textarea{resize:none;min-height:220px;flex:1}
+.mb-actions{display:flex;gap:8px;flex-wrap:wrap;padding-top:4px}
+.mb-btn{background:#1a2436;border:1px solid var(--border);color:var(--text-2);border-radius:8px;padding:8px 16px;font-size:13px;transition:all .15s}
+.mb-btn:hover{border-color:var(--accent);color:var(--text)}
+.mb-btn-primary{border-color:var(--accent);background:rgba(78,161,255,.12);color:var(--text);font-weight:700}
+.mb-res{font-size:13px;color:var(--text-3);padding:4px 0}
+
+/* ── Newsletter ── */
+.mb-nl{display:grid;grid-template-columns:200px 1fr;gap:0;flex:1;overflow:hidden}
+.mb-nl-left{padding:14px 12px;border-right:1px solid var(--border);overflow-y:auto}
+.mb-nl-right{padding:14px 18px;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.mb-nl-hd{font-size:10.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.mb-nl-sub{display:flex;flex-direction:column;padding:5px 8px;border-radius:6px;background:rgba(255,255,255,.03);margin-bottom:3px}
+.mb-nl-sub-name{font-size:.82rem;font-weight:600;color:var(--text)}
+.mb-nl-sub-email{font-size:.74rem;color:var(--text-2)}
+.mb-nl-more{font-size:.76rem;color:var(--text-3);padding:4px 0}
+.mb-nl-saved{font-size:.75rem;color:var(--accent);margin-top:-4px}
+.mb-nl-auto{margin:6px 0;padding:10px 12px;background:rgba(255,255,255,.02);border-radius:8px;border:1px solid var(--border)}
+.mb-nl-toggle{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:.84rem;color:var(--text)}
+.mb-nl-toggle input[type=checkbox]{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.mb-nl-next{font-size:.77rem;color:var(--good);margin-top:6px}
+
+/* ── Loading ── */
+.mb-loading{display:flex;align-items:center;justify-content:center;padding:24px;color:var(--text-3);font-size:13px}
+
+/* ── Toast ── */
+#mb-toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e3a5f;color:var(--text);border:1px solid var(--accent);border-radius:9px;padding:9px 20px;font-size:13px;font-weight:600;display:none;z-index:9999;white-space:nowrap}
+
+/* ── Responsive ── */
+@media(max-width:960px){
+  #mb-body{grid-template-columns:110px 220px 1fr}
+}
+@media(max-width:720px){
+  #mb-body{grid-template-columns:1fr;grid-template-rows:auto 1fr auto}
+  #mb-side{flex-direction:row;overflow-x:auto;border-right:none;border-bottom:1px solid var(--border);padding:6px 8px}
+  .mb-side-btn{white-space:nowrap}
+  #mb-list{max-height:220px;border-right:none;border-bottom:1px solid var(--border)}
+  #mb-detail{grid-row:3}
+  .mb-nl{grid-template-columns:1fr}
+  .mb-nl-left{border-right:none;border-bottom:1px solid var(--border)}
+}
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div id="app-hd">
+  <div id="app-hd-logo">Scouting<span>Hub</span> Mail</div>
+  <div id="app-hd-meta"></div>
+  <div id="app-hd-actions">
+    <button class="hd-btn" id="btn-logout" style="display:none" onclick="doLogout()">Uitloggen</button>
+  </div>
+</div>
+
+<!-- Login screen -->
+<div id="login-screen">
+  <div class="login-box">
+    <h2>Inloggen</h2>
+    <p>Mailcentrum is alleen voor beheerders</p>
+    <input class="lf-input" type="email" id="lf-email" placeholder="E-mailadres" autocomplete="email">
+    <input class="lf-input" type="password" id="lf-pass" placeholder="Wachtwoord" autocomplete="current-password">
+    <div id="login-err"></div>
+    <button class="lf-btn" id="lf-btn" onclick="doLogin()">Inloggen</button>
+  </div>
+</div>
+
+<!-- Main mail app (shown after login + admin check) -->
+<div id="mail-app">
+  <!-- Mailbox tabs (admin/contact/info) -->
+  <div id="mb-tabs"></div>
+  <!-- 3-column body -->
+  <div id="mb-body">
+    <div id="mb-side"></div>
+    <div id="mb-list"><div class="mb-loading">Laden…</div></div>
+    <div id="mb-detail"><div class="mb-empty">Selecteer een bericht</div></div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="mb-toast"></div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js';
+import { getFirestore, doc, getDoc, setDoc } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+
+/* ── Firebase ── */
+const fbApp = initializeApp({
+  apiKey: 'AIzaSyBDeLaGfzM1PN8Cl8E6nlIe8FxxxXLwRyY',
+  authDomain: 'database-scouting.firebaseapp.com',
+  projectId: 'database-scouting',
+  storageBucket: 'database-scouting.firebasestorage.app',
+  messagingSenderId: '632216488963',
+  appId: '1:632216488963:web:f1ebb1d16b8a76f49c9236'
+}, 'mail-app');
+const auth = getAuth(fbApp);
+const db   = getFirestore(fbApp);
+
+/* ── Worker API base ── */
+const API = (location.hostname === 'scoutinghub.nl' || location.hostname === 'admin.scoutinghub.nl')
+  ? 'https://scoutinghub-api.marcelsteeman1.workers.dev'
+  : 'https://scoutinghub-api-test.marcelsteeman1.workers.dev';
+
+/* ── State ── */
+let _user = null, _token = '', _tokenExp = 0;
+const MB_ADDR = { admin:'admin@scoutinghub.nl', contact:'contact@scoutinghub.nl', info:'info@scoutinghub.nl' };
+const MB_FOLDERS = { inbox:'Inbox', sent:'Verzonden', trash:'Verwijderd' };
+let _mbType = 'admin', _mbFolder = 'inbox';
+let _msgCache = {}, _unread = {}, _openMailData = {};
+let _drafts = [];
+
+/* ── Helpers ── */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]); }
+function toast(msg, err){
+  const el = document.getElementById('mb-toast');
+  el.textContent = msg;
+  el.style.background = err ? '#3f1a1a' : '#1e3a5f';
+  el.style.borderColor = err ? '#f87171' : '#4ea1ff';
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>{ el.style.display='none'; }, 3000);
+}
+async function getToken(){
+  const now = Date.now()/1000;
+  if(_token && _tokenExp - 60 > now) return _token;
+  if(!_user) return '';
+  try{ const r = await _user.getIdTokenResult(false); _token=r.token; _tokenExp=new Date(r.expirationTime).getTime()/1000; return _token; }
+  catch(_){ return ''; }
+}
+async function api(path, body){
+  const tk = await getToken(); if(!tk) return {ok:false,error:'Niet ingelogd'};
+  const r = await fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify(body||{})});
+  try{ return await r.json(); } catch(_){ return {ok:false,error:'Parse error'}; }
+}
+
+/* ── Login / logout ── */
+setPersistence(auth, browserLocalPersistence).catch(()=>{});
+
+window.doLogin = async function(){
+  const email = (document.getElementById('lf-email').value||'').trim();
+  const pass  = document.getElementById('lf-pass').value||'';
+  const err   = document.getElementById('login-err');
+  const btn   = document.getElementById('lf-btn');
+  err.style.display='none'; btn.disabled=true; btn.textContent='Inloggen…';
+  try{
+    await signInWithEmailAndPassword(auth, email, pass);
+  }catch(e){
+    err.textContent = e.code==='auth/invalid-credential' ? 'Verkeerd e-mailadres of wachtwoord.'
+      : e.code==='auth/too-many-requests' ? 'Te veel pogingen. Wacht even.'
+      : 'Inloggen mislukt.';
+    err.style.display='block';
+    btn.disabled=false; btn.textContent='Inloggen';
+  }
+};
+window.doLogout = async function(){
+  await signOut(auth); _user=null; _token='';
+  document.getElementById('mail-app').style.display='none';
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('btn-logout').style.display='none';
+  document.getElementById('app-hd-meta').textContent='';
+};
+
+/* ── Auth listener ── */
+onAuthStateChanged(auth, async function(user){
+  if(!user){
+    document.getElementById('login-screen').style.display='flex';
+    document.getElementById('mail-app').style.display='none';
+    document.getElementById('btn-logout').style.display='none';
+    document.getElementById('lf-btn').disabled=false;
+    document.getElementById('lf-btn').textContent='Inloggen';
+    return;
+  }
+  _user = user;
+  // Admin check via Firestore
+  let isAdmin = false;
+  try{
+    const snap = await getDoc(doc(db,'users',user.uid));
+    if(snap.exists()){ const d=snap.data(); isAdmin=(d.role==='admin'); }
+  }catch(_){}
+  if(!isAdmin){
+    document.getElementById('login-screen').innerHTML='<div style="color:#f87171;text-align:center;padding:32px">Geen toegang. Dit mailcentrum is alleen voor beheerders.</div>';
+    await signOut(auth); return;
+  }
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('mail-app').style.display='flex';
+  document.getElementById('btn-logout').style.display='';
+  document.getElementById('app-hd-meta').textContent=user.email;
+  _buildApp();
+  _fetchUnread();
+});
+
+/* ── Build UI ── */
+function _buildApp(){
+  _buildTabs(); _buildSide(); _loadPane();
+}
+function _buildTabs(){
+  const tabs = Object.keys(MB_ADDR).map(function(k){
+    const u = _unread[k]||0;
+    return '<button class="mb-tab'+(_mbType===k?' mb-tab-active':'')+'" onclick="_switchType(\''+k+'\')">'+MB_ADDR[k]+(u?'<span class="mb-badge">'+u+'</span>':'')+'</button>';
+  }).join('');
+  document.getElementById('mb-tabs').innerHTML=tabs;
+}
+function _buildSide(){
+  const dc = _drafts.length;
+  const iu = _unread[_mbType]||0;
+  const items=[
+    ['compose','&#9998;','Opstellen'],
+    ['inbox','&#9993;','Inbox'+(iu?'<span class="mb-badge">'+iu+'</span>':'')],
+    ['sent','&#10148;','Verzonden'],
+    ['drafts','&#9999;','Concepten'+(dc?'<span class="mb-badge mb-badge-grey">'+dc+'</span>':'')],
+    ['trash','&#128465;','Verwijderd'],
+    ['newsletter','&#128507;','Nieuwsbrief']
+  ];
+  document.getElementById('mb-side').innerHTML=items.map(function(s){
+    return '<button class="mb-side-btn'+(_mbFolder===s[0]?' active':'')+'" onclick="_navFolder(\''+s[0]+'\')">'
+      +'<span class="mb-side-icon">'+s[1]+'</span>'+s[2]+'</button>';
+  }).join('');
+}
+
+window._switchType=function(type){ _mbType=type; _mbFolder='inbox'; _buildApp(); };
+window._navFolder=function(folder){
+  if(_mbFolder==='compose'&&folder!=='compose'){
+    const d=document.getElementById('mb-detail');
+    if(d){
+      const t=(d.querySelector('[data-mb-to]')||{}).value||'';
+      const s=(d.querySelector('[data-mb-subj]')||{}).value||'';
+      const m=(d.querySelector('[data-mb-msg]')||{}).value||'';
+      const c=(d.querySelector('[data-mb-cc]')||{}).value||'';
+      if(t||s||m){
+        if(confirm('Opslaan als concept?')){ _drafts.unshift({type:_mbType,to:t,cc:c,subject:s,message:m,saved:new Date().toISOString()}); if(_drafts.length>20)_drafts=_drafts.slice(0,20); toast('Concept opgeslagen'); }
+      }
+    }
+  }
+  _mbFolder=folder; _buildSide(); _loadPane();
+};
+
+function _loadPane(){
+  const list=document.getElementById('mb-list');
+  const detail=document.getElementById('mb-detail');
+  if(_mbFolder==='compose'){
+    list.innerHTML=''; _renderCompose(detail); return;
+  }
+  if(_mbFolder==='drafts'){
+    detail.innerHTML='<div class="mb-empty">Selecteer een concept</div>';
+    _renderDrafts(list); return;
+  }
+  if(_mbFolder==='newsletter'){
+    list.innerHTML=''; _renderNewsletter(detail); return;
+  }
+  detail.innerHTML='<div class="mb-empty">Selecteer een bericht</div>';
+  _loadFolder(list, _mbType, _mbFolder);
+}
+
+/* ── Drafts ── */
+function _renderDrafts(el){
+  if(!_drafts.length){ el.innerHTML='<div class="mb-list-hd">Concepten <span class="mb-count">0</span></div><div class="mb-empty">Geen concepten</div>'; return; }
+  el.innerHTML='<div class="mb-list-hd">Concepten <span class="mb-count">'+_drafts.length+'</span></div>'
+    +_drafts.map(function(d,i){
+      let dt=''; try{ dt=new Date(d.saved).toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); }catch(_){}
+      return '<div class="mb-row" onclick="_openDraft('+i+')">'
+        +'<div class="mb-row-top"><span class="mb-row-from">'+esc(d.to||'geen ontvanger')+'</span><span class="mb-row-date">'+dt+'</span></div>'
+        +'<div class="mb-row-subj">'+esc(d.subject||'geen onderwerp')+'</div>'
+      +'</div>';
+    }).join('');
+}
+window._openDraft=function(i){
+  const d=_drafts[i]; if(!d) return;
+  if(d.type&&MB_ADDR[d.type]) _mbType=d.type;
+  _mbFolder='compose'; _buildSide(); _loadPane();
+  setTimeout(function(){
+    const det=document.getElementById('mb-detail'); if(!det) return;
+    ['to','cc','subj','msg'].forEach(function(k){ const el=det.querySelector('[data-mb-'+k+']'); if(el) el.value=d[k==='subj'?'subject':k==='msg'?'message':k]||''; });
+    _drafts.splice(i,1); _buildSide();
+  },80);
+};
+
+/* ── Compose ── */
+function _renderCompose(pane, replyTo, opts){
+  opts=opts||{};
+  const addr=MB_ADDR[_mbType];
+  pane.innerHTML='<div class="mb-compose">'
+    +'<div class="mb-compose-from">Van: <b>'+esc(addr)+'</b></div>'
+    +'<input class="mb-input" type="email" data-mb-to list="mb-contacts" placeholder="Aan" value="'+esc(replyTo||'')+'">'
+    +'<input class="mb-input" type="email" data-mb-cc list="mb-contacts" placeholder="CC (optioneel)">'
+    +'<input class="mb-input" type="text" data-mb-subj placeholder="Onderwerp" value="'+esc(opts.subject||'')+'">'
+    +'<textarea class="mb-input mb-textarea" data-mb-msg placeholder="Schrijf je bericht hier…">'+esc(opts.body||'')+'</textarea>'
+    +'<div class="mb-actions">'
+      +'<button class="mb-btn mb-btn-primary" onclick="_sendMail(this)">Versturen</button>'
+      +'<button class="mb-btn" onclick="_navFolder(\'inbox\')">Annuleren</button>'
+    +'</div>'
+    +'<div class="mb-res" id="mb-compose-res"></div>'
+  +'</div>'
+  +'<datalist id="mb-contacts"></datalist>';
+}
+window._sendMail=async function(btn){
+  const det=document.getElementById('mb-detail');
+  const to=(det.querySelector('[data-mb-to]')||{}).value||'';
+  const cc=(det.querySelector('[data-mb-cc]')||{}).value||'';
+  const subj=(det.querySelector('[data-mb-subj]')||{}).value||'';
+  const msg=(det.querySelector('[data-mb-msg]')||{}).value||'';
+  const res=document.getElementById('mb-compose-res');
+  if(!to||!subj||msg.trim()===''){ if(res) res.textContent='Vul Aan, Onderwerp en Bericht in.'; return; }
+  const o=btn.textContent; btn.disabled=true; btn.textContent='Versturen…';
+  try{
+    const body={type:_mbType,to:to.trim(),subject:subj.trim(),message:msg.trim()};
+    if(cc) body.cc=cc.trim();
+    const j=await api('/api/admin-mail-send',body);
+    if(j&&j.ok){ toast('Mail verstuurd'); _mbFolder='sent'; _buildSide(); _loadPane(); }
+    else{ if(res) res.textContent='Mislukt: '+(j&&j.error?j.error:'onbekend'); btn.disabled=false; btn.textContent=o; }
+  }catch(_){ if(res) res.textContent='Versturen mislukt.'; btn.disabled=false; btn.textContent=o; }
+};
+
+/* ── Message list ── */
+function _renderList(listEl, msgs, label, folder, type, searchVal){
+  const q=(searchVal||'').toLowerCase();
+  const filtered=q?msgs.filter(function(m){ return ((m.from||'')+(m.to||'')+(m.subject||'')+(m.preview||'')).toLowerCase().includes(q); }):msgs;
+  const rows=filtered.map(function(m){
+    let dt=''; try{ const d=new Date(m.date); if(!isNaN(d)){ const today=new Date(); dt=d.toDateString()===today.toDateString()?d.toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'}):d.toLocaleDateString('nl-NL',{day:'numeric',month:'short'}); } }catch(_){}
+    const who=(folder==='sent')?esc(m.to||''):esc(m.from||'');
+    const preview=m.preview?esc(String(m.preview).slice(0,90)):'';
+    return '<div class="mb-row'+(m.seen?'':' unread')+'" data-seq="'+m.seq+'" onclick="_openMsg(\''+esc(type)+'\',\''+esc(folder)+'\','+m.seq+',this)">'
+      +'<div class="mb-row-top"><span class="mb-row-from">'+who+'</span><span class="mb-row-date">'+esc(dt)+'</span></div>'
+      +'<div class="mb-row-subj">'+esc(m.subject||'(geen onderwerp)')+'</div>'
+      +(preview?'<div class="mb-row-preview">'+preview+'</div>':'')
+    +'</div>';
+  }).join('');
+  const existSearch=listEl.querySelector('.mb-search');
+  const searchBar='<div class="mb-search-wrap"><input class="mb-search" placeholder="Zoeken…" value="'+esc(q)+'" oninput="_mbSearch(this,\''+esc(type)+'\',\''+esc(folder)+'\')" /></div>';
+  const hd='<div class="mb-list-hd">'+esc(label)+' <span class="mb-count">'+filtered.length+(filtered.length<msgs.length?'/'+msgs.length:'')+'</span></div>';
+  if(existSearch){
+    const rowsEl=listEl.querySelector('.mb-rows'); if(rowsEl) rowsEl.innerHTML=rows||'<div class="mb-empty">Niets gevonden.</div>';
+  } else {
+    listEl.innerHTML=searchBar+hd+'<div class="mb-rows">'+rows+'</div>';
+  }
+}
+window._mbSearch=function(inp,type,folder){
+  const msgs=(_msgCache[type+'/'+folder])||[];
+  const label=MB_FOLDERS[folder]||'Map';
+  _renderList(document.getElementById('mb-list'),msgs,label,folder,type,inp.value);
+};
+async function _loadFolder(listEl, type, folder){
+  const label=MB_FOLDERS[folder]||'Map';
+  listEl.innerHTML='<div class="mb-loading">'+label+' laden…</div>';
+  const j=await api('/api/admin-mail-inbox',{type,folder,limit:50});
+  if(!(j&&j.ok)){ listEl.innerHTML='<div class="mb-empty">Laden mislukt: '+(j&&j.error?esc(j.error):'')+'</div>'; return; }
+  const msgs=j.messages||[];
+  _msgCache[type+'/'+folder]=msgs;
+  if(!msgs.length){ listEl.innerHTML='<div class="mb-list-hd">'+esc(j.folder||label)+' <span class="mb-count">0</span></div><div class="mb-empty">'+esc(label)+' is leeg.</div>'; return; }
+  _renderList(listEl,msgs,j.folder||label,folder,type,'');
+}
+
+/* ── Open message ── */
+window._openMsg=async function(type, folder, seq, rowEl){
+  document.getElementById('mb-list').querySelectorAll('.mb-row.active').forEach(function(r){ r.classList.remove('active'); });
+  if(rowEl){ rowEl.classList.add('active'); rowEl.classList.remove('unread'); }
+  const detail=document.getElementById('mb-detail');
+  detail.innerHTML='<div class="mb-loading">Bericht laden…</div>';
+  const j=await api('/api/admin-mail-read',{type,folder,seq});
+  if(!(j&&j.ok)){ detail.innerHTML='<div class="mb-empty">Laden mislukt: '+(j&&j.error?esc(j.error):'')+'</div>'; return; }
+  let dt=''; try{ const d=new Date(j.date); if(!isNaN(d)) dt=d.toLocaleString('nl-NL'); }catch(_){ dt=j.date||''; }
+  _openMailData={type,folder,seq,subject:j.subject||'',from:j.from||'',to:j.to||'',date:dt,text:j.text||''};
+  let attHtml='';
+  if(j.attachments&&j.attachments.length){
+    attHtml='<div class="mb-attach"><span class="mb-attach-lbl">Bijlagen:</span>'
+      +j.attachments.map(function(a,i){ return '<button class="mb-attach-item" onclick="_dlAtt(\''+esc(type)+'\',\''+esc(folder)+'\','+seq+','+i+',\''+esc(a.name||'bijlage')+'\',\''+esc(a.type||'application/octet-stream')+'\')">&#128196; '+esc(a.name||'bijlage')+'</button>'; }).join('')
+    +'</div>';
+  }
+  const body=j.html
+    ?'<iframe id="mb-iframe" sandbox="allow-same-origin" style="width:100%;min-height:400px;max-height:65vh;border:none;background:#fff;border-radius:6px;margin:16px 18px;display:block;" onload="try{this.style.height=Math.min(this.contentDocument.body.scrollHeight+24,window.innerHeight*.65)+\'px\';}catch(_){}"></iframe>'
+    :'<pre class="mb-detail-body">'+esc(j.text||'(leeg)')+'</pre>';
+  detail.innerHTML='<div class="mb-detail-inner">'
+    +'<div class="mb-detail-hd">'
+      +'<div class="mb-detail-subj">'+esc(j.subject||'(geen onderwerp)')+'</div>'
+      +'<div class="mb-detail-meta">'
+        +(j.from?'<div><b>Van:</b> '+esc(j.from)+'</div>':'')
+        +(j.to?'<div><b>Aan:</b> '+esc(j.to)+'</div>':'')
+        +(dt?'<div><b>Datum:</b> '+esc(dt)+'</div>':'')
+      +'</div>'
+      +'<div class="mb-toolbar">'
+        +'<button class="mb-tb-btn mb-tb-btn-primary" onclick="_replyLast()">&#8617; Beantwoorden</button>'
+        +'<button class="mb-tb-btn" onclick="_forwardLast()">&#8618; Doorsturen</button>'
+        +'<button class="mb-tb-btn" onclick="_navFolder(\'compose\')">&#9998; Nieuw bericht</button>'
+      +'</div>'
+    +'</div>'
+    +attHtml
+    +body
+  +'</div>';
+  if(j.html){ const f=document.getElementById('mb-iframe'); if(f) f.srcdoc=j.html; }
+};
+
+window._replyLast=function(){
+  const d=_openMailData; if(!d||!d.from) return;
+  let from=''; try{ from=d.from.replace(/^.*<([^>]+)>.*$/,'$1')||d.from; }catch(_){ from=d.from; }
+  _mbFolder='compose'; _buildSide(); _loadPane();
+  setTimeout(function(){ const det=document.getElementById('mb-detail'); if(det) _renderCompose(det,from,{subject:(/^Re:/i.test(d.subject||'')?'':'Re: ')+d.subject}); },60);
+};
+window._forwardLast=function(){
+  const d=_openMailData; if(!d) return;
+  const subj=(/^Fwd:/i.test(d.subject||'')?'':'Fwd: ')+(d.subject||'');
+  const body='\r\n\r\n--- Doorgestuurd bericht ---\r\nVan: '+(d.from||'')+'\r\nDatum: '+(d.date||'')+'\r\n\r\n'+(d.text||'');
+  _mbFolder='compose'; _buildSide(); _loadPane();
+  setTimeout(function(){ const det=document.getElementById('mb-detail'); if(det) _renderCompose(det,'',{subject:subj,body:body}); },60);
+};
+
+window._dlAtt=async function(type, folder, seq, idx, name, mime){
+  const j=await api('/api/admin-mail-attachment',{type,folder,seq,index:idx});
+  if(!(j&&j.ok&&j.b64)){ toast('Bijlage laden mislukt',true); return; }
+  const bytes=Uint8Array.from(atob(j.b64),function(c){return c.charCodeAt(0);});
+  const blob=new Blob([bytes],{type:j.type||mime});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a'); a.href=url; a.download=j.name||name; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);},8000);
+};
+
+/* ── Newsletter ── */
+async function _renderNewsletter(pane){
+  pane.innerHTML='<div class="mb-loading">Nieuwsbrief laden…</div>';
+  let subs=[];
+  try{ const j=await api('/api/admin-newsletter-list',{}); if(j&&j.ok) subs=j.subscribers||[]; }catch(_){}
+  let savedSubj='', savedMsg='', autoSend=false, savedAt='';
+  try{
+    const snap=await getDoc(doc(db,'admin_settings','newsletter_draft'));
+    if(snap.exists()){ const dd=snap.data()||{}; savedSubj=dd.subject||''; savedMsg=dd.message||''; autoSend=!!dd.autoSend; if(dd.savedAt){ try{ savedAt=new Date(dd.savedAt).toLocaleString('nl-NL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(_){} } }
+  }catch(_){}
+  const now=new Date(); const nm=now.getMonth()+(now.getDate()===1&&now.getHours()<7?0:1);
+  const next1=new Date(now.getFullYear()+(nm>11?1:0),(nm>11?0:nm),1,7,0,0);
+  const next1Lbl=next1.toLocaleDateString('nl-NL',{day:'numeric',month:'long'})+' om 07:00';
+  const subsHtml=subs.length
+    ?subs.slice(0,10).map(function(s){ return '<div class="mb-nl-sub"><span class="mb-nl-sub-name">'+esc(s.displayName||s.name||s.email||'')+'</span><span class="mb-nl-sub-email">'+esc(s.email||'')+'</span></div>'; }).join('')+(subs.length>10?'<div class="mb-nl-more">+'+( subs.length-10)+' meer</div>':'')
+    :'<div style="color:var(--text-3);font-size:13px;padding:8px 0">Geen abonnees</div>';
+  pane.innerHTML='<div class="mb-detail-inner">'
+    +'<div class="mb-detail-hd"><div class="mb-detail-subj">Nieuwsbrief</div></div>'
+    +'<div class="mb-nl">'
+      +'<div class="mb-nl-left">'
+        +'<div class="mb-nl-hd">Abonnees ('+subs.length+')</div>'
+        +subsHtml
+      +'</div>'
+      +'<div class="mb-nl-right">'
+        +'<div class="mb-nl-hd">Concept'+(savedAt?'<span class="mb-nl-saved"> - opgeslagen '+savedAt+'</span>':'')+'</div>'
+        +'<input class="mb-input" id="nl-subj" placeholder="Onderwerp" value="'+esc(savedSubj)+'">'
+        +'<textarea class="mb-input mb-textarea" id="nl-msg" placeholder="Bericht (platte tekst of HTML)…" style="min-height:180px;resize:vertical;">'+esc(savedMsg)+'</textarea>'
+        +'<div class="mb-nl-auto">'
+          +'<label class="mb-nl-toggle"><input type="checkbox" id="nl-auto"'+(autoSend?' checked':'')+'> <span>Automatisch versturen op 1e vd maand om 07:00</span></label>'
+          +(autoSend?'<div class="mb-nl-next">Volgende verzending: '+esc(next1Lbl)+'</div>':'')
+        +'</div>'
+        +'<div class="mb-actions">'
+          +'<button class="mb-btn mb-btn-primary" onclick="_nlSend(this,'+subs.length+')">Nu versturen naar '+subs.length+' abonnee'+(subs.length!==1?'s':'')+'</button>'
+          +'<button class="mb-btn" onclick="_nlSave(this)">Concept opslaan</button>'
+        +'</div>'
+        +'<div id="nl-res" style="font-size:13px;padding:4px 0;color:var(--text-3)"></div>'
+      +'</div>'
+    +'</div>'
+  +'</div>';
+  const cb=document.getElementById('nl-auto'); if(cb) cb.addEventListener('change',function(){ _nlToggleAuto(this.checked); });
+}
+
+window._nlSave=async function(btn){
+  const subj=(document.getElementById('nl-subj')||{}).value||'';
+  const msg=(document.getElementById('nl-msg')||{}).value||'';
+  const auto=document.getElementById('nl-auto'); const autoSend=auto?auto.checked:false;
+  const o=btn.textContent; btn.disabled=true; btn.textContent='Opslaan…';
+  try{
+    await setDoc(doc(db,'admin_settings','newsletter_draft'),{subject:subj,message:msg,autoSend,savedAt:new Date().toISOString()});
+    toast('Concept opgeslagen');
+    const res=document.getElementById('nl-res'); if(res) res.textContent='Opgeslagen om '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'});
+  }catch(e){ toast('Opslaan mislukt',true); }
+  finally{ btn.disabled=false; btn.textContent=o; }
+};
+async function _nlToggleAuto(val){
+  try{
+    const snap=await getDoc(doc(db,'admin_settings','newsletter_draft'));
+    const cur=snap.exists()?snap.data():{};
+    await setDoc(doc(db,'admin_settings','newsletter_draft'),Object.assign({},cur,{autoSend:val,savedAt:cur.savedAt||new Date().toISOString()}));
+    toast(val?'Auto-verzending ingeschakeld':'Auto-verzending uitgeschakeld');
+  }catch(_){}
+}
+window._nlSend=async function(btn, cnt){
+  const subj=(document.getElementById('nl-subj')||{}).value||'';
+  const msg=(document.getElementById('nl-msg')||{}).value||'';
+  if(!subj||!msg){ toast('Vul onderwerp en bericht in',true); return; }
+  if(!confirm('Versturen naar '+cnt+' abonnee'+(cnt!==1?'s':'')+'?')) return;
+  const o=btn.textContent; btn.disabled=true; btn.textContent='Versturen…';
+  try{
+    const j=await api('/api/admin-newsletter-send',{subject:subj,message:msg});
+    if(j&&j.ok){ toast('Verstuurd naar '+(j.sent||cnt)+' abonnees'); const res=document.getElementById('nl-res'); if(res) res.textContent='Verstuurd naar '+(j.sent||cnt)+' abonnee'+(cnt!==1?'s':''); }
+    else{ toast('Mislukt: '+(j&&j.error?j.error:''),true); btn.disabled=false; btn.textContent=o; }
+  }catch(_){ toast('Versturen mislukt',true); btn.disabled=false; btn.textContent=o; }
+};
+
+/* ── Unread count ── */
+async function _fetchUnread(){
+  const j=await api('/api/admin-mail-unread',{});
+  if(j&&j.ok&&j.counts){ _unread=j.counts; _buildTabs(); _buildSide(); }
+}
+
+/* ── PWA install prompt ── */
+let _deferredInstall=null;
+window.addEventListener('beforeinstallprompt',function(e){ e.preventDefault(); _deferredInstall=e; });
+
+/* ── Service worker ── */
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.register('./sw.js').catch(()=>{});
+}
+</script>
+</body>
+</html>

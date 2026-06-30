@@ -1,0 +1,16 @@
+{
+  "name": "ScoutingHub Mail",
+  "short_name": "SH Mail",
+  "description": "Mailcentrum voor ScoutingHub beheerders",
+  "start_url": "./mail.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#060e1c",
+  "theme_color": "#0b1220",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "categories": ["productivity", "utilities"]
+}

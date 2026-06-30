@@ -1175,7 +1175,7 @@ async function getServiceAccountToken(env){
   if(_saTokenCache && _saTokenCache.exp - 60 > nowSec) return _saTokenCache.token;
   const raw = env && env.SERVICE_ACCOUNT_JSON;
   if(!raw) throw new Error('sa-missing');
-  const sa = JSON.parse(raw);
+  const sa = typeof raw === 'string' ? JSON.parse(raw) : raw;
   const scope = 'https://www.googleapis.com/auth/datastore https://www.googleapis.com/auth/identitytoolkit https://www.googleapis.com/auth/firebase';
   const header = { alg:'RS256', typ:'JWT' };
   const claim = { iss: sa.client_email, scope, aud:'https://oauth2.googleapis.com/token', iat: nowSec, exp: nowSec+3600 };

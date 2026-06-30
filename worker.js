@@ -1874,7 +1874,11 @@ async function imapAppendSent(env, type, rawMsg){
     await send('AL LIST "" "*"');
     const lr = await imapReadUntilTagged(reader,'AL ',32768);
     const names = imapParseFolderNames(lr);
-    const sentFolder = imapPickFolder(names,'sent') || 'Sent';
+    let sentFolder = imapPickFolder(names,'sent');
+    if(!sentFolder){
+      try{ await send('AC CREATE "Sent"'); await imapReadUntilTagged(reader,'AC ',2048).catch(()=>{}); }catch(_){}
+      sentFolder = 'Sent';
+    }
     // APPEND commando
     const msgBytes = enc.encode(rawMsg);
     await writer.write(enc.encode('A5 APPEND '+q(sentFolder)+' (\\Seen) {'+msgBytes.length+'}\r\n'));
@@ -2015,7 +2019,7 @@ async function handleAdminNewsletterList(body, env, request){
   if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
   const all = await saFsList(saToken, 'access_requests', 500);
   const subs = all.filter(function(x){ return x.newsletterOptIn===true; });
-  subs.sort(function(a,b){ return new Date(b.timestamp||0)-new Date(a.timestamp||0); });
+  subs.sort(function(a,b){ return new Date(b.requestedAt||0)-new Date(a.requestedAt||0); });
   return json({ ok:true, subscribers: subs });
 }
 
@@ -2277,10 +2281,10 @@ async function imapFetchFolder(env, type, folderKey, limit){
 }
 
 // Decodeert Quoted-Printable encoding.
-function imapDecodeQP(str){
+function imapDecodeQP(str, charset){
   // Soft line-breaks weghalen
   const s = str.replace(/=\r\n/g,'').replace(/=\n/g,'');
-  // QP bytes verzamelen als raw byte-array, dan UTF-8 decoderen
+  // QP bytes verzamelen als raw byte-array, dan charset-bewust decoderen
   const bytes = [];
   let i = 0;
   while(i < s.length){
@@ -2292,8 +2296,9 @@ function imapDecodeQP(str){
       i++;
     }
   }
-  try{ return new TextDecoder('utf-8').decode(new Uint8Array(bytes)); }
-  catch(_){ return bytes.map(b=>String.fromCharCode(b)).join(''); }
+  const cs = charset||'utf-8';
+  try{ return new TextDecoder(cs).decode(new Uint8Array(bytes)); }
+  catch(_){ try{ return new TextDecoder('utf-8').decode(new Uint8Array(bytes)); }catch(__){ return bytes.map(b=>String.fromCharCode(b)).join(''); } }
 }
 
 // Strips HTML tags naar leesbare platte tekst.
@@ -2319,10 +2324,15 @@ function imapExtractBody(body, contentType, withContent){
       return new TextDecoder('utf-8').decode(b);
     }catch(_){ try{ return atob(s.replace(/\s/g,'')); }catch(e){ return s; } }
   }
-  function decodePart(pbody, penc){
+  function decodePart(pbody, penc, charset){
     const e=(penc||'').toLowerCase().trim();
-    if(e==='quoted-printable') return imapDecodeQP(pbody);
-    if(e==='base64') return b64utf8(pbody);
+    if(e==='quoted-printable') return imapDecodeQP(pbody, charset);
+    if(e==='base64'){
+      const bin=atob(pbody.replace(/\s/g,''));
+      const b=new Uint8Array(bin.length);
+      for(let i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i);
+      try{ return new TextDecoder(charset||'utf-8').decode(b); }catch(_){ return b64utf8(pbody); }
+    }
     return pbody;
   }
   function parse(rawBody, rawCt){
@@ -2335,12 +2345,14 @@ function imapExtractBody(body, contentType, withContent){
       const parts=rawBody.split(bRe);
       for(const part of parts){
         if(!part||/^\s*$/.test(part)) continue;
-        const hi=part.indexOf('\r\n\r\n');
+        let hi=part.indexOf('\r\n\r\n'), sepLen=4;
+        if(hi<0){ hi=part.indexOf('\n\n'); sepLen=2; }
         if(hi<0) continue;
         const phdr=part.slice(0,hi);
-        const pbody=part.slice(hi+4).replace(/\r\n$/,'');
+        const pbody=part.slice(hi+sepLen).replace(/\r?\n$/,'');
         const pct=imapHeaderField(phdr,'Content-Type')||'';
         const pctl=pct.toLowerCase();
+        const pcharset=(pct.match(/charset=["']?([^"';\s\r\n]+)/i)||[])[1]||'utf-8';
         const penc=(imapHeaderField(phdr,'Content-Transfer-Encoding')||'').toLowerCase().trim();
         const pdisp=(imapHeaderField(phdr,'Content-Disposition')||'').toLowerCase();
         const pname=((pct.match(/name=["']?([^"';\r\n]+)["']?/i)||pdisp.match(/filename=["']?([^"';\r\n]+)["']?/i)||[])[1]||'').trim();
@@ -2353,7 +2365,7 @@ function imapExtractBody(body, contentType, withContent){
           attachments.push(attObj);
           continue;
         }
-        const dec=decodePart(pbody,penc);
+        const dec=decodePart(pbody,penc,pcharset);
         if(pctl.includes('text/html')&&!html) html=dec;
         else if(pctl.includes('text/plain')&&!text) text=dec;
       }
@@ -2412,22 +2424,24 @@ async function imapFetchBody(env, type, folderKey, seq){
     try{ await send('A9 LOGOUT'); }catch(_){}
     try{ writer.close(); }catch(_){}
 
-    const bm = resp.match(/\* \d+ FETCH \(BODY\[\] \{(\d+)\}\r\n([\s\S]*)/i);
+    const bm = resp.match(/\* \d+ FETCH \([\s\S]*?BODY\[\] \{(\d+)\}\r\n([\s\S]*)/i);
     if(!bm) return { ok:false, error:'Bericht niet gevonden of leeg' };
     const raw = bm[2].slice(0, parseInt(bm[1],10));
-    const splitIdx = raw.indexOf('\r\n\r\n');
+    let splitIdx = raw.indexOf('\r\n\r\n'), outerSepLen = 4;
+    if(splitIdx < 0){ splitIdx = raw.indexOf('\n\n'); outerSepLen = 2; }
     const headerPart = splitIdx >= 0 ? raw.slice(0, splitIdx) : raw;
-    const bodyPart   = splitIdx >= 0 ? raw.slice(splitIdx + 4) : '';
+    const bodyPart   = splitIdx >= 0 ? raw.slice(splitIdx + outerSepLen) : '';
     const contentType = imapHeaderField(headerPart,'Content-Type');
+    const charset = ((contentType||'').match(/charset=["']?([^"';\s\r\n]+)/i)||[])[1]||'utf-8';
     const cte = (imapHeaderField(headerPart,'Content-Transfer-Encoding')||'').toLowerCase().trim();
     let bodyDecoded = bodyPart;
     try{
-      if(cte==='quoted-printable') bodyDecoded = imapDecodeQP(bodyPart);
+      if(cte==='quoted-printable') bodyDecoded = imapDecodeQP(bodyPart, charset);
       else if(cte==='base64'){
         const bin=atob(bodyPart.replace(/\s/g,''));
         const b=new Uint8Array(bin.length);
         for(let i=0;i<bin.length;i++) b[i]=bin.charCodeAt(i);
-        bodyDecoded=new TextDecoder('utf-8').decode(b);
+        bodyDecoded=new TextDecoder(charset||'utf-8').decode(b);
       }
     }catch(_){}
     const extracted = imapExtractBody(bodyDecoded, contentType);

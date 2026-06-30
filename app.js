@@ -32492,7 +32492,7 @@ async function _admMbRenderNewsletter(pane){
     var tk=await _admToken(); if(!tk){ pane.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
     var r=await fetch(_admBase()+'/api/admin-newsletter-list',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({})});
     var j={};try{j=await r.json();}catch(_){}
-    if(!(r.ok&&j&&j.ok)){ pane.innerHTML='<div class="bh-empty">Abonnees laden mislukt.</div>'; return; }
+    if(!(r.ok&&j&&j.ok)){ pane.innerHTML='<div class="bh-empty">Abonnees laden mislukt'+(j&&j.error?' ('+_bhEsc(j.error)+')':'')+'.</div>'; return; }
     var subs=j.subscribers||[];
     pane.innerHTML='<div class="adm-mb3-detail-inner">'
       +'<div class="adm-mb3-detail-hd"><div class="adm-mb3-detail-subj">📧 Nieuwsbrief</div></div>'

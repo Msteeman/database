@@ -26922,7 +26922,9 @@ function extractTournifyId(url){
  * Vervang hieronder <JOUW-SUBDOMEIN> door je eigen subdomein.
  * (De drie endpoints hangen er als pad achter: /parseToernooiUrl enz.)
  * ============================================================ */
-const TOERNOOI_API_BASE = 'https://scoutinghub-api.marcelsteeman1.workers.dev';
+const TOERNOOI_API_BASE = (window.location.hostname === 'scoutinghub.nl' || window.location.hostname === 'admin.scoutinghub.nl')
+  ? 'https://scoutinghub-api.marcelsteeman1.workers.dev'
+  : 'https://scoutinghub-api-test.marcelsteeman1.workers.dev';
 
 async function fetchTournifyData(tournifyId, rawUrl){
   // Gebruik de parseToernooiUrl-functie (Cloudflare Worker)

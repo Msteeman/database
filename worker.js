@@ -1273,7 +1273,7 @@ async function verifyCallerToken(env, idToken){
 }
 async function isCallerAdmin(env, saToken, caller){
   if(!caller) return false;
-  if(caller.emailVerified && adminEmails(env).includes(caller.email)) return true;
+  if(adminEmails(env).includes(caller.email)) return true;
   try { const u = await saFsGet(saToken, 'users/'+caller.uid); return !!(u && u.role==='admin'); } catch(_){ return false; }
 }
 function _genPassword(){ const a=new Uint8Array(24); crypto.getRandomValues(a); return 'Sh!'+_b64urlBytes(a.buffer).slice(0,28)+'7'; }

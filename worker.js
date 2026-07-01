@@ -1158,9 +1158,14 @@ async function callAiApi(env, prompt, opts){
     temperature: opts.temperature!=null?opts.temperature:0.4,
     max_tokens: opts.maxTokens||512
   });
-  const text = result && (result.response || (typeof result==='string'?result:''));
-  if(!text) throw new Error('workers-ai-leeg-antwoord');
-  return String(text).trim();
+  let text = result;
+  if(result && typeof result==='object' && !Array.isArray(result)){
+    text = result.response;
+    // Workers AI kan het antwoord soms al als object teruggeven i.p.v. platte tekst.
+    if(text && typeof text==='object') text = JSON.stringify(text);
+  }
+  if(!text || typeof text!=='string') throw new Error('workers-ai-leeg-antwoord');
+  return text.trim();
 }
 async function handleGemini(body, env, request){
   const ip = (request && request.headers && request.headers.get('CF-Connecting-IP')) || '0.0.0.0';

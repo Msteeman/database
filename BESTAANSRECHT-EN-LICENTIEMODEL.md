@@ -111,20 +111,32 @@ dan een handjevol scouts/spelers heeft.
 
 | Tier | Voor wie | Bevat | Richtprijs |
 |---|---|---|---|
-| **Gratis** | Losse scout, 1 team, uitproberen | Spelersdatabase tot ~25 spelers, basisrapportage, geen ritten/analyse-modules | €0 |
-| **Team** | Eén jeugdteam/leeftijdsgroep | Onbeperkt spelers binnen dat team, rapporten, observaties, ritten, programma | €9-15 / maand per team |
-| **Club** | Hele jeugdopleiding | Alle teams onder één club, rolbeheer (coördinator/hoofdcoördinator), toernooien, analysemodules, prioriteitssupport | €49-99 / maand per club (afhankelijk van aantal teams, bijv. tot 8 teams, daarna staffel) |
+| **Tester / vroege gebruiker** | Iedereen die nu al meedraait in de testfase | Alles uit de Club-tier (dus de volledige functieset), zolang het platform in test-/bètafase zit | €0 tijdens de testfase; daarna blijvend 50% korting op de tier die van toepassing wordt, als dank voor het testen en de feedback die het product gevormd heeft |
+| **Gratis** | Losse scout die wil uitproberen, geen betalende tester | Spelersdatabase tot ~25 spelers, basisrapportage, geen ritten/analyse-modules | €0 |
+| **Solo Scout** | Eén individuele scout of makelaar, niet gebonden aan één club (bijv. volgt spelers bij meerdere verenigingen) | Onbeperkt spelers, volledige rapportage/observaties, ritten, "getipte spelers"-pipeline — geen teamstructuur nodig | €7-12 / maand |
+| **Team** | Eén jeugdteam/leeftijdsgroep binnen een club | Onbeperkt spelers binnen dat team, rapporten, observaties, ritten, programma | €9-15 / maand per team |
+| **Club / Organisatie** | Hele jeugdopleiding met hoofdjeugdopleiding, coördinatoren en meerdere scouts | Alle teams onder één club, rolbeheer (scout/coördinator/hoofdcoördinator), toernooien, analysemodules, prioriteitssupport | Vanaf €49 / maand (tot 5 actieve scouts/coördinatoren), daarna +€8 / maand per extra scout of coördinator |
 | **Netwerk/Regio** | Scoutingnetwerk rond een BVO, meerdere clubs | Alles van Club + overkoepelend dashboard over meerdere clubs, export/rapportage naar de BVO | Maatwerk, richting €150-400 / maand |
 
 Redenen voor deze opzet:
 
-- **Per team, niet per gebruiker.** Aantal scouts per team varieert
-  (1-4), en per-seat-pricing schrikt vrijwilligersorganisaties af. Een
-  vast bedrag per team is voorspelbaar en makkelijker te verkopen aan een
-  bestuur.
-- **Club-tier bewust geprijsd als "budget voor het hele jeugdbestuur"**,
-  niet als opstelsom van teamprijzen — clubs kopen makkelijker één
-  begrijpelijke jaarpost dan een variabele rekening.
+- **Testers krijgen bewust een blijvend voordeel, geen tijdelijke proefperiode.**
+  Zij hebben het product mede gevormd via feedback nog voordat er een
+  betaald model was — een eenmalige gratis maand zou dat niet recht doen.
+  Een blijvende korting (in plaats van "gratis voor altijd") houdt het
+  financieel houdbaar zodra het aantal testers groeit, maar erkent wel hun
+  vroege bijdrage.
+- **Solo Scout is losgekoppeld van Team**, omdat een zelfstandige scout of
+  makelaar geen club/team-structuur heeft om spelers aan op te hangen —
+  die groep heeft wel behoefte aan de volledige rapportage/tips-functies,
+  maar zou bij de Team-tier onnodig vastzitten aan een teamconcept dat niet
+  op hen van toepassing is.
+- **Club-tier schaalt met het aantal scouts/coördinatoren, niet met het
+  aantal teams.** Bij een hoofdjeugdopleiding is de belasting op het
+  platform (rapporten, observaties, beheer) evenredig met hoeveel mensen
+  er actief scouten en coördineren, niet met hoeveel losse teams er zijn —
+  een organisatie met 3 coördinatoren en 10 scouts over 6 teams gebruikt
+  het platform intensiever dan een club met 10 teams maar 2 actieve scouts.
 - **Jaarlijks factureren met korting (bijv. 2 maanden gratis bij
   jaarbetaling)** past goed bij hoe verenigingen begroten (seizoen-
   gebonden, vaak via de penningmeester eenmalig per jaar geregeld) en
@@ -148,14 +160,15 @@ Redenen voor deze opzet:
 
 ## 6. Omzetscenario's (schattingen, geen voorspelling met zekerheid)
 
-Uitgangspunt: alleen betaalde Team- en Club-tiers meegerekend, Gratis-tier
-draagt niet bij aan omzet maar wel aan naamsbekendheid/instroom.
+Uitgangspunt: alleen betaalde Solo Scout-, Team- en Club-tiers meegerekend.
+Gratis-tier en tester-korting dragen niet (volledig) bij aan omzet maar wel
+aan naamsbekendheid/instroom richting betaalde tiers.
 
 | Scenario | Betalende eenheden na 12-18 mnd | Gem. prijs/mnd | Jaaromzet (ARR) |
 |---|---|---|---|
-| **Conservatief** | 30 teams + 5 clubs | €12 / €70 | ≈ €8.500 |
-| **Realistisch** | 80 teams + 20 clubs | €12 / €70 | ≈ €28.500 |
-| **Optimistisch** | 150 teams + 40 clubs + 2 netwerk-deals | €13 / €75 + €250 | ≈ €63.000 |
+| **Conservatief** | 15 solo scouts + 30 teams + 5 clubs | €9 / €12 / €70 | ≈ €10.100 |
+| **Realistisch** | 40 solo scouts + 80 teams + 20 clubs | €9 / €12 / €70 | ≈ €33.100 |
+| **Optimistisch** | 70 solo scouts + 150 teams + 40 clubs + 2 netwerk-deals | €10 / €13 / €75 + €250 | ≈ €71.400 |
 
 Interpretatie: zelfs het optimistische scenario is geen fulltime-salaris-
 vervangend bedrag in Nederland zonder aanvullende inkomsten. Het is wel een

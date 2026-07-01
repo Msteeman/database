@@ -2433,6 +2433,7 @@ async function imapFetchBody(env, type, folderKey, seq){
 
     await send('A3 FETCH ' + seq + ' (BODY.PEEK[])');
     resp = await imapReadUntilTagged(reader, 'A3 ', 800000);
+    try{ await send('A4 STORE ' + seq + ' +FLAGS (\\Seen)'); await imapReadUntilTagged(reader, 'A4 ', 2048); }catch(_){}
     try{ await send('A9 LOGOUT'); }catch(_){}
     try{ writer.close(); }catch(_){}
 

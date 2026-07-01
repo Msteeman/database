@@ -32613,7 +32613,7 @@ function _admMbRenderList(listEl, msgs, fLabel, folder, type){
     }}catch(_){}
     var who=(folder==='sent'||folder==='drafts')?_bhEsc(m.to||''):_bhEsc(m.from||'');
     var preview=m.preview?_bhEsc(String(m.preview).slice(0,90)):'';
-    return '<div class="adm-mb3-row'+(m.seen?'':' adm-mb3-unread')+'" data-seq="'+m.seq+'" onclick="_admMbOpenMail(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\','+m.seq+',this)">'
+    return '<div class="adm-mb3-row'+(m.seen?' adm-mb3-read':' adm-mb3-unread')+'" data-seq="'+m.seq+'" onclick="_admMbOpenMail(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\','+m.seq+',this)">'
       +'<div class="adm-mb3-row-top"><span class="adm-mb3-row-from">'+who+'</span><span class="adm-mb3-row-date">'+_bhEsc(dt)+'</span></div>'
       +'<div class="adm-mb3-row-subj">'+_bhEsc(m.subject||'(geen onderwerp)')+'</div>'
       +(preview?'<div class="adm-mb3-row-preview">'+preview+'</div>':'')
@@ -32662,7 +32662,7 @@ async function _admMbOpenMail(type, folder, seq, rowEl){
   var listEl=document.getElementById('adm-mb3-list');
   if(listEl) listEl.querySelectorAll('.adm-mb3-row-active').forEach(function(r){ r.classList.remove('adm-mb3-row-active'); });
   var wasUnread = rowEl && rowEl.classList.contains('adm-mb3-unread');
-  if(rowEl){ rowEl.classList.add('adm-mb3-row-active'); rowEl.classList.remove('adm-mb3-unread'); }
+  if(rowEl){ rowEl.classList.add('adm-mb3-row-active'); rowEl.classList.remove('adm-mb3-unread'); rowEl.classList.add('adm-mb3-read'); }
   if(wasUnread && folder==='inbox'){
     if(_admMbUnread[type]>0) _admMbUnread[type]--;
     _admMbRebuild();

@@ -1150,7 +1150,7 @@ async function verifyTurnstile(env, token, ip){
 async function callGeminiApi(env, prompt, opts){
   opts = opts || {};
   if(!env || !env.GEMINI_API_KEY) throw new Error('Gemini niet geconfigureerd');
-  const model = 'gemini-2.0-flash';
+  const model = 'gemini-2.5-flash-lite';
   const url = 'https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+env.GEMINI_API_KEY;
   const body = {
     contents: [{ parts: [{ text: prompt }] }],
@@ -1175,10 +1175,21 @@ async function handleGemini(body, env, request){
   }catch(err){ return json({ ok:false, error:'Gemini niet beschikbaar' }, 502); }
 }
 
+const NL_AI_APP_CONTEXT = 'ScoutingHub is een Nederlandse voetbal-scouting webapp (in testfase). Zo werkt de app voor de gebruikers (scouts/coördinatoren), zodat je begrijpt waar de beheerder het over heeft:\n'
+  + '- Hoofdnavigatie: Dashboard, Spelersdatabase, Programma, Wedstrijden, Team-overzicht (coörd/admin), Gescoute teams (Elftallen), Vergelijken, Elftal analyse (Pitch), Clubs & locaties (Adresboek), Contactpersonen, Ritten, Getipte spelers (Tips), Toernooien, Handleiding.\n'
+  + '- Spelersdatabase: centrale lijst van gescoute spelers met niveau-inschatting (huidig/potentieel, A/B/C/D) en advies.\n'
+  + '- Observatie vs. wedstrijdrapport: een observatie is een snelle, nog niet volledig uitgewerkte notitie over een speler (bv. live tijdens een wedstrijd); een wedstrijdrapport is een volledig, formeel rapport gekoppeld aan een geplande wedstrijd.\n'
+  + '- Programma: agenda van geplande scoutopdrachten/wedstrijden. Toernooien: aparte module voor scouten tijdens meerdaagse toernooien.\n'
+  + '- Getipte spelers (Tips): tips over spelers die nog niet zelf gescout zijn, ingediend door een tipgever, met prioriteit en status; vanuit een tip kan direct een rapport gestart of een wedstrijd ingepland worden.\n'
+  + '- Ritten (Rittenregistratie): kilometerregistratie voor reiskostendeclaratie, met automatische adres-naar-km-berekening.\n'
+  + '- Analyse-modules: Gescoute teams (Elftallen, per tegenstander), Vergelijken (spelers naast elkaar met grafieken), Elftal analyse (Pitch, visuele veldopstelling).\n'
+  + '- Contacten: Clubs & locaties (adresboek van clubs) en Contactpersonen (bv. trainers, los van clubs).\n'
+  + '- Rollen: scout (standaard), coördinator, hoofdcoördinator, admin — hogere rollen zien extra overzichten van hun team.\n\n';
 function nlAiEditionPrompt(topic){
   return 'Je schrijft een korte, vriendelijke Nederlandse productupdate-nieuwsbrief voor "ScoutingHub", een voetbal-scouting app in ontwikkeling (testfase). '
-    + 'De toon is warm, direct en niet overdreven zakelijk — schrijf zoals je aan een klein team van vrijwillige testers zou schrijven. '
-    + 'Onderwerp/inhoud van deze editie (door de beheerder aangeleverd): "'+topic.replace(/"/g,"'")+'"\n\n'
+    + 'De toon is warm, direct en niet overdreven zakelijk — schrijf zoals je aan een klein team van vrijwillige testers zou schrijven.\n\n'
+    + NL_AI_APP_CONTEXT
+    + 'Onderwerp/inhoud van deze editie (door de beheerder aangeleverd, mogelijk met afkortingen/steekwoorden die verwijzen naar bovenstaande app-onderdelen): "'+topic.replace(/"/g,"'")+'"\n\n'
     + 'Geef ALLEEN geldige JSON terug (geen markdown, geen uitleg, geen ```), exact in dit format:\n'
     + '{"titel":"pakkende hoofdkop, max 90 tekens","intro":"2-4 zinnen introductie","dankwoord":{"titel":"korte titel","tekst":"kort bedankje aan testers, 2-3 zinnen"},'
     + '"updates":[{"titel":"korte titel","tekst":"2-3 zinnen uitleg","tag":"nieuw|bugfix|coming|wip","icon":"1 relevante emoji","kleur":"red|blue|yellow|green|purple","highlight":false}],'

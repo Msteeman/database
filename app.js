@@ -32749,9 +32749,10 @@ async function _admNlAiImprove(textarea, btn, context, applyFn){
   if(!textarea) return;
   var current=(textarea.value||'').trim();
   if(!current){ if(typeof toast==='function') toast('Vul eerst iets in om te verbeteren',true); return; }
-  var _o=btn.textContent; btn.disabled=true; btn.textContent='…';
+  var _o=btn.textContent; btn.disabled=true; btn.textContent='✨ Bezig…';
   try{
-    var prompt='Herschrijf de volgende Nederlandse tekst ('+context+' van ScoutingHub, een voetbal-scouting app). Maak hem duidelijker, vlotter en professioneler, zelfde lengte-orde, zelfde taal (Nederlands), geen aanhalingstekens erom, geef alleen de herschreven tekst terug zonder uitleg:\n\n'+current;
+    var appCtx='ScoutingHub is een voetbal-scouting webapp met modules als Spelersdatabase, Programma, Wedstrijdrapporten/Observaties, Toernooien, Getipte spelers, Ritten (kilometerregistratie), Analyse (Elftallen/Vergelijken/Pitch) en Contacten. ';
+    var prompt='Herschrijf de volgende Nederlandse tekst ('+context+' van ScoutingHub). '+appCtx+'Maak hem duidelijker, vlotter en professioneler, zelfde lengte-orde, zelfde taal (Nederlands), geen aanhalingstekens erom, geef alleen de herschreven tekst terug zonder uitleg:\n\n'+current;
     var text=await callGemini(prompt,{temperature:0.5,maxTokens:400});
     textarea.value=text; applyFn(text);
     if(typeof toast==='function') toast('Tekst verbeterd');
@@ -32761,7 +32762,7 @@ async function _admNlAiImprove(textarea, btn, context, applyFn){
 window._admNlAiFill=function(){
   var body='<p style="color:#9aa8bd;font-size:13px;margin:0 0 10px;">Beschrijf kort waar deze nieuwsbrief over moet gaan (bijv. welke bugfixes, nieuwe features, aankondigingen). De AI vult titel, intro, dankwoord en updates automatisch in — pas daarna nog aan waar nodig.</p>'
     +'<textarea id="adm-nl-ai-topic" class="sh-req-i" rows="5" placeholder="Bijv. We hebben de rittenregistratie km-berekening gefixt, getipte spelers is nu volledig werkbaar, en er komt een nieuwe carrièreverloop-functie voor spelers aan. Dit is de eerste nieuwsbrief editie."></textarea>';
-  var m=_bhModal('AI: nieuwsbrief genereren',body,{ confirmLabel:'Genereren', onConfirm:async function(){
+  var m=_bhModal('AI: nieuwsbrief genereren',body,{ confirmLabel:'Genereren', loadingLabel:'✨ AI schrijft…', onConfirm:async function(){
     var inp=m.root.querySelector('#adm-nl-ai-topic'); var topic=(inp&&inp.value||'').trim();
     if(!topic){ if(typeof toast==='function') toast('Beschrijf eerst waar de nieuwsbrief over gaat',true); var e=new Error('leeg'); e._handled=true; throw e; }
     var tk=await _admToken(); if(!tk) throw new Error('niet ingelogd');
@@ -33325,10 +33326,11 @@ function _bhModal(title, bodyHtml, opts){
   bd.addEventListener('click', function(e){ if(e.target===bd || (e.target.closest && e.target.closest('[data-close]'))) close(); });
   var ok = document.getElementById('bh-modal-ok');
   if(ok && typeof opts.onConfirm === 'function'){
+    var okLabel=ok.textContent;
     ok.addEventListener('click', async function(){
-      ok.disabled = true;
+      ok.disabled = true; ok.textContent = opts.loadingLabel || 'Bezig…';
       try { await opts.onConfirm(); close(); }
-      catch(e){ ok.disabled = false; if(!(e && e._handled) && typeof toast==='function') toast('Er ging iets mis', true); }
+      catch(e){ ok.disabled = false; ok.textContent = okLabel; if(!(e && e._handled) && typeof toast==='function') toast('Er ging iets mis', true); }
     });
   }
   return { close: close, root: bd };

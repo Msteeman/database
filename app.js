@@ -32719,7 +32719,7 @@ function _admNlRenderEditionForm(){
         +'<div><div class="adm-nl-flabel">Emoji</div><input class="adm-compose-input" data-ued="'+i+'" data-uf="icon" value="'+_bhEsc(u.icon||'📌')+'" style="width:50px;text-align:center;"></div>'
         +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;padding-bottom:9px;"><input type="checkbox" data-ued="'+i+'" data-uf="highlight"'+(u.highlight?' checked':'')+'> Uitgelicht (grotere nadruk)</label>'
       +'</div>'
-      +(u.screenshot?('<div style="margin-top:6px;font-size:11px;color:#8b97ad;">📷 Screenshot automatisch toegevoegd: <b>'+_bhEsc(_admNlScreenshotLabel(u.screenshot))+'</b></div>'):'')
+      +(u.screenshot?('<div style="margin-top:6px;font-size:11px;color:#8b97ad;display:flex;align-items:center;gap:8px;">📷 Screenshot automatisch toegevoegd: <b>'+_bhEsc(_admNlScreenshotLabel(u.screenshot))+'</b><button class="adm-btn-ghost" data-previewshot="'+_bhEsc(u.screenshot)+'" style="padding:2px 8px;font-size:11px;">🔍 Bekijk voorbeeld</button></div>'):'')
     +'</div>';
   }).join('');
   host.innerHTML=
@@ -32791,7 +32791,23 @@ function _admNlRenderEditionForm(){
       _admNlAiImprove(ta, btn, 'de uitleg-tekst van één update-item in een nieuwsbrief', function(v){ if(_admNlEdition.updates[idx]) _admNlEdition.updates[idx].tekst=v; });
     });
   });
+  host.querySelectorAll('[data-previewshot]').forEach(function(btn){
+    btn.addEventListener('click',function(){ _admNlPreviewScreenshot(btn.getAttribute('data-previewshot'), btn); });
+  });
 }
+window._admNlPreviewScreenshot=async function(screenKey, btn){
+  var _o=btn.textContent; btn.disabled=true; btn.textContent='Laden…';
+  try{
+    var r=await fetch('https://scoutinghub-screenshot-test.marcelsteeman1.workers.dev/',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({screen:screenKey})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(!(r.ok&&j&&j.ok&&j.b64)) throw new Error((j&&j.error)||'kon geen screenshot ophalen');
+    _bhModal('Voorbeeld — '+_admNlScreenshotLabel(screenKey), '<img src="data:image/png;base64,'+j.b64+'" style="width:100%;border-radius:8px;border:1px solid #1f2937;display:block;">', {});
+  }catch(e){
+    if(typeof toast==='function') toast('Voorbeeld laden mislukt: '+(e&&e.message||'onbekende fout'),true);
+  }finally{
+    btn.disabled=false; btn.textContent=_o;
+  }
+};
 async function _admNlAiImprove(textarea, btn, context, applyFn){
   if(!textarea) return;
   var current=(textarea.value||'').trim();

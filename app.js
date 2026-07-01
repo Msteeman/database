@@ -32885,10 +32885,17 @@ window._admNlOpenChat=function(){
     var _o=applyBtn.textContent; applyBtn.disabled=true; sendBtn.disabled=true; applyBtn.textContent='✨ Wordt toegepast…';
     try{
       var transcript=_admNlChatHistory.map(function(msg){ return (msg.role==='user'?'Beheerder: ':'Assistent: ')+msg.text; }).join('\n\n');
-      var tk=await _admToken(); if(!tk) throw new Error('niet ingelogd');
-      var r=await fetch(_admBase()+'/api/admin-newsletter-ai-fill',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({topic:transcript})});
+      var tk=await Promise.race([_admToken(), new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('inloggen duurde te lang')); },10000); })]);
+      if(!tk) throw new Error('niet ingelogd');
+      var ctrl=new AbortController(); var to=setTimeout(function(){ ctrl.abort(); },45000);
+      var r;
+      try{
+        r=await fetch(_admBase()+'/api/admin-newsletter-ai-fill',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({topic:transcript}),signal:ctrl.signal});
+      }catch(fe){
+        throw new Error(fe&&fe.name==='AbortError' ? 'AI deed er te lang over (timeout na 45s)' : 'netwerkfout: '+(fe&&fe.message||''));
+      }finally{ clearTimeout(to); }
       var j={};try{j=await r.json();}catch(_){}
-      if(!(r.ok&&j&&j.ok&&j.edition)) throw new Error((j&&j.error)||'AI kon dit niet verwerken');
+      if(!(r.ok&&j&&j.ok&&j.edition)) throw new Error((j&&j.error)||'AI kon dit niet verwerken (status '+r.status+')');
       var oldMaand=(_admNlEdition&&_admNlEdition.maand)||''; var oldNummer=(_admNlEdition&&_admNlEdition.nummer)||'';
       var oldWa=(_admNlEdition&&_admNlEdition.whatsapp)||{enabled:true,nummer:'+31625350577',tekst:''};
       _admNlEdition=j.edition;
@@ -32915,10 +32922,18 @@ window._admNlAiFill=function(){
   var m=_bhModal('AI: nieuwsbrief genereren',body,{ confirmLabel:'Genereren', loadingLabel:'✨ AI schrijft…', onConfirm:async function(){
     var inp=m.root.querySelector('#adm-nl-ai-topic'); var topic=(inp&&inp.value||'').trim();
     if(!topic){ if(typeof toast==='function') toast('Beschrijf eerst waar de nieuwsbrief over gaat',true); var e=new Error('leeg'); e._handled=true; throw e; }
-    var tk=await _admToken(); if(!tk) throw new Error('niet ingelogd');
-    var r=await fetch(_admBase()+'/api/admin-newsletter-ai-fill',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({topic:topic})});
+    var tk=await Promise.race([_admToken(), new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('inloggen duurde te lang')); },10000); })]);
+    if(!tk) throw new Error('niet ingelogd');
+    var ctrl=new AbortController(); var to=setTimeout(function(){ ctrl.abort(); },45000);
+    var r;
+    try{
+      r=await fetch(_admBase()+'/api/admin-newsletter-ai-fill',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({topic:topic}),signal:ctrl.signal});
+    }catch(fe){
+      var msg=fe&&fe.name==='AbortError' ? 'AI deed er te lang over (timeout na 45s)' : 'netwerkfout: '+(fe&&fe.message||'');
+      if(typeof toast==='function') toast(msg,true); var e3=new Error(msg); e3._handled=true; throw e3;
+    }finally{ clearTimeout(to); }
     var j={};try{j=await r.json();}catch(_){}
-    if(!(r.ok&&j&&j.ok&&j.edition)){ if(typeof toast==='function') toast('AI genereren mislukt'+((j&&j.error)?(': '+j.error):''),true); var e2=new Error('mislukt'); e2._handled=true; throw e2; }
+    if(!(r.ok&&j&&j.ok&&j.edition)){ if(typeof toast==='function') toast('AI genereren mislukt'+((j&&j.error)?(': '+j.error):' (status '+r.status+')'),true); var e2=new Error('mislukt'); e2._handled=true; throw e2; }
     var oldMaand=(_admNlEdition&&_admNlEdition.maand)||''; var oldNummer=(_admNlEdition&&_admNlEdition.nummer)||'';
     var oldWa=(_admNlEdition&&_admNlEdition.whatsapp)||{enabled:false,nummer:'',tekst:''};
     _admNlEdition=j.edition;

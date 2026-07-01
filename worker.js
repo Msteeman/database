@@ -1703,7 +1703,7 @@ async function handleFeedback(body, env, request){
     const b64 = String(body.attachment.contentBase64||'');
     const approxBytes = Math.floor(b64.length * 3 / 4);
     if(approxBytes > 5*1024*1024) return json({ ok:false, error:'Bijlage te groot (max 5 MB)' }, 400);
-    attachment = { filename: clip(body.attachment.filename, 160) || 'bijlage', content: b64 };
+    attachment = { filename: clip(body.attachment.filename, 160) || 'bijlage', content: b64, type };
   }
   let name = '', role = '', teamName = '';
   let saToken; try { saToken = await getServiceAccountToken(env); } catch(_){ saToken = null; }
@@ -1712,12 +1712,18 @@ async function handleFeedback(body, env, request){
   // Opslaan in Firestore → admin-panel kan feedback tonen
   if(saToken){
     try {
-      await saFsCreate(saToken, 'feedback', {
+      // Bijlage apart opslaan als hij klein genoeg is voor een Firestore-doc (~1 MB limiet).
+      const canStore = !!(attachment && attachment.content && attachment.content.length < 900000);
+      const fbId = await saFsCreate(saToken, 'feedback', {
         name, email: caller.email, uid: caller.uid, role, teamName,
         route, ua, text: text.slice(0, 4000),
-        status: 'open', hasAttachment: !!attachment,
+        status: 'open', hasAttachment: !!attachment, attachmentStored: canStore,
+        attachmentName: attachment ? attachment.filename : '',
         createdAt: new Date().toISOString()
       });
+      if(fbId && canStore){
+        try { await saFsPatch(saToken, 'feedback_attachments/'+fbId, { content: attachment.content, filename: attachment.filename, type: attachment.type || 'application/octet-stream' }); } catch(_){}
+      }
     } catch(_){}
   }
   return json({ ok:true, mailSent });
@@ -2744,6 +2750,21 @@ async function handleAdminFeedbackUpdate(body, env, request){
   await saFsPatch(saToken, 'feedback/'+id, patch);
   return json({ ok:true });
 }
+async function handleAdminFeedbackAttachment(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  if(!saToken) return json({ ok:false, error:'Serverconfiguratie ontbreekt' }, 500);
+  const id = clip(String(body.id||''), 200);
+  if(!id) return json({ ok:false, error:'Geen feedback-id' }, 400);
+  const att = await saFsGet(saToken, 'feedback_attachments/'+id);
+  if(!att || !att.content) return json({ ok:false, error:'Bijlage niet gevonden (mogelijk te groot; zie de mail)' }, 404);
+  return json({ ok:true, b64: att.content, filename: att.filename || 'bijlage', type: att.type || 'application/octet-stream' });
+}
 
 export default {
   async fetch(request, env, ctx) {
@@ -2828,6 +2849,12 @@ export default {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
       try { return await handleAdminFeedbackUpdate((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+    if (path.endsWith('/api/admin-feedback-attachment') || path.endsWith('/admin-feedback-attachment')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminFeedbackAttachment((b && typeof b==='object') ? b : {}, env, request); }
       catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
     }
     if (path.endsWith('/api/send-password-reset') || path.endsWith('/send-password-reset')) {

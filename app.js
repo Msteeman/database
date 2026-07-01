@@ -32922,7 +32922,9 @@ function _admFbRenderList(el){
     return '<div class="adm-fb-card">'
       +'<div class="adm-fb-top"><div><b>'+(_bhEsc(f.name)||_bhEsc(f.email)||'—')+'</b> <span class="adm-fb-meta">'+(_bhEsc(f.email)||'')+(f.role?(' · '+_bhEsc(f.role)):'')+(f.teamName?(' · '+_bhEsc(f.teamName)):'')+'</span></div>'
         +'<span class="bh-badge '+lab[1]+'">'+lab[0]+'</span></div>'
-      +'<div class="adm-fb-meta">'+_bhFmtDateTime(f.createdAt)+(f.route?(' · pagina: '+_bhEsc(f.route)):'')+(f.hasAttachment?' · <span class="bh-badge bh-b-grey">bijlage in mail</span>':'')+'</div>'
+      +'<div class="adm-fb-meta">'+_bhFmtDateTime(f.createdAt)+(f.route?(' · pagina: '+_bhEsc(f.route)):'')
+        +(f.hasAttachment?(f.attachmentStored?(' · <button class="bh-badge bh-b-blue adm-fb-attbtn" data-fbatt="'+_bhEsc(f._id)+'" style="cursor:pointer;border:none;">📎 '+_bhEsc(f.attachmentName||'Bijlage openen')+'</button>'):' · <span class="bh-badge bh-b-grey">bijlage in mail</span>'):'')
+      +'</div>'
       +'<div class="adm-fb-text">'+_bhEsc(String(f.text||''))+'</div>'
       +(f.adminNote?('<div class="adm-fb-note">Notitie: '+_bhEsc(f.adminNote)+'</div>'):'')
       +'<div class="adm-fb-act"><select class="bh-select adm-fb-status" data-fb="'+_bhEsc(f._id)+'">'+opts+'</select>'
@@ -32930,12 +32932,28 @@ function _admFbRenderList(el){
       +'</div>';
   }).join('');
   el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Feedbackcentrum</div>'
-    +'<div class="bh-stat-note">Opgeslagen als <b>metadata + tekst + status</b> — géén bijlage-binary (die zit alleen in de mail). Geen scoutdata-inhoud.</div>'
+    +'<div class="bh-stat-note">Opgeslagen als <b>metadata + tekst + status</b>. Kleine bijlagen (screenshots) zijn hier te openen; grotere bijlagen zitten alleen in de mail. Geen scoutdata-inhoud.</div>'
     +chips
     +(capped.length?('<div class="adm-fb-list">'+cards+'</div>'+((rows.length>100)?'<div class="bh-stat-note">100 van '+rows.length+' getoond — verfijn met status.</div>':'')):'<div class="bh-empty">Geen feedback'+(_admFbStatus?' met deze status':'')+'.</div>');
   el.querySelectorAll('.adm-fb-status').forEach(function(sel){ sel.addEventListener('change', function(){ _admFbSetStatus(sel.getAttribute('data-fb'), sel.value); }); });
   el.querySelectorAll('[data-fbnote]').forEach(function(b){ b.addEventListener('click', function(){ _admFbNote(b.getAttribute('data-fbnote')); }); });
+  el.querySelectorAll('[data-fbatt]').forEach(function(b){ b.addEventListener('click', function(){ _admFbOpenAttachment(b.getAttribute('data-fbatt')); }); });
 }
+window._admFbOpenAttachment=async function(id){
+  try{
+    var tk=await _admToken(); if(!tk) return;
+    var base=(typeof TOERNOOI_API_BASE!=='undefined'&&TOERNOOI_API_BASE)?TOERNOOI_API_BASE:'https://scoutinghub-api.marcelsteeman1.workers.dev';
+    if(typeof toast==='function') toast('Bijlage laden…');
+    var r=await fetch(base+'/api/admin-feedback-attachment',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({id:id})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(!(r.ok&&j&&j.ok&&j.b64)){ if(typeof toast==='function') toast('Bijlage openen mislukt'+((j&&j.error)?(': '+j.error):''),true); return; }
+    var bytes=Uint8Array.from(atob(j.b64),function(c){return c.charCodeAt(0);});
+    var blob=new Blob([bytes],{type:j.type||'application/octet-stream'});
+    var url=URL.createObjectURL(blob);
+    window.open(url,'_blank');
+    setTimeout(function(){URL.revokeObjectURL(url);},60000);
+  }catch(_){ if(typeof toast==='function') toast('Bijlage openen mislukt',true); }
+};
 window._admFbFilter=function(v){ _admFbStatus=v; var el=document.getElementById('adm-stub'); if(el) _admFbRenderList(el); };
 async function _admFbUpdate(id, patch){
   try{

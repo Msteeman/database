@@ -1335,9 +1335,10 @@ async function hmacVerify(secret, msg, sig){
 async function mailShell(env, title, bodyHtml, opts){
   const base = appBaseUrl(env); const ce = contactEmail(env); const host = base.replace(/^https?:\/\//,'');
   const unsubEmail = (opts && opts.unsubscribeEmail) || '';
+  const signingSecret = (env && (env.TURNSTILE_SECRET || env.RESEND_API_KEY)) || '';
   let unsubBlock = '';
-  if(unsubEmail && env && env.TURNSTILE_SECRET){
-    const sig = await hmacSign(env.TURNSTILE_SECRET, 'unsub:'+unsubEmail.toLowerCase());
+  if(unsubEmail && signingSecret){
+    const sig = await hmacSign(signingSecret, 'unsub:'+unsubEmail.toLowerCase());
     const workerBase = cfg(env,'SELF_URL','https://scoutinghub-api.marcelsteeman1.workers.dev').replace(/\/+$/,'');
     const link = workerBase + '/api/newsletter-unsubscribe?email='+encodeURIComponent(unsubEmail)+'&sig='+sig;
     unsubBlock = '<tr><td style="padding:0 32px 22px;text-align:center;">'
@@ -1348,8 +1349,8 @@ async function mailShell(env, title, bodyHtml, opts){
   return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
     + '<style>@import url(\'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap\');</style></head>'
     + '<body style="margin:0;background:#05070a;font-family:'+MAIL_FONT+';color:#e8edf5;">'
-    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#05070a;padding:28px 14px;"><tr><td align="center">'
-    + '<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#10151e;border-radius:14px;overflow:hidden;border:1px solid #1f2937;">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:#05070a;padding:28px 14px;"><tr><td align="center">'
+    + '<table role="presentation" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#10151e;border-radius:14px;overflow:hidden;border:1px solid #1f2937;">'
     + '<tr><td style="background:#0b0f16;padding:20px 32px;border-bottom:1px solid #1f2937;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>'
       + '<td style="padding-right:10px;"><img src="'+base+'/icon-192.png" width="32" height="32" alt="ScoutingHub" style="display:block;border-radius:7px;"></td>'
       + '<td style="font-size:20px;font-weight:800;letter-spacing:-.01em;color:#ffffff;vertical-align:middle;font-family:'+MAIL_FONT+';">Scouting<span style="color:#e30613;">Hub</span></td>'
@@ -2073,10 +2074,11 @@ async function handleNewsletterUnsubscribe(request, env){
   const url = new URL(request.url);
   const email = (url.searchParams.get('email')||'').trim().toLowerCase();
   const sig = url.searchParams.get('sig')||'';
-  if(!email || !shValidEmail(email) || !sig || !env.TURNSTILE_SECRET){
+  const signingSecret = (env.TURNSTILE_SECRET || env.RESEND_API_KEY) || '';
+  if(!email || !shValidEmail(email) || !sig || !signingSecret){
     return unsubPage('Ongeldige link', 'Deze afmeldlink is niet geldig. Neem contact op via contact@scoutinghub.nl.', false);
   }
-  const valid = await hmacVerify(env.TURNSTILE_SECRET, 'unsub:'+email, sig);
+  const valid = await hmacVerify(signingSecret, 'unsub:'+email, sig);
   if(!valid) return unsubPage('Ongeldige link', 'Deze afmeldlink is niet geldig of verlopen. Neem contact op via contact@scoutinghub.nl.', false);
   let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
   if(!saToken) return unsubPage('Tijdelijk niet beschikbaar', 'Probeer het later opnieuw of mail contact@scoutinghub.nl.', false);
@@ -2544,6 +2546,60 @@ async function imapFetchBody(env, type, folderKey, seq){
   }
 }
 
+// Verplaatst een bericht naar Verwijderd (of wist het definitief als het al in Verwijderd staat).
+async function imapDeleteMessage(env, type, folderKey, seq){
+  const m = imapMailboxCfg(env, type);
+  if(!m) return { ok:false, error:'Onbekend mailtype' };
+  if(!m.pass) return { ok:false, error:'Geen IMAP-wachtwoord ingesteld voor '+m.label+' (secret ontbreekt)' };
+  const key = ['inbox','sent','trash'].includes(folderKey) ? folderKey : 'inbox';
+  let socket;
+  try {
+    socket = connect({ hostname: m.host, port: m.port }, { secureTransport: 'on', allowHalfOpen: false });
+    const writer = socket.writable.getWriter();
+    const reader = socket.readable.getReader();
+    const enc = new TextEncoder();
+    const send = (s) => writer.write(enc.encode(s + '\r\n'));
+    const q = (s) => '"' + String(s).replace(/([\\"])/g,'\\$1') + '"';
+
+    await reader.read().catch(()=>{});
+    await send('A1 LOGIN ' + q(m.user) + ' ' + q(m.pass));
+    let resp = await imapReadUntilTagged(reader, 'A1 ', 8192);
+    if(!/A1 OK/i.test(resp)){ try{ writer.close(); }catch(_){} return { ok:false, error:'IMAP-login mislukt voor '+m.label }; }
+
+    let names = [];
+    try{ await send('AL LIST "" "*"'); const lr = await imapReadUntilTagged(reader,'AL ',32768); names = imapParseFolderNames(lr); }catch(_){}
+    const trashFolder = imapPickFolder(names, 'trash') || 'Trash';
+    let folder = 'INBOX';
+    if(key !== 'inbox'){
+      const found = imapPickFolder(names, key);
+      if(!found){ try{ await send('A9 LOGOUT'); }catch(_){} try{ writer.close(); }catch(_){} return { ok:false, error:'Map niet gevonden' }; }
+      folder = found;
+    }
+
+    await send('A2 SELECT ' + q(folder));
+    resp = await imapReadUntilTagged(reader, 'A2 ', 8192);
+    if(!/A2 OK/i.test(resp)){ try{ await send('A9 LOGOUT'); }catch(_){} try{ writer.close(); }catch(_){} return { ok:false, error:'Kan map niet openen' }; }
+
+    const alreadyInTrash = folder === trashFolder || key === 'trash';
+    if(!alreadyInTrash){
+      try{
+        await send('A3 COPY ' + seq + ' ' + q(trashFolder));
+        await imapReadUntilTagged(reader, 'A3 ', 4096);
+      }catch(_){}
+    }
+    await send('A4 STORE ' + seq + ' +FLAGS (\\Deleted)');
+    await imapReadUntilTagged(reader, 'A4 ', 4096);
+    await send('A5 EXPUNGE');
+    await imapReadUntilTagged(reader, 'A5 ', 4096);
+    try{ await send('A9 LOGOUT'); }catch(_){}
+    try{ writer.close(); }catch(_){}
+    return { ok:true, movedToTrash: !alreadyInTrash };
+  } catch(err){
+    try{ if(socket) socket.close(); }catch(_){}
+    return { ok:false, error:'IMAP-verbinding mislukt: '+(err&&err.message?err.message:'onbekende fout') };
+  }
+}
+
 /* ============================================================ *
  * HANDLER — admin-mail-read (open volledig bericht)
  * ============================================================ */
@@ -2564,6 +2620,28 @@ async function handleAdminMailRead(body, env, request){
   const result = await imapFetchBody(env, type, folder, seq);
   if(!result.ok) return json({ ok:false, error: result.error || 'Bericht ophalen mislukt' });
   return json({ ok:true, from:result.from, to:result.to, subject:result.subject, date:result.date, text:result.text, html:result.html||'', attachments:result.attachments||[] });
+}
+
+/* ============================================================ *
+ * HANDLER — admin-mail-delete (verplaatst naar Verwijderd, of wist definitief)
+ * ============================================================ */
+async function handleAdminMailDelete(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  const type = String(body.type||'');
+  if(!['admin','contact','info'].includes(type)) return json({ ok:false, error:'Onbekend mailtype' }, 400);
+  const folder = String(body.folder||'inbox').toLowerCase();
+  if(!['inbox','sent','trash'].includes(folder)) return json({ ok:false, error:'Onbekende map' }, 400);
+  const seq = parseInt(body.seq, 10);
+  if(!seq || seq < 1) return json({ ok:false, error:'Ongeldig berichtnummer' }, 400);
+  const result = await imapDeleteMessage(env, type, folder, seq);
+  if(!result.ok) return json({ ok:false, error: result.error || 'Verwijderen mislukt' });
+  return json({ ok:true, movedToTrash: !!result.movedToTrash });
 }
 
 /* ============================================================ *
@@ -2754,6 +2832,13 @@ export default {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-mail-read' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
       try { return await handleAdminMailRead((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/admin-mail-delete') || path.endsWith('/admin-mail-delete')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/admin-mail-delete' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminMailDelete((b && typeof b==='object') ? b : {}, env, request); }
       catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
     }
 

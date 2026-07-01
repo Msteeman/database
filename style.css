@@ -12800,6 +12800,8 @@ a.adm-btn-ghost{ text-decoration:none; display:inline-block; }
 .adm-tb-btn{ background:#1a2436; border:1px solid var(--border,#1f2937); color:var(--text-2,#9aa8bd); border-radius:7px; padding:6px 13px; font-size:12.5px; cursor:pointer; transition:all .15s; font-family:inherit; }
 .adm-tb-btn:hover{ background:rgba(78,161,255,.08); color:var(--text,#e8edf5); border-color:#4ea1ff; }
 .adm-tb-btn-primary{ border-color:#4ea1ff; background:rgba(78,161,255,.12); color:var(--text,#e8edf5); font-weight:700; }
+.adm-tb-btn-danger{ margin-left:auto; }
+.adm-tb-btn-danger:hover{ background:rgba(248,113,113,.12); color:#fca5a5; border-color:#f87171; }
 /* Berichtenrij: from+date op 1 lijn, preview-snippet */
 .adm-mb3-row-top{ display:flex; justify-content:space-between; align-items:baseline; gap:6px; }
 .adm-mb3-row-date{ font-size:11px; color:var(--text-3,#8b97ad); flex-shrink:0; }

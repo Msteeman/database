@@ -32674,16 +32674,18 @@ async function _admMbOpenMail(type, folder, seq, rowEl){
     _admMbRebuild();
   }
   var detail=document.getElementById('adm-mb3-detail'); if(!detail) return;
-  detail.innerHTML='<div class="adm-loading">Bericht laden…</div>';
+  var hadContent = !!detail.querySelector('.adm-mb3-detail-inner');
+  if(hadContent){ detail.style.opacity='.4'; detail.style.transition='opacity .15s ease'; }
+  else { detail.innerHTML='<div class="adm-loading">Bericht laden…</div>'; }
   try{
-    var tk=await _admToken(); if(!tk){ detail.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
+    var tk=await _admToken(); if(!tk){ detail.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; detail.style.opacity='1'; return; }
     var r=await fetch(_admBase()+'/api/admin-mail-read',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,folder:folder,seq:seq})});
     var j={};try{j=await r.json();}catch(_){}
     if(r.ok&&j&&j.ok){
       var liveRow=document.querySelector('.adm-mb3-row[data-seq="'+seq+'"]');
       if(liveRow){ liveRow.classList.remove('adm-mb3-unread'); liveRow.classList.add('adm-mb3-read'); }
     }
-    if(!(r.ok&&j&&j.ok)){ detail.innerHTML='<div class="bh-empty">Laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>'; return; }
+    if(!(r.ok&&j&&j.ok)){ detail.innerHTML='<div class="bh-empty">Laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>'; detail.style.opacity='1'; return; }
     var dt=''; try{ var d=new Date(j.date); if(!isNaN(d.getTime())) dt=d.toLocaleString('nl-NL'); }catch(_){ dt=j.date||''; }
     // Sla maildata op voor reply/forward
     _admMbOpenMailData={type:type,folder:folder,seq:seq,subject:j.subject||'',from:j.from||'',to:j.to||'',date:dt,text:j.text||''};
@@ -32708,15 +32710,33 @@ async function _admMbOpenMail(type, folder, seq, rowEl){
           +'<button class="adm-tb-btn adm-tb-btn-primary" onclick="_admMbReplyLast()">&#8617; Beantwoorden</button>'
           +'<button class="adm-tb-btn" onclick="_admMbForwardLast()">&#8618; Doorsturen</button>'
           +'<button class="adm-tb-btn" onclick="_admMbNav(\'compose\')">&#9998; Nieuw bericht</button>'
+          +'<button class="adm-tb-btn adm-tb-btn-danger" onclick="_admMbDeleteMail()">&#128465; Verwijderen</button>'
         +'</div>'
       +'</div>'
       +attHtml
       +bodyHtml
     +'</div>';
     if(j.html){ var ifrm=document.getElementById('adm-mb-iframe'); if(ifrm) ifrm.srcdoc=j.html; }
-  }catch(_){ detail.innerHTML='<div class="bh-empty">Bericht laden mislukt.</div>'; }
+    detail.style.opacity='1';
+  }catch(_){ detail.innerHTML='<div class="bh-empty">Bericht laden mislukt.</div>'; detail.style.opacity='1'; }
 }
 window._admMbOpenMail=_admMbOpenMail;
+
+window._admMbDeleteMail=async function(){
+  var d=_admMbOpenMailData; if(!d||!d.seq) return;
+  var permanent = d.folder==='trash';
+  if(!confirm(permanent?'Dit bericht definitief verwijderen? Dit kan niet ongedaan gemaakt worden.':'Bericht verplaatsen naar Verwijderd?')) return;
+  try{
+    var tk=await _admToken(); if(!tk) return;
+    var r=await fetch(_admBase()+'/api/admin-mail-delete',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:d.type,folder:d.folder,seq:d.seq})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(!(r.ok&&j&&j.ok)){ if(typeof toast==='function') toast('Verwijderen mislukt'+((j&&j.error)?(': '+j.error):''),true); return; }
+    if(typeof toast==='function') toast(permanent?'Bericht definitief verwijderd':'Bericht verplaatst naar Verwijderd');
+    var detail=document.getElementById('adm-mb3-detail'); if(detail) detail.innerHTML='<div class="bh-empty">Selecteer een bericht</div>';
+    _admMbOpenMailData={};
+    var listEl=document.getElementById('adm-mb3-list'); if(listEl) _admMbLoadFolder(listEl, d.type, d.folder);
+  }catch(_){ if(typeof toast==='function') toast('Verwijderen mislukt',true); }
+};
 
 window._admMbDownloadAtt=async function(type, folder, seq, idx, name, mimeType){
   try{

@@ -1671,7 +1671,7 @@ async function handleFeedback(body, env, request){
       await saFsCreate(saToken, 'feedback', {
         name, email: caller.email, uid: caller.uid, role, teamName,
         route, ua, text: text.slice(0, 4000),
-        status: 'open',
+        status: 'open', hasAttachment: !!attachment,
         createdAt: new Date().toISOString()
       });
     } catch(_){}

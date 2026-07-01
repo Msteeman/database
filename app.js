@@ -33835,28 +33835,26 @@ function _bhRenderUsers(){
     var statusRow = _isDeleted ? '<div class="bh-card-row"><span>Status</span><b>Verwijderd</b></div>'
                   : (_isInactive ? '<div class="bh-card-row"><span>Status</span><b>Gedeactiveerd</b></div>' : '');
     var actionsHtml = _isDeleted
-      ? '<div class="bh-actions"><button class="bh-btn" data-bh-userdetail="'+id+'">Details</button></div>'
-      : ('<div class="bh-actions">' +
-          '<button class="bh-btn" data-bh-userdetail="'+id+'">Details</button>' +
-          '<button class="bh-btn bh-btn-blue" data-bh-userrole="'+id+'">Rol wijzigen</button>' +
-          '<button class="bh-btn" data-bh-pwreset="'+id+'">Wachtwoord reset</button>' +
-          ((u._id !== _myUid) ? '<button class="bh-btn bh-btn-amber" data-bh-support="'+id+'">Supporttoegang</button>' : '') +
+      ? '<button class="bh-btn bh-btn-xs" data-bh-userdetail="'+id+'">Details</button>'
+      : ('<button class="bh-btn bh-btn-xs" data-bh-userdetail="'+id+'">Details</button>' +
+          '<button class="bh-btn bh-btn-xs bh-btn-blue" data-bh-userrole="'+id+'">Rol</button>' +
+          '<button class="bh-btn bh-btn-xs" data-bh-pwreset="'+id+'" title="Wachtwoord reset">Reset ww</button>' +
+          ((u._id !== _myUid) ? '<button class="bh-btn bh-btn-xs bh-btn-amber" data-bh-support="'+id+'">Support</button>' : '') +
           ((role !== 'admin' && u._id !== _myUid)
              ? (u.isActive===false
-                  ? '<button class="bh-btn bh-btn-green" data-bh-activate="'+id+'">Reactiveren</button>'
-                  : '<button class="bh-btn bh-btn-ghost" data-bh-deactivate="'+id+'">Deactiveren</button>')
-             : '<button class="bh-btn bh-btn-ghost" disabled>Deactiveren</button>') +
-        '</div>' +
-        (_canDelete ? '<div class="bh-actions-danger"><button class="bh-btn bh-btn-danger-outline" data-bh-userdelete="'+id+'">Verwijderen</button></div>' : ''));
+                  ? '<button class="bh-btn bh-btn-xs bh-btn-green" data-bh-activate="'+id+'">Reactiveren</button>'
+                  : '<button class="bh-btn bh-btn-xs bh-btn-ghost" data-bh-deactivate="'+id+'">Deactiveren</button>')
+             : '') +
+          (_canDelete ? '<button class="bh-btn bh-btn-xs bh-btn-danger-outline" data-bh-userdelete="'+id+'">Verwijderen</button>' : ''));
     var _uOrg=(window._bhTeamOrgMap&&u.teamId&&window._bhTeamOrgMap[u.teamId])||u.organisatieNaam||u.clubName||'';
     var _uTeam=(window._bhTeamNameMap&&u.teamId&&window._bhTeamNameMap[u.teamId])||u.teamName||'';
-    return '<div class="bh-card'+((_isDeleted||_isInactive)?' bh-card-dim':'')+'">' +
-      '<div class="bh-card-top"><div class="bh-card-name">'+(_bhEsc(u.displayName)||_bhEsc(u.email)||'—')+(_uOrg?'<span class="bh-card-org"> · '+_bhEsc(_uOrg)+'</span>':'')+'</div>'+roleBadge+statusBadge+'</div>' +
-      '<div class="bh-card-row"><span>E-mail</span><b>'+(_bhEsc(u.email)||'—')+'</b></div>' +
-      (_uOrg||_uTeam ? '<div class="bh-card-row"><span>Organisatie</span><b>'+_bhEsc(_uOrg||'—')+(_uTeam?' · '+_bhEsc(_uTeam):'')+'</b></div>' : '') +
-      '<div class="bh-card-row"><span>Aangemaakt</span><b>'+_bhDateShort(u.createdAt)+'</b></div>' +
-      statusRow +
-      actionsHtml +
+    var _uMetaBits=[]; if(_uOrg||_uTeam) _uMetaBits.push((_uOrg||'')+(_uTeam?(' · '+_uTeam):'')); _uMetaBits.push(_bhDateShort(u.createdAt));
+    return '<div class="bh-urow'+((_isDeleted||_isInactive)?' bh-urow-dim':'')+'">' +
+      '<div class="bh-urow-main"><span class="bh-urow-name">'+(_bhEsc(u.displayName)||_bhEsc(u.email)||'—')+'</span>' +
+      '<span class="bh-urow-email">'+(_bhEsc(u.email)||'—')+'</span></div>' +
+      '<span class="bh-urow-meta">'+_bhEsc(_uMetaBits.join(' · '))+'</span>' +
+      '<div class="bh-urow-badges">'+roleBadge+statusBadge+'</div>' +
+      '<div class="bh-urow-actions">'+actionsHtml+'</div>' +
     '</div>';
   }).join('') + ((_uTotal>_uPage.length)?('<div class="bh-more-wrap"><button class="bh-btn bh-btn-blue" id="bh-user-more">Toon meer ('+(_uTotal-_uPage.length)+' resterend)</button></div>'):'');
   var _umb=document.getElementById('bh-user-more'); if(_umb) _umb.addEventListener('click', _bhUserMore);

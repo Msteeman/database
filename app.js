@@ -32550,7 +32550,7 @@ var _admNlSubsCount=0, _admNlMode='text', _admNlEdition=null;
 function _admNlDefaultEdition(){
   return { maand:'', nummer:'', titel:'', intro:'',
     dankwoord:{enabled:false,titel:'Nogmaals dank dat jullie mee willen testen',tekst:''},
-    updates:[{titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false}],
+    updates:[{titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false,screenshot:''}],
     aankondiging:{enabled:false,icon:'📖',titel:'',tekst:''},
     whatsapp:{enabled:true,nummer:'+31625350577',tekst:'Hoi, ik heb feedback over ScoutingHub: '}
   };
@@ -32633,6 +32633,7 @@ window._admNlSetMode=function(mode){
   if(pane) _admMbRenderNewsletter(pane);
 };
 var _admNlTagOpts=[['nieuw','Nieuw'],['bugfix','Bugfix komt eraan'],['coming','Komt eraan'],['wip','Werk in uitvoering']];
+var _admNlScreenshotOpts=[['','Geen'],['dashboard','Dashboard'],['spelers','Spelersdatabase'],['programma','Programma'],['ritten','Ritten'],['tips','Getipte spelers'],['toernooien','Toernooien']];
 var _admNlKleurOpts=['red','blue','yellow','green','purple'];
 async function _admMbRenderNewsletterHistory(pane){
   if(!pane) return;
@@ -32687,6 +32688,7 @@ function _admNlRenderEditionForm(){
         +'<div><div class="adm-nl-flabel">Label</div><select class="bh-select" data-ued="'+i+'" data-uf="tag">'+_admNlTagOpts.map(function(t){return '<option value="'+t[0]+'"'+(u.tag===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select></div>'
         +'<div><div class="adm-nl-flabel">Kleur icoon</div><select class="bh-select" data-ued="'+i+'" data-uf="kleur">'+_admNlKleurOpts.map(function(k){return '<option value="'+k+'"'+(u.kleur===k?' selected':'')+'>'+k+'</option>';}).join('')+'</select></div>'
         +'<div><div class="adm-nl-flabel">Emoji</div><input class="adm-compose-input" data-ued="'+i+'" data-uf="icon" value="'+_bhEsc(u.icon||'📌')+'" style="width:50px;text-align:center;"></div>'
+        +'<div><div class="adm-nl-flabel">Screenshot</div><select class="bh-select" data-ued="'+i+'" data-uf="screenshot">'+_admNlScreenshotOpts.map(function(s){return '<option value="'+s[0]+'"'+((u.screenshot||'')===s[0]?' selected':'')+'>'+s[1]+'</option>';}).join('')+'</select></div>'
         +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;padding-bottom:9px;"><input type="checkbox" data-ued="'+i+'" data-uf="highlight"'+(u.highlight?' checked':'')+'> Uitgelicht (grotere nadruk)</label>'
       +'</div>'
     +'</div>';
@@ -32869,12 +32871,12 @@ window._admNlFillExample=function(){
 };
 window._admNlAddUpdate=function(){
   if(!_admNlEdition) _admNlEdition=_admNlDefaultEdition();
-  _admNlEdition.updates.push({titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false});
+  _admNlEdition.updates.push({titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false,screenshot:''});
   _admNlRenderEditionForm();
 };
 window._admNlRemoveUpdate=function(i){
   _admNlEdition.updates.splice(i,1);
-  if(!_admNlEdition.updates.length) _admNlEdition.updates.push({titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false});
+  if(!_admNlEdition.updates.length) _admNlEdition.updates.push({titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false,screenshot:''});
   _admNlRenderEditionForm();
 };
 

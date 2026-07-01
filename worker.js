@@ -1480,18 +1480,41 @@ const NL_TAG_STYLE = {
 };
 const NL_ICON_BG = { red:'rgba(232,37,26,0.12)', blue:'rgba(59,130,246,0.12)', yellow:'rgba(245,166,35,0.12)', green:'rgba(74,222,128,0.12)', purple:'rgba(168,85,247,0.12)' };
 const NL_ICON_GLOW = { red:'rgba(232,37,26,0.45)', blue:'rgba(59,130,246,0.45)', yellow:'rgba(245,166,35,0.45)', green:'rgba(74,222,128,0.45)', purple:'rgba(168,85,247,0.45)' };
-function nlEditionUpdateCard(u){
+const NL_SCREENSHOT_WORKER = 'https://scoutinghub-screenshot-test.marcelsteeman1.workers.dev/';
+const NL_SCREENSHOT_LABELS = { dashboard:'Dashboard', spelers:'Spelersdatabase', programma:'Programma', ritten:'Ritten', tips:'Getipte spelers', toernooien:'Toernooien' };
+async function nlFetchScreenshot(screenKey){
+  try{
+    const r = await fetchWithTimeout(NL_SCREENSHOT_WORKER, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ screen: screenKey }) }, 45000);
+    if(!r.ok) return null;
+    const j = await r.json();
+    return (j && j.ok && j.b64) ? j.b64 : null;
+  }catch(_){ return null; }
+}
+// Haalt elke unieke gevraagde screenshot maar 1x op (hergebruikt voor alle ontvangers).
+async function nlPrefetchScreenshots(ed){
+  const keys = Array.from(new Set((Array.isArray(ed.updates)?ed.updates:[]).map(u=>u&&u.screenshot).filter(Boolean)));
+  if(!keys.length) return {};
+  const results = await Promise.all(keys.map(k=>nlFetchScreenshot(k)));
+  const map = {};
+  keys.forEach((k,i)=>{ if(results[i]) map[k]=results[i]; });
+  return map;
+}
+function nlEditionUpdateCard(u, shotB64){
   const tag = NL_TAG_STYLE[u.tag] || NL_TAG_STYLE.coming;
   const iconBg = NL_ICON_BG[u.kleur] || NL_ICON_BG.red;
   const iconGlow = NL_ICON_GLOW[u.kleur] || NL_ICON_GLOW.red;
   const highlightStyle = u.highlight ? 'border-color:rgba(232,37,26,0.3);background:linear-gradient(135deg, #1f1624 0%, #1a2236 100%);' : 'background:#1a2236;border:1px solid #1e2d45;';
-  return '<div style="'+highlightStyle+'border-radius:10px;padding:18px 20px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;">'
+  const shotHtml = shotB64 ? '<img src="data:image/png;base64,'+shotB64+'" alt="Screenshot" style="display:block;width:100%;border-radius:8px;margin-top:12px;border:1px solid #1e2d45;">' : '';
+  return '<div style="'+highlightStyle+'border-radius:10px;padding:18px 20px;margin-bottom:10px;">'
+    + '<div style="display:flex;gap:14px;align-items:flex-start;">'
     + '<div style="width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:1px;background:'+iconBg+';box-shadow:0 0 14px '+iconGlow+';">'+shEsc(u.icon||'📌')+'</div>'
     + '<div style="flex:1;">'
       + '<span style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-bottom:6px;background:'+tag.bg+';color:'+tag.fg+';box-shadow:0 0 8px '+tag.bg+';">'+shEsc(tag.label)+'</span>'
       + '<h4 style="font-size:13.5px;font-weight:700;color:#e2e8f0;margin:0 0 5px;">'+shEsc(u.titel||'')+'</h4>'
       + '<p style="font-size:13px;line-height:1.65;color:#94a3b8;margin:0;">'+nlInlineFormat(u.tekst||'')+'</p>'
-    + '</div></div>';
+    + '</div></div>'
+    + shotHtml
+    + '</div>';
 }
 function nlSectionLabel(color, text){
   return '<div style="display:flex;align-items:center;gap:10px;padding:28px 40px 14px;">'
@@ -1499,7 +1522,7 @@ function nlSectionLabel(color, text){
     + '<span style="font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#475569;white-space:nowrap;">'+shEsc(text)+'</span>'
     + '<div style="flex:1;height:1px;background:#1e2d45;"></div></div>';
 }
-async function nlBuildEditionHtml(env, ed, unsubEmail){
+async function nlBuildEditionHtml(env, ed, unsubEmail, shots){
   const base = appBaseUrl(env); const ce = contactEmail(env); const host = base.replace(/^https?:\/\//,'');
   const editionLabel = shEsc((ed.maand||'')+(ed.nummer?(' · Editie #'+ed.nummer):''));
 
@@ -1516,8 +1539,9 @@ async function nlBuildEditionHtml(env, ed, unsubEmail){
   let updatesHtml = '';
   const updates = Array.isArray(ed.updates) ? ed.updates.filter(u=>u&&(u.titel||u.tekst)) : [];
   if(updates.length){
+    const shotsMap = shots || {};
     updatesHtml = nlSectionLabel('#E8251A','Wat er aankomt')
-      + '<div style="padding:0 40px 28px;">' + updates.map(nlEditionUpdateCard).join('') + '</div>';
+      + '<div style="padding:0 40px 28px;">' + updates.map(u=>nlEditionUpdateCard(u, u.screenshot?shotsMap[u.screenshot]:null)).join('') + '</div>';
   }
 
   let announceHtml = '';
@@ -2385,7 +2409,8 @@ async function handleAdminNewsletterSend(body, env, request){
     subject = clip(String(body.subject||ed.titel||'').trim(),200);
     if(!subject) return json({ ok:false, error:'Titel/onderwerp ontbreekt' }, 400);
     if(!ed.titel && !ed.intro) return json({ ok:false, error:'Vul minimaal een titel of intro in' }, 400);
-    buildHtml = function(email){ return nlBuildEditionHtml(env, ed, email); };
+    const shots = await nlPrefetchScreenshots(ed);
+    buildHtml = function(email){ return nlBuildEditionHtml(env, ed, email, shots); };
     text = (ed.titel||subject) + (ed.intro?('\n\n'+ed.intro):'') + '\n\nBekijk deze nieuwsbrief in HTML voor de volledige opmaak.';
   } else {
     subject = clip(String(body.subject||'').trim(),200);
@@ -3262,7 +3287,8 @@ async function handleScheduledNewsletter(env){
       const ed = draft.edition;
       subject = String(draft.subject||ed.titel||'').trim();
       if(!subject) return;
-      buildHtml = function(email){ return nlBuildEditionHtml(env, ed, email); };
+      const shots = await nlPrefetchScreenshots(ed);
+      buildHtml = function(email){ return nlBuildEditionHtml(env, ed, email, shots); };
       text = (ed.titel||subject) + (ed.intro?('\n\n'+ed.intro):'') + '\n\nBekijk deze nieuwsbrief in HTML voor de volledige opmaak.';
     } else {
       subject = String(draft.subject||'').trim();

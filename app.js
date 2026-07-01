@@ -32535,7 +32535,7 @@ async function _admMbRenderNewsletter(pane){
       +'</div>'
       +'<div class="adm-nl-col-right">'
         +'<div class="adm-nl-section-hd">Concept'+(savedAt?'<span class="adm-nl-saved-note"> - opgeslagen '+savedAt+'</span>':'')+'</div>'
-        +'<input class="adm-compose-input" id="adm-nl-to" placeholder="Aan (leeg = alle abonnees, testadres voor test)" autocomplete="off" oninput="_admNlUpdateSendLabel('+subs.length+')" style="margin-bottom:8px;">'
+        +'<input class="adm-compose-input" id="adm-nl-to" placeholder="Aan (leeg = alle abonnees; voor test 1 of meer adressen, gescheiden door komma of spatie)" autocomplete="off" oninput="_admNlUpdateSendLabel('+subs.length+')" style="margin-bottom:8px;">'
         +'<input class="adm-compose-input" id="adm-nl-subj" placeholder="Onderwerp" value="'+_bhEsc(savedSubj)+'" style="margin-bottom:8px;">'
         +'<textarea class="adm-compose-input" id="adm-nl-msg" placeholder="Bericht (platte tekst of HTML)…" rows="8" style="min-height:160px;resize:vertical;">'+_bhEsc(savedMsg)+'</textarea>'
         +'<div class="adm-nl-autosend">'
@@ -32599,7 +32599,7 @@ window._admNlSend=async function(btn, cnt){
     var r=await fetch(_admBase()+'/api/admin-newsletter-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify(payload)});
     var j={};try{j=await r.json();}catch(_){}
     if(r.ok&&j&&j.ok){
-      var label=testEmail?('testmail naar '+testEmail):((j.sent||cnt)+' abonnee'+(cnt!==1?'s':''));
+      var label=testEmail?('testmail naar '+(j.sent||0)+' adres'+(j.sent!==1?'sen':'')):((j.sent||cnt)+' abonnee'+(cnt!==1?'s':''));
       if(typeof toast==='function') toast('Nieuwsbrief verstuurd: '+label);
       if(res) res.innerHTML='<div style="color:#4ade80;padding:8px 0;font-size:.83rem;">Verstuurd: '+_bhEsc(label)+'</div>';
     } else {

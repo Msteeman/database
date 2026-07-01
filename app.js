@@ -32543,7 +32543,7 @@ function _admNlDefaultEdition(){
     dankwoord:{enabled:false,titel:'Nogmaals dank dat jullie mee willen testen',tekst:''},
     updates:[{titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false}],
     aankondiging:{enabled:false,icon:'📖',titel:'',tekst:''},
-    whatsapp:{enabled:false,nummer:'',tekst:'Hoi, ik heb feedback over ScoutingHub: '}
+    whatsapp:{enabled:true,nummer:'+31625350577',tekst:'Hoi, ik heb feedback over ScoutingHub: '}
   };
 }
 async function _admMbRenderNewsletter(pane){

@@ -32522,9 +32522,9 @@ async function _admMbRenderNewsletter(pane){
   var next1=new Date(now.getFullYear()+(nm>11?1:0),(nm>11?0:nm),1,7,0,0);
   var next1Lbl=next1.toLocaleDateString('nl-NL',{day:'numeric',month:'long'})+' om 07:00';
   var subsHtml=subs.length
-    ?'<div class="adm-nl-subs-list">'+subs.slice(0,10).map(function(s){
+    ?'<div class="adm-nl-subs-list" style="max-height:320px;overflow-y:auto;">'+subs.map(function(s){
         return '<div class="adm-nl-sub-row"><span class="adm-nl-sub-name">'+_bhEsc(s.displayName||s.name||s.email||'Onbekend')+'</span><span class="adm-nl-sub-email">'+_bhEsc(s.email||'')+'</span></div>';
-      }).join('')+(subs.length>10?'<div class="adm-nl-sub-more">+'+( subs.length-10)+' meer</div>':'')+'</div>'
+      }).join('')+'</div>'
     :'<div class="bh-empty" style="padding:8px">Geen abonnees</div>';
   pane.innerHTML='<div class="adm-mb3-detail-inner">'
     +'<div class="adm-mb3-detail-hd"><div class="adm-mb3-detail-subj">Nieuwsbrief</div></div>'
@@ -32661,7 +32661,12 @@ async function _admMbLoadFolder(listEl, type, folder){
 async function _admMbOpenMail(type, folder, seq, rowEl){
   var listEl=document.getElementById('adm-mb3-list');
   if(listEl) listEl.querySelectorAll('.adm-mb3-row-active').forEach(function(r){ r.classList.remove('adm-mb3-row-active'); });
+  var wasUnread = rowEl && rowEl.classList.contains('adm-mb3-unread');
   if(rowEl){ rowEl.classList.add('adm-mb3-row-active'); rowEl.classList.remove('adm-mb3-unread'); }
+  if(wasUnread && folder==='inbox'){
+    if(_admMbUnread[type]>0) _admMbUnread[type]--;
+    _admMbRebuild();
+  }
   var detail=document.getElementById('adm-mb3-detail'); if(!detail) return;
   detail.innerHTML='<div class="adm-loading">Bericht laden…</div>';
   try{

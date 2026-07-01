@@ -2376,11 +2376,18 @@ function imapExtractBody(body, contentType, withContent){
       }
     } else if(lct.includes('text/html')){
       html=rawBody;
+    } else if(lct && !lct.includes('text/')){
+      attachments.push({name:'bijlage', type:(lct.split(';')[0]||'application/octet-stream').trim()});
     } else {
       text=rawBody;
     }
   }
   parse(body, contentType||'');
+  if(!text && !html){
+    const printable = (body||'').split('').filter(c=>{ const cc=c.charCodeAt(0); return cc>=32&&cc<127; }).length;
+    const ratio = body ? printable/body.length : 1;
+    if(ratio < 0.8) text='[Deze e-mail bevat alleen bijlagen of binaire inhoud die niet in de browser kan worden weergegeven.]';
+  }
   return {text:text.trim(), html, attachments};
 }
 

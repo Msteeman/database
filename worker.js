@@ -1146,6 +1146,87 @@ async function verifyTurnstile(env, token, ip){
   } catch(_){ return { ok:false, reason:'verify-error' }; }
 }
 
+/* ---- Gemini AI-proxy (key blijft server-side) ---- */
+async function callGeminiApi(env, prompt, opts){
+  opts = opts || {};
+  if(!env || !env.GEMINI_API_KEY) throw new Error('Gemini niet geconfigureerd');
+  const model = 'gemini-2.0-flash';
+  const url = 'https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+env.GEMINI_API_KEY;
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature: opts.temperature!=null?opts.temperature:0.4, maxOutputTokens: opts.maxTokens||512 }
+  };
+  const r = await fetchWithTimeout(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }, 20000);
+  if(!r.ok) throw new Error('gemini-http-'+r.status);
+  const j = await r.json();
+  const text = j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts && j.candidates[0].content.parts[0] && j.candidates[0].content.parts[0].text;
+  if(!text) throw new Error('gemini-leeg-antwoord');
+  return String(text).trim();
+}
+async function handleGemini(body, env, request){
+  const ip = (request && request.headers && request.headers.get('CF-Connecting-IP')) || '0.0.0.0';
+  const rl = await rateLimit(env, 'gemini-ip:'+ip, 20, 3600);
+  if(!rl.ok) return json({ ok:false, error:'Te veel verzoeken, probeer later opnieuw.' }, 429);
+  const prompt = clip(String(body.prompt||'').trim(), 4000);
+  if(!prompt) return json({ ok:false, error:'Geen prompt meegegeven' }, 400);
+  try{
+    const text = await callGeminiApi(env, prompt, { temperature: body.temperature, maxTokens: body.maxTokens });
+    return json({ ok:true, text });
+  }catch(err){ return json({ ok:false, error:'Gemini niet beschikbaar' }, 502); }
+}
+
+function nlAiEditionPrompt(topic){
+  return 'Je schrijft een korte, vriendelijke Nederlandse productupdate-nieuwsbrief voor "ScoutingHub", een voetbal-scouting app in ontwikkeling (testfase). '
+    + 'De toon is warm, direct en niet overdreven zakelijk — schrijf zoals je aan een klein team van vrijwillige testers zou schrijven. '
+    + 'Onderwerp/inhoud van deze editie (door de beheerder aangeleverd): "'+topic.replace(/"/g,"'")+'"\n\n'
+    + 'Geef ALLEEN geldige JSON terug (geen markdown, geen uitleg, geen ```), exact in dit format:\n'
+    + '{"titel":"pakkende hoofdkop, max 90 tekens","intro":"2-4 zinnen introductie","dankwoord":{"titel":"korte titel","tekst":"kort bedankje aan testers, 2-3 zinnen"},'
+    + '"updates":[{"titel":"korte titel","tekst":"2-3 zinnen uitleg","tag":"nieuw|bugfix|coming|wip","icon":"1 relevante emoji","kleur":"red|blue|yellow|green|purple","highlight":false}],'
+    + '"aankondiging":{"titel":"korte titel of leeg","tekst":"korte tekst of leeg"}}\n\n'
+    + 'Maak 2 tot 5 updates, gebaseerd op wat de beheerder heeft aangeleverd. Gebruik tag "nieuw" voor nieuwe features, "bugfix" voor opgeloste bugs, "coming" voor wat eraan komt. '
+    + 'Zet highlight:true bij hooguit 1 update (de belangrijkste). Laat "aankondiging" leeg (lege strings) als er geen apart bericht nodig is.';
+}
+async function handleAdminNewsletterAiFill(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  const topic = clip(String(body.topic||'').trim(), 1500);
+  if(!topic) return json({ ok:false, error:'Beschrijf waar de nieuwsbrief over moet gaan' }, 400);
+  let raw;
+  try{ raw = await callGeminiApi(env, nlAiEditionPrompt(topic), { temperature:0.5, maxTokens:1500 }); }
+  catch(err){ return json({ ok:false, error:'AI niet beschikbaar. Controleer of GEMINI_API_KEY is ingesteld.' }, 502); }
+  const m = raw.match(/\{[\s\S]*\}/);
+  if(!m) return json({ ok:false, error:'AI gaf geen bruikbaar antwoord' }, 502);
+  let parsed;
+  try{ parsed = JSON.parse(m[0]); }catch(_){ return json({ ok:false, error:'AI-antwoord kon niet worden gelezen' }, 502); }
+  const validTags = ['nieuw','bugfix','coming','wip'];
+  const validKleur = ['red','blue','yellow','green','purple'];
+  const edition = {
+    maand: '', nummer: '',
+    titel: clip(String(parsed.titel||'').trim(), 200),
+    intro: clip(String(parsed.intro||'').trim(), 2000),
+    dankwoord: { enabled: true, titel: clip(String(parsed.dankwoord&&parsed.dankwoord.titel||'').trim(),200), tekst: clip(String(parsed.dankwoord&&parsed.dankwoord.tekst||'').trim(),1000) },
+    updates: (Array.isArray(parsed.updates)?parsed.updates:[]).slice(0,8).map(function(u){
+      return {
+        titel: clip(String(u&&u.titel||'').trim(),200),
+        tekst: clip(String(u&&u.tekst||'').trim(),1000),
+        tag: validTags.includes(u&&u.tag) ? u.tag : 'coming',
+        icon: clip(String(u&&u.icon||'📌').trim(),10) || '📌',
+        kleur: validKleur.includes(u&&u.kleur) ? u.kleur : 'blue',
+        highlight: !!(u&&u.highlight)
+      };
+    }).filter(function(u){ return u.titel||u.tekst; }),
+    aankondiging: { enabled: !!(parsed.aankondiging&&(parsed.aankondiging.titel||parsed.aankondiging.tekst)), icon:'📖', titel: clip(String(parsed.aankondiging&&parsed.aankondiging.titel||'').trim(),200), tekst: clip(String(parsed.aankondiging&&parsed.aankondiging.tekst||'').trim(),1000) },
+    whatsapp: { enabled:false, nummer:'', tekst:'' }
+  };
+  if(!edition.updates.length) edition.updates.push({titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false});
+  return json({ ok:true, edition });
+}
+
 /* ---- rate-limit (KV, best-effort) ---- */
 async function rateLimit(env, key, limit, windowSec){
   const kv = env && env.RATE_LIMIT;
@@ -1381,20 +1462,22 @@ function nlFormatBody(message){
  * Vult invulvelden in i.p.v. vrije platte tekst.
  * ============================================================ */
 const NL_TAG_STYLE = {
-  nieuw:  { label:'Nieuw',              bg:'rgba(74,222,128,0.12)',  fg:'#4ade80' },
-  bugfix: { label:'Bugfix komt eraan',  bg:'rgba(239,68,68,0.12)',   fg:'#f87171' },
-  coming: { label:'Komt eraan',         bg:'rgba(245,166,35,0.12)',  fg:'#fbbf24' },
-  wip:    { label:'Werk in uitvoering', bg:'rgba(148,163,184,0.1)',  fg:'#64748b' }
+  nieuw:  { label:'Nieuw',      bg:'rgba(74,222,128,0.12)',  fg:'#4ade80' },
+  bugfix: { label:'Bugfix',     bg:'rgba(239,68,68,0.12)',   fg:'#f87171' },
+  coming: { label:'Komt eraan', bg:'rgba(245,166,35,0.12)',  fg:'#fbbf24' },
+  wip:    { label:'In uitvoering', bg:'rgba(148,163,184,0.1)', fg:'#64748b' }
 };
 const NL_ICON_BG = { red:'rgba(232,37,26,0.12)', blue:'rgba(59,130,246,0.12)', yellow:'rgba(245,166,35,0.12)', green:'rgba(74,222,128,0.12)', purple:'rgba(168,85,247,0.12)' };
+const NL_ICON_GLOW = { red:'rgba(232,37,26,0.45)', blue:'rgba(59,130,246,0.45)', yellow:'rgba(245,166,35,0.45)', green:'rgba(74,222,128,0.45)', purple:'rgba(168,85,247,0.45)' };
 function nlEditionUpdateCard(u){
   const tag = NL_TAG_STYLE[u.tag] || NL_TAG_STYLE.coming;
   const iconBg = NL_ICON_BG[u.kleur] || NL_ICON_BG.red;
+  const iconGlow = NL_ICON_GLOW[u.kleur] || NL_ICON_GLOW.red;
   const highlightStyle = u.highlight ? 'border-color:rgba(232,37,26,0.3);background:linear-gradient(135deg, #1f1624 0%, #1a2236 100%);' : 'background:#1a2236;border:1px solid #1e2d45;';
   return '<div style="'+highlightStyle+'border-radius:10px;padding:18px 20px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;">'
-    + '<div style="width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:1px;background:'+iconBg+';">'+shEsc(u.icon||'📌')+'</div>'
+    + '<div style="width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:1px;background:'+iconBg+';box-shadow:0 0 14px '+iconGlow+';">'+shEsc(u.icon||'📌')+'</div>'
     + '<div style="flex:1;">'
-      + '<span style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-bottom:6px;background:'+tag.bg+';color:'+tag.fg+';">'+shEsc(tag.label)+'</span>'
+      + '<span style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-bottom:6px;background:'+tag.bg+';color:'+tag.fg+';box-shadow:0 0 8px '+tag.bg+';">'+shEsc(tag.label)+'</span>'
       + '<h4 style="font-size:13.5px;font-weight:700;color:#e2e8f0;margin:0 0 5px;">'+shEsc(u.titel||'')+'</h4>'
       + '<p style="font-size:13px;line-height:1.65;color:#94a3b8;margin:0;">'+nlInlineFormat(u.tekst||'')+'</p>'
     + '</div></div>';
@@ -3103,6 +3186,20 @@ export default {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
       try { return await handleAdminNewsletterHistory((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/gemini') || path.endsWith('/gemini')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleGemini((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
+    if (path.endsWith('/api/admin-newsletter-ai-fill') || path.endsWith('/admin-newsletter-ai-fill')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminNewsletterAiFill((b && typeof b==='object') ? b : {}, env, request); }
       catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
     }
 

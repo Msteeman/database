@@ -32666,7 +32666,7 @@ function _admNlRenderEditionForm(){
         +'<button class="adm-btn-ghost" onclick="_admNlRemoveUpdate('+i+')" title="Verwijderen">✕ Verwijderen</button></div>'
       +_admNlFieldLabel('Titel')
       +'<input class="adm-compose-input" data-ued="'+i+'" data-uf="titel" placeholder="Bijv. Carrièreverloop per speler" value="'+_bhEsc(u.titel||'')+'" style="margin-bottom:6px;">'
-      +_admNlFieldLabel('Tekst')
+      +'<div style="display:flex;justify-content:space-between;align-items:center;"><div class="adm-nl-flabel" style="margin-bottom:3px;">Tekst</div><button class="adm-btn-ghost adm-nl-ai-mini" data-aiimprove="'+i+'" style="padding:2px 7px;font-size:11px;">✨ Verbeter</button></div>'
       +'<textarea class="adm-compose-input" data-ued="'+i+'" data-uf="tekst" placeholder="Korte uitleg van deze update" rows="2" style="margin-bottom:6px;">'+_bhEsc(u.tekst||'')+'</textarea>'
       +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end;">'
         +'<div><div class="adm-nl-flabel">Label</div><select class="bh-select" data-ued="'+i+'" data-uf="tag">'+_admNlTagOpts.map(function(t){return '<option value="'+t[0]+'"'+(u.tag===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select></div>'
@@ -32677,9 +32677,12 @@ function _admNlRenderEditionForm(){
     +'</div>';
   }).join('');
   host.innerHTML=
-    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
-      +'<span class="bh-stat-note" style="margin:0;">Vul zelf in, of start met het voorbeeld van je eerste editie.</span>'
-      +'<button class="adm-btn-ghost" onclick="_admNlFillExample()">✨ Voorbeeld invullen</button>'
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">'
+      +'<span class="bh-stat-note" style="margin:0;">Vul zelf in, laat AI alles genereren, of start met het voorbeeld.</span>'
+      +'<span style="display:flex;gap:6px;">'
+        +'<button class="adm-btn-ghost adm-btn-primary" id="adm-nl-ai-btn" onclick="_admNlAiFill()">✨ AI: alles invullen</button>'
+        +'<button class="adm-btn-ghost" onclick="_admNlFillExample()">📄 Voorbeeld invullen</button>'
+      +'</span>'
     +'</div>'
     +'<div style="display:flex;gap:8px;margin-bottom:8px;">'
       +'<div style="flex:1;">'+_admNlFieldLabel('Maand / editielabel')+'<input class="adm-compose-input" id="adm-ed-maand" placeholder="Bijv. Medio Juli 2026" value="'+_bhEsc(ed.maand||'')+'"></div>'
@@ -32687,7 +32690,7 @@ function _admNlRenderEditionForm(){
     +'</div>'
     +_admNlFieldLabel('Titel (hoofdkop, groot bovenaan)')
     +'<input class="adm-compose-input" id="adm-ed-titel" placeholder="Bijv. Dit is de eerste ScoutingHub nieuwsbrief" value="'+_bhEsc(ed.titel||'')+'" style="margin-bottom:8px;">'
-    +_admNlFieldLabel('Intro-tekst')
+    +'<div style="display:flex;justify-content:space-between;align-items:center;"><div class="adm-nl-flabel" style="margin-bottom:3px;">Intro-tekst</div><button class="adm-btn-ghost adm-nl-ai-mini" id="adm-nl-ai-intro" style="padding:2px 7px;font-size:11px;">✨ Verbeter</button></div>'
     +'<textarea class="adm-compose-input" id="adm-ed-intro" placeholder="Korte introductie, 2-4 zinnen" rows="3" style="margin-bottom:10px;">'+_bhEsc(ed.intro||'')+'</textarea>'
     +'<div class="adm-nl-section-hd" style="font-size:.85rem;">Dankwoord</div>'
     +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;margin-bottom:6px;"><input type="checkbox" id="adm-ed-dank-on"'+(ed.dankwoord&&ed.dankwoord.enabled?' checked':'')+'> Tonen (groen kader bovenaan, bedankje aan testers)</label>'
@@ -32732,7 +32735,47 @@ function _admNlRenderEditionForm(){
   bindSimple('adm-ed-ann-tekst',function(){ _admNlEdition.aankondiging.tekst=this.value; });
   bindSimple('adm-ed-wa-on',function(){ _admNlEdition.whatsapp.enabled=this.checked; });
   bindSimple('adm-ed-wa-nummer',function(){ _admNlEdition.whatsapp.nummer=this.value; });
+  var introAiBtn=document.getElementById('adm-nl-ai-intro');
+  if(introAiBtn) introAiBtn.addEventListener('click',function(){ _admNlAiImprove(document.getElementById('adm-ed-intro'), introAiBtn, 'de introductie-alinea van een nieuwsbrief', function(v){ _admNlEdition.intro=v; }); });
+  host.querySelectorAll('[data-aiimprove]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var idx=parseInt(btn.getAttribute('data-aiimprove'),10);
+      var ta=host.querySelector('textarea[data-ued="'+idx+'"][data-uf="tekst"]');
+      _admNlAiImprove(ta, btn, 'de uitleg-tekst van één update-item in een nieuwsbrief', function(v){ if(_admNlEdition.updates[idx]) _admNlEdition.updates[idx].tekst=v; });
+    });
+  });
 }
+async function _admNlAiImprove(textarea, btn, context, applyFn){
+  if(!textarea) return;
+  var current=(textarea.value||'').trim();
+  if(!current){ if(typeof toast==='function') toast('Vul eerst iets in om te verbeteren',true); return; }
+  var _o=btn.textContent; btn.disabled=true; btn.textContent='…';
+  try{
+    var prompt='Herschrijf de volgende Nederlandse tekst ('+context+' van ScoutingHub, een voetbal-scouting app). Maak hem duidelijker, vlotter en professioneler, zelfde lengte-orde, zelfde taal (Nederlands), geen aanhalingstekens erom, geef alleen de herschreven tekst terug zonder uitleg:\n\n'+current;
+    var text=await callGemini(prompt,{temperature:0.5,maxTokens:400});
+    textarea.value=text; applyFn(text);
+    if(typeof toast==='function') toast('Tekst verbeterd');
+  }catch(e){ if(typeof toast==='function') toast('AI niet beschikbaar',true); }
+  finally{ btn.disabled=false; btn.textContent=_o; }
+}
+window._admNlAiFill=function(){
+  var body='<p style="color:#9aa8bd;font-size:13px;margin:0 0 10px;">Beschrijf kort waar deze nieuwsbrief over moet gaan (bijv. welke bugfixes, nieuwe features, aankondigingen). De AI vult titel, intro, dankwoord en updates automatisch in — pas daarna nog aan waar nodig.</p>'
+    +'<textarea id="adm-nl-ai-topic" class="sh-req-i" rows="5" placeholder="Bijv. We hebben de rittenregistratie km-berekening gefixt, getipte spelers is nu volledig werkbaar, en er komt een nieuwe carrièreverloop-functie voor spelers aan. Dit is de eerste nieuwsbrief editie."></textarea>';
+  var m=_bhModal('AI: nieuwsbrief genereren',body,{ confirmLabel:'Genereren', onConfirm:async function(){
+    var inp=m.root.querySelector('#adm-nl-ai-topic'); var topic=(inp&&inp.value||'').trim();
+    if(!topic){ if(typeof toast==='function') toast('Beschrijf eerst waar de nieuwsbrief over gaat',true); var e=new Error('leeg'); e._handled=true; throw e; }
+    var tk=await _admToken(); if(!tk) throw new Error('niet ingelogd');
+    var r=await fetch(_admBase()+'/api/admin-newsletter-ai-fill',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({topic:topic})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(!(r.ok&&j&&j.ok&&j.edition)){ if(typeof toast==='function') toast('AI genereren mislukt'+((j&&j.error)?(': '+j.error):''),true); var e2=new Error('mislukt'); e2._handled=true; throw e2; }
+    var oldMaand=(_admNlEdition&&_admNlEdition.maand)||''; var oldNummer=(_admNlEdition&&_admNlEdition.nummer)||'';
+    var oldWa=(_admNlEdition&&_admNlEdition.whatsapp)||{enabled:false,nummer:'',tekst:''};
+    _admNlEdition=j.edition;
+    _admNlEdition.maand=oldMaand; _admNlEdition.nummer=oldNummer; _admNlEdition.whatsapp=oldWa;
+    _admNlRenderEditionForm();
+    if(typeof toast==='function') toast('Nieuwsbrief door AI ingevuld — controleer en pas aan');
+  }});
+};
 window._admNlFillExample=function(){
   if(!confirm('Huidige velden overschrijven met het voorbeeld van de eerste editie?')) return;
   _admNlEdition={

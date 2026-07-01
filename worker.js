@@ -2037,14 +2037,19 @@ async function handleAdminNewsletterSend(body, env, request){
   const subject = clip(String(body.subject||'').trim(),200);
   const message = clip(String(body.message||'').trim(),10000);
   if(!subject||!message) return json({ ok:false, error:'Onderwerp en bericht zijn verplicht' }, 400);
-  const all = await saFsList(saToken, 'access_requests', 500);
-  const subs = all.filter(function(x){ return x.newsletterOptIn===true && x.email; });
-  if(!subs.length) return json({ ok:true, sent:0, message:'Geen abonnees gevonden' });
+  const testEmail = clip(String(body.testEmail||'').trim(), 200);
   const paragraphs = message.split(/\n{2,}/).map(function(p){ return '<p style="'+MAIL_P+'">'+shEsc(p).replace(/\n/g,'<br>')+'</p>'; }).join('');
   const htmlBody = paragraphs
     + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>'
     + '<p style="'+MAIL_MUTED+'">Je ontvangt deze nieuwsbrief omdat je je hebt aangemeld. Stuur een mail naar contact@scoutinghub.nl om je af te melden.</p>';
   const text = message + '\n\nMet vriendelijke groet,\nTeam ScoutingHub\n\nAfmelden: stuur een mail naar contact@scoutinghub.nl';
+  if(testEmail){
+    const ok = await sendMail(env, { from: contactFrom(env), to: testEmail, subject:'[TEST] '+subject, html: mailShell(env,'[TEST] '+subject,htmlBody), text });
+    return json({ ok:true, sent: ok?1:0, failed: ok?0:1, total:1, test:true });
+  }
+  const all = await saFsList(saToken, 'access_requests', 500);
+  const subs = all.filter(function(x){ return x.newsletterOptIn===true && x.email; });
+  if(!subs.length) return json({ ok:true, sent:0, message:'Geen abonnees gevonden' });
   let sent = 0, failed = 0;
   for(const sub of subs){
     try{

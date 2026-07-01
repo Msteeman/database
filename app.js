@@ -32162,7 +32162,7 @@ function _admStubHtml(key){
   var quick = m[2] ? '<div class="adm-quick">'
       + '<button class="adm-btn-ghost" onclick="_admNav(\'toegang\')">📨 Toegang</button>'
       + '<button class="adm-btn-ghost" onclick="_admNav(\'gebruikers\')">👥 Gebruikers</button>'
-      + '<button class="adm-btn-ghost" onclick="_admNav(\'teams\')">🏢 Teams &amp; Organigram</button>'
+      + '<button class="adm-btn-ghost" onclick="_admNav(\'organisaties\')">🏛️ Organisaties</button>'
       + '<button class="adm-btn-ghost" onclick="_admNav(\'statistieken\')">📈 Statistieken</button>'
       + '</div>' : '';
   return '<div class="adm-stub-card"><h3>'+m[0]+'</h3><p>'+m[1]+'</p>'+quick+'</div>';
@@ -32172,7 +32172,7 @@ function _admBuildShell(){
   var email=''; try{ email=(typeof currentUser!=='undefined'&&currentUser&&currentUser.email)||''; }catch(_){}
   var navGroups=[
     {label:'', items:[['overzicht','Overzicht','📊']]},
-    {label:'Gebruikers', items:[['organisaties','Organisaties','🏛️'],['toegang','Toegang','📨'],['gebruikers','Gebruikers','👥'],['teams','Teams & Organigram','🏢']]},
+    {label:'Gebruikers', items:[['organisaties','Organisaties','🏛️'],['toegang','Toegang','📨'],['gebruikers','Gebruikers','👥']]},
     {label:'Inzicht & communicatie', items:[['statistieken','Statistieken','📈'],['feedback','Feedback','💬'],['mail','Mailcentrum','✉️']]},
     {label:'Beveiliging', items:[['security','Security & Audit','🛡️'],['support','Support','🤝']]},
     {label:'Systeem', items:[['instellingen','Instellingen','⚙️']]}
@@ -32200,7 +32200,7 @@ function _admShowSection(key){
   var vAdmin=document.getElementById('view-admin');
   var stub=document.getElementById('adm-stub');
   // Bestaande Beheer-onderdelen (tabs) — getoond binnen de shell.
-  var map={ toegang:'aanvragen', gebruikers:'gebruikers', teams:'organogram', statistieken:'statistieken', logboek:'logboek' };
+  var map={ toegang:'aanvragen', gebruikers:'gebruikers', statistieken:'statistieken', logboek:'logboek' };
   if(map[key]){
     if(stub) stub.style.display='none';
     if(vAdmin) vAdmin.style.display='block';
@@ -32286,15 +32286,15 @@ async function _admRenderOverview(el){
   var att=[];
   if(reqP) att.push(['warn',reqP+' open toegangsaanvraag'+(reqP===1?'':'en'),'beoordelen','toegang']);
   if(never) att.push(['warn',never+' zonder eerste login','onboarding opvolgen','gebruikers']);
-  if(tNoCoord) att.push(['bad',tNoCoord+' team(s) zonder coördinator','actie nodig','teams']);
-  if(coordNoTeam) att.push(['bad',coordNoTeam+' coördinator(en) zonder team','datafout','teams']);
+  if(tNoCoord) att.push(['bad',tNoCoord+' team(s) zonder coördinator','actie nodig','organisaties']);
+  if(coordNoTeam) att.push(['bad',coordNoTeam+' coördinator(en) zonder team','datafout','organisaties']);
   if(_bhStatSupport.reqPending) att.push(['warn',_bhStatSupport.reqPending+' support-verzoek(en)','beoordelen','support']);
   if(_bhStatSupport.grantsActive) att.push(['ok',_bhStatSupport.grantsActive+' actieve support-sessie(s)','read-only','security']);
   var attHtml=att.length?('<div class="bh-att-grid">'+att.map(function(a){return '<button class="bh-att-card bh-att-'+a[0]+' adm-att-btn" onclick="_admNav(\''+a[3]+'\')"><div class="bh-att-t">'+_bhEsc(a[1])+'</div><div class="bh-att-s">'+_bhEsc(a[2])+'</div></button>';}).join('')+'</div>'):'<div class="bh-att-card bh-att-ok"><div class="bh-att-t">Alles in orde</div><div class="bh-att-s">Geen openstaande aandachtspunten</div></div>';
   var quick='<div class="adm-quick adm-quick-left">'
     +'<button class="adm-btn-ghost" onclick="_admNav(\'toegang\')">📨 Aanvragen bekijken</button>'
     +'<button class="adm-btn-ghost" onclick="_admNav(\'gebruikers\')">👥 Gebruiker zoeken</button>'
-    +'<button class="adm-btn-ghost" onclick="_admNav(\'teams\')">🏢 Teams &amp; organigram</button>'
+    +'<button class="adm-btn-ghost" onclick="_admNav(\'organisaties\')">🏛️ Organisaties</button>'
     +'<button class="adm-btn-ghost" onclick="_admNav(\'statistieken\')">📈 Statistieken</button>'
     +'<button class="adm-btn-ghost" onclick="_admNav(\'feedback\')">💬 Feedback</button>'
     +'<button class="adm-btn-ghost" onclick="_admNav(\'mail\')">✉️ Mailcentrum</button>'

@@ -32897,7 +32897,7 @@ async function _admRenderFeedback(el){
     var r=await fetch(base+'/api/admin-feedback',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({})});
     var j={};try{j=await r.json();}catch(_){}
     if(!(r.ok&&j&&j.ok)){ el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Feedbackcentrum</div><div class="bh-empty">Kon feedback niet laden: '+_bhEsc((j&&j.error)||'worker niet bereikbaar')+'</div>'; return; }
-    _admFbCache=j.items||[];
+    _admFbCache=(j.items||[]).map(function(x){ if(!x._id) x._id=x.id; return x; });
   }catch(e){
     el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Feedbackcentrum</div><div class="bh-empty">Kon feedback niet laden. Staat de nieuwe worker live?</div>';
     return;

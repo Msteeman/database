@@ -32152,7 +32152,7 @@ window._shIsAdmin = _shIsAdmin;
 var _admSection = '';
 function _admStubHtml(key){
   var map = {
-    overzicht: ['Overzicht', 'Welkom in de ScoutingHub Beheerconsole. Het volledige KPI-overzicht met aandachtspunten en snelacties komt in Fase B. Gebruik voorlopig de secties hieronder.', true],
+    overzicht: ['Dashboard', 'Welkom in de ScoutingHub Beheerconsole.', true],
     feedback:  ['Feedbackcentrum', 'Beheer van binnengekomen feedback (status, detail, bijlage) komt in Fase C. Feedback wordt nu per mail naar contact@scoutinghub.nl gestuurd.', false],
     mail:      ['Mailcentrum', 'Overzicht van admin@ / contact@ / info@ met testmail-knoppen komt in Fase C.', false],
     support:   ['Support / Meekijken', 'Tijdelijke, zichtbare meekijksessies met expliciete toestemming van de gebruiker komen in Fase E. Geen stille inzage.', false],
@@ -32171,7 +32171,7 @@ function _admBuildShell(){
   if(document.getElementById('admin-console')) return;
   var email=''; try{ email=(typeof currentUser!=='undefined'&&currentUser&&currentUser.email)||''; }catch(_){}
   var navGroups=[
-    {label:'', items:[['overzicht','Overzicht','📊']]},
+    {label:'', items:[['overzicht','Dashboard','📊']]},
     {label:'Gebruikers', items:[['organisaties','Organisaties','🏛️'],['toegang','Toegang','📨'],['gebruikers','Gebruikers','👥']]},
     {label:'Inzicht & communicatie', items:[['statistieken','Statistieken','📈'],['feedback','Feedback','💬'],['mail','Mailcentrum','✉️']]},
     {label:'Beveiliging', items:[['security','Security & Audit','🛡️'],['support','Support','🤝']]},
@@ -32245,7 +32245,12 @@ window._admLogout=_admLogout;
 var ADM_APP_VERSION = 'sh-v522-mail-fixes2';
 function _admBase(){ return (typeof TOERNOOI_API_BASE!=='undefined'&&TOERNOOI_API_BASE)?TOERNOOI_API_BASE:'https://scoutinghub-api.marcelsteeman1.workers.dev'; }
 async function _admToken(){ try{ if(typeof auth!=='undefined'&&auth.currentUser) return await auth.currentUser.getIdToken(true); }catch(_){} return ''; }
-function _admKpi(lab,val,sub,tone){ return '<div class="bh-kpi'+(tone?(' bh-kpi-'+tone):'')+'"><div class="bh-kpi-val">'+val+'</div><div class="bh-kpi-lab">'+lab+'</div>'+(sub?'<div class="bh-kpi-sub">'+sub+'</div>':'')+'</div>'; }
+function _admKpi(lab,val,sub,tone,onclick){
+  var tag = onclick ? 'button' : 'div';
+  var cls = 'bh-kpi'+(tone?(' bh-kpi-'+tone):'')+(onclick?' bh-kpi-clickable':'');
+  var attrs = onclick ? (' onclick="'+onclick+'"') : '';
+  return '<'+tag+' class="'+cls+'"'+attrs+'><div class="bh-kpi-val">'+val+'</div><div class="bh-kpi-lab">'+lab+'</div>'+(sub?'<div class="bh-kpi-sub">'+sub+'</div>':'')+'</'+tag+'>';
+}
 
 async function _admEnsureCore(force){
   if(!force && _bhUserCache && _bhUserCache.length) return;
@@ -32257,7 +32262,7 @@ async function _admEnsureCore(force){
 }
 
 async function _admRenderOverview(el){
-  el.innerHTML='<div class="adm-loading">Overzicht laden…</div>';
+  el.innerHTML='<div class="adm-loading">Dashboard laden…</div>';
   await _admEnsureCore();
   var u=_bhUserCache||[];
   var total=u.length;
@@ -32274,14 +32279,27 @@ async function _admRenderOverview(el){
   var coordNoTeam=u.filter(function(x){return x.role==='coordinator'&&!(x.teamId||'');}).length;
   var reqP=_bhStatReqs.filter(function(r){return (r.status||'')==='pending';}).length;
   var kpis='<div class="bh-kpi-grid">'
-    +_admKpi('Gebruikers',total,active+' actief')
-    +_admKpi('Scouts',scouts,coords+' coörd. · '+admins+' admin')
-    +_admKpi('Teams',tArr.length,indiv+' individuele scouts')
-    +_admKpi('Open aanvragen',reqP,reqP?'beoordelen':'niets open',reqP?'warn':'ok')
-    +_admKpi('Nooit ingelogd',never,never?'onboarding':'iedereen gestart',never?'warn':'ok')
-    +_admKpi('Teams z. coörd.',tNoCoord,tNoCoord?'actie nodig':'gedekt',tNoCoord?'bad':'ok')
-    +_admKpi('Support actief',_bhStatSupport.grantsActive,_bhStatSupport.reqPending+' pending')
-    +_admKpi('Teams z. scouts',tNoScout,tNoScout?'controleren':'gedekt',tNoScout?'warn':'ok')
+    +_admKpi('Gebruikers',total,active+' actief',null,"_admNav('gebruikers')")
+    +_admKpi('Scouts',scouts,coords+' coörd. · '+admins+' admin',null,"_admNav('gebruikers')")
+    +_admKpi('Teams',tArr.length,indiv+' individuele scouts',null,"_admNav('organisaties')")
+    +_admKpi('Open aanvragen',reqP,reqP?'beoordelen':'niets open',reqP?'warn':'ok',"_admNav('toegang')")
+    +_admKpi('Nooit ingelogd',never,never?'onboarding':'iedereen gestart',never?'warn':'ok',"_admNav('gebruikers')")
+    +_admKpi('Teams z. coörd.',tNoCoord,tNoCoord?'actie nodig':'gedekt',tNoCoord?'bad':'ok',"_admNav('organisaties')")
+    +_admKpi('Support actief',_bhStatSupport.grantsActive,_bhStatSupport.reqPending+' pending',null,"_admNav('support')")
+    +_admKpi('Teams z. scouts',tNoScout,tNoScout?'controleren':'gedekt',tNoScout?'warn':'ok',"_admNav('organisaties')")
+    +'</div>';
+  var roleSegsOv=[{label:'Scouts',value:scouts,color:'#6b7280'},{label:'Coördinatoren',value:coords,color:'#4ea1ff'},{label:'Admins',value:admins,color:'#a855f7'}];
+  var growthOv=(function(){
+    var now=new Date(), months=[];
+    for(var i=5;i>=0;i--){ var d=new Date(now.getFullYear(), now.getMonth()-i, 1); months.push({ key:d.getFullYear()+'-'+(d.getMonth()+1), label:d.toLocaleDateString('nl-NL',{month:'short'}), count:0 }); }
+    u.forEach(function(x){ var ms=_bhStatMs(x.createdAt); if(!ms) return; var d=new Date(ms); var key=d.getFullYear()+'-'+(d.getMonth()+1); for(var j=0;j<months.length;j++){ if(months[j].key===key){ months[j].count++; break; } } });
+    return months;
+  })();
+  var gMaxOv=1; growthOv.forEach(function(g){ if(g.count>gMaxOv) gMaxOv=g.count; });
+  var growthBarsOv=growthOv.map(function(g){ var w=Math.round(g.count/gMaxOv*100); return '<div class="bh-bar-row"><div class="bh-bar-lab">'+g.label+'</div><div class="bh-bar-track"><div class="bh-bar-fill" style="width:'+w+'%"></div></div><div class="bh-bar-val">'+g.count+'</div></div>'; }).join('');
+  var chartsOv='<div class="bh-chart-grid">'
+    +'<div class="bh-chart-card"><div class="bh-chart-hd">Rollenverdeling</div><div class="bh-chart-body">'+_bhDonut(roleSegsOv,{value:total,label:'totaal'})+_bhLegend(roleSegsOv)+'</div></div>'
+    +'<div class="bh-chart-card"><div class="bh-chart-hd">Groei — nieuwe gebruikers per maand</div><div class="bh-chart-body bh-bars">'+growthBarsOv+'</div></div>'
     +'</div>';
   var att=[];
   if(reqP) att.push(['warn',reqP+' open toegangsaanvraag'+(reqP===1?'':'en'),'beoordelen','toegang']);
@@ -32299,10 +32317,11 @@ async function _admRenderOverview(el){
     +'<button class="adm-btn-ghost" onclick="_admNav(\'feedback\')">💬 Feedback</button>'
     +'<button class="adm-btn-ghost" onclick="_admNav(\'mail\')">✉️ Mailcentrum</button>'
     +'</div>';
-  el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Overzicht</div>'+kpis
+  el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Dashboard</div>'+kpis
+    +chartsOv
     +'<div class="bh-stat-hd">Aandacht nodig</div>'+attHtml
     +'<div class="bh-stat-hd">Snelle acties</div>'+quick
-    +'<div class="bh-stat-note">Module-totalen (spelers/rapporten/…) staan onder <b>Statistieken</b> — die worden via de worker geteld.</div>';
+    +'<div class="bh-stat-note">Module-totalen (spelers/rapporten/…) en gedetailleerde grafieken staan onder <button class="adm-link-btn" onclick="_admNav(\'statistieken\')">Statistieken</button>.</div>';
 }
 
 var _ADM_MAILLABELS={inbox:'Inbox',sent:'Verzonden',trash:'Verwijderd'};
@@ -33300,21 +33319,25 @@ function _bhRenderStats(){
   var reqA=_bhStatReqs.filter(function(r){return (r.status||'')==='approved';}).length;
   var reqR=_bhStatReqs.filter(function(r){return (r.status||'')==='rejected';}).length;
 
-  function kpi(lab,val,sub,tone){ return '<div class="bh-kpi'+(tone?(' bh-kpi-'+tone):'')+'"><div class="bh-kpi-val">'+val+'</div><div class="bh-kpi-lab">'+lab+'</div>'+(sub?'<div class="bh-kpi-sub">'+sub+'</div>':'')+'</div>'; }
+  function kpi(lab,val,sub,tone,onclick){
+    var tag=onclick?'button':'div';
+    var attrs=onclick?(' onclick="'+onclick+'"'):'';
+    return '<'+tag+' class="bh-kpi'+(tone?(' bh-kpi-'+tone):'')+(onclick?' bh-kpi-clickable':'')+'"'+attrs+'><div class="bh-kpi-val">'+val+'</div><div class="bh-kpi-lab">'+lab+'</div>'+(sub?'<div class="bh-kpi-sub">'+sub+'</div>':'')+'</'+tag+'>';
+  }
   function mt(k){ return _bhStatTotals ? (_bhStatTotals[k]!=null?_bhStatTotals[k]:0) : '—'; }
   var kpis='<div class="bh-kpi-grid">'
-    + kpi('Gebruikers', total, active+' actief · '+inactive+' inactief'+(deleted?(' · '+deleted+' verwijderd'):''))
-    + kpi('Scouts', scouts, coords+' coördinatoren · '+admins+' admins')
-    + kpi('Individuele scouts', indiv, indiv?'zonder team':'iedereen in een team', indiv?'warn':'ok')
-    + kpi('Teams', teamsCount, clubsCount+' club'+(clubsCount===1?'':'s'))
-    + kpi('Teams z. coördinator', teamsNoCoord, teamsNoCoord?'actie nodig':'alles gedekt', teamsNoCoord?'bad':'ok')
-    + kpi('Open aanvragen', reqP, reqP?'wacht op beoordeling':(reqA+reqR)+' verwerkt', reqP?'warn':'ok')
-    + kpi('Logins (totaal)', totalLogins, login7+' actief (7d) · '+login30+' (30d)')
-    + kpi('Nooit ingelogd', neverLogin, neverLogin?'onboarding opvolgen':'iedereen gestart', neverLogin?'warn':'ok')
-    + kpi('Spelers', mt('players'), 'geobserveerd')
-    + kpi('Wedstrijdrapporten', mt('matchReports'), '')
-    + kpi('Toernooien', mt('tournaments'), '')
-    + kpi('Tips', mt('tips'), '')
+    + kpi('Gebruikers', total, active+' actief · '+inactive+' inactief'+(deleted?(' · '+deleted+' verwijderd'):''), null, "_bhStatGoto('role','')")
+    + kpi('Scouts', scouts, coords+' coördinatoren · '+admins+' admins', null, "_bhStatGoto('role','scout')")
+    + kpi('Individuele scouts', indiv, indiv?'zonder team':'iedereen in een team', indiv?'warn':'ok', "_bhStatGoto('team','__none__')")
+    + kpi('Teams', teamsCount, clubsCount+' club'+(clubsCount===1?'':'s'), null, "_admNav('organisaties')")
+    + kpi('Teams z. coördinator', teamsNoCoord, teamsNoCoord?'actie nodig':'alles gedekt', teamsNoCoord?'bad':'ok', "_admNav('organisaties')")
+    + kpi('Open aanvragen', reqP, reqP?'wacht op beoordeling':(reqA+reqR)+' verwerkt', reqP?'warn':'ok', "_admNav('toegang')")
+    + kpi('Logins (totaal)', totalLogins, login7+' actief (7d) · '+login30+' (30d)', null, "_bhStatGoto('metric','loginCount')")
+    + kpi('Nooit ingelogd', neverLogin, neverLogin?'onboarding opvolgen':'iedereen gestart', neverLogin?'warn':'ok', "_bhStatGoto('activity','never')")
+    + kpi('Spelers', mt('players'), 'geobserveerd', null, "_bhStatGoto('metric','players')")
+    + kpi('Wedstrijdrapporten', mt('matchReports'), '', null, "_bhStatGoto('metric','matchReports')")
+    + kpi('Toernooien', mt('tournaments'), '', null, "_bhStatGoto('metric','tournaments')")
+    + kpi('Tips', mt('tips'), '', null, "_bhStatGoto('metric','tips')")
     + '</div>';
 
   var roleSegs=[{label:'Scouts',value:scouts,color:'#6b7280'},{label:'Coördinatoren',value:coords,color:'#4ea1ff'},{label:'Admins',value:admins,color:'#a855f7'}];
@@ -33447,11 +33470,26 @@ function _bhRenderStats(){
    + kpis
    + '<div class="bh-stat-hd">Aandacht nodig</div>'+attHtml
    + charts
-   + '<div class="bh-stat-hd">Top gebruikers — '+topLab+' <span class="bh-stat-sub2">(kies metric rechtsboven)</span></div><div class="bh-rank-card">'+topHtml+'</div>'
+   + '<div id="bh-toplist-section"><div class="bh-stat-hd">Top gebruikers — '+topLab+' <span class="bh-stat-sub2">(kies metric rechtsboven)</span></div><div class="bh-rank-card">'+topHtml+'</div></div>'
    + '<div class="bh-stat-hd">Teams</div>'+ttable
-   + '<div class="bh-stat-hd bh-stat-hd-row"><span>Gebruikersactiviteit</span><span style="display:flex;gap:6px"><button type="button" id="bh-demo-toggle" class="adm-btn-ghost'+(  _bhShowDemo?' adm-btn-primary':'')+'" onclick="_bhToggleDemo()" style="font-size:.78rem">'+(_bhShowDemo?'👥 Demo verbergen':'👁 Demo tonen')+'</button><button type="button" class="adm-btn-ghost" onclick="_bhExportStatsCsv()">⬇️ Exporteer CSV</button></span></div>'+chips+utable
+   + '<div id="bh-usertable-section"><div class="bh-stat-hd bh-stat-hd-row"><span>Gebruikersactiviteit</span><span style="display:flex;gap:6px"><button type="button" id="bh-demo-toggle" class="adm-btn-ghost'+(  _bhShowDemo?' adm-btn-primary':'')+'" onclick="_bhToggleDemo()" style="font-size:.78rem">'+(_bhShowDemo?'👥 Demo verbergen':'👁 Demo tonen')+'</button><button type="button" class="adm-btn-ghost" onclick="_bhExportStatsCsv()">⬇️ Exporteer CSV</button></span></div>'+chips+utable+'</div>'
    + (loadingCounts?'<div class="bh-stat-note">Activiteit per gebruiker wordt geladen…</div>':'');
 }
+window._bhStatGoto=function(kind,val){
+  var sectionId='bh-usertable-section';
+  if(kind==='metric'){
+    var sel=document.getElementById('bh-stat-metric'); if(sel) sel.value=val;
+    sectionId='bh-toplist-section';
+  } else if(kind==='role'){
+    _bhStatRole=val; _bhStatStatus=''; _bhStatActivity='';
+  } else if(kind==='activity'){
+    _bhStatActivity=val; _bhStatRole=''; _bhStatStatus='';
+  } else if(kind==='team'){
+    var tsel=document.getElementById('bh-stat-team'); if(tsel) tsel.value=val;
+  }
+  _bhRenderStats();
+  setTimeout(function(){ var t=document.getElementById(sectionId); if(t) t.scrollIntoView({behavior:'smooth',block:'start'}); },30);
+};
 function _bhExportStatsCsv(){
   var rows=_bhStatRows||[];
   if(!rows.length){ if(typeof toast==='function') toast('Niets om te exporteren', true); return; }

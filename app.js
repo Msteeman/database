@@ -32866,10 +32866,11 @@ var NL_AI_CHAT_CONTEXT='Je bent een actieve redactie-assistent voor de ScoutingH
   + 'App-context: modules zijn Dashboard, Spelersdatabase, Programma, Wedstrijdrapporten/Observaties (observatie=snelle losse notitie, rapport=volledig formeel verslag), Toernooien, Getipte spelers (Tips), Ritten (kilometerregistratie), Analyse (Elftallen/Vergelijken/Pitch), Contacten. Screenshots kunnen automatisch worden toegevoegd bij: dashboard, spelers, programma, ritten, tips, toernooien. '
   + 'Werkwijze: als de beheerder iets vaags of onvolledigs aangeeft (bijv. "we hebben wat bugfixes gedaan"), vraag dan actief door: wélke bugfixes, wat is de impact voor de gebruiker, is er een aankondiging nodig, welk screenshot zou passen. Stel bij twijfel 2-3 concrete opties voor, en zet die opties dan ELK op een eigen regel die begint met "(1)", "(2)", "(3)" enz. (bijv. "(1) Korte bugfix-melding" op regel 1, "(2) Uitgebreider met uitleg waarom het nu beter werkt" op regel 2) zodat ze los klikbaar zijn — geen doorlopende zin met opties erin. Wacht niet tot alles perfect duidelijk is om te reageren — stel gerust een paar dingen tegelijk voor en laat de beheerder kiezen/aanvullen. '
   + 'Denk zelf actief mee over de structuur, niet pas achteraf: (a) hoeveel updates logisch zijn voor deze inhoud (meestal 2 tot 5), (b) welke ÉÉN update het belangrijkst is en dus uitgelicht (highlight) zou moeten worden, en (c) welk scherm/screenshot (dashboard, spelers, programma, ritten, tips, toernooien) bij elke update past — benoem die keuzes expliciet in het gesprek zelf (bijv. "Ik zou dit uitlichten en er een screenshot van Tips bij zetten, klopt dat?"), niet pas stilzwijgend bij het toepassen. '
+  + 'Belangrijk: het "Gesprek tot nu toe" hieronder bevat alles wat al besproken en vastgesteld is. Herhaal die informatie niet opnieuw in andere bewoording alsof het nieuw is (dus niet steeds dezelfde updates opnieuw samenvatten of herformuleren). Bouw erop voort: reageer alleen op wat de beheerder net gezegd heeft en voeg alleen nieuwe informatie, vragen of vervolgstappen toe. '
   + 'Zodra je genoeg concrete informatie hebt verzameld (titel-richting, 2+ updates met duidelijke inhoud), geef dan expliciet aan dat het klaar is om toe te passen, bijv.: "Dit lijkt me genoeg — klik op Zet in nieuwsbrief als je tevreden bent, of wil je nog iets aanpassen?" '
   + 'Antwoord kort en praktisch in het Nederlands, geen JSON.';
 window._admNlOpenChat=function(){
-  var body='<div id="adm-nl-chat-log" style="max-height:360px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;"></div>'
+  var body='<div id="adm-nl-chat-log" style="max-height:58vh;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;"></div>'
     +'<div style="display:flex;gap:6px;margin-bottom:8px;">'
       +'<textarea id="adm-nl-chat-input" class="sh-req-i" rows="2" placeholder="Vraag om tips, laat iets schrijven, of bespreek wat er in de nieuwsbrief moet komen…" style="flex:1;"></textarea>'
       +'<button class="bh-btn bh-btn-blue" id="adm-nl-chat-send" style="flex:0 0 auto;">Stuur</button>'
@@ -32878,7 +32879,8 @@ window._admNlOpenChat=function(){
       +'<span style="font-size:11.5px;color:#8b97ad;">Als het gesprek genoeg bevat, zet je het direct in het formulier.</span>'
       +'<button class="bh-btn bh-btn-blue" id="adm-nl-chat-apply">📥 Zet in nieuwsbrief</button>'
     +'</div>';
-  var m=_bhModal('💬 AI-chat — nieuwsbrief', body, {});
+  var m=_bhModal('💬 AI-chat nieuwsbrief', body, {});
+  var card=m.root.querySelector('.bh-modal-card'); if(card){ card.style.maxWidth='680px'; card.style.width='90vw'; }
   var log=m.root.querySelector('#adm-nl-chat-log');
   var input=m.root.querySelector('#adm-nl-chat-input');
   var sendBtn=m.root.querySelector('#adm-nl-chat-send');

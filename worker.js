@@ -1514,8 +1514,7 @@ const NL_TAG_STYLE = {
   coming: { label:'Komt eraan', bg:'rgba(245,166,35,0.12)',  fg:'#fbbf24' },
   wip:    { label:'In uitvoering', bg:'rgba(148,163,184,0.1)', fg:'#64748b' }
 };
-const NL_ICON_BG = { red:'rgba(232,37,26,0.12)', blue:'rgba(59,130,246,0.12)', yellow:'rgba(245,166,35,0.12)', green:'rgba(74,222,128,0.12)', purple:'rgba(168,85,247,0.12)' };
-const NL_ICON_GLOW = { red:'rgba(232,37,26,0.45)', blue:'rgba(59,130,246,0.45)', yellow:'rgba(245,166,35,0.45)', green:'rgba(74,222,128,0.45)', purple:'rgba(168,85,247,0.45)' };
+const NL_ICON_BG = { red:'#2a1414', blue:'#132235', yellow:'#2a2210', green:'#132a1c', purple:'#221530' };
 const NL_SCREENSHOT_WORKER = 'https://scoutinghub-screenshot-test.marcelsteeman1.workers.dev/';
 const NL_SCREENSHOT_LABELS = { dashboard:'Dashboard', spelers:'Spelersdatabase', programma:'Programma', ritten:'Ritten', tips:'Getipte spelers', toernooien:'Toernooien' };
 async function nlFetchScreenshot(screenKey){
@@ -1538,26 +1537,27 @@ async function nlPrefetchScreenshots(ed){
 function nlEditionUpdateCard(u, shotsB64){
   const tag = NL_TAG_STYLE[u.tag] || NL_TAG_STYLE.coming;
   const iconBg = NL_ICON_BG[u.kleur] || NL_ICON_BG.red;
-  const iconGlow = NL_ICON_GLOW[u.kleur] || NL_ICON_GLOW.red;
-  const highlightStyle = u.highlight ? 'border-color:rgba(232,37,26,0.3);background:linear-gradient(135deg, #1f1624 0%, #1a2236 100%);' : 'background:#1a2236;border:1px solid #1e2d45;';
+  const highlightStyle = u.highlight ? 'border-color:rgba(232,37,26,0.3);background:#1f1624;' : 'background:#1a2236;border:1px solid #1e2d45;';
   const shots = (Array.isArray(shotsB64) ? shotsB64 : (shotsB64 ? [shotsB64] : [])).filter(Boolean);
-  const shotHtml = shots.map(function(b64){ return '<img src="data:image/png;base64,'+b64+'" alt="Screenshot" style="display:block;width:100%;border-radius:8px;margin-top:12px;border:1px solid #1e2d45;">'; }).join('');
-  return '<div style="'+highlightStyle+'border-radius:10px;padding:18px 20px;margin-bottom:10px;">'
-    + '<div style="display:flex;gap:14px;align-items:flex-start;">'
-    + '<div style="width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:1px;background:'+iconBg+';box-shadow:0 0 14px '+iconGlow+';">'+shEsc(u.icon||'📌')+'</div>'
-    + '<div style="flex:1;">'
-      + '<span style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-bottom:6px;background:'+tag.bg+';color:'+tag.fg+';box-shadow:0 0 8px '+tag.bg+';">'+shEsc(tag.label)+'</span>'
-      + '<h4 style="font-size:13.5px;font-weight:700;color:#e2e8f0;margin:0 0 5px;">'+shEsc(u.titel||'')+'</h4>'
-      + '<p style="font-size:13px;line-height:1.65;color:#94a3b8;margin:0;">'+nlInlineFormat(u.tekst||'')+'</p>'
-    + '</div></div>'
+  const shotHtml = shots.map(function(b64){ return '<tr><td style="padding-top:12px;"><img src="data:image/png;base64,'+b64+'" alt="Screenshot" width="100%" style="display:block;width:100%;max-width:100%;border-radius:8px;border:1px solid #1e2d45;"></td></tr>'; }).join('');
+  return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;'+highlightStyle+'border-radius:10px;margin-bottom:10px;"><tr><td style="padding:18px 20px;">'
+    + '<table role="presentation" cellpadding="0" cellspacing="0"><tr>'
+    + '<td width="34" valign="top" style="width:34px;padding-right:14px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="34" height="34" align="center" valign="middle" style="width:34px;height:34px;font-size:16px;line-height:34px;text-align:center;border-radius:8px;background:'+iconBg+';">'+shEsc(u.icon||'📌')+'</td></tr></table></td>'
+    + '<td valign="top">'
+      + '<span style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-bottom:6px;background:'+tag.bg+';color:'+tag.fg+';font-family:'+MAIL_FONT+';">'+shEsc(tag.label)+'</span>'
+      + '<h4 style="font-size:13.5px;font-weight:700;color:#e2e8f0;margin:6px 0 5px;font-family:'+MAIL_FONT+';">'+shEsc(u.titel||'')+'</h4>'
+      + '<p style="font-size:13px;line-height:1.65;color:#94a3b8;margin:0;font-family:'+MAIL_FONT+';">'+nlInlineFormat(u.tekst||'')+'</p>'
+    + '</td></tr>'
     + shotHtml
-    + '</div>';
+    + '</table>'
+    + '</td></tr></table>';
 }
 function nlSectionLabel(color, text){
-  return '<div style="display:flex;align-items:center;gap:10px;padding:28px 40px 14px;">'
-    + '<div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:'+color+';"></div>'
-    + '<span style="font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#475569;white-space:nowrap;">'+shEsc(text)+'</span>'
-    + '<div style="flex:1;height:1px;background:#1e2d45;"></div></div>';
+  return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;"><tr>'
+    + '<td style="padding:28px 0 14px 40px;width:18px;" valign="middle"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="8" height="8" style="width:8px;height:8px;line-height:8px;font-size:0;border-radius:50%;background:'+color+';">&nbsp;</td></tr></table></td>'
+    + '<td style="padding:28px 10px 14px 0;white-space:nowrap;font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#475569;font-family:'+MAIL_FONT+';" valign="middle">'+shEsc(text)+'</td>'
+    + '<td style="padding:28px 40px 14px 0;" valign="middle"><div style="height:1px;line-height:1px;font-size:0;background:#1e2d45;">&nbsp;</div></td>'
+    + '</tr></table>';
 }
 async function nlBuildEditionHtml(env, ed, unsubEmail, shots){
   const base = appBaseUrl(env); const ce = contactEmail(env); const host = base.replace(/^https?:\/\//,'');
@@ -1577,7 +1577,7 @@ async function nlBuildEditionHtml(env, ed, unsubEmail, shots){
   const updates = Array.isArray(ed.updates) ? ed.updates.filter(u=>u&&(u.titel||u.tekst)) : [];
   if(updates.length){
     const shotsMap = shots || {};
-    updatesHtml = nlSectionLabel('#E8251A','Wat er aankomt')
+    updatesHtml = nlSectionLabel('#e30613','Wat er aankomt')
       + '<div style="padding:0 40px 28px;">' + updates.map(function(u){
         const keys = Array.isArray(u.screenshots) ? u.screenshots : (u.screenshot ? [u.screenshot] : []);
         const imgs = keys.map(function(k){ return shotsMap[k]; }).filter(Boolean);
@@ -1587,35 +1587,36 @@ async function nlBuildEditionHtml(env, ed, unsubEmail, shots){
 
   let announceHtml = '';
   if(ed.aankondiging && ed.aankondiging.enabled && (ed.aankondiging.titel||ed.aankondiging.tekst)){
-    announceHtml = nlSectionLabel('#F97316','Ook deze maand')
-      + '<div style="padding:0 40px 28px;"><div style="background:linear-gradient(135deg, #1a1f35 0%, #1a2236 100%);border:1px solid rgba(249,115,22,0.2);border-radius:10px;padding:20px 22px;display:flex;gap:14px;align-items:flex-start;">'
-      + '<div style="width:34px;height:34px;background:rgba(249,115,22,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:1px;">'+shEsc(ed.aankondiging.icon||'📖')+'</div>'
-      + '<div><h4 style="font-size:13.5px;font-weight:700;color:#e2e8f0;margin:0 0 5px;">'+shEsc(ed.aankondiging.titel||'')+'</h4>'
-      + '<p style="font-size:13px;line-height:1.65;color:#94a3b8;margin:0;">'+nlInlineFormat(ed.aankondiging.tekst||'')+'</p></div>'
-      + '</div></div>';
+    announceHtml = nlSectionLabel('#f5c518','Ook deze maand')
+      + '<div style="padding:0 40px 28px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;background:#1a2236;border:1px solid rgba(245,197,24,0.25);border-radius:10px;"><tr><td style="padding:20px 22px;">'
+      + '<table role="presentation" cellpadding="0" cellspacing="0"><tr>'
+      + '<td width="34" valign="top" style="width:34px;padding-right:14px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="34" height="34" align="center" valign="middle" style="width:34px;height:34px;font-size:16px;line-height:34px;text-align:center;border-radius:8px;background:#2a2210;">'+shEsc(ed.aankondiging.icon||'📖')+'</td></tr></table></td>'
+      + '<td valign="top"><h4 style="font-size:13.5px;font-weight:700;color:#e2e8f0;margin:0 0 5px;font-family:'+MAIL_FONT+';">'+shEsc(ed.aankondiging.titel||'')+'</h4>'
+      + '<p style="font-size:13px;line-height:1.65;color:#94a3b8;margin:0;font-family:'+MAIL_FONT+';">'+nlInlineFormat(ed.aankondiging.tekst||'')+'</p></td>'
+      + '</tr></table>'
+      + '</td></tr></table></div>';
   }
 
+  function nlContactBtn(href, borderColor, iconBg, icon, label, labelColor, title, sub){
+    return '<a href="'+href+'" style="display:block;text-decoration:none;border-radius:10px;border:1px solid '+borderColor+';background:#1a2236;margin-bottom:10px;"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;"><tr>'
+      + '<td style="padding:16px 18px;">'
+      + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>'
+      + '<td width="40" valign="middle" style="width:40px;padding-right:14px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="40" height="40" align="center" valign="middle" style="width:40px;height:40px;font-size:18px;line-height:40px;text-align:center;border-radius:10px;background:'+iconBg+';">'+icon+'</td></tr></table></td>'
+      + '<td valign="middle">'
+        + '<span style="display:block;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;color:'+labelColor+';font-family:'+MAIL_FONT+';">'+label+'</span>'
+        + '<span style="display:block;font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:2px;font-family:'+MAIL_FONT+';">'+title+'</span>'
+        + '<span style="display:block;font-size:12px;color:#475569;font-family:'+MAIL_FONT+';">'+sub+'</span>'
+      + '</td>'
+      + '<td width="16" valign="middle" align="right" style="width:16px;font-size:16px;color:#334155;">&rsaquo;</td>'
+      + '</tr></table>'
+      + '</td></tr></table></a>';
+  }
   const waNum = (ed.whatsapp && ed.whatsapp.enabled && ed.whatsapp.nummer) ? String(ed.whatsapp.nummer).replace(/[^\d+]/g,'') : '';
   const waBtn = waNum
-    ? '<a href="https://wa.me/'+encodeURIComponent(waNum.replace(/^\+/,''))+'?text='+encodeURIComponent(ed.whatsapp.tekst||'Hoi, ik heb feedback over ScoutingHub: ')+'" style="display:flex;align-items:center;gap:14px;border-radius:10px;padding:16px 18px;text-decoration:none;border:1px solid rgba(37,211,102,0.25);background:linear-gradient(135deg, #1a2e1e 0%, #1a2236 100%);margin-bottom:10px;">'
-      + '<div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:rgba(37,211,102,0.12);">💬</div>'
-      + '<div style="flex:1;"><span style="display:block;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;color:#4ade80;">Snelst</span>'
-      + '<span style="display:block;font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:2px;">Stuur een WhatsApp</span>'
-      + '<span style="display:block;font-size:12px;color:#475569;">'+shEsc(ed.whatsapp.nummer)+'</span></div>'
-      + '<span style="font-size:16px;color:#334155;flex-shrink:0;">&rsaquo;</span></a>'
+    ? nlContactBtn('https://wa.me/'+encodeURIComponent(waNum.replace(/^\+/,''))+'?text='+encodeURIComponent(ed.whatsapp.tekst||'Hoi, ik heb feedback over ScoutingHub: '), 'rgba(37,211,102,0.25)', '#132a1c', '💬', 'Snelst', '#4ade80', 'Stuur een WhatsApp', shEsc(ed.whatsapp.nummer))
     : '';
-  const mailBtn = '<a href="mailto:'+ce+'?subject='+encodeURIComponent('Feedback ScoutingHub')+'" style="display:flex;align-items:center;gap:14px;border-radius:10px;padding:16px 18px;text-decoration:none;border:1px solid rgba(59,130,246,0.25);background:linear-gradient(135deg, #1a2030 0%, #1a2236 100%);margin-bottom:10px;">'
-    + '<div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:rgba(59,130,246,0.12);">✉️</div>'
-    + '<div style="flex:1;"><span style="display:block;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;color:#60a5fa;">Per mail</span>'
-    + '<span style="display:block;font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:2px;">Stuur een e-mail</span>'
-    + '<span style="display:block;font-size:12px;color:#475569;">'+ce+'</span></div>'
-    + '<span style="font-size:16px;color:#334155;flex-shrink:0;">&rsaquo;</span></a>';
-  const platBtn = '<a href="'+base+'" style="display:flex;align-items:center;gap:14px;border-radius:10px;padding:16px 18px;text-decoration:none;border:1px solid rgba(232,37,26,0.25);background:linear-gradient(135deg, #1f1624 0%, #1a2236 100%);">'
-    + '<div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:rgba(232,37,26,0.12);">🔴</div>'
-    + '<div style="flex:1;"><span style="display:block;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;color:#f87171;">In de app</span>'
-    + '<span style="display:block;font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:2px;">Gebruik de feedbackknop</span>'
-    + '<span style="display:block;font-size:12px;color:#475569;">Zit direct in het platform</span></div>'
-    + '<span style="font-size:16px;color:#334155;flex-shrink:0;">&rsaquo;</span></a>';
+  const mailBtn = nlContactBtn('mailto:'+ce+'?subject='+encodeURIComponent('Feedback ScoutingHub'), 'rgba(78,161,255,0.25)', '#132235', '✉️', 'Per mail', '#4ea1ff', 'Stuur een e-mail', ce);
+  const platBtn = nlContactBtn(base, 'rgba(227,6,19,0.25)', '#2a1414', '🔴', 'In de app', '#e30613', 'Gebruik de feedbackknop', 'Zit direct in het platform');
 
   let unsubLine = '';
   const signingSecret = (env && (env.TURNSTILE_SECRET || env.RESEND_API_KEY)) || '';
@@ -1630,20 +1631,20 @@ async function nlBuildEditionHtml(env, ed, unsubEmail, shots){
     + '<body style="margin:0;background-color:#0d1520;font-family:\'Inter\',Arial,sans-serif;color:#e2e8f0;">'
     + '<div style="background-color:#0d1520;padding:32px 16px;"><div style="max-width:600px;margin:0 auto;background-color:#131929;border-radius:12px;overflow:hidden;border:1px solid #1e2d45;">'
     // Header
-    + '<div style="background:linear-gradient(135deg, #1a1f35 0%, #0d1520 100%);padding:36px 40px 28px;text-align:center;border-bottom:2px solid #1e2d45;">'
-      + '<div style="width:56px;height:56px;background:linear-gradient(145deg, #E8251A, #F97316);border-radius:14px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;font-weight:800;font-size:22px;color:#ffffff;">SH</div>'
-      + '<span style="display:block;font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#ffffff;margin-bottom:4px;">Scouting<span style="color:#F97316;">Hub</span></span>'
-      + '<span style="display:inline-block;font-size:11px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:#64748b;margin-top:6px;">Nieuwsbrief &nbsp;·&nbsp; '+editionLabel+'</span>'
+    + '<div style="background-color:#0d1520;padding:32px 40px 26px;text-align:center;border-bottom:2px solid #1e2d45;">'
+      + '<img src="'+base+'/icon-192.png" width="52" height="52" alt="ScoutingHub" style="display:block;margin:0 auto 14px;border-radius:12px;">'
+      + '<span style="display:block;font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#ffffff;margin-bottom:4px;font-family:'+MAIL_FONT+';">Scouting<span style="color:#e30613;">Hub</span></span>'
+      + '<span style="display:inline-block;font-size:11px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:#64748b;margin-top:6px;font-family:'+MAIL_FONT+';">Nieuwsbrief &nbsp;&middot;&nbsp; '+editionLabel+'</span>'
     + '</div>'
     // Hero
     + '<div style="padding:36px 40px 32px;border-bottom:1px solid #1e2d45;">'
-      + (ed.nummer?('<span style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#F97316;margin-bottom:12px;">Editie #'+shEsc(ed.nummer)+' &nbsp;·&nbsp; '+shEsc(ed.maand||'')+'</span>'):'')
+      + (ed.nummer?('<span style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#f5c518;margin-bottom:12px;font-family:'+MAIL_FONT+';">Editie #'+shEsc(ed.nummer)+' &nbsp;&middot;&nbsp; '+shEsc(ed.maand||'')+'</span>'):'')
       + '<h1 style="font-size:24px;font-weight:800;line-height:1.3;color:#f1f5f9;margin:0 0 18px;letter-spacing:-0.5px;">'+shEsc(ed.titel||'')+'</h1>'
       + String(ed.intro||'').split(/\n{2,}/).map(function(p){ return '<p style="font-size:15px;line-height:1.75;color:#94a3b8;margin:0 0 14px;">'+nlInlineFormat(p)+'</p>'; }).join('')
     + '</div>'
     + dankHtml + updatesHtml + announceHtml
     // Contact
-    + nlSectionLabel('#3b82f6','Vragen of feedback')
+    + nlSectionLabel('#4ea1ff','Vragen of feedback')
     + '<div style="padding:0 40px 28px;">'
       + '<p style="font-size:14px;line-height:1.7;color:#94a3b8;margin:0 0 16px;">Kom je iets tegen of wil je iets kwijt? Reageer op de manier die het makkelijkst voelt.</p>'
       + waBtn + mailBtn + platBtn
@@ -1651,7 +1652,7 @@ async function nlBuildEditionHtml(env, ed, unsubEmail, shots){
     // Footer
     + '<div style="height:1px;background:#1e2d45;margin:0 40px;"></div>'
     + '<div style="padding:28px 40px;text-align:center;">'
-      + '<div style="font-size:14px;font-weight:700;color:#475569;margin-bottom:10px;">Scouting<span style="color:#E8251A;">Hub</span> &nbsp;·&nbsp; '+host+'</div>'
+      + '<div style="font-size:14px;font-weight:700;color:#475569;margin-bottom:10px;">Scouting<span style="color:#e30613;">Hub</span> &nbsp;·&nbsp; '+host+'</div>'
       + '<p style="font-size:12px;color:#334155;line-height:1.7;">Je ontvangt deze mail omdat je bent aangemeld voor de ScoutingHub-nieuwsbrief.'+unsubLine+'</p>'
     + '</div>'
     + '</div></div></body></html>';

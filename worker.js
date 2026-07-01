@@ -1319,14 +1319,25 @@ const MAIL_H = 'margin:16px 0 6px;font-size:15px;font-weight:700;color:#0f172a;'
 function ctaButton(text, url){
   return '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 18px;"><tr><td align="center" style="border-radius:8px;background:#e30613;"><a href="'+url+'" style="display:inline-block;padding:13px 28px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:8px;">'+text+'</a></td></tr></table>';
 }
-function mailShell(env, title, bodyHtml){
+function mailShell(env, title, bodyHtml, opts){
   const base = appBaseUrl(env); const ce = contactEmail(env); const host = base.replace(/^https?:\/\//,'');
+  const unsubEmail = (opts && opts.unsubscribeEmail) || '';
+  const unsubBlock = unsubEmail
+    ? '<tr><td style="padding:0 32px 22px;text-align:center;">'
+      + '<a href="mailto:'+ce+'?subject='+encodeURIComponent('Afmelden nieuwsbrief')+'&body='+encodeURIComponent('Meld mij af voor de nieuwsbrief: '+unsubEmail)+'" '
+      + 'style="display:inline-block;padding:10px 20px;border:1px solid #cbd5e1;border-radius:8px;color:#64748b;text-decoration:none;font-size:13px;">Afmelden voor de nieuwsbrief</a>'
+      + '</td></tr>'
+    : '';
   return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
     + '<body style="margin:0;background:#eef1f6;font-family:-apple-system,Segoe UI,Arial,Helvetica,sans-serif;color:#0f172a;">'
     + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f6;padding:28px 14px;"><tr><td align="center">'
     + '<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">'
-    + '<tr><td style="background:#10151e;padding:22px 32px;"><span style="font-size:22px;font-weight:800;letter-spacing:-.01em;color:#ffffff;">Scouting<span style="color:#e30613;">Hub</span></span></td></tr>'
+    + '<tr><td style="background:#10151e;padding:20px 32px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>'
+      + '<td style="padding-right:10px;"><img src="'+base+'/icon-192.png" width="32" height="32" alt="ScoutingHub" style="display:block;border-radius:7px;"></td>'
+      + '<td style="font-size:20px;font-weight:800;letter-spacing:-.01em;color:#ffffff;vertical-align:middle;">Scouting Hub</td>'
+    + '</tr></table></td></tr>'
     + '<tr><td style="padding:30px 32px 8px;"><h1 style="margin:0 0 16px;font-size:21px;line-height:1.25;color:#0f172a;font-weight:700;">'+title+'</h1>'+bodyHtml+'</td></tr>'
+    + unsubBlock
     + '<tr><td style="padding:18px 32px 26px;border-top:1px solid #eef1f5;color:#64748b;font-size:12px;line-height:1.7;">'
     + 'ScoutingHub &middot; <a href="'+base+'" style="color:#2563eb;text-decoration:none;">'+host+'</a> &middot; <a href="mailto:'+ce+'" style="color:#2563eb;text-decoration:none;">'+ce+'</a><br>'
     + '<a href="'+base+'/privacy.html" style="color:#94a3b8;text-decoration:none;">Privacy</a> &middot; <a href="'+base+'/voorwaarden.html" style="color:#94a3b8;text-decoration:none;">Voorwaarden</a></td></tr>'
@@ -2040,11 +2051,10 @@ async function handleAdminNewsletterSend(body, env, request){
   const testEmail = clip(String(body.testEmail||'').trim(), 200);
   const paragraphs = message.split(/\n{2,}/).map(function(p){ return '<p style="'+MAIL_P+'">'+shEsc(p).replace(/\n/g,'<br>')+'</p>'; }).join('');
   const htmlBody = paragraphs
-    + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>'
-    + '<p style="'+MAIL_MUTED+'">Je ontvangt deze nieuwsbrief omdat je je hebt aangemeld. Stuur een mail naar contact@scoutinghub.nl om je af te melden.</p>';
+    + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>';
   const text = message + '\n\nMet vriendelijke groet,\nTeam ScoutingHub\n\nAfmelden: stuur een mail naar contact@scoutinghub.nl';
   if(testEmail){
-    const ok = await sendMail(env, { from: contactFrom(env), to: testEmail, subject:'[TEST] '+subject, html: mailShell(env,'[TEST] '+subject,htmlBody), text });
+    const ok = await sendMail(env, { from: contactFrom(env), to: testEmail, subject:'[TEST] '+subject, html: mailShell(env,'[TEST] '+subject,htmlBody,{unsubscribeEmail:testEmail}), text });
     return json({ ok:true, sent: ok?1:0, failed: ok?0:1, total:1, test:true });
   }
   const all = await saFsList(saToken, 'access_requests', 500);
@@ -2053,7 +2063,7 @@ async function handleAdminNewsletterSend(body, env, request){
   let sent = 0, failed = 0;
   for(const sub of subs){
     try{
-      const ok = await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: mailShell(env,subject,htmlBody), text });
+      const ok = await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: mailShell(env,subject,htmlBody,{unsubscribeEmail:sub.email}), text });
       if(ok) sent++; else failed++;
     }catch(_){ failed++; }
   }
@@ -2766,11 +2776,10 @@ async function handleScheduledNewsletter(env){
     if(!subs.length) return;
     const paragraphs = message.split(/\n{2,}/).map(function(p){ return '<p style="'+MAIL_P+'">'+shEsc(p).replace(/\n/g,'<br>')+'</p>'; }).join('');
     const htmlBody = paragraphs
-      + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>'
-      + '<p style="'+MAIL_MUTED+'">Je ontvangt deze nieuwsbrief omdat je je hebt aangemeld. Stuur een mail naar contact@scoutinghub.nl om je af te melden.</p>';
+      + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>';
     const text = message+'\n\nMet vriendelijke groet,\nTeam ScoutingHub\n\nAfmelden: stuur een mail naar contact@scoutinghub.nl';
     for(const sub of subs){
-      try{ await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: mailShell(env,subject,htmlBody), text }); }catch(_){}
+      try{ await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: mailShell(env,subject,htmlBody,{unsubscribeEmail:sub.email}), text }); }catch(_){}
     }
   }catch(_){}
 }

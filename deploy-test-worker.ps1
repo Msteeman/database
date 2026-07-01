@@ -33,8 +33,9 @@ $lines = (Get-Content $WorkerFile).Count
 Write-Host "Worker: $WorkerFile ($lines regels)" -ForegroundColor Cyan
 
 # Metadata voor ES-module worker (de worker gebruikt 'import' bovenaan)
+# "ai"-binding = Cloudflare Workers AI (gratis 10.000 neurons/dag, geen API-key nodig)
 @"
-{"main_module":"worker.js","compatibility_date":"2024-09-01"}
+{"main_module":"worker.js","compatibility_date":"2024-09-01","bindings":[{"type":"ai","name":"AI"}]}
 "@ | Set-Content $MetaFile -Encoding UTF8 -NoNewline
 
 Write-Host "Uploaden naar $Url ..." -ForegroundColor Cyan

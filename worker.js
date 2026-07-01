@@ -1147,20 +1147,19 @@ async function verifyTurnstile(env, token, ip){
 }
 
 /* ---- Gemini AI-proxy (key blijft server-side) ---- */
-async function callGeminiApi(env, prompt, opts){
+// Cloudflare Workers AI (via 'AI'-binding) — 10.000 gratis neurons/dag,
+// geen API-key nodig, geen betaalmethode vereist voor de gratis laag.
+const WORKERS_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct-fp8-fast';
+async function callAiApi(env, prompt, opts){
   opts = opts || {};
-  if(!env || !env.GEMINI_API_KEY) throw new Error('Gemini niet geconfigureerd');
-  const model = 'gemini-2.5-flash';
-  const url = 'https://generativelanguage.googleapis.com/v1beta/models/'+model+':generateContent?key='+env.GEMINI_API_KEY;
-  const body = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { temperature: opts.temperature!=null?opts.temperature:0.4, maxOutputTokens: opts.maxTokens||512 }
-  };
-  const r = await fetchWithTimeout(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body) }, 20000);
-  if(!r.ok) throw new Error('gemini-http-'+r.status);
-  const j = await r.json();
-  const text = j && j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts && j.candidates[0].content.parts[0] && j.candidates[0].content.parts[0].text;
-  if(!text) throw new Error('gemini-leeg-antwoord');
+  if(!env || !env.AI) throw new Error('Workers AI niet geconfigureerd (AI-binding ontbreekt)');
+  const result = await env.AI.run(WORKERS_AI_MODEL, {
+    messages: [{ role:'user', content: prompt }],
+    temperature: opts.temperature!=null?opts.temperature:0.4,
+    max_tokens: opts.maxTokens||512
+  });
+  const text = result && (result.response || (typeof result==='string'?result:''));
+  if(!text) throw new Error('workers-ai-leeg-antwoord');
   return String(text).trim();
 }
 async function handleGemini(body, env, request){
@@ -1170,7 +1169,7 @@ async function handleGemini(body, env, request){
   const prompt = clip(String(body.prompt||'').trim(), 4000);
   if(!prompt) return json({ ok:false, error:'Geen prompt meegegeven' }, 400);
   try{
-    const text = await callGeminiApi(env, prompt, { temperature: body.temperature, maxTokens: body.maxTokens });
+    const text = await callAiApi(env, prompt, { temperature: body.temperature, maxTokens: body.maxTokens });
     return json({ ok:true, text });
   }catch(err){ return json({ ok:false, error:'Gemini niet beschikbaar' }, 502); }
 }
@@ -1211,8 +1210,8 @@ async function handleAdminNewsletterAiFill(body, env, request){
   const topic = clip(String(body.topic||'').trim(), 1500);
   if(!topic) return json({ ok:false, error:'Beschrijf waar de nieuwsbrief over moet gaan' }, 400);
   let raw;
-  try{ raw = await callGeminiApi(env, nlAiEditionPrompt(topic), { temperature:0.5, maxTokens:1500 }); }
-  catch(err){ return json({ ok:false, error:'AI niet beschikbaar. Controleer of GEMINI_API_KEY is ingesteld.' }, 502); }
+  try{ raw = await callAiApi(env, nlAiEditionPrompt(topic), { temperature:0.5, maxTokens:1500 }); }
+  catch(err){ return json({ ok:false, error:'AI niet beschikbaar: '+(err&&err.message||'onbekende fout') }, 502); }
   const m = raw.match(/\{[\s\S]*\}/);
   if(!m) return json({ ok:false, error:'AI gaf geen bruikbaar antwoord' }, 502);
   let parsed;

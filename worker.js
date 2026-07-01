@@ -1313,34 +1313,52 @@ async function disableAuthUser(saToken, uid){
 }
 
 /* ---- Mailmodule (huisstijl) ---- */
-const MAIL_P = 'margin:0 0 14px;font-size:15px;line-height:1.65;color:#334155;';
-const MAIL_MUTED = 'margin:0 0 14px;font-size:14px;line-height:1.6;color:#64748b;';
-const MAIL_H = 'margin:16px 0 6px;font-size:15px;font-weight:700;color:#0f172a;';
+const MAIL_FONT = "'Inter',-apple-system,'Segoe UI',Arial,Helvetica,sans-serif";
+const MAIL_P = 'margin:0 0 14px;font-size:15px;line-height:1.65;color:#c7d0dc;font-family:'+MAIL_FONT+';';
+const MAIL_MUTED = 'margin:0 0 14px;font-size:14px;line-height:1.6;color:#8b97ad;font-family:'+MAIL_FONT+';';
+const MAIL_H = 'margin:16px 0 6px;font-size:15px;font-weight:700;color:#e8edf5;font-family:'+MAIL_FONT+';';
 function ctaButton(text, url){
-  return '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 18px;"><tr><td align="center" style="border-radius:8px;background:#e30613;"><a href="'+url+'" style="display:inline-block;padding:13px 28px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:8px;">'+text+'</a></td></tr></table>';
+  return '<table role="presentation" cellpadding="0" cellspacing="0" style="margin:8px 0 18px;"><tr><td align="center" style="border-radius:8px;background:#e30613;"><a href="'+url+'" style="display:inline-block;padding:13px 28px;color:#ffffff;text-decoration:none;font-weight:700;font-size:15px;border-radius:8px;font-family:'+MAIL_FONT+';">'+text+'</a></td></tr></table>';
 }
-function mailShell(env, title, bodyHtml, opts){
+async function hmacSign(secret, msg){
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name:'HMAC', hash:'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(msg));
+  return Array.from(new Uint8Array(sig)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+async function hmacVerify(secret, msg, sig){
+  const expected = await hmacSign(secret, msg);
+  if(expected.length !== String(sig||'').length) return false;
+  let diff = 0;
+  for(let i=0;i<expected.length;i++) diff |= expected.charCodeAt(i) ^ String(sig||'').charCodeAt(i);
+  return diff === 0;
+}
+async function mailShell(env, title, bodyHtml, opts){
   const base = appBaseUrl(env); const ce = contactEmail(env); const host = base.replace(/^https?:\/\//,'');
   const unsubEmail = (opts && opts.unsubscribeEmail) || '';
-  const unsubBlock = unsubEmail
-    ? '<tr><td style="padding:0 32px 22px;text-align:center;">'
-      + '<a href="mailto:'+ce+'?subject='+encodeURIComponent('Afmelden nieuwsbrief')+'&body='+encodeURIComponent('Meld mij af voor de nieuwsbrief: '+unsubEmail)+'" '
-      + 'style="display:inline-block;padding:10px 20px;border:1px solid #cbd5e1;border-radius:8px;color:#64748b;text-decoration:none;font-size:13px;">Afmelden voor de nieuwsbrief</a>'
-      + '</td></tr>'
-    : '';
-  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>'
-    + '<body style="margin:0;background:#eef1f6;font-family:-apple-system,Segoe UI,Arial,Helvetica,sans-serif;color:#0f172a;">'
-    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#eef1f6;padding:28px 14px;"><tr><td align="center">'
-    + '<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;border:1px solid #e2e8f0;">'
-    + '<tr><td style="background:#10151e;padding:20px 32px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>'
+  let unsubBlock = '';
+  if(unsubEmail && env && env.TURNSTILE_SECRET){
+    const sig = await hmacSign(env.TURNSTILE_SECRET, 'unsub:'+unsubEmail.toLowerCase());
+    const workerBase = cfg(env,'SELF_URL','https://scoutinghub-api.marcelsteeman1.workers.dev').replace(/\/+$/,'');
+    const link = workerBase + '/api/newsletter-unsubscribe?email='+encodeURIComponent(unsubEmail)+'&sig='+sig;
+    unsubBlock = '<tr><td style="padding:0 32px 22px;text-align:center;">'
+      + '<a href="'+link+'" '
+      + 'style="display:inline-block;padding:10px 20px;border:1px solid #2a3341;border-radius:8px;color:#8b97ad;text-decoration:none;font-size:13px;font-family:'+MAIL_FONT+';">Afmelden voor de nieuwsbrief</a>'
+      + '</td></tr>';
+  }
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<style>@import url(\'https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap\');</style></head>'
+    + '<body style="margin:0;background:#05070a;font-family:'+MAIL_FONT+';color:#e8edf5;">'
+    + '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#05070a;padding:28px 14px;"><tr><td align="center">'
+    + '<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#10151e;border-radius:14px;overflow:hidden;border:1px solid #1f2937;">'
+    + '<tr><td style="background:#0b0f16;padding:20px 32px;border-bottom:1px solid #1f2937;"><table role="presentation" cellpadding="0" cellspacing="0"><tr>'
       + '<td style="padding-right:10px;"><img src="'+base+'/icon-192.png" width="32" height="32" alt="ScoutingHub" style="display:block;border-radius:7px;"></td>'
-      + '<td style="font-size:20px;font-weight:800;letter-spacing:-.01em;color:#ffffff;vertical-align:middle;">Scouting Hub</td>'
+      + '<td style="font-size:20px;font-weight:800;letter-spacing:-.01em;color:#ffffff;vertical-align:middle;font-family:'+MAIL_FONT+';">Scouting<span style="color:#e30613;">Hub</span></td>'
     + '</tr></table></td></tr>'
-    + '<tr><td style="padding:30px 32px 8px;"><h1 style="margin:0 0 16px;font-size:21px;line-height:1.25;color:#0f172a;font-weight:700;">'+title+'</h1>'+bodyHtml+'</td></tr>'
+    + '<tr><td style="padding:30px 32px 8px;"><h1 style="margin:0 0 16px;font-size:21px;line-height:1.25;color:#f5f7fa;font-weight:700;font-family:'+MAIL_FONT+';">'+title+'</h1>'+bodyHtml+'</td></tr>'
     + unsubBlock
-    + '<tr><td style="padding:18px 32px 26px;border-top:1px solid #eef1f5;color:#64748b;font-size:12px;line-height:1.7;">'
-    + 'ScoutingHub &middot; <a href="'+base+'" style="color:#2563eb;text-decoration:none;">'+host+'</a> &middot; <a href="mailto:'+ce+'" style="color:#2563eb;text-decoration:none;">'+ce+'</a><br>'
-    + '<a href="'+base+'/privacy.html" style="color:#94a3b8;text-decoration:none;">Privacy</a> &middot; <a href="'+base+'/voorwaarden.html" style="color:#94a3b8;text-decoration:none;">Voorwaarden</a></td></tr>'
+    + '<tr><td style="padding:18px 32px 26px;border-top:1px solid #1f2937;color:#8b97ad;font-size:12px;line-height:1.7;font-family:'+MAIL_FONT+';">'
+    + 'ScoutingHub &middot; <a href="'+base+'" style="color:#4ea1ff;text-decoration:none;">'+host+'</a> &middot; <a href="mailto:'+ce+'" style="color:#4ea1ff;text-decoration:none;">'+ce+'</a><br>'
+    + '<a href="'+base+'/privacy.html" style="color:#8b97ad;text-decoration:none;">Privacy</a> &middot; <a href="'+base+'/voorwaarden.html" style="color:#8b97ad;text-decoration:none;">Voorwaarden</a></td></tr>'
     + '</table></td></tr></table></body></html>';
 }
 async function sendMail(env, opts){
@@ -1363,7 +1381,7 @@ async function sendConfirmationMail(env, d){
       + '<strong style="color:#0f172a;">Je aanvraag</strong><br>Naam: '+shEsc(d.name||'')+'<br>E-mail: '+shEsc(d.email||'')+'<br>Club: '+shEsc(d.club||'')+'<br>Functie: '+shEsc(d.functie||'')+'</div>'
     + '<p style="'+MAIL_MUTED+'">Vragen? Mail <a href="mailto:'+contactEmail(env)+'" style="color:#2563eb;">'+contactEmail(env)+'</a>.</p>';
   const text = 'Hallo '+(d.name||'')+',\n\nBedankt voor je interesse in ScoutingHub. We hebben je aanvraag ontvangen en beoordelen deze handmatig. Je hoort van ons zodra deze is verwerkt.\n\nGegevens: '+(d.name||'')+' / '+(d.email||'')+' / '+(d.club||'')+' / '+(d.functie||'')+'\n\nVragen? '+contactEmail(env);
-  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Je aanvraag voor ScoutingHub is ontvangen', html: mailShell(env,'Je aanvraag is ontvangen',body), text });
+  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Je aanvraag voor ScoutingHub is ontvangen', html: await mailShell(env,'Je aanvraag is ontvangen',body), text });
 }
 async function sendAdminNotifyMail(env, d){
   const to = adminNotifyTo(env); if(!to.length) return false;
@@ -1378,7 +1396,7 @@ async function sendAdminNotifyMail(env, d){
       + '<span style="color:#64748b;">Aangevraagd</span> &nbsp; '+shEsc(d.requestedAt||'')+'</div>'
     + ctaButton('Open Beheer', base)
     + '<p style="'+MAIL_MUTED+'">Beoordeel in Beheer: kies rol en team, en keur goed of wijs af.</p>';
-  return sendMail(env, { from: adminFrom(env), to, replyTo: contactEmail(env), subject:'Nieuwe toegangsaanvraag — ScoutingHub', html: mailShell(env,'Nieuwe toegangsaanvraag',body) });
+  return sendMail(env, { from: adminFrom(env), to, replyTo: contactEmail(env), subject:'Nieuwe toegangsaanvraag — ScoutingHub', html: await mailShell(env,'Nieuwe toegangsaanvraag',body) });
 }
 async function sendWelcomeMail(env, d){
   const base = appBaseUrl(env);
@@ -1401,21 +1419,21 @@ async function sendWelcomeMail(env, d){
     + cta + teamLine + steps + tips
     + '<p style="'+MAIL_MUTED+'">Meer weten? Bekijk de <a href="'+base+'/handleiding.html" style="color:#2563eb;">handleiding</a>. Vragen? Mail <a href="mailto:'+contactEmail(env)+'" style="color:#2563eb;">'+contactEmail(env)+'</a>.</p>';
   const text = 'Welkom '+(d.name||'')+',\n\nJe toegang tot ScoutingHub is goedgekeurd. Rol: '+roleLabel+(d.teamName?(' / Team: '+d.teamName):' (individuele scout)')+'.\n\n'+('Stel je wachtwoord in: '+(d.resetUrl||base))+'\n\nHandleiding: '+base+'/handleiding.html\nVragen? '+contactEmail(env);
-  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Welkom bij ScoutingHub — je account is klaar', html: mailShell(env,'Welkom bij ScoutingHub',body), text });
+  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Welkom bij ScoutingHub — je account is klaar', html: await mailShell(env,'Welkom bij ScoutingHub',body), text });
 }
 async function sendRejectMail(env, d){
   const body = '<p style="'+MAIL_P+'">Hallo '+shEsc(d.name||'')+',</p>'
     + '<p style="'+MAIL_P+'">Bedankt voor je interesse in ScoutingHub. We kunnen je aanvraag op dit moment helaas niet goedkeuren.</p>'
     + '<p style="'+MAIL_MUTED+'">Heb je vragen? Je kunt ons bereiken via <a href="mailto:'+contactEmail(env)+'" style="color:#2563eb;">'+contactEmail(env)+'</a>.</p>'
     + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>ScoutingHub</p>';
-  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Je aanvraag voor ScoutingHub', html: mailShell(env,'Je aanvraag voor ScoutingHub',body) });
+  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Je aanvraag voor ScoutingHub', html: await mailShell(env,'Je aanvraag voor ScoutingHub',body) });
 }
 async function sendDeactivationMail(env, d){
   const body = '<p style="'+MAIL_P+'">Hallo '+shEsc(d.name||'')+',</p>'
     + '<p style="'+MAIL_P+'">Je toegang tot ScoutingHub is door de beheerder <strong>tijdelijk gedeactiveerd</strong>. Je kunt op dit moment niet inloggen.</p>'
     + '<p style="'+MAIL_P+'">Je gegevens blijven bewaard. Zodra je toegang weer wordt geactiveerd, ontvang je daarvan bericht.</p>'
     + '<p style="'+MAIL_MUTED+'">Vragen? Mail <a href="mailto:'+contactEmail(env)+'" style="color:#2563eb;">'+contactEmail(env)+'</a>.</p>';
-  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Je toegang tot ScoutingHub is gedeactiveerd', html: mailShell(env,'Toegang gedeactiveerd',body) });
+  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Je toegang tot ScoutingHub is gedeactiveerd', html: await mailShell(env,'Toegang gedeactiveerd',body) });
 }
 async function sendReactivationMail(env, d){
   const base = appBaseUrl(env);
@@ -1423,7 +1441,7 @@ async function sendReactivationMail(env, d){
     + '<p style="'+MAIL_P+'">Goed nieuws: je toegang tot ScoutingHub is weer <strong>geactiveerd</strong>. Je kunt weer inloggen.</p>'
     + ctaButton('Inloggen', base)
     + '<p style="'+MAIL_MUTED+'">Vragen? Mail <a href="mailto:'+contactEmail(env)+'" style="color:#2563eb;">'+contactEmail(env)+'</a>.</p>';
-  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Je toegang tot ScoutingHub is weer actief', html: mailShell(env,'Toegang weer actief',body) });
+  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Je toegang tot ScoutingHub is weer actief', html: await mailShell(env,'Toegang weer actief',body) });
 }
 async function sendDeletionMail(env, d){
   const base = appBaseUrl(env);
@@ -1432,7 +1450,7 @@ async function sendDeletionMail(env, d){
     + '<p style="'+MAIL_P+'">Wil je in de toekomst weer toegang? Dien dan opnieuw een aanvraag in via de website.</p>'
     + ctaButton('Opnieuw toegang aanvragen', base)
     + '<p style="'+MAIL_MUTED+'">Vragen? Mail <a href="mailto:'+contactEmail(env)+'" style="color:#2563eb;">'+contactEmail(env)+'</a>.</p>';
-  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Je ScoutingHub-account is verwijderd', html: mailShell(env,'Account verwijderd',body) });
+  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Je ScoutingHub-account is verwijderd', html: await mailShell(env,'Account verwijderd',body) });
 }
 
 /* ============================================================ *
@@ -1615,7 +1633,7 @@ async function sendFeedbackMail(env, d){
     + '<p style="'+MAIL_H+'">Feedback</p>'
     + '<div style="margin:0 0 12px;padding:14px 16px;background:#ffffff;border:1px solid #e2e8f0;border-left:3px solid #e30613;border-radius:0 10px 10px 0;font-size:15px;line-height:1.6;color:#334155;white-space:pre-wrap;">'+shEsc(d.text||'')+'</div>'
     + (d.ua ? ('<p style="'+MAIL_MUTED+'">Browser: '+shEsc(d.ua)+'</p>') : '');
-  const opts = { from: contactFrom(env), to: feedbackNotifyTo(env), replyTo: (d.email && shValidEmail(d.email)) ? d.email : contactEmail(env), subject:'Nieuwe feedback — ScoutingHub', html: mailShell(env,'Nieuwe feedback',body) };
+  const opts = { from: contactFrom(env), to: feedbackNotifyTo(env), replyTo: (d.email && shValidEmail(d.email)) ? d.email : contactEmail(env), subject:'Nieuwe feedback — ScoutingHub', html: await mailShell(env,'Nieuwe feedback',body) };
   if(d.attachment && d.attachment.content) opts.attachments = [{ filename: d.attachment.filename || 'bijlage', content: d.attachment.content }];
   return sendMail(env, opts);
 }
@@ -1667,7 +1685,7 @@ async function sendPasswordResetMail(env, d){
     + ctaButton('Wachtwoord instellen', d.link)
     + '<p style="'+MAIL_MUTED+'">Heb je dit niet aangevraagd? Dan kun je deze mail negeren. De link is eenmalig en verloopt.</p>';
   const text = 'Hallo '+(d.name||'')+',\n\nEr is een wachtwoord-reset voor je ScoutingHub-account aangevraagd. Stel je wachtwoord in via deze link:\n'+d.link+'\n\nHeb je dit niet aangevraagd? Dan kun je deze mail negeren.';
-  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Stel je ScoutingHub-wachtwoord in', html: mailShell(env,'Wachtwoord instellen',body), text });
+  return sendMail(env, { from: contactFrom(env), to: d.email, subject:'Stel je ScoutingHub-wachtwoord in', html: await mailShell(env,'Wachtwoord instellen',body), text });
 }
 async function handleSendPasswordReset(body, env, request){
   const auth = (request && request.headers && request.headers.get('Authorization')) || '';
@@ -1811,7 +1829,7 @@ async function handleAdminMailTest(body, env, request){
   const html = '<p style="'+MAIL_P+'">Dit is een testmail vanuit de ScoutingHub Beheerconsole, voor route <strong>'+shEsc(m.label)+'</strong>.</p>'
     + '<p style="'+MAIL_MUTED+'">Verstuurd door '+shEsc(caller.email)+' op '+shEsc(when)+'.</p>';
   const text = 'Testmail vanuit de ScoutingHub Beheerconsole, voor route '+m.label+'.\nVerstuurd door '+caller.email+' op '+when+'.';
-  const sent = await sendMail(env, { from: m.from, to: m.to, subject: 'Testmail — '+m.label, html: mailShell(env, 'Testmail', html), text });
+  const sent = await sendMail(env, { from: m.from, to: m.to, subject: 'Testmail — '+m.label, html: await mailShell(env, 'Testmail', html), text });
   return json({ ok:true, sent, error: sent ? undefined : 'Verzenden via Resend mislukt' });
 }
 
@@ -1852,7 +1870,7 @@ async function handleAdminMailSend(body, env, request){
     + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub<br><span style="color:#64748b;">'+shEsc(m.label)+'</span></p>';
   const text = message + '\n\nMet vriendelijke groet,\nTeam ScoutingHub\n' + m.label;
 
-  const sent = await sendMail(env, { from: m.from, to, subject, html: mailShell(env, subject, html), text, replyTo: m.from });
+  const sent = await sendMail(env, { from: m.from, to, subject, html: await mailShell(env, subject, html), text, replyTo: m.from });
   if(!sent) return json({ ok:false, error:'Verzenden via Resend mislukt' });
   // IMAP APPEND: sla op in Verzonden map
   try{
@@ -2035,6 +2053,41 @@ async function handleAdminNewsletterList(body, env, request){
 }
 
 /* ============================================================ *
+ * HANDLER — newsletter-unsubscribe (publiek, één-klik, GET)
+ * Geverifieerd via HMAC-signature (TURNSTILE_SECRET), geen auth nodig.
+ * ============================================================ */
+function unsubPage(title, message, ok){
+  const color = ok ? '#2fbf71' : '#e30613';
+  return new Response(
+    '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+title+'</title></head>'
+    + '<body style="margin:0;background:#05070a;font-family:\'Inter\',-apple-system,\'Segoe UI\',Arial,sans-serif;color:#e8edf5;display:flex;align-items:center;justify-content:center;min-height:100vh;">'
+    + '<div style="max-width:440px;width:100%;margin:16px;background:#10151e;border:1px solid #1f2937;border-radius:14px;padding:36px 32px;text-align:center;">'
+    + '<div style="font-size:20px;font-weight:800;margin-bottom:18px;">Scouting<span style="color:#e30613;">Hub</span></div>'
+    + '<h1 style="font-size:19px;margin:0 0 10px;color:'+color+';">'+title+'</h1>'
+    + '<p style="font-size:14px;line-height:1.6;color:#c7d0dc;margin:0;">'+message+'</p>'
+    + '</div></body></html>',
+    { status: ok?200:400, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+  );
+}
+async function handleNewsletterUnsubscribe(request, env){
+  const url = new URL(request.url);
+  const email = (url.searchParams.get('email')||'').trim().toLowerCase();
+  const sig = url.searchParams.get('sig')||'';
+  if(!email || !shValidEmail(email) || !sig || !env.TURNSTILE_SECRET){
+    return unsubPage('Ongeldige link', 'Deze afmeldlink is niet geldig. Neem contact op via contact@scoutinghub.nl.', false);
+  }
+  const valid = await hmacVerify(env.TURNSTILE_SECRET, 'unsub:'+email, sig);
+  if(!valid) return unsubPage('Ongeldige link', 'Deze afmeldlink is niet geldig of verlopen. Neem contact op via contact@scoutinghub.nl.', false);
+  let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
+  if(!saToken) return unsubPage('Tijdelijk niet beschikbaar', 'Probeer het later opnieuw of mail contact@scoutinghub.nl.', false);
+  const all = await saFsList(saToken, 'access_requests', 500);
+  const matches = all.filter(function(x){ return String(x.email||'').trim().toLowerCase()===email; });
+  if(!matches.length) return unsubPage('Al afgemeld', 'Dit e-mailadres staat niet (meer) op de nieuwsbrieflijst.', true);
+  for(const m of matches){ try{ await saFsPatch(saToken, 'access_requests/'+m.id, { newsletterOptIn:false }); }catch(_){} }
+  return unsubPage('Afgemeld', 'Je bent afgemeld voor de ScoutingHub-nieuwsbrief. Je ontvangt geen nieuwsbrieven meer op '+shEsc(email)+'.', true);
+}
+
+/* ============================================================ *
  * HANDLER — admin-newsletter-send
  * ============================================================ */
 async function handleAdminNewsletterSend(body, env, request){
@@ -2054,7 +2107,7 @@ async function handleAdminNewsletterSend(body, env, request){
     + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>';
   const text = message + '\n\nMet vriendelijke groet,\nTeam ScoutingHub\n\nAfmelden: stuur een mail naar contact@scoutinghub.nl';
   if(testEmail){
-    const ok = await sendMail(env, { from: contactFrom(env), to: testEmail, subject:'[TEST] '+subject, html: mailShell(env,'[TEST] '+subject,htmlBody,{unsubscribeEmail:testEmail}), text });
+    const ok = await sendMail(env, { from: contactFrom(env), to: testEmail, subject:'[TEST] '+subject, html: await mailShell(env,'[TEST] '+subject,htmlBody,{unsubscribeEmail:testEmail}), text });
     return json({ ok:true, sent: ok?1:0, failed: ok?0:1, total:1, test:true });
   }
   const all = await saFsList(saToken, 'access_requests', 500);
@@ -2063,7 +2116,7 @@ async function handleAdminNewsletterSend(body, env, request){
   let sent = 0, failed = 0;
   for(const sub of subs){
     try{
-      const ok = await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: mailShell(env,subject,htmlBody,{unsubscribeEmail:sub.email}), text });
+      const ok = await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: await mailShell(env,subject,htmlBody,{unsubscribeEmail:sub.email}), text });
       if(ok) sent++; else failed++;
     }catch(_){ failed++; }
   }
@@ -2097,7 +2150,7 @@ async function handleAdminSupportNotify(body, env, request){
       + '<span style="color:#64748b;">Tijdstip</span> &nbsp; '+shEsc(when)+'</div>'
     + '<p style="'+MAIL_MUTED+'">Open de ScoutingHub-app om dit verzoek te bekijken en goed te keuren of af te wijzen.</p>';
   const text = 'Beheerder '+(caller.email||'')+' heeft tijdelijke supporttoegang tot jouw account aangevraagd.\nReden: '+(reason||'—')+'\nDuur: '+(minutes?(minutes+' minuten'):'—')+'\nTijdstip: '+when;
-  const sent = await sendMail(env, { from: contactFrom(env), to: targetEmail, subject:'Verzoek om supporttoegang — ScoutingHub', html: mailShell(env,'Verzoek om supporttoegang',html), text });
+  const sent = await sendMail(env, { from: contactFrom(env), to: targetEmail, subject:'Verzoek om supporttoegang — ScoutingHub', html: await mailShell(env,'Verzoek om supporttoegang',html), text });
   return json({ ok:true, sent });
 }
 
@@ -2596,6 +2649,12 @@ export default {
       }
     }
 
+    if (path.endsWith('/api/newsletter-unsubscribe') || path.endsWith('/newsletter-unsubscribe')) {
+      if (request.method !== 'GET') return json({ error: 'Gebruik GET voor /api/newsletter-unsubscribe' }, 405);
+      try { return await handleNewsletterUnsubscribe(request, env); }
+      catch(err){ return unsubPage('Fout', 'Er ging iets mis. Probeer het later opnieuw.', false); }
+    }
+
     if (path.endsWith('/api/request-access') || path.endsWith('/request-access')) {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/request-access' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
@@ -2779,7 +2838,7 @@ async function handleScheduledNewsletter(env){
       + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>';
     const text = message+'\n\nMet vriendelijke groet,\nTeam ScoutingHub\n\nAfmelden: stuur een mail naar contact@scoutinghub.nl';
     for(const sub of subs){
-      try{ await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: mailShell(env,subject,htmlBody,{unsubscribeEmail:sub.email}), text }); }catch(_){}
+      try{ await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: await mailShell(env,subject,htmlBody,{unsubscribeEmail:sub.email}), text }); }catch(_){}
     }
   }catch(_){}
 }

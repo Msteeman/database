@@ -32184,7 +32184,7 @@ function _admBuildShell(){
   }).join('');
   var el=document.createElement('div'); el.id='admin-console';
   el.innerHTML=
-     '<div id="adm-top"><div class="adm-brand"><img class="adm-brand-icon" src="/admin/icon-192.png" alt="" onerror="this.style.display=\'none\'">Scouting<span>Hub</span><span class="adm-tag">Beheer</span></div>'
+     '<div id="adm-top"><div class="adm-brand"><button class="adm-nav-toggle" id="adm-nav-toggle-btn" title="Navigatie in-/uitklappen" onclick="_admToggleNav()">☰</button><img class="adm-brand-icon" src="/admin/icon-192.png" alt="" onerror="this.style.display=\'none\'">Scouting<span>Hub</span><span class="adm-tag">Beheer</span></div>'
    + '<div class="adm-top-right"><span class="adm-email">'+_bhEsc(email)+'</span>'
    + (window.SH_ADMIN_PWA ? '' : '<button class="adm-btn-ghost" onclick="_admOpenScout()" title="Bewust de scout-app openen">Scout-app</button>')
    + '<button class="adm-btn-ghost" onclick="_admLogout()">Uitloggen</button></div></div>'
@@ -32192,7 +32192,12 @@ function _admBuildShell(){
    + '<div id="adm-main"><nav id="adm-nav" aria-label="Beheernavigatie">'+navHtml+'</nav><div id="adm-content"><div id="adm-stub"></div></div></div>';
   document.body.appendChild(el);
   try{ var vAdmin=document.getElementById('view-admin'); var content=el.querySelector('#adm-content'); if(vAdmin && content) content.appendChild(vAdmin); }catch(_){}
+  try{ if(localStorage.getItem('sh_adm_nav_collapsed')==='1') document.body.classList.add('adm-nav-collapsed'); }catch(_){}
 }
+window._admToggleNav=function(){
+  document.body.classList.toggle('adm-nav-collapsed');
+  try{ localStorage.setItem('sh_adm_nav_collapsed', document.body.classList.contains('adm-nav-collapsed')?'1':'0'); }catch(_){}
+};
 function _admShowSection(key){
   _admSection=key;
   try{ document.querySelectorAll('#adm-nav .adm-nav-item').forEach(function(b){ var k=b.getAttribute('data-adm'); b.classList.toggle('active', k===key || (key==='logboek' && k==='security')); }); }catch(_){}
@@ -32426,21 +32431,26 @@ window._admMbNav=_admMbNav;
 function _admMbLoadPane(){
   var list=document.getElementById('adm-mb3-list'); if(!list) return;
   var detail=document.getElementById('adm-mb3-detail'); if(!detail) return;
+  var bodyEl=document.querySelector('.adm-mb3-body');
   if(_admMb.folder==='compose'){
+    if(bodyEl) bodyEl.classList.add('adm-mb3-body-wide');
     list.innerHTML='';
     _admMbRenderCompose(detail);
     return;
   }
   if(_admMb.folder==='drafts'){
+    if(bodyEl) bodyEl.classList.remove('adm-mb3-body-wide');
     detail.innerHTML='<div class="adm-mb3-empty">Selecteer een concept om te bewerken</div>';
     _admMbRenderDraftsList(list);
     return;
   }
   if(_admMb.folder==='newsletter'){
+    if(bodyEl) bodyEl.classList.add('adm-mb3-body-wide');
     list.innerHTML='';
     _admMbRenderNewsletter(detail);
     return;
   }
+  if(bodyEl) bodyEl.classList.remove('adm-mb3-body-wide');
   detail.innerHTML='<div class="adm-mb3-empty">Selecteer een bericht</div>';
   _admMbLoadFolder(list, _admMb.type, _admMb.folder);
 }

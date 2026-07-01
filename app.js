@@ -4195,7 +4195,7 @@ async function _ritGeoLocation(kind){
       const json = await res.json();
       const a = json.address || {};
       const straat = [a.road, a.house_number].filter(Boolean).join(' ');
-      const plaats = a.city || a.town || a.village || a.municipality || '';
+      const plaats = [a.postcode, (a.city || a.town || a.village || a.municipality || '')].filter(Boolean).join(' ');
       adres = [straat, plaats].filter(Boolean).join(', ') || json.display_name || '';
     } catch(e){
       // Tweede poging zonder zoom/addressdetails
@@ -4204,7 +4204,7 @@ async function _ritGeoLocation(kind){
         const fj = await fb.json();
         const fa = fj.address || {};
         const fStraat = [fa.road, fa.house_number].filter(Boolean).join(' ');
-        const fPlaats = fa.city || fa.town || fa.village || fa.municipality || '';
+        const fPlaats = [fa.postcode, (fa.city || fa.town || fa.village || fa.municipality || '')].filter(Boolean).join(' ');
         adres = [fStraat, fPlaats].filter(Boolean).join(', ') || fj.display_name || 'Huidige locatie';
       } catch(_){ adres = 'Huidige locatie'; }
     }
@@ -4220,7 +4220,7 @@ async function _ritGeoLocation(kind){
     toast('Kon locatie niet bepalen', true);
     if(btn){ btn.disabled = false; btn.textContent = '📍 Mijn huidige locatie'; }
     if(adresEl && adresEl.placeholder === 'Locatie ophalen…') adresEl.placeholder = 'Adres of plaats';
-  }, { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 });
+  }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
 }
 // Backwards-compat wrapper
 function _ritGeoMyLocation(){ return _ritGeoLocation('vertrek'); }

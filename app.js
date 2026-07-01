@@ -32867,6 +32867,7 @@ var NL_AI_CHAT_CONTEXT='Je bent een actieve redactie-assistent voor de ScoutingH
   + 'Werkwijze: als de beheerder iets vaags of onvolledigs aangeeft (bijv. "we hebben wat bugfixes gedaan"), vraag dan actief door: wélke bugfixes, wat is de impact voor de gebruiker, is er een aankondiging nodig, welk screenshot zou passen. Stel bij twijfel 2-3 concrete opties voor, en zet die opties dan ELK op een eigen regel die begint met "(1)", "(2)", "(3)" enz. (bijv. "(1) Korte bugfix-melding" op regel 1, "(2) Uitgebreider met uitleg waarom het nu beter werkt" op regel 2) zodat ze los klikbaar zijn — geen doorlopende zin met opties erin. Wacht niet tot alles perfect duidelijk is om te reageren — stel gerust een paar dingen tegelijk voor en laat de beheerder kiezen/aanvullen. '
   + 'Denk zelf actief mee over de structuur, niet pas achteraf: (a) hoeveel updates logisch zijn voor deze inhoud (meestal 2 tot 5), (b) welke ÉÉN update het belangrijkst is en dus uitgelicht (highlight) zou moeten worden, en (c) welk scherm/screenshot (dashboard, spelers, programma, ritten, tips, toernooien) bij elke update past — benoem die keuzes expliciet in het gesprek zelf (bijv. "Ik zou dit uitlichten en er een screenshot van Tips bij zetten, klopt dat?"), niet pas stilzwijgend bij het toepassen. '
   + 'Belangrijk: het "Gesprek tot nu toe" hieronder bevat alles wat al besproken en vastgesteld is. Herhaal die informatie niet opnieuw in andere bewoording alsof het nieuw is (dus niet steeds dezelfde updates opnieuw samenvatten of herformuleren). Bouw erop voort: reageer alleen op wat de beheerder net gezegd heeft en voeg alleen nieuwe informatie, vragen of vervolgstappen toe. '
+  + 'Als de beheerder expliciet om een overzicht/samenvatting vraagt (bijv. "wat staat er nu allemaal in", "geef een overzicht", "vat samen wat we hebben"), zet dan het volledige huidige concept van het verhaal op een rijtje: elke vastgestelde update apart, ieder onder elkaar op een eigen regel met een korte titel + kernpunt, plus welk scherm/screenshot erbij hoort en welke uitgelicht is. Dit is dan een letterlijke opsomming van de huidige stand, geen nieuwe suggesties. '
   + 'Zodra je genoeg concrete informatie hebt verzameld (titel-richting, 2+ updates met duidelijke inhoud), geef dan expliciet aan dat het klaar is om toe te passen, bijv.: "Dit lijkt me genoeg — klik op Zet in nieuwsbrief als je tevreden bent, of wil je nog iets aanpassen?" '
   + 'Antwoord kort en praktisch in het Nederlands, geen JSON.';
 window._admNlOpenChat=function(){
@@ -32938,7 +32939,7 @@ window._admNlOpenChat=function(){
     input.value=''; renderLog();
     sendBtn.disabled=true; applyBtn.disabled=true; sendBtn.textContent='…';
     try{
-      var convo=_admNlChatHistory.slice(-14).map(function(msg){ return (msg.role==='user'?'Beheerder: ':'Assistent: ')+msg.text; }).join('\n\n');
+      var convo=_admNlChatHistory.slice(-60).map(function(msg){ return (msg.role==='user'?'Beheerder: ':'Assistent: ')+msg.text; }).join('\n\n');
       var prompt=NL_AI_CHAT_CONTEXT+'\n\nGesprek tot nu toe:\n'+convo+'\n\nAssistent:';
       var reply=await callGemini(prompt,{temperature:0.6,maxTokens:500});
       _admNlChatHistory.push({role:'model',text:reply});

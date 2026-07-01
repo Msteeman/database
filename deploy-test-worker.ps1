@@ -34,8 +34,14 @@ Write-Host "Worker: $WorkerFile ($lines regels)" -ForegroundColor Cyan
 
 # Metadata voor ES-module worker (de worker gebruikt 'import' bovenaan)
 # "ai"-binding = Cloudflare Workers AI (gratis 10.000 neurons/dag, geen API-key nodig)
+# "kv_namespace" RATE_LIMIT = bestaande KV-namespace "scoutinghub-rate-limit" (voor rate-limiting)
+# "service" SCREENSHOT_WORKER = directe worker-naar-worker koppeling met scoutinghub-screenshot-test.
+#   Nodig omdat Cloudflare gewone fetch()-aanroepen tussen twee *.workers.dev workers blokkeert
+#   (foutcode 1042) — een service binding omzeilt dat, want die gaat niet over het publieke internet.
+# LET OP: deze bindings-lijst is bij elke deploy leidend/overschrijvend — als je hier een binding
+# weglaat die eerder wel bestond, verdwijnt die stilletjes bij de volgende deploy.
 @"
-{"main_module":"worker.js","compatibility_date":"2024-09-01","bindings":[{"type":"ai","name":"AI"}]}
+{"main_module":"worker.js","compatibility_date":"2024-09-01","bindings":[{"type":"ai","name":"AI"},{"type":"kv_namespace","name":"RATE_LIMIT","namespace_id":"e1ab2b9266224e5c86bc9d403122f1b5"},{"type":"service","name":"SCREENSHOT_WORKER","service":"scoutinghub-screenshot-test"}]}
 "@ | Set-Content $MetaFile -Encoding UTF8 -NoNewline
 
 Write-Host "Uploaden naar $Url ..." -ForegroundColor Cyan

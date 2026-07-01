@@ -81,6 +81,25 @@ Controleer wel:
 - De `browser`-binding (`MYBROWSER`) staat nog correct.
 - `nodejs_compat` compatibility flag staat nog aan.
 
+**⚠️ Kritiek voor productie — service binding.** Cloudflare blokkeert gewone
+`fetch()`-aanroepen van de ene `*.workers.dev`-worker naar de andere
+(foutcode 1042). Daarom roept `scoutinghub-api-test` de screenshot-worker nu
+aan via een **service binding** (`env.SCREENSHOT_WORKER`), niet via een
+publieke URL. Zonder deze binding komen er **geen screenshots in de
+nieuwsbrief-mail** (dit was ook de reden dat het lange tijd stil faalde).
+
+Bij het deployen van de productie-worker (`scoutinghub-api`) moet de
+bindings-metadata dus ook bevatten:
+```json
+{"type":"service","name":"SCREENSHOT_WORKER","service":"scoutinghub-screenshot-test"}
+```
+(of de productienaam van de screenshot-worker, als die hernoemd is). Zie
+`deploy-test-worker.ps1` voor het volledige metadata-voorbeeld — **let op:
+de bindings-lijst in dat metadata-JSON is bij elke deploy leidend en
+overschrijvend**, dus een kopie voor productie moet zelf ALLE benodigde
+bindings bevatten (ai, kv_namespace RATE_LIMIT, service SCREENSHOT_WORKER),
+anders verdwijnen ze stilletjes.
+
 ---
 
 ## 4. Frontend: Testomgeving → main

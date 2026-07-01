@@ -1517,29 +1517,61 @@ const NL_TAG_STYLE = {
 const NL_ICON_BG = { red:'#2a1414', blue:'#132235', yellow:'#2a2210', green:'#132a1c', purple:'#221530' };
 const NL_SCREENSHOT_WORKER = 'https://scoutinghub-screenshot-test.marcelsteeman1.workers.dev/';
 const NL_SCREENSHOT_LABELS = { dashboard:'Dashboard', spelers:'Spelersdatabase', programma:'Programma', ritten:'Ritten', tips:'Getipte spelers', toernooien:'Toernooien' };
-async function nlFetchScreenshot(screenKey){
+// Cloudflare blokkeert gewone fetch()-aanroepen van de ene *.workers.dev-worker
+// naar de andere (foutcode 1042) — vandaar de service binding (env.SCREENSHOT_WORKER)
+// i.p.v. een fetch() naar de publieke workers.dev-URL. Fallback op de publieke URL
+// blijft staan voor het geval de binding ooit ontbreekt, maar zal in productie 1042 geven.
+async function nlFetchScreenshot(screenKey, env){
   try{
-    const r = await fetchWithTimeout(NL_SCREENSHOT_WORKER, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ screen: screenKey }) }, 45000);
+    const body = JSON.stringify({ screen: screenKey });
+    let r;
+    if(env && env.SCREENSHOT_WORKER){
+      r = await env.SCREENSHOT_WORKER.fetch('https://screenshot-worker/', { method:'POST', headers:{'Content-Type':'application/json'}, body });
+    } else {
+      r = await fetchWithTimeout(NL_SCREENSHOT_WORKER, { method:'POST', headers:{'Content-Type':'application/json'}, body }, 45000);
+    }
     if(!r.ok) return null;
     const j = await r.json();
     return (j && j.ok && j.b64) ? j.b64 : null;
   }catch(_){ return null; }
 }
-// Haalt elke unieke gevraagde screenshot maar 1x op (hergebruikt voor alle ontvangers).
-async function nlPrefetchScreenshots(ed){
-  const keys = Array.from(new Set((Array.isArray(ed.updates)?ed.updates:[]).flatMap(u=>Array.isArray(u&&u.screenshots)?u.screenshots:(u&&u.screenshot?[u.screenshot]:[])).filter(Boolean)));
-  if(!keys.length) return {};
-  const results = await Promise.all(keys.map(k=>nlFetchScreenshot(k)));
-  const map = {};
-  keys.forEach((k,i)=>{ if(results[i]) map[k]=results[i]; });
-  return map;
+const NL_SCREENSHOT_VALID_KEYS = ['dashboard','spelers','programma','ritten','tips','toernooien'];
+function nlScreenshotProxyUrl(env, screenKey){
+  const workerBase = cfg(env,'SELF_URL','https://scoutinghub-api.marcelsteeman1.workers.dev').replace(/\/+$/,'');
+  return workerBase + '/api/newsletter-screenshot?screen=' + encodeURIComponent(screenKey);
 }
-function nlEditionUpdateCard(u, shotsB64){
+// Screenshots worden NIET als base64 data-URI ingebed — Gmail en de meeste
+// mailclients laden data:-URI's niet (spam/security-policy), waardoor de
+// afbeelding gewoon niet verschijnt. In plaats daarvan wijst de mail naar
+// een echte, publieke afbeeldings-URL op deze worker (zie route hieronder),
+// die de screenshot live ophaalt en met Cache API cachet zodat niet elke
+// e-mailopening opnieuw een Puppeteer-render kost.
+async function handleNewsletterScreenshotProxy(request, env, ctx){
+  const url = new URL(request.url);
+  const screenKey = String(url.searchParams.get('screen')||'');
+  if(!NL_SCREENSHOT_VALID_KEYS.includes(screenKey)) return new Response('Ongeldig scherm', { status:400 });
+  const cache = caches.default;
+  const cacheKey = new Request(url.toString(), { method:'GET' });
+  const cached = await cache.match(cacheKey);
+  if(cached) return cached;
+  const b64 = await nlFetchScreenshot(screenKey, env);
+  if(!b64) return new Response('', { status:404 });
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for(let i=0;i<bin.length;i++) bytes[i] = bin.charCodeAt(i);
+  const resp = new Response(bytes, {
+    status:200,
+    headers: { 'Content-Type':'image/png', 'Cache-Control':'public, max-age=21600', 'Access-Control-Allow-Origin':'*' }
+  });
+  ctx.waitUntil(cache.put(cacheKey, resp.clone()));
+  return resp;
+}
+function nlEditionUpdateCard(u, shotUrls){
   const tag = NL_TAG_STYLE[u.tag] || NL_TAG_STYLE.coming;
   const iconBg = NL_ICON_BG[u.kleur] || NL_ICON_BG.red;
   const highlightStyle = u.highlight ? 'border-color:rgba(232,37,26,0.3);background:#1f1624;' : 'background:#1a2236;border:1px solid #1e2d45;';
-  const shots = (Array.isArray(shotsB64) ? shotsB64 : (shotsB64 ? [shotsB64] : [])).filter(Boolean);
-  const shotHtml = shots.map(function(b64){ return '<tr><td style="padding-top:12px;"><img src="data:image/png;base64,'+b64+'" alt="Screenshot" width="100%" style="display:block;width:100%;max-width:100%;border-radius:8px;border:1px solid #1e2d45;"></td></tr>'; }).join('');
+  const shots = (Array.isArray(shotUrls) ? shotUrls : (shotUrls ? [shotUrls] : [])).filter(Boolean);
+  const shotHtml = shots.map(function(url){ return '<tr><td style="padding-top:12px;"><img src="'+url+'" alt="Screenshot" width="100%" style="display:block;width:100%;max-width:100%;border-radius:8px;border:1px solid #1e2d45;"></td></tr>'; }).join('');
   return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="width:100%;'+highlightStyle+'border-radius:10px;margin-bottom:10px;"><tr><td style="padding:18px 20px;">'
     + '<table role="presentation" cellpadding="0" cellspacing="0"><tr>'
     + '<td width="34" valign="top" style="width:34px;padding-right:14px;"><table role="presentation" cellpadding="0" cellspacing="0"><tr><td width="34" height="34" align="center" valign="middle" style="width:34px;height:34px;font-size:16px;line-height:34px;text-align:center;border-radius:8px;background:'+iconBg+';">'+shEsc(u.icon||'📌')+'</td></tr></table></td>'
@@ -1559,7 +1591,7 @@ function nlSectionLabel(color, text){
     + '<td style="padding:28px 40px 14px 0;" valign="middle"><div style="height:1px;line-height:1px;font-size:0;background:#1e2d45;">&nbsp;</div></td>'
     + '</tr></table>';
 }
-async function nlBuildEditionHtml(env, ed, unsubEmail, shots){
+async function nlBuildEditionHtml(env, ed, unsubEmail){
   const base = appBaseUrl(env); const ce = contactEmail(env); const host = base.replace(/^https?:\/\//,'');
   const editionLabel = shEsc((ed.maand||'')+(ed.nummer?(' · Editie #'+ed.nummer):''));
 
@@ -1576,12 +1608,11 @@ async function nlBuildEditionHtml(env, ed, unsubEmail, shots){
   let updatesHtml = '';
   const updates = Array.isArray(ed.updates) ? ed.updates.filter(u=>u&&(u.titel||u.tekst)) : [];
   if(updates.length){
-    const shotsMap = shots || {};
     updatesHtml = nlSectionLabel('#e30613','Wat er aankomt')
       + '<div style="padding:0 40px 28px;">' + updates.map(function(u){
         const keys = Array.isArray(u.screenshots) ? u.screenshots : (u.screenshot ? [u.screenshot] : []);
-        const imgs = keys.map(function(k){ return shotsMap[k]; }).filter(Boolean);
-        return nlEditionUpdateCard(u, imgs);
+        const urls = keys.filter(function(k){ return NL_SCREENSHOT_VALID_KEYS.includes(k); }).map(function(k){ return nlScreenshotProxyUrl(env, k); });
+        return nlEditionUpdateCard(u, urls);
       }).join('') + '</div>';
   }
 
@@ -2451,8 +2482,7 @@ async function handleAdminNewsletterSend(body, env, request){
     subject = clip(String(body.subject||ed.titel||'').trim(),200);
     if(!subject) return json({ ok:false, error:'Titel/onderwerp ontbreekt' }, 400);
     if(!ed.titel && !ed.intro) return json({ ok:false, error:'Vul minimaal een titel of intro in' }, 400);
-    const shots = await nlPrefetchScreenshots(ed);
-    buildHtml = function(email){ return nlBuildEditionHtml(env, ed, email, shots); };
+    buildHtml = function(email){ return nlBuildEditionHtml(env, ed, email); };
     text = (ed.titel||subject) + (ed.intro?('\n\n'+ed.intro):'') + '\n\nBekijk deze nieuwsbrief in HTML voor de volledige opmaak.';
   } else {
     subject = clip(String(body.subject||'').trim(),200);
@@ -3117,6 +3147,12 @@ export default {
       catch(err){ return unsubPage('Fout', 'Er ging iets mis. Probeer het later opnieuw.', false); }
     }
 
+    if (path.endsWith('/api/newsletter-screenshot')) {
+      if (request.method !== 'GET') return json({ error: 'Gebruik GET voor /api/newsletter-screenshot' }, 405);
+      try { return await handleNewsletterScreenshotProxy(request, env, ctx); }
+      catch(err){ return new Response('', { status:500 }); }
+    }
+
     if (path.endsWith('/api/request-access') || path.endsWith('/request-access')) {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST voor /api/request-access' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
@@ -3329,8 +3365,7 @@ async function handleScheduledNewsletter(env){
       const ed = draft.edition;
       subject = String(draft.subject||ed.titel||'').trim();
       if(!subject) return;
-      const shots = await nlPrefetchScreenshots(ed);
-      buildHtml = function(email){ return nlBuildEditionHtml(env, ed, email, shots); };
+      buildHtml = function(email){ return nlBuildEditionHtml(env, ed, email); };
       text = (ed.titel||subject) + (ed.intro?('\n\n'+ed.intro):'') + '\n\nBekijk deze nieuwsbrief in HTML voor de volledige opmaak.';
     } else {
       subject = String(draft.subject||'').trim();

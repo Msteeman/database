@@ -32696,6 +32696,7 @@ function _admNlRenderEditionForm(){
       +'<span class="bh-stat-note" style="margin:0;">Vul zelf in, laat AI alles genereren, of start met het voorbeeld.</span>'
       +'<span style="display:flex;gap:6px;">'
         +'<button class="adm-btn-ghost adm-btn-primary" id="adm-nl-ai-btn" onclick="_admNlAiFill()">✨ AI: alles invullen</button>'
+        +'<button class="adm-btn-ghost" onclick="_admNlOpenChat()">💬 AI-chat</button>'
         +'<button class="adm-btn-ghost" onclick="_admNlFillExample()">📄 Voorbeeld invullen</button>'
       +'</span>'
     +'</div>'
@@ -32774,6 +32775,60 @@ async function _admNlAiImprove(textarea, btn, context, applyFn){
   }catch(e){ if(typeof toast==='function') toast('AI niet beschikbaar',true); }
   finally{ btn.disabled=false; btn.textContent=_o; }
 }
+var _admNlChatHistory=[];
+var NL_AI_CHAT_CONTEXT='Je bent een schrijfassistent voor de ScoutingHub-nieuwsbrief (Nederlandse voetbal-scouting webapp, testfase). Je helpt de beheerder met brainstormen, teksten schrijven, tips geven en dingen korter/duidelijker/leuker maken. '
+  + 'App-context: modules zijn Spelersdatabase, Programma, Wedstrijdrapporten/Observaties (observatie=snelle losse notitie, rapport=volledig formeel verslag), Toernooien, Getipte spelers (Tips), Ritten (kilometerregistratie), Analyse (Elftallen/Vergelijken/Pitch), Contacten. '
+  + 'Antwoord kort, praktisch en in het Nederlands. Als je een tekst voorstelt voor een veld (titel/intro/update/dankwoord), geef die dan als aparte alinea zodat de beheerder hem makkelijk kan overnemen — geen JSON, gewoon leesbare tekst.';
+window._admNlOpenChat=function(){
+  var body='<div id="adm-nl-chat-log" style="max-height:340px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;"></div>'
+    +'<div style="display:flex;gap:6px;">'
+      +'<textarea id="adm-nl-chat-input" class="sh-req-i" rows="2" placeholder="Vraag om tips, laat iets schrijven, of stel een vraag…" style="flex:1;"></textarea>'
+      +'<button class="bh-btn bh-btn-blue" id="adm-nl-chat-send" style="flex:0 0 auto;">Stuur</button>'
+    +'</div>';
+  var m=_bhModal('💬 AI-chat — nieuwsbrief', body, {});
+  var log=m.root.querySelector('#adm-nl-chat-log');
+  var input=m.root.querySelector('#adm-nl-chat-input');
+  var sendBtn=m.root.querySelector('#adm-nl-chat-send');
+  function renderLog(){
+    log.innerHTML=_admNlChatHistory.length
+      ? _admNlChatHistory.map(function(msg,i){
+          var isUser=msg.role==='user';
+          return '<div style="align-self:'+(isUser?'flex-end':'flex-start')+';max-width:85%;">'
+            + '<div style="background:'+(isUser?'#1e3a5f':'#1a2436')+';color:#e8edf5;border-radius:10px;padding:8px 12px;font-size:13px;line-height:1.5;white-space:pre-wrap;">'+_bhEsc(msg.text)+'</div>'
+            + (!isUser?'<button class="adm-btn-ghost" data-copychat="'+i+'" style="margin-top:3px;padding:2px 8px;font-size:11px;">📋 Kopieer</button>':'')
+          +'</div>';
+        }).join('')
+      : '<div style="color:#8b97ad;font-size:12.5px;">Stel een vraag, bijv. "geef 3 titel-ideeën voor deze maand" of "schrijf een intro over de nieuwe rittenfunctie".</div>';
+    log.scrollTop=log.scrollHeight;
+    log.querySelectorAll('[data-copychat]').forEach(function(b){
+      b.addEventListener('click',function(){
+        var idx=parseInt(b.getAttribute('data-copychat'),10);
+        var txt=_admNlChatHistory[idx]&&_admNlChatHistory[idx].text||'';
+        if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt);
+        if(typeof toast==='function') toast('Tekst gekopieerd — plak in het gewenste veld');
+      });
+    });
+  }
+  renderLog();
+  async function send(){
+    var text=(input.value||'').trim(); if(!text) return;
+    _admNlChatHistory.push({role:'user',text:text});
+    input.value=''; renderLog();
+    sendBtn.disabled=true; sendBtn.textContent='…';
+    try{
+      var convo=_admNlChatHistory.slice(-10).map(function(msg){ return (msg.role==='user'?'Beheerder: ':'Assistent: ')+msg.text; }).join('\n\n');
+      var prompt=NL_AI_CHAT_CONTEXT+'\n\nGesprek tot nu toe:\n'+convo+'\n\nAssistent:';
+      var reply=await callGemini(prompt,{temperature:0.6,maxTokens:500});
+      _admNlChatHistory.push({role:'model',text:reply});
+    }catch(e){
+      _admNlChatHistory.push({role:'model',text:'(AI niet beschikbaar, probeer het zo nog eens)'});
+    }
+    sendBtn.disabled=false; sendBtn.textContent='Stuur';
+    renderLog();
+  }
+  sendBtn.addEventListener('click',send);
+  input.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); send(); } });
+};
 window._admNlAiFill=function(){
   var body='<p style="color:#9aa8bd;font-size:13px;margin:0 0 10px;">Beschrijf kort waar deze nieuwsbrief over moet gaan (bijv. welke bugfixes, nieuwe features, aankondigingen). De AI vult titel, intro, dankwoord en updates automatisch in — pas daarna nog aan waar nodig.</p>'
     +'<textarea id="adm-nl-ai-topic" class="sh-req-i" rows="5" placeholder="Bijv. We hebben de rittenregistratie km-berekening gefixt, getipte spelers is nu volledig werkbaar, en er komt een nieuwe carrièreverloop-functie voor spelers aan. Dit is de eerste nieuwsbrief editie."></textarea>';

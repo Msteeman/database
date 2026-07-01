@@ -32383,8 +32383,11 @@ function _admMbRebuild(){
   }).join('');
   el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Mailcentrum</div>'
     +'<div class="adm-mb3-wrap">'
-      +'<div class="adm-mb3-tabs">'+tabs+'</div>'
-      +'<div class="adm-mb3-body">'
+      +'<div class="adm-mb3-tabs">'
+        +'<button class="adm-nav-toggle" id="adm-mb-side-toggle" title="Mapjes in-/uitklappen" onclick="_admMbToggleSide()" style="margin-right:6px;">☰</button>'
+        +tabs
+      +'</div>'
+      +'<div class="adm-mb3-body' + (_admMbSideCollapsed()?' adm-mb3-side-collapsed':'') + '">'
         +'<div class="adm-mb3-side">'+side+'</div>'
         +'<div class="adm-mb3-list" id="adm-mb3-list"><div class="adm-loading">Laden…</div></div>'
         +'<div class="adm-mb3-detail" id="adm-mb3-detail"><div class="adm-mb3-empty">Selecteer een bericht</div></div>'
@@ -32393,6 +32396,12 @@ function _admMbRebuild(){
     +'<datalist id="adm-mb-contacts">'+_admMbContactOptions()+'</datalist>';
   _admMbLoadPane();
 }
+function _admMbSideCollapsed(){ try{ return localStorage.getItem('sh_admmb_side_collapsed')==='1'; }catch(_){ return false; } }
+window._admMbToggleSide=function(){
+  var body=document.querySelector('.adm-mb3-body'); if(!body) return;
+  var collapsed=body.classList.toggle('adm-mb3-side-collapsed');
+  try{ localStorage.setItem('sh_admmb_side_collapsed', collapsed?'1':'0'); }catch(_){}
+};
 
 function _admMbContactOptions(){
   var set={};
@@ -32576,8 +32585,8 @@ async function _admMbRenderNewsletter(pane){
       }).join('')+'</div>'
     :'<div class="bh-empty" style="padding:8px">Geen abonnees</div>';
   pane.innerHTML='<div class="adm-mb3-detail-inner">'
-    +'<div class="adm-mb3-detail-hd"><div class="adm-mb3-detail-subj">Nieuwsbrief</div></div>'
-    +'<div class="adm-nl-wrap">'
+    +'<div class="adm-mb3-detail-hd"><div class="adm-mb3-detail-subj">Nieuwsbrief <button class="adm-nav-toggle" id="adm-nl-abon-toggle" title="Abonneelijst in-/uitklappen" onclick="_admNlToggleAbon()" style="margin-left:8px;vertical-align:middle;">☰</button></div></div>'
+    +'<div class="adm-nl-wrap'+(_admNlAbonCollapsed()?' adm-nl-abon-collapsed':'')+'">'
       +'<div class="adm-nl-col-left">'
         +'<div class="adm-nl-section-hd">Abonnees ('+subs.length+')</div>'
         +subsHtml
@@ -32606,6 +32615,12 @@ async function _admMbRenderNewsletter(pane){
   if(cb) cb.addEventListener('change',function(){ _admNlToggleAuto(this.checked); });
   if(_admNlMode==='edition') _admNlRenderEditionForm();
 }
+function _admNlAbonCollapsed(){ try{ return localStorage.getItem('sh_admnl_abon_collapsed')==='1'; }catch(_){ return false; } }
+window._admNlToggleAbon=function(){
+  var wrap=document.querySelector('.adm-nl-wrap'); if(!wrap) return;
+  var collapsed=wrap.classList.toggle('adm-nl-abon-collapsed');
+  try{ localStorage.setItem('sh_admnl_abon_collapsed', collapsed?'1':'0'); }catch(_){}
+};
 function _admNlTextFormHtml(savedSubj,savedMsg){
   return '<input class="adm-compose-input" id="adm-nl-subj" placeholder="Onderwerp" value="'+_bhEsc(savedSubj)+'" style="margin-bottom:8px;">'
     +'<textarea class="adm-compose-input" id="adm-nl-msg" placeholder="Bericht — losse titelregel wordt automatisch een kop. # Kop, ## Subkop, - lijstitem, **vet** werken ook. Lege regel = nieuwe alinea." rows="8" style="min-height:160px;resize:vertical;">'+_bhEsc(savedMsg)+'</textarea>'

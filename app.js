@@ -32569,7 +32569,7 @@ var _admNlSubsCount=0, _admNlMode='text', _admNlEdition=null;
 function _admNlDefaultEdition(){
   return { maand:'', nummer:'', titel:'', intro:'',
     dankwoord:{enabled:false,titel:'Nogmaals dank dat jullie mee willen testen',tekst:''},
-    updates:[{titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false,screenshot:''}],
+    updates:[{titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false,screenshots:[]}],
     aankondiging:{enabled:false,icon:'📖',titel:'',tekst:''},
     whatsapp:{enabled:true,nummer:'+31625350577',tekst:'Hoi, ik heb feedback over ScoutingHub: '}
   };
@@ -32668,6 +32668,23 @@ window._admNlSetMode=function(mode){
 var _admNlTagOpts=[['nieuw','Nieuw'],['bugfix','Bugfix komt eraan'],['coming','Komt eraan'],['wip','Werk in uitvoering']];
 var _admNlScreenshotOpts=[['','Geen'],['dashboard','Dashboard'],['spelers','Spelersdatabase'],['programma','Programma'],['ritten','Ritten'],['tips','Getipte spelers'],['toernooien','Toernooien']];
 function _admNlScreenshotLabel(key){ var f=_admNlScreenshotOpts.find(function(o){return o[0]===key;}); return f?f[1]:key; }
+function _admNlScreenshotChipsHtml(screenshots, i){
+  var list=Array.isArray(screenshots)?screenshots.filter(Boolean):[];
+  var chips=list.map(function(key){
+    return '<span class="adm-nl-shot-chip" style="display:inline-flex;align-items:center;gap:5px;background:#1a2236;border:1px solid #1e2d45;border-radius:20px;padding:3px 4px 3px 10px;font-size:11px;color:#8b97ad;">'
+      +'📷 '+_bhEsc(_admNlScreenshotLabel(key))
+      +'<button class="adm-btn-ghost" data-previewshot="'+_bhEsc(key)+'" style="padding:1px 6px;font-size:10px;">🔍</button>'
+      +'<button class="adm-btn-ghost" data-removeshot="'+i+':'+_bhEsc(key)+'" style="padding:1px 6px;font-size:10px;" title="Verwijderen">✕</button>'
+      +'</span>';
+  }).join('');
+  var addHtml=list.length<2
+    ? '<select class="bh-select" data-addshot="'+i+'" style="font-size:11px;padding:2px 6px;"><option value="">+ screenshot</option>'
+      + _admNlScreenshotOpts.filter(function(o){return o[0]&&list.indexOf(o[0])<0;}).map(function(o){return '<option value="'+o[0]+'">'+o[1]+'</option>';}).join('')
+      + '</select>'
+    : '';
+  if(!chips&&!addHtml) return '';
+  return '<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;" data-shotrow="'+i+'">'+chips+addHtml+'</div>';
+}
 var _admNlKleurOpts=['red','blue','yellow','green','purple'];
 async function _admMbRenderNewsletterHistory(pane){
   if(!pane) return;
@@ -32724,7 +32741,7 @@ function _admNlRenderEditionForm(){
         +'<div><div class="adm-nl-flabel">Emoji</div><input class="adm-compose-input" data-ued="'+i+'" data-uf="icon" value="'+_bhEsc(u.icon||'📌')+'" style="width:50px;text-align:center;"></div>'
         +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;padding-bottom:9px;"><input type="checkbox" data-ued="'+i+'" data-uf="highlight"'+(u.highlight?' checked':'')+'> Uitgelicht (grotere nadruk)</label>'
       +'</div>'
-      +(u.screenshot?('<div style="margin-top:6px;font-size:11px;color:#8b97ad;display:flex;align-items:center;gap:8px;">📷 Screenshot automatisch toegevoegd: <b>'+_bhEsc(_admNlScreenshotLabel(u.screenshot))+'</b><button class="adm-btn-ghost" data-previewshot="'+_bhEsc(u.screenshot)+'" style="padding:2px 8px;font-size:11px;">🔍 Bekijk voorbeeld</button></div>'):'')
+      +_admNlScreenshotChipsHtml(u.screenshots, i)
     +'</div>';
   }).join('');
   host.innerHTML=
@@ -32799,6 +32816,23 @@ function _admNlRenderEditionForm(){
   host.querySelectorAll('[data-previewshot]').forEach(function(btn){
     btn.addEventListener('click',function(){ _admNlPreviewScreenshot(btn.getAttribute('data-previewshot'), btn); });
   });
+  host.querySelectorAll('[data-removeshot]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var parts=btn.getAttribute('data-removeshot').split(':'); var idx=parseInt(parts[0],10); var key=parts.slice(1).join(':');
+      var u=_admNlEdition.updates[idx]; if(!u||!Array.isArray(u.screenshots)) return;
+      u.screenshots=u.screenshots.filter(function(k){ return k!==key; });
+      _admNlRenderEditionForm();
+    });
+  });
+  host.querySelectorAll('[data-addshot]').forEach(function(sel){
+    sel.addEventListener('change',function(){
+      var idx=parseInt(sel.getAttribute('data-addshot'),10); var key=sel.value; if(!key) return;
+      var u=_admNlEdition.updates[idx]; if(!u) return;
+      if(!Array.isArray(u.screenshots)) u.screenshots=[];
+      if(u.screenshots.length<2 && u.screenshots.indexOf(key)<0) u.screenshots.push(key);
+      _admNlRenderEditionForm();
+    });
+  });
 }
 window._admNlPreviewScreenshot=async function(screenKey, btn){
   var _o=btn.textContent; btn.disabled=true; btn.textContent='Laden…';
@@ -32830,7 +32864,8 @@ async function _admNlAiImprove(textarea, btn, context, applyFn){
 var _admNlChatHistory=[];
 var NL_AI_CHAT_CONTEXT='Je bent een actieve redactie-assistent voor de ScoutingHub-nieuwsbrief (Nederlandse voetbal-scouting webapp, testfase), geen passieve schrijfmachine. Je doel is de beheerder helpen tot een compleet, concreet plan te komen vóórdat hij op "Zet in nieuwsbrief" klikt. '
   + 'App-context: modules zijn Dashboard, Spelersdatabase, Programma, Wedstrijdrapporten/Observaties (observatie=snelle losse notitie, rapport=volledig formeel verslag), Toernooien, Getipte spelers (Tips), Ritten (kilometerregistratie), Analyse (Elftallen/Vergelijken/Pitch), Contacten. Screenshots kunnen automatisch worden toegevoegd bij: dashboard, spelers, programma, ritten, tips, toernooien. '
-  + 'Werkwijze: als de beheerder iets vaags of onvolledigs aangeeft (bijv. "we hebben wat bugfixes gedaan"), vraag dan actief door: wélke bugfixes, wat is de impact voor de gebruiker, is er een aankondiging nodig, welk screenshot zou passen. Stel bij twijfel 2-3 concrete opties voor (bijv. "Wil je dit noemen als (1) korte bugfix-melding, of (2) uitgebreider met uitleg waarom het nu beter werkt?") zodat de beheerder makkelijk kan kiezen. Wacht niet tot alles perfect duidelijk is om te reageren — stel gerust een paar dingen tegelijk voor en laat de beheerder kiezen/aanvullen. '
+  + 'Werkwijze: als de beheerder iets vaags of onvolledigs aangeeft (bijv. "we hebben wat bugfixes gedaan"), vraag dan actief door: wélke bugfixes, wat is de impact voor de gebruiker, is er een aankondiging nodig, welk screenshot zou passen. Stel bij twijfel 2-3 concrete opties voor, en zet die opties dan ELK op een eigen regel die begint met "(1)", "(2)", "(3)" enz. (bijv. "(1) Korte bugfix-melding" op regel 1, "(2) Uitgebreider met uitleg waarom het nu beter werkt" op regel 2) zodat ze los klikbaar zijn — geen doorlopende zin met opties erin. Wacht niet tot alles perfect duidelijk is om te reageren — stel gerust een paar dingen tegelijk voor en laat de beheerder kiezen/aanvullen. '
+  + 'Denk zelf actief mee over de structuur, niet pas achteraf: (a) hoeveel updates logisch zijn voor deze inhoud (meestal 2 tot 5), (b) welke ÉÉN update het belangrijkst is en dus uitgelicht (highlight) zou moeten worden, en (c) welk scherm/screenshot (dashboard, spelers, programma, ritten, tips, toernooien) bij elke update past — benoem die keuzes expliciet in het gesprek zelf (bijv. "Ik zou dit uitlichten en er een screenshot van Tips bij zetten, klopt dat?"), niet pas stilzwijgend bij het toepassen. '
   + 'Zodra je genoeg concrete informatie hebt verzameld (titel-richting, 2+ updates met duidelijke inhoud), geef dan expliciet aan dat het klaar is om toe te passen, bijv.: "Dit lijkt me genoeg — klik op Zet in nieuwsbrief als je tevreden bent, of wil je nog iets aanpassen?" '
   + 'Antwoord kort en praktisch in het Nederlands, geen JSON.';
 window._admNlOpenChat=function(){
@@ -32848,13 +32883,32 @@ window._admNlOpenChat=function(){
   var input=m.root.querySelector('#adm-nl-chat-input');
   var sendBtn=m.root.querySelector('#adm-nl-chat-send');
   var applyBtn=m.root.querySelector('#adm-nl-chat-apply');
+  function _admNlChatOptions(text){
+    var lines=String(text||'').split('\n').map(function(l){return l.trim();}).filter(Boolean);
+    var opts=[];
+    lines.forEach(function(l){
+      var m=l.match(/^\(?(\d)\)?[.)]?\s+(.+)$/);
+      if(m && +m[1]>=1 && +m[1]<=4) opts.push(m[2]);
+    });
+    return opts.length>=2 ? opts : [];
+  }
   function renderLog(){
     log.innerHTML=_admNlChatHistory.length
       ? _admNlChatHistory.map(function(msg,i){
           var isUser=msg.role==='user';
+          var opts=isUser?[]:_admNlChatOptions(msg.text);
+          var chipsHtml=opts.length
+            ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">'
+              + opts.map(function(o,oi){
+                  var short=o.length>60?o.slice(0,57)+'…':o;
+                  return '<button class="adm-btn-ghost" data-chatchip="'+i+':'+oi+'" style="padding:3px 10px;font-size:11.5px;border-radius:14px;">'+_bhEsc(short)+'</button>';
+                }).join('')
+              + '</div>'
+            : '';
           return '<div style="align-self:'+(isUser?'flex-end':'flex-start')+';max-width:85%;">'
             + '<div style="background:'+(isUser?'#1e3a5f':'#1a2436')+';color:#e8edf5;border-radius:10px;padding:8px 12px;font-size:13px;line-height:1.5;white-space:pre-wrap;">'+_bhEsc(msg.text)+'</div>'
             + (!isUser?'<button class="adm-btn-ghost" data-copychat="'+i+'" style="margin-top:3px;padding:2px 8px;font-size:11px;">📋 Kopieer</button>':'')
+            + chipsHtml
           +'</div>';
         }).join('')
       : '<div style="color:#8b97ad;font-size:12.5px;">Stel een vraag, bijv. "geef 3 titel-ideeën voor deze maand" of "we hebben de rittenregistratie gefixt en tips werken weer, help me dit uitwerken". Als je klaar bent: klik "Zet in nieuwsbrief".</div>';
@@ -32865,6 +32919,14 @@ window._admNlOpenChat=function(){
         var txt=_admNlChatHistory[idx]&&_admNlChatHistory[idx].text||'';
         if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(txt);
         if(typeof toast==='function') toast('Tekst gekopieerd — plak in het gewenste veld');
+      });
+    });
+    log.querySelectorAll('[data-chatchip]').forEach(function(b){
+      b.addEventListener('click',function(){
+        var parts=b.getAttribute('data-chatchip').split(':'); var msgIdx=parseInt(parts[0],10); var optIdx=parseInt(parts[1],10);
+        var opts=_admNlChatOptions((_admNlChatHistory[msgIdx]||{}).text);
+        var picked=opts[optIdx]; if(!picked) return;
+        input.value=picked; send();
       });
     });
   }
@@ -32966,11 +33028,11 @@ window._admNlFillExample=function(){
     intro:'Welkom bij de allereerste editie. ScoutingHub is nog volop in ontwikkeling en jullie zijn daar als testers het eerste getuige van. Medio juli komen de eerste concrete updates beschikbaar. In deze mail een overzicht van wat er aankomt en een korte aankondiging van de wedstrijdflow handleiding die ook deze maand jullie kant op komt.',
     dankwoord:{enabled:true,titel:'Nogmaals dank dat jullie mee willen testen',tekst:'Dit platform wordt beter door jullie gebruik. Elke keer dat je iets omslachtig vindt, iets niet begrijpt of juist merkt dat iets goed werkt, dat is precies de informatie die nodig is. Feedback hoeft niet uitgebreid. Een appje of een paar zinnen is genoeg. Alles helpt.'},
     updates:[
-      {titel:'Carrièreverloop per speler',tekst:'Spelers worden straks over meerdere seizoenen te volgen. Tussentijdse overstappen zijn in te voeren zodat de volledige ontwikkellijn in beeld blijft, ook als een speler van club wisselt.',tag:'nieuw',icon:'📈',kleur:'red',highlight:true},
-      {titel:'Rittenregistratie: km berekening',tekst:'Bij het invoeren van adressen worden kilometers niet berekend. Dit wordt in deze update opgelost.',tag:'bugfix',icon:'🐛',kleur:'red',highlight:false},
-      {titel:'Getipte spelers volledig werkbaar',tekst:'Getipte spelers zijn al zichtbaar in het navigatiescherm maar nog niet volledig te gebruiken. Dat wordt in deze update afgerond.',tag:'coming',icon:'📌',kleur:'yellow',highlight:false},
-      {titel:'Toernooi import via Tournify verbeterd',tekst:'De Tournify import werkte al, maar standen werden niet goed weergegeven. Dat wordt rechtgezet. Het programma-overzicht krijgt ook meer overzicht.',tag:'coming',icon:'🏆',kleur:'green',highlight:false},
-      {titel:'Interface update: rustiger en overzichtelijker',tekst:'Minder ruis, meer focus. De interface wordt wat stiller zodat de inhoud meer ruimte krijgt.',tag:'coming',icon:'🎨',kleur:'blue',highlight:false}
+      {titel:'Carrièreverloop per speler',tekst:'Spelers worden straks over meerdere seizoenen te volgen. Tussentijdse overstappen zijn in te voeren zodat de volledige ontwikkellijn in beeld blijft, ook als een speler van club wisselt.',tag:'nieuw',icon:'📈',kleur:'red',highlight:true,screenshots:['spelers']},
+      {titel:'Rittenregistratie: km berekening',tekst:'Bij het invoeren van adressen worden kilometers niet berekend. Dit wordt in deze update opgelost.',tag:'bugfix',icon:'🐛',kleur:'red',highlight:false,screenshots:['ritten']},
+      {titel:'Getipte spelers volledig werkbaar',tekst:'Getipte spelers zijn al zichtbaar in het navigatiescherm maar nog niet volledig te gebruiken. Dat wordt in deze update afgerond.',tag:'coming',icon:'📌',kleur:'yellow',highlight:false,screenshots:['tips']},
+      {titel:'Toernooi import via Tournify verbeterd',tekst:'De Tournify import werkte al, maar standen werden niet goed weergegeven. Dat wordt rechtgezet. Het programma-overzicht krijgt ook meer overzicht.',tag:'coming',icon:'🏆',kleur:'green',highlight:false,screenshots:['toernooien','programma']},
+      {titel:'Interface update: rustiger en overzichtelijker',tekst:'Minder ruis, meer focus. De interface wordt wat stiller zodat de inhoud meer ruimte krijgt.',tag:'coming',icon:'🎨',kleur:'blue',highlight:false,screenshots:[]}
     ],
     aankondiging:{enabled:true,icon:'📖',titel:'Handleiding wedstrijdflow komt eraan',tekst:'Medio juli ontvangen jullie ook een handleiding over de workflow rondom een wedstrijd. Van het inplannen en koppelen van spelers, rapporteren langs de lijn, tot het afronden thuis op de laptop. Ook het verschil tussen een observatie en een rapport wordt daarin uitgelegd. Die handleiding komt zowel in de app als per mail jullie kant op.'},
     whatsapp:{enabled:true,nummer:'+31625350577',tekst:'Hoi Marcel, ik heb feedback over ScoutingHub: '}
@@ -32980,12 +33042,12 @@ window._admNlFillExample=function(){
 };
 window._admNlAddUpdate=function(){
   if(!_admNlEdition) _admNlEdition=_admNlDefaultEdition();
-  _admNlEdition.updates.push({titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false,screenshot:''});
+  _admNlEdition.updates.push({titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false,screenshots:[]});
   _admNlRenderEditionForm();
 };
 window._admNlRemoveUpdate=function(i){
   _admNlEdition.updates.splice(i,1);
-  if(!_admNlEdition.updates.length) _admNlEdition.updates.push({titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false,screenshot:''});
+  if(!_admNlEdition.updates.length) _admNlEdition.updates.push({titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false,screenshots:[]});
   _admNlRenderEditionForm();
 };
 

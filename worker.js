@@ -1198,11 +1198,29 @@ function nlAiEditionPrompt(topic){
     + 'Beschikbare schermen (gebruik exact deze sleutel als relevant, anders leeg): "dashboard" (dashboard-overzicht), "spelers" (spelersdatabase), "programma" (planning/agenda), "ritten" (kilometerregistratie), "tips" (getipte spelers), "toernooien" (toernooien-overzicht).\n\n'
     + 'Geef ALLEEN geldige JSON terug (geen markdown, geen uitleg, geen ```), exact in dit format:\n'
     + '{"titel":"pakkende hoofdkop, max 90 tekens","intro":"2-4 zinnen introductie","dankwoord":{"titel":"korte titel","tekst":"kort bedankje aan testers, 2-3 zinnen"},'
-    + '"updates":[{"titel":"korte titel","tekst":"2-3 zinnen uitleg","tag":"nieuw|bugfix|coming|wip","icon":"1 relevante emoji","kleur":"red|blue|yellow|green|purple","highlight":false,"screenshot":"dashboard|spelers|programma|ritten|tips|toernooien|"}],'
+    + '"updates":[{"titel":"korte titel","tekst":"2-3 zinnen uitleg","tag":"nieuw|bugfix|coming|wip","icon":"1 relevante emoji","kleur":"red|blue|yellow|green|purple","highlight":false,"screenshots":["dashboard|spelers|programma|ritten|tips|toernooien"]}],'
     + '"aankondiging":{"titel":"korte titel of leeg","tekst":"korte tekst of leeg"}}\n\n'
     + 'Maak 2 tot 5 updates, gebaseerd op wat de beheerder heeft aangeleverd. Gebruik tag "nieuw" voor nieuwe features, "bugfix" voor opgeloste bugs, "coming" voor wat eraan komt. '
-    + 'Zet highlight:true bij hooguit 1 update (de belangrijkste). Vul "screenshot" in bij elke update die duidelijk over één van de genoemde schermen gaat (dus zoveel als logisch is, mag ook bij meerdere updates) — anders lege string. '
+    + 'Zet highlight:true bij hooguit 1 update (de belangrijkste). "screenshots" is een array van 0 tot 2 sleutels uit de lijst hierboven: kies alleen sleutels die duidelijk bij het onderwerp van díe specifieke update horen (bijv. een update over getipte spelers hoort bij "tips", niet bij "dashboard") — bij twijfel leeg laten. '
     + 'Laat "aankondiging" leeg (lege strings) als er geen apart bericht nodig is.';
+}
+// Deterministisch trefwoord-vangnet: helpt de AI (klein model, minder consequent) om
+// duidelijke gevallen niet te missen. "dashboard" wordt bewust NIET op losse woorden
+// gematcht om overtriggeren te voorkomen — dat scherm mag alleen expliciet door de AI gekozen worden.
+const NL_SCREENSHOT_KEYWORDS = {
+  tips: ['tip', 'getipte', 'getipt'],
+  ritten: ['rit', 'ritten', 'kilometer', 'km-'],
+  toernooien: ['toernooi', 'toernooien'],
+  programma: ['programma', 'planning', 'agenda'],
+  spelers: ['carrière', 'carriere', 'rapport', 'observatie', 'spelersdatabase', 'speler-profiel']
+};
+function nlSuggestScreenshotsForText(titel, tekst){
+  const text = ((titel||'')+' '+(tekst||'')).toLowerCase();
+  const hits = [];
+  for(const key in NL_SCREENSHOT_KEYWORDS){
+    if(NL_SCREENSHOT_KEYWORDS[key].some(function(kw){ return text.indexOf(kw)>=0; })) hits.push(key);
+  }
+  return hits;
 }
 async function handleAdminNewsletterAiFill(body, env, request){
   const auth = (request && request.headers && request.headers.get('Authorization')) || '';
@@ -1230,20 +1248,29 @@ async function handleAdminNewsletterAiFill(body, env, request){
     intro: clip(String(parsed.intro||'').trim(), 2000),
     dankwoord: { enabled: true, titel: clip(String(parsed.dankwoord&&parsed.dankwoord.titel||'').trim(),200), tekst: clip(String(parsed.dankwoord&&parsed.dankwoord.tekst||'').trim(),1000) },
     updates: (Array.isArray(parsed.updates)?parsed.updates:[]).slice(0,8).map(function(u){
+      const titel = clip(String(u&&u.titel||'').trim(),200);
+      const tekst = clip(String(u&&u.tekst||'').trim(),1000);
+      let screenshots = Array.isArray(u&&u.screenshots) ? u.screenshots.filter(function(s){ return validScreens.includes(s); }) : [];
+      // legacy fallback als het model nog het oude losse "screenshot"-veld teruggeeft
+      if(!screenshots.length && u && validScreens.includes(u.screenshot)) screenshots = [u.screenshot];
+      // keyword-vangnet: voeg duidelijke gemiste treffers toe, AI-keuzes blijven leidend
+      const suggested = nlSuggestScreenshotsForText(titel, tekst);
+      suggested.forEach(function(s){ if(screenshots.length<2 && !screenshots.includes(s)) screenshots.push(s); });
+      screenshots = Array.from(new Set(screenshots)).slice(0,2);
       return {
-        titel: clip(String(u&&u.titel||'').trim(),200),
-        tekst: clip(String(u&&u.tekst||'').trim(),1000),
+        titel: titel,
+        tekst: tekst,
         tag: validTags.includes(u&&u.tag) ? u.tag : 'coming',
         icon: clip(String(u&&u.icon||'📌').trim(),10) || '📌',
         kleur: validKleur.includes(u&&u.kleur) ? u.kleur : 'blue',
         highlight: !!(u&&u.highlight),
-        screenshot: validScreens.includes(u&&u.screenshot) ? u.screenshot : ''
+        screenshots: screenshots
       };
     }).filter(function(u){ return u.titel||u.tekst; }),
     aankondiging: { enabled: !!(parsed.aankondiging&&(parsed.aankondiging.titel||parsed.aankondiging.tekst)), icon:'📖', titel: clip(String(parsed.aankondiging&&parsed.aankondiging.titel||'').trim(),200), tekst: clip(String(parsed.aankondiging&&parsed.aankondiging.tekst||'').trim(),1000) },
     whatsapp: { enabled:false, nummer:'', tekst:'' }
   };
-  if(!edition.updates.length) edition.updates.push({titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false});
+  if(!edition.updates.length) edition.updates.push({titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false,screenshots:[]});
   return json({ ok:true, edition });
 }
 
@@ -1501,19 +1528,20 @@ async function nlFetchScreenshot(screenKey){
 }
 // Haalt elke unieke gevraagde screenshot maar 1x op (hergebruikt voor alle ontvangers).
 async function nlPrefetchScreenshots(ed){
-  const keys = Array.from(new Set((Array.isArray(ed.updates)?ed.updates:[]).map(u=>u&&u.screenshot).filter(Boolean)));
+  const keys = Array.from(new Set((Array.isArray(ed.updates)?ed.updates:[]).flatMap(u=>Array.isArray(u&&u.screenshots)?u.screenshots:(u&&u.screenshot?[u.screenshot]:[])).filter(Boolean)));
   if(!keys.length) return {};
   const results = await Promise.all(keys.map(k=>nlFetchScreenshot(k)));
   const map = {};
   keys.forEach((k,i)=>{ if(results[i]) map[k]=results[i]; });
   return map;
 }
-function nlEditionUpdateCard(u, shotB64){
+function nlEditionUpdateCard(u, shotsB64){
   const tag = NL_TAG_STYLE[u.tag] || NL_TAG_STYLE.coming;
   const iconBg = NL_ICON_BG[u.kleur] || NL_ICON_BG.red;
   const iconGlow = NL_ICON_GLOW[u.kleur] || NL_ICON_GLOW.red;
   const highlightStyle = u.highlight ? 'border-color:rgba(232,37,26,0.3);background:linear-gradient(135deg, #1f1624 0%, #1a2236 100%);' : 'background:#1a2236;border:1px solid #1e2d45;';
-  const shotHtml = shotB64 ? '<img src="data:image/png;base64,'+shotB64+'" alt="Screenshot" style="display:block;width:100%;border-radius:8px;margin-top:12px;border:1px solid #1e2d45;">' : '';
+  const shots = (Array.isArray(shotsB64) ? shotsB64 : (shotsB64 ? [shotsB64] : [])).filter(Boolean);
+  const shotHtml = shots.map(function(b64){ return '<img src="data:image/png;base64,'+b64+'" alt="Screenshot" style="display:block;width:100%;border-radius:8px;margin-top:12px;border:1px solid #1e2d45;">'; }).join('');
   return '<div style="'+highlightStyle+'border-radius:10px;padding:18px 20px;margin-bottom:10px;">'
     + '<div style="display:flex;gap:14px;align-items:flex-start;">'
     + '<div style="width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:1px;background:'+iconBg+';box-shadow:0 0 14px '+iconGlow+';">'+shEsc(u.icon||'📌')+'</div>'
@@ -1550,7 +1578,11 @@ async function nlBuildEditionHtml(env, ed, unsubEmail, shots){
   if(updates.length){
     const shotsMap = shots || {};
     updatesHtml = nlSectionLabel('#E8251A','Wat er aankomt')
-      + '<div style="padding:0 40px 28px;">' + updates.map(u=>nlEditionUpdateCard(u, u.screenshot?shotsMap[u.screenshot]:null)).join('') + '</div>';
+      + '<div style="padding:0 40px 28px;">' + updates.map(function(u){
+        const keys = Array.isArray(u.screenshots) ? u.screenshots : (u.screenshot ? [u.screenshot] : []);
+        const imgs = keys.map(function(k){ return shotsMap[k]; }).filter(Boolean);
+        return nlEditionUpdateCard(u, imgs);
+      }).join('') + '</div>';
   }
 
   let announceHtml = '';

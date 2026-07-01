@@ -32400,7 +32400,7 @@ function _admMbContactOptions(){
   return Object.keys(set).sort().map(function(k){ return '<option value="'+_bhEsc(set[k])+'">'; }).join('');
 }
 
-function _admMbSwitch(type){ _admMb.type=type; _admMb.folder='inbox'; _admMbRebuild(); }
+function _admMbSwitch(type){ _admMbSelected={}; _admMb.type=type; _admMb.folder='inbox'; _admMbRebuild(); }
 window._admMbSwitch=_admMbSwitch;
 
 function _admMbDrafts(){ try{ return JSON.parse(localStorage.getItem('sh_mb_drafts')||'[]'); }catch(_){return[];} }
@@ -32424,6 +32424,7 @@ function _admMbNav(folder){
       }
     }
   }
+  _admMbSelected={};
   _admMb.folder=folder; _admMbRebuild();
 }
 window._admMbNav=_admMbNav;
@@ -32611,48 +32612,60 @@ window._admNlSetMode=function(mode){
 };
 var _admNlTagOpts=[['nieuw','Nieuw'],['bugfix','Bugfix komt eraan'],['coming','Komt eraan'],['wip','Werk in uitvoering']];
 var _admNlKleurOpts=['red','blue','yellow','green','purple'];
+function _admNlFieldLabel(text){ return '<div class="adm-nl-flabel">'+text+'</div>'; }
 function _admNlRenderEditionForm(){
   var host=document.getElementById('adm-nl-edition-form'); if(!host) return;
   var ed=_admNlEdition||_admNlDefaultEdition();
   var updatesHtml=(ed.updates||[]).map(function(u,i){
     return '<div class="adm-nl-upd-card" style="border:1px solid #1f2937;border-radius:8px;padding:10px;margin-bottom:8px;">'
-      +'<div style="display:flex;gap:6px;margin-bottom:6px;">'
-        +'<input class="adm-compose-input" data-ued="'+i+'" data-uf="titel" placeholder="Titel update" value="'+_bhEsc(u.titel||'')+'" style="flex:1;">'
-        +'<button class="adm-btn-ghost" onclick="_admNlRemoveUpdate('+i+')" title="Verwijderen" style="flex:0 0 auto;">✕</button>'
-      +'</div>'
-      +'<textarea class="adm-compose-input" data-ued="'+i+'" data-uf="tekst" placeholder="Tekst" rows="2" style="margin-bottom:6px;">'+_bhEsc(u.tekst||'')+'</textarea>'
-      +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">'
-        +'<select class="bh-select" data-ued="'+i+'" data-uf="tag">'+_admNlTagOpts.map(function(t){return '<option value="'+t[0]+'"'+(u.tag===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select>'
-        +'<select class="bh-select" data-ued="'+i+'" data-uf="kleur">'+_admNlKleurOpts.map(function(k){return '<option value="'+k+'"'+(u.kleur===k?' selected':'')+'>'+k+'</option>';}).join('')+'</select>'
-        +'<input class="adm-compose-input" data-ued="'+i+'" data-uf="icon" value="'+_bhEsc(u.icon||'📌')+'" style="width:50px;text-align:center;">'
-        +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;"><input type="checkbox" data-ued="'+i+'" data-uf="highlight"'+(u.highlight?' checked':'')+'> Uitgelicht</label>'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;"><span style="font-size:.72rem;color:#8b97ad;font-weight:700;">UPDATE '+(i+1)+'</span>'
+        +'<button class="adm-btn-ghost" onclick="_admNlRemoveUpdate('+i+')" title="Verwijderen">✕ Verwijderen</button></div>'
+      +_admNlFieldLabel('Titel')
+      +'<input class="adm-compose-input" data-ued="'+i+'" data-uf="titel" placeholder="Bijv. Carrièreverloop per speler" value="'+_bhEsc(u.titel||'')+'" style="margin-bottom:6px;">'
+      +_admNlFieldLabel('Tekst')
+      +'<textarea class="adm-compose-input" data-ued="'+i+'" data-uf="tekst" placeholder="Korte uitleg van deze update" rows="2" style="margin-bottom:6px;">'+_bhEsc(u.tekst||'')+'</textarea>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:flex-end;">'
+        +'<div><div class="adm-nl-flabel">Label</div><select class="bh-select" data-ued="'+i+'" data-uf="tag">'+_admNlTagOpts.map(function(t){return '<option value="'+t[0]+'"'+(u.tag===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select></div>'
+        +'<div><div class="adm-nl-flabel">Kleur icoon</div><select class="bh-select" data-ued="'+i+'" data-uf="kleur">'+_admNlKleurOpts.map(function(k){return '<option value="'+k+'"'+(u.kleur===k?' selected':'')+'>'+k+'</option>';}).join('')+'</select></div>'
+        +'<div><div class="adm-nl-flabel">Emoji</div><input class="adm-compose-input" data-ued="'+i+'" data-uf="icon" value="'+_bhEsc(u.icon||'📌')+'" style="width:50px;text-align:center;"></div>'
+        +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;padding-bottom:9px;"><input type="checkbox" data-ued="'+i+'" data-uf="highlight"'+(u.highlight?' checked':'')+'> Uitgelicht (grotere nadruk)</label>'
       +'</div>'
     +'</div>';
   }).join('');
   host.innerHTML=
-    '<div style="display:flex;gap:8px;margin-bottom:8px;">'
-      +'<input class="adm-compose-input" id="adm-ed-maand" placeholder="Maand (bijv. Medio Juli 2026)" value="'+_bhEsc(ed.maand||'')+'" style="flex:1;">'
-      +'<input class="adm-compose-input" id="adm-ed-nummer" placeholder="Editie #" value="'+_bhEsc(ed.nummer||'')+'" style="width:80px;">'
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'
+      +'<span class="bh-stat-note" style="margin:0;">Vul zelf in, of start met het voorbeeld van je eerste editie.</span>'
+      +'<button class="adm-btn-ghost" onclick="_admNlFillExample()">✨ Voorbeeld invullen</button>'
     +'</div>'
-    +'<input class="adm-compose-input" id="adm-ed-titel" placeholder="Titel (hoofdkop)" value="'+_bhEsc(ed.titel||'')+'" style="margin-bottom:8px;">'
-    +'<textarea class="adm-compose-input" id="adm-ed-intro" placeholder="Intro-tekst" rows="3" style="margin-bottom:10px;">'+_bhEsc(ed.intro||'')+'</textarea>'
+    +'<div style="display:flex;gap:8px;margin-bottom:8px;">'
+      +'<div style="flex:1;">'+_admNlFieldLabel('Maand / editielabel')+'<input class="adm-compose-input" id="adm-ed-maand" placeholder="Bijv. Medio Juli 2026" value="'+_bhEsc(ed.maand||'')+'"></div>'
+      +'<div style="width:90px;">'+_admNlFieldLabel('Editie #')+'<input class="adm-compose-input" id="adm-ed-nummer" placeholder="1" value="'+_bhEsc(ed.nummer||'')+'"></div>'
+    +'</div>'
+    +_admNlFieldLabel('Titel (hoofdkop, groot bovenaan)')
+    +'<input class="adm-compose-input" id="adm-ed-titel" placeholder="Bijv. Dit is de eerste ScoutingHub nieuwsbrief" value="'+_bhEsc(ed.titel||'')+'" style="margin-bottom:8px;">'
+    +_admNlFieldLabel('Intro-tekst')
+    +'<textarea class="adm-compose-input" id="adm-ed-intro" placeholder="Korte introductie, 2-4 zinnen" rows="3" style="margin-bottom:10px;">'+_bhEsc(ed.intro||'')+'</textarea>'
     +'<div class="adm-nl-section-hd" style="font-size:.85rem;">Dankwoord</div>'
-    +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;margin-bottom:6px;"><input type="checkbox" id="adm-ed-dank-on"'+(ed.dankwoord&&ed.dankwoord.enabled?' checked':'')+'> Tonen</label>'
-    +'<input class="adm-compose-input" id="adm-ed-dank-titel" placeholder="Titel dankwoord" value="'+_bhEsc((ed.dankwoord&&ed.dankwoord.titel)||'')+'" style="margin-bottom:6px;">'
-    +'<textarea class="adm-compose-input" id="adm-ed-dank-tekst" placeholder="Tekst dankwoord" rows="2" style="margin-bottom:10px;">'+_bhEsc((ed.dankwoord&&ed.dankwoord.tekst)||'')+'</textarea>'
-    +'<div class="adm-nl-section-hd" style="font-size:.85rem;">Updates</div>'
+    +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;margin-bottom:6px;"><input type="checkbox" id="adm-ed-dank-on"'+(ed.dankwoord&&ed.dankwoord.enabled?' checked':'')+'> Tonen (groen kader bovenaan, bedankje aan testers)</label>'
+    +_admNlFieldLabel('Titel')
+    +'<input class="adm-compose-input" id="adm-ed-dank-titel" placeholder="Bijv. Nogmaals dank dat jullie mee willen testen" value="'+_bhEsc((ed.dankwoord&&ed.dankwoord.titel)||'')+'" style="margin-bottom:6px;">'
+    +_admNlFieldLabel('Tekst')
+    +'<textarea class="adm-compose-input" id="adm-ed-dank-tekst" placeholder="Bedankje-tekst" rows="2" style="margin-bottom:10px;">'+_bhEsc((ed.dankwoord&&ed.dankwoord.tekst)||'')+'</textarea>'
+    +'<div class="adm-nl-section-hd" style="font-size:.85rem;">Updates &mdash; wat er aankomt of veranderd is</div>'
     +updatesHtml
     +'<button class="adm-btn-ghost" onclick="_admNlAddUpdate()" style="margin-bottom:10px;">＋ Update toevoegen</button>'
-    +'<div class="adm-nl-section-hd" style="font-size:.85rem;">Aankondiging (los blok)</div>'
-    +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;margin-bottom:6px;"><input type="checkbox" id="adm-ed-ann-on"'+(ed.aankondiging&&ed.aankondiging.enabled?' checked':'')+'> Tonen</label>'
+    +'<div class="adm-nl-section-hd" style="font-size:.85rem;">Aankondiging (los kader, apart van updates)</div>'
+    +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;margin-bottom:6px;"><input type="checkbox" id="adm-ed-ann-on"'+(ed.aankondiging&&ed.aankondiging.enabled?' checked':'')+'> Tonen (bijv. voor een handleiding of los bericht)</label>'
     +'<div style="display:flex;gap:6px;margin-bottom:6px;">'
-      +'<input class="adm-compose-input" id="adm-ed-ann-icon" value="'+_bhEsc((ed.aankondiging&&ed.aankondiging.icon)||'📖')+'" style="width:50px;text-align:center;">'
-      +'<input class="adm-compose-input" id="adm-ed-ann-titel" placeholder="Titel aankondiging" value="'+_bhEsc((ed.aankondiging&&ed.aankondiging.titel)||'')+'" style="flex:1;">'
+      +'<div>'+_admNlFieldLabel('Emoji')+'<input class="adm-compose-input" id="adm-ed-ann-icon" value="'+_bhEsc((ed.aankondiging&&ed.aankondiging.icon)||'📖')+'" style="width:50px;text-align:center;"></div>'
+      +'<div style="flex:1;">'+_admNlFieldLabel('Titel')+'<input class="adm-compose-input" id="adm-ed-ann-titel" placeholder="Bijv. Handleiding wedstrijdflow komt eraan" value="'+_bhEsc((ed.aankondiging&&ed.aankondiging.titel)||'')+'"></div>'
     +'</div>'
-    +'<textarea class="adm-compose-input" id="adm-ed-ann-tekst" placeholder="Tekst aankondiging" rows="2" style="margin-bottom:10px;">'+_bhEsc((ed.aankondiging&&ed.aankondiging.tekst)||'')+'</textarea>'
+    +_admNlFieldLabel('Tekst')
+    +'<textarea class="adm-compose-input" id="adm-ed-ann-tekst" placeholder="Uitleg van de aankondiging" rows="2" style="margin-bottom:10px;">'+_bhEsc((ed.aankondiging&&ed.aankondiging.tekst)||'')+'</textarea>'
     +'<div class="adm-nl-section-hd" style="font-size:.85rem;">WhatsApp-contactknop</div>'
-    +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;margin-bottom:6px;"><input type="checkbox" id="adm-ed-wa-on"'+(ed.whatsapp&&ed.whatsapp.enabled?' checked':'')+'> Tonen</label>'
-    +'<input class="adm-compose-input" id="adm-ed-wa-nummer" placeholder="WhatsApp-nummer (bijv. +31612345678)" value="'+_bhEsc((ed.whatsapp&&ed.whatsapp.nummer)||'')+'" style="margin-bottom:10px;">';
+    +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;margin-bottom:6px;"><input type="checkbox" id="adm-ed-wa-on"'+(ed.whatsapp&&ed.whatsapp.enabled?' checked':'')+'> Tonen (naast de standaard mail/platform-knoppen)</label>'
+    +_admNlFieldLabel('WhatsApp-nummer')
+    +'<input class="adm-compose-input" id="adm-ed-wa-nummer" placeholder="Bijv. +31612345678" value="'+_bhEsc((ed.whatsapp&&ed.whatsapp.nummer)||'')+'" style="margin-bottom:10px;">';
   host.querySelectorAll('[data-ued]').forEach(function(el){
     var evt=(el.tagName==='SELECT'||el.type==='checkbox')?'change':'input';
     el.addEventListener(evt,function(){
@@ -32676,6 +32689,26 @@ function _admNlRenderEditionForm(){
   bindSimple('adm-ed-wa-on',function(){ _admNlEdition.whatsapp.enabled=this.checked; });
   bindSimple('adm-ed-wa-nummer',function(){ _admNlEdition.whatsapp.nummer=this.value; });
 }
+window._admNlFillExample=function(){
+  if(!confirm('Huidige velden overschrijven met het voorbeeld van de eerste editie?')) return;
+  _admNlEdition={
+    maand:'Medio Juli 2026', nummer:'1',
+    titel:'Dit is de eerste ScoutingHub nieuwsbrief en er komt al heel wat aan.',
+    intro:'Welkom bij de allereerste editie. ScoutingHub is nog volop in ontwikkeling en jullie zijn daar als testers het eerste getuige van. Medio juli komen de eerste concrete updates beschikbaar. In deze mail een overzicht van wat er aankomt en een korte aankondiging van de wedstrijdflow handleiding die ook deze maand jullie kant op komt.',
+    dankwoord:{enabled:true,titel:'Nogmaals dank dat jullie mee willen testen',tekst:'Dit platform wordt beter door jullie gebruik. Elke keer dat je iets omslachtig vindt, iets niet begrijpt of juist merkt dat iets goed werkt, dat is precies de informatie die nodig is. Feedback hoeft niet uitgebreid. Een appje of een paar zinnen is genoeg. Alles helpt.'},
+    updates:[
+      {titel:'Carrièreverloop per speler',tekst:'Spelers worden straks over meerdere seizoenen te volgen. Tussentijdse overstappen zijn in te voeren zodat de volledige ontwikkellijn in beeld blijft, ook als een speler van club wisselt.',tag:'nieuw',icon:'📈',kleur:'red',highlight:true},
+      {titel:'Rittenregistratie: km berekening',tekst:'Bij het invoeren van adressen worden kilometers niet berekend. Dit wordt in deze update opgelost.',tag:'bugfix',icon:'🐛',kleur:'red',highlight:false},
+      {titel:'Getipte spelers volledig werkbaar',tekst:'Getipte spelers zijn al zichtbaar in het navigatiescherm maar nog niet volledig te gebruiken. Dat wordt in deze update afgerond.',tag:'coming',icon:'📌',kleur:'yellow',highlight:false},
+      {titel:'Toernooi import via Tournify verbeterd',tekst:'De Tournify import werkte al, maar standen werden niet goed weergegeven. Dat wordt rechtgezet. Het programma-overzicht krijgt ook meer overzicht.',tag:'coming',icon:'🏆',kleur:'green',highlight:false},
+      {titel:'Interface update: rustiger en overzichtelijker',tekst:'Minder ruis, meer focus. De interface wordt wat stiller zodat de inhoud meer ruimte krijgt.',tag:'coming',icon:'🎨',kleur:'blue',highlight:false}
+    ],
+    aankondiging:{enabled:true,icon:'📖',titel:'Handleiding wedstrijdflow komt eraan',tekst:'Medio juli ontvangen jullie ook een handleiding over de workflow rondom een wedstrijd. Van het inplannen en koppelen van spelers, rapporteren langs de lijn, tot het afronden thuis op de laptop. Ook het verschil tussen een observatie en een rapport wordt daarin uitgelegd. Die handleiding komt zowel in de app als per mail jullie kant op.'},
+    whatsapp:{enabled:true,nummer:'+31625350577',tekst:'Hoi Marcel, ik heb feedback over ScoutingHub: '}
+  };
+  _admNlRenderEditionForm();
+  if(typeof toast==='function') toast('Voorbeeld ingevuld — pas aan naar wens');
+};
 window._admNlAddUpdate=function(){
   if(!_admNlEdition) _admNlEdition=_admNlDefaultEdition();
   _admNlEdition.updates.push({titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false});
@@ -32750,6 +32783,7 @@ window._admNlSend=async function(btn, cnt){
   }catch(_){ if(res) res.innerHTML='<div class="bh-empty">Versturen mislukt.</div>'; if(btn){ btn.disabled=false; btn.textContent=_o; } }
 };
 
+var _admMbSelected={};
 function _admMbRenderList(listEl, msgs, fLabel, folder, type){
   var q=(listEl.querySelector('.adm-mb-search')||{}).value||'';
   var filtered=q?msgs.filter(function(m){ return ((m.from||'')+(m.to||'')+(m.subject||'')+(m.preview||'')).toLowerCase().indexOf(q.toLowerCase())!==-1; }):msgs;
@@ -32760,10 +32794,16 @@ function _admMbRenderList(listEl, msgs, fLabel, folder, type){
     }}catch(_){}
     var who=(folder==='sent'||folder==='drafts')?_bhEsc(m.to||''):_bhEsc(m.from||'');
     var preview=m.preview?_bhEsc(String(m.preview).slice(0,90)):'';
+    var checked=_admMbSelected[m.seq]?' checked':'';
     return '<div class="adm-mb3-row'+(m.seen?' adm-mb3-read':' adm-mb3-unread')+'" data-seq="'+m.seq+'" onclick="_admMbOpenMail(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\','+m.seq+',this)">'
-      +'<div class="adm-mb3-row-top"><span class="adm-mb3-row-from">'+who+'</span><span class="adm-mb3-row-date">'+_bhEsc(dt)+'</span></div>'
-      +'<div class="adm-mb3-row-subj">'+_bhEsc(m.subject||'(geen onderwerp)')+'</div>'
-      +(preview?'<div class="adm-mb3-row-preview">'+preview+'</div>':'')
+      +'<div style="display:flex;gap:8px;align-items:flex-start;">'
+        +'<input type="checkbox" class="adm-mb3-check" data-seq="'+m.seq+'"'+checked+' onclick="event.stopPropagation(); _admMbToggleSelect('+m.seq+',this.checked,\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\')" style="margin-top:3px;flex-shrink:0;">'
+        +'<div style="flex:1;min-width:0;">'
+          +'<div class="adm-mb3-row-top"><span class="adm-mb3-row-from">'+who+'</span><span class="adm-mb3-row-date">'+_bhEsc(dt)+'</span></div>'
+          +'<div class="adm-mb3-row-subj">'+_bhEsc(m.subject||'(geen onderwerp)')+'</div>'
+          +(preview?'<div class="adm-mb3-row-preview">'+preview+'</div>':'')
+        +'</div>'
+      +'</div>'
     +'</div>';
   }).join('');
   var existSearch=listEl.querySelector('.adm-mb-search');
@@ -32771,13 +32811,52 @@ function _admMbRenderList(listEl, msgs, fLabel, folder, type){
     +'<input class="adm-mb-search adm-compose-input" style="margin:0;padding:5px 10px;font-size:.82rem;" placeholder="Zoeken…" value="'+_bhEsc(q)+'" oninput="_admMbSearch(this,\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\')" />'
     +'</div>';
   var hdHtml='<div class="adm-mb3-list-hd">'+_bhEsc(fLabel)+' <span class="adm-mb3-count">'+filtered.length+(filtered.length<msgs.length?'/'+msgs.length:'')+'</span></div>';
+  var selCount=Object.keys(_admMbSelected).length;
+  var selHtml=selCount?('<div class="adm-mb3-selbar">'+selCount+' geselecteerd &nbsp;'
+    +'<button class="adm-btn-ghost" style="color:#fca5a5;" onclick="_admMbBulkDelete(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\')">🗑 Verwijderen</button>'
+    +'<button class="adm-btn-ghost" onclick="_admMbClearSelection()">Selectie wissen</button></div>'):'';
   if(existSearch){
     var body=listEl.querySelector('.adm-mb-rows');
     if(body) body.innerHTML=rows||'<div class="bh-empty" style="padding:16px">Geen berichten gevonden.</div>';
+    var selEl=listEl.querySelector('.adm-mb3-selbar-wrap');
+    if(selEl) selEl.innerHTML=selHtml;
   } else {
-    listEl.innerHTML=searchHtml+hdHtml+'<div class="adm-mb-rows">'+rows+'</div>';
+    listEl.innerHTML=searchHtml+hdHtml+'<div class="adm-mb3-selbar-wrap">'+selHtml+'</div>'+'<div class="adm-mb-rows">'+rows+'</div>';
   }
 }
+window._admMbToggleSelect=function(seq,checked,type,folder){
+  if(checked) _admMbSelected[seq]={type:type,folder:folder}; else delete _admMbSelected[seq];
+  var wrap=document.querySelector('.adm-mb3-selbar-wrap');
+  if(wrap){
+    var selCount=Object.keys(_admMbSelected).length;
+    wrap.innerHTML=selCount?('<div class="adm-mb3-selbar">'+selCount+' geselecteerd &nbsp;'
+      +'<button class="adm-btn-ghost" style="color:#fca5a5;" onclick="_admMbBulkDelete(\''+_bhEsc(type)+'\',\''+_bhEsc(folder)+'\')">🗑 Verwijderen</button>'
+      +'<button class="adm-btn-ghost" onclick="_admMbClearSelection()">Selectie wissen</button></div>'):'';
+  }
+};
+window._admMbClearSelection=function(){
+  _admMbSelected={};
+  document.querySelectorAll('.adm-mb3-check').forEach(function(c){ c.checked=false; });
+  var wrap=document.querySelector('.adm-mb3-selbar-wrap'); if(wrap) wrap.innerHTML='';
+};
+window._admMbBulkDelete=async function(type,folder){
+  var seqs=Object.keys(_admMbSelected);
+  if(!seqs.length) return;
+  var permanent=folder==='trash';
+  if(!confirm((permanent?'Deze '+seqs.length+' berichten definitief verwijderen? Dit kan niet ongedaan gemaakt worden.':'Deze '+seqs.length+' berichten verplaatsen naar Verwijderd?'))) return;
+  var tk=await _admToken(); if(!tk) return;
+  var ok=0, failed=0;
+  for(var i=0;i<seqs.length;i++){
+    try{
+      var r=await fetch(_admBase()+'/api/admin-mail-delete',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,folder:folder,seq:parseInt(seqs[i],10)})});
+      var j={}; try{ j=await r.json(); }catch(_){}
+      if(r.ok&&j&&j.ok) ok++; else failed++;
+    }catch(_){ failed++; }
+  }
+  _admMbSelected={};
+  if(typeof toast==='function') toast(ok+' verwijderd'+(failed?(', '+failed+' mislukt'):''));
+  var listEl=document.getElementById('adm-mb3-list'); if(listEl) _admMbLoadFolder(listEl, type, folder);
+};
 window._admMbSearch=function(inp, type, folder){
   var listEl=document.getElementById('adm-mb3-list'); if(!listEl) return;
   var key=type+'/'+folder;

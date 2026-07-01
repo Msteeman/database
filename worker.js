@@ -2224,6 +2224,19 @@ async function handleAdminNewsletterList(body, env, request){
   return json({ ok:true, subscribers: subs });
 }
 
+async function handleAdminNewsletterHistory(body, env, request){
+  const auth = (request && request.headers && request.headers.get('Authorization')) || '';
+  const idToken = auth.indexOf('Bearer ')===0 ? auth.slice(7) : (body.idToken || '');
+  if(!idToken) return json({ ok:false, error:'Niet geautoriseerd' }, 401);
+  const caller = await verifyCallerToken(env, idToken);
+  if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
+  let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
+  if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
+  const items = await saFsList(saToken, 'newsletter_sends', 200);
+  items.sort(function(a,b){ return new Date(b.sentAt||0)-new Date(a.sentAt||0); });
+  return json({ ok:true, items });
+}
+
 /* ============================================================ *
  * HANDLER — newsletter-unsubscribe (publiek, één-klik, GET)
  * Geverifieerd via HMAC-signature (TURNSTILE_SECRET), geen auth nodig.
@@ -2310,6 +2323,13 @@ async function handleAdminNewsletterSend(body, env, request){
       if(ok) sent++; else failed++;
     }catch(_){ failed++; }
   }
+  try{
+    await saFsCreate(saToken, 'newsletter_sends', {
+      subject, mode, sent, failed, total: subs.length,
+      preview: (mode==='edition' ? (body.edition&&body.edition.intro||'') : (body.message||'')).slice(0,300),
+      sentBy: caller.email || caller.uid || '', sentAt: new Date().toISOString(), auto:false
+    });
+  }catch(_){}
   return json({ ok:true, sent, failed, total:subs.length });
 }
 
@@ -3079,6 +3099,13 @@ export default {
       catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
     }
 
+    if (path.endsWith('/api/admin-newsletter-history') || path.endsWith('/admin-newsletter-history')) {
+      if (request.method !== 'POST') return json({ error: 'Gebruik POST' }, 405);
+      let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
+      try { return await handleAdminNewsletterHistory((b && typeof b==='object') ? b : {}, env, request); }
+      catch(err){ return json({ ok:false, error:'Onverwachte fout' }, 500); }
+    }
+
     if (path.endsWith('/api/admin-newsletter-send') || path.endsWith('/admin-newsletter-send')) {
       if (request.method !== 'POST') return json({ error: 'Gebruik POST' }, 405);
       let b = {}; try { b = await request.json(); } catch(_){ b = {}; }
@@ -3140,8 +3167,16 @@ async function handleScheduledNewsletter(env){
     const all = await saFsList(saToken, 'access_requests', 500);
     const subs = all.filter(function(x){ return x.newsletterOptIn===true && x.email; });
     if(!subs.length) return;
+    let sent = 0, failed = 0;
     for(const sub of subs){
-      try{ await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: await buildHtml(sub.email), text }); }catch(_){}
+      try{ const ok = await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: await buildHtml(sub.email), text }); if(ok) sent++; else failed++; }catch(_){ failed++; }
     }
+    try{
+      await saFsCreate(saToken, 'newsletter_sends', {
+        subject, mode: isEdition?'edition':'text', sent, failed, total: subs.length,
+        preview: (isEdition ? (draft.edition&&draft.edition.intro||'') : (draft.message||'')).slice(0,300),
+        sentBy: 'automatisch (1e van de maand)', sentAt: new Date().toISOString(), auto:true
+      });
+    }catch(_){}
   }catch(_){}
 }

@@ -32373,9 +32373,10 @@ function _admMbRebuild(){
     ['sent','Verzonden'],
     ['drafts','Concepten'+(draftCount?'<span class="adm-mb-badge adm-mb-badge-grey">'+draftCount+'</span>':'')],
     ['trash','Verwijderd'],
-    ['newsletter','Nieuwsbrief']
+    ['newsletter','Nieuwsbrief'],
+    ['newsletter-history','Verzonden nieuwsbrieven']
   ];
-  var sideIcons={compose:'&#9998;',inbox:'&#9993;',sent:'&#10148;',drafts:'&#9999;',trash:'&#128465;',newsletter:'&#128507;'};
+  var sideIcons={compose:'&#9998;',inbox:'&#9993;',sent:'&#10148;',drafts:'&#9999;',trash:'&#128465;',newsletter:'&#128507;','newsletter-history':'&#128203;'};
   var side=sideItems.map(function(s){
     return '<button class="adm-mb-side'+(s[0]===_admMb.folder?' adm-mb-side-active':'')+'" onclick="_admMbNav(\''+s[0]+'\')">'
       +'<span class="adm-mb-side-icon">'+(sideIcons[s[0]]||'')+'</span>'+s[1]+'</button>';
@@ -32449,6 +32450,12 @@ function _admMbLoadPane(){
     if(bodyEl) bodyEl.classList.add('adm-mb3-body-wide');
     list.innerHTML='';
     _admMbRenderNewsletter(detail);
+    return;
+  }
+  if(_admMb.folder==='newsletter-history'){
+    if(bodyEl) bodyEl.classList.add('adm-mb3-body-wide');
+    list.innerHTML='';
+    _admMbRenderNewsletterHistory(detail);
     return;
   }
   if(bodyEl) bodyEl.classList.remove('adm-mb3-body-wide');
@@ -32612,6 +32619,43 @@ window._admNlSetMode=function(mode){
 };
 var _admNlTagOpts=[['nieuw','Nieuw'],['bugfix','Bugfix komt eraan'],['coming','Komt eraan'],['wip','Werk in uitvoering']];
 var _admNlKleurOpts=['red','blue','yellow','green','purple'];
+async function _admMbRenderNewsletterHistory(pane){
+  if(!pane) return;
+  pane.innerHTML='<div class="adm-loading">Verzendgeschiedenis laden…</div>';
+  var items=[];
+  try{
+    var tk=await _admToken(); if(!tk){ pane.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
+    var r=await fetch(_admBase()+'/api/admin-newsletter-history',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({})});
+    var j={};try{j=await r.json();}catch(_){}
+    if(r.ok&&j&&j.ok) items=j.items||[];
+    else { pane.innerHTML='<div class="adm-mb3-detail-inner"><div class="adm-mb3-detail-hd"><div class="adm-mb3-detail-subj">Verzonden nieuwsbrieven</div></div><div class="bh-empty">Laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div></div>'; return; }
+  }catch(_){ pane.innerHTML='<div class="bh-empty">Laden mislukt.</div>'; return; }
+  var rowsHtml=items.length
+    ? items.map(function(it){
+        var dt=''; try{ dt=new Date(it.sentAt).toLocaleString('nl-NL',{day:'numeric',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}); }catch(_){}
+        var modeLbl=it.mode==='edition'?'Nieuwsbrief-editie':'Platte tekst';
+        return '<div class="adm-nl-hist-row" style="border:1px solid #1f2937;border-radius:8px;padding:12px 14px;margin-bottom:8px;">'
+          +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">'
+            +'<div><b>'+_bhEsc(it.subject||'(geen titel)')+'</b>'
+              +(it.auto?' <span class="bh-badge bh-b-blue">automatisch</span>':'')
+              +'<div style="font-size:11.5px;color:#8b97ad;margin-top:2px;">'+_bhEsc(dt)+' &middot; '+_bhEsc(modeLbl)+' &middot; door '+_bhEsc(it.sentBy||'—')+'</div>'
+            +'</div>'
+            +'<div style="text-align:right;flex-shrink:0;">'
+              +'<span class="bh-badge bh-b-green">'+(it.sent||0)+' verstuurd</span>'
+              +(it.failed?(' <span class="bh-badge bh-b-red">'+it.failed+' mislukt</span>'):'')
+            +'</div>'
+          +'</div>'
+          +(it.preview?('<div style="font-size:12.5px;color:#9aa8bd;margin-top:8px;white-space:pre-wrap;">'+_bhEsc(it.preview)+(it.preview.length>=300?'…':'')+'</div>'):'')
+        +'</div>';
+      }).join('')
+    : '<div class="bh-empty">Nog geen nieuwsbrieven verstuurd.</div>';
+  pane.innerHTML='<div class="adm-mb3-detail-inner">'
+    +'<div class="adm-mb3-detail-hd"><div class="adm-mb3-detail-subj">Verzonden nieuwsbrieven</div></div>'
+    +'<div style="padding:16px;overflow-y:auto;">'+rowsHtml+'</div>'
+  +'</div>';
+}
+window._admMbRenderNewsletterHistory=_admMbRenderNewsletterHistory;
+
 function _admNlFieldLabel(text){ return '<div class="adm-nl-flabel">'+text+'</div>'; }
 function _admNlRenderEditionForm(){
   var host=document.getElementById('adm-nl-edition-form'); if(!host) return;

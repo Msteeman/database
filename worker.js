@@ -1332,6 +1332,49 @@ async function hmacVerify(secret, msg, sig){
   for(let i=0;i<expected.length;i++) diff |= expected.charCodeAt(i) ^ String(sig||'').charCodeAt(i);
   return diff === 0;
 }
+// Zet platte tekst (met optioneel lichte markdown) om naar een verzorgde nieuwsbrief-HTML-body.
+// Ondersteund: "# Kop", "## Subkop", "- item"/"* item" lijsten, "1. item" genummerde lijsten,
+// "**vet**", "---" als scheidingslijn. Losse korte regel (geen leesteken aan het eind,
+// max ~80 tekens) zonder markdown wordt automatisch als kop herkend.
+function nlInlineFormat(s){
+  let out = shEsc(s);
+  out = out.replace(/\*\*(.+?)\*\*/g, '<strong style="color:#f5f7fa;">$1</strong>');
+  return out;
+}
+function nlFormatBody(message){
+  const raw = String(message||'').replace(/\r\n/g,'\n').trim();
+  if(!raw) return '';
+  const blocks = raw.split(/\n{2,}/);
+  const H2 = 'margin:26px 0 12px;font-size:19px;line-height:1.3;color:#f5f7fa;font-weight:800;font-family:'+MAIL_FONT+';';
+  const H3 = 'margin:20px 0 8px;font-size:16px;line-height:1.3;color:#f5f7fa;font-weight:700;font-family:'+MAIL_FONT+';';
+  const UL = 'margin:0 0 14px;padding-left:22px;color:#c7d0dc;font-size:15px;line-height:1.7;font-family:'+MAIL_FONT+';';
+  const HR = 'border:none;border-top:1px solid #1f2937;margin:22px 0;';
+  let html = '';
+  for(const block of blocks){
+    const lines = block.split('\n').map(l=>l.trim()).filter(Boolean);
+    if(!lines.length) continue;
+    if(/^-{3,}$/.test(lines[0]) && lines.length===1){ html += '<hr style="'+HR+'">'; continue; }
+    if(/^##\s+/.test(lines[0])){ html += '<h3 style="'+H3+'">'+nlInlineFormat(lines[0].replace(/^##\s+/,''))+'</h3>'; continue; }
+    if(/^#\s+/.test(lines[0])){ html += '<h2 style="'+H2+'">'+nlInlineFormat(lines[0].replace(/^#\s+/,''))+'</h2>'; continue; }
+    const isBulletList = lines.every(l=>/^[-*]\s+/.test(l));
+    if(isBulletList){
+      html += '<ul style="'+UL+'">'+lines.map(l=>'<li style="margin-bottom:5px;">'+nlInlineFormat(l.replace(/^[-*]\s+/,''))+'</li>').join('')+'</ul>';
+      continue;
+    }
+    const isNumList = lines.every(l=>/^\d+\.\s+/.test(l));
+    if(isNumList){
+      html += '<ol style="'+UL+'">'+lines.map(l=>'<li style="margin-bottom:5px;">'+nlInlineFormat(l.replace(/^\d+\.\s+/,''))+'</li>').join('')+'</ol>';
+      continue;
+    }
+    // Losse, korte regel zonder eindpunt/komma → automatisch als kop
+    if(lines.length===1 && lines[0].length<=80 && !/[.,;:!?]$/.test(lines[0]) && !/^https?:\/\//i.test(lines[0])){
+      html += '<h2 style="'+H2+'">'+nlInlineFormat(lines[0])+'</h2>';
+      continue;
+    }
+    html += '<p style="'+MAIL_P+'">'+lines.map(nlInlineFormat).join('<br>')+'</p>';
+  }
+  return html;
+}
 async function mailShell(env, title, bodyHtml, opts){
   const base = appBaseUrl(env); const ce = contactEmail(env); const host = base.replace(/^https?:\/\//,'');
   const unsubEmail = (opts && opts.unsubscribeEmail) || '';
@@ -2105,8 +2148,7 @@ async function handleAdminNewsletterSend(body, env, request){
   if(!subject||!message) return json({ ok:false, error:'Onderwerp en bericht zijn verplicht' }, 400);
   const testEmailsRaw = clip(String(body.testEmail||'').trim(), 500);
   const testEmails = testEmailsRaw.split(/[\s,;]+/).map(function(s){ return s.trim().toLowerCase(); }).filter(function(s){ return s && shValidEmail(s); }).filter(function(v,i,arr){ return arr.indexOf(v)===i; }).slice(0,10);
-  const paragraphs = message.split(/\n{2,}/).map(function(p){ return '<p style="'+MAIL_P+'">'+shEsc(p).replace(/\n/g,'<br>')+'</p>'; }).join('');
-  const htmlBody = paragraphs
+  const htmlBody = nlFormatBody(message)
     + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>';
   const text = message + '\n\nMet vriendelijke groet,\nTeam ScoutingHub\n\nAfmelden: stuur een mail naar contact@scoutinghub.nl';
   if(testEmails.length){
@@ -2925,8 +2967,7 @@ async function handleScheduledNewsletter(env){
     const all = await saFsList(saToken, 'access_requests', 500);
     const subs = all.filter(function(x){ return x.newsletterOptIn===true && x.email; });
     if(!subs.length) return;
-    const paragraphs = message.split(/\n{2,}/).map(function(p){ return '<p style="'+MAIL_P+'">'+shEsc(p).replace(/\n/g,'<br>')+'</p>'; }).join('');
-    const htmlBody = paragraphs
+    const htmlBody = nlFormatBody(message)
       + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>';
     const text = message+'\n\nMet vriendelijke groet,\nTeam ScoutingHub\n\nAfmelden: stuur een mail naar contact@scoutinghub.nl';
     for(const sub of subs){

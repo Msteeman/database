@@ -32537,7 +32537,8 @@ async function _admMbRenderNewsletter(pane){
         +'<div class="adm-nl-section-hd">Concept'+(savedAt?'<span class="adm-nl-saved-note"> - opgeslagen '+savedAt+'</span>':'')+'</div>'
         +'<input class="adm-compose-input" id="adm-nl-to" placeholder="Aan (leeg = alle abonnees; voor test 1 of meer adressen, gescheiden door komma of spatie)" autocomplete="off" oninput="_admNlUpdateSendLabel('+subs.length+')" style="margin-bottom:8px;">'
         +'<input class="adm-compose-input" id="adm-nl-subj" placeholder="Onderwerp" value="'+_bhEsc(savedSubj)+'" style="margin-bottom:8px;">'
-        +'<textarea class="adm-compose-input" id="adm-nl-msg" placeholder="Bericht (platte tekst of HTML)…" rows="8" style="min-height:160px;resize:vertical;">'+_bhEsc(savedMsg)+'</textarea>'
+        +'<textarea class="adm-compose-input" id="adm-nl-msg" placeholder="Bericht — losse titelregel wordt automatisch een kop. # Kop, ## Subkop, - lijstitem, **vet** werken ook. Lege regel = nieuwe alinea." rows="8" style="min-height:160px;resize:vertical;">'+_bhEsc(savedMsg)+'</textarea>'
+        +'<div class="bh-stat-note" style="margin:4px 0 0;">Opmaak: losse korte regel = kop &middot; <code># Kop</code> / <code>## Subkop</code> &middot; <code>- item</code> voor lijst &middot; <code>**vet**</code></div>'
         +'<div class="adm-nl-autosend">'
           +'<label class="adm-nl-toggle"><input type="checkbox" id="adm-nl-auto"'+(autoSend?' checked':'')+'> <span>Automatisch versturen op 1e van de maand om 07:00</span></label>'
           +(autoSend?'<div class="adm-nl-next">Volgende verzending: '+next1Lbl+'</div>':'')

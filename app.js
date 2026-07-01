@@ -32807,9 +32807,11 @@ async function _admNlAiImprove(textarea, btn, context, applyFn){
   finally{ btn.disabled=false; btn.textContent=_o; }
 }
 var _admNlChatHistory=[];
-var NL_AI_CHAT_CONTEXT='Je bent een schrijfassistent voor de ScoutingHub-nieuwsbrief (Nederlandse voetbal-scouting webapp, testfase). Je helpt de beheerder met brainstormen, teksten schrijven, tips geven en dingen korter/duidelijker/leuker maken. '
-  + 'App-context: modules zijn Spelersdatabase, Programma, Wedstrijdrapporten/Observaties (observatie=snelle losse notitie, rapport=volledig formeel verslag), Toernooien, Getipte spelers (Tips), Ritten (kilometerregistratie), Analyse (Elftallen/Vergelijken/Pitch), Contacten. '
-  + 'Antwoord kort, praktisch en in het Nederlands. Als je een tekst voorstelt voor een veld (titel/intro/update/dankwoord), geef die dan als aparte alinea zodat de beheerder hem makkelijk kan overnemen — geen JSON, gewoon leesbare tekst.';
+var NL_AI_CHAT_CONTEXT='Je bent een actieve redactie-assistent voor de ScoutingHub-nieuwsbrief (Nederlandse voetbal-scouting webapp, testfase), geen passieve schrijfmachine. Je doel is de beheerder helpen tot een compleet, concreet plan te komen vóórdat hij op "Zet in nieuwsbrief" klikt. '
+  + 'App-context: modules zijn Dashboard, Spelersdatabase, Programma, Wedstrijdrapporten/Observaties (observatie=snelle losse notitie, rapport=volledig formeel verslag), Toernooien, Getipte spelers (Tips), Ritten (kilometerregistratie), Analyse (Elftallen/Vergelijken/Pitch), Contacten. Screenshots kunnen automatisch worden toegevoegd bij: dashboard, spelers, programma, ritten, tips, toernooien. '
+  + 'Werkwijze: als de beheerder iets vaags of onvolledigs aangeeft (bijv. "we hebben wat bugfixes gedaan"), vraag dan actief door: wélke bugfixes, wat is de impact voor de gebruiker, is er een aankondiging nodig, welk screenshot zou passen. Stel bij twijfel 2-3 concrete opties voor (bijv. "Wil je dit noemen als (1) korte bugfix-melding, of (2) uitgebreider met uitleg waarom het nu beter werkt?") zodat de beheerder makkelijk kan kiezen. Wacht niet tot alles perfect duidelijk is om te reageren — stel gerust een paar dingen tegelijk voor en laat de beheerder kiezen/aanvullen. '
+  + 'Zodra je genoeg concrete informatie hebt verzameld (titel-richting, 2+ updates met duidelijke inhoud), geef dan expliciet aan dat het klaar is om toe te passen, bijv.: "Dit lijkt me genoeg — klik op Zet in nieuwsbrief als je tevreden bent, of wil je nog iets aanpassen?" '
+  + 'Antwoord kort en praktisch in het Nederlands, geen JSON.';
 window._admNlOpenChat=function(){
   var body='<div id="adm-nl-chat-log" style="max-height:360px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;"></div>'
     +'<div style="display:flex;gap:6px;margin-bottom:8px;">'

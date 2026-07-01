@@ -32574,7 +32574,7 @@ function _admNlDefaultEdition(){
     whatsapp:{enabled:true,nummer:'+31625350577',tekst:'Hoi, ik heb feedback over ScoutingHub: '}
   };
 }
-async function _admMbRenderNewsletter(pane){
+async function _admMbRenderNewsletter(pane, keepCurrent){
   if(!pane) return;
   pane.innerHTML='<div class="adm-loading">Nieuwsbrief laden…</div>';
   var subs=[], savedSubj='', savedMsg='', autoSend=false, savedAt='';
@@ -32585,16 +32585,21 @@ async function _admMbRenderNewsletter(pane){
     if(r.ok&&j&&j.ok) subs=j.subscribers||[];
   }catch(_){}
   _admNlSubsCount=subs.length;
-  try{
-    var draftSnap=await getDoc(doc(db,'admin_settings','newsletter_draft'));
-    if(draftSnap.exists()){
-      var dd=draftSnap.data()||{};
-      savedSubj=dd.subject||''; savedMsg=dd.message||''; autoSend=!!dd.autoSend;
-      _admNlMode=dd.mode==='edition'?'edition':'text';
-      _admNlEdition=(dd.edition&&typeof dd.edition==='object')?dd.edition:_admNlDefaultEdition();
-      if(dd.savedAt){ try{ savedAt=new Date(dd.savedAt).toLocaleString('nl-NL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(_){} }
-    } else { _admNlEdition=_admNlDefaultEdition(); }
-  }catch(_){ _admNlEdition=_admNlDefaultEdition(); }
+  if(keepCurrent){
+    // Formulier is net al gevuld (bijv. via AI-chat) — niet overschrijven met het opgeslagen concept.
+    if(!_admNlEdition) _admNlEdition=_admNlDefaultEdition();
+  } else {
+    try{
+      var draftSnap=await getDoc(doc(db,'admin_settings','newsletter_draft'));
+      if(draftSnap.exists()){
+        var dd=draftSnap.data()||{};
+        savedSubj=dd.subject||''; savedMsg=dd.message||''; autoSend=!!dd.autoSend;
+        _admNlMode=dd.mode==='edition'?'edition':'text';
+        _admNlEdition=(dd.edition&&typeof dd.edition==='object')?dd.edition:_admNlDefaultEdition();
+        if(dd.savedAt){ try{ savedAt=new Date(dd.savedAt).toLocaleString('nl-NL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(_){} }
+      } else { _admNlEdition=_admNlDefaultEdition(); }
+    }catch(_){ _admNlEdition=_admNlDefaultEdition(); }
+  }
   var now=new Date(); var nm=now.getMonth()+(now.getDate()===1&&now.getHours()<7?0:1);
   var next1=new Date(now.getFullYear()+(nm>11?1:0),(nm>11?0:nm),1,7,0,0);
   var next1Lbl=next1.toLocaleDateString('nl-NL',{day:'numeric',month:'long'})+' om 07:00';
@@ -32895,15 +32900,26 @@ window._admNlOpenChat=function(){
         throw new Error(fe&&fe.name==='AbortError' ? 'AI deed er te lang over (timeout na 45s)' : 'netwerkfout: '+(fe&&fe.message||''));
       }finally{ clearTimeout(to); }
       var j={};try{j=await r.json();}catch(_){}
+      console.log('[AI-chat apply] response:', j);
       if(!(r.ok&&j&&j.ok&&j.edition)) throw new Error((j&&j.error)||'AI kon dit niet verwerken (status '+r.status+')');
+      var ed=j.edition;
+      var hasContent=(ed.titel&&ed.titel.trim())||(ed.intro&&ed.intro.trim())||(Array.isArray(ed.updates)&&ed.updates.some(function(u){return u&&((u.titel&&u.titel.trim())||(u.tekst&&u.tekst.trim()));}));
+      if(!hasContent) throw new Error('AI gaf een leeg resultaat terug — probeer het gesprek iets uit te breiden (bijv. "zet dit erin") en klik opnieuw');
       var oldMaand=(_admNlEdition&&_admNlEdition.maand)||''; var oldNummer=(_admNlEdition&&_admNlEdition.nummer)||'';
       var oldWa=(_admNlEdition&&_admNlEdition.whatsapp)||{enabled:true,nummer:'+31625350577',tekst:''};
-      _admNlEdition=j.edition;
+      _admNlEdition=ed;
       _admNlEdition.maand=oldMaand; _admNlEdition.nummer=oldNummer; _admNlEdition.whatsapp=oldWa;
       _admNlMode='edition';
       if(typeof m.close==='function') m.close();
-      var pane=document.getElementById('adm-mb3-detail');
-      if(pane) _admMbRenderNewsletter(pane);
+      // Belangrijk: _admMbRenderNewsletter() zou het net-ingevulde resultaat weer overschrijven
+      // met het opgeslagen concept uit Firestore. Alleen het formulier zelf verversen (zoals
+      // "AI: alles invullen" ook doet), zonder Firestore opnieuw te laden.
+      if(document.getElementById('adm-nl-edition-form')){
+        _admNlRenderEditionForm();
+      } else {
+        var pane=document.getElementById('adm-mb3-detail');
+        if(pane) _admMbRenderNewsletter(pane, true);
+      }
       if(typeof toast==='function') toast('Nieuwsbrief ingevuld vanuit het gesprek — screenshots worden bij verzenden automatisch opgehaald');
     }catch(e){
       if(typeof toast==='function') toast('Toepassen mislukt: '+(e&&e.message||'onbekende fout'),true);

@@ -32900,10 +32900,9 @@ window._admNlOpenChat=function(){
           var isUser=msg.role==='user';
           var opts=isUser?[]:_admNlChatOptions(msg.text);
           var chipsHtml=opts.length
-            ? '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">'
+            ? '<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px;">'
               + opts.map(function(o,oi){
-                  var short=o.length>60?o.slice(0,57)+'…':o;
-                  return '<button class="adm-btn-ghost" data-chatchip="'+i+':'+oi+'" style="padding:3px 10px;font-size:11.5px;border-radius:14px;">'+_bhEsc(short)+'</button>';
+                  return '<button class="adm-btn-ghost" data-chatchip="'+i+':'+oi+'" style="display:block;width:100%;text-align:left;white-space:normal;word-break:break-word;padding:7px 12px;font-size:12px;line-height:1.4;border-radius:10px;">'+_bhEsc(o)+'</button>';
                 }).join('')
               + '</div>'
             : '';

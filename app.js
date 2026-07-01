@@ -32387,20 +32387,34 @@ function _admMbRebuild(){
         +'<button class="adm-nav-toggle" id="adm-mb-side-toggle" title="Mapjes in-/uitklappen" onclick="_admMbToggleSide()" style="margin-right:6px;">☰</button>'
         +tabs
       +'</div>'
-      +'<div class="adm-mb3-body' + (_admMbSideCollapsed()?' adm-mb3-side-collapsed':'') + '">'
-        +'<div class="adm-mb3-side">'+side+'</div>'
+      +'<div class="adm-mb3-body" id="adm-mb3-bodygrid">'
+        +'<div class="adm-mb3-side" id="adm-mb3-side">'+side+'</div>'
         +'<div class="adm-mb3-list" id="adm-mb3-list"><div class="adm-loading">Laden…</div></div>'
         +'<div class="adm-mb3-detail" id="adm-mb3-detail"><div class="adm-mb3-empty">Selecteer een bericht</div></div>'
       +'</div>'
     +'</div>'
     +'<datalist id="adm-mb-contacts">'+_admMbContactOptions()+'</datalist>';
   _admMbLoadPane();
+  _admMbApplySideCollapse();
 }
 function _admMbSideCollapsed(){ try{ return localStorage.getItem('sh_admmb_side_collapsed')==='1'; }catch(_){ return false; } }
+function _admMbApplySideCollapse(){
+  var bodyGrid=document.getElementById('adm-mb3-bodygrid');
+  var side=document.getElementById('adm-mb3-side');
+  if(!bodyGrid||!side) return;
+  var collapsed=_admMbSideCollapsed();
+  var isWide=bodyGrid.classList.contains('adm-mb3-body-wide');
+  side.style.display=collapsed?'none':'';
+  if(collapsed){
+    bodyGrid.style.gridTemplateColumns=isWide?'1fr':'260px 1fr';
+  } else {
+    bodyGrid.style.gridTemplateColumns='';
+  }
+}
 window._admMbToggleSide=function(){
-  var body=document.querySelector('.adm-mb3-body'); if(!body) return;
-  var collapsed=body.classList.toggle('adm-mb3-side-collapsed');
+  var collapsed=!_admMbSideCollapsed();
   try{ localStorage.setItem('sh_admmb_side_collapsed', collapsed?'1':'0'); }catch(_){}
+  _admMbApplySideCollapse();
 };
 
 function _admMbContactOptions(){
@@ -32447,29 +32461,34 @@ function _admMbLoadPane(){
     if(bodyEl) bodyEl.classList.add('adm-mb3-body-wide');
     list.innerHTML='';
     _admMbRenderCompose(detail);
+    _admMbApplySideCollapse();
     return;
   }
   if(_admMb.folder==='drafts'){
     if(bodyEl) bodyEl.classList.remove('adm-mb3-body-wide');
     detail.innerHTML='<div class="adm-mb3-empty">Selecteer een concept om te bewerken</div>';
     _admMbRenderDraftsList(list);
+    _admMbApplySideCollapse();
     return;
   }
   if(_admMb.folder==='newsletter'){
     if(bodyEl) bodyEl.classList.add('adm-mb3-body-wide');
     list.innerHTML='';
     _admMbRenderNewsletter(detail);
+    _admMbApplySideCollapse();
     return;
   }
   if(_admMb.folder==='newsletter-history'){
     if(bodyEl) bodyEl.classList.add('adm-mb3-body-wide');
     list.innerHTML='';
     _admMbRenderNewsletterHistory(detail);
+    _admMbApplySideCollapse();
     return;
   }
   if(bodyEl) bodyEl.classList.remove('adm-mb3-body-wide');
   detail.innerHTML='<div class="adm-mb3-empty">Selecteer een bericht</div>';
   _admMbLoadFolder(list, _admMb.type, _admMb.folder);
+  _admMbApplySideCollapse();
 }
 
 function _admMbRenderDraftsList(listEl){
@@ -32586,8 +32605,8 @@ async function _admMbRenderNewsletter(pane){
     :'<div class="bh-empty" style="padding:8px">Geen abonnees</div>';
   pane.innerHTML='<div class="adm-mb3-detail-inner">'
     +'<div class="adm-mb3-detail-hd"><div class="adm-mb3-detail-subj">Nieuwsbrief <button class="adm-nav-toggle" id="adm-nl-abon-toggle" title="Abonneelijst in-/uitklappen" onclick="_admNlToggleAbon()" style="margin-left:8px;vertical-align:middle;">☰</button></div></div>'
-    +'<div class="adm-nl-wrap'+(_admNlAbonCollapsed()?' adm-nl-abon-collapsed':'')+'">'
-      +'<div class="adm-nl-col-left">'
+    +'<div class="adm-nl-wrap" id="adm-nl-wrapgrid">'
+      +'<div class="adm-nl-col-left" id="adm-nl-col-left">'
         +'<div class="adm-nl-section-hd">Abonnees ('+subs.length+')</div>'
         +subsHtml
       +'</div>'
@@ -32614,12 +32633,21 @@ async function _admMbRenderNewsletter(pane){
   var cb=document.getElementById('adm-nl-auto');
   if(cb) cb.addEventListener('change',function(){ _admNlToggleAuto(this.checked); });
   if(_admNlMode==='edition') _admNlRenderEditionForm();
+  _admNlApplyAbonCollapse();
 }
 function _admNlAbonCollapsed(){ try{ return localStorage.getItem('sh_admnl_abon_collapsed')==='1'; }catch(_){ return false; } }
+function _admNlApplyAbonCollapse(){
+  var wrap=document.getElementById('adm-nl-wrapgrid');
+  var left=document.getElementById('adm-nl-col-left');
+  if(!wrap||!left) return;
+  var collapsed=_admNlAbonCollapsed();
+  left.style.display=collapsed?'none':'';
+  wrap.style.gridTemplateColumns=collapsed?'1fr':'';
+}
 window._admNlToggleAbon=function(){
-  var wrap=document.querySelector('.adm-nl-wrap'); if(!wrap) return;
-  var collapsed=wrap.classList.toggle('adm-nl-abon-collapsed');
+  var collapsed=!_admNlAbonCollapsed();
   try{ localStorage.setItem('sh_admnl_abon_collapsed', collapsed?'1':'0'); }catch(_){}
+  _admNlApplyAbonCollapse();
 };
 function _admNlTextFormHtml(savedSubj,savedMsg){
   return '<input class="adm-compose-input" id="adm-nl-subj" placeholder="Onderwerp" value="'+_bhEsc(savedSubj)+'" style="margin-bottom:8px;">'
@@ -32634,6 +32662,7 @@ window._admNlSetMode=function(mode){
 };
 var _admNlTagOpts=[['nieuw','Nieuw'],['bugfix','Bugfix komt eraan'],['coming','Komt eraan'],['wip','Werk in uitvoering']];
 var _admNlScreenshotOpts=[['','Geen'],['dashboard','Dashboard'],['spelers','Spelersdatabase'],['programma','Programma'],['ritten','Ritten'],['tips','Getipte spelers'],['toernooien','Toernooien']];
+function _admNlScreenshotLabel(key){ var f=_admNlScreenshotOpts.find(function(o){return o[0]===key;}); return f?f[1]:key; }
 var _admNlKleurOpts=['red','blue','yellow','green','purple'];
 async function _admMbRenderNewsletterHistory(pane){
   if(!pane) return;
@@ -32688,9 +32717,9 @@ function _admNlRenderEditionForm(){
         +'<div><div class="adm-nl-flabel">Label</div><select class="bh-select" data-ued="'+i+'" data-uf="tag">'+_admNlTagOpts.map(function(t){return '<option value="'+t[0]+'"'+(u.tag===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select></div>'
         +'<div><div class="adm-nl-flabel">Kleur icoon</div><select class="bh-select" data-ued="'+i+'" data-uf="kleur">'+_admNlKleurOpts.map(function(k){return '<option value="'+k+'"'+(u.kleur===k?' selected':'')+'>'+k+'</option>';}).join('')+'</select></div>'
         +'<div><div class="adm-nl-flabel">Emoji</div><input class="adm-compose-input" data-ued="'+i+'" data-uf="icon" value="'+_bhEsc(u.icon||'📌')+'" style="width:50px;text-align:center;"></div>'
-        +'<div><div class="adm-nl-flabel">Screenshot</div><select class="bh-select" data-ued="'+i+'" data-uf="screenshot">'+_admNlScreenshotOpts.map(function(s){return '<option value="'+s[0]+'"'+((u.screenshot||'')===s[0]?' selected':'')+'>'+s[1]+'</option>';}).join('')+'</select></div>'
         +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;padding-bottom:9px;"><input type="checkbox" data-ued="'+i+'" data-uf="highlight"'+(u.highlight?' checked':'')+'> Uitgelicht (grotere nadruk)</label>'
       +'</div>'
+      +(u.screenshot?('<div style="margin-top:6px;font-size:11px;color:#8b97ad;">📷 Screenshot automatisch toegevoegd: <b>'+_bhEsc(_admNlScreenshotLabel(u.screenshot))+'</b></div>'):'')
     +'</div>';
   }).join('');
   host.innerHTML=
@@ -32782,15 +32811,20 @@ var NL_AI_CHAT_CONTEXT='Je bent een schrijfassistent voor de ScoutingHub-nieuwsb
   + 'App-context: modules zijn Spelersdatabase, Programma, Wedstrijdrapporten/Observaties (observatie=snelle losse notitie, rapport=volledig formeel verslag), Toernooien, Getipte spelers (Tips), Ritten (kilometerregistratie), Analyse (Elftallen/Vergelijken/Pitch), Contacten. '
   + 'Antwoord kort, praktisch en in het Nederlands. Als je een tekst voorstelt voor een veld (titel/intro/update/dankwoord), geef die dan als aparte alinea zodat de beheerder hem makkelijk kan overnemen — geen JSON, gewoon leesbare tekst.';
 window._admNlOpenChat=function(){
-  var body='<div id="adm-nl-chat-log" style="max-height:340px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;"></div>'
-    +'<div style="display:flex;gap:6px;">'
-      +'<textarea id="adm-nl-chat-input" class="sh-req-i" rows="2" placeholder="Vraag om tips, laat iets schrijven, of stel een vraag…" style="flex:1;"></textarea>'
+  var body='<div id="adm-nl-chat-log" style="max-height:360px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:8px;"></div>'
+    +'<div style="display:flex;gap:6px;margin-bottom:8px;">'
+      +'<textarea id="adm-nl-chat-input" class="sh-req-i" rows="2" placeholder="Vraag om tips, laat iets schrijven, of bespreek wat er in de nieuwsbrief moet komen…" style="flex:1;"></textarea>'
       +'<button class="bh-btn bh-btn-blue" id="adm-nl-chat-send" style="flex:0 0 auto;">Stuur</button>'
+    +'</div>'
+    +'<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;border-top:1px solid #1f2937;padding-top:10px;">'
+      +'<span style="font-size:11.5px;color:#8b97ad;">Als het gesprek genoeg bevat, zet je het direct in het formulier.</span>'
+      +'<button class="bh-btn bh-btn-blue" id="adm-nl-chat-apply">📥 Zet in nieuwsbrief</button>'
     +'</div>';
   var m=_bhModal('💬 AI-chat — nieuwsbrief', body, {});
   var log=m.root.querySelector('#adm-nl-chat-log');
   var input=m.root.querySelector('#adm-nl-chat-input');
   var sendBtn=m.root.querySelector('#adm-nl-chat-send');
+  var applyBtn=m.root.querySelector('#adm-nl-chat-apply');
   function renderLog(){
     log.innerHTML=_admNlChatHistory.length
       ? _admNlChatHistory.map(function(msg,i){
@@ -32800,7 +32834,7 @@ window._admNlOpenChat=function(){
             + (!isUser?'<button class="adm-btn-ghost" data-copychat="'+i+'" style="margin-top:3px;padding:2px 8px;font-size:11px;">📋 Kopieer</button>':'')
           +'</div>';
         }).join('')
-      : '<div style="color:#8b97ad;font-size:12.5px;">Stel een vraag, bijv. "geef 3 titel-ideeën voor deze maand" of "schrijf een intro over de nieuwe rittenfunctie".</div>';
+      : '<div style="color:#8b97ad;font-size:12.5px;">Stel een vraag, bijv. "geef 3 titel-ideeën voor deze maand" of "we hebben de rittenregistratie gefixt en tips werken weer, help me dit uitwerken". Als je klaar bent: klik "Zet in nieuwsbrief".</div>';
     log.scrollTop=log.scrollHeight;
     log.querySelectorAll('[data-copychat]').forEach(function(b){
       b.addEventListener('click',function(){
@@ -32816,20 +32850,46 @@ window._admNlOpenChat=function(){
     var text=(input.value||'').trim(); if(!text) return;
     _admNlChatHistory.push({role:'user',text:text});
     input.value=''; renderLog();
-    sendBtn.disabled=true; sendBtn.textContent='…';
+    sendBtn.disabled=true; applyBtn.disabled=true; sendBtn.textContent='…';
     try{
-      var convo=_admNlChatHistory.slice(-10).map(function(msg){ return (msg.role==='user'?'Beheerder: ':'Assistent: ')+msg.text; }).join('\n\n');
+      var convo=_admNlChatHistory.slice(-14).map(function(msg){ return (msg.role==='user'?'Beheerder: ':'Assistent: ')+msg.text; }).join('\n\n');
       var prompt=NL_AI_CHAT_CONTEXT+'\n\nGesprek tot nu toe:\n'+convo+'\n\nAssistent:';
       var reply=await callGemini(prompt,{temperature:0.6,maxTokens:500});
       _admNlChatHistory.push({role:'model',text:reply});
     }catch(e){
       _admNlChatHistory.push({role:'model',text:'(AI niet beschikbaar, probeer het zo nog eens)'});
     }
-    sendBtn.disabled=false; sendBtn.textContent='Stuur';
+    sendBtn.disabled=false; applyBtn.disabled=false; sendBtn.textContent='Stuur';
     renderLog();
   }
+  async function applyToNewsletter(){
+    if(!_admNlChatHistory.length){ if(typeof toast==='function') toast('Voer eerst een gesprek voordat je dit toepast',true); return; }
+    var _o=applyBtn.textContent; applyBtn.disabled=true; sendBtn.disabled=true; applyBtn.textContent='✨ Wordt toegepast…';
+    try{
+      var transcript=_admNlChatHistory.map(function(msg){ return (msg.role==='user'?'Beheerder: ':'Assistent: ')+msg.text; }).join('\n\n');
+      var tk=await _admToken(); if(!tk) throw new Error('niet ingelogd');
+      var r=await fetch(_admBase()+'/api/admin-newsletter-ai-fill',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({topic:transcript})});
+      var j={};try{j=await r.json();}catch(_){}
+      if(!(r.ok&&j&&j.ok&&j.edition)) throw new Error((j&&j.error)||'AI kon dit niet verwerken');
+      var oldMaand=(_admNlEdition&&_admNlEdition.maand)||''; var oldNummer=(_admNlEdition&&_admNlEdition.nummer)||'';
+      var oldWa=(_admNlEdition&&_admNlEdition.whatsapp)||{enabled:true,nummer:'+31625350577',tekst:''};
+      _admNlEdition=j.edition;
+      _admNlEdition.maand=oldMaand; _admNlEdition.nummer=oldNummer; _admNlEdition.whatsapp=oldWa;
+      _admNlMode='edition';
+      if(typeof m.close==='function') m.close();
+      var pane=document.getElementById('adm-mb3-detail');
+      if(pane) _admMbRenderNewsletter(pane);
+      if(typeof toast==='function') toast('Nieuwsbrief ingevuld vanuit het gesprek — screenshots worden bij verzenden automatisch opgehaald');
+    }catch(e){
+      if(typeof toast==='function') toast('Toepassen mislukt: '+(e&&e.message||'onbekende fout'),true);
+    }finally{
+      applyBtn.disabled=false; sendBtn.disabled=false; applyBtn.textContent=_o;
+    }
+  }
   sendBtn.addEventListener('click',send);
+  applyBtn.addEventListener('click',applyToNewsletter);
   input.addEventListener('keydown',function(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); send(); } });
+  setTimeout(function(){ try{ input.focus(); }catch(_){} }, 50);
 };
 window._admNlAiFill=function(){
   var body='<p style="color:#9aa8bd;font-size:13px;margin:0 0 10px;">Beschrijf kort waar deze nieuwsbrief over moet gaan (bijv. welke bugfixes, nieuwe features, aankondigingen). De AI vult titel, intro, dankwoord en updates automatisch in — pas daarna nog aan waar nodig.</p>'

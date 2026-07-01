@@ -1190,12 +1190,15 @@ function nlAiEditionPrompt(topic){
     + 'De toon is warm, direct en niet overdreven zakelijk — schrijf zoals je aan een klein team van vrijwillige testers zou schrijven.\n\n'
     + NL_AI_APP_CONTEXT
     + 'Onderwerp/inhoud van deze editie (door de beheerder aangeleverd, mogelijk met afkortingen/steekwoorden die verwijzen naar bovenstaande app-onderdelen): "'+topic.replace(/"/g,"'")+'"\n\n'
+    + 'Er is ook een automatische screenshot-tool beschikbaar die een échte, actuele schermafbeelding van de live app kan ophalen (ingelogd demo-account). '
+    + 'Beschikbare schermen (gebruik exact deze sleutel als relevant, anders leeg): "dashboard" (dashboard-overzicht), "spelers" (spelersdatabase), "programma" (planning/agenda), "ritten" (kilometerregistratie), "tips" (getipte spelers), "toernooien" (toernooien-overzicht).\n\n'
     + 'Geef ALLEEN geldige JSON terug (geen markdown, geen uitleg, geen ```), exact in dit format:\n'
     + '{"titel":"pakkende hoofdkop, max 90 tekens","intro":"2-4 zinnen introductie","dankwoord":{"titel":"korte titel","tekst":"kort bedankje aan testers, 2-3 zinnen"},'
-    + '"updates":[{"titel":"korte titel","tekst":"2-3 zinnen uitleg","tag":"nieuw|bugfix|coming|wip","icon":"1 relevante emoji","kleur":"red|blue|yellow|green|purple","highlight":false}],'
+    + '"updates":[{"titel":"korte titel","tekst":"2-3 zinnen uitleg","tag":"nieuw|bugfix|coming|wip","icon":"1 relevante emoji","kleur":"red|blue|yellow|green|purple","highlight":false,"screenshot":"dashboard|spelers|programma|ritten|tips|toernooien|"}],'
     + '"aankondiging":{"titel":"korte titel of leeg","tekst":"korte tekst of leeg"}}\n\n'
     + 'Maak 2 tot 5 updates, gebaseerd op wat de beheerder heeft aangeleverd. Gebruik tag "nieuw" voor nieuwe features, "bugfix" voor opgeloste bugs, "coming" voor wat eraan komt. '
-    + 'Zet highlight:true bij hooguit 1 update (de belangrijkste). Laat "aankondiging" leeg (lege strings) als er geen apart bericht nodig is.';
+    + 'Zet highlight:true bij hooguit 1 update (de belangrijkste). Vul "screenshot" in bij elke update die duidelijk over één van de genoemde schermen gaat (dus zoveel als logisch is, mag ook bij meerdere updates) — anders lege string. '
+    + 'Laat "aankondiging" leeg (lege strings) als er geen apart bericht nodig is.';
 }
 async function handleAdminNewsletterAiFill(body, env, request){
   const auth = (request && request.headers && request.headers.get('Authorization')) || '';
@@ -1216,6 +1219,7 @@ async function handleAdminNewsletterAiFill(body, env, request){
   try{ parsed = JSON.parse(m[0]); }catch(_){ return json({ ok:false, error:'AI-antwoord kon niet worden gelezen' }, 502); }
   const validTags = ['nieuw','bugfix','coming','wip'];
   const validKleur = ['red','blue','yellow','green','purple'];
+  const validScreens = ['dashboard','spelers','programma','ritten','tips','toernooien'];
   const edition = {
     maand: '', nummer: '',
     titel: clip(String(parsed.titel||'').trim(), 200),
@@ -1228,7 +1232,8 @@ async function handleAdminNewsletterAiFill(body, env, request){
         tag: validTags.includes(u&&u.tag) ? u.tag : 'coming',
         icon: clip(String(u&&u.icon||'📌').trim(),10) || '📌',
         kleur: validKleur.includes(u&&u.kleur) ? u.kleur : 'blue',
-        highlight: !!(u&&u.highlight)
+        highlight: !!(u&&u.highlight),
+        screenshot: validScreens.includes(u&&u.screenshot) ? u.screenshot : ''
       };
     }).filter(function(u){ return u.titel||u.tekst; }),
     aankondiging: { enabled: !!(parsed.aankondiging&&(parsed.aankondiging.titel||parsed.aankondiging.tekst)), icon:'📖', titel: clip(String(parsed.aankondiging&&parsed.aankondiging.titel||'').trim(),200), tekst: clip(String(parsed.aankondiging&&parsed.aankondiging.tekst||'').trim(),1000) },

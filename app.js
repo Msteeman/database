@@ -32535,7 +32535,7 @@ async function _admMbRenderNewsletter(pane){
       +'</div>'
       +'<div class="adm-nl-col-right">'
         +'<div class="adm-nl-section-hd">Concept'+(savedAt?'<span class="adm-nl-saved-note"> - opgeslagen '+savedAt+'</span>':'')+'</div>'
-        +'<input class="adm-compose-input" id="adm-nl-to" placeholder="Aan (leeg = alle abonnees, testadres voor test)" style="margin-bottom:8px;">'
+        +'<input class="adm-compose-input" id="adm-nl-to" placeholder="Aan (leeg = alle abonnees, testadres voor test)" autocomplete="off" oninput="_admNlUpdateSendLabel('+subs.length+')" style="margin-bottom:8px;">'
         +'<input class="adm-compose-input" id="adm-nl-subj" placeholder="Onderwerp" value="'+_bhEsc(savedSubj)+'" style="margin-bottom:8px;">'
         +'<textarea class="adm-compose-input" id="adm-nl-msg" placeholder="Bericht (platte tekst of HTML)…" rows="8" style="min-height:160px;resize:vertical;">'+_bhEsc(savedMsg)+'</textarea>'
         +'<div class="adm-nl-autosend">'
@@ -32543,7 +32543,7 @@ async function _admMbRenderNewsletter(pane){
           +(autoSend?'<div class="adm-nl-next">Volgende verzending: '+next1Lbl+'</div>':'')
         +'</div>'
         +'<div class="adm-mailact" style="margin-top:10px;">'
-          +'<button class="adm-btn-ghost adm-btn-primary" onclick="_admNlSend(this,'+subs.length+')">Nu versturen naar '+subs.length+' abonnee'+(subs.length!==1?'s':'')+'</button>'
+          +'<button class="adm-btn-ghost adm-btn-primary" id="adm-nl-send-btn" onclick="_admNlSend(this,'+subs.length+')">Nu versturen naar '+subs.length+' abonnee'+(subs.length!==1?'s':'')+'</button>'
           +'<button class="adm-btn-ghost" onclick="_admNlSaveConcept(this)">Concept opslaan</button>'
         +'</div>'
         +'<div id="adm-nl-res"></div>'
@@ -32575,6 +32575,12 @@ async function _admNlToggleAuto(val){
     if(typeof toast==='function') toast(val?'Auto-verzending ingeschakeld':'Auto-verzending uitgeschakeld');
   }catch(_){}
 }
+
+window._admNlUpdateSendLabel=function(cnt){
+  var btn=document.getElementById('adm-nl-send-btn'); if(!btn) return;
+  var to=((document.getElementById('adm-nl-to')||{}).value||'').trim();
+  btn.textContent=to?('Testmail versturen naar '+to):('Nu versturen naar '+cnt+' abonnee'+(cnt!==1?'s':''));
+};
 
 window._admNlSend=async function(btn, cnt){
   var res=document.getElementById('adm-nl-res');
@@ -32673,6 +32679,10 @@ async function _admMbOpenMail(type, folder, seq, rowEl){
     var tk=await _admToken(); if(!tk){ detail.innerHTML='<div class="bh-empty">Niet ingelogd.</div>'; return; }
     var r=await fetch(_admBase()+'/api/admin-mail-read',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify({type:type,folder:folder,seq:seq})});
     var j={};try{j=await r.json();}catch(_){}
+    if(r.ok&&j&&j.ok){
+      var liveRow=document.querySelector('.adm-mb3-row[data-seq="'+seq+'"]');
+      if(liveRow){ liveRow.classList.remove('adm-mb3-unread'); liveRow.classList.add('adm-mb3-read'); }
+    }
     if(!(r.ok&&j&&j.ok)){ detail.innerHTML='<div class="bh-empty">Laden mislukt'+((j&&j.error)?(': '+_bhEsc(j.error)):'')+'</div>'; return; }
     var dt=''; try{ var d=new Date(j.date); if(!isNaN(d.getTime())) dt=d.toLocaleString('nl-NL'); }catch(_){ dt=j.date||''; }
     // Sla maildata op voor reply/forward

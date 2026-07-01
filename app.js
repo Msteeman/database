@@ -32242,7 +32242,7 @@ window._admLogout=_admLogout;
    Geen scoutdata-inhoud. Admin-only (shell wordt alleen voor admin
    geactiveerd; worker-routes verifiëren server-side).
    ============================================================ */
-var ADM_APP_VERSION = 'sh-v440-adminconsole';
+var ADM_APP_VERSION = 'sh-v522-mail-fixes2';
 function _admBase(){ return (typeof TOERNOOI_API_BASE!=='undefined'&&TOERNOOI_API_BASE)?TOERNOOI_API_BASE:'https://scoutinghub-api.marcelsteeman1.workers.dev'; }
 async function _admToken(){ try{ if(typeof auth!=='undefined'&&auth.currentUser) return await auth.currentUser.getIdToken(true); }catch(_){} return ''; }
 function _admKpi(lab,val,sub,tone){ return '<div class="bh-kpi'+(tone?(' bh-kpi-'+tone):'')+'"><div class="bh-kpi-val">'+val+'</div><div class="bh-kpi-lab">'+lab+'</div>'+(sub?'<div class="bh-kpi-sub">'+sub+'</div>':'')+'</div>'; }
@@ -32297,7 +32297,7 @@ async function _admRenderOverview(el){
     +'<button class="adm-btn-ghost" onclick="_admNav(\'teams\')">🏢 Teams &amp; organigram</button>'
     +'<button class="adm-btn-ghost" onclick="_admNav(\'statistieken\')">📈 Statistieken</button>'
     +'<button class="adm-btn-ghost" onclick="_admNav(\'feedback\')">💬 Feedback</button>'
-    +'<button class="adm-btn-ghost" onclick="_admNav(\'mail\')">✉️ Testmail</button>'
+    +'<button class="adm-btn-ghost" onclick="_admNav(\'mail\')">✉️ Mailcentrum</button>'
     +'</div>';
   el.innerHTML='<div class="bh-stat-hd" style="margin-top:0">Overzicht</div>'+kpis
     +'<div class="bh-stat-hd">Aandacht nodig</div>'+attHtml

@@ -1375,6 +1375,128 @@ function nlFormatBody(message){
   }
   return html;
 }
+/* ============================================================ *
+ * NIEUWSBRIEF-EDITIE — gestructureerd sjabloon (kaartjes-ontwerp)
+ * Gebaseerd op mail-templates/scoutinghub-nieuwsbrief-medio-juli-2026.html
+ * Vult invulvelden in i.p.v. vrije platte tekst.
+ * ============================================================ */
+const NL_TAG_STYLE = {
+  nieuw:  { label:'Nieuw',              bg:'rgba(74,222,128,0.12)',  fg:'#4ade80' },
+  bugfix: { label:'Bugfix komt eraan',  bg:'rgba(239,68,68,0.12)',   fg:'#f87171' },
+  coming: { label:'Komt eraan',         bg:'rgba(245,166,35,0.12)',  fg:'#fbbf24' },
+  wip:    { label:'Werk in uitvoering', bg:'rgba(148,163,184,0.1)',  fg:'#64748b' }
+};
+const NL_ICON_BG = { red:'rgba(232,37,26,0.12)', blue:'rgba(59,130,246,0.12)', yellow:'rgba(245,166,35,0.12)', green:'rgba(74,222,128,0.12)', purple:'rgba(168,85,247,0.12)' };
+function nlEditionUpdateCard(u){
+  const tag = NL_TAG_STYLE[u.tag] || NL_TAG_STYLE.coming;
+  const iconBg = NL_ICON_BG[u.kleur] || NL_ICON_BG.red;
+  const highlightStyle = u.highlight ? 'border-color:rgba(232,37,26,0.3);background:linear-gradient(135deg, #1f1624 0%, #1a2236 100%);' : 'background:#1a2236;border:1px solid #1e2d45;';
+  return '<div style="'+highlightStyle+'border-radius:10px;padding:18px 20px;margin-bottom:10px;display:flex;gap:14px;align-items:flex-start;">'
+    + '<div style="width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:1px;background:'+iconBg+';">'+shEsc(u.icon||'📌')+'</div>'
+    + '<div style="flex:1;">'
+      + '<span style="display:inline-block;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;padding:2px 7px;border-radius:4px;margin-bottom:6px;background:'+tag.bg+';color:'+tag.fg+';">'+shEsc(tag.label)+'</span>'
+      + '<h4 style="font-size:13.5px;font-weight:700;color:#e2e8f0;margin:0 0 5px;">'+shEsc(u.titel||'')+'</h4>'
+      + '<p style="font-size:13px;line-height:1.65;color:#94a3b8;margin:0;">'+nlInlineFormat(u.tekst||'')+'</p>'
+    + '</div></div>';
+}
+function nlSectionLabel(color, text){
+  return '<div style="display:flex;align-items:center;gap:10px;padding:28px 40px 14px;">'
+    + '<div style="width:8px;height:8px;border-radius:50%;flex-shrink:0;background:'+color+';"></div>'
+    + '<span style="font-size:10px;font-weight:700;letter-spacing:2.5px;text-transform:uppercase;color:#475569;white-space:nowrap;">'+shEsc(text)+'</span>'
+    + '<div style="flex:1;height:1px;background:#1e2d45;"></div></div>';
+}
+async function nlBuildEditionHtml(env, ed, unsubEmail){
+  const base = appBaseUrl(env); const ce = contactEmail(env); const host = base.replace(/^https?:\/\//,'');
+  const editionLabel = shEsc((ed.maand||'')+(ed.nummer?(' · Editie #'+ed.nummer):''));
+
+  let dankHtml = '';
+  if(ed.dankwoord && ed.dankwoord.enabled && (ed.dankwoord.titel||ed.dankwoord.tekst)){
+    dankHtml = nlSectionLabel('#4ade80','Aan de testers')
+      + '<div style="padding:0 40px 28px;"><div style="background:linear-gradient(135deg, #1c2214 0%, #1a2236 100%);border:1px solid rgba(74,222,128,0.2);border-radius:10px;padding:22px 24px;">'
+      + '<span style="font-size:22px;margin-bottom:10px;display:block;">🙏</span>'
+      + '<h3 style="font-size:15px;font-weight:700;color:#e2e8f0;margin:0 0 8px;">'+shEsc(ed.dankwoord.titel||'')+'</h3>'
+      + '<p style="font-size:13.5px;line-height:1.7;color:#94a3b8;margin:0;">'+nlInlineFormat(ed.dankwoord.tekst||'')+'</p>'
+      + '</div></div>';
+  }
+
+  let updatesHtml = '';
+  const updates = Array.isArray(ed.updates) ? ed.updates.filter(u=>u&&(u.titel||u.tekst)) : [];
+  if(updates.length){
+    updatesHtml = nlSectionLabel('#E8251A','Wat er aankomt')
+      + '<div style="padding:0 40px 28px;">' + updates.map(nlEditionUpdateCard).join('') + '</div>';
+  }
+
+  let announceHtml = '';
+  if(ed.aankondiging && ed.aankondiging.enabled && (ed.aankondiging.titel||ed.aankondiging.tekst)){
+    announceHtml = nlSectionLabel('#F97316','Ook deze maand')
+      + '<div style="padding:0 40px 28px;"><div style="background:linear-gradient(135deg, #1a1f35 0%, #1a2236 100%);border:1px solid rgba(249,115,22,0.2);border-radius:10px;padding:20px 22px;display:flex;gap:14px;align-items:flex-start;">'
+      + '<div style="width:34px;height:34px;background:rgba(249,115,22,0.12);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;margin-top:1px;">'+shEsc(ed.aankondiging.icon||'📖')+'</div>'
+      + '<div><h4 style="font-size:13.5px;font-weight:700;color:#e2e8f0;margin:0 0 5px;">'+shEsc(ed.aankondiging.titel||'')+'</h4>'
+      + '<p style="font-size:13px;line-height:1.65;color:#94a3b8;margin:0;">'+nlInlineFormat(ed.aankondiging.tekst||'')+'</p></div>'
+      + '</div></div>';
+  }
+
+  const waNum = (ed.whatsapp && ed.whatsapp.enabled && ed.whatsapp.nummer) ? String(ed.whatsapp.nummer).replace(/[^\d+]/g,'') : '';
+  const waBtn = waNum
+    ? '<a href="https://wa.me/'+encodeURIComponent(waNum.replace(/^\+/,''))+'?text='+encodeURIComponent(ed.whatsapp.tekst||'Hoi, ik heb feedback over ScoutingHub: ')+'" style="display:flex;align-items:center;gap:14px;border-radius:10px;padding:16px 18px;text-decoration:none;border:1px solid rgba(37,211,102,0.25);background:linear-gradient(135deg, #1a2e1e 0%, #1a2236 100%);margin-bottom:10px;">'
+      + '<div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:rgba(37,211,102,0.12);">💬</div>'
+      + '<div style="flex:1;"><span style="display:block;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;color:#4ade80;">Snelst</span>'
+      + '<span style="display:block;font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:2px;">Stuur een WhatsApp</span>'
+      + '<span style="display:block;font-size:12px;color:#475569;">'+shEsc(ed.whatsapp.nummer)+'</span></div>'
+      + '<span style="font-size:16px;color:#334155;flex-shrink:0;">&rsaquo;</span></a>'
+    : '';
+  const mailBtn = '<a href="mailto:'+ce+'?subject='+encodeURIComponent('Feedback ScoutingHub')+'" style="display:flex;align-items:center;gap:14px;border-radius:10px;padding:16px 18px;text-decoration:none;border:1px solid rgba(59,130,246,0.25);background:linear-gradient(135deg, #1a2030 0%, #1a2236 100%);margin-bottom:10px;">'
+    + '<div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:rgba(59,130,246,0.12);">✉️</div>'
+    + '<div style="flex:1;"><span style="display:block;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;color:#60a5fa;">Per mail</span>'
+    + '<span style="display:block;font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:2px;">Stuur een e-mail</span>'
+    + '<span style="display:block;font-size:12px;color:#475569;">'+ce+'</span></div>'
+    + '<span style="font-size:16px;color:#334155;flex-shrink:0;">&rsaquo;</span></a>';
+  const platBtn = '<a href="'+base+'" style="display:flex;align-items:center;gap:14px;border-radius:10px;padding:16px 18px;text-decoration:none;border:1px solid rgba(232,37,26,0.25);background:linear-gradient(135deg, #1f1624 0%, #1a2236 100%);">'
+    + '<div style="width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;background:rgba(232,37,26,0.12);">🔴</div>'
+    + '<div style="flex:1;"><span style="display:block;font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-bottom:3px;color:#f87171;">In de app</span>'
+    + '<span style="display:block;font-size:14px;font-weight:700;color:#e2e8f0;margin-bottom:2px;">Gebruik de feedbackknop</span>'
+    + '<span style="display:block;font-size:12px;color:#475569;">Zit direct in het platform</span></div>'
+    + '<span style="font-size:16px;color:#334155;flex-shrink:0;">&rsaquo;</span></a>';
+
+  let unsubLine = '';
+  const signingSecret = (env && (env.TURNSTILE_SECRET || env.RESEND_API_KEY)) || '';
+  if(unsubEmail && signingSecret){
+    const sig = await hmacSign(signingSecret, 'unsub:'+unsubEmail.toLowerCase());
+    const workerBase = cfg(env,'SELF_URL','https://scoutinghub-api.marcelsteeman1.workers.dev').replace(/\/+$/,'');
+    const link = workerBase + '/api/newsletter-unsubscribe?email='+encodeURIComponent(unsubEmail)+'&sig='+sig;
+    unsubLine = ' &nbsp;·&nbsp; <a href="'+link+'" style="color:#475569;">Afmelden</a>';
+  }
+
+  return '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+shEsc(ed.titel||'ScoutingHub Nieuwsbrief')+'</title></head>'
+    + '<body style="margin:0;background-color:#0d1520;font-family:\'Inter\',Arial,sans-serif;color:#e2e8f0;">'
+    + '<div style="background-color:#0d1520;padding:32px 16px;"><div style="max-width:600px;margin:0 auto;background-color:#131929;border-radius:12px;overflow:hidden;border:1px solid #1e2d45;">'
+    // Header
+    + '<div style="background:linear-gradient(135deg, #1a1f35 0%, #0d1520 100%);padding:36px 40px 28px;text-align:center;border-bottom:2px solid #1e2d45;">'
+      + '<div style="width:56px;height:56px;background:linear-gradient(145deg, #E8251A, #F97316);border-radius:14px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:14px;font-weight:800;font-size:22px;color:#ffffff;">SH</div>'
+      + '<span style="display:block;font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#ffffff;margin-bottom:4px;">Scouting<span style="color:#F97316;">Hub</span></span>'
+      + '<span style="display:inline-block;font-size:11px;font-weight:600;letter-spacing:1.8px;text-transform:uppercase;color:#64748b;margin-top:6px;">Nieuwsbrief &nbsp;·&nbsp; '+editionLabel+'</span>'
+    + '</div>'
+    // Hero
+    + '<div style="padding:36px 40px 32px;border-bottom:1px solid #1e2d45;">'
+      + (ed.nummer?('<span style="display:inline-block;font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#F97316;margin-bottom:12px;">Editie #'+shEsc(ed.nummer)+' &nbsp;·&nbsp; '+shEsc(ed.maand||'')+'</span>'):'')
+      + '<h1 style="font-size:24px;font-weight:800;line-height:1.3;color:#f1f5f9;margin:0 0 18px;letter-spacing:-0.5px;">'+shEsc(ed.titel||'')+'</h1>'
+      + String(ed.intro||'').split(/\n{2,}/).map(function(p){ return '<p style="font-size:15px;line-height:1.75;color:#94a3b8;margin:0 0 14px;">'+nlInlineFormat(p)+'</p>'; }).join('')
+    + '</div>'
+    + dankHtml + updatesHtml + announceHtml
+    // Contact
+    + nlSectionLabel('#3b82f6','Vragen of feedback')
+    + '<div style="padding:0 40px 28px;">'
+      + '<p style="font-size:14px;line-height:1.7;color:#94a3b8;margin:0 0 16px;">Kom je iets tegen of wil je iets kwijt? Reageer op de manier die het makkelijkst voelt.</p>'
+      + waBtn + mailBtn + platBtn
+    + '</div>'
+    // Footer
+    + '<div style="height:1px;background:#1e2d45;margin:0 40px;"></div>'
+    + '<div style="padding:28px 40px;text-align:center;">'
+      + '<div style="font-size:14px;font-weight:700;color:#475569;margin-bottom:10px;">Scouting<span style="color:#E8251A;">Hub</span> &nbsp;·&nbsp; '+host+'</div>'
+      + '<p style="font-size:12px;color:#334155;line-height:1.7;">Je ontvangt deze mail omdat je bent aangemeld voor de ScoutingHub-nieuwsbrief.'+unsubLine+'</p>'
+    + '</div>'
+    + '</div></div></body></html>';
+}
 async function mailShell(env, title, bodyHtml, opts){
   const base = appBaseUrl(env); const ce = contactEmail(env); const host = base.replace(/^https?:\/\//,'');
   const unsubEmail = (opts && opts.unsubscribeEmail) || '';
@@ -2149,19 +2271,30 @@ async function handleAdminNewsletterSend(body, env, request){
   if(!caller) return json({ ok:false, error:'Sessie ongeldig of verlopen' }, 401);
   let saToken = null; try { saToken = await getServiceAccountToken(env); } catch(_){}
   if(!(await isCallerAdmin(env, saToken, caller))) return json({ ok:false, error:'Alleen beheerders mogen dit doen' }, 403);
-  const subject = clip(String(body.subject||'').trim(),200);
-  const message = clip(String(body.message||'').trim(),10000);
-  if(!subject||!message) return json({ ok:false, error:'Onderwerp en bericht zijn verplicht' }, 400);
+  const mode = (body.mode==='edition') ? 'edition' : 'text';
+  let subject, buildHtml, text;
+  if(mode==='edition'){
+    const ed = (body.edition && typeof body.edition==='object') ? body.edition : {};
+    subject = clip(String(body.subject||ed.titel||'').trim(),200);
+    if(!subject) return json({ ok:false, error:'Titel/onderwerp ontbreekt' }, 400);
+    if(!ed.titel && !ed.intro) return json({ ok:false, error:'Vul minimaal een titel of intro in' }, 400);
+    buildHtml = function(email){ return nlBuildEditionHtml(env, ed, email); };
+    text = (ed.titel||subject) + (ed.intro?('\n\n'+ed.intro):'') + '\n\nBekijk deze nieuwsbrief in HTML voor de volledige opmaak.';
+  } else {
+    subject = clip(String(body.subject||'').trim(),200);
+    const message = clip(String(body.message||'').trim(),10000);
+    if(!subject||!message) return json({ ok:false, error:'Onderwerp en bericht zijn verplicht' }, 400);
+    const htmlBody = nlFormatBody(message) + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>';
+    buildHtml = function(email){ return mailShell(env, subject, htmlBody, {unsubscribeEmail:email}); };
+    text = message + '\n\nMet vriendelijke groet,\nTeam ScoutingHub\n\nAfmelden: stuur een mail naar contact@scoutinghub.nl';
+  }
   const testEmailsRaw = clip(String(body.testEmail||'').trim(), 500);
   const testEmails = testEmailsRaw.split(/[\s,;]+/).map(function(s){ return s.trim().toLowerCase(); }).filter(function(s){ return s && shValidEmail(s); }).filter(function(v,i,arr){ return arr.indexOf(v)===i; }).slice(0,10);
-  const htmlBody = nlFormatBody(message)
-    + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>';
-  const text = message + '\n\nMet vriendelijke groet,\nTeam ScoutingHub\n\nAfmelden: stuur een mail naar contact@scoutinghub.nl';
   if(testEmails.length){
     let sent = 0, failed = 0;
     for(const te of testEmails){
       try{
-        const ok = await sendMail(env, { from: contactFrom(env), to: te, subject:'[TEST] '+subject, html: await mailShell(env,'[TEST] '+subject,htmlBody,{unsubscribeEmail:te}), text });
+        const ok = await sendMail(env, { from: contactFrom(env), to: te, subject:'[TEST] '+subject, html: await buildHtml(te), text });
         if(ok) sent++; else failed++;
       }catch(_){ failed++; }
     }
@@ -2173,7 +2306,7 @@ async function handleAdminNewsletterSend(body, env, request){
   let sent = 0, failed = 0;
   for(const sub of subs){
     try{
-      const ok = await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: await mailShell(env,subject,htmlBody,{unsubscribeEmail:sub.email}), text });
+      const ok = await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: await buildHtml(sub.email), text });
       if(ok) sent++; else failed++;
     }catch(_){ failed++; }
   }
@@ -2988,17 +3121,27 @@ async function handleScheduledNewsletter(env){
     if(!saToken) return;
     const draft = await saFsGet(saToken, 'admin_settings/newsletter_draft');
     if(!draft || !draft.autoSend) return;
-    const subject = String(draft.subject||'').trim();
-    const message = String(draft.message||'').trim();
-    if(!subject||!message) return;
+    const isEdition = draft.mode==='edition' && draft.edition && typeof draft.edition==='object';
+    let subject, buildHtml, text;
+    if(isEdition){
+      const ed = draft.edition;
+      subject = String(draft.subject||ed.titel||'').trim();
+      if(!subject) return;
+      buildHtml = function(email){ return nlBuildEditionHtml(env, ed, email); };
+      text = (ed.titel||subject) + (ed.intro?('\n\n'+ed.intro):'') + '\n\nBekijk deze nieuwsbrief in HTML voor de volledige opmaak.';
+    } else {
+      subject = String(draft.subject||'').trim();
+      const message = String(draft.message||'').trim();
+      if(!subject||!message) return;
+      const htmlBody = nlFormatBody(message) + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>';
+      buildHtml = function(email){ return mailShell(env, subject, htmlBody, {unsubscribeEmail:email}); };
+      text = message+'\n\nMet vriendelijke groet,\nTeam ScoutingHub\n\nAfmelden: stuur een mail naar contact@scoutinghub.nl';
+    }
     const all = await saFsList(saToken, 'access_requests', 500);
     const subs = all.filter(function(x){ return x.newsletterOptIn===true && x.email; });
     if(!subs.length) return;
-    const htmlBody = nlFormatBody(message)
-      + '<p style="'+MAIL_P+'">Met vriendelijke groet,<br>Team ScoutingHub</p>';
-    const text = message+'\n\nMet vriendelijke groet,\nTeam ScoutingHub\n\nAfmelden: stuur een mail naar contact@scoutinghub.nl';
     for(const sub of subs){
-      try{ await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: await mailShell(env,subject,htmlBody,{unsubscribeEmail:sub.email}), text }); }catch(_){}
+      try{ await sendMail(env, { from: contactFrom(env), to: sub.email, subject, html: await buildHtml(sub.email), text }); }catch(_){}
     }
   }catch(_){}
 }

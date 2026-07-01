@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="nl" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>ScoutingHub Nieuwsbrief Medio Juli 2026</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background-color: #0d1520;
+      font-family: 'Inter', Arial, sans-serif;
+      color: #e2e8f0;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
+    }
+
+    .email-wrapper { background-color: #0d1520; padding: 32px 16px; }
+
+    .email-container {
+      max-width: 600px;
+      margin: 0 auto;
+      background-color: #131929;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid #1e2d45;
+    }
+
+    /* HEADER */
+    .header {
+      background: linear-gradient(135deg, #1a1f35 0%, #0d1520 100%);
+      padding: 36px 40px 28px;
+      text-align: center;
+      border-bottom: 2px solid #1e2d45;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -60px; left: -60px;
+      width: 200px; height: 200px;
+      background: radial-gradient(circle, rgba(232,37,26,0.12) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .header::after {
+      content: '';
+      position: absolute;
+      bottom: -40px; right: -40px;
+      width: 160px; height: 160px;
+      background: radial-gradient(circle, rgba(249,115,22,0.10) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .logo-badge {
+      width: 56px; height: 56px;
+      background: linear-gradient(145deg, #E8251A, #F97316);
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 14px;
+      font-weight: 800; font-size: 22px;
+      color: #ffffff;
+      box-shadow: 0 4px 20px rgba(232,37,26,0.35);
+    }
+    .logo-wordmark {
+      display: block;
+      font-size: 22px; font-weight: 800;
+      letter-spacing: -0.5px;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+    .logo-wordmark span {
+      background: linear-gradient(90deg, #E8251A, #F97316);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .edition-label {
+      display: inline-block;
+      font-size: 11px; font-weight: 600;
+      letter-spacing: 1.8px;
+      text-transform: uppercase;
+      color: #64748b;
+      margin-top: 6px;
+    }
+
+    /* HERO */
+    .hero {
+      padding: 36px 40px 32px;
+      border-bottom: 1px solid #1e2d45;
+    }
+    .hero-eyebrow {
+      display: inline-block;
+      font-size: 11px; font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #F97316;
+      margin-bottom: 12px;
+    }
+    .hero h1 {
+      font-size: 24px; font-weight: 800;
+      line-height: 1.3;
+      color: #f1f5f9;
+      margin-bottom: 18px;
+      letter-spacing: -0.5px;
+    }
+    .hero p {
+      font-size: 15px;
+      line-height: 1.75;
+      color: #94a3b8;
+      margin-bottom: 14px;
+    }
+    .hero p:last-child { margin-bottom: 0; }
+
+    /* SECTION LABEL */
+    .section-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 28px 40px 14px;
+    }
+    .section-label-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .section-label-text {
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+      color: #475569;
+      white-space: nowrap;
+    }
+    .section-label-line { flex: 1; height: 1px; background: #1e2d45; }
+
+    /* BLOCK */
+    .block { padding: 0 40px 28px; }
+
+    /* THANK CARD */
+    .thank-card {
+      background: linear-gradient(135deg, #1c2214 0%, #1a2236 100%);
+      border: 1px solid rgba(74,222,128,0.2);
+      border-radius: 10px;
+      padding: 22px 24px;
+      position: relative;
+      overflow: hidden;
+    }
+    .thank-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      background: linear-gradient(180deg, #4ade80, #22c55e);
+      border-radius: 3px 0 0 3px;
+    }
+    .thank-icon { font-size: 22px; margin-bottom: 10px; display: block; }
+    .thank-card h3 { font-size: 15px; font-weight: 700; color: #e2e8f0; margin-bottom: 8px; }
+    .thank-card p { font-size: 13.5px; line-height: 1.7; color: #94a3b8; }
+
+    /* WHY CARD */
+    .why-card {
+      background: #1a2236;
+      border: 1px solid #1e2d45;
+      border-radius: 10px;
+      padding: 22px 24px;
+    }
+    .why-card h3 { font-size: 15px; font-weight: 700; color: #e2e8f0; margin-bottom: 10px; }
+    .why-card p { font-size: 13.5px; line-height: 1.75; color: #94a3b8; margin-bottom: 10px; }
+    .why-card p:last-child { margin-bottom: 0; }
+
+    /* UPDATE CARDS */
+    .update-card {
+      background: #1a2236;
+      border: 1px solid #1e2d45;
+      border-radius: 10px;
+      padding: 18px 20px;
+      margin-bottom: 10px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .update-card:last-child { margin-bottom: 0; }
+    .update-card.highlight {
+      border-color: rgba(232,37,26,0.3);
+      background: linear-gradient(135deg, #1f1624 0%, #1a2236 100%);
+    }
+    .update-icon {
+      width: 34px; height: 34px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .update-icon.red    { background: rgba(232,37,26,0.12); }
+    .update-icon.blue   { background: rgba(59,130,246,0.12); }
+    .update-icon.yellow { background: rgba(245,166,35,0.12); }
+    .update-icon.green  { background: rgba(74,222,128,0.12); }
+    .update-icon.purple { background: rgba(168,85,247,0.12); }
+    .update-body h4 { font-size: 13.5px; font-weight: 700; color: #e2e8f0; margin-bottom: 5px; }
+    .update-body p { font-size: 13px; line-height: 1.65; color: #94a3b8; }
+    .update-tag {
+      display: inline-block;
+      font-size: 10px; font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+    .update-tag.coming { background: rgba(245,166,35,0.12); color: #fbbf24; }
+    .update-tag.bugfix { background: rgba(239,68,68,0.12);  color: #f87171; }
+    .update-tag.wip    { background: rgba(148,163,184,0.1); color: #64748b; }
+    .update-tag.new    { background: rgba(74,222,128,0.12); color: #4ade80; }
+
+    /* AANKONDIGING HANDLEIDING */
+    .announce-card {
+      background: linear-gradient(135deg, #1a1f35 0%, #1a2236 100%);
+      border: 1px solid rgba(249,115,22,0.2);
+      border-radius: 10px;
+      padding: 20px 22px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+    }
+    .announce-icon {
+      width: 34px; height: 34px;
+      background: rgba(249,115,22,0.12);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+    .announce-body h4 { font-size: 13.5px; font-weight: 700; color: #e2e8f0; margin-bottom: 5px; }
+    .announce-body p  { font-size: 13px; line-height: 1.65; color: #94a3b8; }
+
+    /* CONTACT BUTTONS */
+    .contact-btn-block { display: flex; flex-direction: column; gap: 10px; }
+    .contact-btn {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      border-radius: 10px;
+      padding: 16px 18px;
+      text-decoration: none;
+      border: 1px solid;
+    }
+    .contact-btn.whatsapp-btn {
+      background: linear-gradient(135deg, #1a2e1e 0%, #1a2236 100%);
+      border-color: rgba(37,211,102,0.25);
+    }
+    .contact-btn.mail-btn {
+      background: linear-gradient(135deg, #1a2030 0%, #1a2236 100%);
+      border-color: rgba(59,130,246,0.25);
+    }
+    .contact-btn.platform-btn {
+      background: linear-gradient(135deg, #1f1624 0%, #1a2236 100%);
+      border-color: rgba(232,37,26,0.25);
+    }
+    .contact-btn-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .contact-btn.whatsapp-btn .contact-btn-icon { background: rgba(37,211,102,0.12); }
+    .contact-btn.mail-btn     .contact-btn-icon { background: rgba(59,130,246,0.12); }
+    .contact-btn.platform-btn .contact-btn-icon { background: rgba(232,37,26,0.12); }
+    .contact-btn-body { flex: 1; }
+    .contact-btn-label {
+      display: block;
+      font-size: 12px; font-weight: 600;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 3px;
+    }
+    .contact-btn.whatsapp-btn .contact-btn-label { color: #4ade80; }
+    .contact-btn.mail-btn     .contact-btn-label { color: #60a5fa; }
+    .contact-btn.platform-btn .contact-btn-label { color: #f87171; }
+    .contact-btn-title { display: block; font-size: 14px; font-weight: 700; color: #e2e8f0; margin-bottom: 2px; }
+    .contact-btn-sub   { display: block; font-size: 12px; color: #475569; }
+    .contact-btn-arrow { font-size: 16px; color: #334155; flex-shrink: 0; }
+
+    /* DIVIDER */
+    .divider { height: 1px; background: #1e2d45; margin: 0 40px; }
+
+    /* FOOTER */
+    .footer { padding: 28px 40px; text-align: center; }
+    .footer-logo { font-size: 14px; font-weight: 700; color: #475569; margin-bottom: 10px; }
+    .footer-logo span { color: #E8251A; }
+    .footer p { font-size: 12px; color: #334155; line-height: 1.7; }
+    .footer-links { margin: 12px 0; display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; }
+    .footer-links a { font-size: 12px; color: #475569; text-decoration: none; }
+
+    /* RESPONSIVE */
+    @media (max-width: 480px) {
+      .header, .hero, .block, .footer, .divider, .section-label {
+        padding-left: 20px; padding-right: 20px;
+      }
+      .hero h1 { font-size: 20px; }
+    }
+  </style>
+</head>
+<body>
+<div class="email-wrapper">
+<div class="email-container">
+
+  <!-- HEADER -->
+  <div class="header">
+    <div class="logo-badge">SH</div>
+    <span class="logo-wordmark"><span>Scouting</span>Hub</span>
+    <span class="edition-label">Nieuwsbrief &nbsp;·&nbsp; Medio Juli 2026 &nbsp;·&nbsp; Editie #1</span>
+  </div>
+
+  <!-- HERO -->
+  <div class="hero">
+    <span class="hero-eyebrow">Editie #1 &nbsp;·&nbsp; Medio Juli 2026</span>
+    <h1>Dit is de eerste ScoutingHub nieuwsbrief en er komt al heel wat aan.</h1>
+    <p>
+      Welkom bij de allereerste editie. ScoutingHub is nog volop in ontwikkeling en
+      jullie zijn daar als testers het eerste getuige van. Medio juli komen de eerste
+      concrete updates beschikbaar. In deze mail een overzicht van wat er aankomt en
+      een korte aankondiging van de wedstrijdflow handleiding die ook deze maand
+      jullie kant op komt.
+    </p>
+  </div>
+
+  <!-- DANKWOORD -->
+  <div class="section-label">
+    <div class="section-label-dot" style="background: #4ade80;"></div>
+    <span class="section-label-text">Aan de testers</span>
+    <div class="section-label-line"></div>
+  </div>
+
+  <div class="block">
+    <div class="thank-card">
+      <span class="thank-icon">🙏</span>
+      <h3>Nogmaals dank dat jullie mee willen testen</h3>
+      <p>
+        Dit platform wordt beter door jullie gebruik. Elke keer dat je iets
+        omslachtig vindt, iets niet begrijpt of juist merkt dat iets goed werkt,
+        dat is precies de informatie die nodig is. Feedback hoeft niet uitgebreid.
+        Een appje of een paar zinnen is genoeg. Alles helpt.
+      </p>
+    </div>
+  </div>
+
+  <!-- UPDATES -->
+  <div class="section-label">
+    <div class="section-label-dot" style="background: #E8251A;"></div>
+    <span class="section-label-text">Wat er aankomt</span>
+    <div class="section-label-line"></div>
+  </div>
+
+  <div class="block">
+
+    <div class="update-card highlight">
+      <div class="update-icon red">📈</div>
+      <div class="update-body">
+        <span class="update-tag new">Nieuw</span>
+        <h4>Carrièreverloop per speler</h4>
+        <p>
+          Spelers worden straks over meerdere seizoenen te volgen. Tussentijdse
+          overstappen zijn in te voeren zodat de volledige ontwikkellijn in beeld
+          blijft, ook als een speler van club wisselt.
+        </p>
+      </div>
+    </div>
+
+    <div class="update-card">
+      <div class="update-icon red">🐛</div>
+      <div class="update-body">
+        <span class="update-tag bugfix">Bugfix komt eraan</span>
+        <h4>Rittenregistratie: km berekening</h4>
+        <p>
+          Bij het invoeren van adressen worden kilometers niet berekend. Dit wordt
+          in deze update opgelost.
+        </p>
+      </div>
+    </div>
+
+    <div class="update-card">
+      <div class="update-icon yellow">📌</div>
+      <div class="update-body">
+        <span class="update-tag coming">Komt eraan</span>
+        <h4>Getipte spelers volledig werkbaar</h4>
+        <p>
+          Getipte spelers zijn al zichtbaar in het navigatiescherm maar nog niet
+          volledig te gebruiken. Dat wordt in deze update afgerond.
+        </p>
+      </div>
+    </div>
+
+    <div class="update-card">
+      <div class="update-icon green">🏆</div>
+      <div class="update-body">
+        <span class="update-tag coming">Komt eraan</span>
+        <h4>Toernooi import via Tournify verbeterd</h4>
+        <p>
+          De Tournify import werkte al, maar standen werden niet goed weergegeven.
+          Dat wordt rechtgezet. Het programma-overzicht krijgt ook meer overzicht.
+        </p>
+      </div>
+    </div>
+
+    <div class="update-card">
+      <div class="update-icon blue">🎨</div>
+      <div class="update-body">
+        <span class="update-tag coming">Komt eraan</span>
+        <h4>Interface update: rustiger en overzichtelijker</h4>
+        <p>
+          Minder ruis, meer focus. De interface wordt wat stiller zodat de
+          inhoud meer ruimte krijgt.
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- AANKONDIGING HANDLEIDING -->
+  <div class="section-label">
+    <div class="section-label-dot" style="background: #F97316;"></div>
+    <span class="section-label-text">Ook deze maand</span>
+    <div class="section-label-line"></div>
+  </div>
+
+  <div class="block">
+    <div class="announce-card">
+      <div class="announce-icon">📖</div>
+      <div class="announce-body">
+        <h4>Handleiding wedstrijdflow komt eraan</h4>
+        <p>
+          Medio juli ontvangen jullie ook een handleiding over de workflow rondom
+          een wedstrijd. Van het inplannen en koppelen van spelers, rapporteren
+          langs de lijn, tot het afronden thuis op de laptop. Ook het verschil
+          tussen een observatie en een rapport wordt daarin uitgelegd. Die
+          handleiding komt zowel in de app als per mail jullie kant op.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTACT -->
+  <div class="section-label">
+    <div class="section-label-dot" style="background: #3b82f6;"></div>
+    <span class="section-label-text">Vragen of feedback</span>
+    <div class="section-label-line"></div>
+  </div>
+
+  <div class="block">
+    <p style="font-size: 14px; line-height: 1.7; color: #94a3b8; margin-bottom: 16px;">
+      Kom je iets tegen of wil je iets kwijt? Drie manieren om te reageren.
+      Kies wat het makkelijkst voelt.
+    </p>
+
+    <div class="contact-btn-block">
+
+      <a href="https://wa.me/31625350577?text=Hoi%20Marcel%2C%20ik%20heb%20feedback%20over%20ScoutingHub%3A%20" class="contact-btn whatsapp-btn">
+        <div class="contact-btn-icon">💬</div>
+        <div class="contact-btn-body">
+          <span class="contact-btn-label">Snelst</span>
+          <span class="contact-btn-title">Stuur een WhatsApp</span>
+          <span class="contact-btn-sub">+31 6 25 35 05 77 &nbsp;·&nbsp; tik hier en je bent direct in de app</span>
+        </div>
+        <span class="contact-btn-arrow">›</span>
+      </a>
+
+      <a href="mailto:contact@scoutinghub.nl?subject=Feedback%20ScoutingHub&body=Hoi%20Marcel%2C%0A%0AIk%20heb%20het%20volgende%20te%20melden%3A%0A%0A" class="contact-btn mail-btn">
+        <div class="contact-btn-icon">✉️</div>
+        <div class="contact-btn-body">
+          <span class="contact-btn-label">Per mail</span>
+          <span class="contact-btn-title">Stuur een e-mail</span>
+          <span class="contact-btn-sub">contact@scoutinghub.nl &nbsp;·&nbsp; tik hier om direct te schrijven</span>
+        </div>
+        <span class="contact-btn-arrow">›</span>
+      </a>
+
+      <a href="https://scoutinghub.nl" class="contact-btn platform-btn">
+        <div class="contact-btn-icon">🔴</div>
+        <div class="contact-btn-body">
+          <span class="contact-btn-label">In de app</span>
+          <span class="contact-btn-title">Gebruik de feedbackknop</span>
+          <span class="contact-btn-sub">Zit direct in het platform, handig als je toch al bezig bent</span>
+        </div>
+        <span class="contact-btn-arrow">›</span>
+      </a>
+
+    </div>
+  </div>
+
+  <!-- FOOTER -->
+  <div class="divider"></div>
+  <div class="footer">
+    <div class="footer-logo"><span>Scouting</span>Hub &nbsp;·&nbsp; scoutinghub.nl</div>
+    <div class="footer-links">
+      <a href="https://scoutinghub.nl">Website</a>
+      <a href="https://instagram.com/scoutinghub.nl">Instagram</a>
+      <a href="https://linkedin.com/company/scoutinghub">LinkedIn</a>
+    </div>
+    <p>
+      Je ontvangt deze mail omdat je bent aangemeld als tester van ScoutingHub.<br>
+      ScoutingHub &nbsp;·&nbsp; Nederland
+    </p>
+  </div>
+
+</div>
+</div>
+</body>
+</html>

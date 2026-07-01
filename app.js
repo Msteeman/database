@@ -32519,6 +32519,15 @@ async function _admMbSend(btn){
 }
 window._admMbSend=_admMbSend;
 
+var _admNlSubsCount=0, _admNlMode='text', _admNlEdition=null;
+function _admNlDefaultEdition(){
+  return { maand:'', nummer:'', titel:'', intro:'',
+    dankwoord:{enabled:false,titel:'Nogmaals dank dat jullie mee willen testen',tekst:''},
+    updates:[{titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false}],
+    aankondiging:{enabled:false,icon:'📖',titel:'',tekst:''},
+    whatsapp:{enabled:false,nummer:'',tekst:'Hoi, ik heb feedback over ScoutingHub: '}
+  };
+}
 async function _admMbRenderNewsletter(pane){
   if(!pane) return;
   pane.innerHTML='<div class="adm-loading">Nieuwsbrief laden…</div>';
@@ -32529,14 +32538,17 @@ async function _admMbRenderNewsletter(pane){
     var j={};try{j=await r.json();}catch(_){}
     if(r.ok&&j&&j.ok) subs=j.subscribers||[];
   }catch(_){}
+  _admNlSubsCount=subs.length;
   try{
     var draftSnap=await getDoc(doc(db,'admin_settings','newsletter_draft'));
     if(draftSnap.exists()){
       var dd=draftSnap.data()||{};
       savedSubj=dd.subject||''; savedMsg=dd.message||''; autoSend=!!dd.autoSend;
+      _admNlMode=dd.mode==='edition'?'edition':'text';
+      _admNlEdition=(dd.edition&&typeof dd.edition==='object')?dd.edition:_admNlDefaultEdition();
       if(dd.savedAt){ try{ savedAt=new Date(dd.savedAt).toLocaleString('nl-NL',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}); }catch(_){} }
-    }
-  }catch(_){}
+    } else { _admNlEdition=_admNlDefaultEdition(); }
+  }catch(_){ _admNlEdition=_admNlDefaultEdition(); }
   var now=new Date(); var nm=now.getMonth()+(now.getDate()===1&&now.getHours()<7?0:1);
   var next1=new Date(now.getFullYear()+(nm>11?1:0),(nm>11?0:nm),1,7,0,0);
   var next1Lbl=next1.toLocaleDateString('nl-NL',{day:'numeric',month:'long'})+' om 07:00';
@@ -32554,10 +32566,12 @@ async function _admMbRenderNewsletter(pane){
       +'</div>'
       +'<div class="adm-nl-col-right">'
         +'<div class="adm-nl-section-hd">Concept'+(savedAt?'<span class="adm-nl-saved-note"> - opgeslagen '+savedAt+'</span>':'')+'</div>'
+        +'<div class="bh-chips" style="margin-bottom:10px;">'
+          +'<button class="bh-chip'+(_admNlMode==='text'?' active':'')+'" onclick="_admNlSetMode(\'text\')">Platte tekst</button>'
+          +'<button class="bh-chip'+(_admNlMode==='edition'?' active':'')+'" onclick="_admNlSetMode(\'edition\')">Nieuwsbrief-editie</button>'
+        +'</div>'
         +'<input class="adm-compose-input" id="adm-nl-to" placeholder="Aan (leeg = alle abonnees; voor test 1 of meer adressen, gescheiden door komma of spatie)" autocomplete="off" oninput="_admNlUpdateSendLabel('+subs.length+')" style="margin-bottom:8px;">'
-        +'<input class="adm-compose-input" id="adm-nl-subj" placeholder="Onderwerp" value="'+_bhEsc(savedSubj)+'" style="margin-bottom:8px;">'
-        +'<textarea class="adm-compose-input" id="adm-nl-msg" placeholder="Bericht — losse titelregel wordt automatisch een kop. # Kop, ## Subkop, - lijstitem, **vet** werken ook. Lege regel = nieuwe alinea." rows="8" style="min-height:160px;resize:vertical;">'+_bhEsc(savedMsg)+'</textarea>'
-        +'<div class="bh-stat-note" style="margin:4px 0 0;">Opmaak: losse korte regel = kop &middot; <code># Kop</code> / <code>## Subkop</code> &middot; <code>- item</code> voor lijst &middot; <code>**vet**</code></div>'
+        +(_admNlMode==='text' ? _admNlTextFormHtml(savedSubj,savedMsg) : '<div id="adm-nl-edition-form"></div>')
         +'<div class="adm-nl-autosend">'
           +'<label class="adm-nl-toggle"><input type="checkbox" id="adm-nl-auto"'+(autoSend?' checked':'')+'> <span>Automatisch versturen op 1e van de maand om 07:00</span></label>'
           +(autoSend?'<div class="adm-nl-next">Volgende verzending: '+next1Lbl+'</div>':'')
@@ -32572,15 +32586,105 @@ async function _admMbRenderNewsletter(pane){
   +'</div>';
   var cb=document.getElementById('adm-nl-auto');
   if(cb) cb.addEventListener('change',function(){ _admNlToggleAuto(this.checked); });
+  if(_admNlMode==='edition') _admNlRenderEditionForm();
 }
+function _admNlTextFormHtml(savedSubj,savedMsg){
+  return '<input class="adm-compose-input" id="adm-nl-subj" placeholder="Onderwerp" value="'+_bhEsc(savedSubj)+'" style="margin-bottom:8px;">'
+    +'<textarea class="adm-compose-input" id="adm-nl-msg" placeholder="Bericht — losse titelregel wordt automatisch een kop. # Kop, ## Subkop, - lijstitem, **vet** werken ook. Lege regel = nieuwe alinea." rows="8" style="min-height:160px;resize:vertical;">'+_bhEsc(savedMsg)+'</textarea>'
+    +'<div class="bh-stat-note" style="margin:4px 0 0;">Opmaak: losse korte regel = kop &middot; <code># Kop</code> / <code>## Subkop</code> &middot; <code>- item</code> voor lijst &middot; <code>**vet**</code></div>';
+}
+window._admNlSetMode=function(mode){
+  _admNlMode=mode;
+  var col=document.querySelector('.adm-nl-col-right'); if(!col) return;
+  var pane=document.getElementById('adm-mb3-detail');
+  if(pane) _admMbRenderNewsletter(pane);
+};
+var _admNlTagOpts=[['nieuw','Nieuw'],['bugfix','Bugfix komt eraan'],['coming','Komt eraan'],['wip','Werk in uitvoering']];
+var _admNlKleurOpts=['red','blue','yellow','green','purple'];
+function _admNlRenderEditionForm(){
+  var host=document.getElementById('adm-nl-edition-form'); if(!host) return;
+  var ed=_admNlEdition||_admNlDefaultEdition();
+  var updatesHtml=(ed.updates||[]).map(function(u,i){
+    return '<div class="adm-nl-upd-card" style="border:1px solid #1f2937;border-radius:8px;padding:10px;margin-bottom:8px;">'
+      +'<div style="display:flex;gap:6px;margin-bottom:6px;">'
+        +'<input class="adm-compose-input" data-ued="'+i+'" data-uf="titel" placeholder="Titel update" value="'+_bhEsc(u.titel||'')+'" style="flex:1;">'
+        +'<button class="adm-btn-ghost" onclick="_admNlRemoveUpdate('+i+')" title="Verwijderen" style="flex:0 0 auto;">✕</button>'
+      +'</div>'
+      +'<textarea class="adm-compose-input" data-ued="'+i+'" data-uf="tekst" placeholder="Tekst" rows="2" style="margin-bottom:6px;">'+_bhEsc(u.tekst||'')+'</textarea>'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">'
+        +'<select class="bh-select" data-ued="'+i+'" data-uf="tag">'+_admNlTagOpts.map(function(t){return '<option value="'+t[0]+'"'+(u.tag===t[0]?' selected':'')+'>'+t[1]+'</option>';}).join('')+'</select>'
+        +'<select class="bh-select" data-ued="'+i+'" data-uf="kleur">'+_admNlKleurOpts.map(function(k){return '<option value="'+k+'"'+(u.kleur===k?' selected':'')+'>'+k+'</option>';}).join('')+'</select>'
+        +'<input class="adm-compose-input" data-ued="'+i+'" data-uf="icon" value="'+_bhEsc(u.icon||'📌')+'" style="width:50px;text-align:center;">'
+        +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;"><input type="checkbox" data-ued="'+i+'" data-uf="highlight"'+(u.highlight?' checked':'')+'> Uitgelicht</label>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+  host.innerHTML=
+    '<div style="display:flex;gap:8px;margin-bottom:8px;">'
+      +'<input class="adm-compose-input" id="adm-ed-maand" placeholder="Maand (bijv. Medio Juli 2026)" value="'+_bhEsc(ed.maand||'')+'" style="flex:1;">'
+      +'<input class="adm-compose-input" id="adm-ed-nummer" placeholder="Editie #" value="'+_bhEsc(ed.nummer||'')+'" style="width:80px;">'
+    +'</div>'
+    +'<input class="adm-compose-input" id="adm-ed-titel" placeholder="Titel (hoofdkop)" value="'+_bhEsc(ed.titel||'')+'" style="margin-bottom:8px;">'
+    +'<textarea class="adm-compose-input" id="adm-ed-intro" placeholder="Intro-tekst" rows="3" style="margin-bottom:10px;">'+_bhEsc(ed.intro||'')+'</textarea>'
+    +'<div class="adm-nl-section-hd" style="font-size:.85rem;">Dankwoord</div>'
+    +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;margin-bottom:6px;"><input type="checkbox" id="adm-ed-dank-on"'+(ed.dankwoord&&ed.dankwoord.enabled?' checked':'')+'> Tonen</label>'
+    +'<input class="adm-compose-input" id="adm-ed-dank-titel" placeholder="Titel dankwoord" value="'+_bhEsc((ed.dankwoord&&ed.dankwoord.titel)||'')+'" style="margin-bottom:6px;">'
+    +'<textarea class="adm-compose-input" id="adm-ed-dank-tekst" placeholder="Tekst dankwoord" rows="2" style="margin-bottom:10px;">'+_bhEsc((ed.dankwoord&&ed.dankwoord.tekst)||'')+'</textarea>'
+    +'<div class="adm-nl-section-hd" style="font-size:.85rem;">Updates</div>'
+    +updatesHtml
+    +'<button class="adm-btn-ghost" onclick="_admNlAddUpdate()" style="margin-bottom:10px;">＋ Update toevoegen</button>'
+    +'<div class="adm-nl-section-hd" style="font-size:.85rem;">Aankondiging (los blok)</div>'
+    +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;margin-bottom:6px;"><input type="checkbox" id="adm-ed-ann-on"'+(ed.aankondiging&&ed.aankondiging.enabled?' checked':'')+'> Tonen</label>'
+    +'<div style="display:flex;gap:6px;margin-bottom:6px;">'
+      +'<input class="adm-compose-input" id="adm-ed-ann-icon" value="'+_bhEsc((ed.aankondiging&&ed.aankondiging.icon)||'📖')+'" style="width:50px;text-align:center;">'
+      +'<input class="adm-compose-input" id="adm-ed-ann-titel" placeholder="Titel aankondiging" value="'+_bhEsc((ed.aankondiging&&ed.aankondiging.titel)||'')+'" style="flex:1;">'
+    +'</div>'
+    +'<textarea class="adm-compose-input" id="adm-ed-ann-tekst" placeholder="Tekst aankondiging" rows="2" style="margin-bottom:10px;">'+_bhEsc((ed.aankondiging&&ed.aankondiging.tekst)||'')+'</textarea>'
+    +'<div class="adm-nl-section-hd" style="font-size:.85rem;">WhatsApp-contactknop</div>'
+    +'<label style="font-size:.78rem;display:flex;align-items:center;gap:4px;margin-bottom:6px;"><input type="checkbox" id="adm-ed-wa-on"'+(ed.whatsapp&&ed.whatsapp.enabled?' checked':'')+'> Tonen</label>'
+    +'<input class="adm-compose-input" id="adm-ed-wa-nummer" placeholder="WhatsApp-nummer (bijv. +31612345678)" value="'+_bhEsc((ed.whatsapp&&ed.whatsapp.nummer)||'')+'" style="margin-bottom:10px;">';
+  host.querySelectorAll('[data-ued]').forEach(function(el){
+    var evt=(el.tagName==='SELECT'||el.type==='checkbox')?'change':'input';
+    el.addEventListener(evt,function(){
+      var idx=parseInt(el.getAttribute('data-ued'),10); var field=el.getAttribute('data-uf');
+      if(!_admNlEdition.updates[idx]) return;
+      _admNlEdition.updates[idx][field]=(el.type==='checkbox')?el.checked:el.value;
+    });
+  });
+  function bindSimple(id,onchange){ var e=document.getElementById(id); if(e) e.addEventListener(e.type==='checkbox'?'change':'input',onchange); }
+  bindSimple('adm-ed-maand',function(){ _admNlEdition.maand=this.value; });
+  bindSimple('adm-ed-nummer',function(){ _admNlEdition.nummer=this.value; });
+  bindSimple('adm-ed-titel',function(){ _admNlEdition.titel=this.value; });
+  bindSimple('adm-ed-intro',function(){ _admNlEdition.intro=this.value; });
+  bindSimple('adm-ed-dank-on',function(){ _admNlEdition.dankwoord.enabled=this.checked; });
+  bindSimple('adm-ed-dank-titel',function(){ _admNlEdition.dankwoord.titel=this.value; });
+  bindSimple('adm-ed-dank-tekst',function(){ _admNlEdition.dankwoord.tekst=this.value; });
+  bindSimple('adm-ed-ann-on',function(){ _admNlEdition.aankondiging.enabled=this.checked; });
+  bindSimple('adm-ed-ann-icon',function(){ _admNlEdition.aankondiging.icon=this.value; });
+  bindSimple('adm-ed-ann-titel',function(){ _admNlEdition.aankondiging.titel=this.value; });
+  bindSimple('adm-ed-ann-tekst',function(){ _admNlEdition.aankondiging.tekst=this.value; });
+  bindSimple('adm-ed-wa-on',function(){ _admNlEdition.whatsapp.enabled=this.checked; });
+  bindSimple('adm-ed-wa-nummer',function(){ _admNlEdition.whatsapp.nummer=this.value; });
+}
+window._admNlAddUpdate=function(){
+  if(!_admNlEdition) _admNlEdition=_admNlDefaultEdition();
+  _admNlEdition.updates.push({titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false});
+  _admNlRenderEditionForm();
+};
+window._admNlRemoveUpdate=function(i){
+  _admNlEdition.updates.splice(i,1);
+  if(!_admNlEdition.updates.length) _admNlEdition.updates.push({titel:'',tekst:'',tag:'coming',icon:'📌',kleur:'blue',highlight:false});
+  _admNlRenderEditionForm();
+};
 
 window._admNlSaveConcept=async function(btn){
-  var subj=(document.getElementById('adm-nl-subj')||{}).value||'';
-  var msg=(document.getElementById('adm-nl-msg')||{}).value||'';
   var auto=document.getElementById('adm-nl-auto'); var autoSend=auto?auto.checked:false;
   var _o=''; if(btn){ _o=btn.textContent; btn.disabled=true; btn.textContent='Opslaan…'; }
   try{
-    await setDoc(doc(db,'admin_settings','newsletter_draft'),{subject:subj,message:msg,autoSend:autoSend,savedAt:new Date().toISOString()});
+    var payload={mode:_admNlMode,autoSend:autoSend,savedAt:new Date().toISOString()};
+    if(_admNlMode==='edition'){ payload.edition=_admNlEdition; payload.subject=(_admNlEdition&&_admNlEdition.titel)||''; }
+    else { payload.subject=(document.getElementById('adm-nl-subj')||{}).value||''; payload.message=(document.getElementById('adm-nl-msg')||{}).value||''; }
+    await setDoc(doc(db,'admin_settings','newsletter_draft'),payload);
     if(typeof toast==='function') toast('Concept opgeslagen');
     var res=document.getElementById('adm-nl-res');
     if(res) res.innerHTML='<div style="color:#4ade80;padding:6px 0;font-size:.82rem;">Opgeslagen om '+new Date().toLocaleTimeString('nl-NL',{hour:'2-digit',minute:'2-digit'})+'</div>';
@@ -32604,17 +32708,24 @@ window._admNlUpdateSendLabel=function(cnt){
 
 window._admNlSend=async function(btn, cnt){
   var res=document.getElementById('adm-nl-res');
-  var subj=(document.getElementById('adm-nl-subj')||{}).value||'';
-  var msg=(document.getElementById('adm-nl-msg')||{}).value||'';
   var testEmail=((document.getElementById('adm-nl-to')||{}).value||'').trim();
-  if(!subj||!msg){ if(res) res.innerHTML='<div class="bh-empty">Vul onderwerp en bericht in.</div>'; return; }
+  var payload={};
+  if(_admNlMode==='edition'){
+    var ed=_admNlEdition;
+    if(!ed||(!ed.titel&&!ed.intro)){ if(res) res.innerHTML='<div class="bh-empty">Vul minimaal een titel of intro in.</div>'; return; }
+    payload={mode:'edition',edition:ed,subject:ed.titel||''};
+  } else {
+    var subj=(document.getElementById('adm-nl-subj')||{}).value||'';
+    var msg=(document.getElementById('adm-nl-msg')||{}).value||'';
+    if(!subj||!msg){ if(res) res.innerHTML='<div class="bh-empty">Vul onderwerp en bericht in.</div>'; return; }
+    payload={subject:subj,message:msg};
+  }
   var confirmMsg=testEmail?('Test versturen naar '+testEmail+'?'):('Versturen naar '+cnt+' abonnee'+(cnt!==1?'s':'')+'?');
   if(!confirm(confirmMsg)) return;
   var _o=''; if(btn){ _o=btn.textContent; btn.disabled=true; btn.textContent='Versturen…'; }
   if(res) res.innerHTML='';
   try{
     var tk=await _admToken(); if(!tk) return;
-    var payload={subject:subj,message:msg};
     if(testEmail) payload.testEmail=testEmail;
     var r=await fetch(_admBase()+'/api/admin-newsletter-send',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+tk},body:JSON.stringify(payload)});
     var j={};try{j=await r.json();}catch(_){}

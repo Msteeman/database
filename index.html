@@ -2120,7 +2120,7 @@ algemeen:</textarea>
             <option value="prioriteit">Op prioriteit</option>
             <option value="status">Op status</option>
             <option value="speler">Op spelernaam (A–Z)</option>
-            <option value="leeftijd">Op leeftijdscategorie</option>
+            <option value="leeftijd">Op elftal</option>
           </select>
           <select id="tip-filter-status" class="filter-select">
             <option value="">Alle statussen</option>
@@ -3088,9 +3088,15 @@ algemeen:</textarea>
             <input id="t-tipgever" type="text" required placeholder="Naam van de tipgever" />
           </div>
         </div>
+        <input type="hidden" id="t-tipgever-contact-id" />
         <div class="field" style="margin-top:12px;">
           <label>Contactgegevens tipgever (optioneel)</label>
           <input id="t-tipgever-contact" type="text" placeholder="Telefoon, e-mail of relatie (bijv. ouder, trainer)" />
+          <div id="t-tipgever-newcontact" style="display:none;margin-top:6px;">
+            <label style="font-size:12px;font-weight:400;display:flex;align-items:center;gap:6px;">
+              <input type="checkbox" id="t-tipgever-addcontact" /> Ook toevoegen als contactpersoon
+            </label>
+          </div>
         </div>
         <div class="field" style="margin-top:12px;">
           <label>Spelernaam *</label>
@@ -3098,12 +3104,12 @@ algemeen:</textarea>
         </div>
         <div class="field-row" style="margin-top:12px;">
           <div class="field">
-            <label>Elftal / Club</label>
-            <input id="t-elftal" type="text" placeholder="Bijv. Ajax O.13-1" />
+            <label>Club</label>
+            <input id="t-club" type="text" placeholder="Bijv. Ajax" />
           </div>
           <div class="field">
-            <label>Leeftijdscategorie</label>
-            <select id="t-leeftijd"></select>
+            <label>Elftal</label>
+            <input id="t-elftal" type="text" placeholder="Bijv. O.13-1" />
           </div>
         </div>
         <div class="field-row" style="margin-top:12px;">

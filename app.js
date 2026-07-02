@@ -2550,35 +2550,67 @@ const __SH_DEMO_CONTACTS = [
 const __SH_DEMO_TIPS = [
   {
     "id": "demo_t001",
-    "tekst": "Kijk naar de U17 finale van de KNVB Beker op 14 juni. Meerdere interessante talenten, o.a. een linksback van FC Groningen die hoog gewaardeerd wordt intern.",
-    "auteur": "Daan Demers",
+    "tipgever": "Mark Willemsen",
+    "tipgever_contact": "",
+    "speler": "Onbekend (linksback)",
+    "club": "FC Groningen",
+    "elftal": "O.17",
+    "positie": "lb",
+    "regio": "Groningen",
+    "prioriteit": "Midden",
+    "status": "Nog te bekijken",
+    "bijzonderheden": "Kijk naar de U17 finale van de KNVB Beker op 14 juni. Meerdere interessante talenten, o.a. deze linksback die hoog gewaardeerd wordt intern.",
     "datum": "2026-05-18",
-    "created": 1747605600000,
-    "modified": 1747605600000
+    "created_at": "2026-05-18T09:00:00.000Z",
+    "updated_at": "2026-05-18T09:00:00.000Z"
   },
   {
     "id": "demo_t002",
-    "tekst": "PSV O.16 heeft een opvallende aanvaller: raak en snel, speelt waarschijnlijk door naar O.17 volgend seizoen. Naam nog onbekend — via Peter van Dijk navragen.",
-    "auteur": "Daan Demers",
+    "tipgever": "Peter van Dijk",
+    "tipgever_contact": "",
+    "speler": "Onbekend (aanvaller)",
+    "club": "PSV",
+    "elftal": "O.16",
+    "positie": "cs",
+    "regio": "",
+    "prioriteit": "Hoog",
+    "status": "Nog te bekijken",
+    "bijzonderheden": "Opvallende aanvaller: raak en snel, speelt waarschijnlijk door naar O.17 volgend seizoen. Naam nog onbekend — navragen bij tipgever.",
     "datum": "2026-04-30",
-    "created": 1745967600000,
-    "modified": 1745967600000
+    "created_at": "2026-04-30T09:00:00.000Z",
+    "updated_at": "2026-04-30T09:00:00.000Z"
   },
   {
     "id": "demo_t003",
-    "tekst": "Finn Bosman (Ajax O.16) presteerde goed op video. Live observatie ingepland voor 7 juni. Heeft potentie maar moet het ook in de wedstrijd laten zien.",
-    "auteur": "Daan Demers",
+    "tipgever": "Daan Demers",
+    "tipgever_contact": "",
+    "speler": "Finn Bosman",
+    "club": "Ajax",
+    "elftal": "O.16",
+    "positie": "",
+    "regio": "",
+    "prioriteit": "Hoog",
+    "status": "Wedstrijd ingepland",
+    "bijzonderheden": "Presteerde goed op video. Live observatie ingepland voor 7 juni. Heeft potentie maar moet het ook in de wedstrijd laten zien.",
     "datum": "2026-03-19",
-    "created": 1742335200000,
-    "modified": 1742335200000
+    "created_at": "2026-03-19T09:00:00.000Z",
+    "updated_at": "2026-03-19T09:00:00.000Z"
   },
   {
     "id": "demo_t004",
-    "tekst": "Tip van Sandra Hoiting (Heerenveen): houd de O.15 van Groningen in de gaten — komen er volgend seizoen twee door die potentieel hebben voor eredivisieniveau.",
-    "auteur": "Daan Demers",
+    "tipgever": "Sandra Hoiting",
+    "tipgever_contact": "",
+    "speler": "Twee spelers — nog te identificeren",
+    "club": "Groningen",
+    "elftal": "O.15",
+    "positie": "",
+    "regio": "Heerenveen",
+    "prioriteit": "Midden",
+    "status": "Nog te bekijken",
+    "bijzonderheden": "Houd de O.15 van Groningen in de gaten — er komen volgend seizoen twee spelers door die potentieel hebben voor eredivisieniveau.",
     "datum": "2026-02-10",
-    "created": 1739185200000,
-    "modified": 1739185200000
+    "created_at": "2026-02-10T09:00:00.000Z",
+    "updated_at": "2026-02-10T09:00:00.000Z"
   }
 ];
 
@@ -5757,6 +5789,7 @@ function renderTips(){
   if(search){
     items = items.filter(t =>
       (t.speler || '').toLowerCase().includes(search) ||
+      (t.club || '').toLowerCase().includes(search) ||
       (t.elftal || '').toLowerCase().includes(search) ||
       (t.tipgever || '').toLowerCase().includes(search) ||
       (t.bijzonderheden || '').toLowerCase().includes(search) ||
@@ -5773,7 +5806,7 @@ function renderTips(){
   else if(sortMode === 'prioriteit') items.sort((a,b)=> (TIP_PRIORITY_ORDER[a.prioriteit||'Midden'] - TIP_PRIORITY_ORDER[b.prioriteit||'Midden']) || (b.datum||'').localeCompare(a.datum||''));
   else if(sortMode === 'status')     items.sort((a,b)=> cmp(a,b,'status') || (b.datum||'').localeCompare(a.datum||''));
   else if(sortMode === 'speler')     items.sort((a,b)=> cmp(a,b,'speler'));
-  else if(sortMode === 'leeftijd')   items.sort((a,b)=> cmp(a,b,'leeftijd') || cmp(a,b,'speler'));
+  else if(sortMode === 'leeftijd')   items.sort((a,b)=> cmp(a,b,'elftal') || cmp(a,b,'speler'));
 
   const total = tipsCache.length;
   if(sub) sub.textContent = total === 0
@@ -5795,9 +5828,9 @@ function renderTips(){
   const esc = s => (s||'').toString().replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   list.innerHTML = items.map(t => {
     const speler = esc(t.speler || '(zonder naam)');
-    const elftal = t.elftal ? `<span class="contact-club">${esc(t.elftal)}</span>` : '';
-    const leeftijd = t.leeftijd ? `<span class="contact-club" style="background:#1f2937; color:#93c5fd;">${esc(t.leeftijd)}</span>` : '';
-    const positie = t.positie ? `<span class="contact-club" style="background:#1f2937; color:#fbbf24;">${esc(t.positie)}</span>` : '';
+    const club = t.club ? `<span class="contact-club">${esc(t.club)}</span>` : '';
+    const elftal = t.elftal ? `<span class="contact-club" style="background:#1f2937; color:#93c5fd;">${esc(t.elftal)}</span>` : '';
+    const positie = t.positie ? `<span class="contact-club" style="background:#1f2937; color:#fbbf24;">${esc(positionLabel(t.positie)||t.positie)}</span>` : '';
     const regio = t.regio ? `<div class="contact-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>${esc(t.regio)}</div>` : '';
     const tipgever = `<div class="contact-row"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><strong>Tip van:</strong>&nbsp;${esc(t.tipgever || '—')}</div>`;
     const status = t.status || 'Nog te bekijken';
@@ -5806,6 +5839,19 @@ function renderTips(){
     const prioColor = TIP_PRIORITY_COLORS[prio] || '#f59e0b';
     const datum = t.datum ? formatDate(t.datum) : '—';
     const bijz = t.bijzonderheden ? `<div style="margin-top:10px; padding:8px 10px; background:rgba(255,255,255,0.03); border-left:3px solid #f59e0b; border-radius:4px; font-size:13px; color:var(--text-2); line-height:1.4;">${esc(t.bijzonderheden)}</div>` : '';
+    // s-tip-flow: een tip krijgt pas een rapport ná plannen + bekijken — knoppen volgen de status
+    let actionsHtml;
+    if(status === 'Wedstrijd ingepland'){
+      actionsHtml = `
+            <div class="contact-row" style="color:var(--text-3); font-size:12px;">Wedstrijd gepland — zet op "Bekeken" zodra je hem gezien hebt.</div>
+            <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); _tipMarkBekeken('${esc(t.id)}')">✅ Markeer als bekeken</button>`;
+    } else if(status === 'Bekeken'){
+      actionsHtml = `<button type="button" class="btn btn-sm btn-primary" onclick="event.stopPropagation(); _tipMaakRapport('${esc(t.id)}')">📋 Maak rapport</button>`;
+    } else if(status === 'Gerapporteerd' || status === 'Afgevallen'){
+      actionsHtml = '';
+    } else {
+      actionsHtml = `<button type="button" class="btn btn-sm" onclick="event.stopPropagation(); _tipPlanWedstrijd('${esc(t.id)}')">📅 Plan wedstrijd</button>`;
+    }
     return `
       <div class="contact-card" data-id="${esc(t.id)}">
         <div class="contact-avatar" style="background:linear-gradient(135deg, #f59e0b, #d97706); color:#000;">💡</div>
@@ -5815,12 +5861,9 @@ function renderTips(){
             <span style="font-size:11px; padding:2px 8px; border-radius:10px; background:${prioColor}22; color:${prioColor}; border:1px solid ${prioColor}55;">${esc(prio)}</span>
             <span style="font-size:11px; padding:2px 8px; border-radius:10px; background:${statusColor}22; color:${statusColor}; border:1px solid ${statusColor}55;">${esc(status)}</span>
           </div>
-          <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">${elftal}${leeftijd}${positie}</div>
+          <div style="margin-top:6px; display:flex; gap:6px; flex-wrap:wrap;">${club}${elftal}${positie}</div>
           <div style="margin-top:10px; display:flex; flex-direction:column; gap:6px;">${tipgever}${regio}<div class="contact-row" style="color:var(--text-3); font-size:12px;">${datum}</div></div>
-          <div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap;">
-            <button type="button" class="btn btn-sm" onclick="event.stopPropagation(); _tipPlanWedstrijd('${esc(t.id)}')">📅 Plan wedstrijd</button>
-            <button type="button" class="btn btn-sm btn-primary" onclick="event.stopPropagation(); _tipMaakRapport('${esc(t.id)}')">📋 Maak rapport</button>
-          </div>
+          ${actionsHtml ? `<div style="margin-top:10px; display:flex; gap:6px; flex-wrap:wrap; align-items:center;">${actionsHtml}</div>` : ''}
           ${bijz}
         </div>
       </div>`;
@@ -5832,12 +5875,6 @@ function renderTips(){
 }
 
 function fillTipDropdowns(){
-  const leeftijdSel = $('#t-leeftijd');
-  if(leeftijdSel && !leeftijdSel.dataset.filled){
-    leeftijdSel.innerHTML = '<option value="">— Onbekend —</option>' +
-      LEEFTIJD_OPTIONS.map(o => `<option value="${o}">${o}</option>`).join('');
-    leeftijdSel.dataset.filled = '1';
-  }
   const positieSel = $('#t-positie');
   if(positieSel && !positieSel.dataset.filled){
     positieSel.innerHTML = '<option value="">— Onbekend —</option>' +
@@ -5857,15 +5894,45 @@ function openTipModal(id){
   $('#t-datum').value          = t ? (t.datum || todayISO()) : todayISO();
   $('#t-tipgever').value       = t ? (t.tipgever || '') : '';
   $('#t-tipgever-contact').value = t ? (t.tipgever_contact || '') : '';
+  $('#t-tipgever-contact-id').value = t ? (t.tipgever_contact_id || '') : '';
+  const _tNewContactWrap = $('#t-tipgever-newcontact'), _tAddContactChk = $('#t-tipgever-addcontact');
+  if(_tNewContactWrap) _tNewContactWrap.style.display = 'none';
+  if(_tAddContactChk) _tAddContactChk.checked = false;
   $('#t-speler').value         = t ? (t.speler || '') : '';
+  $('#t-club').value           = t ? (t.club || '') : '';
   $('#t-elftal').value         = t ? (t.elftal || '') : '';
-  $('#t-leeftijd').value       = t ? (t.leeftijd || '') : '';
-  try{ const s=document.getElementById('t-leeftijd'); if(s && s._syncAC) s._syncAC(); }catch(_){}
   $('#t-positie').value        = t ? (t.positie || '') : '';
   $('#t-regio').value          = t ? (t.regio || '') : '';
   $('#t-prioriteit').value     = t ? (t.prioriteit || 'Midden') : 'Midden';
   $('#t-status').value         = t ? (t.status || 'Nog te bekijken') : 'Nog te bekijken';
   $('#t-bijzonderheden').value = t ? (t.bijzonderheden || '') : '';
+
+  // s-tip-ac: club/elftal autofill zoals op het rapport-formulier (f-club/f-elftal),
+  // en naam-autofill op contactpersonen voor "Tip van" — eenmalig wiren per input.
+  try {
+    const clubEl = $('#t-club');
+    if(clubEl && !clubEl._shClubACWired && typeof shWireClubAC === 'function'){ shWireClubAC(clubEl); clubEl._shClubACWired = true; }
+    const elftalEl = $('#t-elftal');
+    if(elftalEl && !elftalEl._shElftalACWired && typeof shWireLeeftijdAC === 'function'){ shWireLeeftijdAC(elftalEl); elftalEl._shElftalACWired = true; }
+    const tipgeverEl = $('#t-tipgever');
+    if(tipgeverEl && !tipgeverEl._shContactACWired && typeof shWireContactAC === 'function'){
+      shWireContactAC(tipgeverEl, function(contact){
+        $('#t-tipgever-contact-id').value = contact.id || '';
+        const contactField = $('#t-tipgever-contact');
+        if(contactField && !contactField.value.trim()) contactField.value = contact.tel || contact.email || '';
+        if(_tNewContactWrap) _tNewContactWrap.style.display = 'none';
+      });
+      tipgeverEl.addEventListener('input', function(){
+        // Naam gewijzigd na een eerdere match (of nog geen match) — geen vast contact-id meer,
+        // en bied aan om als nieuwe contactpersoon toe te voegen.
+        $('#t-tipgever-contact-id').value = '';
+        const q = tipgeverEl.value.trim().toLowerCase();
+        const known = q && (typeof contactsCache !== 'undefined') && contactsCache.some(c => (c.naam||'').toLowerCase() === q);
+        if(_tNewContactWrap) _tNewContactWrap.style.display = (q && !known) ? '' : 'none';
+      });
+      tipgeverEl._shContactACWired = true;
+    }
+  } catch(_){}
 
   if(titleEl) titleEl.textContent = t ? 'Tip bewerken' : 'Nieuwe tip';
   if(delBtn)  delBtn.style.display = t ? '' : 'none';
@@ -5890,14 +5957,39 @@ async function submitTipForm(e){
   const id = $('#t-id').value || ('t_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6));
   const existing = tipsCache.find(x => x.id === id);
 
+  // s-tip-contact-ac: als de scout aanvinkte om de tipgever als nieuwe contactpersoon toe
+  // te voegen (en er nog geen bestaand contact gekoppeld is), eerst dat contact aanmaken.
+  let tipgeverContactId = $('#t-tipgever-contact-id').value.trim();
+  const addContactChk = $('#t-tipgever-addcontact');
+  if(!tipgeverContactId && addContactChk && addContactChk.checked){
+    try {
+      const contactRaw = $('#t-tipgever-contact').value.trim();
+      const isEmail = /@/.test(contactRaw);
+      const newContact = {
+        id: 'c_' + Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+        naam: tipgever,
+        tel: isEmail ? '' : contactRaw,
+        email: isEmail ? contactRaw : '',
+        club: $('#t-club').value.trim(),
+        functie: 'Tipgever',
+        notes: '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      await saveContact(newContact);
+      tipgeverContactId = newContact.id;
+    } catch(_){ /* error toast al getoond door saveContact */ }
+  }
+
   const tip = {
     id,
     datum:            $('#t-datum').value || todayISO(),
     tipgever,
     tipgever_contact: $('#t-tipgever-contact').value.trim(),
+    tipgever_contact_id: tipgeverContactId,
     speler,
+    club:             $('#t-club').value.trim(),
     elftal:           $('#t-elftal').value.trim(),
-    leeftijd:         $('#t-leeftijd').value,
     positie:          $('#t-positie').value,
     regio:            $('#t-regio').value.trim(),
     prioriteit:       $('#t-prioriteit').value || 'Midden',
@@ -28411,6 +28503,35 @@ function shWireLeeftijdAC(input){
   input.addEventListener('keydown', e => { if(window.shAC?.onKey(e)) e.preventDefault(); });
   input.addEventListener('blur', () => setTimeout(() => window.shAC?.close(), 150));
 }
+// s-tip-contact-ac: autofill op naam van contactpersonen (bijv. "Tip van"-veld) — zelfde
+// shAC-engine als club/elftal, maar gefilterd op contactsCache. onPick(contact) krijgt het
+// volledige contact-record door zodat de aanroeper bijv. tel/e-mail kan overnemen.
+function shWireContactAC(input, onPick){
+  if(!input) return;
+  input.setAttribute('autocomplete','off');
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    if(!q){ window.shAC?.close(); return; }
+    const contacts = (typeof contactsCache !== 'undefined') ? contactsCache : [];
+    const startsWith = [], contains = [];
+    for(const c of contacts){
+      if(!c.naam) continue;
+      const n = c.naam.toLowerCase();
+      if(n.startsWith(q)) startsWith.push(c);
+      else if(n.includes(q)) contains.push(c);
+    }
+    const merged = [...startsWith, ...contains].slice(0, 12);
+    if(!merged.length){ window.shAC?.close(); return; }
+    const items = merged.map(c => ({label: c.naam, primary: c.naam, secondary: [c.functie, c.club].filter(Boolean).join(' · '), _contact: c}));
+    window.shAC?.show(input, items, item => {
+      input.value = item.label;
+      input.dispatchEvent(new Event('change', {bubbles:true}));
+      if(typeof onPick === 'function') onPick(item._contact);
+    });
+  });
+  input.addEventListener('keydown', e => { if(window.shAC?.onKey(e)) e.preventDefault(); });
+  input.addEventListener('blur', () => setTimeout(() => window.shAC?.close(), 150));
+}
 function switchMatchesSubview(sub){
   const btn = document.getElementById('msv-'+sub);
   document.querySelectorAll('.msv-btn').forEach(b => b.classList.remove('active'));
@@ -30446,6 +30567,14 @@ window._repSyncAdviesChips = _repSyncAdviesChips;
 
 
 /* M16 — getipte speler doorzetten naar een rapport of naar het programma. */
+async function _tipSetStatus(id, status){
+  const t = (typeof tipsCache !== 'undefined' ? tipsCache : []).find(x => x && x.id === id);
+  if(!t) return;
+  try {
+    await saveTip(Object.assign({}, t, { status, updated_at: new Date().toISOString() }));
+    if(typeof renderTips === 'function') renderTips();
+  } catch(_){ /* error toast al getoond door saveTip */ }
+}
 function _tipMaakRapport(id){
   const t = (typeof tipsCache !== 'undefined' ? tipsCache : []).find(x => x && x.id === id);
   if(!t){ if(typeof toast==='function') toast('Tip niet gevonden', true); return; }
@@ -30457,20 +30586,27 @@ function _tipMaakRapport(id){
       if(vn) vn.value = nm[0] || '';
       if(an) an.value = nm.slice(1).join(' ') || '';
       const setIf = (fid, v) => { const el = document.getElementById(fid); if(el && v) el.value = v; };
+      setIf('f-club', t.club || '');
       setIf('f-elftal', t.elftal || '');
       setIf('f-positie', t.positie || '');
-      setIf('f-leeftijd', t.leeftijd || '');
       if(typeof syncNaamHidden === 'function') syncNaamHidden('f');
       if(typeof toast === 'function') toast('Rapport gestart vanuit tip');
     } catch(_){}
   }, 140);
+  _tipSetStatus(id, 'Gerapporteerd');
 }
 function _tipPlanWedstrijd(id){
   if(typeof go === 'function') go('programma');
   if(typeof toast === 'function') toast('Plan de wedstrijd in het programma');
+  _tipSetStatus(id, 'Wedstrijd ingepland');
+}
+function _tipMarkBekeken(id){
+  _tipSetStatus(id, 'Bekeken');
+  if(typeof toast === 'function') toast('Tip gemarkeerd als bekeken');
 }
 window._tipMaakRapport = _tipMaakRapport;
 window._tipPlanWedstrijd = _tipPlanWedstrijd;
+window._tipMarkBekeken = _tipMarkBekeken;
 
 
 /* M9 — nieuwe observatie starten vanaf een bestaand spelersprofiel (prefill naam/club/positie/elftal). */

@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ScoutingHub — Meerjarenplan 2026-2030 en investeringsaanvraag</title>
+<style>
+  :root{
+    --bg:#10151e; --panel:#131929; --panel2:#1a2236; --border:#1e2d45;
+    --text:#e2e8f0; --muted:#94a3b8; --muted2:#64748b;
+    --red:#e30613; --yellow:#f5c518; --blue:#4ea1ff; --green:#4ade80;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Inter',-apple-system,'Segoe UI',Arial,Helvetica,sans-serif;
+    line-height:1.65;
+  }
+  .wrap{ max-width:920px; margin:0 auto; padding:48px 24px 80px; }
+  header.doc{
+    padding:40px 40px 32px; margin-bottom:36px; text-align:center;
+    background:linear-gradient(135deg, #1a1f35 0%, #0d1520 100%);
+    border:1px solid var(--border); border-radius:14px;
+  }
+  header.doc .logo{
+    width:52px; height:52px; margin:0 auto 14px; border-radius:12px;
+    background:linear-gradient(145deg, var(--red), #b8050f);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:20px; color:#fff;
+  }
+  header.doc .brand{ font-size:22px; font-weight:800; letter-spacing:-0.5px; color:#fff; }
+  header.doc .brand span{ color:var(--red); }
+  header.doc h1{
+    font-size:25px; font-weight:800; line-height:1.3; margin:16px 0 8px;
+    color:#f1f5f9; letter-spacing:-0.5px;
+  }
+  header.doc .meta{
+    font-size:11px; font-weight:600; letter-spacing:1.8px; text-transform:uppercase;
+    color:var(--muted2);
+  }
+  .ask{
+    display:flex; gap:24px; justify-content:center; flex-wrap:wrap; margin-top:22px;
+  }
+  .ask .stat{ text-align:center; }
+  .ask .stat b{ display:block; font-size:26px; font-weight:800; color:var(--yellow); }
+  .ask .stat span{ font-size:10.5px; color:var(--muted2); text-transform:uppercase; letter-spacing:1px; }
+  .note{
+    background:var(--panel2); border:1px solid var(--border); border-left:3px solid var(--yellow);
+    border-radius:8px; padding:18px 22px; margin-bottom:36px;
+    font-size:14px; color:var(--muted);
+  }
+  .note p{ margin:0 0 8px; }
+  .note p:last-child{ margin-bottom:0; }
+  section{ margin-bottom:40px; }
+  h2{
+    font-size:11px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase;
+    color:var(--muted2); margin:0 0 4px;
+  }
+  h2 .num{ color:var(--red); margin-right:8px; }
+  h3.title{
+    font-size:20px; font-weight:800; color:#f1f5f9; margin:2px 0 18px; letter-spacing:-0.3px;
+  }
+  h4{ font-size:15px; font-weight:700; color:var(--text); margin:22px 0 8px; }
+  p{ font-size:15px; color:var(--muted); margin:0 0 14px; }
+  strong{ color:var(--text); font-weight:700; }
+  a{ color:var(--blue); }
+  ul, ol{ margin:0 0 16px; padding-left:22px; color:var(--muted); font-size:15px; }
+  li{ margin-bottom:8px; }
+  li strong{ color:var(--text); }
+  .card{
+    background:var(--panel2); border:1px solid var(--border); border-radius:10px;
+    padding:20px 24px; margin-bottom:16px;
+  }
+  .card.callout{ border-left:3px solid var(--blue); }
+  .card.warn{ border-left:3px solid var(--yellow); }
+  .stat-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(150px,1fr)); gap:12px; margin-bottom:18px; }
+  .stat-box{ background:var(--panel2); border:1px solid var(--border); border-radius:10px; padding:16px 18px; text-align:center; }
+  .stat-box b{ display:block; font-size:20px; font-weight:800; color:var(--text); }
+  .stat-box span{ font-size:10.5px; color:var(--muted2); text-transform:uppercase; letter-spacing:.8px; }
+  table{
+    width:100%; border-collapse:collapse; margin:0 0 20px; font-size:13.5px;
+    background:var(--panel2); border:1px solid var(--border); border-radius:10px; overflow:hidden;
+  }
+  thead th{
+    text-align:left; padding:12px 14px; background:#161d2e; color:var(--muted2);
+    font-size:10.5px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+    border-bottom:1px solid var(--border);
+  }
+  tbody td{
+    padding:13px 14px; border-bottom:1px solid var(--border); color:var(--muted); vertical-align:top;
+  }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody td:first-child{ color:var(--text); font-weight:700; white-space:nowrap; }
+  tbody tr.total td{ color:var(--text); font-weight:800; background:#161d2e; }
+  .pill{
+    display:inline-block; font-size:10px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase;
+    padding:2px 8px; border-radius:4px; margin-bottom:2px;
+  }
+  .pill-green{ background:rgba(74,222,128,0.12); color:var(--green); }
+  .pill-yellow{ background:rgba(245,197,24,0.14); color:var(--yellow); }
+  .pill-red{ background:rgba(227,6,19,0.14); color:#f87171; }
+  .pill-blue{ background:rgba(78,161,255,0.14); color:var(--blue); }
+  .timeline{ position:relative; padding-left:28px; margin-bottom:10px; }
+  .tyear{ position:relative; padding-bottom:26px; border-left:2px solid var(--border); padding-left:24px; margin-left:-1px; }
+  .tyear:last-child{ border-left:2px solid transparent; padding-bottom:0; }
+  .tyear::before{
+    content:''; position:absolute; left:-7px; top:2px; width:12px; height:12px; border-radius:50%;
+    background:var(--red); border:2px solid var(--bg);
+  }
+  .tyear h4{ margin:0 0 6px; font-size:16px; color:#f1f5f9; }
+  .tyear .arrtag{ font-size:11px; color:var(--yellow); font-weight:700; margin-bottom:8px; display:block; }
+  .divider{ height:1px; background:var(--border); margin:40px 0; }
+  .refs{ font-size:12.5px; color:var(--muted2); }
+  .refs li{ margin-bottom:6px; }
+  footer.doc{
+    text-align:center; padding-top:24px; border-top:1px solid var(--border);
+    font-size:12px; color:#334155;
+  }
+  @media (max-width:600px){
+    .wrap{ padding:28px 14px 60px; }
+    header.doc{ padding:28px 20px 24px; }
+    table, thead, tbody, th, td, tr{ display:block; }
+    thead{ display:none; }
+    tbody tr{ margin-bottom:12px; border-bottom:1px solid var(--border); }
+    tbody td{ border-bottom:none; padding:6px 14px; }
+    tbody td:before{
+      content:attr(data-label); display:block; font-size:10px; font-weight:700;
+      letter-spacing:1px; text-transform:uppercase; color:var(--muted2); margin-bottom:2px;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="doc">
+    <div class="logo">SH</div>
+    <div class="brand">Scouting<span>Hub</span></div>
+    <h1>Meerjarenplan 2026&ndash;2030 &amp; investeringsaanvraag</h1>
+    <div class="meta">Business case voor een investeerder &middot; 2 juli 2026</div>
+    <div class="ask">
+      <div class="stat"><b>€15.000</b><span>gevraagd bedrag, equity</span></div>
+      <div class="stat"><b>6%</b><span>voorgesteld aandelenpercentage</span></div>
+      <div class="stat"><b>2030</b><span>doel: €500k+ ARR</span></div>
+    </div>
+  </header>
+
+  <div class="note">
+    <p><strong>Leeswijzer.</strong> Dit document combineert een meerjarenplan (2026&ndash;2030) met een concrete investeringsaanvraag van €15.000. Marktcijfers in sectie 2 komen uit externe, geciteerde bronnen (zie Bronnen onderaan) &mdash; dit is dus geen interne inschatting zonder onderbouwing, in tegenstelling tot eerdere interne documenten over dit product.</p>
+    <p>Financiële scenario's blijven prognoses, geen garanties. Waar een aanname wordt gedaan (bijv. conversieratio's), staat dat expliciet vermeld.</p>
+  </div>
+
+  <section>
+    <h2><span class="num">01</span>Samenvatting</h2>
+    <h3 class="title">Wat, waarom en hoeveel</h3>
+    <p>ScoutingHub is een werkend, in testfase draaiend scouting-CRM voor jeugdvoetbalopleidingen (Nederlandse markt), gebouwd op Firebase/Cloudflare/Vercel, met een vastgesteld licentiemodel (Solo Scout, Organisatie/Vereniging, Managementbureau, Netwerk/Regio &mdash; zie het aparte licentiedocument). Het product werkt end-to-end: spelersdatabase, rapportage, ritten­registratie, toernooien, en een AI-ondersteunde nieuwsbriefmodule voor testercommunicatie.</p>
+    <p>Voordat er daadwerkelijk voor betaald kan worden gevraagd, ontbreken een aantal randvoorwaarden die bij een writing-a-check-moment voor een echte klant wél nodig zijn: een professionele publieke website/landingspagina, een verbeterde UI voor de belangrijkste flows, een externe beveiligingscontrole (relevant gezien de gevoeligheid van jeugdspelersdata), een werkende betaalintegratie, en de juridische basis (AVG-verwerkersovereenkomst, algemene voorwaarden).</p>
+    <p>Gevraagd bedrag: <strong>€15.000</strong>, in te zetten volgens de begroting in sectie 5. Voorgestelde structuur: een <strong>directe aandeleninvestering (equity)</strong>, geen lening &mdash; zie sectie 6 voor de voorgestelde verhouding. De ambitie is nadrukkelijk groter dan een bijverdienste: het meerjarenplan in sectie 7 werkt toe naar een omzetdoel van <strong>minimaal €500.000 ARR</strong> in 2030, mede door de prijzen van het licentiemodel gefaseerd te verhogen naarmate het platform professionaliseert (zie sectie 4).</p>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span>Markt &amp; kans &mdash; met externe bronnen</h2>
+    <h3 class="title">Een grote sportbond, een smalle betalende niche</h3>
+    <div class="stat-grid">
+      <div class="stat-box"><b>1.261.967</b><span>KNVB-leden (2024/'25 seizoen)</span></div>
+      <div class="stat-box"><b>~2.800&ndash;3.000</b><span>aangesloten voetbalverenigingen</span></div>
+      <div class="stat-box"><b>998.684</b><span>actieve competitiespelers</span></div>
+    </div>
+    <p>De KNVB is de grootste sportbond van Nederland en groeit nog steeds: het ledenaantal steeg naar 1.261.967 in het seizoen 2024/'25, een record, verdeeld over circa 2.800 tot 3.000 aangesloten verenigingen.<sup>[1][2]</sup> Dat is de totale markt &mdash; niet de realistische doelgroep. Slechts een fractie van die verenigingen heeft een georganiseerde jeugdopleiding met coördinatoren en scouts die een tool als ScoutingHub daadwerkelijk nodig hebben; de meeste amateurclubs regelen dit nu ad hoc via WhatsApp en Excel.</p>
+    <h4>Vergelijkbare software: prijsniveau in de markt</h4>
+    <p>Bestaande sportclub-managementsoftware (internationaal, generiek, niet scouting-specifiek) hanteert doorgaans abonnementen tussen omgerekend €50&ndash;€150 per maand voor een volledig platform, met daarnaast transactiekosten op betalingen (bijv. 2% per transactie bij kleinere aanbieders) of maatwerkoffertes voor grotere faciliteiten.<sup>[3][4][5]</sup> ScoutingHub's Organisatie-tier (vanaf €29,99 basislicentie + rol-gebaseerde add-ons) ligt daarmee aan de onderkant van wat vergelijkbare (generieke) tools vragen.</p>
+    <p><strong>Echte scouting-specifieke software is aanzienlijk duurder</strong> &mdash; dit is de relevantste vergelijking, omdat ScoutingHub daar direct mee concurreert op functionaliteit (spelersvolgend, rapportage, database) zonder de bijbehorende prijs te vragen:</p>
+    <div class="stat-grid">
+      <div class="stat-box"><b>€299&ndash;€399<br>/jaar</b><span>Wyscout (Hudl) &mdash; instaptier voor individuele scouts</span></div>
+      <div class="stat-box"><b>£20.000+<br>/jaar</b><span>Wyscout &mdash; club-/enterprise-abonnement</span></div>
+      <div class="stat-box"><b>€99&ndash;€500+<br>/maand</b><span>InStat (Hudl) &mdash; basis tot premium/enterprise</span></div>
+    </div>
+    <p>Wyscout (onderdeel van Hudl) rekent voor individuele scouts €299 tot €399 per jaar voor een instaptier, en enterprise/club-abonnementen lopen op tot £20.000 of meer per jaar<sup>[12]</sup>. InStat (eveneens Hudl) hanteert vergelijkbare instaptarieven vanaf circa €99 per maand, oplopend tot €500+ per maand voor premium/enterprise-toegang<sup>[13]</sup>. ScoutingHub's huidige Solo Scout-tier (€17,99/maand ≈ €216/jaar) en zelfs de Netwerk/Regio-tier (€150&ndash;400/maand) liggen daarmee ruim onder wat gevestigde, scouting-specifieke spelers in de markt al vragen voor vergelijkbare of minder toegespitste functionaliteit (Wyscout/InStat zijn primair video-analyseplatforms voor profvoetbal, niet gebouwd voor jeugdopleidingen). Dat is de kern van de onderbouwing voor de prijsverhogingen in het meerjarenplan (sectie 4 en 7): er is aantoonbare ruimte, niet alleen een wens.</p>
+    <h4>Waarom dit nu, juridisch, ertoe doet</h4>
+    <p>Sportverenigingen zijn wettelijk verplicht persoonsgegevens van leden, vrijwilligers en jeugdleden te beschermen onder de AVG, met <strong>strengere regels specifiek voor gegevens van minderjarigen</strong>, en zijn verplicht een verwerkersovereenkomst af te sluiten met elke partij die namens hen persoonsgegevens verwerkt.<sup>[6][7]</sup> Dat is direct relevant voor ScoutingHub: zodra er betalende klanten met echte jeugdspelersdata bijkomen, is een AVG-conforme verwerkersovereenkomst geen "nice to have" maar een harde vereiste &mdash; dit is een van de posten in de begroting (sectie 5).</p>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span>Product &amp; tractie tot nu toe</h2>
+    <h3 class="title">Geen idee op een servet &mdash; een werkend platform</h3>
+    <ul>
+      <li>Volledig werkende PWA: spelersdatabase, wedstrijdrapporten/observaties, programma/toernooien (incl. Tournify-import), rittenregistratie met automatische kilometerberekening, "getipte spelers"-pipeline, analysemodules.</li>
+      <li>Werkend beheercentrum: mailcentrum, AI-ondersteunde nieuwsbriefmodule (Cloudflare Workers AI) met automatische, live screenshots uit de app zelf voor testercommunicatie.</li>
+      <li>Actieve testgroep die het product mede gevormd heeft via doorlopende feedback.</li>
+      <li>Vastgesteld licentiemodel met concrete prijzen per doelgroep (Solo Scout, Organisatie/Vereniging, Managementbureau, Netwerk/Regio).</li>
+    </ul>
+    <p>Wat ontbreekt is niet het product zelf, maar de "voordeur" en het fundament eromheen: een publiek te vertonen professionele website, een gepolijste UI voor nieuwe (niet-technische) gebruikers, beveiligingsvalidatie, en de juridisch/betaalinfrastructuur om daadwerkelijk geld te kunnen vragen.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span>Business model (kort)</h2>
+    <h3 class="title">Zie het aparte licentiedocument voor de volledige onderbouwing</h3>
+    <table>
+      <thead><tr><th>Tier</th><th>Prijs</th></tr></thead>
+      <tbody>
+        <tr><td data-label="Tier">Tester / vroege gebruiker</td><td data-label="Prijs">€9,99 / maand, blijvend</td></tr>
+        <tr><td data-label="Tier">Solo Scout</td><td data-label="Prijs">€17,99 / maand</td></tr>
+        <tr><td data-label="Tier">Organisatie/Vereniging (HJO)</td><td data-label="Prijs">€29,99 basis + €22,99/coördinator + €14,99/scout</td></tr>
+        <tr><td data-label="Tier">Managementbureau</td><td data-label="Prijs">€24,99/coördinator + €14,99/scout (geen basislicentie)</td></tr>
+        <tr><td data-label="Tier">Netwerk/Regio</td><td data-label="Prijs">Maatwerk, €150&ndash;400 / maand</td></tr>
+      </tbody>
+    </table>
+    <p>Dit zijn de huidige, vastgestelde prijzen. Om het omzetdoel van €500.000+ ARR in 2030 haalbaar te maken (sectie 7), is de verwachting dat prijzen &mdash; vooral in de Netwerk/Regio-tier en bij grotere Organisatie-klanten &mdash; gefaseerd omhoog kunnen naarmate het platform na deze investering professioneler oogt en beveiliging/AVG aantoonbaar op orde is. Een professioneel geverifieerd, veilig platform rechtvaardigt een hogere prijs dan een testfase-product; dat is één van de directe rendementen van deze investering, niet alleen een kostenpost.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span>Investeringsaanvraag: waarvoor, hoeveel</h2>
+    <h3 class="title">€15.000 &mdash; concrete begroting</h3>
+    <table>
+      <thead><tr><th>Post</th><th>Doel</th><th>Bedrag</th></tr></thead>
+      <tbody>
+        <tr>
+          <td data-label="Post">Beveiliging &amp; AVG</td>
+          <td data-label="Doel">Externe penetratietest van de webapplicatie (marktprijs voor een kleine SaaS-app: circa €1.700&ndash;€5.000)<sup>[8][9]</sup>, plus een AVG-conforme verwerkersovereenkomst en privacydocumentatie laten opstellen/reviewen &mdash; wettelijk vereist zodra er betalende klanten met jeugdspelersdata bijkomen<sup>[6][7]</sup></td>
+          <td data-label="Bedrag">€4.000</td>
+        </tr>
+        <tr>
+          <td data-label="Post">UI/UX-professionalisering</td>
+          <td data-label="Doel">Herontwerp van de belangrijkste flows (onboarding, dashboard, mobiele weergave) door een freelance designer, zodat het platform er voor een niet-technische scout/coördinator vertrouwenwekkend uitziet</td>
+          <td data-label="Bedrag">€3.500</td>
+        </tr>
+        <tr>
+          <td data-label="Post">Publieke website / landingspagina</td>
+          <td data-label="Doel">Een professionele, verkoop-gerichte marketingwebsite los van de in-app landingspagina, met heldere uitleg van het licentiemodel en een echt aanmeldproces</td>
+          <td data-label="Bedrag">€2.000</td>
+        </tr>
+        <tr>
+          <td data-label="Post">Betaalinfrastructuur</td>
+          <td data-label="Doel">Integratie van een betaalprovider (bijv. Mollie, iDEAL/factuur) inclusief abonnementenbeheer, zodat organisaties en solo scouts daadwerkelijk kunnen betalen zonder handmatig factureren</td>
+          <td data-label="Bedrag">€2.000</td>
+        </tr>
+        <tr>
+          <td data-label="Post">Juridisch fundament</td>
+          <td data-label="Doel">Algemene voorwaarden, verwerkersovereenkomst-sjabloon per klant, en indien nodig ondernemingsvorm (bijv. eenmanszaak → BV) laten opzetten door een jurist</td>
+          <td data-label="Bedrag">€1.500</td>
+        </tr>
+        <tr>
+          <td data-label="Post">Eerste acquisitie</td>
+          <td data-label="Doel">Materiaal en beperkt budget om het bestaande testernetwerk en hun clubcontacten gericht te benaderen zodra alles hierboven klaarstaat</td>
+          <td data-label="Bedrag">€1.000</td>
+        </tr>
+        <tr>
+          <td data-label="Post">Buffer / onvoorzien</td>
+          <td data-label="Doel">Ruimte voor overschrijdingen op de posten hierboven &mdash; realistisch bij een eerste externe pentest/juridisch traject</td>
+          <td data-label="Bedrag">€1.000</td>
+        </tr>
+        <tr class="total">
+          <td data-label="Totaal">Totaal</td>
+          <td data-label="Doel"></td>
+          <td data-label="Bedrag">€15.000</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Volgorde van uitvoering: beveiliging/AVG en juridisch fundament eerst (randvoorwaardelijk om legaal te kunnen verkopen), gevolgd door betaalinfrastructuur, dan UI en publieke website, tot slot acquisitie &mdash; zie de tijdlijn in sectie 7.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">06</span>Voorgestelde structuur &amp; rendement voor de investeerder</h2>
+    <h3 class="title">Directe aandeleninvestering (equity)</h3>
+    <p>Gevraagd wordt een echte investering in aandelen, geen lening. Bij vergelijkbare vroege trajecten in Nederland wisselen angel-investeerders doorgaans €10.000&ndash;€100.000 in voor een aandelenpercentage dat past bij het bedrag en de waardering van het bedrijf op dat moment<sup>[10]</sup>; bij een klein, eenmanszaak-achtig bedrijf met een werkend product en een concreet groeiplan naar €500.000+ ARR is een pre-money waardering in de orde van €235.000&ndash;€250.000 een redelijk uitgangspunt voor een instapronde van deze omvang.</p>
+    <div class="card callout">
+      <p style="margin-bottom:8px;"><strong>Voorstel:</strong> €15.000 investering voor <strong>6% van de aandelen</strong> (pre-money waardering ≈ €235.000, post-money ≈ €250.000). De oprichter behoudt zeggenschap (94%) zolang het bedrijf primair door één persoon wordt gerund; de investeerder deelt volledig mee in de waardestijging als het meerjarenplan (sectie 7) wordt gehaald.</p>
+      <p style="margin-bottom:0;">Indicatief rendement bij het behalen van het 2030-doel: een SaaS-bedrijf met €500.000 terugkerende jaaromzet wordt in de praktijk vaak gewaardeerd op een veelvoud van de jaaromzet (branche-afhankelijk) &mdash; bij een voorzichtige waardering zou 6% van een dan aanzienlijk waardevoller bedrijf een veelvoud van de oorspronkelijke €15.000 vertegenwoordigen. Dit is een kansscenario, geen garantie (zie risico's, sectie 8).</p>
+    </div>
+    <p><strong>Aanvullende afspraken die standaard zijn bij een instapronde van deze omvang</strong> en die worden voorgesteld: pro-rata recht om mee te doen in een eventuele volgende investeringsronde (zodat het aandeel niet ongewild verwatert), en informatierecht (periodiek inzicht in omzet/voortgang). Geen preferente aandelen of liquidatievoorkeur &mdash; bij deze schaal voegt dat vooral juridische complexiteit toe zonder reëel voordeel voor beide partijen.</p>
+    <p>Zoals in sectie 8 toegelicht: het doel van €500.000+ ARR in 2030 is ambitieus ten opzichte van de huidige schaal, en zal na deze fundament-investering waarschijnlijk een <strong>vervolgronde</strong> vragen (rond 2028, gericht op acquisitie/sales-capaciteit) zodra er bewezen tractie is &mdash; dat wordt hier transparant benoemd, niet verzwegen.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">07</span>Meerjarenplan 2026&ndash;2030</h2>
+    <h3 class="title">Van investering naar volwassen nichebedrijf</h3>
+    <div class="timeline">
+      <div class="tyear">
+        <span class="arrtag">H2 2026 &mdash; fundament</span>
+        <h4>Investering verwerkt, klaar om te verkopen</h4>
+        <p>Beveiliging/AVG, juridisch fundament, betaalinfrastructuur, verbeterde UI en publieke website live. Testers migreren naar het blijvende tarief van €9,99. Eerste gerichte acquisitie via het bestaande netwerk.</p>
+      </div>
+      <div class="tyear">
+        <span class="arrtag">2027 &mdash; ARR-doel ≈ €40.000&ndash;€70.000</span>
+        <h4>Eerste volledig commercieel jaar</h4>
+        <p>Eerste betalende Solo Scout- en Organisatie-klanten buiten de testgroep, op de huidige prijzen. Doorlopende productverbetering op basis van échte klantfeedback (niet alleen testerfeedback). Eerste gesprekken met BVO-jeugdopleidingen over de Netwerk/Regio-tier.</p>
+      </div>
+      <div class="tyear">
+        <span class="arrtag">2028 &mdash; ARR-doel ≈ €130.000&ndash;€180.000</span>
+        <h4>Vervolgronde voor versnelling</h4>
+        <p>Op basis van bewezen tractie: een tweede, grotere investeringsronde gericht op sales-/acquisitiecapaciteit (mogelijk eerste parttime hulp). Eerste Netwerk/Regio-contract(en) getekend. Prijzen gefaseerd verhoogd, gedragen door het geprofessionaliseerde platform.</p>
+      </div>
+      <div class="tyear">
+        <span class="arrtag">2029 &mdash; ARR-doel ≈ €280.000&ndash;€350.000</span>
+        <h4>Opschaling</h4>
+        <p>Meerdere Netwerk/Regio-contracten, honderden Organisatie- en Solo Scout-klanten. Verkenning en mogelijk start van internationale uitbreiding (bijv. België, zelfde taal).</p>
+      </div>
+      <div class="tyear">
+        <span class="arrtag">2030 &mdash; ARR-doel ≥ €500.000</span>
+        <h4>Volwassen, schaalbaar bedrijf</h4>
+        <p>Stabiele, terugkerende omzet uit een bredere mix van klanten, met de Netwerk/Regio-tier (10&ndash;15+ contracten tegen een hogere gemiddelde prijs dan nu) als belangrijkste omzetmotor naast een brede basis Solo Scout- en Organisatie-klanten. Vanaf hier: beslismoment over verdere schaal (extra personeel, internationale groei) op basis van dan bewezen resultaten.</p>
+      </div>
+    </div>
+    <p>Deze ARR-doelen zijn aanzienlijk ambitieuzer dan de conservatieve/realistische/optimistische scenario's uit het licentiedocument (die uitgingen van organische groei zonder vervolgfinanciering). Het €500.000-doel veronderstelt zowel geslaagde acquisitie als een succesvolle vervolgronde in 2028 &mdash; dit wordt hieronder expliciet als risico benoemd, niet verzwegen.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">08</span>Risico's voor de investeerder</h2>
+    <ol>
+      <li><strong>Acquisitierisico.</strong> Het product werkt, maar er is nog geen bewezen, herhaalbaar verkoopkanaal. De eerste 12&ndash;18 maanden na investering zijn een test of warme-netwerk-acquisitie daadwerkelijk tot betalende klanten leidt.</li>
+      <li><strong>Het €500.000-doel is niet haalbaar met alleen deze €15.000.</strong> Dat bedrag lost het fundament op (sectie 5); de sprong naar €130.000+ ARR in 2028 veronderstelt een succesvolle vervolgronde op basis van bewezen tractie. Als die vervolgronde uitblijft, is het realistische groeipad het conservatief/realistisch scenario uit het licentiedocument (orde €40.000&ndash;€100.000 ARR), niet €500.000.</li>
+      <li><strong>Eén-persoons-afhankelijkheid.</strong> Ontwikkeling, support en verkoop leunen op één persoon; uitval of tijdgebrek is een reëel risico voor de uitvoeringssnelheid van dit plan, zeker bij de ambitieuzere schaal.</li>
+      <li><strong>Seizoensgebondenheid.</strong> Verenigingen begroten rond de zomerstop, wat betekent dat verkoopmomentum geconcentreerd is in een beperkt deel van het jaar.</li>
+      <li><strong>Regelgevingsrisico (AVG).</strong> Precies de reden dat een deel van de investering naar beveiliging/AVG gaat &mdash; zonder die stap is verkoop aan clubs met jeugdspelersdata juridisch kwetsbaar.</li>
+      <li><strong>Verwatering.</strong> Een vervolgronde in 2028 verwatert het aandelenpercentage van deze eerste investeerder, tenzij het voorgestelde pro-rata recht (sectie 6) wordt uitgeoefend.</li>
+    </ol>
+    <p>Mitigatie: het gevraagde bedrag is bewust beperkt (€15.000, geen grote kapitaalronde) en expliciet ingezet op het wegnemen van de belangrijkste blokkades (juridisch, beveiliging, UI, betalen) vóórdat er actief verkocht wordt. Het €500.000-doel is een ambitiescenario dat afhangt van een vervolgronde; zelfs zonder die vervolgronde blijft het bedrijf op de kleinere schaal winstgevend en levensvatbaar (zie het licentiedocument).</p>
+  </section>
+
+  <section>
+    <h2><span class="num">09</span>Bronnen</h2>
+    <ol class="refs">
+      <li>[1] <a href="https://www.knvb.nl/nieuws/organisatie/berichten/71258/voetbal-blijft-groeien-knvb-leden%C2%ADaantal-stijgt-wederom" target="_blank" rel="noopener">KNVB &mdash; "Voetbal blijft groeien: KNVB ledenaantal stijgt wederom"</a></li>
+      <li>[2] <a href="https://nl.wikipedia.org/wiki/Nederlands_amateurvoetbal" target="_blank" rel="noopener">Wikipedia &mdash; "Nederlands amateurvoetbal"</a></li>
+      <li>[3] <a href="https://www.clubsports365.com/sports-club-membership-software" target="_blank" rel="noopener">ClubSports365 &mdash; Sports Club Membership Management Software</a></li>
+      <li>[4] <a href="https://communiti.app/blog/the-best-sports-club-management-software-for-small-clubs" target="_blank" rel="noopener">Communiti &mdash; Best Club Management Software for Small Clubs</a></li>
+      <li>[5] <a href="https://www.ezfacility.com/blog/best-sports-club-management-software/" target="_blank" rel="noopener">EZFacility &mdash; 5 Best Sports Club Management Software</a></li>
+      <li>[6] <a href="https://www.kvk.nl/wetten-en-regels/ga-als-vereniging-goed-om-met-privacy-en-avg/" target="_blank" rel="noopener">KVK &mdash; "Dit betekent privacywet AVG voor je vereniging of stichting"</a></li>
+      <li>[7] <a href="https://www.knvb.nl/downloads/bestand/16583/questions-and-answers-avg-sportverenigingen---april-2018" target="_blank" rel="noopener">KNVB / DAS &mdash; "Q&amp;A AVG Sportverenigingen"</a></li>
+      <li>[8] <a href="https://matproof.com/nl/blog/penetratietest-kosten" target="_blank" rel="noopener">Matproof &mdash; "Penetratietest Kosten in Nederland: Prijzen, Vergelijking en Bespaartips"</a></li>
+      <li>[9] <a href="https://sectricity.com/blog/how-much-does-a-pentest-cost/" target="_blank" rel="noopener">Sectricity &mdash; "Pentest Cost: Realistic Pricing BE/NL"</a></li>
+      <li>[10] <a href="https://www.pitchwise.se/blog/the-complete-guide-to-seed-and-series-funding-rounds-for-founders-in-2026" target="_blank" rel="noopener">Pitchwise &mdash; "The Complete Guide to Startup Funding Rounds"</a></li>
+      <li>[11] <a href="https://www.ligo.nl/kennisbank/voordelen-converteerbare-lening/" target="_blank" rel="noopener">Ligo &mdash; "Wat is een converteerbare lening"</a></li>
+      <li>[12] <a href="https://www.hudl.com/en_gb/products/wyscout/pricing" target="_blank" rel="noopener">Hudl &mdash; "Pricing for Wyscout"</a></li>
+      <li>[13] <a href="https://gitnux.org/best/sports-scouting-software/" target="_blank" rel="noopener">Gitnux &mdash; "Top 10 Best Sports Scouting Software"</a> (InStat-prijsindicatie)</li>
+    </ol>
+  </section>
+
+  <div class="divider"></div>
+  <footer class="doc">Scouting<span style="color:#e30613;">Hub</span> &middot; investeerdersdocument &middot; niet extern delen zonder toestemming</footer>
+
+</div>
+</body>
+</html>

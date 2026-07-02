@@ -16,12 +16,13 @@ ScoutingHub lost een reëel, herkenbaar probleem op (spelersvolgend scouten
 binnen jeugdopleidingen is nu vooral appjes, Excel en losse WhatsApp-berichten)
 voor een markt die groot genoeg is om een nichebedrijf op te bouwen, maar te
 versnipperd en prijsgevoelig is om snel te schalen. Er is bestaansrecht,
-vooral bij **regionale opleidingen, satellietclubs van BVO's, en
-scoutingnetwerken/makelaars** eerder dan bij de gemiddelde amateurclub zelf.
-Een laag-instap, per-team of per-club abonnement met een gratis/beperkte
-laag is de meest realistische route. Realistische omzet bij bescheiden
-adoptie (50-150 betalende clubs/teams) ligt in de orde van **€15.000-
-€60.000 ARR** na 12-18 maanden — genoeg om als bijverdienste/side-project
+vooral bij **individuele/vrijwillige scouts, scouts binnen een BVO die hun
+eigen dataportabiliteit willen, managementbureaus/zaakwaarnemers, hoger
+spelende amateurclubs en regionale opleidingsnetwerken** eerder dan bij de
+gemiddelde amateurclub zelf. Een laag-instap, per-scout of per-organisatie
+abonnement met een gratis/beperkte laag is de meest realistische route.
+Realistische omzet bij bescheiden adoptie ligt in de orde van **€11.500-
+€98.000 ARR** na 12-18 maanden — genoeg om als bijverdienste/side-project
 door te ontwikkelen, niet genoeg om zonder externe investering een fulltime
 salaris uit te halen, tenzij het opschaalt richting BVO's/regionale
 netwerken of een aangrenzende markt (bijv. andere sporten, of
@@ -62,6 +63,17 @@ niet als kernfunctie heeft. ScoutingHub's smalle focus is tegelijk kracht
   jeugdopleidingsnetwerken** (bijv. rond een BVO). Die groep is kleiner in
   aantal maar heeft een duidelijkere betalingsbereidheid, omdat scouting
   hun kernactiviteit is in plaats van een bijzaak naast trainen.
+- Een specifieke, sterke doelgroep binnen die groep: **scouts die bij een
+  BVO werken maar hun eigen, opgebouwde spelersdatabase kwijtraken zodra ze
+  weggaan** — hun scoutinggeschiedenis hoort bij de club, niet bij hen
+  persoonlijk. Een onafhankelijk, eigen platform lost dat direct op en is
+  daarmee méér dan een hobby-tool: het is een vorm van
+  loopbaan-/dataportabiliteit voor de scout zelf.
+- Daarnaast: **managementbureaus en zaakwaarnemers** die spelers volgen
+  buiten een clubverband om, en **hoger spelende amateurclubs** die zowel
+  interne jeugdscouting als (soms) externe scouting doen. Lagere
+  BVO-jeugdopleidingen zijn een mogelijke maar minder zekere doelgroep —
+  die hebben vaak al eigen (duurdere, BVO-brede) systemen.
 - Amateurclubs zijn structureel prijsgevoelig: budget komt vaak uit
   vrijwilligersbijdragen/sponsoring, niet uit een IT-budget. Een tool van
   meer dan een paar tientjes per maand per team is voor de gemiddelde
@@ -101,47 +113,70 @@ duidelijk aangrenzend product.
 
 ---
 
-## 5. Licentiemodel — voorstel
+## 5. Licentiemodel — vastgesteld
 
-Een **freemium, per-team/per-club SaaS-abonnement** past het beste bij deze
-markt: lage instapdrempel voor adoptie, betaald tier zodra een club meer
-dan een handjevol scouts/spelers heeft.
+Een **freemium, per-scout/per-organisatie SaaS-abonnement**. Geen
+onderscheid naar sportief niveau (hoog spelende amateurclub vs. lagere
+BVO-opleiding) — dat onderscheid is instabiel (promotie/degradatie) en
+wordt al automatisch opgevangen doordat een grotere/intensievere
+organisatie vanzelf meer coördinatoren/scouts nodig heeft en dus al meer
+betaalt via de bestaande staffel. BVO-organisaties met een echt aparte
+schaal/budget vallen onder de aparte Netwerk/Regio-tier (maatwerk), niet
+onder een niveau-toeslag op de standaardtiers.
 
-### Voorgestelde tiers
+### Tiers en prijzen
 
-| Tier | Voor wie | Bevat | Richtprijs |
+| Tier | Voor wie | Bevat | Prijs |
 |---|---|---|---|
-| **Tester / vroege gebruiker** | Iedereen die nu al meedraait in de testfase | Alles uit de Club-tier (dus de volledige functieset), zolang het platform in test-/bètafase zit | €0 tijdens de testfase; daarna blijvend 50% korting op de tier die van toepassing wordt, als dank voor het testen en de feedback die het product gevormd heeft |
+| **Tester / vroege gebruiker** | Iedereen die nu al meedraait in de testfase | Volledige functieset | €9,99 / maand, blijvend |
 | **Gratis** | Losse scout die wil uitproberen, geen betalende tester | Spelersdatabase tot ~25 spelers, basisrapportage, geen ritten/analyse-modules | €0 |
-| **Solo Scout** | Eén individuele scout of makelaar, niet gebonden aan één club (bijv. volgt spelers bij meerdere verenigingen) | Onbeperkt spelers, volledige rapportage/observaties, ritten, "getipte spelers"-pipeline — geen teamstructuur nodig | €7-12 / maand |
-| **Team** | Eén jeugdteam/leeftijdsgroep binnen een club | Onbeperkt spelers binnen dat team, rapporten, observaties, ritten, programma | €9-15 / maand per team |
-| **Club / Organisatie** | Hele jeugdopleiding met hoofdjeugdopleiding, coördinatoren en meerdere scouts | Alle teams onder één club, rolbeheer (scout/coördinator/hoofdcoördinator), toernooien, analysemodules, prioriteitssupport | Vanaf €49 / maand (tot 5 actieve scouts/coördinatoren), daarna +€8 / maand per extra scout of coördinator |
-| **Netwerk/Regio** | Scoutingnetwerk rond een BVO, meerdere clubs | Alles van Club + overkoepelend dashboard over meerdere clubs, export/rapportage naar de BVO | Maatwerk, richting €150-400 / maand |
+| **Solo Scout** | Individuele/vrijwillige scout, scout bij een BVO die een eigen onafhankelijke database wil, losse zaakwaarnemer | Onbeperkt spelers, volledige rapportage/observaties, ritten, tips-pipeline — geen teamstructuur nodig | €17,99 / maand |
+| **Organisatie / Vereniging (HJO)** | Vereniging met een hoofdjeugdopleiding | HJO-basislicentie (eenmalig per organisatie, ongeacht aantal afdelingen), rolbeheer, toernooien, analysemodules, prioriteitssupport | €29,99 / maand (basislicentie) |
+| — coördinator | per coördinator, binnen een vereniging | — | +€22,99 / maand per coördinator |
+| — scout | per scout, binnen een vereniging | — | +€14,99 / maand per scout |
+| **Managementbureau / zaakwaarnemerskantoor** | Bureau zonder verenigingsstructuur, alleen coördinatoren + scouts in dienst | Zelfde functieset als Organisatie, maar geen HJO-basislicentie nodig | Geen basisprijs |
+| — coördinator | per coördinator, binnen een bureau | — | +€24,99 / maand per coördinator |
+| — scout | per scout, binnen een bureau | — | +€14,99 / maand per scout |
+| **Netwerk/Regio** | Scoutingnetwerk rond een BVO, meerdere clubs | Alles van Organisatie + overkoepelend dashboard over meerdere clubs, export/rapportage naar de BVO | Maatwerk, richting €150-400 / maand |
+
+**Voorbeeld vereniging** met 1 coördinator + 3 scouts:
+€29,99 (HJO-basislicentie) + €22,99 (coördinator) + 3×€14,99 (scouts) =
+**€97,95 / maand**.
+
+**Voorbeeld grotere jeugdopleiding** met 3 coördinatoren + 9 scouts:
+€29,99 + 3×€22,99 + 9×€14,99 = **€233,87 / maand**.
+
+**Voorbeeld managementbureau** met 1 coördinator + 3 scouts (geen
+HJO-basislicentie): €24,99 + 3×€14,99 = **€69,96 / maand** — bewust
+goedkoper dan het verenigingsequivalent voor hetzelfde aantal personen,
+ondanks de iets hogere coördinatorprijs, omdat een bureau geen
+HJO-structuur/basislicentie nodig heeft.
 
 Redenen voor deze opzet:
 
-- **Testers krijgen bewust een blijvend voordeel, geen tijdelijke proefperiode.**
-  Zij hebben het product mede gevormd via feedback nog voordat er een
-  betaald model was — een eenmalige gratis maand zou dat niet recht doen.
-  Een blijvende korting (in plaats van "gratis voor altijd") houdt het
-  financieel houdbaar zodra het aantal testers groeit, maar erkent wel hun
-  vroege bijdrage.
-- **Solo Scout is losgekoppeld van Team**, omdat een zelfstandige scout of
-  makelaar geen club/team-structuur heeft om spelers aan op te hangen —
-  die groep heeft wel behoefte aan de volledige rapportage/tips-functies,
-  maar zou bij de Team-tier onnodig vastzitten aan een teamconcept dat niet
-  op hen van toepassing is.
-- **Club-tier schaalt met het aantal scouts/coördinatoren, niet met het
-  aantal teams.** Bij een hoofdjeugdopleiding is de belasting op het
-  platform (rapporten, observaties, beheer) evenredig met hoeveel mensen
-  er actief scouten en coördineren, niet met hoeveel losse teams er zijn —
-  een organisatie met 3 coördinatoren en 10 scouts over 6 teams gebruikt
-  het platform intensiever dan een club met 10 teams maar 2 actieve scouts.
-- **Jaarlijks factureren met korting (bijv. 2 maanden gratis bij
-  jaarbetaling)** past goed bij hoe verenigingen begroten (seizoen-
-  gebonden, vaak via de penningmeester eenmalig per jaar geregeld) en
-  verlaagt churn/administratie voor jou.
-- **Netwerk-tier is de meest kansrijke groeirichting** — een BVO of
+- **Testers krijgen een vast, blijvend tarief (€9,99), geen aflopende
+  proefperiode of percentagekorting.** Simpeler te communiceren en te
+  administreren, en erkent hun vroege bijdrage zonder gedoe.
+- **Solo Scout is bewust hoger geprijsd (€17,99) dan een instap-app**,
+  omdat de kernwaarde voor deze doelgroep niet "uitproberen" is maar
+  **dataportabiliteit en loopbaancontinuïteit** — vooral relevant voor een
+  scout die bij een BVO werkt en zijn eigen scoutinggeschiedenis niet kwijt
+  wil raken bij vertrek.
+- **Volledig additief per rol (coördinator/scout), geen bundel- of
+  afdelingslogica meer.** Dat is eenvoudiger uit te leggen en te
+  administreren dan een basisbundel met inbegrepen aantallen, en schaalt
+  direct eerlijk mee met de daadwerkelijke omvang van de organisatie.
+- **Managementbureaus krijgen een eigen, losse structuur zonder
+  HJO-basislicentie** — logisch, want zij hebben geen verenigingsvorm. Dat
+  ze per coördinator iets meer betalen (€24,99 t.o.v. €22,99 bij een
+  vereniging) is een bewust verschil tussen een commerciële, winstgerichte
+  partij en een vrijwilligersorganisatie — in de praktijk valt dat verschil
+  in de meeste gevallen alsnog lager uit dan het verenigingstarief, doordat
+  de HJO-basislicentie wegvalt.
+- **Jaarlijks factureren met korting** (bijv. 2 maanden gratis) past goed
+  bij hoe verenigingen begroten (seizoensgebonden, vaak via de
+  penningmeester eenmalig per jaar geregeld) en verlaagt churn/administratie.
+- **Netwerk-tier blijft de meest kansrijke groeirichting** — een BVO of
   regionaal opleidingsnetwerk heeft zowel budget als een duidelijke reden
   (talentherkenning is hun corebusiness) om hiervoor te betalen boven wat
   een individuele amateurclub ooit zou doen.
@@ -160,15 +195,19 @@ Redenen voor deze opzet:
 
 ## 6. Omzetscenario's (schattingen, geen voorspelling met zekerheid)
 
-Uitgangspunt: alleen betaalde Solo Scout-, Team- en Club-tiers meegerekend.
-Gratis-tier en tester-korting dragen niet (volledig) bij aan omzet maar wel
-aan naamsbekendheid/instroom richting betaalde tiers.
+Uitgangspunt: prijzen zoals hierboven vastgesteld (tester €9,99, Solo Scout
+€17,99, organisatie/bureau volledig additief per coördinator/scout).
+Gratis-tier draagt niet bij aan omzet maar wel aan naamsbekendheid/instroom
+richting betaalde tiers. "Organisaties" hieronder is een gemengde groep van
+verenigingen én managementbureaus; de gemiddelde prijs per organisatie
+loopt op naarmate er meer/grotere jeugdopleidingen bij komen (meer
+coördinatoren/scouts per organisatie).
 
 | Scenario | Betalende eenheden na 12-18 mnd | Gem. prijs/mnd | Jaaromzet (ARR) |
 |---|---|---|---|
-| **Conservatief** | 15 solo scouts + 30 teams + 5 clubs | €9 / €12 / €70 | ≈ €10.100 |
-| **Realistisch** | 40 solo scouts + 80 teams + 20 clubs | €9 / €12 / €70 | ≈ €33.100 |
-| **Optimistisch** | 70 solo scouts + 150 teams + 40 clubs + 2 netwerk-deals | €10 / €13 / €75 + €250 | ≈ €71.400 |
+| **Conservatief** | 20 testers + 15 solo scouts + 5 organisaties (gem. 1 coördinator + 3 scouts) | €9,99 / €17,99 / €98 | ≈ €11.500 |
+| **Realistisch** | 50 testers + 40 solo scouts + 20 organisaties (gem. iets groter) | €9,99 / €17,99 / €115 | ≈ €42.200 |
+| **Optimistisch** | 80 testers + 70 solo scouts + 40 organisaties (incl. grotere opleidingen/bureaus) + 2 netwerk-deals | €9,99 / €17,99 / €140 + €250 | ≈ €97.900 |
 
 Interpretatie: zelfs het optimistische scenario is geen fulltime-salaris-
 vervangend bedrag in Nederland zonder aanvullende inkomsten. Het is wel een
@@ -241,10 +280,10 @@ sales/onboarding bij clubs) en **acquisitie** (hoe kom je aan de eerste
 
 - **Bestaansrecht: ja, als bijverdienste/nichebedrijf**, niet als
   snelgroeiend platform zonder extra investering.
-- **Start met Team + Club-tiers zoals hierboven**, houd het licentiemodel
-  simpel (twee prijzen, geen ingewikkelde add-ons) voor de eerste 12
-  maanden — complexiteit in prijzen kost meer verkooptijd dan het oplevert
-  bij deze schaal.
+- **Start met Solo Scout + Organisatie zoals hierboven vastgesteld**, en
+  hou vast aan één as voor prijsdifferentiatie (aantal scouts/coördinatoren),
+  niet aan een tweede as zoals sportief niveau — twee assen tegelijk kost
+  meer verkoop-/uitlegtijd dan het oplevert bij deze schaal.
 - **Richt acquisitie eerst op het eigen netwerk** (huidige testers, hun
   clubs, BVO-contacten) in plaats van brede marketing — bij deze
   marktomvang is warme introductie effectiever dan advertenties.

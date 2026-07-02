@@ -1,0 +1,349 @@
+<!doctype html>
+<html lang="nl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ScoutingHub — Bestaansrecht, licentiemodel en prijsindicatie</title>
+<style>
+  :root{
+    --bg:#10151e; --panel:#131929; --panel2:#1a2236; --border:#1e2d45;
+    --text:#e2e8f0; --muted:#94a3b8; --muted2:#64748b;
+    --red:#e30613; --yellow:#f5c518; --blue:#4ea1ff; --green:#4ade80;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:'Inter',-apple-system,'Segoe UI',Arial,Helvetica,sans-serif;
+    line-height:1.65;
+  }
+  .wrap{ max-width:880px; margin:0 auto; padding:48px 24px 80px; }
+  header.doc{
+    padding:36px 40px 30px; margin-bottom:36px; text-align:center;
+    background:linear-gradient(135deg, #1a1f35 0%, #0d1520 100%);
+    border:1px solid var(--border); border-radius:14px;
+  }
+  header.doc .logo{
+    width:52px; height:52px; margin:0 auto 14px; border-radius:12px;
+    background:linear-gradient(145deg, var(--red), #b8050f);
+    display:flex; align-items:center; justify-content:center;
+    font-weight:800; font-size:20px; color:#fff;
+  }
+  header.doc .brand{ font-size:22px; font-weight:800; letter-spacing:-0.5px; color:#fff; }
+  header.doc .brand span{ color:var(--red); }
+  header.doc h1{
+    font-size:24px; font-weight:800; line-height:1.3; margin:16px 0 8px;
+    color:#f1f5f9; letter-spacing:-0.5px;
+  }
+  header.doc .meta{
+    font-size:11px; font-weight:600; letter-spacing:1.8px; text-transform:uppercase;
+    color:var(--muted2);
+  }
+  .note{
+    background:var(--panel2); border:1px solid var(--border); border-left:3px solid var(--yellow);
+    border-radius:8px; padding:18px 22px; margin-bottom:36px;
+    font-size:14px; color:var(--muted);
+  }
+  .note p{ margin:0 0 8px; }
+  .note p:last-child{ margin-bottom:0; }
+  section{ margin-bottom:40px; }
+  h2{
+    font-size:11px; font-weight:700; letter-spacing:2.5px; text-transform:uppercase;
+    color:var(--muted2); margin:0 0 4px;
+  }
+  h2 .num{ color:var(--red); margin-right:8px; }
+  h3.title{
+    font-size:20px; font-weight:800; color:#f1f5f9; margin:2px 0 18px; letter-spacing:-0.3px;
+  }
+  h4{ font-size:15px; font-weight:700; color:var(--text); margin:22px 0 8px; }
+  p{ font-size:15px; color:var(--muted); margin:0 0 14px; }
+  strong{ color:var(--text); font-weight:700; }
+  ul, ol{ margin:0 0 16px; padding-left:22px; color:var(--muted); font-size:15px; }
+  li{ margin-bottom:8px; }
+  li strong{ color:var(--text); }
+  .card{
+    background:var(--panel2); border:1px solid var(--border); border-radius:10px;
+    padding:20px 24px; margin-bottom:16px;
+  }
+  .card.callout{ border-left:3px solid var(--blue); }
+  table{
+    width:100%; border-collapse:collapse; margin:0 0 20px; font-size:13.5px;
+    background:var(--panel2); border:1px solid var(--border); border-radius:10px; overflow:hidden;
+  }
+  thead th{
+    text-align:left; padding:12px 14px; background:#161d2e; color:var(--muted2);
+    font-size:10.5px; font-weight:700; letter-spacing:1px; text-transform:uppercase;
+    border-bottom:1px solid var(--border);
+  }
+  tbody td{
+    padding:13px 14px; border-bottom:1px solid var(--border); color:var(--muted); vertical-align:top;
+  }
+  tbody tr:last-child td{ border-bottom:none; }
+  tbody td:first-child{ color:var(--text); font-weight:700; white-space:nowrap; }
+  tbody td:last-child{ color:var(--text); font-weight:600; white-space:nowrap; }
+  tbody tr.addon td:first-child{ color:var(--muted2); font-weight:600; font-style:italic; white-space:normal; }
+  .pill{
+    display:inline-block; font-size:10px; font-weight:700; letter-spacing:1.2px; text-transform:uppercase;
+    padding:2px 8px; border-radius:4px; margin-bottom:2px;
+  }
+  .pill-green{ background:rgba(74,222,128,0.12); color:var(--green); }
+  .pill-yellow{ background:rgba(245,197,24,0.14); color:var(--yellow); }
+  .pill-red{ background:rgba(227,6,19,0.14); color:#f87171; }
+  .pill-blue{ background:rgba(78,161,255,0.14); color:var(--blue); }
+  .divider{ height:1px; background:var(--border); margin:40px 0; }
+  footer.doc{
+    text-align:center; padding-top:24px; border-top:1px solid var(--border);
+    font-size:12px; color:#334155;
+  }
+  @media (max-width:600px){
+    .wrap{ padding:28px 14px 60px; }
+    header.doc{ padding:28px 20px 24px; }
+    table, thead, tbody, th, td, tr{ display:block; }
+    thead{ display:none; }
+    tbody tr{ margin-bottom:12px; border-bottom:1px solid var(--border); }
+    tbody td{ border-bottom:none; padding:6px 14px; }
+    tbody td:before{
+      content:attr(data-label); display:block; font-size:10px; font-weight:700;
+      letter-spacing:1px; text-transform:uppercase; color:var(--muted2); margin-bottom:2px;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="doc">
+    <div class="logo">SH</div>
+    <div class="brand">Scouting<span>Hub</span></div>
+    <h1>Bestaansrecht, licentiemodel en prijsindicatie</h1>
+    <div class="meta">Intern document &middot; laatst geschreven 2 juli 2026</div>
+  </header>
+
+  <div class="note">
+    <p>Dit document is een inschatting, geen marktonderzoek met externe bronnen. Cijfers zijn onderbouwde aannames op basis van wat over de Nederlandse amateurvoetbalmarkt algemeen bekend is, niet uit een live databron opgehaald. Waar een getal een aanname is, staat dat er expliciet bij.</p>
+    <p>De prijzen in sectie 5 zijn vastgesteld door de eigenaar; de rest van het document is bijgewerkt om daarop aan te sluiten.</p>
+  </div>
+
+  <section>
+    <h2><span class="num">01</span>Samenvatting</h2>
+    <h3 class="title">Bestaansrecht: ja, als nichebedrijf &mdash; niet als snelle groeier</h3>
+    <p>ScoutingHub lost een reëel, herkenbaar probleem op (spelersvolgend scouten binnen jeugdopleidingen is nu vooral appjes, Excel en losse WhatsApp-berichten) voor een markt die groot genoeg is om een nichebedrijf op te bouwen, maar te versnipperd en prijsgevoelig is om snel te schalen.</p>
+    <p>Er is bestaansrecht, vooral bij <strong>individuele/vrijwillige scouts, scouts binnen een BVO die hun eigen dataportabiliteit willen, managementbureaus/zaakwaarnemers, hoger spelende amateurclubs en regionale opleidingsnetwerken</strong> eerder dan bij de gemiddelde amateurclub zelf. Een laag-instap, per-scout of per-organisatie abonnement met een gratis/beperkte laag is de meest realistische route.</p>
+    <p>Realistische omzet bij bescheiden adoptie ligt in de orde van <strong>€11.500&ndash;€98.000 ARR</strong> na 12&ndash;18 maanden &mdash; genoeg om als bijverdienste/side-project door te ontwikkelen, niet genoeg om zonder externe investering een fulltime salaris uit te halen, tenzij het opschaalt richting BVO's/regionale netwerken of een aangrenzende markt.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">02</span>Wat ScoutingHub nu is</h2>
+    <h3 class="title">Een compleet scouting-CRM, geen prikbord-appje</h3>
+    <p>Op basis van de huidige featureset in de codebase:</p>
+    <ul>
+      <li>Spelersdatabase met carrièreverloop over meerdere seizoenen/clubs</li>
+      <li>Wedstrijdrapporten en losse observaties (formeel vs. snel)</li>
+      <li>Programma/planning van wedstrijden en toernooien (incl. Tournify-import)</li>
+      <li>Rittenregistratie met automatische kilometerberekening (declaraties)</li>
+      <li>"Getipte spelers" &mdash; een lichte scouting-pipeline</li>
+      <li>Analysemodules (elftallen vergelijken, vormtrend, pitch-view)</li>
+      <li>Rolgebaseerde toegang (scout, coördinator, hoofdcoördinator, admin)</li>
+      <li>PWA &mdash; werkt offline-vriendelijk, installeerbaar, geen appstore nodig</li>
+    </ul>
+    <p>Dat is functioneel een <strong>compleet, gespecialiseerd scouting-CRM voor jeugdopleidingen</strong>. Veel concurrentie in de amateursport-hoek is generieke teamplanning-software die scouting niet als kernfunctie heeft. ScoutingHub's smalle focus is tegelijk kracht (diepgang) en risico (kleinere markt dan "alles-in-1 club-app").</p>
+  </section>
+
+  <section>
+    <h2><span class="num">03</span>Marktcontext</h2>
+    <h3 class="title">Reëel, maar smal &mdash; schatting, geen harde bron</h3>
+    <ul>
+      <li>Nederland heeft circa 3.000&ndash;3.400 aangesloten amateurvoetbalclubs bij de KNVB. Een fractie daarvan (schatting: 300&ndash;600) heeft een jeugdopleiding die serieus genoeg scout om hiervoor te betalen.</li>
+      <li>Scouting als functie zit vaak niet bij de club zelf, maar bij <strong>individuele scouts/makelaars</strong> en <strong>regionale jeugdopleidingsnetwerken</strong>. Die groep heeft een duidelijkere betalingsbereidheid, omdat scouting hun kernactiviteit is.</li>
+      <li><strong>Een specifieke, sterke doelgroep:</strong> scouts die bij een BVO werken maar hun eigen, opgebouwde spelersdatabase kwijtraken zodra ze weggaan &mdash; hun scoutinggeschiedenis hoort bij de club, niet bij hen persoonlijk. Een onafhankelijk platform is daarmee méér dan een hobby-tool: het is loopbaan-/dataportabiliteit voor de scout zelf.</li>
+      <li>Daarnaast: <strong>managementbureaus en zaakwaarnemers</strong> die spelers volgen buiten een clubverband om, en <strong>hoger spelende amateurclubs</strong> die zowel interne jeugdscouting als (soms) externe scouting doen. Lagere BVO-jeugdopleidingen zijn een mogelijke maar minder zekere doelgroep &mdash; die hebben vaak al eigen, duurdere BVO-brede systemen.</li>
+      <li>Amateurclubs zijn structureel prijsgevoelig: budget komt vaak uit vrijwilligersbijdragen/sponsoring, niet uit een IT-budget.</li>
+      <li>Internationaal (België, Duitsland, Scandinavië) bestaat een vergelijkbare markt, maar taal/lokalisatie en lokale koppelingen maken uitbreiding niet triviaal.</li>
+    </ul>
+    <p><strong>Conclusie markt:</strong> een reële, maar smalle niche. Genoeg voor een bijverdienste/klein bedrijf op basis van 50&ndash;300 betalende klanten, niet voor snelle VC-achtige groei zonder een duidelijk aangrenzend product.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">04</span>Kernwaarde</h2>
+    <h3 class="title">Waarom bestaansrecht</h3>
+    <ol>
+      <li><strong>Tijdsbesparing die aantoonbaar is</strong> &mdash; automatische kilometerberekening voor declaraties en gestructureerde spelersrapporten vervangen handwerk dat scouts nu in Excel/WhatsApp doen.</li>
+      <li><strong>Data blijft bij de club/scout, niet versnipperd over app-groepen</strong> &mdash; spelersvolgend over seizoenen heen is precies het soort continuïteit die WhatsApp/Excel structureel niet biedt.</li>
+      <li><strong>Laag technische instap</strong> &mdash; PWA, geen appstore-installatie nodig, werkt op een telefoon langs de lijn.</li>
+      <li><strong>Risico:</strong> de kernwaarde is grotendeels "georganiseerde data-invoer" &mdash; waardevol maar niet moeilijk na te bouwen door een concurrent met meer budget. Het verdedigbare voordeel op langere termijn zit in opgebouwde data (switching cost) en diepte in scouting-specifieke workflows.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2><span class="num">05</span>Licentiemodel</h2>
+    <h3 class="title">Vastgesteld &mdash; per scout / per organisatie</h3>
+    <p>Een <strong>freemium, per-scout/per-organisatie SaaS-abonnement</strong>. Geen onderscheid naar sportief niveau (hoog spelende amateurclub vs. lagere BVO-opleiding) &mdash; dat onderscheid is instabiel (promotie/degradatie) en wordt al automatisch opgevangen doordat een grotere/intensievere organisatie vanzelf meer coördinatoren/scouts nodig heeft en dus al meer betaalt via de bestaande staffel. BVO-organisaties met een echt aparte schaal/budget vallen onder de aparte Netwerk/Regio-tier (maatwerk), niet onder een niveau-toeslag op de standaardtiers.</p>
+
+    <table>
+      <thead>
+        <tr><th>Tier</th><th>Voor wie</th><th>Bevat</th><th>Prijs</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td data-label="Tier"><span class="pill pill-green">Tester</span><br>Vroege gebruiker</td>
+          <td data-label="Voor wie">Iedereen die nu al meedraait in de testfase</td>
+          <td data-label="Bevat">Volledige functieset</td>
+          <td data-label="Prijs">€9,99 / maand, blijvend</td>
+        </tr>
+        <tr>
+          <td data-label="Tier">Gratis</td>
+          <td data-label="Voor wie">Losse scout die wil uitproberen, geen betalende tester</td>
+          <td data-label="Bevat">Tot ~25 spelers, basisrapportage, geen ritten/analyse</td>
+          <td data-label="Prijs">€0</td>
+        </tr>
+        <tr>
+          <td data-label="Tier"><span class="pill pill-blue">Solo Scout</span></td>
+          <td data-label="Voor wie">Individuele/vrijwillige scout, scout bij een BVO die een eigen onafhankelijke database wil, losse zaakwaarnemer</td>
+          <td data-label="Bevat">Onbeperkt spelers, volledige rapportage/observaties, ritten, tips-pipeline &mdash; geen teamstructuur nodig</td>
+          <td data-label="Prijs">€17,99 / maand</td>
+        </tr>
+        <tr>
+          <td data-label="Tier"><span class="pill pill-yellow">Organisatie</span><br>Vereniging (HJO)</td>
+          <td data-label="Voor wie">Vereniging met een hoofdjeugdopleiding</td>
+          <td data-label="Bevat">HJO-basislicentie (eenmalig per organisatie, ongeacht aantal afdelingen), rolbeheer, toernooien, analysemodules, prioriteitssupport</td>
+          <td data-label="Prijs">€29,99 / maand (basislicentie)</td>
+        </tr>
+        <tr class="addon">
+          <td data-label="Add-on">+ coördinator</td>
+          <td data-label="Voor wie">per coördinator, binnen een vereniging</td>
+          <td data-label="Bevat">&mdash;</td>
+          <td data-label="Prijs">+€22,99 / maand per coördinator</td>
+        </tr>
+        <tr class="addon">
+          <td data-label="Add-on">+ scout</td>
+          <td data-label="Voor wie">per scout, binnen een vereniging</td>
+          <td data-label="Bevat">&mdash;</td>
+          <td data-label="Prijs">+€14,99 / maand per scout</td>
+        </tr>
+        <tr>
+          <td data-label="Tier"><span class="pill pill-yellow">Managementbureau</span><br>Zaakwaarnemerskantoor</td>
+          <td data-label="Voor wie">Bureau zonder verenigingsstructuur, alleen coördinatoren + scouts in dienst</td>
+          <td data-label="Bevat">Zelfde functieset als Organisatie, maar geen HJO-basislicentie nodig</td>
+          <td data-label="Prijs">Geen basisprijs</td>
+        </tr>
+        <tr class="addon">
+          <td data-label="Add-on">+ coördinator</td>
+          <td data-label="Voor wie">per coördinator, binnen een bureau</td>
+          <td data-label="Bevat">&mdash;</td>
+          <td data-label="Prijs">+€24,99 / maand per coördinator</td>
+        </tr>
+        <tr class="addon">
+          <td data-label="Add-on">+ scout</td>
+          <td data-label="Voor wie">per scout, binnen een bureau</td>
+          <td data-label="Bevat">&mdash;</td>
+          <td data-label="Prijs">+€14,99 / maand per scout</td>
+        </tr>
+        <tr>
+          <td data-label="Tier"><span class="pill pill-red">Netwerk</span><br>Regio</td>
+          <td data-label="Voor wie">Scoutingnetwerk rond een BVO, meerdere clubs</td>
+          <td data-label="Bevat">Alles van Organisatie + overkoepelend dashboard over meerdere clubs, export/rapportage naar de BVO</td>
+          <td data-label="Prijs">Maatwerk, richting €150&ndash;400 / maand</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="card callout">
+      <p style="margin-bottom:8px;"><strong>Voorbeeld vereniging</strong> met 1 coördinator + 3 scouts: €29,99 + €22,99 + 3×€14,99 = <strong>€97,95 / maand</strong>.</p>
+      <p style="margin-bottom:8px;"><strong>Voorbeeld grotere jeugdopleiding</strong> met 3 coördinatoren + 9 scouts: €29,99 + 3×€22,99 + 9×€14,99 = <strong>€233,87 / maand</strong>.</p>
+      <p style="margin-bottom:0;"><strong>Voorbeeld managementbureau</strong> met 1 coördinator + 3 scouts (geen HJO-basislicentie): €24,99 + 3×€14,99 = <strong>€69,96 / maand</strong> &mdash; bewust goedkoper dan het verenigingsequivalent, ondanks de iets hogere coördinatorprijs, omdat de HJO-basislicentie wegvalt.</p>
+    </div>
+
+    <h4>Redenen voor deze opzet</h4>
+    <ul>
+      <li><strong>Testers krijgen een vast, blijvend tarief (€9,99)</strong>, geen aflopende proefperiode of percentagekorting &mdash; simpeler te communiceren en te administreren, en erkent hun vroege bijdrage zonder gedoe.</li>
+      <li><strong>Solo Scout is bewust hoger geprijsd (€17,99)</strong> dan een instap-app, omdat de kernwaarde voor deze doelgroep niet "uitproberen" is maar <strong>dataportabiliteit en loopbaancontinuïteit</strong> &mdash; vooral relevant voor een scout die bij een BVO werkt en zijn eigen scoutinggeschiedenis niet kwijt wil raken bij vertrek.</li>
+      <li><strong>Volledig additief per rol (coördinator/scout), geen bundel- of afdelingslogica meer</strong> &mdash; eenvoudiger uit te leggen en te administreren, en schaalt direct eerlijk mee met de daadwerkelijke omvang van de organisatie.</li>
+      <li><strong>Managementbureaus krijgen een eigen structuur zonder HJO-basislicentie</strong> &mdash; logisch, want zij hebben geen verenigingsvorm. De iets hogere coördinatorprijs (€24,99 t.o.v. €22,99) markeert het verschil tussen een commerciële partij en een vrijwilligersorganisatie, maar valt in de praktijk vaak alsnog lager uit doordat de basislicentie wegvalt.</li>
+      <li><strong>Jaarlijks factureren met korting</strong> (bijv. 2 maanden gratis) past goed bij hoe verenigingen begroten en verlaagt churn/administratie.</li>
+      <li><strong>Netwerk-tier blijft de meest kansrijke groeirichting</strong> &mdash; een BVO of regionaal opleidingsnetwerk heeft zowel budget als een duidelijke reden om hiervoor te betalen.</li>
+    </ul>
+
+    <h4>Afgeraden alternatieven</h4>
+    <ul>
+      <li><strong>Eenmalige licentie (koop it once)</strong>: past niet bij doorlopende hostingkosten en onderhoud &mdash; geen herhaalinkomsten terwijl de kosten wel doorlopen.</li>
+      <li><strong>Puur advertentiemodel</strong>: ongepast voor een tool met gevoelige jeugdspelersdata; slechte fit met de bestaande privacy-toon van het platform.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2><span class="num">06</span>Omzetscenario's</h2>
+    <h3 class="title">Schattingen, geen voorspelling met zekerheid</h3>
+    <p>Uitgangspunt: prijzen zoals vastgesteld (tester €9,99, Solo Scout €17,99, organisatie/bureau volledig additief per coördinator/scout). Gratis-tier draagt niet bij aan omzet maar wel aan naamsbekendheid/instroom. "Organisaties" is een gemengde groep verenigingen én managementbureaus; de gemiddelde prijs loopt op naarmate er meer/grotere jeugdopleidingen bij komen.</p>
+    <table>
+      <thead>
+        <tr><th>Scenario</th><th>Betalende eenheden na 12&ndash;18 mnd</th><th>Gem. prijs/mnd</th><th>Jaaromzet (ARR)</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td data-label="Scenario">Conservatief</td>
+          <td data-label="Eenheden">20 testers + 15 solo scouts + 5 organisaties (gem. 1 coördinator + 3 scouts)</td>
+          <td data-label="Prijs">€9,99 / €17,99 / €98</td>
+          <td data-label="ARR">≈ €11.500</td>
+        </tr>
+        <tr>
+          <td data-label="Scenario">Realistisch</td>
+          <td data-label="Eenheden">50 testers + 40 solo scouts + 20 organisaties (gem. iets groter)</td>
+          <td data-label="Prijs">€9,99 / €17,99 / €115</td>
+          <td data-label="ARR">≈ €42.200</td>
+        </tr>
+        <tr>
+          <td data-label="Scenario">Optimistisch</td>
+          <td data-label="Eenheden">80 testers + 70 solo scouts + 40 organisaties (incl. grotere opleidingen/bureaus) + 2 netwerk-deals</td>
+          <td data-label="Prijs">€9,99 / €17,99 / €140 + €250</td>
+          <td data-label="ARR">≈ €97.900</td>
+        </tr>
+      </tbody>
+    </table>
+    <p>Interpretatie: zelfs het optimistische scenario is geen fulltime-salaris-vervangend bedrag in Nederland zonder aanvullende inkomsten. Het is wel een gezond bedrag voor een side-project dat zichzelf ruimschoots onderhoudt en potentieel doorgroeit richting de Netwerk-tier.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">07</span>Kostenkant</h2>
+    <h3 class="title">Grofweg, huidige stack</h3>
+    <p>Bij de schaal uit bovenstaande scenario's blijven de technische kosten laag, omdat de huidige stack grotendeels op gratis/pay-as-you-go tiers draait:</p>
+    <div class="card">
+      <ul style="margin-bottom:0;">
+        <li><strong>Cloudflare Workers</strong>: gratis tier volstaat ruim; Workers AI gratis tier (10.000 neurons/dag) is ruim voldoende op deze schaal.</li>
+        <li><strong>Firebase/Firestore</strong>: gratis Spark-tier houdt lang stand; bij groei naar honderden actieve teams is een stap naar Blaze realistisch (richting €10&ndash;50/maand).</li>
+        <li><strong>Vercel hosting</strong>: reken op het Pro-plan (~€20/maand) zodra er echt betalende klanten zijn.</li>
+        <li><strong>Resend (e-mail)</strong>: gratis tier (3.000 mails/maand) ruim genoeg tot in het realistische scenario; bij optimistisch mogelijk een klein betaald tier (~€20/maand).</li>
+        <li><strong>Betalingen verwerken</strong> (Mollie/Stripe): geen vaste kosten, wel transactiekosten (~1&ndash;2% + kleine vaste fee).</li>
+      </ul>
+    </div>
+    <p><strong>Samengevat:</strong> bij de realistische schaal blijven totale technische kosten waarschijnlijk onder €100/maand &mdash; de marge op de omzetscenario's is dus hoog. Het beperkende element is niet infrastructuurkosten, het is <strong>tijd</strong> en <strong>acquisitie</strong>.</p>
+  </section>
+
+  <section>
+    <h2><span class="num">08</span>Grootste risico's</h2>
+    <ol>
+      <li><strong>Acquisitiekanaal ontbreekt nog.</strong> De meest kansrijke route is waarschijnlijk 1-op-1 via bestaande contacten in het amateurvoetbal, niet generieke online marketing.</li>
+      <li><strong>Seizoensgebondenheid.</strong> Verenigingen begroten en beslissen vaak rond de zomerstop &mdash; verkoopmomentum concentreert zich in een paar maanden per jaar.</li>
+      <li><strong>Eén-persoons-onderhoudslast.</strong> Support, bugfixes en doorontwikkeling leunen nu op één persoon; bij groei wordt supportvolume een reëel tijdsbeslag.</li>
+      <li><strong>Concurrentierisico van generieke club-apps</strong> die scouting als los modul toevoegen &mdash; verdedigbaar door dieper te gaan in scouting-specifieke workflows.</li>
+      <li><strong>Privacy/AVG bij minderjarigen.</strong> Een betaald product vraagt om een expliciete verwerkersovereenkomst met clubs &mdash; nog geen onderdeel van het platform.</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2><span class="num">09</span>Advies</h2>
+    <div class="card">
+      <ul style="margin-bottom:0;">
+        <li><strong>Bestaansrecht: ja, als bijverdienste/nichebedrijf</strong>, niet als snelgroeiend platform zonder extra investering.</li>
+        <li><strong>Start met Solo Scout + Organisatie zoals vastgesteld</strong>, en hou vast aan één as voor prijsdifferentiatie (aantal scouts/coördinatoren), niet aan een tweede as zoals sportief niveau.</li>
+        <li><strong>Richt acquisitie eerst op het eigen netwerk</strong> (huidige testers, hun clubs, BVO-contacten) &mdash; warme introductie is effectiever dan advertenties.</li>
+        <li><strong>Regel de AVG-verwerkersovereenkomst voordat er daadwerkelijk voor betaald wordt.</strong></li>
+        <li><strong>Zie de Netwerk/Regio-tier als de eigenlijke groeirichting</strong> op middellange termijn &mdash; minder supportlast per euro omzet dan honderden losse abonnementen.</li>
+      </ul>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+  <footer class="doc">Scouting<span style="color:#e30613;">Hub</span> &middot; intern strategiedocument &middot; niet extern delen</footer>
+
+</div>
+</body>
+</html>

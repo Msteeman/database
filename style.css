@@ -3710,6 +3710,10 @@ body.modal-open { overflow: hidden; position: fixed; width: 100%; }
 .dtl-pizza-legend-dot {
   width: 9px; height: 9px; border-radius: 2px;
 }
+@media (max-width:560px) {
+  .dtl-pizza-legend { grid-template-columns: 1fr; }
+  .dtl-radar-tt { max-width: 180px; min-width: 0; padding: 8px 11px; }
+}
 
 .detail-section { margin-top: 22px; }
 .detail-section h4 {
@@ -14241,6 +14245,12 @@ tr.db-row-concept td:first-child {
 .sh-transfer-modal { background:var(--card-bg,#151e2d); border:1px solid var(--border,#232d40); border-radius:14px; padding:28px 24px 22px; width:min(480px,95vw); box-shadow:0 24px 60px rgba(0,0,0,.5); }
 .sh-transfer-title { font-size:18px; font-weight:800; color:var(--text-1,#e2eaf6); margin-bottom:4px; }
 .sh-transfer-sub { font-size:13px; color:var(--text-3,#8b97ad); margin-bottom:20px; }
+.sh-transfer-choice { display:flex; flex-direction:column; gap:10px; margin-bottom:20px; }
+.sh-transfer-choice-btn { display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left; padding:14px 16px; border-radius:11px; border:2px solid var(--border,#232d40); background:var(--hover-bg,#1e2a3d); color:var(--text-1,#e2eaf6); cursor:pointer; transition:border-color .15s,background .15s; }
+.sh-transfer-choice-btn:hover { border-color:var(--accent,#e30613); background:rgba(227,6,19,.08); }
+.sh-transfer-choice-icon { font-size:20px; margin-bottom:2px; }
+.sh-transfer-choice-title { font-size:14.5px; font-weight:700; }
+.sh-transfer-choice-sub { font-size:12px; color:var(--text-3,#8b97ad); font-weight:400; }
 .sh-transfer-szn-toggle { display:flex; gap:8px; margin-bottom:20px; }
 .sh-transfer-szn-btn { flex:1; padding:10px; border-radius:9px; border:2px solid var(--border,#232d40); background:var(--card-bg,#151e2d); color:var(--text-2,#9aa8bd); font-size:13px; font-weight:600; cursor:pointer; text-align:center; transition:all .15s; }
 .sh-transfer-szn-btn.selected { border-color:var(--accent,#e30613); color:#fff; background:rgba(227,6,19,.12); }

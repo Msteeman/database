@@ -16132,14 +16132,9 @@ function renderDetailOverview(p){
           <span class="sh-hero-carriere-title">Club &amp; carrière</span>
           <div class="carriere-actions">
             <div class="sh-tip-wrap">
-              <button class="carriere-btn carriere-btn-primary" id="sh-carriere-edit-btn">✏️ Aanpassen</button>
+              <button class="carriere-btn carriere-btn-primary" id="sh-carriere-wijzig-btn">✏️ Wijzigen</button>
               <span class="sh-tip-icon">?</span>
-              <div class="sh-tip-box">Corrigeer een fout in het huidige seizoen, bijv. verkeerde leeftijdscategorie. Geen clubwijziging.</div>
-            </div>
-            <div class="sh-tip-wrap">
-              <button class="carriere-btn" id="sh-carriere-transfer-btn">🔄 Transfer</button>
-              <span class="sh-tip-icon">?</span>
-              <div class="sh-tip-box">Speler gaat naar ander elftal of andere club. Zomertransfer, nieuwe jaargang of tussentijdse transfer.</div>
+              <div class="sh-tip-box">Corrigeer een fout in het huidige seizoen, of registreer een transfer/nieuw seizoen — je kiest in het volgende scherm.</div>
             </div>
           </div>
         </div>
@@ -16772,7 +16767,10 @@ function renderDetailPizza(p){
     ? _shParseObsNotitiesToBeoordelingen(p)
     : (p.beoordelingen || {});
   const N = CMP_CRITERIA.length;
-  const W = 460, H = 460;
+  const BASE_W = 460;
+  const availW = (wrap.clientWidth || BASE_W) - 4;
+  const W = Math.max(240, Math.min(BASE_W, availW)), H = W;
+  const s = W/BASE_W; // schaalfactor voor alle vaste pixel-afmetingen, zodat het canvas op smalle schermen niet buiten de wrapper valt
   let canvas = wrap.querySelector('.dtl-fm-radar');
   if(!canvas){ canvas = document.createElement('canvas'); canvas.className = 'dtl-fm-radar'; wrap.innerHTML = ''; wrap.appendChild(canvas); }
   const dpr = window.devicePixelRatio || 1;
@@ -16780,7 +16778,7 @@ function renderDetailPizza(p){
   canvas.style.width = W+'px'; canvas.style.height = H+'px'; canvas.style.maxWidth = '100%';
   const ctx = canvas.getContext('2d');
   ctx.setTransform(dpr,0,0,dpr,0,0);
-  const cx = W/2, cy = H/2+8, R = 165;
+  const cx = W/2, cy = H/2+8*s, R = 165*s;
   const angle = i => -Math.PI/2 + (i*2*Math.PI/N);
   const polyPts = r => Array.from({length:N},(_,i) => ({ x:cx+Math.cos(angle(i))*r, y:cy+Math.sin(angle(i))*r }));
   const drawPoly = (pts, fill, stroke, lw) => {
@@ -16804,8 +16802,8 @@ function renderDetailPizza(p){
     ctx.strokeStyle='rgba(255,255,255,.1)'; ctx.lineWidth=1; ctx.stroke();
   }
   // Grade-labels
-  ctx.font='600 10px -apple-system,Segoe UI,sans-serif'; ctx.textAlign='center'; ctx.fillStyle='rgba(255,255,255,.45)';
-  ['D','C','B','A'].forEach((g,i) => { const r=R*((i+1)/4); ctx.fillText(g, cx+8, cy-r+4); });
+  ctx.font='600 '+Math.round(10*s)+'px -apple-system,Segoe UI,sans-serif'; ctx.textAlign='center'; ctx.fillStyle='rgba(255,255,255,.45)';
+  ['D','C','B','A'].forEach((g,i) => { const r=R*((i+1)/4); ctx.fillText(g, cx+8*s, cy-r+4*s); });
   // Speler-shape
   const GCOL = {A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#ef4444'};
   const pts = CMP_CRITERIA.map((crit,i) => {
@@ -16814,21 +16812,21 @@ function renderDetailPizza(p){
     return {x:cx+Math.cos(a)*r, y:cy+Math.sin(a)*r, g, v};
   });
   drawPoly(pts,'rgba(255,255,255,0.14)',null);
-  ctx.shadowColor='rgba(255,255,255,.5)'; ctx.shadowBlur=10;
-  drawPoly(pts,null,'rgba(255,255,255,0.88)',2.2);
+  ctx.shadowColor='rgba(255,255,255,.5)'; ctx.shadowBlur=10*s;
+  drawPoly(pts,null,'rgba(255,255,255,0.88)',2.2*s);
   ctx.shadowBlur=0;
   pts.forEach(pt => {
     if(!pt.g) return;
-    ctx.beginPath(); ctx.arc(pt.x,pt.y,5.5,0,Math.PI*2);
+    ctx.beginPath(); ctx.arc(pt.x,pt.y,5.5*s,0,Math.PI*2);
     ctx.fillStyle=GCOL[pt.g]||'#fff'; ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=1.5; ctx.stroke();
-    ctx.fillStyle='#fff'; ctx.font='700 10px -apple-system,Segoe UI,sans-serif';
+    ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=1.5*s; ctx.stroke();
+    ctx.fillStyle='#fff'; ctx.font='700 '+Math.round(10*s)+'px -apple-system,Segoe UI,sans-serif';
     ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(pt.g, pt.x, pt.y);
   });
   // As-labels
-  ctx.shadowBlur=0; ctx.fillStyle='rgba(230,237,248,.9)'; ctx.font='600 12px -apple-system,Segoe UI,sans-serif';
+  ctx.shadowBlur=0; ctx.fillStyle='rgba(230,237,248,.9)'; ctx.font='600 '+Math.round(12*s)+'px -apple-system,Segoe UI,sans-serif';
   for(let i=0;i<N;i++){
-    const a=angle(i), lx=cx+Math.cos(a)*(R+24), ly=cy+Math.sin(a)*(R+24);
+    const a=angle(i), lx=cx+Math.cos(a)*(R+24*s), ly=cy+Math.sin(a)*(R+24*s);
     ctx.textAlign=Math.abs(Math.cos(a))<0.2?'center':(Math.cos(a)>0?'start':'end');
     ctx.textBaseline=Math.abs(Math.sin(a))<0.2?'middle':(Math.sin(a)>0?'hanging':'alphabetic');
     ctx.fillText(CMP_CRITERIA[i].label, lx, ly);
@@ -16841,12 +16839,16 @@ function renderDetailPizza(p){
     const mx=(ev.clientX-rect.left)*sc, my=(ev.clientY-rect.top)*sc;
     let best=-1, bestD=9999;
     CMP_CRITERIA.forEach((_,i) => { const a=angle(i); const d=Math.hypot(mx-(cx+Math.cos(a)*R), my-(cy+Math.sin(a)*R)); if(d<bestD){bestD=d;best=i;} });
-    if(bestD>44){ _tt.style.opacity='0'; return; }
+    if(bestD>44*s){ _tt.style.opacity='0'; return; }
     const cr=CMP_CRITERIA[best]; let g=b[cr.key]; if(!g&&cr.key==='grit_huidig')g=b.drit_huidig;
     const tekst=b[cr.key.replace('_huidig','_tekst')]||'';
     const gc=GCOL[g]||'var(--text-3)';
     _tt.innerHTML='<div class="dtl-radar-tt-crit">'+escapeHtml(cr.label)+'</div>'+(g?'<div class="dtl-radar-tt-grade" style="color:'+gc+'">'+escapeHtml(g)+'</div>':'')+'<div class="dtl-radar-tt-note">'+(tekst?escapeHtml(tekst):'<i style="opacity:.4">Geen notitie</i>')+'</div>';
-    _tt.style.left=(ev.offsetX+14)+'px'; _tt.style.top=Math.max(0,ev.offsetY-40)+'px'; _tt.style.opacity='1';
+    // Clamp horizontaal binnen de wrapper zodat de tooltip niet buiten een smal scherm uitsteekt
+    const nearRightEdge = ev.offsetX > W*0.6;
+    _tt.style.left = nearRightEdge ? '' : (ev.offsetX+14)+'px';
+    _tt.style.right = nearRightEdge ? (W-ev.offsetX+14)+'px' : '';
+    _tt.style.top=Math.max(0,ev.offsetY-40)+'px'; _tt.style.opacity='1';
   };
   canvas.onmouseleave = () => { _tt.style.opacity='0'; };
   // Legende
@@ -19809,7 +19811,7 @@ function deriveElftalFromReport(p){
 function exportJSON(){
   const data = {
     exported: new Date().toISOString(),
-    scout: currentUser?.email || 'Marcel Steeman',
+    scout: currentUser?.displayName || currentUser?.email || '',
     players: loadPlayers(),
     analyses: loadAnalyses()
   };
@@ -20811,7 +20813,7 @@ async function generatePlayerPDF(p){
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8); setText(COL.ink);
     doc.text('ScoutingHub', MARGIN_L + 12, PAGE_H - 8);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7); setText(COL.muted);
-    doc.text('Opgesteld door Marcel Steeman', MARGIN_L + 12, PAGE_H - 4.5);
+    doc.text('Opgesteld door '+((typeof currentUser!=='undefined'&&currentUser)?(currentUser.displayName||currentUser.email||'onbekende scout'):'onbekende scout'), MARGIN_L + 12, PAGE_H - 4.5);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7); setText(COL.muted);
     doc.text(`${i} / ${totalPages}`, PAGE_W - MARGIN_R, PAGE_H - 6, { align: 'right' });
     doc.setFontSize(6.5);
@@ -36073,11 +36075,8 @@ function _shRenderCarriereKaart(p){
 
   wrap.innerHTML = `<div class="carriere-timeline">${timelineHtml || '<div style="padding:10px;color:var(--text-3);font-size:13px;">Nog geen periodes.</div>'}</div>`;
 
-  document.getElementById('sh-carriere-edit-btn')?.addEventListener('click', function(){
-    _shOpenModal(p, 'aanpassen');
-  });
-  document.getElementById('sh-carriere-transfer-btn')?.addEventListener('click', function(){
-    _shOpenModal(p, 'transfer');
+  document.getElementById('sh-carriere-wijzig-btn')?.addEventListener('click', function(){
+    _shOpenModal(p, 'kiezen');
   });
 }
 
@@ -36119,19 +36118,46 @@ function _shGetNextSeizoen(){
 function _shOpenTransferModal(p, isNewSeason){ _shOpenModal(p, isNewSeason ? 'transfer' : 'aanpassen'); }
 
 function _shOpenModal(p, mode){
-  // mode: 'aanpassen' = huidige periode wijzigen, 'transfer' = seizoen toggle
+  // mode: 'kiezen' = eerste keuzescherm, 'aanpassen' = huidige periode wijzigen, 'transfer' = seizoen toggle
   const pid = p.id;
   const periods = _shGetPlayerPeriods(pid);
   const active = _shActivePeriod(periods);
   const backdrop = document.getElementById('sh-transfer-backdrop');
   if(!backdrop) return;
 
+  const modal = backdrop.querySelector('.sh-transfer-modal');
+
+  if(mode === 'kiezen'){
+    modal.innerHTML = `
+    <div class="sh-transfer-title">Wat wil je aanpassen?</div>
+    <div class="sh-transfer-sub">${escapeHtml(active ? ([active.club,active.elftal].filter(Boolean).join(' · ')) : p.naam||'')}</div>
+    <div class="sh-transfer-choice">
+      <button class="sh-transfer-choice-btn" id="sh-transfer-choice-aanpassen">
+        <span class="sh-transfer-choice-icon">✏️</span>
+        <span class="sh-transfer-choice-title">Fout corrigeren</span>
+        <span class="sh-transfer-choice-sub">Verkeerde club/elftal voor het huidige seizoen — geen transfer.</span>
+      </button>
+      <button class="sh-transfer-choice-btn" id="sh-transfer-choice-transfer">
+        <span class="sh-transfer-choice-icon">🔄</span>
+        <span class="sh-transfer-choice-title">Transfer / nieuw seizoen</span>
+        <span class="sh-transfer-choice-sub">Speler gaat naar een andere club of elftal, tussentijds of bij een nieuw seizoen.</span>
+      </button>
+    </div>
+    <div class="sh-transfer-btns">
+      <button class="sh-transfer-btn-cancel" id="sh-transfer-cancel" style="flex:1;">Annuleren</button>
+    </div>`;
+    backdrop.style.display = 'flex';
+    document.getElementById('sh-transfer-cancel').addEventListener('click', function(){ backdrop.style.display = 'none'; });
+    document.getElementById('sh-transfer-choice-aanpassen').addEventListener('click', function(){ _shOpenModal(p, 'aanpassen'); });
+    document.getElementById('sh-transfer-choice-transfer').addEventListener('click', function(){ _shOpenModal(p, 'transfer'); });
+    return;
+  }
+
   const sznNu = _shGetSeizoen();
   const sznNext = _shGetNextSeizoen();
   let gekozenSzn = mode === 'transfer' ? sznNext : sznNu;
 
   // Bouw modal opnieuw op
-  const modal = backdrop.querySelector('.sh-transfer-modal');
   modal.innerHTML = `
     <div class="sh-transfer-title">${mode === 'aanpassen' ? '✏️ Aanpassen' : '🔄 Transfer registreren'}</div>
     <div class="sh-transfer-sub">${mode === 'aanpassen' ? 'Wijzig club/elftal voor huidig seizoen' : 'Naar welk seizoen?'}</div>
@@ -36176,7 +36202,7 @@ function _shOpenModal(p, mode){
 
   const close = function(){ backdrop.style.display = 'none'; };
   document.getElementById('sh-transfer-cancel').addEventListener('click', close);
-  document.getElementById('sh-transfer-save').addEventListener('click', function(){
+  document.getElementById('sh-transfer-save').addEventListener('click', async function(){
     const nieuweClub = document.getElementById('sh-transfer-club').value.trim();
     const nieuwElftal = document.getElementById('sh-transfer-elftal').value.trim();
     const datum = document.getElementById('sh-transfer-datum').value || new Date().toISOString().slice(0,10);
@@ -36200,6 +36226,11 @@ function _shOpenModal(p, mode){
       });
     }
     _shSavePlayerPeriods(pid, periods);
+    // Bugfix: club/elftal op het spelerobject zelf ook bijwerken, anders
+    // lopen spelerlijsten/filters elders in de app stil achter op de carrière-historie.
+    p.club = nieuweClub;
+    p.elftal = nieuwElftal;
+    try { await savePlayer(p); } catch(_){}
     close();
     _shRenderCarriereKaart(p);
   });

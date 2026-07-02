@@ -15940,7 +15940,6 @@ function _shRenderNotitiesBlock(p){
   return '<div class="detail-section"><h4>Scout-notities</h4>'+rows+'</div>';
 }
 function renderDetailOverview(p){
-  const meta = [positionLabel(p.positie), p.club, p.elftal||deriveElftalFromReport(p)].filter(Boolean).join(' · ');
   const backLabel = previousViewBeforePlayer === 'compare' ? 'Terug naar vergelijken'
                   : previousViewBeforePlayer === 'dashboard' ? 'Terug naar dashboard'
                   : previousViewBeforePlayer === 'pitch' ? 'Terug naar elftal analyse'
@@ -16100,13 +16099,26 @@ function renderDetailOverview(p){
             ${escapeHtml(p.naam)}
             ${p.leeftijd ? `<span class="sh-hero-leeftijd">${escapeHtml(p.leeftijd)} jaar</span>` : ''}
           </div>
-          <div class="sh-hero-positie">${escapeHtml(meta||'—')}</div>
-          <div class="sh-hero-info">
-            ${p.rugnummer ? `<span class="sh-hero-info-item">🔢 #${escapeHtml(p.rugnummer)}</span>` : ''}
-            ${p.been ? `<span class="sh-hero-info-item">🦶 ${escapeHtml(p.been)}</span>` : ''}
-            ${p.tweebenig ? `<span class="sh-hero-info-item" style="font-style:italic;">${escapeHtml(p.tweebenig)}</span>` : ''}
-            ${p.geboorte ? `<span class="sh-hero-info-item">📅 ${p.geboorte.split('-').reverse().join('-')}</span>` : ''}
-          </div>
+          ${(function(){
+            var clubLabel = [p.club, p.elftal||deriveElftalFromReport(p)].filter(Boolean).join(' · ');
+            var positieLabel = positionLabel(p.positie);
+            var voetVal = p.tweebenig || p.been || '';
+            var stats = [];
+            if(p.rugnummer) stats.push(['Rugnummer', '#'+p.rugnummer]);
+            if(voetVal) stats.push(['Voet', voetVal]);
+            if(p.geboorte) stats.push(['Geboortedatum', p.geboorte.split('-').reverse().join('-')]);
+            if(!clubLabel && !positieLabel && !stats.length) return '';
+            return '<div class="sh-hero-identity">'
+              + (clubLabel || positieLabel ? '<div class="sh-hero-identity-main">'
+                + (clubLabel ? '<span class="sh-hero-identity-club">'+escapeHtml(clubLabel)+'</span>' : '')
+                + (clubLabel && positieLabel ? '<span class="sh-hero-identity-dot">•</span>' : '')
+                + (positieLabel ? '<span class="sh-hero-identity-positie">'+escapeHtml(positieLabel)+'</span>' : '')
+                + '</div>' : '')
+              + (stats.length ? '<div class="sh-hero-identity-stats">'
+                + stats.map(function(s){ return '<div class="sh-hero-stat"><span class="sh-hero-stat-label">'+escapeHtml(s[0])+'</span><span class="sh-hero-stat-value">'+escapeHtml(s[1])+'</span></div>'; }).join('')
+                + '</div>' : '')
+              + '</div>';
+          })()}
           <div class="sh-hero-grades">
             <span class="sh-hero-grade-item">Huidig <span class="grade ${vp.huidig_niveau||'D'}">${vp.huidig_niveau||'-'}</span></span>
             <span class="sh-hero-grade-item">Potentieel <span class="grade outline ${vp.potentieel_niveau||'D'}">${vp.potentieel_niveau||'-'}</span></span>

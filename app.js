@@ -16078,6 +16078,9 @@ function renderDetailOverview(p){
         <button class="btn btn-sm dtl-icon-btn" id="dtl-pdf-top" title="Download als PDF">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         </button>
+        ${reportCount >= 2 ? `<button class="btn btn-sm dtl-icon-btn" id="dtl-pdf-all-top" title="Alle ${reportCount} rapporten gecombineerd downloaden (1 PDF, onder elkaar)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/><line x1="5" y1="21" x2="19" y2="21"/></svg>
+        </button>` : ''}
         <button class="btn btn-sm dtl-icon-btn" id="dtl-del-top" title="Verwijder rapport" style="color:#ef4444;border-color:#ef4444;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
         </button>
@@ -16348,6 +16351,8 @@ function renderDetailOverview(p){
   // s-icon-btns: nieuwe icon-knoppen bovenaan (vervangt form-actions onderaan)
   const _dtlPdfTop = document.getElementById('dtl-pdf-top');
   if(_dtlPdfTop) _dtlPdfTop.addEventListener('click', () => generatePlayerPDF(vp));
+  const _dtlPdfAllTop = document.getElementById('dtl-pdf-all-top');
+  if(_dtlPdfAllTop) _dtlPdfAllTop.addEventListener('click', () => generateAllReportsPDF(p));
   const _dtlEditTop = document.getElementById('dtl-edit-top');
   if(_dtlEditTop) _dtlEditTop.addEventListener('click', () => { go('report'); loadIntoForm(vp); });
   const _dtlDelTop = document.getElementById('dtl-del-top');
@@ -17203,12 +17208,14 @@ function renderDetailBars(p){
 function renderDetailFullReport(p){
   const b = p.beoordelingen || {};
   const w = p.wedstrijd || {};
+  const _frDatum = p.datum || (p.wedstrijd && p.wedstrijd.datum) || '';
   const backBtnHtml = `
-    <div style="margin-bottom:14px;">
+    <div style="margin-bottom:14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <button class="btn btn-sm" id="dtl-back-overview">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><polyline points="15 18 9 12 15 6"/></svg>
         Terug naar overzicht
       </button>
+      <span class="dtl-avg-pill">${_frDatum ? ('Rapport · '+escapeHtml(formatDate(_frDatum))) : '1 rapport'}</span>
     </div>`;
   // backwards compat: oude records hebben drit_huidig / fysiek_huidig
   const gritVal = b.grit_huidig || b.drit_huidig;
@@ -19885,14 +19892,17 @@ function pdfGradeChipLg(val, outline){
   return `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:38px;height:32px;padding:0 10px;border-radius:6px;background:${hex};color:#fff;font-weight:800;font-size:18px;">${val}</span>`;
 }
 
-async function generatePlayerPDF(p){
+async function generatePlayerPDF(p, opts){
   // === ScoutingHub PDF v3 — dark website-stijl + pizza/donut/bars canvas ===
+  // opts.sharedDoc: bestaande jsPDF-instantie hergebruiken (voor gecombineerde multi-rapport PDF's)
+  // opts.isFirst: bij hergebruik, false = voeg een nieuwe pagina toe vóór deze content
+  opts = opts || {};
   const jsPDFCtor = (window.jspdf && window.jspdf.jsPDF) || window.jsPDF;
   if(!jsPDFCtor){
     toast('PDF-bibliotheek niet geladen — vernieuw de pagina', true);
     return;
   }
-  toast('PDF wordt gemaakt...');
+  if(!opts.combining) toast('PDF wordt gemaakt...');
 
   // ---------- OSM map snapshot ----------
   async function buildMapDataURL(lat, lon, zoom){
@@ -19986,15 +19996,15 @@ async function generatePlayerPDF(p){
   }
 
   // ---------- Pizza chart (segmented radar) ----------
+  // Zelfde concentrische-zones-radar als de website (renderDetailPizza, app.js),
+  // i.p.v. de vorige losse taartpunten-tekening — zo oogt de PDF consistent met de site.
   function buildPizzaDataURL(p){
     const W = 720, H = 720;
     const cv = document.createElement('canvas');
     cv.width = W; cv.height = H;
     const ctx = cv.getContext('2d');
     ctx.fillStyle = '#0d111c'; ctx.fillRect(0, 0, W, H);
-    const cx = W/2, cy = H/2 - 8, Rmax = 260;
     const b = p.beoordelingen || {};
-    const PALETTE = ['#22c55e','#3b82f6','#a855f7','#f59e0b','#ef4444','#06b6d4','#ec4899'];
     const CRIT = [
       ['Techniek','techniek_huidig'],
       ['Inzicht','inzicht_huidig'],
@@ -20005,82 +20015,58 @@ async function generatePlayerPDF(p){
       ['Wendbaarh.','wendbaarheid_huidig'],
     ];
     const N = CRIT.length;
-    const slice = (2*Math.PI) / N;
     const gv = (g) => ({A:4,B:3,C:2,D:1}[(g||'').toUpperCase()] || 0);
-    // Background rings
-    for(let lvl = 1; lvl <= 4; lvl++){
-      const r = Rmax * (lvl / 4);
+    const cx = W/2, cy = H/2 + 12, R = 260, s = R/165; // s: schaalfactor t.o.v. de website-versie (R=165 daar)
+    const angle = i => -Math.PI/2 + (i*2*Math.PI/N);
+    const polyPts = r => Array.from({length:N},(_,i) => ({ x:cx+Math.cos(angle(i))*r, y:cy+Math.sin(angle(i))*r }));
+    const drawPoly = (pts, fill, stroke, lw) => {
       ctx.beginPath();
-      ctx.arc(cx, cy, r, 0, Math.PI*2);
-      ctx.strokeStyle = lvl === 4 ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.08)';
-      ctx.lineWidth = lvl === 4 ? 1.6 : 1;
-      ctx.stroke();
+      pts.forEach((pt,i) => i===0?ctx.moveTo(pt.x,pt.y):ctx.lineTo(pt.x,pt.y));
+      ctx.closePath();
+      if(fill){ ctx.fillStyle=fill; ctx.fill(); }
+      if(stroke){ ctx.strokeStyle=stroke; ctx.lineWidth=lw||1; ctx.stroke(); }
+    };
+    // FM-stijl gekleurde zones (buiten→binnen), zelfde als website
+    drawPoly(polyPts(R),      'rgba(34,197,94,0.22)', null);
+    drawPoly(polyPts(R*0.75), 'rgba(59,130,246,0.30)', null);
+    drawPoly(polyPts(R*0.50), 'rgba(245,158,11,0.35)', null);
+    drawPoly(polyPts(R*0.25), 'rgba(239,68,68,0.42)', null);
+    // Ring-lijnen
+    [0.25,0.5,0.75,1.0].forEach((f,i) => drawPoly(polyPts(R*f), null, i===3?'rgba(255,255,255,.22)':'rgba(255,255,255,.09)', i===3?1.4:0.8));
+    // Spaken
+    for(let i=0;i<N;i++){
+      const a=angle(i); ctx.beginPath(); ctx.moveTo(cx,cy);
+      ctx.lineTo(cx+Math.cos(a)*R, cy+Math.sin(a)*R);
+      ctx.strokeStyle='rgba(255,255,255,.1)'; ctx.lineWidth=1; ctx.stroke();
     }
-    // Slices
-    for(let i = 0; i < N; i++){
-      const a0 = -Math.PI/2 + i*slice + 0.015;
-      const a1 = -Math.PI/2 + (i+1)*slice - 0.015;
-      let g = b[CRIT[i][1]];
-      if(!g && CRIT[i][1] === 'grit_huidig') g = b.drit_huidig;
-      const v = gv(g);
-      const r = v ? Rmax * (v/4) : 0;
-      const col = PALETTE[i % PALETTE.length];
-      if(r > 0){
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, r, a0, a1);
-        ctx.closePath();
-        ctx.fillStyle = col + 'cc'; // ~80% opacity
-        ctx.fill();
-        ctx.strokeStyle = col;
-        ctx.lineWidth = 1.8;
-        ctx.stroke();
-      } else {
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, Rmax, a0, a1);
-        ctx.closePath();
-        ctx.fillStyle = 'rgba(255,255,255,0.025)';
-        ctx.strokeStyle = 'rgba(255,255,255,0.06)';
-        ctx.lineWidth = 1;
-        ctx.fill(); ctx.stroke();
-      }
-    }
-    // Grade-letter inside each slice
-    for(let i = 0; i < N; i++){
-      const a = -Math.PI/2 + i*slice + slice/2;
-      let g = b[CRIT[i][1]];
-      if(!g && CRIT[i][1] === 'grit_huidig') g = b.drit_huidig;
-      const v = gv(g);
-      if(v){
-        const r = Rmax * (v/4);
-        const gx = cx + Math.cos(a)*(r - 24);
-        const gy = cy + Math.sin(a)*(r - 24);
-        ctx.fillStyle = '#0b1220';
-        ctx.font = 'bold 18px Inter, Arial, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText((g||'').toUpperCase(), gx, gy);
-      }
-    }
-    // Ring labels D/C/B/A
-    ['D','C','B','A'].forEach((lbl, i) => {
-      const r = Rmax * ((i+1)/4);
-      ctx.fillStyle = 'rgba(255,255,255,0.5)';
-      ctx.font = '12px Inter, Arial, sans-serif';
-      ctx.textAlign = 'left';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(lbl, cx + 6, cy - r);
+    // Grade-labels D/C/B/A
+    ctx.font='600 '+Math.round(10*s)+'px Inter, Arial, sans-serif'; ctx.textAlign='center'; ctx.fillStyle='rgba(255,255,255,.45)';
+    ['D','C','B','A'].forEach((lbl,i) => { const r=R*((i+1)/4); ctx.fillText(lbl, cx+8*s, cy-r+4*s); });
+    // Speler-shape
+    const GCOL = {A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#ef4444'};
+    const pts = CRIT.map(([,key],i) => {
+      let g=b[key]; if(!g && key==='grit_huidig') g=b.drit_huidig;
+      const v=gv(g)||0, r=R*(v/4), a=angle(i);
+      return {x:cx+Math.cos(a)*r, y:cy+Math.sin(a)*r, g, v};
     });
-    // Outer labels
-    for(let i = 0; i < N; i++){
-      const a = -Math.PI/2 + i*slice + slice/2;
-      const lx = cx + Math.cos(a)*(Rmax + 38);
-      const ly = cy + Math.sin(a)*(Rmax + 38);
-      ctx.fillStyle = 'rgba(232,237,245,0.95)';
-      ctx.font = '600 16px Inter, Arial, sans-serif';
-      ctx.textAlign = Math.abs(Math.cos(a)) < 0.2 ? 'center' : (Math.cos(a) > 0 ? 'left' : 'right');
-      ctx.textBaseline = Math.abs(Math.sin(a)) < 0.2 ? 'middle' : (Math.sin(a) > 0 ? 'top' : 'bottom');
+    drawPoly(pts,'rgba(255,255,255,0.14)',null);
+    ctx.shadowColor='rgba(255,255,255,.5)'; ctx.shadowBlur=10*s;
+    drawPoly(pts,null,'rgba(255,255,255,0.88)',2.2*s);
+    ctx.shadowBlur=0;
+    pts.forEach(pt => {
+      if(!pt.g) return;
+      ctx.beginPath(); ctx.arc(pt.x,pt.y,5.5*s,0,Math.PI*2);
+      ctx.fillStyle=GCOL[(pt.g||'').toUpperCase()]||'#fff'; ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,.6)'; ctx.lineWidth=1.5*s; ctx.stroke();
+      ctx.fillStyle='#fff'; ctx.font='700 '+Math.round(10*s)+'px Inter, Arial, sans-serif';
+      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText((pt.g||'').toUpperCase(), pt.x, pt.y);
+    });
+    // As-labels
+    ctx.shadowBlur=0; ctx.fillStyle='rgba(230,237,248,.9)'; ctx.font='600 '+Math.round(12*s)+'px Inter, Arial, sans-serif';
+    for(let i=0;i<N;i++){
+      const a=angle(i), lx=cx+Math.cos(a)*(R+24*s), ly=cy+Math.sin(a)*(R+24*s);
+      ctx.textAlign=Math.abs(Math.cos(a))<0.2?'center':(Math.cos(a)>0?'left':'right');
+      ctx.textBaseline=Math.abs(Math.sin(a))<0.2?'middle':(Math.sin(a)>0?'top':'bottom');
       ctx.fillText(CRIT[i][0], lx, ly);
     }
     try { return cv.toDataURL('image/png'); } catch(e){ return null; }
@@ -20124,11 +20110,12 @@ async function generatePlayerPDF(p){
       ctx.lineCap = 'round';
       ctx.stroke();
     }
-    // Huidig (main red)
+    // Huidig (gekleurd op basis van de daadwerkelijke grade i.p.v. altijd rood)
     if(pct > 0){
+      const GAUGE_GCOL = {A:'#22c55e',B:'#3b82f6',C:'#f59e0b',D:'#ef4444'};
       ctx.beginPath();
       ctx.arc(cx, cy, Rmain, -Math.PI/2, -Math.PI/2 + Math.PI*2 * pct);
-      ctx.strokeStyle = '#e30613';
+      ctx.strokeStyle = GAUGE_GCOL[grade] || '#e30613';
       ctx.lineWidth = 32;
       ctx.lineCap = 'round';
       ctx.stroke();
@@ -20191,12 +20178,14 @@ async function generatePlayerPDF(p){
       ctx.quadraticCurveTo(PAD_L, trackY, PAD_L + radius, trackY);
       ctx.closePath();
       ctx.fill();
-      // Fill
+      // Fill — kleur volgt het daadwerkelijke cijfer van dit criterium
       if(v > 0){
+        const BAR_GCOL = {A:['#4ade80','#22c55e'],B:['#60a5fa','#3b82f6'],C:['#fbbf24','#f59e0b'],D:['#f87171','#ef4444']};
+        const gc = BAR_GCOL[(g||'').toUpperCase()] || ['#ff4757','#e30613'];
         const fillW = Math.max(20, trackW * (v/4));
         const grad = ctx.createLinearGradient(PAD_L, 0, PAD_L + fillW, 0);
-        grad.addColorStop(0, '#ff4757');
-        grad.addColorStop(1, '#e30613');
+        grad.addColorStop(0, gc[0]);
+        grad.addColorStop(1, gc[1]);
         ctx.fillStyle = grad;
         ctx.beginPath();
         ctx.moveTo(PAD_L + radius, trackY);
@@ -20306,7 +20295,8 @@ async function generatePlayerPDF(p){
     mapData = await buildMapDataURL(clubInfo.lat, clubInfo.lon, 14);
   }
 
-  const doc = new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+  const doc = opts.sharedDoc || new jsPDFCtor({ unit: 'mm', format: 'a4', orientation: 'portrait', compress: true });
+  if(opts.combining && opts.isFirst === false) doc.addPage();
 
   // ====== Dark website-stijl palet ======
   const COL = {
@@ -20324,6 +20314,7 @@ async function generatePlayerPDF(p){
     redDeep:  [138, 4, 16],
     gold:     [245, 197, 24],
     goldDeep: [184, 134, 11],
+    blue:     [78, 161, 255],
     A: [34, 197, 94],
     B: [59, 130, 246],
     C: [245, 158, 11],
@@ -20368,13 +20359,11 @@ async function generatePlayerPDF(p){
 
   function sectionHeading(label){
     newPageIfNeeded(13);
-    setFill(COL.red);
+    setFill(COL.blue);
     doc.rect(MARGIN_L, y + 1, 2.4, 4.5, 'F');
-    setFill(COL.gold);
-    doc.rect(MARGIN_L + 2.4, y + 1, 0.8, 4.5, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(9);
-    setText(COL.red);
+    setText(COL.blue);
     doc.text(label.toUpperCase(), MARGIN_L + 6.5, y + 4.8);
     setStroke(COL.line); doc.setLineWidth(0.3);
     doc.line(MARGIN_L, y + 7.5, PAGE_W - MARGIN_R, y + 7.5);
@@ -20423,6 +20412,11 @@ async function generatePlayerPDF(p){
   doc.setFontSize(7);
   setText(COL.muted);
   doc.text('Scouting & talentbeoordeling - vertrouwelijk rapport', MARGIN_L + 23, y + 14.8);
+  const scoutNaam = (typeof currentUser!=='undefined'&&currentUser) ? (currentUser.displayName||currentUser.email||'onbekende scout') : 'onbekende scout';
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  setText(COL.blue);
+  doc.text('Rapport van '+scoutNaam, MARGIN_L + 23, y + 18.4);
 
   const w = p.wedstrijd || {};
   const reportDate = w.datum || p.datum || todayISO();
@@ -20440,13 +20434,9 @@ async function generatePlayerPDF(p){
   doc.setFontSize(11);
   doc.text(formatDate(reportDate), badgeX + badgeW/2, y + 11.8, { align: 'center' });
 
-  y += 22;
+  y += 25;
   setFill(COL.red);
-  doc.rect(MARGIN_L, y, CONTENT_W * 0.45, 1.3, 'F');
-  setFill(COL.gold);
-  doc.rect(MARGIN_L + CONTENT_W * 0.45, y, CONTENT_W * 0.22, 1.3, 'F');
-  setFill([240, 200, 80]);
-  doc.rect(MARGIN_L + CONTENT_W * 0.67, y, CONTENT_W * 0.10, 1.3, 'F');
+  doc.rect(MARGIN_L, y, CONTENT_W, 1.1, 'F');
   y += 8;
 
   // Spelerfoto (indien aanwezig) rechtsboven naast de naam
@@ -20630,11 +20620,11 @@ async function generatePlayerPDF(p){
       newPageIfNeeded(blockH + 2);
       setFill(COL.cardBg);
       doc.roundedRect(MARGIN_L, y, CONTENT_W, blockH, 1.6, 1.6, 'F');
-      setFill(COL.red);
+      setFill(COL.blue);
       doc.rect(MARGIN_L, y, 1.8, blockH, 'F');
       setStroke(COL.line); doc.setLineWidth(0.25);
       doc.roundedRect(MARGIN_L, y, CONTENT_W, blockH, 1.6, 1.6, 'S');
-      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); setText(COL.red);
+      doc.setFont('helvetica', 'bold'); doc.setFontSize(8); setText(COL.blue);
       doc.text(n.toUpperCase(), MARGIN_L + 5, y + 4.5);
       doc.setFont('helvetica', 'normal'); doc.setFontSize(9); setText(COL.ink);
       doc.text(lines, MARGIN_L + 5, y + 9.5);
@@ -20813,17 +20803,36 @@ async function generatePlayerPDF(p){
     doc.setFont('helvetica', 'bold'); doc.setFontSize(8); setText(COL.ink);
     doc.text('ScoutingHub', MARGIN_L + 12, PAGE_H - 8);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7); setText(COL.muted);
-    doc.text('Opgesteld door '+((typeof currentUser!=='undefined'&&currentUser)?(currentUser.displayName||currentUser.email||'onbekende scout'):'onbekende scout'), MARGIN_L + 12, PAGE_H - 4.5);
+    doc.text('Opgesteld door '+scoutNaam, MARGIN_L + 12, PAGE_H - 4.5);
     doc.setFont('helvetica', 'normal'); doc.setFontSize(7); setText(COL.muted);
     doc.text(`${i} / ${totalPages}`, PAGE_W - MARGIN_R, PAGE_H - 6, { align: 'right' });
     doc.setFontSize(6.5);
     doc.text(`Gegenereerd ${formatDate(todayISO())}`, PAGE_W - MARGIN_R, PAGE_H - 2.5, { align: 'right' });
   }
 
+  if(opts.combining) return doc; // gecombineerde PDF: opslaan gebeurt eenmalig door de aanroeper
+
   const filename = `rapport-${slugify(p.naam)}-${reportDate}.pdf`;
   try {
     doc.save(filename);
     toast('PDF gedownload');
+  } catch(err){
+    console.error('PDF error:', err);
+    toast('PDF maken mislukt', true);
+  }
+}
+
+async function generateAllReportsPDF(p){
+  const reports = (typeof reportsForPlayer === 'function') ? reportsForPlayer(p.id) : [];
+  if(reports.length < 2){ return generatePlayerPDF(p); }
+  toast('PDF wordt gemaakt...');
+  let doc = null;
+  try {
+    for(let i=0;i<reports.length;i++){
+      const reportData = (typeof buildPlayerFromReport === 'function') ? buildPlayerFromReport(p, reports[i]) : p;
+      doc = await generatePlayerPDF(reportData, { sharedDoc: doc, isFirst: i===0, combining: true });
+    }
+    if(doc){ doc.save(`alle-rapporten-${slugify(p.naam)}.pdf`); toast('PDF gedownload'); }
   } catch(err){
     console.error('PDF error:', err);
     toast('PDF maken mislukt', true);
